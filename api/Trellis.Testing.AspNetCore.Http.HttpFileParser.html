@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class HttpFileParser | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class HttpFileParser | Trellis ">
+      
+      <meta name="description" content="Parses a .http file (VS Code REST Client / Visual Studio format) into a sequence of  values ready to be replayed by .">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Testing_AspNetCore_Http_HttpFileParser.md&amp;value=---%0Auid%3A%20Trellis.Testing.AspNetCore.Http.HttpFileParser%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing.AspNetCore.Http.HttpFileParser">
+
+
+
+  <h1 id="Trellis_Testing_AspNetCore_Http_HttpFileParser" data-uid="Trellis.Testing.AspNetCore.Http.HttpFileParser" class="text-break">
+Class HttpFileParser  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/Http/HttpFileParser.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Testing.html">Testing</a>.<a class="xref" href="Trellis.Testing.AspNetCore.html">AspNetCore</a>.<a class="xref" href="Trellis.Testing.AspNetCore.Http.html">Http</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Testing.AspNetCore.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Parses a <code>.http</code> file (VS Code REST Client / Visual Studio format) into
+a sequence of <a class="xref" href="Trellis.Testing.AspNetCore.Http.HttpFileRequest.html">HttpFileRequest</a> values ready to be replayed by
+<a class="xref" href="Trellis.Testing.AspNetCore.Http.HttpFileRunner.html">HttpFileRunner</a>.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class HttpFileParser</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">HttpFileParser</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Testing_AspNetCore_Http_HttpFileParser_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Supported syntax:</p>
+<ul><li><code>### Title</code> separators (title becomes test-case display name).</li><li><code># @name foo</code> metadata line — binds this request's response under key <code>foo</code> for later <code>{{foo.response.*}}</code> substitution.</li><li><code># @expect status: 201</code> / <code>2xx</code> / <code>200-299</code> — optional status assertion.</li><li><code># @expect header: ETag</code> — required response header (must be present and non-empty).</li><li><code># @parity: status-only</code> — cross-host parity directive.</li><li><code>@variable = value</code> — file-level variables usable via <code>{{variable}}</code>.</li><li><code>{{named.response.body.jsonPath}}</code> — dotted-path substitution against a prior captured response body (JSON).</li><li><code>{{named.response.headers.Name}}</code> — header substitution against a prior captured response.</li></ul>
+<p>Expectation semantics consumed by <a class="xref" href="Trellis.Testing.AspNetCore.Http.HttpFileAssertions.html">HttpFileAssertions</a>:
+if no <code>@expect</code> is present on a request, the runner still asserts the
+status falls in the non-error range 100-399. This catches regressions
+(e.g. a happy-path endpoint suddenly 500'ing) without forcing authors to
+annotate every 2xx request.</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Testing_AspNetCore_Http_HttpFileParser_Parse_" data-uid="Trellis.Testing.AspNetCore.Http.HttpFileParser.Parse*"></a>
+
+  <h3 id="Trellis_Testing_AspNetCore_Http_HttpFileParser_Parse_System_String_System_Collections_Generic_IReadOnlyDictionary_System_String_System_String__" data-uid="Trellis.Testing.AspNetCore.Http.HttpFileParser.Parse(System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String})">
+  Parse(string, IReadOnlyDictionary&lt;string, string&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/Http/HttpFileParser.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Parses raw <code>.http</code> file <code class="paramref">content</code> into an ordered
+list of <a class="xref" href="Trellis.Testing.AspNetCore.Http.HttpFileRequest.html">HttpFileRequest</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IReadOnlyList&lt;HttpFileRequest&gt; Parse(string content, IReadOnlyDictionary&lt;string, string&gt;? vars = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>content</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The file contents as a single string.</p>
+</dd>
+    <dt><code>vars</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2">IReadOnlyDictionary</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>Optional external variables (e.g. merged <code>$shared</code> + selected env from <code>http-client.env.json</code>). These are overridden by file-level <code>@var</code> lines.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Trellis.Testing.AspNetCore.Http.HttpFileRequest.html">HttpFileRequest</a>&gt;</dt>
+    <dd><p>An ordered, read-only list of parsed requests.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_AspNetCore_Http_HttpFileParser_ParseFile_" data-uid="Trellis.Testing.AspNetCore.Http.HttpFileParser.ParseFile*"></a>
+
+  <h3 id="Trellis_Testing_AspNetCore_Http_HttpFileParser_ParseFile_System_String_System_Collections_Generic_IReadOnlyDictionary_System_String_System_String__" data-uid="Trellis.Testing.AspNetCore.Http.HttpFileParser.ParseFile(System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String})">
+  ParseFile(string, IReadOnlyDictionary&lt;string, string&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/Http/HttpFileParser.cs/#L266"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Parses a <code>.http</code> file from disk.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IReadOnlyList&lt;HttpFileRequest&gt; ParseFile(string path, IReadOnlyDictionary&lt;string, string&gt;? vars = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>path</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Path to the file to parse.</p>
+</dd>
+    <dt><code>vars</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2">IReadOnlyDictionary</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>Optional external variables merged into the file's own <code>@var</code> lines.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Trellis.Testing.AspNetCore.Http.HttpFileRequest.html">HttpFileRequest</a>&gt;</dt>
+    <dd><p>An ordered, read-only list of parsed requests.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/Http/HttpFileParser.cs/#L32" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

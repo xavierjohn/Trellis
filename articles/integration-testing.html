@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Integration Testing | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Integration Testing | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-testing.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="integration-testing">Integration Testing</h1>
+
+<p><code>Trellis.Testing</code> and <code>Trellis.Testing.AspNetCore</code> keep tests aligned with production code: success and failure stay typed (<code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, closed <code>Error</code> ADT), authorization stays explicit, and ASP.NET Core integration tests run against the real pipeline.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Assert a sync <code>Result&lt;T&gt;</code> succeeded / failed</td>
+<td><code>result.Should().BeSuccess()</code> / <code>.BeFailureOfType&lt;TError&gt;()</code></td>
+<td><a href="#result-assertions">Result assertions</a></td>
+</tr>
+<tr>
+<td>Assert an async <code>Result&lt;T&gt;</code> succeeded / failed</td>
+<td><code>await task.BeSuccessAsync()</code> / <code>.BeFailureAsync()</code> (extension on <code>Task</code>/<code>ValueTask</code>)</td>
+<td><a href="#result-assertions">Result assertions</a></td>
+</tr>
+<tr>
+<td>Assert a <code>Maybe&lt;T&gt;</code> carries / is empty</td>
+<td><code>maybe.Should().HaveValue()</code> / <code>.BeNone()</code></td>
+<td><a href="#maybe-assertions">Maybe assertions</a></td>
+</tr>
+<tr>
+<td>Assert error code / detail / payload type</td>
+<td><code>error.Should().HaveCode(...)</code> / <code>.HaveDetailContaining(...)</code> / <code>.BeOfType&lt;TError&gt;()</code></td>
+<td><a href="#error-assertions">Error assertions</a></td>
+</tr>
+<tr>
+<td>Assert a validation field violation</td>
+<td><code>unprocessable.Should().HaveFieldError(...)</code></td>
+<td><a href="#validation-error-assertions">Validation error assertions</a></td>
+</tr>
+<tr>
+<td>Stub a repository with unique-constraint and not-found semantics</td>
+<td><code>new FakeRepository&lt;TAggregate, TId&gt;().WithUniqueConstraint(...)</code></td>
+<td><a href="#fakerepository">FakeRepository</a></td>
+</tr>
+<tr>
+<td>Provide an actor inside a unit test</td>
+<td><code>new TestActorProvider(id, perms)</code> / <code>.WithActor(...)</code> scope</td>
+<td><a href="#testactorprovider">TestActorProvider</a></td>
+</tr>
+<tr>
+<td>Send <code>X-Test-Actor</code> from an integration test client</td>
+<td><code>factory.CreateClientWithActor(...)</code></td>
+<td><a href="#webapplicationfactory-helpers">WebApplicationFactory helpers</a></td>
+</tr>
+<tr>
+<td>Replace EF provider in <code>WebApplicationFactory</code></td>
+<td><code>services.ReplaceDbProvider&lt;TContext&gt;(...)</code></td>
+<td><a href="#webapplicationfactory-helpers">WebApplicationFactory helpers</a></td>
+</tr>
+<tr>
+<td>Replace a resource loader for tests</td>
+<td><code>services.ReplaceResourceLoader&lt;TMessage, TResource&gt;(...)</code></td>
+<td><a href="#webapplicationfactory-helpers">WebApplicationFactory helpers</a></td>
+</tr>
+<tr>
+<td>Pin time deterministically in integration tests</td>
+<td><code>factory.WithFakeTimeProvider(out var fake)</code></td>
+<td><a href="#webapplicationfactory-helpers">WebApplicationFactory helpers</a></td>
+</tr>
+<tr>
+<td>Replay a <code>.http</code> file against the test host</td>
+<td><code>HttpFileParser.ParseFile</code> + <code>HttpFileRunner.RunAsync</code> + <code>HttpFileAssertions.AssertExpectationsMet</code></td>
+<td><a href="../api_reference/trellis-api-testing-aspnetcore.html#http-file-replay-helpers"><code>trellis-api-testing-aspnetcore.md</code></a></td>
+</tr>
+<tr>
+<td>Acquire a real Entra token in gated E2E tests</td>
+<td><code>MsalTestTokenProvider</code> + <code>factory.CreateClientWithEntraTokenAsync(...)</code></td>
+<td><a href="../api_reference/trellis-api-testing-aspnetcore.html#msal--entra-e2e-token-helpers"><code>trellis-api-testing-aspnetcore.md</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You are writing handler / domain unit tests that consume Trellis <code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, or the closed <code>Error</code> ADT.</li>
+<li>You are writing ASP.NET Core integration tests with <code>WebApplicationFactory&lt;TEntryPoint&gt;</code> and need actor headers, DI replacement, deterministic time, or <code>.http</code> replay.</li>
+<li>You want fakes (<code>FakeRepository&lt;,&gt;</code>, <code>TestActorProvider</code>) instead of hand-rolled mocks for repositories and authorization.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Package</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ResultAssertions&lt;TValue&gt;</code></td>
+<td><code>Trellis.Testing</code></td>
+<td>FluentAssertions surface for sync <code>Result&lt;T&gt;</code> (success, failure, error code/detail).</td>
+</tr>
+<tr>
+<td><code>ResultAssertionsAsyncExtensions</code></td>
+<td><code>Trellis.Testing</code></td>
+<td><code>BeSuccessAsync</code> / <code>BeFailureAsync</code> / <code>BeFailureOfTypeAsync</code> on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>MaybeAssertions&lt;T&gt;</code></td>
+<td><code>Trellis.Testing</code></td>
+<td><code>HaveValue</code> / <code>BeNone</code> / <code>HaveValueEqualTo</code> / <code>HaveValueMatching</code>.</td>
+</tr>
+<tr>
+<td><code>ErrorAssertions</code></td>
+<td><code>Trellis.Testing</code></td>
+<td><code>HaveCode</code> / <code>HaveDetail(Containing)</code> / <code>BeOfType&lt;TError&gt;</code> against the closed <code>Error</code> ADT.</td>
+</tr>
+<tr>
+<td><code>ValidationErrorAssertions</code></td>
+<td><code>Trellis.Testing</code></td>
+<td>Field-shape assertions over <code>Error.UnprocessableContent</code>.</td>
+</tr>
+<tr>
+<td><code>UnwrapExtensions</code></td>
+<td><code>Trellis.Testing</code></td>
+<td>Test-only <code>Unwrap()</code> / <code>UnwrapError()</code> (sync, async, <code>Result&lt;Unit&gt;</code>, <code>Maybe&lt;T&gt;</code>).</td>
+</tr>
+<tr>
+<td><code>FakeRepository&lt;TAggregate, TId&gt;</code></td>
+<td><code>Trellis.Testing</code></td>
+<td>In-memory repository with unique-constraint, not-found, and domain-event capture.</td>
+</tr>
+<tr>
+<td><code>FakeSharedResourceLoader&lt;TResource, TId&gt;</code></td>
+<td><code>Trellis.Testing</code></td>
+<td>Test double over <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> backed by <code>FakeRepository</code>.</td>
+</tr>
+<tr>
+<td><code>TestActorProvider</code> / <code>TestActorScope</code></td>
+<td><code>Trellis.Testing</code></td>
+<td><code>IActorProvider</code> for handler tests, with scoped <code>WithActor(...)</code> overrides.</td>
+</tr>
+<tr>
+<td><code>AggregateTestMutator</code></td>
+<td><code>Trellis.Testing</code></td>
+<td><code>SetMaybeField</code> / <code>ClearMaybeField</code> for whitebox aggregate setup.</td>
+</tr>
+<tr>
+<td><code>WebApplicationFactoryExtensions</code></td>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td><code>CreateClientWithActor(...)</code>, <code>CreateClientWithEntraTokenAsync(...)</code>.</td>
+</tr>
+<tr>
+<td><code>WebApplicationFactoryTimeExtensions</code></td>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td><code>WithFakeTimeProvider(...)</code> and <code>DefaultTestStartInstant</code> (<code>2024-01-01T00:00:00Z</code>).</td>
+</tr>
+<tr>
+<td><code>ServiceCollectionExtensions</code></td>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td><code>ReplaceResourceLoader&lt;,&gt;</code> / <code>ReplaceSingleton&lt;T&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>ServiceCollectionDbProviderExtensions</code></td>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td><code>ReplaceDbProvider&lt;TContext&gt;(...)</code> for SQLite/in-memory swaps.</td>
+</tr>
+<tr>
+<td><code>MsalTestTokenProvider</code> (+ <code>MsalTestOptions</code>, <code>TestUserCredentials</code>)</td>
+<td><code>Trellis.Testing.AspNetCore</code></td>
+<td>MSAL ROPC token acquisition for gated E2E tests against a dedicated test tenant.</td>
+</tr>
+<tr>
+<td><code>HttpFileParser</code> / <code>HttpFileRunner</code> / <code>HttpFileAssertions</code></td>
+<td><code>Trellis.Testing.AspNetCore.Http</code></td>
+<td>Parse, run, and assert <code>.http</code> files against a <code>WebApplicationFactory</code> client.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-testing-reference.html">trellis-api-testing-reference.md</a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Testing
+dotnet add package Trellis.Testing.AspNetCore
+</code></pre>
+<p><code>Trellis.Testing.AspNetCore</code> already references <code>Trellis.Testing</code>; install the second package only when the test project owns ASP.NET Core integration tests.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>A handler test that asserts both the success path and an expected typed failure, using <code>FakeRepository</code> for persistence and <code>TestActorProvider</code> for authorization context.</p>
+<pre><code class="lang-csharp">using System;
+using System.Threading;
+using System.Threading.Tasks;
+using FluentAssertions;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Testing;
+
+public sealed record OrderId(Guid Value);
+
+public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public Order(OrderId id, string email) : base(id) =&gt; Email = email;
+
+    public string Email { get; }
+}
+
+var actorProvider = new TestActorProvider(&quot;user-1&quot;, &quot;Orders.Read&quot;, &quot;Orders.Write&quot;);
+var actor = await actorProvider.GetCurrentActorAsync();
+
+actor.HasPermission(&quot;Orders.Read&quot;).Should().BeTrue();
+
+var repo = new FakeRepository&lt;Order, OrderId&gt;()
+    .WithUniqueConstraint(order =&gt; order.Email);
+
+var order = new Order(new OrderId(Guid.NewGuid()), &quot;ada@example.com&quot;);
+
+(await repo.SaveAsync(order, CancellationToken.None)).Should().BeSuccess();
+(await repo.GetByIdAsync(order.Id)).Should().BeSuccess().Which.Should().BeSameAs(order);
+
+var duplicate = new Order(new OrderId(Guid.NewGuid()), &quot;ada@example.com&quot;);
+(await repo.SaveAsync(duplicate, CancellationToken.None))
+    .Should().BeFailureOfType&lt;Error.Conflict&gt;();
+</code></pre>
+<h2 id="result-assertions">Result assertions</h2>
+<p>Every command returns <code>Result&lt;Unit&gt;</code>. Assert on results directly instead of unpacking booleans by hand.</p>
+<table>
+<thead>
+<tr>
+<th>Assertion</th>
+<th>Receiver</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BeSuccess()</code></td>
+<td><code>Result&lt;T&gt;</code> via <code>.Should()</code></td>
+<td><code>AndWhich.Which</code> exposes the value.</td>
+</tr>
+<tr>
+<td><code>BeFailure()</code></td>
+<td><code>Result&lt;T&gt;</code> via <code>.Should()</code></td>
+<td><code>AndWhich.Which</code> exposes the <code>Error</code>.</td>
+</tr>
+<tr>
+<td><code>BeFailureOfType&lt;TError&gt;()</code></td>
+<td><code>Result&lt;T&gt;</code> via <code>.Should()</code></td>
+<td>Asserts the closed-ADT case (e.g. <code>Error.NotFound</code>).</td>
+</tr>
+<tr>
+<td><code>HaveValue(expected)</code> / <code>HaveValueMatching(predicate)</code> / <code>HaveValueEquivalentTo(expected)</code></td>
+<td><code>Result&lt;T&gt;</code> via <code>.Should()</code></td>
+<td>Value-shape checks without <code>.Which</code>.</td>
+</tr>
+<tr>
+<td><code>HaveErrorCode(code)</code> / <code>HaveErrorDetail(text)</code> / <code>HaveErrorDetailContaining(substring)</code></td>
+<td><code>Result&lt;T&gt;</code> via <code>.Should()</code></td>
+<td>Error-shape checks.</td>
+</tr>
+<tr>
+<td><code>BeSuccessAsync()</code> / <code>BeFailureAsync()</code> / <code>BeFailureOfTypeAsync&lt;TError&gt;()</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code> <strong>or</strong> <code>ValueTask&lt;Result&lt;T&gt;&gt;</code> directly</td>
+<td><strong>Not</strong> an extension on <code>ResultAssertions&lt;T&gt;</code> — see warning below.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using System.Threading.Tasks;
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var success = Result.Ok(42);
+success.Should().BeSuccess().Which.Should().Be(42);
+
+var notFound = Result.Fail&lt;int&gt;(
+    new Error.NotFound(ResourceRef.For(&quot;Order&quot;, &quot;123&quot;)) { Detail = &quot;Order 123 not found&quot; });
+
+notFound.Should().BeFailureOfType&lt;Error.NotFound&gt;();
+notFound.Should().HaveErrorCode(&quot;not.found.error&quot;);
+notFound.Should().HaveErrorDetailContaining(&quot;Order 123&quot;);
+
+Task&lt;Result&lt;int&gt;&gt; taskResult = Task.FromResult(success);
+ValueTask&lt;Result&lt;int&gt;&gt; valueTaskResult = ValueTask.FromResult(Result.Ok(7));
+
+(await taskResult.BeSuccessAsync()).Which.Should().Be(42);
+(await valueTaskResult.BeSuccessAsync()).Which.Should().Be(7);
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Do <strong>not</strong> write <code>await result.Should().BeSuccessAsync()</code>. Async assertions are extensions on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>, not on <code>ResultAssertions&lt;T&gt;</code>. Call them directly on the awaitable.</p>
+</div>
+<h2 id="maybe-assertions">Maybe assertions</h2>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+Maybe.From(&quot;Ada&quot;).Should().HaveValue().Which.Should().Be(&quot;Ada&quot;);
+Maybe&lt;string&gt;.None.Should().BeNone();
+Maybe.From(&quot;Ada&quot;).Should().HaveValueEqualTo(&quot;Ada&quot;);
+</code></pre>
+<p><code>HaveValueMatching(predicate)</code> and <code>HaveValueEquivalentTo(expected)</code> are also available; full signatures in <a href="../api_reference/trellis-api-testing-reference.html#maybeassertionst">trellis-api-testing-reference.md</a>.</p>
+<h2 id="error-assertions">Error assertions</h2>
+<p><code>Error</code> is a closed ADT (see <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a>). Assert on the case, not on a string discriminator.</p>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+Error error = new Error.NotFound(ResourceRef.For(&quot;Order&quot;, &quot;123&quot;))
+{
+    Detail = &quot;Order 123 not found&quot;,
+};
+
+error.Should().BeOfType&lt;Error.NotFound&gt;()
+    .Which.Resource.Should().Be(ResourceRef.For(&quot;Order&quot;, &quot;123&quot;));
+
+error.Should().HaveCode(&quot;not.found.error&quot;);
+error.Should().HaveDetailContaining(&quot;123&quot;);
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>Error.Instance</code> was removed in v3. The ASP wire layer synthesizes <code>ProblemDetails.Instance</code> from the request URL plus any <code>ResourceRef</code> carried by the typed payload. Assert against <code>Error.NotFound.Resource</code> (or the equivalent typed field), not a string <code>Instance</code>.</p>
+</div>
+<h3 id="validation-error-assertions">Validation error assertions</h3>
+<p><code>Error.UnprocessableContent</code> carries an <code>EquatableArray&lt;FieldViolation&gt;</code>. Use the dedicated assertions instead of pattern-matching the array yourself.</p>
+<pre><code class="lang-csharp">using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var error = new Error.UnprocessableContent(EquatableArray.Create(
+    new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;validation.error&quot;)
+    {
+        Detail = &quot;Email is required.&quot;,
+    }));
+
+error.Should().HaveFieldError(&quot;email&quot;);
+error.Should().HaveFieldErrorWithDetail(&quot;email&quot;, &quot;Email is required.&quot;);
+error.Should().HaveFieldCount(1);
+</code></pre>
+<p><code>HaveFieldError</code> accepts either <code>&quot;email&quot;</code> or <code>&quot;/email&quot;</code> — the field name is normalized via <code>InputPointer.ForProperty</code>.</p>
+<h2 id="fakerepository">FakeRepository</h2>
+<p><code>FakeRepository&lt;TAggregate, TId&gt;</code> mirrors the production <code>IRepository</code> contract and adds a result-shape surface for tests that need to assert on persistence failures. It is almost always preferable to a hand-rolled mock.</p>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Members</th>
+<th>Use from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Setup (mirrors <code>RepositoryBase&lt;TAggregate, TId&gt;</code>)</td>
+<td><code>Add(TAggregate)</code>, <code>Remove(TAggregate)</code>, <code>RemoveByIdAsync(TId, ct)</code></td>
+<td>Production handlers; test setup that exercises the real <code>IRepository</code> contract.</td>
+</tr>
+<tr>
+<td>Result-shape (fake-only)</td>
+<td><code>SaveAsync(TAggregate, ct)</code>, <code>DeleteAsync(TId, ct)</code> — both <code>Task&lt;Result&lt;Unit&gt;&gt;</code></td>
+<td>Tests that explicitly assert on conflict-result or not-found-result handling.</td>
+</tr>
+<tr>
+<td>Read</td>
+<td><code>GetByIdAsync(TId, ct)</code> → <code>Task&lt;Result&lt;TAggregate&gt;&gt;</code>, <code>FindByIdAsync(TId, ct)</code> → <code>Task&lt;Maybe&lt;TAggregate&gt;&gt;</code>, <code>FindAsync(predicate)</code>, <code>WhereAsync(predicate)</code>, <code>WhereAsync(Specification&lt;TAggregate&gt;)</code></td>
+<td>Test bodies.</td>
+</tr>
+<tr>
+<td>Inspection</td>
+<td><code>Count</code>, <code>Exists(TId)</code>, <code>Get(TId)</code>, <code>GetAll()</code>, <code>Clear()</code>, <code>PublishedEvents</code></td>
+<td>Test assertions.</td>
+</tr>
+<tr>
+<td>Constraint registration</td>
+<td><code>WithUniqueConstraint(Func&lt;TAggregate, object?&gt;)</code></td>
+<td>Test setup; eagerly enforced by <code>Add</code> (throws <code>InvalidOperationException</code>) and at-call by <code>SaveAsync</code> (returns <code>Error.Conflict</code>).</td>
+</tr>
+</tbody>
+</table>
+<p>Detail strings:</p>
+<ul>
+<li><code>GetByIdAsync</code> / <code>DeleteAsync</code> / <code>RemoveByIdAsync</code> not-found: <code>&quot;{AggregateTypeName} with ID {id} not found&quot;</code>.</li>
+<li>Unique-constraint conflict from <code>SaveAsync</code>: <code>&quot;A {AggregateTypeName} with the same value already exists.&quot;</code></li>
+</ul>
+<pre><code class="lang-csharp">using System;
+using System.Threading;
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+public sealed record OrderId(Guid Value);
+
+public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public Order(OrderId id, string email) : base(id) =&gt; Email = email;
+    public string Email { get; }
+}
+
+var repo = new FakeRepository&lt;Order, OrderId&gt;()
+    .WithUniqueConstraint(order =&gt; order.Email);
+
+var order = new Order(new OrderId(Guid.NewGuid()), &quot;ada@example.com&quot;);
+
+(await repo.SaveAsync(order, CancellationToken.None)).Should().BeSuccess();
+(await repo.GetByIdAsync(order.Id)).Should().BeSuccess().Which.Should().BeSameAs(order);
+repo.Exists(order.Id).Should().BeTrue();
+repo.Count.Should().Be(1);
+
+var dupe = new Order(new OrderId(Guid.NewGuid()), &quot;ada@example.com&quot;);
+(await repo.SaveAsync(dupe, CancellationToken.None))
+    .Should().BeFailureOfType&lt;Error.Conflict&gt;();
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>SaveAsync</code> / <code>DeleteAsync</code> are not on <code>RepositoryBase&lt;TAggregate, TId&gt;</code>. If a handler accepts the <code>IRepository</code> contract, it cannot call them; use the staging API (<code>Add</code> / <code>Remove</code> / <code>RemoveByIdAsync</code>) instead. See cookbook <strong>Recipe 16 — Unit of work in handlers</strong>.</p>
+</div>
+<h2 id="testactorprovider">TestActorProvider</h2>
+<p><code>TestActorProvider</code> is an <code>IActorProvider</code> for unit tests. Use the <code>(string userId, params string[] permissions)</code> constructor for the simple case and the <code>(Actor)</code> constructor when the test needs <code>ForbiddenPermissions</code> or <code>Attributes</code>.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using FluentAssertions;
+using Trellis.Authorization;
+using Trellis.Testing;
+
+var provider = new TestActorProvider(&quot;admin&quot;, &quot;Orders.Read&quot;, &quot;Orders.Write&quot;);
+
+await using (provider.WithActor(&quot;user-1&quot;, &quot;Orders.Read&quot;))
+{
+    var actor = await provider.GetCurrentActorAsync();
+    actor.Id.Should().Be(&quot;user-1&quot;);
+    actor.HasPermission(&quot;Orders.Read&quot;).Should().BeTrue();
+    actor.HasPermission(&quot;Orders.Write&quot;).Should().BeFalse();
+}
+
+var richActor = new Actor(
+    id: &quot;user-2&quot;,
+    permissions: new HashSet&lt;string&gt; { &quot;Orders.Read&quot; },
+    forbiddenPermissions: new HashSet&lt;string&gt; { &quot;Orders.Delete&quot; },
+    attributes: new Dictionary&lt;string, string&gt; { [&quot;tenant&quot;] = &quot;acme&quot; });
+
+await using (provider.WithActor(richActor))
+{
+    var actor = await provider.GetCurrentActorAsync();
+    actor.Attributes[&quot;tenant&quot;].Should().Be(&quot;acme&quot;);
+}
+</code></pre>
+<p><code>WithActor</code> returns a <code>TestActorScope</code> (<code>IAsyncDisposable</code>/<code>IDisposable</code>) that restores the previous actor when disposed.</p>
+<h2 id="webapplicationfactory-helpers">WebApplicationFactory helpers</h2>
+<p>The ASP.NET Core integration helpers live in <code>Trellis.Testing.AspNetCore</code>. Configure DI through <code>ConfigureTestServices</code> <strong>before</strong> <code>CreateClient()</code>; do not mutate the service collection afterward.</p>
+<h3 id="authenticated-test-clients">Authenticated test clients</h3>
+<p><code>CreateClientWithActor</code> writes the <code>X-Test-Actor</code> header that the development/test actor provider expects (id, permissions, forbidden permissions, attributes).</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Trellis.Authorization;
+using Trellis.Testing.AspNetCore;
+
+WebApplicationFactory&lt;Program&gt; factory = default!;
+
+var simpleClient = factory.CreateClientWithActor(&quot;user-1&quot;, &quot;Orders.Read&quot;, &quot;Orders.Write&quot;);
+
+var richActor = new Actor(
+    id: &quot;user-2&quot;,
+    permissions: new HashSet&lt;string&gt; { &quot;Orders.Read&quot; },
+    forbiddenPermissions: new HashSet&lt;string&gt; { &quot;Orders.Delete&quot; },
+    attributes: new Dictionary&lt;string, string&gt; { [&quot;tenant&quot;] = &quot;acme&quot; });
+
+var richClient = factory.CreateClientWithActor(richActor);
+</code></pre>
+<p>For real Entra tokens in gated E2E suites, use <code>MsalTestTokenProvider</code> plus <code>factory.CreateClientWithEntraTokenAsync(provider, testUserName, ct)</code>. Full surface: <a href="../api_reference/trellis-api-testing-aspnetcore.html#msaltesttokenprovider"><code>trellis-api-testing-aspnetcore.md</code></a>.</p>
+<h3 id="replacing-services">Replacing services</h3>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>services.ReplaceSingleton&lt;TService&gt;(instance)</code></td>
+<td>Removes all <code>TService</code> registrations and adds the supplied singleton.</td>
+</tr>
+<tr>
+<td><code>services.ReplaceResourceLoader&lt;TMessage, TResource&gt;(factory)</code></td>
+<td>Removes existing <code>IResourceLoader&lt;TMessage, TResource&gt;</code> registrations and adds the supplied scoped factory.</td>
+</tr>
+<tr>
+<td><code>services.ReplaceDbProvider&lt;TContext&gt;(configureOptions)</code></td>
+<td>Removes the existing <code>TContext</code>, <code>DbContextOptions&lt;TContext&gt;</code>, and EF Core provider-scoped services, then re-registers via <code>AddDbContext&lt;TContext&gt;(configureOptions)</code>.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Trellis.Testing.AspNetCore;
+
+public sealed class AppDbContext(DbContextOptions&lt;AppDbContext&gt; options) : DbContext(options) { }
+
+public sealed class TestWebApplicationFactory : WebApplicationFactory&lt;Program&gt;
+{
+    private readonly SqliteConnection _connection = new(&quot;DataSource=:memory:&quot;);
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        _connection.Open();
+
+        builder.ConfigureTestServices(services =&gt;
+            services.ReplaceDbProvider&lt;AppDbContext&gt;(options =&gt; options.UseSqlite(_connection)));
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        _connection.Dispose();
+        base.Dispose(disposing);
+    }
+}
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>ReplaceDbProvider&lt;TContext&gt;</code> re-registers the context via <code>AddDbContext&lt;TContext&gt;</code>. If your app uses <code>AddDbContextFactory</code> or <code>AddPooledDbContextFactory</code>, replace those registrations directly instead.</p>
+</div>
+<h3 id="deterministic-time">Deterministic time</h3>
+<p><code>WithFakeTimeProvider</code> registers a <code>FakeTimeProvider</code> as the singleton <code>TimeProvider</code>. The <code>out</code> overloads default to <code>WebApplicationFactoryTimeExtensions.DefaultTestStartInstant</code> (<code>2024-01-01T00:00:00Z</code>).</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Time.Testing;
+using Trellis.Testing.AspNetCore;
+
+WebApplicationFactory&lt;Program&gt; factory = default!;
+
+factory = factory.WithFakeTimeProvider(out var fakeTime);
+fakeTime.Advance(System.TimeSpan.FromDays(3));
+</code></pre>
+<h2 id="composition">Composition</h2>
+<p>Once a handler returns <code>Result&lt;T&gt;</code> (or a command returns <code>Result&lt;Unit&gt;</code>), the testing surface composes naturally with the rest of Trellis: chain <code>Bind</code>/<code>Map</code>/<code>Ensure</code> on production code, then assert on the terminal result with <code>BeSuccess</code> / <code>BeFailureOfType&lt;TError&gt;</code>.</p>
+<pre><code class="lang-csharp">using System;
+using System.Threading;
+using System.Threading.Tasks;
+using FluentAssertions;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Testing;
+
+public sealed record OrderId(Guid Value);
+
+public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public Order(OrderId id, string email) : base(id) =&gt; Email = email;
+    public string Email { get; }
+}
+
+public sealed record PlaceOrder(string Email);
+
+public sealed class PlaceOrderHandler(FakeRepository&lt;Order, OrderId&gt; repo, TestActorProvider actors)
+{
+    public async Task&lt;Result&lt;OrderId&gt;&gt; HandleAsync(PlaceOrder cmd, CancellationToken ct)
+    {
+        var actor = await actors.GetCurrentActorAsync(ct);
+        if (!actor.HasPermission(&quot;Orders.Write&quot;))
+            return Result.Fail&lt;OrderId&gt;(new Error.Forbidden(&quot;Orders.Write&quot;));
+
+        var order = new Order(new OrderId(Guid.NewGuid()), cmd.Email);
+        var save = await repo.SaveAsync(order, ct);
+        return save.Map(_ =&gt; order.Id);
+    }
+}
+
+var repo = new FakeRepository&lt;Order, OrderId&gt;().WithUniqueConstraint(o =&gt; o.Email);
+var actors = new TestActorProvider(&quot;user-1&quot;, &quot;Orders.Write&quot;);
+var handler = new PlaceOrderHandler(repo, actors);
+
+(await handler.HandleAsync(new PlaceOrder(&quot;ada@example.com&quot;), CancellationToken.None))
+    .Should().BeSuccess();
+
+(await handler.HandleAsync(new PlaceOrder(&quot;ada@example.com&quot;), CancellationToken.None))
+    .Should().BeFailureOfType&lt;Error.Conflict&gt;();
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Prefer fakes over mocks for repositories.</strong> <code>FakeRepository</code> reproduces real not-found behavior, unique constraints, and domain-event capture; mocks usually drift from the real <code>IRepository</code> contract.</li>
+<li><strong>Pick the right repository surface.</strong> Production handlers should consume the staging API (<code>Add</code> / <code>Remove</code> / <code>RemoveByIdAsync</code>). The fake-only <code>SaveAsync</code> / <code>DeleteAsync</code> (both <code>Task&lt;Result&lt;Unit&gt;&gt;</code>) exist so tests can assert on conflict / not-found result shapes.</li>
+<li><strong>Assert on error case, not error string.</strong> Use <code>BeFailureOfType&lt;TError&gt;()</code> against the closed <code>Error</code> ADT; the typed payload (<code>Error.NotFound.Resource</code>, <code>Error.Conflict.ReasonCode</code>, etc.) carries the meaningful state.</li>
+<li><strong>Async assertions live on the awaitable.</strong> <code>BeSuccessAsync</code> / <code>BeFailureAsync</code> / <code>BeFailureOfTypeAsync</code> are extensions on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code> — not on <code>ResultAssertions&lt;T&gt;</code>. <code>Unwrap()</code> / <code>UnwrapError()</code> are test-only; never copy them into production code.</li>
+<li><strong>Use the rich <code>Actor</code> overload when authorization is non-trivial.</strong> When a policy reads <code>ForbiddenPermissions</code> or <code>Attributes</code>, pass a full <code>Actor</code> to <code>TestActorProvider</code> and <code>CreateClientWithActor</code>; the simple <code>(id, perms)</code> overload only sets granted permissions.</li>
+<li><strong>Configure DI before <code>CreateClient()</code>.</strong> Use <code>ConfigureTestServices</code> for <code>ReplaceSingleton</code> / <code>ReplaceResourceLoader</code> / <code>ReplaceDbProvider</code>; mutating services after the host is built has no effect.</li>
+<li><strong>Default to deterministic time.</strong> <code>factory.WithFakeTimeProvider(out var fake)</code> starts at <code>2024-01-01T00:00:00Z</code> so tests asserting on absolute timestamps do not flake. Use the explicit-instant overload only when a fixture needs a specific date.</li>
+<li><strong>Keep Entra-token tests gated.</strong> <code>CreateClientWithActor</code> covers fast local and CI tests. Use <code>CreateClientWithEntraTokenAsync</code> + <code>MsalTestTokenProvider</code> only for E2E suites against a dedicated test tenant with MFA disabled for test users.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface (assertions, fakes, actor provider): <a href="../api_reference/trellis-api-testing-reference.html"><code>trellis-api-testing-reference.md</code></a></li>
+<li>API surface (WebApplicationFactory, <code>.http</code> replay, MSAL): <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a></li>
+<li><code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, closed <code>Error</code> ADT, <code>ResourceRef</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Authorization primitives (<code>Actor</code>, <code>IActorProvider</code>): <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a></li>
+<li>Cookbook recipes (incl. <strong>Recipe 16 — Unit of work in handlers</strong>): <a href="../api_reference/trellis-api-cookbook.html"><code>trellis-api-cookbook.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-testing.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class EntityTagValue | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class EntityTagValue | Trellis ">
+      
+      <meta name="description" content="Represents an RFC 9110 &#167;8.8.1 entity tag (ETag) value with explicit weak/strong semantics.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_EntityTagValue.md&amp;value=---%0Auid%3A%20Trellis.EntityTagValue%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.EntityTagValue">
+
+
+
+  <h1 id="Trellis_EntityTagValue" data-uid="Trellis.EntityTagValue" class="text-break">
+Class EntityTagValue  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Represents an RFC 9110 §8.8.1 entity tag (ETag) value with explicit weak/strong semantics.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed record EntityTagValue : IEquatable&lt;EntityTagValue&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">EntityTagValue</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a>&gt;</div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_EntityTagValue_examples">Examples</h2>
+  <pre><code class="lang-csharp">var strong = EntityTagValue.Strong("abc123");
+var weak = EntityTagValue.Weak("abc123");
+
+// Parse from header
+var parsed = EntityTagValue.TryParse("W/\"abc123\"");
+
+// RFC 9110 §8.8.3.2 comparison
+strong.StrongEquals(EntityTagValue.Strong("abc123")); // true
+strong.WeakEquals(weak); // true</code></pre>
+
+
+  <h2 id="Trellis_EntityTagValue_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+An entity tag consists of an opaque quoted string, optionally prefixed with a weakness
+indicator (<code>W/</code>). Entity tags are used for conditional requests and cache validation.
+</p>
+<p>
+Create instances using <a class="xref" href="Trellis.EntityTagValue.html#Trellis_EntityTagValue_Strong_System_String_">Strong(string)</a> or <a class="xref" href="Trellis.EntityTagValue.html#Trellis_EntityTagValue_Weak_System_String_">Weak(string)</a> factory methods,
+or parse from header values using <a class="xref" href="Trellis.EntityTagValue.html#Trellis_EntityTagValue_TryParse_System_String_">TryParse(string?)</a>.
+Compare using <a class="xref" href="Trellis.EntityTagValue.html#Trellis_EntityTagValue_StrongEquals_Trellis_EntityTagValue_">StrongEquals(EntityTagValue)</a> or <a class="xref" href="Trellis.EntityTagValue.html#Trellis_EntityTagValue_WeakEquals_Trellis_EntityTagValue_">WeakEquals(EntityTagValue)</a> per RFC 9110 §8.8.3.2.
+Format for HTTP headers using <a class="xref" href="Trellis.EntityTagValue.html#Trellis_EntityTagValue_ToHeaderValue">ToHeaderValue()</a>.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_EntityTagValue_IsWeak_" data-uid="Trellis.EntityTagValue.IsWeak*"></a>
+
+  <h3 id="Trellis_EntityTagValue_IsWeak" data-uid="Trellis.EntityTagValue.IsWeak">
+  IsWeak
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether this is a weak entity tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsWeak { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if weak; <code>false</code> if strong.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_IsWildcard_" data-uid="Trellis.EntityTagValue.IsWildcard*"></a>
+
+  <h3 id="Trellis_EntityTagValue_IsWildcard" data-uid="Trellis.EntityTagValue.IsWildcard">
+  IsWildcard
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether this instance represents the RFC 9110 wildcard <code><em></em></code> token
+(as opposed to a literal ETag with opaque-tag <code></code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsWildcard { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_OpaqueTag_" data-uid="Trellis.EntityTagValue.OpaqueTag*"></a>
+
+  <h3 id="Trellis_EntityTagValue_OpaqueTag" data-uid="Trellis.EntityTagValue.OpaqueTag">
+  OpaqueTag
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the raw opaque tag string without quotes or <code>W/</code> prefix.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string OpaqueTag { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_EntityTagValue_Strong_" data-uid="Trellis.EntityTagValue.Strong*"></a>
+
+  <h3 id="Trellis_EntityTagValue_Strong_System_String_" data-uid="Trellis.EntityTagValue.Strong(System.String)">
+  Strong(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a strong entity tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static EntityTagValue Strong(string opaqueTag)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>opaqueTag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The opaque tag string.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a></dt>
+    <dd><p>A new strong <a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_StrongEquals_" data-uid="Trellis.EntityTagValue.StrongEquals*"></a>
+
+  <h3 id="Trellis_EntityTagValue_StrongEquals_Trellis_EntityTagValue_" data-uid="Trellis.EntityTagValue.StrongEquals(Trellis.EntityTagValue)">
+  StrongEquals(EntityTagValue)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs a strong comparison per RFC 9110 §8.8.3.2.
+Both tags must be strong and their opaque tags must match character-by-character.
+Wildcards never match in entity tag comparison — they are a precondition token, not a tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool StrongEquals(EntityTagValue other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_ToHeaderValue_" data-uid="Trellis.EntityTagValue.ToHeaderValue*"></a>
+
+  <h3 id="Trellis_EntityTagValue_ToHeaderValue" data-uid="Trellis.EntityTagValue.ToHeaderValue">
+  ToHeaderValue()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L163"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Formats this entity tag for use in an HTTP header.
+Returns <code>*</code> for the wildcard, <code>&quot;tag&quot;</code> for strong tags, or <code>W/&quot;tag&quot;</code> for weak tags.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ToHeaderValue()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The formatted HTTP header value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_ToString_" data-uid="Trellis.EntityTagValue.ToString*"></a>
+
+  <h3 id="Trellis_EntityTagValue_ToString" data-uid="Trellis.EntityTagValue.ToString">
+  ToString()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a string that represents the current object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A string that represents the current object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_TryParse_" data-uid="Trellis.EntityTagValue.TryParse*"></a>
+
+  <h3 id="Trellis_EntityTagValue_TryParse_System_String_" data-uid="Trellis.EntityTagValue.TryParse(System.String)">
+  TryParse(string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L118"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Parses an entity tag from its HTTP header representation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;EntityTagValue&gt; TryParse(string? headerValue)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>headerValue</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The header value to parse. Expected formats: <code>&quot;tag&quot;</code> for strong or <code>W/&quot;tag&quot;</code> for weak.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a>&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> containing the parsed <a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a> on success,
+or a <a class="xref" href="Trellis.Error.BadRequest.html">Error.BadRequest</a> on failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_EntityTagValue_TryParse_System_String__examples">Examples</h4>
+  <pre><code class="lang-csharp">var strong = EntityTagValue.TryParse("\"abc123\"");
+var weak = EntityTagValue.TryParse("W/\"abc123\"");</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_Weak_" data-uid="Trellis.EntityTagValue.Weak*"></a>
+
+  <h3 id="Trellis_EntityTagValue_Weak_System_String_" data-uid="Trellis.EntityTagValue.Weak(System.String)">
+  Weak(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a weak entity tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static EntityTagValue Weak(string opaqueTag)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>opaqueTag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The opaque tag string.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a></dt>
+    <dd><p>A new weak <a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_WeakEquals_" data-uid="Trellis.EntityTagValue.WeakEquals*"></a>
+
+  <h3 id="Trellis_EntityTagValue_WeakEquals_Trellis_EntityTagValue_" data-uid="Trellis.EntityTagValue.WeakEquals(Trellis.EntityTagValue)">
+  WeakEquals(EntityTagValue)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L155"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs a weak comparison per RFC 9110 §8.8.3.2.
+Only the opaque tags must match; the weakness indicator is ignored.
+Wildcards never match in entity tag comparison — they are a precondition token, not a tag.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool WeakEquals(EntityTagValue other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityTagValue_Wildcard_" data-uid="Trellis.EntityTagValue.Wildcard*"></a>
+
+  <h3 id="Trellis_EntityTagValue_Wildcard" data-uid="Trellis.EntityTagValue.Wildcard">
+  Wildcard()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L100"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates the RFC 9110 wildcard entity tag (<code><em></em></code>), which matches any current entity.
+This is semantically distinct from <code>Strong(&quot;&quot;)</code>, which is a literal ETag with opaque-tag <code>*</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static EntityTagValue Wildcard()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a></dt>
+    <dd><p>A wildcard <a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/EntityTagValue.cs/#L31" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

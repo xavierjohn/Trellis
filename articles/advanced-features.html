@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Advanced Features | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Advanced Features | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/advanced-features.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="advanced-features">Advanced Features</h1>
+
+<p>Once you know <code>Map</code>, <code>Bind</code>, and <code>Ensure</code>, the next question is usually: <strong>how do I keep the same style when the workflow gets more complex?</strong></p>
+<p>This article covers the Trellis features that help when you need to:</p>
+<ul>
+<li>branch cleanly at the end of a pipeline</li>
+<li>combine several successful values without tuple plumbing</li>
+<li>capture exceptions from throw-happy APIs</li>
+<li>run independent async work in parallel</li>
+<li>write more declarative pipelines with LINQ</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decide success vs failure at the end of a pipeline</td>
+<td><code>Match(onSuccess, onFailure)</code> / <code>MatchAsync(...)</code></td>
+<td><a href="#pattern-matching-make-the-end-of-the-pipeline-obvious">Pattern matching</a></td>
+</tr>
+<tr>
+<td>Combine several <code>Result&lt;T&gt;</code> values without tuple plumbing</td>
+<td><code>Combine(...)</code> then <code>Bind</code> / <code>Map</code> / <code>Match</code> with destructured tuple</td>
+<td><a href="#tuple-destructuring-combine-values-without-manual-unpacking">Tuple destructuring</a></td>
+</tr>
+<tr>
+<td>Bridge a throwing API into a <code>Result&lt;T&gt;</code></td>
+<td><code>Result.Try(...)</code> / <code>Result.TryAsync(...)</code> (optionally with exception mapper)</td>
+<td><a href="#exception-capture-keep-throwing-apis-at-the-edge">Exception capture</a></td>
+</tr>
+<tr>
+<td>Run independent async result-producing work concurrently</td>
+<td><code>Result.ParallelAsync(...).WhenAllAsync()</code></td>
+<td><a href="#parallel-operations-run-independent-async-work-together">Parallel operations</a></td>
+</tr>
+<tr>
+<td>Express sequential composition with query syntax</td>
+<td><code>from x in result1 from y in result2 select ...</code></td>
+<td><a href="#linq-query-syntax-write-sequential-intent-clearly">LINQ query syntax</a></td>
+</tr>
+<tr>
+<td>Drop the error and keep only “did it succeed?”</td>
+<td><code>result.ToMaybe()</code> / <code>ToMaybeAsync()</code></td>
+<td><a href="#result-to-maybe-conversion">Result-to-Maybe conversion</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="start-here-a-compact-example">Start Here: a Compact Example</h2>
+<pre><code class="lang-csharp">using Trellis;
+
+var result = Result.Ok(&quot;Ada&quot;)
+    .Combine(Result.Ok(&quot;Lovelace&quot;))
+    .Map((first, last) =&gt; $&quot;{first} {last}&quot;)
+    .Match(
+        onSuccess: name =&gt; $&quot;Hello, {name}&quot;,
+        onFailure: error =&gt; $&quot;Failed: {error.Code}&quot;);
+</code></pre>
+<p>That example uses three advanced ideas at once:</p>
+<ul>
+<li>tuple-aware <code>Combine(...)</code></li>
+<li>tuple-aware <code>Map(...)</code></li>
+<li>terminal pattern matching with <code>Match(...)</code></li>
+</ul>
+<h2 id="pattern-matching-make-the-end-of-the-pipeline-obvious">Pattern Matching: Make the End of the Pipeline Obvious</h2>
+<p>The problem pattern matching solves is simple: after a chain of operations, you need one clear place to decide what happens on success and failure.</p>
+<h3 id="match"><code>Match</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var description = Result.Ok(&quot;Ada&quot;)
+    .Match(
+        onSuccess: value =&gt; $&quot;Success: {value}&quot;,
+        onFailure: error =&gt; $&quot;Failure: {error.Code}&quot;);
+</code></pre>
+<h3 id="matchasync"><code>MatchAsync</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+public record User(string Id, string Name);
+
+static Task&lt;Result&lt;User&gt;&gt; GetUserAsync(string id) =&gt;
+    Task.FromResult(id == &quot;42&quot;
+        ? Result.Ok(new User(id, &quot;Ada&quot;))
+        : Result.Fail&lt;User&gt;(new Error.NotFound(new ResourceRef(&quot;Resource&quot;, id)) { Detail = $&quot;User {id} not found&quot; }));
+
+var message = await GetUserAsync(&quot;42&quot;).MatchAsync(
+    onSuccess: user =&gt; $&quot;Loaded {user.Name}&quot;,
+    onFailure: error =&gt; $&quot;Failed: {error.Code}&quot;);
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Use <code>Match(...)</code> when you want one final value. Use <code>Match(_, e =&gt; e switch { ... })</code> (covered in the <a href="error-handling.html">error-handling guide</a>) when different error cases need different outcomes.</p>
+</div>
+<h2 id="tuple-destructuring-combine-values-without-manual-unpacking">Tuple Destructuring: Combine Values Without Manual Unpacking</h2>
+<p>When several validations or lookups all need to succeed, the annoying part is usually the tuple handling. Trellis solves that by letting <code>Bind</code>, <code>Map</code>, <code>Tap</code>, and <code>Match</code> destructure combined tuples for you.</p>
+<h3 id="combine--bind"><code>Combine(...)</code> + <code>Bind(...)</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+public record OrderDraft(string CustomerId, string Sku, int Quantity);
+
+var draft = Result.Ok(&quot;customer-42&quot;)
+    .Combine(Result.Ok(&quot;sku-123&quot;))
+    .Combine(Result.Ok(3))
+    .Bind((customerId, sku, quantity) =&gt;
+        Result.Ok(new OrderDraft(customerId, sku, quantity)));
+</code></pre>
+<h3 id="combine--map"><code>Combine(...)</code> + <code>Map(...)</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var summary = Result.Ok(&quot;Ada&quot;)
+    .Combine(Result.Ok(&quot;Lovelace&quot;))
+    .Combine(Result.Ok(&quot;admin&quot;))
+    .Map((first, last, role) =&gt; $&quot;{first} {last} ({role})&quot;);
+</code></pre>
+<h3 id="combine--match"><code>Combine(...)</code> + <code>Match(...)</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var message = Result.Ok(&quot;Ada&quot;)
+    .Combine(Result.Ok(&quot;Lovelace&quot;))
+    .Match(
+        onSuccess: (first, last) =&gt; $&quot;User: {first} {last}&quot;,
+        onFailure: error =&gt; error.Detail);
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Generated tuple overloads support arities from 2 through 9.</p>
+</div>
+<h2 id="exception-capture-keep-throwing-apis-at-the-edge">Exception Capture: Keep Throwing APIs at the Edge</h2>
+<p>Many .NET APIs still throw exceptions for normal operational problems. Trellis gives you a clean bridge so the rest of your code can stay in <code>Result&lt;T&gt;</code>.</p>
+<h3 id="resulttry"><code>Result.Try(...)</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static Result&lt;string&gt; LoadFile(string path) =&gt;
+    Result.Try(() =&gt; File.ReadAllText(path));
+
+var content = LoadFile(&quot;settings.json&quot;)
+    .Ensure(text =&gt; !string.IsNullOrWhiteSpace(text), new Error.BadRequest(&quot;bad.request&quot;) { Detail = &quot;settings.json is empty&quot; });
+</code></pre>
+<h3 id="resulttryasync"><code>Result.TryAsync(...)</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+
+static Task&lt;Result&lt;string&gt;&gt; LoadFileAsync(string path) =&gt;
+    Result.TryAsync(() =&gt; File.ReadAllTextAsync(path));
+
+var content = await LoadFileAsync(&quot;settings.json&quot;)
+    .EnsureAsync(text =&gt; Task.FromResult(!string.IsNullOrWhiteSpace(text)), new Error.BadRequest(&quot;bad.request&quot;) { Detail = &quot;settings.json is empty&quot; });
+</code></pre>
+<h3 id="custom-exception-mapping">Custom exception mapping</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var result = Result.Try(
+    () =&gt; File.ReadAllText(&quot;settings.json&quot;),
+    exception =&gt; exception switch
+    {
+        FileNotFoundException =&gt; new Error.NotFound(ResourceRef.For(&quot;File&quot;, &quot;settings.json&quot;)) { Detail = &quot;settings.json was not found&quot; },
+        UnauthorizedAccessException =&gt; new Error.Forbidden(&quot;policy.id&quot;) { Detail = &quot;Access denied&quot; },
+        _ =&gt; new Error.InternalServerError(&quot;fault-id&quot;) { Detail = exception.Message }
+    });
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>A good default rule is: <strong>use exceptions at the integration boundary, then convert them once</strong>.</p>
+</div>
+<h2 id="parallel-operations-run-independent-async-work-together">Parallel Operations: Run Independent Async Work Together</h2>
+<p>The problem <code>ParallelAsync(...)</code> solves is wasted time. If three async operations do not depend on each other, running them one after another is just latency.</p>
+<h3 id="the-basic-pattern">The basic pattern</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+public record User(string Id, string Name);
+public record Order(string Id);
+public record Preferences(bool DarkMode);
+public record Dashboard(User User, IReadOnlyList&lt;Order&gt; Orders, Preferences Preferences);
+
+static Task&lt;Result&lt;User&gt;&gt; GetUserAsync(string userId) =&gt;
+    Task.FromResult(Result.Ok(new User(userId, &quot;Ada&quot;)));
+
+static Task&lt;Result&lt;IReadOnlyList&lt;Order&gt;&gt;&gt; GetOrdersAsync(string userId) =&gt;
+    Task.FromResult(Result.Ok&lt;IReadOnlyList&lt;Order&gt;&gt;([new Order(&quot;ord-1&quot;)]));
+
+static Task&lt;Result&lt;Preferences&gt;&gt; GetPreferencesAsync(string userId) =&gt;
+    Task.FromResult(Result.Ok(new Preferences(true)));
+
+var combined = await Result.ParallelAsync(
+    () =&gt; GetUserAsync(&quot;42&quot;),
+    () =&gt; GetOrdersAsync(&quot;42&quot;),
+    () =&gt; GetPreferencesAsync(&quot;42&quot;))
+    .WhenAllAsync();
+
+var dashboard = combined.Bind((user, orders, preferences) =&gt;
+    Result.Ok(new Dashboard(user, orders, preferences)));
+</code></pre>
+<h3 id="what-parallelasync-actually-does">What <code>ParallelAsync(...)</code> actually does</h3>
+<ul>
+<li>accepts factory functions like <code>Func&lt;Task&lt;Result&lt;T&gt;&gt;&gt;</code></li>
+<li>invokes those factories immediately</li>
+<li>returns a tuple of tasks</li>
+<li>lets <code>WhenAllAsync()</code> wait for all of them</li>
+<li>combines successes into a tuple result</li>
+<li>combines failures using normal Trellis error aggregation rules</li>
+</ul>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>WhenAllAsync()</code> combines <strong>failed <code>Result&lt;T&gt;</code> values</strong>, but if one of the tasks itself faults or is canceled, that exception still escapes.</p>
+</div>
+<h3 id="when-to-use-it">When to use it</h3>
+<p>Use <code>ParallelAsync(...)</code> when:</p>
+<ul>
+<li>operations are independent</li>
+<li>operations are safe to run concurrently</li>
+<li>latency matters</li>
+<li>collecting multiple failures is useful</li>
+</ul>
+<p>Avoid it when:</p>
+<ul>
+<li>step B depends on step A</li>
+<li>operations mutate shared state unsafely</li>
+<li>ordering is part of the business rule</li>
+</ul>
+<h2 id="linq-query-syntax-write-sequential-intent-clearly">LINQ Query Syntax: Write Sequential Intent Clearly</h2>
+<p>LINQ syntax is handy when your pipeline is conceptually “do this, then that, then that.”</p>
+<h3 id="result-linq">Result LINQ</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var confirmation =
+    from customerId in Result.Ok(&quot;customer-42&quot;)
+    from sku in Result.Ok(&quot;sku-123&quot;)
+    from quantity in Result.Ok(3)
+        .Ensure(value =&gt; value &gt; 0, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;quantity&quot;), &quot;validation.error&quot;) { Detail = &quot;Quantity must be positive&quot; })))
+    select $&quot;{customerId}:{sku}:{quantity}&quot;;
+</code></pre>
+<h3 id="where-in-linq"><code>where</code> in LINQ</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+var result =
+    from name in Result.Ok(&quot;Ada&quot;)
+    where name.Length &gt;= 3
+    select name.ToUpperInvariant();
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In a Result LINQ expression, <code>where</code> uses Trellis' generic “filtered out” failure. If you need a domain-specific message, prefer <code>Ensure(...)</code>.</p>
+</div>
+<h3 id="async-linq-over-taskresultt-and-valuetaskresultt">Async LINQ over <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code></h3>
+<p><code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code> participate in query syntax directly — no need to <code>await</code> each step into a sync block.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+// All-async chain — every step returns Task&lt;Result&lt;T&gt;&gt;.
+var orderDto = await (
+    from user  in GetUserAsync(id)         // Task&lt;Result&lt;User&gt;&gt;
+    from order in GetOrderAsync(user)      // Task&lt;Result&lt;Order&gt;&gt;
+    select new OrderDto(user, order));
+
+// Mixed sync and async — sync source, async continuation.
+var summary = await (
+    from u in LoadCachedUser(id)           // Result&lt;User&gt;
+    from o in FetchOrderAsync(u)           // Task&lt;Result&lt;Order&gt;&gt;
+    select new Summary(u, o));
+
+// And the reverse — async source, sync validation step.
+var validated = await (
+    from u in LoadUserAsync(id)            // Task&lt;Result&lt;User&gt;&gt;
+    from p in ValidatePermissions(u)       // Result&lt;Permissions&gt;
+    select new Authorized(u, p));
+</code></pre>
+<p>Failures short-circuit with the same semantics as sync <code>Bind</code> — the next selector is not invoked. Exceptions thrown inside async selectors propagate through <code>await</code> (matching <code>BindAsync</code> / <code>MapAsync</code>); they are not converted to <code>Result.Fail</code>. To honor cancellation, capture a <code>CancellationToken</code> from the surrounding method's closure and call <code>ct.ThrowIfCancellationRequested()</code> inside the selector.</p>
+<h3 id="maybe-linq">Maybe LINQ</h3>
+<p><code>Maybe&lt;T&gt;</code> supports LINQ too, which makes optional flows much easier to read.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; first = Maybe.From(&quot;Ada&quot;);
+Maybe&lt;string&gt; last = Maybe.From(&quot;Lovelace&quot;);
+
+Maybe&lt;string&gt; fullName =
+    from f in first
+    from l in last
+    select $&quot;{f} {l}&quot;;
+</code></pre>
+<h2 id="result-to-maybe-conversion">Result-to-Maybe Conversion</h2>
+<p>Sometimes the only question is “did I get a value?” — not “why did it fail?” That is what <code>ToMaybe()</code> is for.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; cachedName = Result.Ok(&quot;Ada&quot;).ToMaybe();
+Maybe&lt;string&gt; missingName = Result.Fail&lt;string&gt;(new Error.NotFound(ResourceRef.For(&quot;User&quot;)) { Detail = &quot;User not found&quot; }).ToMaybe();
+</code></pre>
+<p>And the async version:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; value = await Task.FromResult(Result.Ok(&quot;Ada&quot;)).ToMaybeAsync();
+</code></pre>
+<h2 id="practical-rules-of-thumb">Practical Rules of Thumb</h2>
+<ul>
+<li>Use <strong>pattern matching</strong> to make the end of the pipeline obvious</li>
+<li>Use <strong>tuple destructuring</strong> instead of manual tuple unpacking</li>
+<li>Use <strong><code>Try</code> / <code>TryAsync</code></strong> at integration boundaries</li>
+<li>Use <strong><code>ParallelAsync(...).WhenAllAsync()</code></strong> only for truly independent async work</li>
+<li>Use <strong>LINQ syntax</strong> when it reads more clearly than nested <code>Bind(...)</code></li>
+<li>Use <strong><code>ToMaybe()</code></strong> only when discarding the error is intentional</li>
+</ul>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Read <a href="error-handling.html">Error Handling</a> for type-specific matching and aggregation</li>
+<li>Read <a href="maybe-type.html">Why Maybe?</a> for domain optionality and <code>ToResult(...)</code></li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><code>Match</code> / <code>MatchAsync</code>, <code>Combine</code>, tuple-aware verbs, <code>Result.Try</code> / <code>TryAsync</code>, <code>ParallelAsync</code>, <code>WhenAllAsync</code>, LINQ extensions, <code>ToMaybe</code> / <code>ToMaybeAsync</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/advanced-features.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Testing With Azure Entra ID Tokens | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Testing With Azure Entra ID Tokens | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-entra-testing.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="testing-with-azure-entra-id-tokens">Testing With Azure Entra ID Tokens</h1>
+
+<p><code>Trellis.Testing.AspNetCore</code> ships an MSAL-backed token provider so a small set of E2E integration tests can drive the <em>real</em> authentication path — Entra issuance, JWT validation, claim mapping, and <code>EntraActorProvider</code> — instead of bypassing it with <code>X-Test-Actor</code>.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fast hermetic auth tests (no network, no clock)</td>
+<td><code>factory.CreateClientWithActor(actorId, permissions...)</code></td>
+<td><a href="#choosing-a-client-helper">Choosing a client helper</a></td>
+</tr>
+<tr>
+<td>Acquire a real Entra token by named test user</td>
+<td><code>new MsalTestTokenProvider(options).AcquireTokenAsync(testUserName, ct)</code></td>
+<td><a href="#token-provider">Token provider</a></td>
+</tr>
+<tr>
+<td>Build an <code>HttpClient</code> with <code>Authorization: Bearer &lt;token&gt;</code></td>
+<td><code>factory.CreateClientWithEntraTokenAsync(tokenProvider, testUserName, ct)</code></td>
+<td><a href="#authenticated-test-client">Authenticated test client</a></td>
+</tr>
+<tr>
+<td>Bind tenant + scopes + test users from configuration</td>
+<td><code>MsalTestOptions</code> + <code>IConfiguration.Bind</code></td>
+<td><a href="#configuration">Configuration</a></td>
+</tr>
+<tr>
+<td>Share token cache across tests in a class</td>
+<td>One <code>MsalTestTokenProvider</code> per <code>IClassFixture</code></td>
+<td><a href="#fixture-pattern">Fixture pattern</a></td>
+</tr>
+<tr>
+<td>Gate slow E2E tests out of inner-loop runs</td>
+<td><code>[Trait(&quot;Category&quot;, &quot;E2E&quot;)]</code> (xUnit)</td>
+<td><a href="#practical-guidance">Practical guidance</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You already have hermetic header-based authorization tests via <code>CreateClientWithActor</code> and want a <em>small</em> additional suite that exercises real Entra issuance and JWT validation end-to-end.</li>
+<li>You need to verify that <code>EntraActorProvider</code> (and your <code>MapPermissions</code> / <code>MapAttributes</code> overrides) project a real Entra token into the <code>Actor</code> you expect.</li>
+<li>You operate a dedicated Entra <strong>test</strong> tenant whose lifecycle you control — separate app registration, separate test users, MFA disabled.</li>
+<li>You can keep credentials in user-secrets locally and CI secrets in pipelines — never in source.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p>The Entra E2E surface is three types in <code>Trellis.Testing.AspNetCore</code> plus one extension method on <code>WebApplicationFactory&lt;TEntryPoint&gt;</code>.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Kind</th>
+<th>Returns</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MsalTestOptions</code></td>
+<td><code>sealed class</code></td>
+<td>—</td>
+<td><code>TenantId</code>, <code>ClientId</code>, <code>Scopes</code>, <code>TestUsers</code> (named credentials). Bind from <code>IConfiguration</code>.</td>
+</tr>
+<tr>
+<td><code>TestUserCredentials</code></td>
+<td><code>sealed class</code></td>
+<td>—</td>
+<td><code>Username</code>, <code>Password</code>, <code>ExpectedPermissions</code> for one named test user.</td>
+</tr>
+<tr>
+<td><code>MsalTestTokenProvider(MsalTestOptions options)</code></td>
+<td>ctor</td>
+<td>—</td>
+<td>Builds a public-client MSAL app for <code>ClientId</code>/<code>TenantId</code> on <code>AzureCloudInstance.AzurePublic</code>.</td>
+</tr>
+<tr>
+<td><code>MsalTestTokenProvider.AcquireTokenAsync(string testUserName, CancellationToken)</code></td>
+<td>instance</td>
+<td><code>Task&lt;string&gt;</code></td>
+<td>ROPC token acquisition. MSAL caches results per provider instance. Throws <code>KeyNotFoundException</code> if the user is not configured, <code>MsalException</code> on acquisition failure.</td>
+</tr>
+<tr>
+<td><code>WebApplicationFactoryExtensions.CreateClientWithEntraTokenAsync&lt;TEntryPoint&gt;(factory, tokenProvider, testUserName, ct)</code></td>
+<td>extension</td>
+<td><code>Task&lt;HttpClient&gt;</code></td>
+<td>Acquires a token via the provider and sets <code>Authorization: Bearer &lt;token&gt;</code> on a fresh client.</td>
+</tr>
+</tbody>
+</table>
+<p><code>MsalTestTokenProvider</code> and <code>CreateClientWithEntraTokenAsync</code> are annotated <code>[RequiresUnreferencedCode]</code> because MSAL relies on reflection and is not AOT-compatible.</p>
+<p>Full signatures: <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Testing.AspNetCore
+</code></pre>
+<p>The package depends on <code>Microsoft.AspNetCore.Mvc.Testing</code>, <code>Trellis.Authorization</code>, and MSAL (<code>Microsoft.Identity.Client</code>). Reference it from test projects only.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>Bind <code>MsalTestOptions</code> from configuration, hand the provider to <code>CreateClientWithEntraTokenAsync</code>, then call your real API exactly as production callers would.</p>
+<pre><code class="lang-csharp">using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Trellis.Testing.AspNetCore;
+using Xunit;
+
+[JsonSerializable(typeof(CreateOrderRequest))]
+internal partial class ApiJsonContext : JsonSerializerContext { }
+
+public sealed record CreateOrderRequest(string CustomerId, int Quantity);
+
+public sealed class Program { }
+
+public sealed class OrdersEntraTests : IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;
+{
+    private readonly WebApplicationFactory&lt;Program&gt; _factory;
+    private readonly MsalTestTokenProvider _tokens;
+
+    public OrdersEntraTests(WebApplicationFactory&lt;Program&gt; factory)
+    {
+        _factory = factory;
+
+        var configuration = new ConfigurationBuilder()
+            .AddUserSecrets&lt;OrdersEntraTests&gt;(optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        var options = new MsalTestOptions();
+        configuration.GetSection(&quot;EntraTest&quot;).Bind(options);
+        _tokens = new MsalTestTokenProvider(options);
+    }
+
+    [Fact]
+    [Trait(&quot;Category&quot;, &quot;E2E&quot;)]
+    public async Task Sales_rep_can_create_orders()
+    {
+        var client = await _factory.CreateClientWithEntraTokenAsync(_tokens, &quot;salesRep&quot;);
+
+        var response = await client.PostAsJsonAsync(
+            &quot;/api/orders&quot;,
+            new CreateOrderRequest(&quot;customer-1&quot;, 2),
+            ApiJsonContext.Default.CreateOrderRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+}
+</code></pre>
+<p>Commands invoked behind <code>/api/orders</code> still return <code>Result&lt;Unit&gt;</code> — the assertion is on the HTTP status produced by <code>Trellis.Asp</code> mapping.</p>
+<h2 id="choosing-a-client-helper">Choosing a client helper</h2>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Path exercised</th>
+<th>Network?</th>
+<th>Determinism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>factory.CreateClientWithActor(actorId, perms...)</code></td>
+<td>Test actor provider → <code>Actor</code></td>
+<td>None (in-process)</td>
+<td>Fully deterministic</td>
+</tr>
+<tr>
+<td><code>factory.CreateClientWithActor(actor)</code></td>
+<td>Same, with <code>ForbiddenPermissions</code> and <code>Attributes</code></td>
+<td>None</td>
+<td>Fully deterministic</td>
+</tr>
+<tr>
+<td><code>factory.CreateClientWithEntraTokenAsync(provider, testUserName, ct)</code></td>
+<td>Entra ID → JWT validation → <code>EntraActorProvider</code> → <code>Actor</code></td>
+<td>Live calls to Microsoft Entra</td>
+<td>Non-deterministic (network + token expiry)</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>CreateClientWithActor</code> for the bulk of authorization coverage (handler logic, command rules, <code>IAuthorize</code>, <code>IAuthorizeResource&lt;T&gt;</code>). Reserve <code>CreateClientWithEntraTokenAsync</code> for a small confidence suite that proves real tokens still flow into the <code>Actor</code> you expect.</p>
+<p><code>CreateClientWithActor</code> is documented in <a href="../api_reference/trellis-api-testing-aspnetcore.html#webapplicationfactoryextensions"><code>trellis-api-testing-aspnetcore.md</code></a>; <code>EntraActorProvider</code> semantics live in <a href="integration-asp-authorization.html#entra-id-provider"><code>integration-asp-authorization.md</code></a>.</p>
+<h2 id="tenant-prerequisites">Tenant prerequisites</h2>
+<p><code>MsalTestTokenProvider</code> uses MSAL ROPC. ROPC is intentionally restricted by Entra and requires a tenant configured for it.</p>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dedicated test tenant</td>
+<td>Never reuse a production tenant for credential-based test flows.</td>
+</tr>
+<tr>
+<td>App registration: single tenant, <strong>Allow public client flows = Yes</strong></td>
+<td>ROPC is a public-client grant; a confidential client cannot use it.</td>
+</tr>
+<tr>
+<td>Test users created in the tenant</td>
+<td>ROPC needs a real user principal.</td>
+</tr>
+<tr>
+<td>MFA disabled for test users</td>
+<td>ROPC cannot perform interactive MFA challenges.</td>
+</tr>
+<tr>
+<td>App roles assigned to test users via Enterprise Application</td>
+<td>Without role assignments, tokens authenticate but carry no <code>roles</code> claims.</td>
+</tr>
+<tr>
+<td>Scope: <code>api://&lt;clientId&gt;/.default</code> (or your custom scope)</td>
+<td>ROPC fails with <code>AADSTS650057</code> on an unknown scope.</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>ROPC is deprecated for production authentication. Use it only for automated tests against a dedicated test tenant whose users are excluded from MFA.</p>
+</div>
+<h2 id="configuration">Configuration</h2>
+<p>Bind <code>MsalTestOptions</code> from any <code>IConfiguration</code> source. Locally, prefer <code>dotnet user-secrets</code>; in CI, environment variables with the <code>EntraTest__</code> prefix.</p>
+<h3 id="local-user-secrets">Local user-secrets</h3>
+<pre><code class="lang-bash">dotnet user-secrets set &quot;EntraTest:TenantId&quot; &quot;&lt;tenant-id&gt;&quot;
+dotnet user-secrets set &quot;EntraTest:ClientId&quot; &quot;&lt;client-id&gt;&quot;
+dotnet user-secrets set &quot;EntraTest:Scopes:0&quot; &quot;api://&lt;client-id&gt;/.default&quot;
+
+dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:Username&quot; &quot;salesrep@contoso-test.onmicrosoft.com&quot;
+dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:Password&quot; &quot;&lt;password&gt;&quot;
+dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:ExpectedPermissions:0&quot; &quot;orders:create&quot;
+dotnet user-secrets set &quot;EntraTest:TestUsers:salesRep:ExpectedPermissions:1&quot; &quot;orders:read&quot;
+</code></pre>
+<h3 id="ci-environment-variables">CI environment variables</h3>
+<pre><code class="lang-yaml">env:
+  EntraTest__TenantId: ${{ secrets.ENTRA_TEST_TENANT_ID }}
+  EntraTest__ClientId: ${{ secrets.ENTRA_TEST_CLIENT_ID }}
+  EntraTest__Scopes__0: api://${{ secrets.ENTRA_TEST_CLIENT_ID }}/.default
+  EntraTest__TestUsers__salesRep__Username: ${{ secrets.ENTRA_TEST_SALESREP_USERNAME }}
+  EntraTest__TestUsers__salesRep__Password: ${{ secrets.ENTRA_TEST_SALESREP_PASSWORD }}
+</code></pre>
+<h3 id="binding-code">Binding code</h3>
+<pre><code class="lang-csharp">using Microsoft.Extensions.Configuration;
+using Trellis.Testing.AspNetCore;
+
+var configuration = new ConfigurationBuilder()
+    .AddUserSecrets&lt;Program&gt;(optional: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+var options = new MsalTestOptions();
+configuration.GetSection(&quot;EntraTest&quot;).Bind(options);
+
+if (string.IsNullOrWhiteSpace(options.TenantId) || string.IsNullOrWhiteSpace(options.ClientId))
+    throw new InvalidOperationException(&quot;Configure EntraTest:TenantId and EntraTest:ClientId before running Entra E2E tests.&quot;);
+
+var tokenProvider = new MsalTestTokenProvider(options);
+</code></pre>
+<h2 id="token-provider">Token provider</h2>
+<p><code>MsalTestTokenProvider</code> wraps an MSAL <code>IPublicClientApplication</code>. The constructor builds it once for the configured <code>ClientId</code>/<code>TenantId</code>; <code>AcquireTokenAsync</code> performs ROPC against the named user.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Token cache</td>
+<td>MSAL caches per provider instance — keep one provider per fixture or class.</td>
+</tr>
+<tr>
+<td>Unknown user name</td>
+<td><code>KeyNotFoundException</code> listing configured user keys.</td>
+</tr>
+<tr>
+<td>Acquisition failure</td>
+<td><code>MsalException</code> (e.g. <code>AADSTS50126</code> invalid credentials, <code>AADSTS50076</code> MFA required, <code>AADSTS7000218</code> not a public client).</td>
+</tr>
+<tr>
+<td>AOT</td>
+<td><code>[RequiresUnreferencedCode]</code> — MSAL is not trim/AOT-compatible.</td>
+</tr>
+<tr>
+<td>Cancellation</td>
+<td><code>CancellationToken</code> flows into <code>ExecuteAsync</code>.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Trellis.Testing.AspNetCore;
+
+public sealed class TokenSmokeTests
+{
+    [Fact]
+    [Trait(&quot;Category&quot;, &quot;E2E&quot;)]
+    public async Task Provider_returns_non_empty_token_for_named_user()
+    {
+        var options = new MsalTestOptions
+        {
+            TenantId = Environment.GetEnvironmentVariable(&quot;EntraTest__TenantId&quot;)!,
+            ClientId = Environment.GetEnvironmentVariable(&quot;EntraTest__ClientId&quot;)!,
+            Scopes = [$&quot;api://{Environment.GetEnvironmentVariable(&quot;EntraTest__ClientId&quot;)}/.default&quot;],
+            TestUsers =
+            {
+                [&quot;salesRep&quot;] = new TestUserCredentials
+                {
+                    Username = Environment.GetEnvironmentVariable(&quot;EntraTest__TestUsers__salesRep__Username&quot;)!,
+                    Password = Environment.GetEnvironmentVariable(&quot;EntraTest__TestUsers__salesRep__Password&quot;)!,
+                    ExpectedPermissions = [&quot;orders:create&quot;, &quot;orders:read&quot;],
+                }
+            }
+        };
+
+        var provider = new MsalTestTokenProvider(options);
+
+        var token = await provider.AcquireTokenAsync(&quot;salesRep&quot;, CancellationToken.None);
+
+        token.Should().NotBeNullOrWhiteSpace();
+    }
+}
+</code></pre>
+<h2 id="authenticated-test-client">Authenticated test client</h2>
+<p><code>CreateClientWithEntraTokenAsync</code> is a thin glue method: acquire a token, build a fresh <code>HttpClient</code> from the factory, set <code>Authorization: Bearer &lt;token&gt;</code>. Use it whenever you would have written that boilerplate by hand.</p>
+<pre><code class="lang-csharp">using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Trellis.Testing.AspNetCore;
+using Xunit;
+
+public sealed class Program { }
+
+public sealed class OrdersAuthenticationTests : IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;
+{
+    private readonly WebApplicationFactory&lt;Program&gt; _factory;
+    private readonly MsalTestTokenProvider _tokens;
+
+    public OrdersAuthenticationTests(WebApplicationFactory&lt;Program&gt; factory)
+    {
+        _factory = factory;
+        // For brevity, construct one provider per test class. Real suites share a single
+        // provider across tests via IClassFixture — see &quot;Fixture pattern&quot; below.
+        _tokens = new MsalTestTokenProvider(new MsalTestOptions
+        {
+            TenantId = Environment.GetEnvironmentVariable(&quot;EntraTest__TenantId&quot;)!,
+            ClientId = Environment.GetEnvironmentVariable(&quot;EntraTest__ClientId&quot;)!,
+            Scopes = [$&quot;api://{Environment.GetEnvironmentVariable(&quot;EntraTest__ClientId&quot;)}/.default&quot;],
+            TestUsers =
+            {
+                [&quot;salesRep&quot;] = new TestUserCredentials
+                {
+                    Username = Environment.GetEnvironmentVariable(&quot;EntraTest__TestUsers__salesRep__Username&quot;)!,
+                    Password = Environment.GetEnvironmentVariable(&quot;EntraTest__TestUsers__salesRep__Password&quot;)!,
+                }
+            }
+        });
+    }
+
+    [Fact]
+    [Trait(&quot;Category&quot;, &quot;E2E&quot;)]
+    public async Task Bearer_token_reaches_protected_endpoint()
+    {
+        var client = await _factory.CreateClientWithEntraTokenAsync(_tokens, &quot;salesRep&quot;);
+
+        var response = await client.GetAsync(&quot;/api/orders&quot;);
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+    }
+}
+</code></pre>
+<h2 id="fixture-pattern">Fixture pattern</h2>
+<p>MSAL caches tokens per provider instance, so share <strong>one</strong> <code>MsalTestTokenProvider</code> across every test that needs the same credentials. xUnit's <code>IClassFixture&lt;T&gt;</code> is the simplest seam.</p>
+<pre><code class="lang-csharp">using System;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Trellis.Testing.AspNetCore;
+using Xunit;
+
+public sealed class Program { }
+
+public sealed class EntraTestFixture : IDisposable
+{
+    public EntraTestFixture()
+    {
+        Factory = new WebApplicationFactory&lt;Program&gt;();
+
+        var configuration = new ConfigurationBuilder()
+            .AddUserSecrets&lt;EntraTestFixture&gt;(optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        var options = new MsalTestOptions();
+        configuration.GetSection(&quot;EntraTest&quot;).Bind(options);
+
+        if (string.IsNullOrWhiteSpace(options.TenantId) || string.IsNullOrWhiteSpace(options.ClientId))
+            throw new InvalidOperationException(&quot;Configure EntraTest before running Entra E2E tests.&quot;);
+
+        Tokens = new MsalTestTokenProvider(options);
+        Options = options;
+    }
+
+    public WebApplicationFactory&lt;Program&gt; Factory { get; }
+    public MsalTestTokenProvider Tokens { get; }
+    public MsalTestOptions Options { get; }
+
+    public void Dispose() =&gt; Factory.Dispose();
+}
+
+public sealed class OrdersScenarioTests : IClassFixture&lt;EntraTestFixture&gt;
+{
+    private readonly EntraTestFixture _fx;
+
+    public OrdersScenarioTests(EntraTestFixture fx) =&gt; _fx = fx;
+
+    [Fact]
+    [Trait(&quot;Category&quot;, &quot;E2E&quot;)]
+    public async Task Admin_can_list_orders()
+    {
+        var client = await _fx.Factory.CreateClientWithEntraTokenAsync(_fx.Tokens, &quot;admin&quot;);
+        var response = await client.GetAsync(&quot;/api/orders&quot;);
+        response.IsSuccessStatusCode.Should().BeTrue();
+    }
+}
+</code></pre>
+<p><code>TestUserCredentials.ExpectedPermissions</code> is the right place to record what each named user is <em>supposed</em> to receive — assert it once per fixture so a missing role assignment in the tenant fails noisily rather than silently producing 403s in unrelated tests.</p>
+<h2 id="common-ropc-failure-codes">Common ROPC failure codes</h2>
+<table>
+<thead>
+<tr>
+<th>MSAL error</th>
+<th>Usually means</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AADSTS50126</code></td>
+<td>Invalid username or password</td>
+<td>Reset the test-user password; re-bind secret.</td>
+</tr>
+<tr>
+<td><code>AADSTS50076</code></td>
+<td>MFA required</td>
+<td>Exclude test users from MFA in the test tenant.</td>
+</tr>
+<tr>
+<td><code>AADSTS7000218</code></td>
+<td>App registration is not a public client</td>
+<td>Set &quot;Allow public client flows&quot; to <strong>Yes</strong>.</td>
+</tr>
+<tr>
+<td><code>AADSTS650057</code></td>
+<td>Invalid scope</td>
+<td>Use <code>api://&lt;clientId&gt;/.default</code> (or the custom scope you exposed).</td>
+</tr>
+<tr>
+<td>Token issued, app sees no permissions</td>
+<td>App roles not assigned to the user</td>
+<td>Assign roles via Enterprise Applications → Users and groups.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="composition">Composition</h2>
+<p>Entra E2E tests sit alongside the rest of the Trellis test surface, not on top of it.</p>
+<ul>
+<li><strong>With <code>CreateClientWithActor</code>.</strong> Cover authorization rules with the header-based helper; cover <em>real-token plumbing</em> with <code>CreateClientWithEntraTokenAsync</code>. They share the same <code>WebApplicationFactory&lt;TEntryPoint&gt;</code> and assertion vocabulary.</li>
+<li><strong>With <code>WithFakeTimeProvider</code> / <code>ReplaceDbProvider</code>.</strong> Both still apply when an Entra-authenticated client is in play — fake the clock, swap the EF provider, then call <code>CreateClientWithEntraTokenAsync</code> against the modified factory. See <a href="../api_reference/trellis-api-testing-aspnetcore.html#dependency-replacement-helpers"><code>trellis-api-testing-aspnetcore.md</code></a>.</li>
+<li><strong>With <code>EntraActorProvider</code>.</strong> The provider under test is the same one wired in production via <code>AddEntraActorProvider(...)</code>; an Entra E2E test is the only place where overrides to <code>MapPermissions</code> / <code>MapAttributes</code> are exercised against real claim shapes. See <a href="integration-asp-authorization.html#customizing-claim-mapping"><code>integration-asp-authorization.md</code></a>.</li>
+<li><strong>With Trellis result pipelines.</strong> Commands invoked behind authenticated endpoints still return <code>Result&lt;Unit&gt;</code>; assertions remain on HTTP status mapped by <code>Trellis.Asp</code>.</li>
+</ul>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Keep this suite small.</strong> A handful of scenarios per role is enough to prove the auth pipeline works. Duplicating every authorization test against a real tenant is waste.</li>
+<li><strong>Gate with a trait.</strong> <code>[Trait(&quot;Category&quot;, &quot;E2E&quot;)]</code> (xUnit) lets local runs use <code>--filter &quot;Category!=E2E&quot;</code> and keeps inner-loop builds fast and offline.</li>
+<li><strong>One provider per fixture.</strong> MSAL caches by provider instance — sharing a provider across tests in a class costs one network round-trip per token, not one per test.</li>
+<li><strong>Treat the test tenant as disposable infrastructure.</strong> Script the app registration and role assignments; do not rely on manual portal edits.</li>
+<li><strong>Never log access tokens.</strong> They are valid bearer credentials against your test tenant. Log only the resulting HTTP status and (if needed) decoded <code>oid</code>/<code>roles</code> claims.</li>
+<li><strong>Bind options once.</strong> Reading <code>IConfiguration</code> and constructing the provider in fixture setup keeps tests readable and prevents per-test token thrash.</li>
+<li><strong>Prefer <code>dotnet user-secrets</code> locally.</strong> Environment variables are fine for CI but leak into shell history.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a></li>
+<li>Header-based test client (<code>CreateClientWithActor</code>) and <code>Actor</code> shape: <a href="../api_reference/trellis-api-testing-aspnetcore.html#webapplicationfactoryextensions"><code>trellis-api-testing-aspnetcore.md</code></a></li>
+<li>Production <code>EntraActorProvider</code>, <code>MapPermissions</code>, <code>MapAttributes</code>: <a href="integration-asp-authorization.html"><code>integration-asp-authorization.md</code></a> and <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a></li>
+<li>ASP response mapping (status codes the assertions check against): <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-entra-testing.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

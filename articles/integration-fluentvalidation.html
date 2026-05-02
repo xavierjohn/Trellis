@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>FluentValidation Integration | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="FluentValidation Integration | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-fluentvalidation.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="fluentvalidation-integration">FluentValidation Integration</h1>
+
+<p><code>Trellis.FluentValidation</code> plugs FluentValidation validators into the Trellis Mediator validation stage and converts standalone <code>ValidationResult</code> runs into <code>Result&lt;T&gt;</code> failures backed by <code>Error.UnprocessableContent</code>.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wire validators into the Mediator pipeline (AOT-safe)</td>
+<td><code>services.AddTrellisFluentValidation()</code> + explicit <code>AddScoped&lt;IValidator&lt;T&gt;, ...&gt;()</code></td>
+<td><a href="#mediator-integration">Mediator integration</a></td>
+</tr>
+<tr>
+<td>Wire validators with assembly scanning (non-AOT)</td>
+<td><code>services.AddTrellisFluentValidation(typeof(...).Assembly)</code></td>
+<td><a href="#mediator-integration">Mediator integration</a></td>
+</tr>
+<tr>
+<td>Run a validator outside Mediator and stay in <code>Result&lt;T&gt;</code></td>
+<td><code>validator.ValidateToResult(value)</code></td>
+<td><a href="#standalone-validation">Standalone validation</a></td>
+</tr>
+<tr>
+<td>Same as above for async rules (DB / I/O)</td>
+<td><code>validator.ValidateToResultAsync(value, cancellationToken: ct)</code></td>
+<td><a href="#standalone-validation">Standalone validation</a></td>
+</tr>
+<tr>
+<td>Convert an existing <code>ValidationResult</code> you already have</td>
+<td><code>validationResult.ToResult(value)</code></td>
+<td><a href="#converting-an-existing-validationresult">Converting an existing validationresult</a></td>
+</tr>
+<tr>
+<td>Reject a <code>null</code> request without invoking FluentValidation</td>
+<td><code>ValidateToResult</code> / <code>ValidateToResultAsync</code> (built-in null short-circuit)</td>
+<td><a href="#null-input">Null input</a></td>
+</tr>
+<tr>
+<td>Aggregate FluentValidation + <code>IValidate</code> failures into one 422</td>
+<td><code>AddTrellisFluentValidation()</code> alongside <code>IValidate.Validate()</code> on the message</td>
+<td><a href="#composing-with-ivalidate">Composing with ivalidate</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You already use FluentValidation and want failures to surface as <code>Error.UnprocessableContent</code> instead of exceptions or hand-rolled translations.</li>
+<li>You send messages through <code>Trellis.Mediator</code> and want validators to run automatically inside <code>ValidationBehavior&lt;TMessage,TResponse&gt;</code> without per-handler boilerplate.</li>
+<li>You need RFC 6901 JSON Pointer paths (<code>/Lines/0/Memo</code>) on validation failures so the ASP boundary renders them under the right field.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.FluentValidation</code> exposes one DI extension class, one open-generic adapter, and one set of <code>Result&lt;T&gt;</code> extension methods.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Receiver</th>
+<th>Returns</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddTrellisFluentValidation()</code></td>
+<td><code>IServiceCollection</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers the open-generic adapter as <code>IMessageValidator&lt;&gt;</code>. AOT/trim-safe, idempotent.</td>
+</tr>
+<tr>
+<td><code>AddTrellisFluentValidation(params Assembly[])</code></td>
+<td><code>IServiceCollection</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Same as above, then scans assemblies for concrete <code>IValidator&lt;T&gt;</code> types and registers each scoped. <strong>Not AOT/trim-safe</strong> (<code>[RequiresUnreferencedCode]</code> / <code>[RequiresDynamicCode]</code>).</td>
+</tr>
+<tr>
+<td><code>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</code></td>
+<td>— (DI-resolved)</td>
+<td><code>IMessageValidator&lt;TMessage&gt;</code></td>
+<td>Runs every injected <code>IValidator&lt;TMessage&gt;</code> sequentially, aggregates failures into one <code>Error.UnprocessableContent</code>. Forwards the ambient <code>CancellationToken</code>.</td>
+</tr>
+<tr>
+<td><code>ValidateToResult&lt;T&gt;(value, paramName?, message?)</code></td>
+<td><code>IValidator&lt;T&gt;</code></td>
+<td><code>Result&lt;T&gt;</code></td>
+<td>Synchronous validate-and-convert. Short-circuits <code>null</code> input without invoking FluentValidation.</td>
+</tr>
+<tr>
+<td><code>ValidateToResultAsync&lt;T&gt;(value, paramName?, message?, ct)</code></td>
+<td><code>IValidator&lt;T&gt;</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code></td>
+<td>Asynchronous validate-and-convert. Forwards <code>CancellationToken</code> to <code>ValidateAsync</code>.</td>
+</tr>
+<tr>
+<td><code>ToResult&lt;T&gt;(value, paramName?)</code></td>
+<td><code>ValidationResult</code></td>
+<td><code>Result&lt;T&gt;</code></td>
+<td>Converts a pre-computed <code>ValidationResult</code> to <code>Result&lt;T&gt;</code>; preserves the validated value on success.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-fluentvalidation.html">trellis-api-fluentvalidation.md</a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package FluentValidation
+dotnet add package Trellis.FluentValidation
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>Run a FluentValidation validator and stay inside <code>Result&lt;T&gt;</code>. No DI, no Mediator — just the standalone helper.</p>
+<pre><code class="lang-csharp">using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record CreateUserRequest(string Email, string FirstName, string LastName);
+
+public sealed class CreateUserRequestValidator : AbstractValidator&lt;CreateUserRequest&gt;
+{
+    public CreateUserRequestValidator()
+    {
+        RuleFor(x =&gt; x.Email).NotEmpty().EmailAddress();
+        RuleFor(x =&gt; x.FirstName).NotEmpty().MaximumLength(50);
+        RuleFor(x =&gt; x.LastName).NotEmpty().MaximumLength(50);
+    }
+}
+
+var validator = new CreateUserRequestValidator();
+var request = new CreateUserRequest(&quot;sam@example.com&quot;, &quot;Sam&quot;, &quot;Taylor&quot;);
+
+Result&lt;CreateUserRequest&gt; result = validator.ValidateToResult(request);
+</code></pre>
+<p>On success: <code>Result.Ok(request)</code>. On failure: <code>Result.Fail&lt;CreateUserRequest&gt;(new Error.UnprocessableContent(EquatableArray.Create(violations)))</code> with one <code>FieldViolation</code> per FluentValidation failure.</p>
+<h2 id="standalone-validation">Standalone validation</h2>
+<p>Use the <code>IValidator&lt;T&gt;</code> extension methods when validators are not driven by the Mediator pipeline — domain factories, application services, or any code path that already holds an <code>IValidator&lt;T&gt;</code> instance.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Sync/async</th>
+<th>Null input</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ValidateToResult&lt;T&gt;</code></td>
+<td>sync</td>
+<td>Returns <code>Fail</code> without calling <code>validator.Validate</code></td>
+</tr>
+<tr>
+<td><code>ValidateToResultAsync&lt;T&gt;</code></td>
+<td>async</td>
+<td>Returns <code>Fail</code> without calling <code>validator.ValidateAsync</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both helpers forward <code>paramName</code> from <code>[CallerArgumentExpression]</code>, so root-level failures and null-input failures carry the caller's variable name as the field path.</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public interface IUserRepository
+{
+    Task&lt;bool&gt; EmailExistsAsync(string email, CancellationToken cancellationToken);
+}
+
+public sealed record RegisterUserRequest(string Email);
+
+public sealed class RegisterUserRequestValidator : AbstractValidator&lt;RegisterUserRequest&gt;
+{
+    public RegisterUserRequestValidator(IUserRepository repository)
+    {
+        RuleFor(x =&gt; x.Email)
+            .NotEmpty()
+            .EmailAddress()
+            .MustAsync(async (email, ct) =&gt; !await repository.EmailExistsAsync(email, ct))
+            .WithMessage(&quot;Email is already registered.&quot;);
+    }
+}
+
+public sealed class UserService(RegisterUserRequestValidator validator)
+{
+    public Task&lt;Result&lt;RegisterUserRequest&gt;&gt; RegisterAsync(
+        RegisterUserRequest request,
+        CancellationToken cancellationToken) =&gt;
+        validator.ValidateToResultAsync(request, cancellationToken: cancellationToken);
+}
+</code></pre>
+<h3 id="validating-inside-domain-factories">Validating inside domain factories</h3>
+<p><code>InlineValidator&lt;T&gt;</code> keeps invariant rules close to the type that owns them. The factory returns <code>Result&lt;T&gt;</code> directly.</p>
+<pre><code class="lang-csharp">using System;
+using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed class Product : Entity&lt;Guid&gt;
+{
+    private static readonly InlineValidator&lt;Product&gt; s_validator = CreateValidator();
+
+    public string Name { get; }
+    public decimal Price { get; }
+
+    private Product(Guid id, string name, decimal price)
+        : base(id)
+    {
+        Name = name;
+        Price = price;
+    }
+
+    public static Result&lt;Product&gt; Create(string name, decimal price)
+    {
+        var product = new Product(Guid.NewGuid(), name, price);
+        return s_validator.ValidateToResult(product);
+    }
+
+    private static InlineValidator&lt;Product&gt; CreateValidator()
+    {
+        var validator = new InlineValidator&lt;Product&gt;();
+        validator.RuleFor(x =&gt; x.Name).NotEmpty().MaximumLength(100);
+        validator.RuleFor(x =&gt; x.Price).GreaterThan(0);
+        return validator;
+    }
+}
+</code></pre>
+<h3 id="null-input">Null input</h3>
+<p><code>ValidateToResult</code> / <code>ValidateToResultAsync</code> reject <code>null</code> before invoking FluentValidation. The captured <code>paramName</code> becomes the field path; the optional <code>message</code> parameter overrides the default <code>'{paramName}' must not be empty.</code>.</p>
+<pre><code class="lang-csharp">using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+string? alias = null;
+
+var validator = new InlineValidator&lt;string?&gt;();
+validator.RuleFor(x =&gt; x).NotEmpty();
+
+Result&lt;string?&gt; result = validator.ValidateToResult(alias, message: &quot;Alias is required.&quot;);
+</code></pre>
+<p><code>validator.Validate(null!)</code> is <strong>not</strong> called; the helper synthesizes a single <code>FieldViolation</code> for <code>paramName</code> with reason code <code>&quot;validation.error&quot;</code>.</p>
+<h2 id="converting-an-existing-validationresult">Converting an existing <code>ValidationResult</code></h2>
+<p>When validation already happened (legacy code, custom orchestration, or a manual <code>validator.Validate(value)</code> call), use <code>ToResult(value)</code> to fold the <code>ValidationResult</code> into the railway.</p>
+<pre><code class="lang-csharp">using FluentValidation;
+using FluentValidation.Results;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record CreateUserRequest(string Email);
+
+var validator = new InlineValidator&lt;CreateUserRequest&gt;();
+validator.RuleFor(x =&gt; x.Email).NotEmpty().EmailAddress();
+
+var request = new CreateUserRequest(&quot;invalid-email&quot;);
+ValidationResult validation = validator.Validate(request);
+
+Result&lt;CreateUserRequest&gt; result = validation.ToResult(request);
+</code></pre>
+<p><code>ToResult</code> only null-checks <code>validationResult</code> itself — it does not reject a <code>null</code> <code>value</code>. Use <code>ValidateToResult</code> when null-input rejection matters.</p>
+<h2 id="mediator-integration">Mediator integration</h2>
+<p><code>AddTrellisFluentValidation()</code> registers <code>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</code> as the open-generic <code>IMessageValidator&lt;TMessage&gt;</code>. The existing <code>ValidationBehavior&lt;TMessage,TResponse&gt;</code> discovers it automatically — no second pipeline behavior is added.</p>
+<table>
+<thead>
+<tr>
+<th>Overload</th>
+<th>AOT/trim</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddTrellisFluentValidation()</code></td>
+<td>Safe</td>
+<td>Registers the open-generic adapter once. Idempotent. You register each <code>IValidator&lt;T&gt;</code> explicitly.</td>
+</tr>
+<tr>
+<td><code>AddTrellisFluentValidation(params Assembly[])</code></td>
+<td><strong>Not safe</strong> (<code>[RequiresUnreferencedCode]</code>, <code>[RequiresDynamicCode]</code>)</td>
+<td>Calls the parameterless overload, then scans the supplied assemblies for concrete <code>IValidator&lt;T&gt;</code> types and registers them as scoped. Deduplicates <code>(serviceType, implementationType)</code> pairs against existing registrations. Tolerates <code>ReflectionTypeLoadException</code>.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+
+builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+builder.Services.AddTrellisFluentValidation();
+
+builder.Services.AddScoped&lt;IValidator&lt;SubmitBatchTransfersCommand&gt;, SubmitBatchTransfersValidator&gt;();
+</code></pre>
+<p>For non-AOT apps, scan instead:</p>
+<pre><code class="lang-csharp">builder.Services.AddTrellisFluentValidation(typeof(SubmitBatchTransfersValidator).Assembly);
+</code></pre>
+<h3 id="adapter-behavior">Adapter behavior</h3>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No <code>IValidator&lt;TMessage&gt;</code> registered</td>
+<td><code>Result.Ok()</code> — no allocations</td>
+</tr>
+<tr>
+<td>All registered validators pass</td>
+<td><code>Result.Ok()</code></td>
+</tr>
+<tr>
+<td>One or more validators report failures</td>
+<td><code>Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(violations)))</code> aggregating every failure</td>
+</tr>
+<tr>
+<td>FluentValidation <code>PropertyName</code> is null/whitespace</td>
+<td>Pointer derived from <code>typeof(TMessage).Name</code></td>
+</tr>
+<tr>
+<td>FluentValidation <code>ErrorCode</code> is null/whitespace</td>
+<td><code>FieldViolation.ReasonCode</code> defaults to <code>&quot;validation.error&quot;</code></td>
+</tr>
+<tr>
+<td><code>CancellationToken</code> cancelled mid-run</td>
+<td>Forwarded to <code>validator.ValidateAsync</code>; cancellation propagates</td>
+</tr>
+</tbody>
+</table>
+<p>Validators run <strong>sequentially</strong> and every failure is collected — the adapter does not short-circuit on the first failing validator.</p>
+<h3 id="composing-with-ivalidate">Composing with <code>IValidate</code></h3>
+<p>A message can implement <code>Trellis.Mediator.IValidate</code> for cross-cutting business invariants and also have one or more <code>IValidator&lt;TMessage&gt;</code> implementations registered for property-shaped rules. <code>ValidationBehavior&lt;TMessage,TResponse&gt;</code> runs every source and merges all <code>Error.UnprocessableContent</code> failures into a single response.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using FluentValidation;
+using Mediator;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed record SubmitBatchTransfersCommand(
+    AccountId FromId,
+    BatchMetadata Metadata,
+    IReadOnlyList&lt;BatchTransferLine&gt; Lines)
+    : ICommand&lt;Result&lt;BatchTransferReceipt&gt;&gt;, IValidate
+{
+    public IResult Validate()
+    {
+        var violations = new List&lt;FieldViolation&gt;();
+        if (Lines.Count == 0)
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(Lines)), &quot;batch.empty&quot;)
+            { Detail = &quot;At least one line is required.&quot; });
+        for (var i = 0; i &lt; Lines.Count; i++)
+            if (Lines[i].ToAccountId == FromId)
+                violations.Add(new FieldViolation(new InputPointer($&quot;/Lines/{i}/ToAccountId&quot;), &quot;batch.self-transfer&quot;)
+                { Detail = &quot;A line may not target the source account.&quot; });
+
+        return violations.Count == 0
+            ? Result.Ok()
+            : Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(violations.ToArray())));
+    }
+}
+
+public sealed class SubmitBatchTransfersValidator : AbstractValidator&lt;SubmitBatchTransfersCommand&gt;
+{
+    public SubmitBatchTransfersValidator()
+    {
+        RuleFor(c =&gt; c.Metadata.Reference)
+            .NotEmpty().Matches(@&quot;^BATCH-\d{4}-\d{3}$&quot;);
+
+        RuleForEach(c =&gt; c.Lines).ChildRules(line =&gt;
+            line.RuleFor(l =&gt; l.Memo).NotEmpty().MaximumLength(200));
+    }
+}
+</code></pre>
+<p>A request that violates both sources at once produces one 422 with <strong>every</strong> violation aggregated under its proper JSON Pointer.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Any non-<code>UnprocessableContent</code> failure (<code>Error.Conflict</code>, <code>Error.Forbidden</code>, …) returned by <code>IValidate</code> or any validator short-circuits the stage immediately and propagates as-is. Aggregation only applies to <code>UnprocessableContent</code>.</p>
+</div>
+<h3 id="json-pointer-normalization">JSON Pointer normalization</h3>
+<p>The adapter and <code>ToResult</code> translate FluentValidation property names to RFC 6901 JSON Pointers before constructing <code>InputPointer</code>. The same <code>JsonPointerNormalizer</code> is used in both code paths.</p>
+<table>
+<thead>
+<tr>
+<th>FluentValidation <code>PropertyName</code></th>
+<th><code>FieldViolation.Field</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Email</code></td>
+<td><code>/Email</code></td>
+</tr>
+<tr>
+<td><code>Address.PostCode</code></td>
+<td><code>/Address/PostCode</code></td>
+</tr>
+<tr>
+<td><code>Items[0].Sku</code></td>
+<td><code>/Items/0/Sku</code></td>
+</tr>
+<tr>
+<td><code>Items[0].Tags[2]</code></td>
+<td><code>/Items/0/Tags/2</code></td>
+</tr>
+</tbody>
+</table>
+<p>Special characters in segments are escaped per RFC 6901 (<code>~</code> → <code>~0</code>, <code>/</code> → <code>~1</code>). Names that already begin with <code>/</code> are passed through unchanged.</p>
+<h2 id="composition">Composition</h2>
+<p>Once a validation step yields <code>Result&lt;T&gt;</code>, it composes with the rest of Trellis (<code>Bind</code>, <code>Map</code>, <code>Ensure</code>, async variants). For commands that produce no payload, return <code>Result&lt;Unit&gt;</code>.</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record RegisterUserRequest(string Email, string FirstName, string LastName);
+public sealed record User(string Email, string FirstName, string LastName);
+
+public interface IUserRepository
+{
+    Task&lt;Result&lt;Unit&gt;&gt; AddAsync(User user, CancellationToken cancellationToken);
+}
+
+public sealed class UserService(
+    IValidator&lt;RegisterUserRequest&gt; validator,
+    IUserRepository repository)
+{
+    public Task&lt;Result&lt;Unit&gt;&gt; RegisterAsync(RegisterUserRequest request, CancellationToken ct) =&gt;
+        validator.ValidateToResultAsync(request, cancellationToken: ct)
+            .MapAsync(valid =&gt; new User(valid.Email, valid.FirstName, valid.LastName), ct)
+            .BindAsync((user, token) =&gt; repository.AddAsync(user, token), ct);
+}
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Prefer the parameterless <code>AddTrellisFluentValidation()</code> overload.</strong> It is AOT/trim-safe and idempotent. Register each <code>IValidator&lt;T&gt;</code> explicitly with <code>AddScoped</code>.</li>
+<li><strong>Reach for <code>ValidateToResultAsync</code> whenever rules touch I/O.</strong> It forwards <code>CancellationToken</code> straight to <code>validator.ValidateAsync</code>.</li>
+<li><strong>Use <code>ToResult</code> only when you already hold a <code>ValidationResult</code>.</strong> For all other paths use <code>ValidateToResult</code> / <code>ValidateToResultAsync</code> so null input is rejected before FluentValidation runs.</li>
+<li><strong>Combine <code>IValidate</code> and FluentValidation for layered rules.</strong> Cross-field invariants live on <code>IValidate.Validate()</code>; per-property rules live in the validator. Both contribute to a single aggregated 422.</li>
+<li><strong>Let pointer normalization carry structure.</strong> Do not pre-format property names — the adapter handles dotted chains and indexers automatically.</li>
+<li><strong>Validators do not parse primitives.</strong> Keep primitive-to-value-object parsing at the transport seam; validate already-shaped commands and value objects.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-fluentvalidation.html">trellis-api-fluentvalidation.md</a></li>
+<li><code>Result&lt;T&gt;</code>, <code>Error.UnprocessableContent</code>, <code>FieldViolation</code>, <code>InputPointer</code>: <a href="../api_reference/trellis-api-core.html">trellis-api-core.md</a></li>
+<li>Mediator validation behavior: <a href="../api_reference/trellis-api-mediator.html">trellis-api-mediator.md</a></li>
+<li>ASP.NET 422 rendering: <a href="../api_reference/trellis-api-asp.html">trellis-api-asp.md</a></li>
+<li>Cookbook recipes: <a href="../api_reference/trellis-api-cookbook.html">trellis-api-cookbook.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-fluentvalidation.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

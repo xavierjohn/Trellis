@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Maybe Type | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Maybe Type | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/maybe-type.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="maybe-type">Maybe Type</h1>
+
+<p><code>Maybe&lt;T&gt;</code> is Trellis' explicit, composable optional. It models <em>expected absence</em> in the domain so optional values flow through <code>Map</code>/<code>Bind</code>/LINQ and convert to <code>Result&lt;T&gt;</code> at the boundary where absence becomes an error.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wrap a possibly-null value</td>
+<td><code>Maybe.From(value)</code> / <code>Maybe&lt;T&gt;.None</code> / implicit <code>T → Maybe&lt;T&gt;</code></td>
+<td><a href="#creating-values">Creating values</a></td>
+</tr>
+<tr>
+<td>Read a value without throwing</td>
+<td><code>Match</code>, <code>TryGetValue</code>, <code>GetValueOrDefault</code></td>
+<td><a href="#reading-values">Reading values</a></td>
+</tr>
+<tr>
+<td>Transform an optional value</td>
+<td><code>Map</code>, <code>Bind</code>, <code>Where</code>, <code>Tap</code>, <code>Or</code></td>
+<td><a href="#transforming-values">Transforming values</a></td>
+</tr>
+<tr>
+<td>Compose multiple optionals</td>
+<td>LINQ <code>from … from … select</code> (<code>Select</code>/<code>SelectMany</code>)</td>
+<td><a href="#linq-query-syntax">LINQ query syntax</a></td>
+</tr>
+<tr>
+<td>Pull the first/only present item out of a sequence</td>
+<td><code>TryFirst</code>, <code>TryLast</code>, <code>Choose</code></td>
+<td><a href="#collections">Collections</a></td>
+</tr>
+<tr>
+<td>Validate an optional input (&quot;null OK; if present, must be valid&quot;)</td>
+<td><code>Maybe.Optional(value, validate)</code></td>
+<td><a href="#boundary-validation">Boundary validation</a></td>
+</tr>
+<tr>
+<td>Enforce cross-field invariants over <code>Maybe&lt;T&gt;</code> properties</td>
+<td><code>MaybeInvariant.AllOrNone</code> / <code>Requires</code> / <code>MutuallyExclusive</code> / <code>ExactlyOne</code> / <code>AtLeastOne</code></td>
+<td><a href="#multi-field-invariants">Multi-field invariants</a></td>
+</tr>
+<tr>
+<td>Convert <code>Maybe&lt;T&gt;</code> ↔ <code>Result&lt;T&gt;</code></td>
+<td><code>ToResult(error)</code> / <code>ToResultAsync(...)</code> / <code>Result&lt;T&gt;.ToMaybe()</code></td>
+<td><a href="#bridging-to-result">Bridging to Result</a></td>
+</tr>
+<tr>
+<td>Convert <code>Maybe&lt;T&gt;</code> ↔ nullable</td>
+<td><code>AsMaybe()</code> / <code>AsNullable()</code></td>
+<td><a href="#interop-with-nullable">Interop with nullable</a></td>
+</tr>
+<tr>
+<td>Serialize <code>Maybe&lt;scalar value object&gt;</code> over JSON</td>
+<td><code>MaybeScalarValueJsonConverter</code> (Trellis.Asp)</td>
+<td><a href="#json-serialization">JSON serialization</a></td>
+</tr>
+<tr>
+<td>Query a <code>Maybe&lt;T&gt;</code> column in EF Core</td>
+<td><code>MaybeQueryableExtensions</code> / <code>AddTrellisInterceptors()</code> (Trellis.EntityFrameworkCore)</td>
+<td><a href="#ef-core-integration">EF Core integration</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You want optionality to be <strong>part of the domain model</strong> rather than a per-call nullability annotation.</li>
+<li>You need optional values that compose with <code>Result&lt;T&gt;</code> pipelines and tolerate <code>Bind</code>/<code>Map</code>/<code>Match</code>/LINQ.</li>
+<li>A value is allowed to be missing partway through a workflow but must become a typed <code>Error</code> at the boundary.</li>
+<li>You map domain models to EF Core columns or JSON payloads where &quot;present vs. absent&quot; is meaningful.</li>
+</ul>
+<p>For ordinary nullable primitives on a DTO or for plain nullable interop, prefer <code>T?</code> / <code>Nullable&lt;T&gt;</code>.</p>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Maybe&lt;T&gt;</code> is a <code>readonly struct</code> defined in <code>Trellis.Core</code>. <code>default(Maybe&lt;T&gt;)</code> equals <code>Maybe&lt;T&gt;.None</code> (analyzer <strong>TRLS019</strong> flags explicit <code>default(Maybe&lt;T&gt;)</code> and recommends <code>Maybe&lt;T&gt;.None</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Maybe.From&lt;T&gt;(T? value) where T : notnull</code></td>
+<td>static factory (non-generic class)</td>
+<td>Wraps a nullable; <code>null</code> → <code>None</code>.</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;T&gt;.From(T? value)</code></td>
+<td>static factory (generic struct)</td>
+<td>Same as above with explicit <code>T</code>.</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;T&gt;.None</code></td>
+<td>static property</td>
+<td>The empty instance.</td>
+</tr>
+<tr>
+<td><code>implicit operator Maybe&lt;T&gt;(T value)</code></td>
+<td>conversion</td>
+<td>Lets a bare <code>T</code> flow into a <code>Maybe&lt;T&gt;</code> slot.</td>
+</tr>
+<tr>
+<td><code>HasValue</code> / <code>HasNoValue</code></td>
+<td>properties</td>
+<td>Presence flags.</td>
+</tr>
+<tr>
+<td><code>Value</code></td>
+<td>property</td>
+<td>Throws on <code>None</code>. Hidden from IntelliSense; analyzer <strong>TRLS003</strong> flags unguarded reads. Use <code>Match</code>/<code>TryGetValue</code>/<code>GetValueOrDefault</code>.</td>
+</tr>
+<tr>
+<td><code>GetValueOrThrow(string?)</code></td>
+<td>method</td>
+<td>Throwing extractor with optional message.</td>
+</tr>
+<tr>
+<td><code>GetValueOrDefault(T)</code> / <code>GetValueOrDefault(Func&lt;T&gt;)</code></td>
+<td>methods</td>
+<td>Non-throwing extractors (eager / deferred).</td>
+</tr>
+<tr>
+<td><code>TryGetValue(out T)</code></td>
+<td>method</td>
+<td>TryParse-style extractor.</td>
+</tr>
+<tr>
+<td><code>Map&lt;TResult&gt;(Func&lt;T, TResult&gt;)</code></td>
+<td>method</td>
+<td>Transform present value.</td>
+</tr>
+<tr>
+<td><code>Bind&lt;TResult&gt;(Func&lt;T, Maybe&lt;TResult&gt;&gt;)</code></td>
+<td>method</td>
+<td>Flat-map.</td>
+</tr>
+<tr>
+<td><code>Match&lt;TResult&gt;(Func&lt;T, TResult&gt; some, Func&lt;TResult&gt; none)</code></td>
+<td>method</td>
+<td>Branch on presence.</td>
+</tr>
+<tr>
+<td><code>Where(Func&lt;T, bool&gt;)</code></td>
+<td>method</td>
+<td>Keep value only if predicate holds.</td>
+</tr>
+<tr>
+<td><code>Tap(Action&lt;T&gt;)</code></td>
+<td>method</td>
+<td>Side effect on present value.</td>
+</tr>
+<tr>
+<td><code>Or(T)</code> / <code>Or(Func&lt;T&gt;)</code> / <code>Or(Maybe&lt;T&gt;)</code> / <code>Or(Func&lt;Maybe&lt;T&gt;&gt;)</code></td>
+<td>methods</td>
+<td>Fallback (eager / deferred / maybe / deferred maybe).</td>
+</tr>
+<tr>
+<td><code>Equals(Maybe&lt;T&gt;)</code> / <code>Equals(T?)</code> / <code>==</code> / <code>!=</code> (vs <code>T</code>, <code>object?</code>, <code>Maybe&lt;T&gt;</code>)</td>
+<td>equality</td>
+<td>Structural equality including raw values.</td>
+</tr>
+<tr>
+<td><code>MaybeExtensions.AsMaybe&lt;T&gt;</code> / <code>AsNullable&lt;T&gt;</code></td>
+<td>extension methods</td>
+<td><code>T?</code> (struct or class) → <code>Maybe&lt;T&gt;</code> and back.</td>
+</tr>
+<tr>
+<td><code>MaybeExtensions.ToResult&lt;T&gt;(Error)</code> / <code>ToResult(Func&lt;Error&gt;)</code></td>
+<td>extension methods</td>
+<td>Bridge to <code>Result&lt;T&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>MaybeExtensionsAsync.ToResultAsync</code> / <code>MatchAsync</code></td>
+<td>extension methods</td>
+<td><code>Task</code>/<code>ValueTask</code> overloads of <code>ToResult</code> and <code>Match</code>.</td>
+</tr>
+<tr>
+<td><code>MaybeChooseExtensions.Choose</code></td>
+<td>extension methods</td>
+<td>Flatten <code>IEnumerable&lt;Maybe&lt;T&gt;&gt;</code> (with optional projector).</td>
+</tr>
+<tr>
+<td><code>MaybeCollectionExtensions.TryFirst</code> / <code>TryLast</code> (with optional predicate)</td>
+<td>extension methods</td>
+<td>First/last hit as <code>Maybe&lt;T&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>MaybeLinqExtensions.Select</code> / <code>SelectMany</code></td>
+<td>extension methods</td>
+<td>Enables LINQ query syntax.</td>
+</tr>
+<tr>
+<td><code>Maybe.Optional&lt;TIn, TOut&gt;(TIn?, Func&lt;TIn, Result&lt;TOut&gt;&gt;)</code></td>
+<td>static method (class &amp; struct overloads)</td>
+<td>&quot;Null OK; if present, validate.&quot; Returns <code>Result&lt;Maybe&lt;TOut&gt;&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>MaybeInvariant.AllOrNone</code> / <code>Requires</code> / <code>MutuallyExclusive</code> / <code>ExactlyOne</code> / <code>AtLeastOne</code></td>
+<td>static methods</td>
+<td>Cross-field invariants returning <code>Result&lt;Unit&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>Result&lt;T&gt;.ToMaybe()</code> / <code>ToMaybeAsync()</code></td>
+<td>extension methods (Result side)</td>
+<td>Failure → <code>None</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-core.html">trellis-api-core.md</a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+</code></pre>
+<p>JSON converters for <code>Maybe&lt;scalar value object&gt;</code> ship in <code>Trellis.Asp</code>. EF Core query/update helpers ship in <code>Trellis.EntityFrameworkCore</code>.</p>
+<h2 id="quick-start">Quick start</h2>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; middleName = Maybe.From(&quot;Byron&quot;);
+Maybe&lt;string&gt; noNickname = Maybe&lt;string&gt;.None;
+
+string display = middleName.Match(
+    some: name =&gt; name,
+    none: () =&gt; &quot;(none)&quot;);
+
+Result&lt;string&gt; required = noNickname.ToResult(
+    new Error.NotFound(ResourceRef.For(&quot;Nickname&quot;, &quot;primary&quot;))
+    {
+        Detail = &quot;A nickname is required for the marketing payload.&quot;,
+    });
+</code></pre>
+<h2 id="creating-values">Creating values</h2>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Maybe.From(value)</code></td>
+<td><code>Some(value)</code> if non-null, otherwise <code>None</code>.</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;T&gt;.From(value)</code></td>
+<td>Same, with explicit type.</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;T&gt;.None</code></td>
+<td>The empty instance (preferred over <code>default(Maybe&lt;T&gt;)</code>).</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;T&gt; m = value;</code></td>
+<td>Implicit conversion from <code>T</code>. Useful in expression-bodied returns.</td>
+</tr>
+<tr>
+<td><code>Maybe.From((string?)null)</code></td>
+<td><code>None</code>.</td>
+</tr>
+<tr>
+<td><code>value.AsMaybe()</code> (<code>T : class</code> or <code>T : struct</code> via <code>T?</code>)</td>
+<td>Extension form — handy in LINQ.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; some         = Maybe.From(&quot;Ada&quot;);
+Maybe&lt;string&gt; alsoSome     = Maybe&lt;string&gt;.From(&quot;Ada&quot;);
+Maybe&lt;string&gt; implicitSome = &quot;Ada&quot;;
+Maybe&lt;int&gt;    missingCount = Maybe&lt;int&gt;.None;
+
+string? input = null;
+Maybe&lt;string&gt; fromNullable = Maybe.From(input);  // None
+</code></pre>
+<h2 id="reading-values">Reading values</h2>
+<p><code>Value</code> exists but throws on <code>None</code> and is gated by analyzer <strong>TRLS003</strong>. Prefer the safe readers below.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Match(some, none)</code></td>
+<td>You always want a result, branched on presence.</td>
+</tr>
+<tr>
+<td><code>TryGetValue(out var v)</code></td>
+<td>Imperative early-return style.</td>
+</tr>
+<tr>
+<td><code>GetValueOrDefault(fallback)</code></td>
+<td>Eager fallback when constructing it is cheap.</td>
+</tr>
+<tr>
+<td><code>GetValueOrDefault(() =&gt; fallback)</code></td>
+<td>Deferred fallback (expensive default, allocations).</td>
+</tr>
+<tr>
+<td><code>GetValueOrThrow(&quot;msg&quot;)</code></td>
+<td>Genuinely unexpected absence (programmer error).</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;int&gt; count = Maybe.From(3);
+
+int total = count.Match(
+    some: n =&gt; n,
+    none: () =&gt; 0);
+
+if (count.TryGetValue(out var n))
+    Console.WriteLine(n);
+
+string title = Maybe&lt;string&gt;.None.GetValueOrDefault(&quot;Untitled&quot;);
+string lazy  = Maybe&lt;string&gt;.None.GetValueOrDefault(() =&gt; $&quot;generated-{Guid.NewGuid():N}&quot;);
+</code></pre>
+<h2 id="transforming-values">Transforming values</h2>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Signature</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Map</code></td>
+<td><code>Maybe&lt;T&gt;.Map&lt;TResult&gt;(Func&lt;T, TResult&gt;)</code></td>
+<td>Project the inner value; <code>None</code> propagates.</td>
+</tr>
+<tr>
+<td><code>Bind</code></td>
+<td><code>Maybe&lt;T&gt;.Bind&lt;TResult&gt;(Func&lt;T, Maybe&lt;TResult&gt;&gt;)</code></td>
+<td>Flat-map for the next step that itself returns <code>Maybe&lt;TResult&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>Where</code></td>
+<td><code>Maybe&lt;T&gt;.Where(Func&lt;T, bool&gt;)</code></td>
+<td>Drop the value to <code>None</code> when the predicate is <code>false</code>.</td>
+</tr>
+<tr>
+<td><code>Tap</code></td>
+<td><code>Maybe&lt;T&gt;.Tap(Action&lt;T&gt;)</code></td>
+<td>Run a side effect on the present value, return <code>this</code> unchanged.</td>
+</tr>
+<tr>
+<td><code>Or</code></td>
+<td><code>Or(T)</code> / <code>Or(Func&lt;T&gt;)</code> / <code>Or(Maybe&lt;T&gt;)</code> / <code>Or(Func&lt;Maybe&lt;T&gt;&gt;)</code></td>
+<td>First-non-none fallback chain.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+static Maybe&lt;string&gt; GetManagerEmail(string userId) =&gt;
+    userId == &quot;42&quot; ? Maybe.From(&quot;manager@example.com&quot;) : Maybe&lt;string&gt;.None;
+
+Maybe&lt;string&gt; upperEmail = Maybe.From(&quot;ada@example.com&quot;)
+    .Map(value =&gt; value.ToUpperInvariant());
+
+Maybe&lt;string&gt; chained = Maybe.From(&quot;42&quot;)
+    .Bind(GetManagerEmail);
+
+Maybe&lt;int&gt; validQuantity = Maybe.From(3).Where(v =&gt; v &gt; 0);
+
+Maybe&lt;string&gt; name = Maybe&lt;string&gt;.None
+    .Or(Maybe.From(&quot;Ada Lovelace&quot;))
+    .Or(&quot;Unknown&quot;);
+</code></pre>
+<h2 id="equality">Equality</h2>
+<p><code>Maybe&lt;T&gt;</code> implements <code>IEquatable&lt;Maybe&lt;T&gt;&gt;</code> and <code>IEquatable&lt;T&gt;</code>, with <code>==</code> / <code>!=</code> overloads against <code>T</code>, <code>object?</code>, and <code>Maybe&lt;T&gt;</code>. Two <code>None</code> values are equal; two <code>Some</code> values are equal iff their inner values are.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;int&gt; some = Maybe.From(42);
+Maybe&lt;int&gt; none = Maybe&lt;int&gt;.None;
+
+Console.WriteLine(some == 42);                  // True
+Console.WriteLine(some == Maybe.From(42));      // True
+Console.WriteLine(some != 0);                   // True
+Console.WriteLine(none == Maybe&lt;int&gt;.None);     // True
+Console.WriteLine(some.Equals(Maybe.From(42))); // True
+</code></pre>
+<h2 id="linq-query-syntax">LINQ query syntax</h2>
+<p><code>MaybeLinqExtensions</code> adds <code>Select</code> and <code>SelectMany</code>, so multiple <code>Maybe&lt;T&gt;</code> values compose via query syntax. Any <code>None</code> in the chain short-circuits the entire query to <code>None</code>.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; first = Maybe.From(&quot;Ada&quot;);
+Maybe&lt;string&gt; last  = Maybe.From(&quot;Lovelace&quot;);
+
+Maybe&lt;string&gt; fullName =
+    from f in first
+    from l in last
+    select $&quot;{f} {l}&quot;;
+</code></pre>
+<h2 id="collections">Collections</h2>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Returns</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IEnumerable&lt;T&gt;.TryFirst()</code></td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td>First element, or <code>None</code> if empty.</td>
+</tr>
+<tr>
+<td><code>IEnumerable&lt;T&gt;.TryFirst(predicate)</code></td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td>First match, or <code>None</code>.</td>
+</tr>
+<tr>
+<td><code>IEnumerable&lt;T&gt;.TryLast()</code> / <code>TryLast(predicate)</code></td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td>Last element / last match.</td>
+</tr>
+<tr>
+<td><code>IEnumerable&lt;Maybe&lt;T&gt;&gt;.Choose()</code></td>
+<td><code>IEnumerable&lt;T&gt;</code></td>
+<td>Drops <code>None</code>s, yields inner values.</td>
+</tr>
+<tr>
+<td><code>IEnumerable&lt;Maybe&lt;T&gt;&gt;.Choose(selector)</code></td>
+<td><code>IEnumerable&lt;TResult&gt;</code></td>
+<td>Drops <code>None</code>s, projects inner values.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+var numbers = new[] { 1, 2, 3, 4 };
+Maybe&lt;int&gt; firstEven = numbers.TryFirst(n =&gt; n % 2 == 0);
+
+IEnumerable&lt;Maybe&lt;string&gt;&gt; names =
+[
+    Maybe.From(&quot;Ada&quot;),
+    Maybe&lt;string&gt;.None,
+    Maybe.From(&quot;Grace&quot;),
+];
+
+IEnumerable&lt;string&gt; defined = names.Choose();
+IEnumerable&lt;int&gt;    lengths = names.Choose(name =&gt; name.Length);
+</code></pre>
+<h2 id="boundary-validation">Boundary validation</h2>
+<p><code>Maybe.Optional</code> is the canonical &quot;null is acceptable, but if a value is present it must be valid&quot; primitive. It returns <code>Result&lt;Maybe&lt;TOut&gt;&gt;</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>null</code> (or <code>Nullable&lt;T&gt;</code> without value)</td>
+<td><code>Ok(Maybe&lt;TOut&gt;.None)</code></td>
+</tr>
+<tr>
+<td>Value present, validator returns <code>Ok(v)</code></td>
+<td><code>Ok(Maybe.From(v))</code></td>
+</tr>
+<tr>
+<td>Value present, validator returns <code>Fail(e)</code></td>
+<td><code>Fail(e)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both reference (<code>where TIn : class</code>) and value-type (<code>where TIn : struct</code>) overloads exist.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+static Result&lt;string&gt; NonEmpty(string value) =&gt;
+    string.IsNullOrWhiteSpace(value)
+        ? Result.Fail&lt;string&gt;(new Error.UnprocessableContent(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty(&quot;nickname&quot;), &quot;validation.error&quot;)
+            {
+                Detail = &quot;Value is required&quot;,
+            })))
+        : Result.Ok(value);
+
+string? input = &quot;Countess&quot;;
+Result&lt;Maybe&lt;string&gt;&gt; result = Maybe.Optional(input, NonEmpty);
+</code></pre>
+<h2 id="multi-field-invariants">Multi-field invariants</h2>
+<p><code>MaybeInvariant</code> enforces shape rules across several <code>Maybe&lt;T&gt;</code> fields and returns <code>Result&lt;Unit&gt;</code>. Failures are collected as <code>Error.UnprocessableContent</code> with one <code>FieldViolation</code> per offending field; field paths are normalized via <code>InputPointer.ForProperty(name)</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Rule</th>
+<th>Available arities</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AllOrNone</code></td>
+<td>All fields present, or all absent.</td>
+<td>2, 3, 4</td>
+</tr>
+<tr>
+<td><code>Requires</code></td>
+<td>If <code>source</code> is present, <code>required</code> must be too.</td>
+<td>2</td>
+</tr>
+<tr>
+<td><code>MutuallyExclusive</code></td>
+<td>At most one field present.</td>
+<td>2, 3</td>
+</tr>
+<tr>
+<td><code>ExactlyOne</code></td>
+<td>Exactly one field present.</td>
+<td>2, 3</td>
+</tr>
+<tr>
+<td><code>AtLeastOne</code></td>
+<td>At least one field present.</td>
+<td>2, 3</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+Result&lt;Unit&gt; shape = MaybeInvariant.ExactlyOne(
+    command.Email, command.Phone, &quot;email&quot;, &quot;phone&quot;);
+</code></pre>
+<h2 id="bridging-to-result">Bridging to Result</h2>
+<p>The most important conversion in day-to-day Trellis usage: turn &quot;missing&quot; into a typed <code>Error</code> at the boundary.</p>
+<table>
+<thead>
+<tr>
+<th>Direction</th>
+<th>API</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Maybe&lt;T&gt;</code> → <code>Result&lt;T&gt;</code> (eager error)</td>
+<td><code>maybe.ToResult(error)</code></td>
+<td>Allocates the <code>Error</code> even on success.</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;T&gt;</code> → <code>Result&lt;T&gt;</code> (lazy error)</td>
+<td><code>maybe.ToResult(() =&gt; error)</code></td>
+<td>Use when error construction is expensive or context-dependent.</td>
+</tr>
+<tr>
+<td><code>Task&lt;Maybe&lt;T&gt;&gt;</code> → <code>Task&lt;Result&lt;T&gt;&gt;</code></td>
+<td><code>maybeTask.ToResultAsync(error)</code> / <code>ToResultAsync(() =&gt; error)</code></td>
+<td><code>Task</code> and <code>ValueTask</code> overloads available.</td>
+</tr>
+<tr>
+<td><code>Task&lt;Maybe&lt;T&gt;&gt;</code> → branch</td>
+<td><code>maybeTask.MatchAsync(some, none)</code></td>
+<td>Sync- and async-delegate overloads.</td>
+</tr>
+<tr>
+<td><code>Result&lt;T&gt;</code> → <code>Maybe&lt;T&gt;</code></td>
+<td><code>result.ToMaybe()</code> / <code>resultTask.ToMaybeAsync()</code></td>
+<td>Failures collapse to <code>None</code>; the error is dropped.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+Maybe&lt;string&gt; maybeEmail = Maybe&lt;string&gt;.None;
+
+Result&lt;string&gt; required = maybeEmail.ToResult(
+    new Error.NotFound(ResourceRef.For(&quot;Email&quot;, &quot;primary&quot;))
+    {
+        Detail = &quot;Primary email address was not found&quot;,
+    });
+
+Result&lt;string&gt; requiredLazy = Maybe&lt;string&gt;.None.ToResult(
+    () =&gt; new Error.NotFound(ResourceRef.For(&quot;Email&quot;, &quot;primary&quot;))
+    {
+        Detail = &quot;Primary email address was not found&quot;,
+    });
+
+Maybe&lt;string&gt; backToMaybe = Result.Ok(&quot;Ada&quot;).ToMaybe();
+</code></pre>
+<p>Use <code>ToMaybe()</code> only when discarding the error is genuinely correct.</p>
+<h2 id="interop-with-nullable">Interop with nullable</h2>
+<p><code>MaybeExtensions</code> provides round-trip helpers between <code>Maybe&lt;T&gt;</code> and the BCL nullable forms.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Receiver</th>
+<th>Returns</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AsMaybe&lt;T&gt;(this T?)</code> <code>where T : struct</code></td>
+<td>nullable value type</td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td><code>null</code> → <code>None</code>.</td>
+</tr>
+<tr>
+<td><code>AsMaybe&lt;T&gt;(this T)</code> <code>where T : class</code></td>
+<td>nullable reference</td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td><code>null</code> → <code>None</code>.</td>
+</tr>
+<tr>
+<td><code>AsNullable&lt;T&gt;(in this Maybe&lt;T&gt;)</code> <code>where T : struct</code></td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td><code>T?</code></td>
+<td><code>None</code> → <code>null</code>.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+int? raw = 7;
+Maybe&lt;int&gt; maybeQty = raw.AsMaybe();
+
+string? maybeName = &quot;Ada&quot;;
+Maybe&lt;string&gt; nameMaybe = maybeName.AsMaybe();
+
+int? back = maybeQty.AsNullable();
+</code></pre>
+<h2 id="json-serialization">JSON serialization</h2>
+<p><code>Trellis.Asp</code> ships <code>MaybeScalarValueJsonConverter&lt;TValue, TPrimitive&gt;</code> and a <code>MaybeScalarValueJsonConverterFactory</code> that registers it for any <code>Maybe&lt;TScalar&gt;</code> where <code>TScalar</code> is a Trellis scalar value object. Absence serializes as JSON <code>null</code>; deserialization participates in the validation-error scope used by <code>ScalarValueValidationFilter</code> / <code>ScalarValueValidationEndpointFilter</code>.</p>
+<p>There is no built-in System.Text.Json converter for arbitrary <code>Maybe&lt;T&gt;</code> in <code>Trellis.Core</code> itself — pair with a scalar value object or supply your own converter.</p>
+<p>See <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a> for converter signatures and validation wiring.</p>
+<h2 id="ef-core-integration">EF Core integration</h2>
+<p><code>Trellis.EntityFrameworkCore</code> discovers <code>Maybe&lt;T&gt;</code> properties via <code>MaybeConvention</code> and maps them to a generated <code>_camelCase</code> storage member, so direct <code>.Value</code> / <code>.HasValue</code> / <code>GetValueOrDefault(d)</code> calls in LINQ predicates do not translate by default. Two supported paths:</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>API</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Explicit query helpers</td>
+<td><code>MaybeQueryableExtensions.WhereHasValue</code> / <code>WhereNone</code> / <code>WhereEquals</code> / <code>WhereLessThan(OrEqual)</code> / <code>WhereGreaterThan(OrEqual)</code> plus <code>OrderByMaybe</code> / <code>ThenByMaybe(Descending)</code></td>
+<td>You want predictable SQL without registering interceptors.</td>
+</tr>
+<tr>
+<td>Interceptor rewriting</td>
+<td><code>optionsBuilder.AddTrellisInterceptors()</code> (registers <code>MaybeQueryInterceptor</code>)</td>
+<td>You want natural <code>.HasValue</code> / <code>.Value</code> / <code>GetValueOrDefault(d)</code> syntax to translate.</td>
+</tr>
+<tr>
+<td>Repo lookups returning optionals</td>
+<td><code>IQueryable&lt;T&gt;.FirstOrDefaultMaybeAsync</code> / <code>SingleOrDefaultMaybeAsync</code></td>
+<td>Replace EF's <code>null</code> returns with <code>Maybe&lt;T&gt;.None</code>.</td>
+</tr>
+<tr>
+<td>Indexing a <code>Maybe&lt;T&gt;</code> column</td>
+<td><code>entityTypeBuilder.HasTrellisIndex(x =&gt; x.M)</code></td>
+<td>Avoids analyzer <strong>TRLS016</strong> by targeting the storage member.</td>
+</tr>
+<tr>
+<td><code>ExecuteUpdate</code> over <code>Maybe&lt;T&gt;</code></td>
+<td><code>MaybeUpdateExtensions.SetMaybeValue(...)</code> / <code>SetMaybeNone(...)</code></td>
+<td>Set Some / clear via bulk update.</td>
+</tr>
+</tbody>
+</table>
+<p>Without one of these, raw <code>.Value</code> or <code>GetValueOrDefault(sentinel)</code> in EF queries either throws at materialization or fails to translate. Analyzer <strong>TRLS013</strong> flags <code>.Value</code> in Select-family LINQ projections (in-memory).</p>
+<p>See <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a> for full signatures and conventions.</p>
+<h2 id="composition">Composition</h2>
+<p>Once <code>Maybe&lt;T&gt;</code> and <code>Result&lt;T&gt;</code> are in the same pipeline they compose via <code>ToResult</code> / <code>ToMaybe</code> and the standard result combinators:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed record Customer(string Id, Maybe&lt;string&gt; Email);
+
+static Result&lt;Customer&gt; Load(string id) =&gt; /* ... */ Result.Ok(new Customer(id, Maybe.From(&quot;ada@example.com&quot;)));
+static Task&lt;Result&lt;Unit&gt;&gt; SendWelcomeAsync(string email, CancellationToken ct) =&gt; /* ... */ Task.FromResult(Result.Ok());
+
+public Task&lt;Result&lt;Unit&gt;&gt; WelcomeAsync(string id, CancellationToken ct) =&gt;
+    Load(id)
+        .Bind(customer =&gt; customer.Email.ToResult(
+            new Error.UnprocessableContent(EquatableArray.Create(
+                new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;validation.error&quot;)
+                {
+                    Detail = &quot;Customer has no email address on file.&quot;,
+                }))))
+        .BindAsync((email, token) =&gt; SendWelcomeAsync(email, token), ct);
+</code></pre>
+<p>For the &quot;no payload&quot; success case, prefer <code>Result&lt;Unit&gt;</code> (<code>Result.Ok()</code> returns <code>Result&lt;Unit&gt;</code>); <code>Maybe&lt;T&gt;</code> is for <em>values</em>, not for &quot;success/failure&quot;.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li>Use <code>Maybe&lt;T&gt;</code> for optional <strong>domain values</strong>, especially value objects; keep optionality on the containing entity rather than encoded inside a value object's invariants.</li>
+<li>Prefer <code>Maybe&lt;T&gt;.None</code> over <code>default(Maybe&lt;T&gt;)</code> (analyzer <strong>TRLS019</strong>).</li>
+<li>Prefer safe readers (<code>Match</code>, <code>TryGetValue</code>, <code>GetValueOrDefault</code>) over <code>Value</code> (analyzer <strong>TRLS003</strong>).</li>
+<li>Use <code>Maybe.Optional</code> at boundaries when &quot;null OK; if present, must validate.&quot;</li>
+<li>Use <code>MaybeInvariant.*</code> for cross-field shape rules instead of bespoke <code>if</code>/<code>else</code> ladders.</li>
+<li>Use <code>ToResult</code> to lift absence into a typed <code>Error</code> at the boundary; use <code>ToMaybe()</code> only when discarding the error is genuinely correct.</li>
+<li>For EF Core, prefer the <code>MaybeQueryableExtensions.WhereXxx</code> helpers; otherwise register <code>AddTrellisInterceptors()</code> to make natural syntax translate.</li>
+<li>For ordinary nullable primitives on DTOs, keep using <code>T?</code> — <code>Maybe&lt;T&gt;</code> is not a blanket replacement for <code>Nullable&lt;T&gt;</code>.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Errors typically paired with <code>ToResult(...)</code>: <a href="error-handling.html">Error Handling</a></li>
+<li>LINQ query syntax, tuple destructuring, parallel flows: <a href="advanced-features.html">Advanced Features</a></li>
+<li>JSON converter for <code>Maybe&lt;scalar value object&gt;</code>: <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+<li>EF Core query/update/index helpers and interceptors: <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a></li>
+<li>Cookbook recipes that use <code>Maybe&lt;T&gt;</code>: <a href="../api_reference/trellis-api-cookbook.html"><code>trellis-api-cookbook.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/maybe-type.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

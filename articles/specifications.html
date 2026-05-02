@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Specifications | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Specifications | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/specifications.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="specifications">Specifications</h1>
+
+<p><code>Specification&lt;T&gt;</code> encapsulates a named business rule as a composable, storage-agnostic <code>Expression&lt;Func&lt;T, bool&gt;&gt;</code> that runs identically in memory (<code>IsSatisfiedBy</code>) and against <code>IQueryable&lt;T&gt;</code> providers such as EF Core.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name a single business rule that can be reused across services and repositories</td>
+<td>Subclass <code>Specification&lt;T&gt;</code> and override <code>ToExpression()</code></td>
+<td><a href="#defining-a-specification">Defining a specification</a></td>
+</tr>
+<tr>
+<td>Combine two rules with logical AND / OR</td>
+<td><code>spec.And(other)</code> / <code>spec.Or(other)</code></td>
+<td><a href="#composing-rules">Composing rules</a></td>
+</tr>
+<tr>
+<td>Invert a rule</td>
+<td><code>spec.Not()</code></td>
+<td><a href="#composing-rules">Composing rules</a></td>
+</tr>
+<tr>
+<td>Evaluate against an in-memory object</td>
+<td><code>spec.IsSatisfiedBy(entity)</code></td>
+<td><a href="#in-memory-evaluation">In-memory evaluation</a></td>
+</tr>
+<tr>
+<td>Filter an <code>IQueryable&lt;T&gt;</code> (LINQ-to-Objects, EF Core, ...)</td>
+<td>Pass the spec where an <code>Expression&lt;Func&lt;T, bool&gt;&gt;</code> is expected (implicit conversion)</td>
+<td><a href="#applying-to-iqueryable">Applying to IQueryable</a></td>
+</tr>
+<tr>
+<td>Reference <code>Maybe&lt;T&gt;</code> members from a spec used by EF Core</td>
+<td>Register <code>AddTrellisInterceptors()</code> on the <code>DbContextOptionsBuilder</code></td>
+<td><a href="#ef-core-integration">EF Core integration</a></td>
+</tr>
+<tr>
+<td>Force recompilation on each <code>IsSatisfiedBy</code> call</td>
+<td>Override <code>CacheCompilation</code> to return <code>false</code></td>
+<td><a href="#caching-the-compiled-delegate">Caching the compiled delegate</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>The same predicate appears in more than one repository method, validator, or batch job.</li>
+<li>You need a single source of truth for a rule that runs both in memory and as a translated SQL <code>WHERE</code>.</li>
+<li>A repository should accept a domain-named filter (<code>OverdueOrderSpec</code>) instead of raw <code>Expression&lt;Func&lt;T, bool&gt;&gt;</code> arguments.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.Core</code> exposes one abstract class, <code>Specification&lt;T&gt;</code> (namespace <code>Trellis</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ToExpression()</code></td>
+<td><code>abstract Expression&lt;Func&lt;T, bool&gt;&gt;</code></td>
+<td>The canonical expression tree for the rule. The only member subclasses must implement.</td>
+</tr>
+<tr>
+<td><code>IsSatisfiedBy(T entity)</code></td>
+<td><code>bool</code></td>
+<td>In-memory evaluation. Uses a lazily compiled, cached delegate by default.</td>
+</tr>
+<tr>
+<td><code>And(Specification&lt;T&gt; other)</code></td>
+<td><code>Specification&lt;T&gt;</code></td>
+<td>Logical AND combinator. Throws <code>ArgumentNullException</code> if <code>other</code> is <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>Or(Specification&lt;T&gt; other)</code></td>
+<td><code>Specification&lt;T&gt;</code></td>
+<td>Logical OR combinator. Throws <code>ArgumentNullException</code> if <code>other</code> is <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>Not()</code></td>
+<td><code>Specification&lt;T&gt;</code></td>
+<td>Logical negation.</td>
+</tr>
+<tr>
+<td><code>implicit operator Expression&lt;Func&lt;T, bool&gt;&gt;</code></td>
+<td>conversion</td>
+<td>Lets the spec be passed directly to <code>Where</code>, <code>Any</code>, <code>Count</code>, ...</td>
+</tr>
+<tr>
+<td><code>CacheCompilation</code></td>
+<td><code>protected virtual bool</code> (default <code>true</code>)</td>
+<td>Override to <code>false</code> when the expression depends on mutable closure state.</td>
+</tr>
+</tbody>
+</table>
+<p><code>AndSpecification&lt;T&gt;</code>, <code>OrSpecification&lt;T&gt;</code>, and <code>NotSpecification&lt;T&gt;</code> are internal implementation types — they are not part of the public surface.</p>
+<p>Full signatures: <a href="../api_reference/trellis-api-core.html">trellis-api-core.md</a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>Define one rule, compose with another, and run it both in memory and against a queryable.</p>
+<pre><code class="lang-csharp">using System;
+using System.Linq;
+using System.Linq.Expressions;
+using Trellis;
+
+public sealed class Order
+{
+    public decimal TotalAmount { get; init; }
+    public DateTimeOffset DueAt { get; init; }
+    public bool IsPaid { get; init; }
+    public string Region { get; init; } = string.Empty;
+}
+
+public sealed class OverdueOrderSpec(DateTimeOffset now) : Specification&lt;Order&gt;
+{
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        order =&gt; !order.IsPaid &amp;&amp; order.DueAt &lt; now;
+}
+
+public sealed class HighValueOrderSpec(decimal threshold) : Specification&lt;Order&gt;
+{
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        order =&gt; order.TotalAmount &gt;= threshold;
+}
+
+var spec = new OverdueOrderSpec(DateTimeOffset.UtcNow)
+    .And(new HighValueOrderSpec(500m));
+
+bool match = spec.IsSatisfiedBy(new Order { TotalAmount = 750m, DueAt = DateTimeOffset.UtcNow.AddDays(-1) });
+
+IQueryable&lt;Order&gt; filtered = new[] { /* ... */ }.AsQueryable().Where(spec);
+</code></pre>
+<h2 id="defining-a-specification">Defining a specification</h2>
+<p>Subclass <code>Specification&lt;T&gt;</code> and implement <code>ToExpression()</code>. Constructor parameters become closure values inside the expression — keep them immutable.</p>
+<pre><code class="lang-csharp">using System;
+using System.Linq.Expressions;
+using Trellis;
+
+public sealed class RegionSpec(string region) : Specification&lt;Order&gt;
+{
+    public override Expression&lt;Func&lt;Order, bool&gt;&gt; ToExpression() =&gt;
+        order =&gt; order.Region == region;
+}
+</code></pre>
+<p>Rules of thumb:</p>
+<ul>
+<li>One specification = one named rule. Don't pack unrelated conditions into a single class.</li>
+<li>Keep the expression body translation-friendly (member access, arithmetic, comparisons). Method calls only translate if the LINQ provider supports them.</li>
+<li>Capture only immutable state in the constructor. See <a href="#caching-the-compiled-delegate">Caching the compiled delegate</a> if you must capture mutable state.</li>
+</ul>
+<h2 id="composing-rules">Composing rules</h2>
+<table>
+<thead>
+<tr>
+<th>Combinator</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a.And(b)</code></td>
+<td>Satisfied when both <code>a</code> and <code>b</code> are.</td>
+</tr>
+<tr>
+<td><code>a.Or(b)</code></td>
+<td>Satisfied when either <code>a</code> or <code>b</code> is.</td>
+</tr>
+<tr>
+<td><code>a.Not()</code></td>
+<td>Satisfied when <code>a</code> is not.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">var overdue   = new OverdueOrderSpec(DateTimeOffset.UtcNow);
+var highValue = new HighValueOrderSpec(500m);
+var west      = new RegionSpec(&quot;West&quot;);
+
+var urgent        = overdue.And(highValue);
+var westOrUrgent  = west.Or(urgent);
+var notOverdue    = overdue.Not();
+</code></pre>
+<p><code>And</code>/<code>Or</code>/<code>Not</code> return a new <code>Specification&lt;T&gt;</code> — original instances are never mutated, so combinators are safe to share.</p>
+<h2 id="in-memory-evaluation">In-memory evaluation</h2>
+<p><code>IsSatisfiedBy(entity)</code> evaluates the rule against an object you already hold in memory.</p>
+<pre><code class="lang-csharp">var spec = new HighValueOrderSpec(500m);
+
+bool match = spec.IsSatisfiedBy(new Order
+{
+    TotalAmount = 750m,
+    DueAt = DateTimeOffset.UtcNow.AddDays(2),
+    IsPaid = false,
+    Region = &quot;West&quot;
+});
+</code></pre>
+<p>By default the delegate compiled from <code>ToExpression()</code> is cached behind a <code>Lazy&lt;Func&lt;T, bool&gt;&gt;</code>, so repeated calls do not recompile.</p>
+<h2 id="applying-to-iqueryable">Applying to IQueryable</h2>
+<p>Because <code>Specification&lt;T&gt;</code> defines an implicit conversion to <code>Expression&lt;Func&lt;T, bool&gt;&gt;</code>, you can pass it directly to any LINQ operator that takes a predicate expression.</p>
+<pre><code class="lang-csharp">using System.Linq;
+
+IQueryable&lt;Order&gt; query = /* AsQueryable() / DbSet&lt;Order&gt; / ... */;
+
+var spec = new OverdueOrderSpec(DateTimeOffset.UtcNow)
+    .And(new HighValueOrderSpec(500m));
+
+var filtered = query.Where(spec);
+int count    = query.Count(spec);
+bool any     = query.Any(spec);
+</code></pre>
+<p>A repository can therefore accept the named rule without learning the rule itself:</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+
+public interface IOrderRepository
+{
+    Task&lt;IReadOnlyList&lt;Order&gt;&gt; ListAsync(Specification&lt;Order&gt; spec, CancellationToken ct);
+    Task&lt;bool&gt;                 AnyAsync(Specification&lt;Order&gt; spec, CancellationToken ct);
+}
+</code></pre>
+<h2 id="ef-core-integration">EF Core integration</h2>
+<p>Composed specifications combine sub-expressions using <code>Expression.Invoke</code>. EF Core 8+ translates these reliably; older versions may not.</p>
+<p>If your specification reads <code>Maybe&lt;T&gt;</code> members (<code>HasValue</code>, <code>Value</code>, <code>GetValueOrDefault(d)</code>, <code>== Maybe&lt;T&gt;.None</code>), register the Trellis interceptors so the <code>MaybeQueryInterceptor</code> rewrites the access into the underlying storage member:</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis.EntityFrameworkCore;
+
+public sealed class AppDbContext(DbContextOptions&lt;AppDbContext&gt; options) : DbContext(options)
+{
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =&gt;
+        optionsBuilder.AddTrellisInterceptors();
+}
+</code></pre>
+<p>Without <code>AddTrellisInterceptors()</code>, <code>Maybe&lt;T&gt;</code> access inside a spec either fails to translate or silently drops the predicate — a &quot;fake says yes, production says no&quot; failure mode. See the EF Core guide for details.</p>
+<h2 id="caching-the-compiled-delegate">Caching the compiled delegate</h2>
+<p><code>CacheCompilation</code> (protected, virtual, default <code>true</code>) controls whether <code>IsSatisfiedBy</code> reuses a single <code>Lazy&lt;Func&lt;T, bool&gt;&gt;</code>. Override it to <code>false</code> only when <code>ToExpression()</code> returns a different tree on different invocations of the same instance — for example, when the predicate captures a mutable callback.</p>
+<pre><code class="lang-csharp">using System;
+using System.Linq.Expressions;
+using Trellis;
+
+public sealed class ThresholdSpec(Func&lt;int&gt; getThreshold) : Specification&lt;int&gt;
+{
+    protected override bool CacheCompilation =&gt; false;
+
+    public override Expression&lt;Func&lt;int, bool&gt;&gt; ToExpression() =&gt;
+        value =&gt; value &gt; getThreshold();
+}
+</code></pre>
+<p>The override only affects in-memory evaluation. LINQ providers always read the current <code>ToExpression()</code> result.</p>
+<h2 id="composition">Composition</h2>
+<p>Specifications compose with the rest of Trellis through the data they filter, not through <code>Result&lt;T&gt;</code>. A typical flow loads via spec, validates, and continues in a result pipeline:</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+
+public sealed class FulfilOverdueOrders(IOrderRepository repository)
+{
+    public Task&lt;Result&lt;int&gt;&gt; RunAsync(CancellationToken ct) =&gt;
+        FetchAsync(ct)
+            .EnsureAsync(orders =&gt; orders.Count &gt; 0, new Error.NotFound(ResourceRef.For&lt;Order&gt;(&quot;overdue&quot;)))
+            .MapAsync(orders =&gt; orders.Count);
+
+    private async Task&lt;Result&lt;IReadOnlyList&lt;Order&gt;&gt;&gt; FetchAsync(CancellationToken ct)
+    {
+        var spec = new OverdueOrderSpec(DateTimeOffset.UtcNow)
+            .And(new HighValueOrderSpec(500m));
+
+        var orders = await repository.ListAsync(spec, ct).ConfigureAwait(false);
+        return Result.Ok(orders);
+    }
+}
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>One rule, one name.</strong> A spec earns its keep when the rule has a domain name and shows up in more than one place. Inline <code>Where(o =&gt; ...)</code> is fine for one-off queries.</li>
+<li><strong>Prefer combinators over re-implementing.</strong> If <code>OverdueOrderSpec.And(HighValueOrderSpec)</code> already says it, don't write <code>OverdueHighValueOrderSpec</code>.</li>
+<li><strong>Keep expressions translatable.</strong> Stick to property access, comparisons, arithmetic, and provider-supported helpers. Avoid invoking arbitrary instance methods inside <code>ToExpression()</code>.</li>
+<li><strong>Treat constructor args as immutable.</strong> They get baked into the expression tree closure; mutating a captured field after composition produces surprising results.</li>
+<li><strong>EF Core 8+.</strong> Composed specs use <code>Expression.Invoke</code>; older EF Core versions cannot translate that pattern.</li>
+<li><strong>Test specs directly.</strong> <code>IsSatisfiedBy</code> against representative objects is the cheapest way to lock the rule down before exercising it through a repository.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-core.html#specificationt"><code>trellis-api-core.md</code> → <code>Specification&lt;T&gt;</code></a></li>
+<li><code>Maybe&lt;T&gt;</code> query rewriting and the <code>AddTrellisInterceptors()</code> registration: <a href="integration-ef.html"><code>integration-ef.md</code></a></li>
+<li>Spec / <code>Maybe&lt;T&gt;</code> / fake-vs-real divergence walkthrough: <a href="../api_reference/trellis-api-cookbook.html"><code>trellis-api-cookbook.md</code> → Recipe 15</a></li>
+<li>Domain primitives that read well inside specifications: <a href="primitives.html"><code>primitives.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/specifications.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

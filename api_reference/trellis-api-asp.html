@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Asp — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Asp — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisasp--api-reference">Trellis.Asp — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Asp</code> (bundles the AOT-friendly <code>Trellis.AspSourceGenerator.dll</code> at <code>analyzers/dotnet/cs/</code> — installing <code>Trellis.Asp</code> attaches the generator automatically — and contains the ASP.NET actor providers formerly published as <code>Trellis.Asp.Authorization</code>).
+<strong>Namespaces:</strong> <code>Trellis.Asp</code>, <code>Trellis.Asp.Authorization</code>, <code>Trellis.Asp.ModelBinding</code>, <code>Trellis.Asp.Routing</code>, <code>Trellis.Asp.Validation</code>
+<strong>Purpose:</strong> ASP.NET Core integration for mapping Trellis <code>Result</code>/<code>Result&lt;T&gt;</code>/<code>WriteOutcome&lt;T&gt;</code>/<code>Page&lt;T&gt;</code> values to HTTP responses, evaluating HTTP preconditions / ranges / <code>Prefer</code> preferences, hydrating actors from JWT claims, validating scalar value objects in MVC and Minimal APIs, and emitting AOT-friendly <code>JsonConverter</code>s for Trellis scalar values.</p>
+<p>The single supported response verb is <code>result.ToHttpResponse(...)</code>. It returns <code>Microsoft.AspNetCore.Http.IResult</code> and works in both Minimal API and MVC hosts (.NET 7+ executes <code>IResult</code> natively in MVC). For typed <code>ActionResult&lt;T&gt;</code> signatures, chain <code>.AsActionResult&lt;T&gt;()</code>. Configure protocol semantics via the fluent <code>HttpResponseOptionsBuilder&lt;T&gt;</code> (<code>WithETag</code>, <code>WithLastModified</code>, <code>Vary</code>, <code>Created</code>/<code>CreatedAtRoute</code>/<code>CreatedAtAction</code>, <code>EvaluatePreconditions</code>, <code>HonorPrefer</code>, <code>WithRange</code>, <code>WithErrorMapping</code>, …).</p>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are wiring ASP.NET Core endpoints/controllers that return Trellis <code>Result</code>, <code>Result&lt;T&gt;</code>, <code>WriteOutcome&lt;T&gt;</code>, or <code>Page&lt;T&gt;</code>.</li>
+<li>You need the exact response-mapping verb, status-code behavior, Problem Details mapping, ETag/range/preference handling, actor-provider setup, scalar value-object binding, or route constraints.</li>
+<li>You are implementing API surface polish: failure response metadata, versioned <code>Location</code> headers, or tests proving <code>Error.UnprocessableContent</code> maps to 422.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / action</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Enable Trellis Result-to-HTTP mapping</td>
+<td>Call <code>builder.Services.AddTrellisAsp()</code> or <code>services.AddTrellis(o =&gt; o.UseAsp())</code> in the composition root. Exception middleware is only a 500 fallback; it does not map <code>Result</code> failures.</td>
+<td><a href="#servicecollectionextensions"><code>ServiceCollectionExtensions</code></a>, <a href="trellis-api-servicedefaults.html">ServiceDefaults</a></td>
+</tr>
+<tr>
+<td>Return a Minimal API result</td>
+<td><code>return result.ToHttpResponse(...)</code></td>
+<td><a href="#httpresponseextensions"><code>HttpResponseExtensions</code></a></td>
+</tr>
+<tr>
+<td>Return an MVC typed action result</td>
+<td>Convert first, then adapt: <code>return result.ToHttpResponse(...).AsActionResult&lt;T&gt;()</code> or <code>return await result.ToHttpResponseAsync(...).AsActionResultAsync&lt;T&gt;()</code></td>
+<td><a href="#actionresultadapterextensions"><code>ActionResultAdapterExtensions</code></a></td>
+</tr>
+<tr>
+<td>Configure 201 Created</td>
+<td><code>.ToHttpResponse(o =&gt; o.Created(...))</code>, <code>.CreatedAtRoute(...)</code>, or <code>.CreatedAtAction(...)</code></td>
+<td><a href="#httpresponseoptionsbuildertdomain"><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></a></td>
+</tr>
+<tr>
+<td>Generate versioned <code>Location</code> headers</td>
+<td><strong>Required when query-string API versioning is enabled.</strong> Include the API version in <code>CreatedAtRoute</code> route values: <code>[&quot;api-version&quot;] = ApiVersion</code>. Omitting it produces <code>Location</code> headers that 404 on dereference.</td>
+<td><a href="#httpresponseoptionsbuildertdomain"><code>CreatedAtRoute</code></a></td>
+</tr>
+<tr>
+<td>Map failure codes globally</td>
+<td>Configure <code>TrellisAspOptions.ErrorStatusCodeMap</code> through <code>AddTrellisAsp(...)</code></td>
+<td><a href="#trellisaspoptions"><code>TrellisAspOptions</code></a></td>
+</tr>
+<tr>
+<td>Override failure mapping for one endpoint</td>
+<td><code>.WithErrorMapping(...)</code> / <code>.WithErrorMapping&lt;TError&gt;(statusCode)</code></td>
+<td><a href="#httpresponseoptionsbuildertdomain"><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></a></td>
+</tr>
+<tr>
+<td>Document endpoint failure codes</td>
+<td>Add ASP.NET response metadata for every spec-listed failure status (<code>422</code>, <code>409</code>, <code>403</code>, <code>404</code>, etc.) in addition to happy-path metadata.</td>
+<td><a href="#code-examples">Code examples</a></td>
+</tr>
+<tr>
+<td>Add ETag / conditional GET</td>
+<td><code>.WithETag(...)</code>, <code>.WithLastModified(...)</code>, <code>.EvaluatePreconditions()</code></td>
+<td><a href="#httpresponseoptionsbuildertdomain"><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></a>, <a href="#etaghelper"><code>ETagHelper</code></a></td>
+</tr>
+<tr>
+<td>Honor <code>Prefer: return=minimal</code></td>
+<td><code>.HonorPrefer()</code> on write responses</td>
+<td><a href="#httpresponseoptionsbuildertdomain"><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></a></td>
+</tr>
+<tr>
+<td>Return paginated list responses</td>
+<td><code>Result&lt;Page&lt;T&gt;&gt;.ToHttpResponse(nextUrlBuilder, bodySelector, ...)</code></td>
+<td><a href="#pagedresponsetresponse"><code>PagedResponse&lt;TResponse&gt;</code></a></td>
+</tr>
+<tr>
+<td>Resolve actors from requests</td>
+<td><code>AddClaimsActorProvider</code>, <code>AddEntraActorProvider</code>, or <code>AddDevelopmentActorProvider</code></td>
+<td><a href="#namespace-trellisaspauthorization"><code>Trellis.Asp.Authorization</code></a></td>
+</tr>
+<tr>
+<td>Bind scalar value objects from routes/query/body</td>
+<td><code>AddTrellisAsp()</code> plus route constraints / validation middleware as needed</td>
+<td><a href="#namespace-trellisaspmodelbinding"><code>Trellis.Asp.ModelBinding</code></a>, <a href="#namespace-trellisaspvalidation"><code>Trellis.Asp.Validation</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="endpoint-checklist-for-generated-apis">Endpoint checklist for generated APIs</h2>
+<ul>
+<li>Composition root calls <code>AddTrellisAsp()</code> or <code>UseAsp()</code>.</li>
+<li>Every endpoint that returns a Trellis <code>Result</code> ultimately calls <code>ToHttpResponse</code> / <code>AsActionResult</code>.</li>
+<li>OpenAPI metadata includes the success code and every failure code listed by the product spec.</li>
+<li><code>201 Created</code> endpoints include a usable <code>Location</code> header. <strong>Under query-string API versioning, include <code>[&quot;api-version&quot;] = ApiVersion</code> in <code>CreatedAtRoute</code> route values</strong> (or use a literal <code>Location</code> that already contains <code>?api-version=...</code>). Forgetting this is a silent <code>Location</code>-404 bug — tests pass and OpenAPI looks fine, but clients following the <code>Location</code> header get 404.</li>
+<li><code>[Consumes(&quot;application/json&quot;)]</code> is <strong>not</strong> safe at the controller level when the controller has trigger-style POSTs without bodies (e.g., <code>POST /orders/{id}/submission</code>). ASP.NET Core returns <code>415 Unsupported Media Type</code> for any request without a <code>Content-Type</code> header. Apply <code>[Consumes]</code> per-action on body-bearing endpoints only, or scope it to a route convention.</li>
+<li>Integration tests include at least one business-validation failure that asserts <code>422</code> Problem Details; do not rely on exception middleware to prove Result mapping.</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="namespace-trellisasp">Namespace <code>Trellis.Asp</code></h3>
+<h3 id="httpresponseextensions"><code>HttpResponseExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class HttpResponseExtensions
+</code></pre>
+<p>The single Trellis verb for converting <code>Result</code> / <code>Result&lt;T&gt;</code> / <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> / <code>Result&lt;Page&lt;T&gt;&gt;</code> to ASP.NET Core HTTP responses.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IResult ToHttpResponse(this Error error, Action&lt;HttpResponseOptionsBuilder&gt;? configure = null)</code></td>
+<td><code>IResult</code></td>
+<td>Maps a standalone <code>Error</code> to a Problem Details response (for endpoints that produce a deterministic error).</td>
+</tr>
+<tr>
+<td><code>public static IResult ToHttpResponse&lt;T&gt;(this Result&lt;T&gt; result, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></td>
+<td><code>IResult</code></td>
+<td>Maps <code>Result&lt;T&gt;</code> to <code>200 OK</code> with the value as body, or <code>201 Created</code> + <code>Location</code> when <code>Created</code> / <code>CreatedAtRoute</code> / <code>CreatedAtAction</code> is configured. For <code>Result&lt;Unit&gt;</code> (the no-payload result returned by <code>Result.Ok()</code> / <code>Result.Fail(error)</code>), success emits <code>204 No Content</code>. Failures go through Problem Details.</td>
+</tr>
+<tr>
+<td><code>public static IResult ToHttpResponse&lt;TDomain, TBody&gt;(this Result&lt;TDomain&gt; result, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></td>
+<td><code>IResult</code></td>
+<td>Same as the <code>Result&lt;T&gt;</code> overload, but projects the response body via <code>body</code>. Selectors in the options builder still run against the domain value.</td>
+</tr>
+<tr>
+<td><code>public static IResult ToHttpResponse&lt;T&gt;(this Result&lt;WriteOutcome&lt;T&gt;&gt; result, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></td>
+<td><code>IResult</code></td>
+<td>Maps <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> per RFC 9110: <code>Created → 201 + Location</code>, <code>Updated → 200</code> (or <code>204</code> with <code>Prefer: return=minimal</code>), <code>UpdatedNoContent → 204</code>, <code>Accepted → 202</code> + <code>Retry-After</code>, <code>AcceptedNoContent → 202</code>.</td>
+</tr>
+<tr>
+<td><code>public static IResult ToHttpResponse&lt;TDomain, TBody&gt;(this Result&lt;WriteOutcome&lt;TDomain&gt;&gt; result, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></td>
+<td><code>IResult</code></td>
+<td><code>WriteOutcome</code> overload with body projection.</td>
+</tr>
+<tr>
+<td><code>public static IResult ToHttpResponse&lt;T, TBody&gt;(this Result&lt;Page&lt;T&gt;&gt; result, Func&lt;Cursor, int, string&gt; nextUrlBuilder, Func&lt;T, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;Page&lt;T&gt;&gt;&gt;? configure = null)</code></td>
+<td><code>IResult</code></td>
+<td>Maps <code>Result&lt;Page&lt;T&gt;&gt;</code> to a paginated JSON envelope (<code>PagedResponse&lt;TBody&gt;</code>) plus an RFC 8288 <code>Link</code> header. <code>nextUrlBuilder(cursor, appliedLimit)</code> builds the absolute URL for next/previous links.</td>
+</tr>
+</tbody>
+</table>
+<p>Each overload also exposes <code>Task&lt;...&gt;</code> and <code>ValueTask&lt;...&gt;</code> async variants named <code>ToHttpResponseAsync</code> with identical signatures.</p>
+<h3 id="httpresponseoptionsbuildertdomain"><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class HttpResponseOptionsBuilder&lt;TDomain&gt;
+</code></pre>
+<p>Fluent options builder used by every generic <code>ToHttpResponse</code> overload. Selectors run against the <code>TDomain</code> value (not the projected response body). All methods return <code>this</code> for chaining.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WithETag(Func&lt;TDomain, string&gt; selector)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Sets a strong ETag (wraps the string in <code>EntityTagValue.Strong</code>).</td>
+</tr>
+<tr>
+<td><code>WithETag(Func&lt;TDomain, EntityTagValue&gt; selector)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Sets a strong or weak ETag from a caller-built <code>EntityTagValue</code>.</td>
+</tr>
+<tr>
+<td><code>WithLastModified(Func&lt;TDomain, DateTimeOffset&gt; selector)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Emits <code>Last-Modified</code> header in RFC 1123 format.</td>
+</tr>
+<tr>
+<td><code>Vary(params string[] headers)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Appends headers to the response <code>Vary</code> header (existing values preserved; duplicates suppressed).</td>
+</tr>
+<tr>
+<td><code>WithContentLanguage(params string[] languages)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Joins values into <code>Content-Language</code>.</td>
+</tr>
+<tr>
+<td><code>WithContentLocation(Func&lt;TDomain, string&gt; selector)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Sets the <code>Content-Location</code> header.</td>
+</tr>
+<tr>
+<td><code>WithAcceptRanges(string acceptRanges)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Sets <code>Accept-Ranges</code> (e.g. <code>&quot;bytes&quot;</code> or <code>&quot;none&quot;</code>).</td>
+</tr>
+<tr>
+<td><code>Created(string locationLiteral)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Returns <code>201 Created</code> with a literal <code>Location</code> header.</td>
+</tr>
+<tr>
+<td><code>Created(Func&lt;TDomain, string&gt; selector)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Returns <code>201 Created</code> with a <code>Location</code> derived from the value.</td>
+</tr>
+<tr>
+<td><code>CreatedAtRoute(string routeName, Func&lt;TDomain, RouteValueDictionary&gt; routeValues)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Returns <code>201 Created</code> with a <code>Location</code> generated via <code>LinkGenerator.GetUriByName</code> (resolved from <code>HttpContext.RequestServices</code> at execute time). AOT-safe. <strong>Under query-string API versioning, the route values dictionary MUST include <code>[&quot;api-version&quot;] = ApiVersion</code></strong> — otherwise <code>Location</code> headers omit the version and 404 on dereference. Example: <code>o.CreatedAtRoute(&quot;Orders_GetById&quot;, o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id.Value, [&quot;api-version&quot;] = ApiVersion })</code>.</td>
+</tr>
+<tr>
+<td><code>[RequiresUnreferencedCode] [RequiresDynamicCode] CreatedAtAction(string actionName, Func&lt;TDomain, RouteValueDictionary&gt; routeValues, string? controllerName = null)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>MVC equivalent of <code>CreatedAtAction</code> — uses <code>LinkGenerator.GetUriByAction</code>. <strong>Not trim/AOT-safe</strong>; use <code>CreatedAtRoute</code> for AOT scenarios.</td>
+</tr>
+<tr>
+<td><code>EvaluatePreconditions()</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>On <code>GET</code>/<code>HEAD</code>, evaluates RFC 9110 conditional headers (<code>If-Match</code>, <code>If-Unmodified-Since</code>, <code>If-None-Match</code>, <code>If-Modified-Since</code>) using the configured ETag/LastModified selectors and writes <code>304 Not Modified</code> or <code>412 Precondition Failed</code> accordingly. On unsafe methods the precondition must be evaluated <em>before</em> the mutation.</td>
+</tr>
+<tr>
+<td><code>HonorPrefer()</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Honors RFC 7240 <code>Prefer: return=minimal</code> / <code>return=representation</code>. Always emits <code>Vary: Prefer</code>; emits <code>Preference-Applied</code> only when honored.</td>
+</tr>
+<tr>
+<td><code>WithRange(Func&lt;TDomain, ContentRangeHeaderValue&gt; selector)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Returns <code>206 Partial Content</code> with a <code>Content-Range</code> header from the selector (returns <code>200</code> when the range covers the whole representation).</td>
+</tr>
+<tr>
+<td><code>WithRange(long from, long to, long totalLength)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Static range variant. Clamps <code>to</code> to <code>totalLength - 1</code>; returns <code>200</code> when the range covers the whole resource.</td>
+</tr>
+<tr>
+<td><code>WithErrorMapping(Func&lt;Error, int&gt; mapper)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Per-call mapper for failure responses. Highest precedence.</td>
+</tr>
+<tr>
+<td><code>WithErrorMapping&lt;TError&gt;(int statusCode) where TError : Error</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Per-call override for a single error type. Higher precedence than <code>TrellisAspOptions</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="httpresponseoptionsbuilder"><code>HttpResponseOptionsBuilder</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class HttpResponseOptionsBuilder
+</code></pre>
+<p>Non-generic builder used for the value-less <code>Result</code> overload.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Vary(params string[] headers)</code></td>
+<td><code>HttpResponseOptionsBuilder</code></td>
+<td>Appends headers to <code>Vary</code>.</td>
+</tr>
+<tr>
+<td><code>HonorPrefer()</code></td>
+<td><code>HttpResponseOptionsBuilder</code></td>
+<td>Always emits <code>Vary: Prefer</code>.</td>
+</tr>
+<tr>
+<td><code>WithErrorMapping(Func&lt;Error, int&gt; mapper)</code></td>
+<td><code>HttpResponseOptionsBuilder</code></td>
+<td>Per-call mapper for failure responses.</td>
+</tr>
+<tr>
+<td><code>WithErrorMapping&lt;TError&gt;(int statusCode) where TError : Error</code></td>
+<td><code>HttpResponseOptionsBuilder</code></td>
+<td>Per-call override for a single error type.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="actionresultadapterextensions"><code>ActionResultAdapterExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ActionResultAdapterExtensions
+</code></pre>
+<p>MVC adapter that wraps an <code>IResult</code> in an <code>ActionResult&lt;T&gt;</code> so MVC controllers can declare typed return signatures (e.g. <code>Task&lt;ActionResult&lt;TodoResponse&gt;&gt;</code>) for OpenAPI/ApiExplorer inference and <code>[ProducesResponseType&lt;T&gt;]</code> compatibility. Implementation forwards <code>ActionResult.ExecuteResultAsync</code> to <code>IResult.ExecuteAsync(HttpContext)</code> via an internal <code>TrellisActionResult&lt;T&gt;</code> (which also implements <code>IConvertToActionResult</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static ActionResult&lt;T&gt; AsActionResult&lt;T&gt;(this IResult result)</code></td>
+<td><code>ActionResult&lt;T&gt;</code></td>
+<td>Wraps an <code>IResult</code> in a typed <code>ActionResult&lt;T&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>public static Task&lt;ActionResult&lt;T&gt;&gt; AsActionResultAsync&lt;T&gt;(this Task&lt;IResult&gt; resultTask)</code></td>
+<td><code>Task&lt;ActionResult&lt;T&gt;&gt;</code></td>
+<td>Async <code>Task</code> overload.</td>
+</tr>
+<tr>
+<td><code>public static ValueTask&lt;ActionResult&lt;T&gt;&gt; AsActionResultAsync&lt;T&gt;(this ValueTask&lt;IResult&gt; resultTask)</code></td>
+<td><code>ValueTask&lt;ActionResult&lt;T&gt;&gt;</code></td>
+<td>Async <code>ValueTask</code> overload.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="trellisaspoptions"><code>TrellisAspOptions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class TrellisAspOptions
+</code></pre>
+<p>Configuration registered via <code>AddTrellisAsp(...)</code> that maps domain <code>Error</code> types to HTTP status codes.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SystemDefault</code></td>
+<td><code>static TrellisAspOptions</code> (internal)</td>
+<td>Read-only default instance used when DI cannot resolve a configured <code>TrellisAspOptions</code> (e.g. the host did not call <code>AddTrellisAsp</code>). Internal — not callable from user code; hosts that want a different default must register their own.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public TrellisAspOptions MapError&lt;TError&gt;(int statusCode) where TError : Error</code></td>
+<td><code>TrellisAspOptions</code></td>
+<td>Overrides or adds an error-type-to-status-code mapping.</td>
+</tr>
+<tr>
+<td><code>internal int GetStatusCode(Error error)</code></td>
+<td><code>int</code></td>
+<td>Walks the error type hierarchy looking for a mapping; falls back to <code>500</code>. Invoked by the response writer.</td>
+</tr>
+</tbody>
+</table>
+<p>Default mappings (closed-ADT): <code>Error.BadRequest=400</code>, <code>Error.Unauthorized=401</code>, <code>Error.Forbidden=403</code>, <code>Error.NotFound=404</code>, <code>Error.MethodNotAllowed=405</code>, <code>Error.NotAcceptable=406</code>, <code>Error.Conflict=409</code>, <code>Error.Gone=410</code>, <code>Error.PreconditionFailed=412</code>, <code>Error.ContentTooLarge=413</code>, <code>Error.UnsupportedMediaType=415</code>, <code>Error.RangeNotSatisfiable=416</code>, <code>Error.UnprocessableContent=422</code>, <code>Error.PreconditionRequired=428</code>, <code>Error.TooManyRequests=429</code>, <code>Error.InternalServerError=500</code>, <code>Error.Unexpected=500</code>, <code>Error.NotImplemented=501</code>, <code>Error.ServiceUnavailable=503</code>.</p>
+<h3 id="ruleviolationproblemdetail"><code>RuleViolationProblemDetail</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed record RuleViolationProblemDetail(string Code, string? Detail, string[] Fields);
+</code></pre>
+<p>AOT-friendly JSON payload used inside Problem Details <code>extensions[&quot;rules&quot;]</code> for <code>Error.UnprocessableContent</code> rule violations. Application code should treat this as response shape metadata, not as a domain model.</p>
+<h3 id="aggregaterepresentationvalidatort"><code>AggregateRepresentationValidator&lt;T&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class AggregateRepresentationValidator&lt;T&gt; : IRepresentationValidator&lt;T&gt; where T : IAggregate
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public EntityTagValue GenerateETag(T value, string? variantKey = null)</code></td>
+<td><code>EntityTagValue</code></td>
+<td>Returns <code>EntityTagValue.Strong(value.ETag)</code> when <code>variantKey</code> is null/empty; otherwise SHA-256 hashes <code>$&quot;{value.ETag}:{variantKey}&quot;</code> and returns the first 16 lowercase hex characters as a strong ETag.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="irepresentationvalidatorin-t"><code>IRepresentationValidator&lt;in T&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IRepresentationValidator&lt;in T&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EntityTagValue GenerateETag(T value, string? variantKey = null)</code></td>
+<td><code>EntityTagValue</code></td>
+<td>Generates a representation-specific validator for a domain value and optional variant key (typically the negotiated content type or language).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="etaghelper"><code>ETagHelper</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ETagHelper
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static bool IfNoneMatchMatches(IList&lt;EntityTagHeaderValue&gt; ifNoneMatchHeader, string currentETag)</code></td>
+<td><code>bool</code></td>
+<td>Weak-comparison helper for <code>If-None-Match</code>; returns <code>true</code> for <code>*</code> or any matching opaque tag.</td>
+</tr>
+<tr>
+<td><code>public static bool IfMatchSatisfied(IList&lt;EntityTagHeaderValue&gt; ifMatchHeader, string currentETag)</code></td>
+<td><code>bool</code></td>
+<td>Strong-comparison helper for <code>If-Match</code>; returns <code>true</code> for <code>*</code> or a matching strong tag.</td>
+</tr>
+<tr>
+<td><code>public static EntityTagValue[]? ParseIfNoneMatch(HttpRequest request)</code></td>
+<td><code>EntityTagValue[]?</code></td>
+<td><code>null</code> when absent; <code>[]</code> when present but unparseable/empty; wildcard for <code>*</code>; otherwise the parsed strong/weak tags.</td>
+</tr>
+<tr>
+<td><code>public static DateTimeOffset? ParseIfModifiedSince(HttpRequest request)</code></td>
+<td><code>DateTimeOffset?</code></td>
+<td>Returns the typed <code>If-Modified-Since</code> value.</td>
+</tr>
+<tr>
+<td><code>public static DateTimeOffset? ParseIfUnmodifiedSince(HttpRequest request)</code></td>
+<td><code>DateTimeOffset?</code></td>
+<td>Returns the typed <code>If-Unmodified-Since</code> value.</td>
+</tr>
+<tr>
+<td><code>public static EntityTagValue[]? ParseIfMatch(HttpRequest request)</code></td>
+<td><code>EntityTagValue[]?</code></td>
+<td><code>null</code> when absent; <code>[]</code> when present but empty/only weak; wildcard for <code>*</code>; otherwise strong tags only.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ifnonematchextensions"><code>IfNoneMatchExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class IfNoneMatchExtensions
+</code></pre>
+<p>Create-if-absent guard for unsafe methods (<code>PUT</code> / <code>POST</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;T&gt; EnforceIfNoneMatchPrecondition&lt;T&gt;(this Result&lt;T&gt; result, EntityTagValue[]? ifNoneMatchETags)</code></td>
+<td><code>Result&lt;T&gt;</code></td>
+<td>When <code>ifNoneMatchETags</code> contains <code>*</code>, replaces a successful result with <code>Error.PreconditionFailed</code> (<code>PreconditionKind.IfNoneMatch</code>). No-op when the header is absent or the result is already a failure.</td>
+</tr>
+<tr>
+<td><code>public static Task&lt;Result&lt;T&gt;&gt; EnforceIfNoneMatchPreconditionAsync&lt;T&gt;(this Task&lt;Result&lt;T&gt;&gt; resultTask, EntityTagValue[]? ifNoneMatchETags)</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code></td>
+<td>Async <code>Task</code> overload.</td>
+</tr>
+<tr>
+<td><code>public static ValueTask&lt;Result&lt;T&gt;&gt; EnforceIfNoneMatchPreconditionAsync&lt;T&gt;(this ValueTask&lt;Result&lt;T&gt;&gt; resultTask, EntityTagValue[]? ifNoneMatchETags)</code></td>
+<td><code>ValueTask&lt;Result&lt;T&gt;&gt;</code></td>
+<td>Async <code>ValueTask</code> overload.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="preferheader"><code>PreferHeader</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class PreferHeader
+</code></pre>
+<p>Parses the RFC 7240 <code>Prefer</code> request header. Per RFC 7240 §2 unrecognized or malformed tokens are ignored; duplicate recognized preferences use first-wins behavior.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReturnRepresentation</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> for <code>return=representation</code>.</td>
+</tr>
+<tr>
+<td><code>ReturnMinimal</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> for <code>return=minimal</code>.</td>
+</tr>
+<tr>
+<td><code>RespondAsync</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> for <code>respond-async</code>.</td>
+</tr>
+<tr>
+<td><code>Wait</code></td>
+<td><code>int?</code></td>
+<td>Parsed <code>wait=N</code> value; <code>null</code> when absent or unparseable.</td>
+</tr>
+<tr>
+<td><code>HandlingStrict</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> for <code>handling=strict</code>.</td>
+</tr>
+<tr>
+<td><code>HandlingLenient</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> for <code>handling=lenient</code>.</td>
+</tr>
+<tr>
+<td><code>HasPreferences</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when at least one recognized preference was parsed. Unknown preferences do not set this.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static PreferHeader Parse(HttpRequest request)</code></td>
+<td><code>PreferHeader</code></td>
+<td>Parses the header from the request.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rangeoutcome"><code>RangeOutcome</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public abstract record RangeOutcome
+{
+    public sealed record FullRepresentation : RangeOutcome;
+    public sealed record PartialContent(long From, long To, long CompleteLength) : RangeOutcome;
+    public sealed record NotSatisfiable(long CompleteLength) : RangeOutcome;
+}
+</code></pre>
+<p>Result of evaluating an RFC 9110 <code>Range</code> request.</p>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FullRepresentation</code></td>
+<td>No Range header, non-<code>bytes</code> unit, multi-range request, malformed range, or non-<code>GET</code> method — serve the full representation (<code>200 OK</code>).</td>
+</tr>
+<tr>
+<td><code>PartialContent(From, To, CompleteLength)</code></td>
+<td>Satisfiable single byte range — serve <code>206 Partial Content</code> with <code>Content-Range</code>.</td>
+</tr>
+<tr>
+<td><code>NotSatisfiable(CompleteLength)</code></td>
+<td><code>from &gt;= completeLength</code> or <code>from &gt; to</code> — serve <code>416 Range Not Satisfiable</code> with <code>Content-Range: bytes */{CompleteLength}</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rangerequestevaluator"><code>RangeRequestEvaluator</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class RangeRequestEvaluator
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static RangeOutcome Evaluate(HttpRequest request, long completeLength)</code></td>
+<td><code>RangeOutcome</code></td>
+<td>Evaluates the <code>Range</code> header per RFC 9110 §14. Only supports <code>bytes</code>. Non-<code>GET</code>, missing header, multi-range, or malformed → <code>FullRepresentation</code>. Suffix ranges (<code>-N</code>) supported. Throws <code>ArgumentOutOfRangeException</code> for negative <code>completeLength</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="partialcontenthttpresult"><code>PartialContentHttpResult</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class PartialContentHttpResult : IResult
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ContentRangeHeaderValue</code></td>
+<td><code>ContentRangeHeaderValue</code></td>
+<td>The <code>Content-Range</code> header written by the result.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public PartialContentHttpResult(long rangeStart, long rangeEnd, long? totalLength, IResult inner)</code></td>
+<td>—</td>
+<td>Builds a <code>206 Partial Content</code> result using unit <code>&quot;items&quot;</code>, delegating body serialization to <code>inner</code>.</td>
+</tr>
+<tr>
+<td><code>public PartialContentHttpResult(ContentRangeHeaderValue contentRangeHeaderValue, IResult inner)</code></td>
+<td>—</td>
+<td>Variant with a caller-built <code>Content-Range</code>.</td>
+</tr>
+<tr>
+<td><code>public Task ExecuteAsync(HttpContext httpContext)</code></td>
+<td><code>Task</code></td>
+<td>Writes <code>Content-Range</code>, forces status <code>206</code>, then executes <code>inner</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="partialcontentresult"><code>PartialContentResult</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public class PartialContentResult : ObjectResult
+</code></pre>
+<p>MVC <code>ObjectResult</code> companion to <code>PartialContentHttpResult</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ContentRangeHeaderValue</code></td>
+<td><code>ContentRangeHeaderValue</code></td>
+<td>The <code>Content-Range</code> header written during formatting.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public PartialContentResult(long rangeStart, long rangeEnd, long? totalLength, object? value)</code></td>
+<td>—</td>
+<td><code>206 Partial Content</code> MVC result using unit <code>&quot;items&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>public PartialContentResult(ContentRangeHeaderValue contentRangeHeaderValue, object? value)</code></td>
+<td>—</td>
+<td>Variant with a caller-built <code>Content-Range</code>.</td>
+</tr>
+<tr>
+<td><code>public override void OnFormatting(ActionContext context)</code></td>
+<td><code>void</code></td>
+<td>Writes the <code>Content-Range</code> response header before object body formatting.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pagedresponsetresponse"><code>PagedResponse&lt;TResponse&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed record PagedResponse&lt;TResponse&gt;(
+    IReadOnlyList&lt;TResponse&gt; Items,
+    PageLink? Next,
+    PageLink? Previous,
+    int RequestedLimit,
+    int AppliedLimit,
+    int DeliveredCount,
+    bool WasCapped);
+</code></pre>
+<p>JSON envelope returned by the <code>Result&lt;Page&lt;T&gt;&gt;</code> overload of <code>ToHttpResponse</code>.</p>
+<h3 id="pagelink"><code>PageLink</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed record PageLink(string Cursor, string Href);
+</code></pre>
+<p>A cursor + the absolute URL the client should follow. Also rendered as <code>&lt;{Href}&gt;; rel=&quot;next&quot;</code> / <code>rel=&quot;prev&quot;</code> entries in the response <code>Link</code> header.</p>
+<h3 id="servicecollectionextensions"><code>ServiceCollectionExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ServiceCollectionExtensions
+</code></pre>
+<p>The main DI surface for <code>Trellis.Asp</code> (in folder <code>Extensions/</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IMvcBuilder AddScalarValueValidation(this IMvcBuilder builder)</code></td>
+<td><code>IMvcBuilder</code></td>
+<td>Configures MVC JSON options + the <code>ScalarValueValidationFilter</code> + a <code>ScalarValueModelBinderProvider</code>. Suppresses MVC validation recursion into <code>Maybe&lt;T&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddScalarValueValidation(this IServiceCollection services)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Configures both MVC (<code>MvcJsonOptions</code>) and Minimal API (<code>HttpJsonOptions</code>) JSON pipelines for scalar-value/<code>Maybe&lt;T&gt;</code> support. Idempotent.</td>
+</tr>
+<tr>
+<td><code>public static IApplicationBuilder UseScalarValueValidation(this IApplicationBuilder app)</code></td>
+<td><code>IApplicationBuilder</code></td>
+<td>Adds <code>ScalarValueValidationMiddleware</code> so <code>ValidatingJsonConverter&lt;TValue,TPrimitive&gt;</code> can collect errors per request.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddScalarValueValidationForMinimalApi(this IServiceCollection services)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Configures only the Minimal API JSON pipeline.</td>
+</tr>
+<tr>
+<td><code>public static RouteHandlerBuilder WithScalarValueValidation(this RouteHandlerBuilder builder)</code></td>
+<td><code>RouteHandlerBuilder</code></td>
+<td>Adds <code>ScalarValueValidationEndpointFilter</code> to the route handler.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddTrellisAsp(this IServiceCollection services)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers <code>TrellisAspOptions</code> with default error mappings, then calls <code>AddScalarValueValidation()</code>.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action&lt;TrellisAspOptions&gt; configure)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Same as above, with a <code>MapError&lt;TError&gt;(...)</code> callback for overrides.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="namespace-trellisaspauthorization">Namespace <code>Trellis.Asp.Authorization</code></h3>
+<p>The actor-provider DI surface absorbed from the former <code>Trellis.Asp.Authorization</code> package. Domain primitives (<code>Actor</code>, <code>IActorProvider</code>, etc.) live in <code>Trellis.Authorization</code> — see <a href="trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a>.</p>
+<h3 id="servicecollectionextensions-1"><code>ServiceCollectionExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ServiceCollectionExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IServiceCollection AddClaimsActorProvider(this IServiceCollection services, Action&lt;ClaimsActorOptions&gt;? configure = null)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Adds <code>IHttpContextAccessor</code>, configures <code>ClaimsActorOptions</code>, and registers <code>IActorProvider</code> as a scoped <code>ClaimsActorProvider</code>.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddEntraActorProvider(this IServiceCollection services, Action&lt;EntraActorOptions&gt;? configure = null)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Adds <code>IHttpContextAccessor</code>, configures <code>EntraActorOptions</code>, and registers <code>IActorProvider</code> as a scoped <code>EntraActorProvider</code>.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddDevelopmentActorProvider(this IServiceCollection services, Action&lt;DevelopmentActorOptions&gt;? configure = null)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Adds <code>IHttpContextAccessor</code> + logging, configures <code>DevelopmentActorOptions</code>, and registers <code>IActorProvider</code> as a scoped <code>DevelopmentActorProvider</code>. The provider itself throws outside the Development environment.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddCachingActorProvider&lt;[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T&gt;(this IServiceCollection services) where T : class, IActorProvider</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers concrete provider <code>T</code> as scoped, then wraps it with <code>CachingActorProvider</code> as the scoped <code>IActorProvider</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="claimsactoroptions"><code>ClaimsActorOptions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public class ClaimsActorOptions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ActorIdClaim</code></td>
+<td><code>string</code></td>
+<td>Claim type used for <code>Actor.Id</code>. Default: <code>&quot;sub&quot;</code>. Matched verbatim against <code>Claim.Type</code>; no dotted/JSON-path traversal.</td>
+</tr>
+<tr>
+<td><code>PermissionsClaim</code></td>
+<td><code>string</code></td>
+<td>Claim type used for permissions. Default: <code>&quot;permissions&quot;</code>. Multi-valued JWT claims arrive as repeated <code>Claim</code> instances and are aggregated via <code>FindAll</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="claimsactorprovider"><code>ClaimsActorProvider</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public class ClaimsActorProvider(
+    IHttpContextAccessor httpContextAccessor,
+    IOptions&lt;ClaimsActorOptions&gt; options) : IActorProvider
+</code></pre>
+<p>Hydrates an <code>Actor</code> from the current <code>HttpContext.User</code> using flat JWT/OIDC claims. Subclass and override <code>GetCurrentActorAsync</code> for nested-claim or computed-permission scenarios; <code>EntraActorProvider</code> is a worked example.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HttpContextAccessor</code></td>
+<td><code>IHttpContextAccessor</code> (protected)</td>
+<td>Exposed to derived providers.</td>
+</tr>
+<tr>
+<td><code>Options</code></td>
+<td><code>ClaimsActorOptions</code> (protected)</td>
+<td>Mapped options value.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public virtual Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Actor&gt;</code></td>
+<td>Throws <code>InvalidOperationException</code> when <code>HttpContext</code> is missing, no authenticated identity exists, or the configured <code>ActorIdClaim</code> is missing. Permissions come from <code>FindAll(PermissionsClaim)</code> snapshotted into a <code>FrozenSet&lt;string&gt;</code>; <code>Actor.Create(actorId, permissions)</code> is used so forbidden permissions and attributes default to empty.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entraactoroptions"><code>EntraActorOptions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class EntraActorOptions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IdClaimType</code></td>
+<td><code>string</code></td>
+<td>Claim type used for actor ID. Default: <code>&quot;http://schemas.microsoft.com/identity/claims/objectidentifier&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>MapPermissions</code></td>
+<td><code>Func&lt;IEnumerable&lt;Claim&gt;, IReadOnlySet&lt;string&gt;&gt;</code></td>
+<td>Default returns the values of every <code>roles</code> / <code>ClaimTypes.Role</code> claim (case-insensitive type match).</td>
+</tr>
+<tr>
+<td><code>MapForbiddenPermissions</code></td>
+<td><code>Func&lt;IEnumerable&lt;Claim&gt;, IReadOnlySet&lt;string&gt;&gt;</code></td>
+<td>Default returns an empty <code>HashSet&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>MapAttributes</code></td>
+<td><code>Func&lt;IEnumerable&lt;Claim&gt;, HttpContext, IReadOnlyDictionary&lt;string, string&gt;&gt;</code></td>
+<td>Default extracts <code>tid</code>, <code>preferred_username</code>, <code>azp</code>, <code>azpacr</code>, <code>acrs</code>, plus <code>ip_address</code> from <code>Connection.RemoteIpAddress</code> and <code>mfa = &quot;true&quot;|&quot;false&quot;</code> from the <code>amr</code> claim.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entraactorprovider"><code>EntraActorProvider</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class EntraActorProvider : ClaimsActorProvider
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public EntraActorProvider(IHttpContextAccessor httpContextAccessor, IOptions&lt;EntraActorOptions&gt; options)</code></td>
+<td>—</td>
+<td>Builds the Entra-specific provider; passes <code>ActorIdClaim = options.Value.IdClaimType</code> and <code>PermissionsClaim = &quot;roles&quot;</code> to the base.</td>
+</tr>
+<tr>
+<td><code>public override Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Actor&gt;</code></td>
+<td>Throws the same missing-context / missing-identity failures as <code>ClaimsActorProvider</code>. When <code>IdClaimType</code> is the long objectidentifier claim, falls back to the short <code>&quot;oid&quot;</code> claim before failing. Wraps any exception from <code>MapPermissions</code>, <code>MapForbiddenPermissions</code>, or <code>MapAttributes</code> in <code>InvalidOperationException</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="developmentactoroptions"><code>DevelopmentActorOptions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class DevelopmentActorOptions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DefaultActorId</code></td>
+<td><code>string</code></td>
+<td>Default fallback actor ID. Default: <code>&quot;development&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>DefaultPermissions</code></td>
+<td><code>IReadOnlySet&lt;string&gt;</code></td>
+<td>Default fallback permissions when no header is supplied. Default: empty <code>HashSet&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>ThrowOnMalformedHeader</code></td>
+<td><code>bool</code></td>
+<td>When <code>true</code>, malformed <code>X-Test-Actor</code> JSON throws instead of falling back to the default actor. Default: <code>false</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="developmentactorprovider"><code>DevelopmentActorProvider</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed partial class DevelopmentActorProvider(
+    IHttpContextAccessor httpContextAccessor,
+    IHostEnvironment hostEnvironment,
+    IOptions&lt;DevelopmentActorOptions&gt; options,
+    ILogger&lt;DevelopmentActorProvider&gt; logger) : IActorProvider
+</code></pre>
+<p>Reads the <code>X-Test-Actor</code> header (JSON: <code>{ &quot;Id&quot;: ..., &quot;Permissions&quot;: [...], &quot;ForbiddenPermissions&quot;: [...], &quot;Attributes&quot;: {...} }</code>, case-insensitive property matching).</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Actor&gt;</code></td>
+<td>Throws <code>InvalidOperationException</code> whenever <code>!hostEnvironment.IsDevelopment()</code>, regardless of header presence. In Development, returns <code>Actor.Create(DefaultActorId, DefaultPermissions)</code> when <code>HttpContext</code> is null or the header is missing/empty. Malformed JSON logs a warning and falls back unless <code>ThrowOnMalformedHeader</code> is <code>true</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cachingactorprovider"><code>CachingActorProvider</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class CachingActorProvider : IActorProvider
+</code></pre>
+<p>Decorator that caches the inner provider's resolution task per request scope using <code>LazyInitializer.EnsureInitialized</code>. The shared task uses <code>HttpContext.RequestAborted</code> so expensive work (DB lookups) is canceled with the request, but individual callers' tokens only cancel their own awaits.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public CachingActorProvider(IActorProvider inner, IHttpContextAccessor httpContextAccessor)</code></td>
+<td>—</td>
+<td><code>inner</code> cannot be null.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Actor&gt;</code></td>
+<td>Returns the cached task; if <code>cancellationToken</code> differs from <code>RequestAborted</code>, applies it via <code>Task.WaitAsync</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="namespace-trellisaspmodelbinding">Namespace <code>Trellis.Asp.ModelBinding</code></h3>
+<h3 id="scalarvaluemodelbinderbasetresult-tvalue-tprimitive"><code>ScalarValueModelBinderBase&lt;TResult, TValue, TPrimitive&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public abstract class ScalarValueModelBinderBase&lt;TResult, TValue, TPrimitive&gt; : IModelBinder
+    where TValue : IScalarValue&lt;TValue, TPrimitive&gt;
+    where TPrimitive : IComparable
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected abstract ModelBindingResult OnMissingValue()</code></td>
+<td><code>ModelBindingResult</code></td>
+<td>Called when no raw value is present in the value provider.</td>
+</tr>
+<tr>
+<td><code>protected virtual ModelBindingResult? OnEmptyValue() =&gt; null</code></td>
+<td><code>ModelBindingResult?</code></td>
+<td>Called when the raw value is an empty string; return <code>null</code> to fall through to normal conversion.</td>
+</tr>
+<tr>
+<td><code>protected abstract ModelBindingResult OnSuccess(TValue value)</code></td>
+<td><code>ModelBindingResult</code></td>
+<td>Wraps a validated scalar value into the final binding result.</td>
+</tr>
+<tr>
+<td><code>public Task BindModelAsync(ModelBindingContext bindingContext)</code></td>
+<td><code>Task</code></td>
+<td>Reads the raw value, converts to <code>TPrimitive</code>, calls <code>TValue.TryCreate</code>, and populates <code>ModelState</code> on failure.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scalarvaluemodelbindertvalue-tprimitive"><code>ScalarValueModelBinder&lt;TValue, TPrimitive&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public class ScalarValueModelBinder&lt;TValue, TPrimitive&gt;
+    : ScalarValueModelBinderBase&lt;TValue, TValue, TPrimitive&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected override ModelBindingResult OnMissingValue()</code></td>
+<td><code>ModelBindingResult</code></td>
+<td>Leaves the binding result unset (<code>default</code>).</td>
+</tr>
+<tr>
+<td><code>protected override ModelBindingResult OnSuccess(TValue value)</code></td>
+<td><code>ModelBindingResult</code></td>
+<td>Returns <code>ModelBindingResult.Success(value)</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="maybemodelbindertvalue-tprimitive"><code>MaybeModelBinder&lt;TValue, TPrimitive&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public class MaybeModelBinder&lt;TValue, TPrimitive&gt;
+    : ScalarValueModelBinderBase&lt;Maybe&lt;TValue&gt;, TValue, TPrimitive&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected override ModelBindingResult OnMissingValue()</code></td>
+<td><code>ModelBindingResult</code></td>
+<td>Returns <code>ModelBindingResult.Success(Maybe&lt;TValue&gt;.None)</code>.</td>
+</tr>
+<tr>
+<td><code>protected override ModelBindingResult? OnEmptyValue()</code></td>
+<td><code>ModelBindingResult?</code></td>
+<td>Returns <code>ModelBindingResult.Success(Maybe&lt;TValue&gt;.None)</code>.</td>
+</tr>
+<tr>
+<td><code>protected override ModelBindingResult OnSuccess(TValue value)</code></td>
+<td><code>ModelBindingResult</code></td>
+<td>Returns <code>ModelBindingResult.Success(Maybe.From(value))</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scalarvaluemodelbinderprovider"><code>ScalarValueModelBinderProvider</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public class ScalarValueModelBinderProvider : IModelBinderProvider
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public IModelBinder? GetBinder(ModelBinderProviderContext context)</code></td>
+<td><code>IModelBinder?</code></td>
+<td>Returns a <code>MaybeModelBinder&lt;,&gt;</code> for <code>Maybe&lt;TScalar&gt;</code>, a <code>ScalarValueModelBinder&lt;,&gt;</code> for direct scalar values, or <code>null</code> otherwise. Annotated <code>[UnconditionalSuppressMessage]</code> for IL2070/IL2072/IL2075 and IL3050 — model binding is not Native AOT compatible.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="namespace-trellisasprouting">Namespace <code>Trellis.Asp.Routing</code></h3>
+<h3 id="trellisvalueobjectrouteconstraintt"><code>TrellisValueObjectRouteConstraint&lt;T&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class TrellisValueObjectRouteConstraint&lt;T&gt; : IRouteConstraint
+    where T : IParsable&lt;T&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public bool Match(HttpContext?, IRouter?, string routeKey, RouteValueDictionary values, RouteDirection routeDirection)</code></td>
+<td><code>bool</code></td>
+<td>Delegates to <code>T.TryParse(..., CultureInfo.InvariantCulture, out _)</code>. Returns <code>false</code> when the route value is missing, null, or fails to parse.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="routeconstraintregistrationextensions"><code>RouteConstraintRegistrationExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class RouteConstraintRegistrationExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IServiceCollection AddTrellisRouteConstraints(this IServiceCollection services, params Assembly[] assemblies)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Scans the supplied assemblies (or the calling assembly + the assembly containing <code>IScalarValue&lt;,&gt;</code> from <code>Trellis.Core</code> if none are supplied) for value objects implementing both <code>IScalarValue&lt;TSelf, TPrimitive&gt;</code> and <code>IParsable&lt;TSelf&gt;</code>, then registers a <code>TrellisValueObjectRouteConstraint&lt;T&gt;</code> under the type's simple name. Existing entries in <code>RouteOptions.ConstraintMap</code> are preserved. Reflection-based — not Native AOT compatible.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddTrellisRouteConstraint&lt;T&gt;(this IServiceCollection services, string? constraintName = null) where T : IParsable&lt;T&gt;</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers a single value-object route constraint without reflection. AOT-safe.</td>
+</tr>
+</tbody>
+</table>
+<p>Once registered, route templates such as <code>&quot;/products/{id:ProductId}&quot;</code> parse and bind the segment via the value object's <code>IParsable&lt;T&gt;.TryParse</code> implementation.</p>
+<h3 id="namespace-trellisaspvalidation">Namespace <code>Trellis.Asp.Validation</code></h3>
+<h3 id="scalarvaluejsonconverterbasetresult-tvalue-tprimitive"><code>ScalarValueJsonConverterBase&lt;TResult, TValue, TPrimitive&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public abstract class ScalarValueJsonConverterBase&lt;TResult, TValue, TPrimitive&gt;
+    : JsonConverter&lt;TResult&gt;
+    where TValue : class, IScalarValue&lt;TValue, TPrimitive&gt;
+    where TPrimitive : IComparable
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HandleNull</code></td>
+<td><code>bool</code> (override)</td>
+<td>Always <code>true</code>; forces <code>System.Text.Json</code> to call <code>Read(...)</code> for JSON <code>null</code> tokens.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected abstract TResult OnNullToken(string fieldName)</code></td>
+<td><code>TResult</code></td>
+<td>Returns the deserialization result for a JSON <code>null</code> token.</td>
+</tr>
+<tr>
+<td><code>protected abstract TResult WrapSuccess(TValue value)</code></td>
+<td><code>TResult</code></td>
+<td>Wraps a validated scalar value into the final converter result.</td>
+</tr>
+<tr>
+<td><code>protected abstract TResult OnValidationFailure()</code></td>
+<td><code>TResult</code></td>
+<td>Returns the failure result after a validation error has been collected into <code>ValidationErrorsContext</code>.</td>
+</tr>
+<tr>
+<td><code>public override TResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)</code></td>
+<td><code>TResult</code></td>
+<td>Reads the primitive JSON value, calls <code>TValue.TryCreate</code>, collects errors into <code>ValidationErrorsContext</code>, and returns the derived-type wrapper.</td>
+</tr>
+<tr>
+<td><code>protected static string GetDefaultFieldName()</code></td>
+<td><code>string</code></td>
+<td>Returns the camel-cased scalar type name used when no property name is available.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validatingjsonconvertertvalue-tprimitive"><code>ValidatingJsonConverter&lt;TValue, TPrimitive&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ValidatingJsonConverter&lt;TValue, TPrimitive&gt;
+    : ScalarValueJsonConverterBase&lt;TValue?, TValue, TPrimitive&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected override TValue? OnNullToken(string fieldName)</code></td>
+<td><code>TValue?</code></td>
+<td>Adds <code>&quot;{TypeName} cannot be null.&quot;</code> to <code>ValidationErrorsContext</code> and returns <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>protected override TValue? WrapSuccess(TValue value)</code></td>
+<td><code>TValue?</code></td>
+<td>Returns the validated scalar value.</td>
+</tr>
+<tr>
+<td><code>protected override TValue? OnValidationFailure()</code></td>
+<td><code>TValue?</code></td>
+<td>Returns <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>public override void Write(Utf8JsonWriter writer, TValue? value, JsonSerializerOptions options)</code></td>
+<td><code>void</code></td>
+<td>Writes JSON <code>null</code> for <code>null</code>; otherwise writes the underlying primitive <code>value.Value</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validatingjsonconverterfactory"><code>ValidatingJsonConverterFactory</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ValidatingJsonConverterFactory : JsonConverterFactory
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public override bool CanConvert(Type typeToConvert)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when <code>typeToConvert</code> is a scalar value type.</td>
+</tr>
+<tr>
+<td><code>public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)</code></td>
+<td><code>JsonConverter?</code></td>
+<td>Builds a <code>ValidatingJsonConverter&lt;TValue, TPrimitive&gt;</code> for supported scalar value types. Annotated <code>[RequiresDynamicCode]</code> — <code>JsonConverterFactory</code> is not Native AOT compatible.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="maybescalarvaluejsonconvertertvalue-tprimitive"><code>MaybeScalarValueJsonConverter&lt;TValue, TPrimitive&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class MaybeScalarValueJsonConverter&lt;TValue, TPrimitive&gt;
+    : ScalarValueJsonConverterBase&lt;Maybe&lt;TValue&gt;, TValue, TPrimitive&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected override Maybe&lt;TValue&gt; OnNullToken(string fieldName)</code></td>
+<td><code>Maybe&lt;TValue&gt;</code></td>
+<td>Returns <code>Maybe&lt;TValue&gt;.None</code>; JSON <code>null</code> is valid for optional scalar values.</td>
+</tr>
+<tr>
+<td><code>protected override Maybe&lt;TValue&gt; WrapSuccess(TValue value)</code></td>
+<td><code>Maybe&lt;TValue&gt;</code></td>
+<td>Returns <code>Maybe.From(value)</code>.</td>
+</tr>
+<tr>
+<td><code>protected override Maybe&lt;TValue&gt; OnValidationFailure()</code></td>
+<td><code>Maybe&lt;TValue&gt;</code></td>
+<td>Returns <code>Maybe&lt;TValue&gt;.None</code>.</td>
+</tr>
+<tr>
+<td><code>public override void Write(Utf8JsonWriter writer, Maybe&lt;TValue&gt; value, JsonSerializerOptions options)</code></td>
+<td><code>void</code></td>
+<td>Writes JSON <code>null</code> for <code>Maybe.None</code>; otherwise writes the wrapped primitive <code>value.Value.Value</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="maybescalarvaluejsonconverterfactory"><code>MaybeScalarValueJsonConverterFactory</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class MaybeScalarValueJsonConverterFactory : JsonConverterFactory
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public override bool CanConvert(Type typeToConvert)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when <code>typeToConvert</code> is <code>Maybe&lt;T&gt;</code> and <code>T</code> is a scalar value type.</td>
+</tr>
+<tr>
+<td><code>public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)</code></td>
+<td><code>JsonConverter?</code></td>
+<td>Builds <code>MaybeScalarValueJsonConverter&lt;TValue, TPrimitive&gt;</code> for supported <code>Maybe&lt;TScalar&gt;</code> types.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scalarvaluevalidationfilter"><code>ScalarValueValidationFilter</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Order</code></td>
+<td><code>int</code></td>
+<td>Always <code>-2000</code>; runs early in the MVC filter pipeline.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public void OnActionExecuting(ActionExecutingContext context)</code></td>
+<td><code>void</code></td>
+<td>Short-circuits with a validation problem result for collected JSON validation errors or invalid scalar route/query parameters.</td>
+</tr>
+<tr>
+<td><code>public void OnActionExecuted(ActionExecutedContext context)</code></td>
+<td><code>void</code></td>
+<td>No-op.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scalarvaluevalidationendpointfilter"><code>ScalarValueValidationEndpointFilter</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public ValueTask&lt;object?&gt; InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)</code></td>
+<td><code>ValueTask&lt;object?&gt;</code></td>
+<td>For Minimal APIs, returns <code>Results.ValidationProblem(validationError.ToDictionary())</code> when <code>ValidationErrorsContext</code> contains errors; otherwise invokes <code>next</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scalarvaluevalidationmiddleware"><code>ScalarValueValidationMiddleware</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ScalarValueValidationMiddleware
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public ScalarValueValidationMiddleware(RequestDelegate next)</code></td>
+<td>—</td>
+<td>Wraps each request in <code>ValidationErrorsContext.BeginScope()</code>.</td>
+</tr>
+<tr>
+<td><code>public Task InvokeAsync(HttpContext context)</code></td>
+<td><code>Task</code></td>
+<td>Begins a validation scope, invokes the next middleware, and converts scalar-value <code>BadHttpRequestException</code> binding failures into validation problem responses using endpoint parameter metadata plus route/query raw values.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validationerrorscontext"><code>ValidationErrorsContext</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ValidationErrorsContext
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HasErrors</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when the current async-local scope contains at least one collected validation error.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IDisposable BeginScope()</code></td>
+<td><code>IDisposable</code></td>
+<td>Starts a new async-local validation collection scope; disposing restores the previous scope and property name.</td>
+</tr>
+<tr>
+<td><code>public static Error.UnprocessableContent? GetUnprocessableContent()</code></td>
+<td><code>Error.UnprocessableContent?</code></td>
+<td>Returns the aggregated <code>Error.UnprocessableContent</code> for the current scope (with <code>Fields</code> / <code>Rules</code> populated from collected <code>FieldViolation</code>s) or <code>null</code> when no errors were collected.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="behavioral-notes">Behavioral notes</h2>
+<ul>
+<li><strong>One verb, every shape.</strong> <code>ToHttpResponse</code> is the only supported response mapper. The internal result types it constructs (<code>TrellisHttpResult&lt;TDomain, TBody&gt;</code>, <code>TrellisWriteOutcomeResult&lt;TDomain, TBody&gt;</code>, <code>TrellisErrorOnlyResult</code>, <code>TrellisEmptyResult</code>) implement <code>IResult</code>, the <code>IStatusCodeHttpResult</code> / <code>IValueHttpResult&lt;T&gt;</code> / <code>IContentTypeHttpResult</code> metadata interfaces, and <code>IEndpointMetadataProvider</code> so OpenAPI/ApiExplorer surfaces the success status, body type, and the union of error envelopes the writer can emit (<code>200</code>, <code>201</code>, <code>206</code>, <code>304</code>, <code>400</code>, <code>404</code>, <code>412</code>, <code>500</code>). Layer your own <code>[ProducesResponseType]</code> / <code>Produces&lt;T&gt;</code> on top.</li>
+<li><strong>Failures use Problem Details.</strong> A failure runs through <code>ResponseFailureWriter</code> (internal). It calls <code>Results.ValidationProblem(...)</code> for <code>Error.UnprocessableContent</code> with field violations (the <code>errors</code> dictionary keys are the violation <code>Field.Path</code> with the leading <code>/</code> trimmed; values are <code>Detail ?? ReasonCode</code>), and <code>Results.Problem(...)</code> for everything else. Companion headers are emitted automatically: <code>Allow</code> for <code>Error.MethodNotAllowed</code>, <code>Retry-After</code> for <code>Error.TooManyRequests</code> / <code>Error.ServiceUnavailable</code> (when a delay is configured), and <code>Content-Range: {Unit} */{CompleteLength}</code> for <code>Error.RangeNotSatisfiable</code>. Extensions always carry <code>code</code> and <code>kind</code>; <code>Error.InternalServerError</code> adds <code>faultId</code>; rule violations are surfaced under <code>rules</code>. For <code>5xx</code> responses the <code>Detail</code> is always replaced with <code>&quot;An internal error occurred.&quot;</code> so internal diagnostics never leak to clients.</li>
+<li><strong>Status code resolution precedence.</strong> <code>WithErrorMapping(Func&lt;Error, int&gt;)</code> (per call) → <code>WithErrorMapping&lt;TError&gt;(int)</code> (per call, walks the type hierarchy) → <code>TrellisAspOptions</code> resolved from <code>HttpContext.RequestServices</code> (or <code>TrellisAspOptions.SystemDefault</code> if none registered) → <code>500 Internal Server Error</code>.</li>
+<li><strong>Conditional requests.</strong> <code>EvaluatePreconditions()</code> runs only on <code>GET</code> / <code>HEAD</code> and only when at least one of <code>WithETag</code> / <code>WithLastModified</code> is configured. The internal <code>ConditionalRequestEvaluator</code> evaluates RFC 9110 preconditions in this order: <code>If-Match</code> (strong); else <code>If-Unmodified-Since</code>; then <code>If-None-Match</code> (weak); else <code>If-Modified-Since</code> for safe methods. Failed <code>If-Match</code> / <code>If-Unmodified-Since</code> → <code>412</code>; failed <code>If-None-Match</code> / <code>If-Modified-Since</code> on <code>GET</code>/<code>HEAD</code> → <code>304</code>.</li>
+<li><strong><code>Vary</code> is append-only.</strong> Both the <code>HonorPrefer()</code> switch and <code>Vary(...)</code> use <code>AppendVaryUnique</code> — they preserve any pre-existing <code>Vary</code> values added by other middleware and skip duplicates (case-insensitive).</li>
+<li><strong><code>HonorPrefer()</code> semantics on <code>WriteOutcome.Updated</code>.</strong> <code>Prefer: return=minimal</code> short-circuits to <code>204 No Content</code> and emits <code>Preference-Applied: return=minimal</code>; <code>return=representation</code> returns <code>200 OK</code> with the body and emits <code>Preference-Applied: return=representation</code>. <code>Vary: Prefer</code> is always emitted when honoring <code>Prefer</code>, regardless of which preference was sent.</li>
+<li><strong>Range mapping.</strong> <code>WithRange</code> returns <code>200 OK</code> (full body) when the configured range covers the whole representation; otherwise <code>206 Partial Content</code> with <code>Content-Range</code>. The static-range overload clamps <code>to</code> to <code>totalLength - 1</code>; the selector overload trusts the provided <code>ContentRangeHeaderValue</code>.</li>
+<li><strong><code>CreatedAtAction</code> is not AOT-safe.</strong> It depends on MVC's <code>ControllerLinkGeneratorExtensions</code>. The builder method, the writer's <code>ResolveActionLocation</code> private, and the <code>LocationKind.Action</code> branch are annotated <code>[RequiresUnreferencedCode]</code> / <code>[RequiresDynamicCode]</code>. Use <code>CreatedAtRoute</code> with a named route for trim/AOT scenarios; <code>ResolveActionLocation</code> throws <code>NotSupportedException</code> when <code>RuntimeFeature.IsDynamicCodeSupported</code> is <code>false</code>.</li>
+<li><strong>Pagination.</strong> The <code>Result&lt;Page&lt;T&gt;&gt;</code> overload always emits the <code>PagedResponse&lt;TBody&gt;</code> envelope; the RFC 8288 <code>Link</code> header is added only when <code>Page.Next</code> and/or <code>Page.Previous</code> cursors are present. Failure on the page result short-circuits through the standard error pipeline.</li>
+<li><strong>Validation collection scope.</strong> <code>ScalarValueValidationMiddleware</code> opens a <code>ValidationErrorsContext</code> scope per request. Both <code>ValidatingJsonConverter&lt;,&gt;</code> and <code>MaybeScalarValueJsonConverter&lt;,&gt;</code> collect errors into this scope; <code>ScalarValueValidationFilter</code> (MVC) and <code>ScalarValueValidationEndpointFilter</code> (Minimal API) short-circuit with a validation problem when the scope is non-empty at action/handler entry.</li>
+<li><strong>Minimal API scalar binding failures are metadata-driven.</strong> When ASP.NET Core throws a 400 while binding route/query parameters, <code>ScalarValueValidationMiddleware</code> no longer parses <code>BadHttpRequestException.Message</code> to discover a field name or invalid value. It inspects <code>IParameterBindingMetadata</code>, reads the matching route/query raw value, and re-runs Trellis scalar validation for <code>IScalarValue&lt;,&gt;</code> / <code>Maybe&lt;TScalar&gt;</code> parameters. Non-scalar endpoint binding failures are rethrown to ASP.NET Core.</li>
+<li><strong><code>AddTrellisAsp</code> is the one-call setup.</strong> It registers <code>TrellisAspOptions</code> and chains <code>AddScalarValueValidation()</code>, configuring both the MVC and Minimal API JSON pipelines for scalar-value/<code>Maybe&lt;T&gt;</code> deserialization. You still need <code>UseScalarValueValidation()</code> middleware in the request pipeline and <code>WithScalarValueValidation()</code> on each Minimal API endpoint that should short-circuit on validation errors.</li>
+<li><strong>Composite value objects in request/response DTOs.</strong> <code>AddTrellisAsp</code>/<code>AddScalarValueValidation</code> only wires the <strong>scalar</strong> VO converters. Composite VOs (multi-field <code>[OwnedEntity]</code> types like <code>ShippingAddress</code>, <code>Money</code>) bind through <code>CompositeValueObjectJsonConverter&lt;T&gt;</code> (in <code>Trellis.Primitives</code>), which is <strong>opt-in per type</strong> via <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;MyVo&gt;))]</code> on the value object class itself. Without that attribute, model binding falls back to default construction and <strong>silently bypasses <code>TryCreate</code></strong> — the inner-field validation never runs and an invalid payload propagates into the domain layer. See <a href="trellis-api-cookbook.html#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Cookbook Recipe 13</a> for the full Domain + API JSON + EF pattern.</li>
+</ul>
+<h2 id="code-examples">Code examples</h2>
+<h3 id="basic-resultt--200--problem-details">Basic <code>Result&lt;T&gt;</code> → 200 / Problem Details</h3>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddTrellisAsp();
+
+var app = builder.Build();
+app.UseScalarValueValidation();
+
+app.MapGet(&quot;/widgets/{id}&quot;, (string id) =&gt;
+{
+    Result&lt;Widget&gt; result = WidgetService.Get(id);
+    return result.ToHttpResponse(opts =&gt; opts
+        .WithETag(w =&gt; w.ETag)
+        .WithLastModified(w =&gt; w.UpdatedAt)
+        .EvaluatePreconditions());
+}).WithScalarValueValidation();
+
+app.Run();
+</code></pre>
+<h3 id="writeoutcomet-with-prefer--created"><code>WriteOutcome&lt;T&gt;</code> with Prefer / Created</h3>
+<pre><code class="lang-csharp">app.MapPost(&quot;/widgets&quot;, async (CreateWidget cmd, IWidgetWriter writer, CancellationToken ct) =&gt;
+{
+    Result&lt;WriteOutcome&lt;Widget&gt;&gt; result = await writer.CreateAsync(cmd, ct);
+    return result.ToHttpResponse(
+        body: w =&gt; new WidgetResponse(w.Id, w.Name),
+        configure: opts =&gt; opts
+            .CreatedAtRoute(&quot;widgets.get&quot;, w =&gt; new RouteValueDictionary { [&quot;id&quot;] = w.Id })
+            .WithETag(w =&gt; w.ETag)
+            .HonorPrefer());
+});
+</code></pre>
+<h3 id="paginated-resultpaget">Paginated <code>Result&lt;Page&lt;T&gt;&gt;</code></h3>
+<pre><code class="lang-csharp">app.MapGet(&quot;/widgets&quot;, async (string? cursor, int? limit, IWidgetReader reader, HttpContext ctx) =&gt;
+{
+    Result&lt;Page&lt;Widget&gt;&gt; page = await reader.ListAsync(cursor, limit ?? 50, ctx.RequestAborted);
+
+    return page.ToHttpResponse(
+        nextUrlBuilder: (c, applied) =&gt;
+            $&quot;{ctx.Request.Scheme}://{ctx.Request.Host}/widgets?cursor={c.Token}&amp;limit={applied}&quot;,
+        body: w =&gt; new WidgetResponse(w.Id, w.Name));
+});
+</code></pre>
+<h3 id="mvc-controller-using-asactionresultt-for-typed-signatures">MVC controller using <code>AsActionResult&lt;T&gt;</code> for typed signatures</h3>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+
+[ApiController]
+[Route(&quot;widgets&quot;)]
+public sealed class WidgetsController(IWidgetReader reader) : ControllerBase
+{
+    [HttpGet(&quot;{id}&quot;, Name = &quot;widgets.get&quot;)]
+    [ProducesResponseType&lt;WidgetResponse&gt;(200)]
+    [ProducesResponseType&lt;ProblemDetails&gt;(404)]
+    public async Task&lt;ActionResult&lt;WidgetResponse&gt;&gt; Get(string id, CancellationToken ct)
+    {
+        Result&lt;Widget&gt; result = await reader.GetAsync(id, ct);
+        return await result
+            .ToHttpResponseAsync(w =&gt; new WidgetResponse(w.Id, w.Name))
+            .AsActionResultAsync&lt;WidgetResponse&gt;();
+    }
+}
+</code></pre>
+<h3 id="per-call-error-mapping-override">Per-call error mapping override</h3>
+<pre><code class="lang-csharp">return result.ToHttpResponse(opts =&gt; opts
+    .WithErrorMapping&lt;DomainConflict&gt;(StatusCodes.Status409Conflict)
+    .WithErrorMapping(err =&gt; err is OutOfStockError ? 410 : default));
+</code></pre>
+<h3 id="actor-providers">Actor providers</h3>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+var services = new ServiceCollection();
+
+services.AddClaimsActorProvider(opts =&gt;
+{
+    opts.ActorIdClaim = &quot;sub&quot;;
+    opts.PermissionsClaim = &quot;permissions&quot;;
+});
+
+services.AddEntraActorProvider(opts =&gt;
+{
+    opts.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;roles&quot;, StringComparison.OrdinalIgnoreCase))
+        .Select(c =&gt; c.Value)
+        .ToHashSet();
+});
+
+if (env.IsDevelopment())
+{
+    services.AddDevelopmentActorProvider(opts =&gt;
+    {
+        opts.DefaultActorId = &quot;development&quot;;
+        opts.DefaultPermissions = new HashSet&lt;string&gt; { &quot;orders:read&quot;, &quot;orders:create&quot; };
+    });
+}
+
+services.AddCachingActorProvider&lt;EntraActorProvider&gt;();
+</code></pre>
+<h3 id="route-constraints-for-scalar-value-objects">Route constraints for scalar value objects</h3>
+<pre><code class="lang-csharp">// AOT-safe — explicit registration
+services.AddTrellisRouteConstraint&lt;ProductId&gt;(&quot;ProductId&quot;);
+
+// Reflection-based — scans the calling assembly
+services.AddTrellisRouteConstraints();
+
+app.MapGet(&quot;/products/{id:ProductId}&quot;, (ProductId id) =&gt; Results.Ok(id));
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a> — <code>Result</code>, <code>Result&lt;T&gt;</code>, <code>Error</code>, <code>WriteOutcome&lt;T&gt;</code>, <code>Page&lt;T&gt;</code>, <code>RepresentationMetadata</code>, <code>EntityTagValue</code>, <code>Cursor</code>, <code>PreconditionKind</code>, <code>ResourceRef</code>.</li>
+<li><a href="trellis-api-authorization.html">trellis-api-authorization.md</a> — <code>Actor</code>, <code>IActorProvider</code>, <code>IAuthorize</code>, <code>IAuthorizeResource&lt;TResource&gt;</code>, resource loaders.</li>
+<li><a href="trellis-api-primitives.html">trellis-api-primitives.md</a> — <code>IScalarValue&lt;TSelf, TPrimitive&gt;</code>, <code>Maybe&lt;T&gt;</code>.</li>
+<li><a href="trellis-api-http.html">trellis-api-http.md</a> — Pure HTTP value objects shared between hosts.</li>
+<li><a href="trellis-api-testing-aspnetcore.html">trellis-api-testing-aspnetcore.md</a> — <code>WebApplicationFactoryExtensions.CreateClientWithActor</code> (writes the <code>X-Test-Actor</code> header consumed by <code>DevelopmentActorProvider</code>).</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

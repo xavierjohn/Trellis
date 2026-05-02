@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Introduction | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Introduction | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/intro.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="introduction">Introduction</h1>
+
+<p>Trellis is for the moment when your codebase has outgrown &quot;just use strings and throw exceptions.&quot; It gives you a structure for writing application code that stays readable as validation, business rules, persistence, and HTTP concerns pile up.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#why-trellis">Why Trellis?</a></li>
+<li><a href="#start-with-a-concrete-problem">Start with a concrete problem</a></li>
+<li><a href="#railway-oriented-programming">Railway-Oriented Programming</a></li>
+<li><a href="#domain-driven-design-without-ceremony">Domain-Driven Design without ceremony</a></li>
+<li><a href="#error-types-that-carry-intent">Error types that carry intent</a></li>
+<li><a href="#why-this-works-well-in-real-systems">Why this works well in real systems</a></li>
+<li><a href="#performance">Performance</a></li>
+<li><a href="#next-steps">Next steps</a></li>
+</ul>
+<h2 id="why-trellis">Why Trellis?</h2>
+<p>The short answer: <strong>Trellis helps you express business rules directly in code without losing control of errors.</strong></p>
+<p>Most application code becomes hard to read for three predictable reasons:</p>
+<ol>
+<li><strong>Validation is scattered</strong> across controllers, services, and database checks.</li>
+<li><strong>Primitives hide meaning</strong> so <code>string</code>, <code>Guid</code>, and <code>int</code> get passed around with no protection.</li>
+<li><strong>Failure handling interrupts the happy path</strong> with nested <code>if</code> statements, null checks, and exception plumbing.</li>
+</ol>
+<p>Trellis combines <strong>Railway-Oriented Programming (ROP)</strong> and <strong>Domain-Driven Design (DDD)</strong> so those concerns become part of the structure instead of ad-hoc conventions.</p>
+<pre><code class="lang-mermaid">graph TB
+    subgraph Problems[Common application pain]
+        A[Primitive obsession]
+        B[Scattered validation]
+        C[Inconsistent error handling]
+    end
+
+    subgraph Trellis[Trellis approach]
+        D[Value objects]
+        E[Result pipelines]
+        F[Structured errors]
+    end
+
+    subgraph Outcomes[What developers feel]
+        G[Readable workflows]
+        H[Safer refactoring]
+        I[Predictable API behavior]
+    end
+
+    A --&gt; D
+    B --&gt; E
+    C --&gt; F
+    D --&gt; H
+    E --&gt; G
+    F --&gt; I
+</code></pre>
+<h2 id="start-with-a-concrete-problem">Start with a concrete problem</h2>
+<p>The easiest way to understand Trellis is to start with code you probably already have.</p>
+<p><strong>Problem:</strong> You need to register a user, reject invalid fields, block duplicate emails, and send a welcome email only when the save succeeds.</p>
+<h3 id="traditional-flow">Traditional flow</h3>
+<pre><code class="lang-csharp">var firstName = ValidateFirstName(input.FirstName);
+if (firstName is null)
+    return BadRequest(&quot;Invalid first name.&quot;);
+
+var lastName = ValidateLastName(input.LastName);
+if (lastName is null)
+    return BadRequest(&quot;Invalid last name.&quot;);
+
+var email = ValidateEmail(input.Email);
+if (email is null)
+    return BadRequest(&quot;Invalid email.&quot;);
+
+if (_repository.EmailExists(email))
+    return Conflict(&quot;Email already registered.&quot;);
+
+var user = new User(firstName, lastName, email);
+_repository.Save(user);
+_emailService.SendWelcome(email);
+
+return Ok(user);
+</code></pre>
+<h3 id="trellis-flow">Trellis flow</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+public partial class CustomerEmail : RequiredString&lt;CustomerEmail&gt; { }
+
+public sealed record RegisterUserInput(string FirstName, string LastName, string Email);
+
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
+{
+    public static Result&lt;User&gt; TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =&gt;
+        Result.Ok(new User(firstName, lastName, email));
+}
+
+public static Result&lt;User&gt; RegisterUser(
+    RegisterUserInput input,
+    Func&lt;CustomerEmail, bool&gt; emailExists,
+    Action&lt;User&gt; saveUser,
+    Action&lt;CustomerEmail&gt; sendWelcomeEmail)
+{
+    return FirstName.TryCreate(input.FirstName)
+        .Combine(LastName.TryCreate(input.LastName))
+        .Combine(CustomerEmail.TryCreate(input.Email, fieldName: &quot;email&quot;))
+        .Bind((firstName, lastName, email) =&gt; User.TryCreate(firstName, lastName, email))
+        .Ensure(user =&gt; !emailExists(user.Email), new Error.Conflict(null, &quot;conflict&quot;) { Detail = &quot;Email already registered.&quot; })
+        .Tap(saveUser)
+        .Tap(user =&gt; sendWelcomeEmail(user.Email));
+}
+</code></pre>
+<p>The important part is not that the code is shorter. The important part is that <strong>the business story is visible</strong>.</p>
+<ul>
+<li>Validate the inputs</li>
+<li>Create the user</li>
+<li>Enforce the duplicate-email rule</li>
+<li>Save</li>
+<li>Send the email</li>
+</ul>
+<p>When any step fails, the rest of the chain is skipped automatically.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Start by reading the pipeline left to right. If it reads like a business workflow, you are using Trellis the way it was designed.</p>
+</div>
+<h2 id="railway-oriented-programming">Railway-Oriented Programming</h2>
+<p>The problem ROP solves is simple: <strong>errors should not force you to rewrite the happy path over and over.</strong></p>
+<p>With Trellis, a <code>Result&lt;T&gt;</code> is either a success with a value or a failure with an <code>Error</code>. The pipeline operators decide what happens next.</p>
+<pre><code class="lang-mermaid">graph LR
+    A[Input] --&gt; B{Step 1}
+    B --&gt;|Success| C{Step 2}
+    B --&gt;|Failure| F[Failure result]
+    C --&gt;|Success| D{Step 3}
+    C --&gt;|Failure| F
+    D --&gt;|Success| E[Success result]
+    D --&gt;|Failure| F
+</code></pre>
+<p>That gives you a small vocabulary for most workflows:</p>
+<ul>
+<li><strong><code>Combine</code></strong> - validate independent inputs together</li>
+<li><strong><code>Bind</code></strong> - call the next operation when the current step succeeded</li>
+<li><strong><code>Ensure</code></strong> - add a business rule</li>
+<li><strong><code>Tap</code></strong> - run a side effect without changing the result</li>
+<li><strong><code>Match</code></strong> - turn the final result into a plain value, HTTP response, or message</li>
+</ul>
+<p>If you want the hands-on tutorial version, go straight to <a href="basics.html">Basics</a>.</p>
+<h2 id="domain-driven-design-without-ceremony">Domain-Driven Design without ceremony</h2>
+<p>DDD can become heavy when every concept requires pages of plumbing. Trellis keeps the useful parts and reduces the boilerplate.</p>
+<h3 id="start-with-value-objects">Start with value objects</h3>
+<p>The problem value objects solve is <strong>meaningless primitives</strong>.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+[StringLength(100)]
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+
+[StringLength(100)]
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+
+public sealed record Person(FirstName FirstName, LastName LastName);
+</code></pre>
+<p>Now the compiler can protect you from mistakes that <code>string</code> never could.</p>
+<pre><code class="lang-csharp">Person CreatePerson(FirstName firstName, LastName lastName) =&gt;
+    new(firstName, lastName);
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>For your own scalar value objects, use the generic base classes such as <code>RequiredString&lt;FirstName&gt;</code> and <code>RequiredGuid&lt;OrderId&gt;</code>. The generic parameter is part of the contract.</p>
+</div>
+<h3 id="then-grow-into-aggregates-and-entities">Then grow into aggregates and entities</h3>
+<p>When the domain gets richer, Trellis gives you <code>Aggregate&lt;TId&gt;</code>, <code>Entity&lt;TId&gt;</code>, <code>ValueObject</code>, and <code>Specification&lt;T&gt;</code> so the language in your code can match the language in the business.</p>
+<p>That is where order lifecycles, payment rules, and customer policies start feeling natural instead of bolted on.</p>
+<p>For deeper DDD guidance, see <a href="clean-architecture.html">Clean Architecture</a> and <a href="aggregate-factory-pattern.html">Aggregate Factory Pattern</a>.</p>
+<h2 id="error-types-that-carry-intent">Error types that carry intent</h2>
+<p>The problem with plain strings and generic exceptions is that they tell humans something went wrong but tell the program almost nothing useful.</p>
+<p>Trellis uses concrete error types such as:</p>
+<ul>
+<li><code>Error.UnprocessableContent</code></li>
+<li><code>Error.NotFound</code></li>
+<li><code>Error.Conflict</code></li>
+<li><code>Error.Forbidden</code></li>
+<li><code>Error.InternalServerError</code></li>
+</ul>
+<p>Each one carries intent, and the defaults map naturally to HTTP semantics.</p>
+<table>
+<thead>
+<tr>
+<th>Factory</th>
+<th>Default code</th>
+<th>Typical meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = ... }</code></td>
+<td><code>validation.error</code></td>
+<td>Input or rule validation failed</td>
+</tr>
+<tr>
+<td><code>new Error.NotFound(ResourceRef.For(&quot;Order&quot;, &quot;42&quot;)) { Detail = ... }</code></td>
+<td><code>not.found.error</code></td>
+<td>The resource does not exist</td>
+</tr>
+<tr>
+<td><code>new Error.Conflict(null, &quot;conflict&quot;) { Detail = ... }</code></td>
+<td><code>conflict.error</code></td>
+<td>Current state prevents the operation</td>
+</tr>
+<tr>
+<td><code>new Error.Forbidden(&quot;policy.id&quot;) { Detail = ... }</code></td>
+<td><code>forbidden.error</code></td>
+<td>Caller is authenticated but not allowed</td>
+</tr>
+<tr>
+<td><code>new Error.InternalServerError(&quot;fault-id&quot;) { Detail = ... }</code></td>
+<td><code>unexpected.error</code></td>
+<td>Something unplanned failed</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis;
+
+var message = new Error.NotFound(ResourceRef.For(&quot;Order&quot;, &quot;42&quot;)) { Detail = &quot;Order not found.&quot; } == new Error.NotFound(ResourceRef.For(&quot;Customer&quot;, &quot;17&quot;)) { Detail = &quot;Customer not found.&quot; }
+    ? &quot;Same programmatic error code&quot;
+    : &quot;Different error code&quot;;
+</code></pre>
+<p>That comparison returns the first branch because <strong><code>Error.Equals</code> compares only <code>Code</code></strong>.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Do not treat <code>Error.Equals</code> as a comparison of the full message. It is intentionally code-based equality.</p>
+</div>
+<p>If you want a full catalog of error types and HTTP mappings, read <a href="error-handling.html">Error Handling</a>.</p>
+<h2 id="why-this-works-well-in-real-systems">Why this works well in real systems</h2>
+<p>The value of Trellis becomes clearer as your application grows.</p>
+<h3 id="reuse-domain-rules-at-the-edge">Reuse domain rules at the edge</h3>
+<p>You can validate in the domain and reuse those failures at the API layer instead of duplicating rules in controllers. See <a href="integration-fluentvalidation.html">FluentValidation Integration</a> and <a href="integration-aspnet.html">ASP.NET Core Integration</a>.</p>
+<h3 id="keep-async-code-readable">Keep async code readable</h3>
+<p>Async flows still read left to right with <code>BindAsync</code>, <code>TapAsync</code>, and <code>MatchAsync</code>. You do not have to abandon the model once I/O enters the picture. See <a href="basics.html#working-with-async-operations">Basics</a>.</p>
+<h3 id="give-ai-and-humans-the-same-rails">Give AI and humans the same rails</h3>
+<p>Trellis works well for AI-assisted development because the framework encourages explicit structure:</p>
+<ul>
+<li>inputs become value objects</li>
+<li>workflows become result pipelines</li>
+<li>failures become typed errors</li>
+<li>endpoints become thin adapters over domain logic</li>
+</ul>
+<p>That is useful for generators, but it is even more useful for the humans who maintain the code later.</p>
+<h2 id="performance">Performance</h2>
+<p>The framework cost is tiny compared to network calls, database queries, or serialization. Trellis is designed so you can choose clarity without paying a meaningful runtime penalty for ordinary application work.</p>
+<p>For benchmark details, see <a href="performance.html">Performance</a>.</p>
+<h2 id="next-steps">Next steps</h2>
+<p>Choose the path that matches what you need right now:</p>
+<ul>
+<li><strong>I want to learn the syntax</strong> -&gt; <a href="basics.html">Basics</a></li>
+<li><strong>I want copy-pasteable scenarios</strong> -&gt; <a href="examples.html">Examples</a></li>
+<li><strong>I am building APIs</strong> -&gt; <a href="integration-aspnet.html">ASP.NET Core Integration</a></li>
+<li><strong>I want the full surface area</strong> -&gt; <a href="../api/index.html">API Documentation</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/intro.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Examples | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Examples | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/examples.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="examples">Examples</h1>
+
+<p>This article is a pattern library for real application code. Each section starts with the problem, then shows a working Trellis approach you can adapt.</p>
+<p>If you want the big-picture tutorial first, read <a href="intro.html">Introduction</a> and <a href="basics.html">Basics</a> before coming back here.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Validate a request, enforce a duplicate-check, and run side effects on success</td>
+<td><code>Combine</code> + <code>Bind</code> + <code>Ensure</code> + <code>Tap</code></td>
+<td><a href="#example-1-validate-a-registration-request-without-losing-readability">Example 1</a></td>
+</tr>
+<tr>
+<td>Map a <code>Result&lt;T&gt;</code> to an MVC <code>ActionResult&lt;T&gt;</code> without a switch</td>
+<td><code>ToHttpResponse().AsActionResult&lt;T&gt;()</code></td>
+<td><a href="#example-2-return-the-right-http-response-from-mvc-without-a-giant-switch-statement">Example 2</a></td>
+</tr>
+<tr>
+<td>Map a <code>Result&lt;T&gt;</code> to a Minimal API response</td>
+<td><code>ToHttpResponse()</code></td>
+<td><a href="#example-3-do-the-same-thing-in-minimal-apis">Example 3</a></td>
+</tr>
+<tr>
+<td>Run several independent async queries and combine into one result</td>
+<td><code>Result.ParallelAsync(...).WhenAllAsync().MapAsync(...)</code></td>
+<td><a href="#example-4-fetch-independent-dashboard-data-in-parallel">Example 4</a></td>
+</tr>
+<tr>
+<td>Reuse a FluentValidation validator as a <code>Result&lt;T&gt;</code></td>
+<td><code>validator.ValidateToResult(input)</code></td>
+<td><a href="#example-5-reuse-fluentvalidation-instead-of-duplicating-rules">Example 5</a></td>
+</tr>
+<tr>
+<td>Fall back to another source on a recoverable failure</td>
+<td><code>RecoverOnFailure(predicate, func)</code></td>
+<td><a href="#example-6-recover-from-a-failure-when-a-fallback-is-acceptable">Example 6</a></td>
+</tr>
+<tr>
+<td>Chain async I/O, business rules, mutation, and notification</td>
+<td><code>ToResultAsync</code> + <code>EnsureAsync</code> + <code>TapAsync</code> + <code>BindAsync</code> + <code>MatchAsync</code></td>
+<td><a href="#example-7-handle-async-side-effects-and-notifications-cleanly">Example 7</a></td>
+</tr>
+<tr>
+<td>Branch HTTP behavior on the concrete <code>Error</code> case</td>
+<td><code>result.Match(_, e =&gt; e switch { Error.X =&gt; ..., ... })</code></td>
+<td><a href="#example-8-branch-on-specific-error-types-when-the-caller-cares">Example 8</a></td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures and overloads: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a>, <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a>, <a href="../api_reference/trellis-api-fluentvalidation.html"><code>trellis-api-fluentvalidation.md</code></a>.</p>
+<h2 id="real-world-sample-projects">Real-world sample projects</h2>
+<p>The repository includes full examples you can browse after these snippets click:</p>
+<ul>
+<li><a href="https://github.com/xavierjohn/Trellis/tree/main/Examples/Showcase"><code>Showcase</code></a> — one banking domain hosted twice (MVC + Minimal API) with full Result/Error walkthrough, <code>TimeProvider</code>, lifecycle state machine, and integration tests for both hosting styles.</li>
+<li><a href="https://github.com/xavierjohn/Trellis/tree/main/Examples/ConditionalRequestExample"><code>ConditionalRequestExample</code></a> — RFC 9110 conditional requests (<code>If-Match</code> / <code>If-None-Match</code>) with strong ETags.</li>
+<li><a href="https://github.com/xavierjohn/Trellis/tree/main/Examples/SsoExample"><code>SsoExample</code></a> — <code>AddDevelopmentActorProvider()</code> and <code>AddClaimsActorProvider()</code> wired side-by-side.</li>
+<li><a href="https://github.com/xavierjohn/Trellis/tree/main/Examples/EfCoreExample"><code>EfCoreExample</code></a> — VO ID conversions, automatic timestamps, value-object composition over <code>DbContext</code>.</li>
+<li><a href="https://github.com/xavierjohn/Trellis/tree/main/Examples/TestingPatterns"><code>TestingPatterns</code></a> — async, parallel, <code>Maybe</code>, <code>EquatableArray</code>, and validating-by-result patterns.</li>
+</ul>
+<hr>
+<h2 id="example-1-validate-a-registration-request-without-losing-readability">Example 1: validate a registration request without losing readability</h2>
+<p><strong>Problem:</strong> you want to validate multiple fields, enforce a duplicate-email rule, and only run side effects when everything succeeds.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+public partial class CustomerEmail : RequiredString&lt;CustomerEmail&gt; { }
+
+public sealed record RegisterUserRequest(string FirstName, string LastName, string Email);
+
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
+{
+    public static Result&lt;User&gt; TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =&gt;
+        Result.Ok(new User(firstName, lastName, email));
+}
+
+public static Result&lt;User&gt; RegisterUser(
+    RegisterUserRequest request,
+    Func&lt;CustomerEmail, bool&gt; emailExists,
+    Action&lt;User&gt; saveUser,
+    Action&lt;CustomerEmail&gt; sendWelcomeEmail)
+{
+    return FirstName.TryCreate(request.FirstName)
+        .Combine(LastName.TryCreate(request.LastName))
+        .Combine(CustomerEmail.TryCreate(request.Email, fieldName: &quot;email&quot;))
+        .Bind((firstName, lastName, email) =&gt; User.TryCreate(firstName, lastName, email))
+        .Ensure(user =&gt; !emailExists(user.Email), new Error.Conflict(null, &quot;conflict&quot;) { Detail = &quot;Email already registered.&quot; })
+        .Tap(saveUser)
+        .Tap(user =&gt; sendWelcomeEmail(user.Email));
+}
+</code></pre>
+<p>Why this works well:</p>
+<ul>
+<li><code>Combine</code> keeps independent validation together</li>
+<li><code>Bind</code> moves from validated inputs to a domain object</li>
+<li><code>Ensure</code> adds a business rule</li>
+<li><code>Tap</code> keeps side effects on the success path</li>
+</ul>
+<hr>
+<h2 id="example-2-return-the-right-http-response-from-mvc-without-a-giant-switch-statement">Example 2: return the right HTTP response from MVC without a giant switch statement</h2>
+<p><strong>Problem:</strong> controllers should be thin, but hand-mapping every result to an HTTP response gets repetitive fast.</p>
+<p>This example is based on the sample MVC application in the repository.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+
+[ApiController]
+[Route(&quot;users&quot;)]
+public sealed class UsersController : ControllerBase
+{
+    [HttpPost]
+    public ActionResult&lt;UserResponse&gt; Register([FromBody] RegisterUserRequest request)
+    {
+        Result&lt;UserResponse&gt; result = RegisterCore(request);
+        return result.ToHttpResponse().AsActionResult&lt;UserResponse&gt;();
+    }
+
+    private static Result&lt;UserResponse&gt; RegisterCore(RegisterUserRequest request)
+    {
+        return string.IsNullOrWhiteSpace(request.Email)
+            ? new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;validation.error&quot;) { Detail = &quot;Email is required.&quot; }))
+            : Result.Ok(new UserResponse(request.Email));
+    }
+}
+
+public sealed record RegisterUserRequest(string Email);
+public sealed record UserResponse(string Email);
+</code></pre>
+<p><code>ToHttpResponse().AsActionResult&lt;T&gt;()</code> handles the common success/failure mapping while preserving a typed MVC return signature.</p>
+<p>For the full integration guide, see <a href="integration-aspnet.html">ASP.NET Core Integration</a>.</p>
+<hr>
+<h2 id="example-3-do-the-same-thing-in-minimal-apis">Example 3: do the same thing in Minimal APIs</h2>
+<p><strong>Problem:</strong> Minimal APIs are concise, but you still want Trellis errors to map cleanly to HTTP results.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+using Trellis;
+using Trellis.Asp;
+
+public static class UserRoutes
+{
+    public static void MapUserRoutes(this WebApplication app)
+    {
+        app.MapPost(&quot;/users&quot;, (RegisterUserRequest request) =&gt;
+            RegisterCore(request).ToHttpResponse());
+    }
+
+    private static Result&lt;UserResponse&gt; RegisterCore(RegisterUserRequest request)
+    {
+        return string.IsNullOrWhiteSpace(request.Email)
+            ? new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;validation.error&quot;) { Detail = &quot;Email is required.&quot; }))
+            : Result.Ok(new UserResponse(request.Email));
+    }
+}
+
+public sealed record RegisterUserRequest(string Email);
+public sealed record UserResponse(string Email);
+</code></pre>
+<p>When your endpoint is already expressed as a <code>Result&lt;T&gt;</code>, <code>ToHttpResponse()</code> keeps the web layer very small.</p>
+<hr>
+<h2 id="example-4-fetch-independent-dashboard-data-in-parallel">Example 4: fetch independent dashboard data in parallel</h2>
+<p><strong>Problem:</strong> dashboards often need several unrelated queries, and doing them sequentially makes the endpoint slower for no good reason.</p>
+<p>This example mirrors the sample dashboard endpoint in the repo.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed record DashboardResponse(int ProductCount, int OrderCount, decimal TotalRevenue);
+
+static Task&lt;Result&lt;int&gt;&gt; GetProductCountAsync() =&gt; Task.FromResult(Result.Ok(42));
+static Task&lt;Result&lt;int&gt;&gt; GetOrderCountAsync() =&gt; Task.FromResult(Result.Ok(12));
+static Task&lt;Result&lt;decimal&gt;&gt; GetRevenueAsync() =&gt; Task.FromResult(Result.Ok(1850.50m));
+
+Result&lt;DashboardResponse&gt; result = await Result.ParallelAsync(
+        () =&gt; GetProductCountAsync(),
+        () =&gt; GetOrderCountAsync(),
+        () =&gt; GetRevenueAsync())
+    .WhenAllAsync()
+    .MapAsync((productCount, orderCount, totalRevenue) =&gt;
+        new DashboardResponse(productCount, orderCount, totalRevenue));
+</code></pre>
+<p>Use this pattern when:</p>
+<ul>
+<li>the work is independent</li>
+<li>latency matters</li>
+<li>you still want one combined <code>Result&lt;T&gt;</code> at the end</li>
+</ul>
+<div class="TIP">
+<h5>Tip</h5>
+<p><code>ParallelAsync</code> starts the operations together. <code>WhenAllAsync()</code> waits for them and gives you a single result to continue the pipeline.</p>
+</div>
+<hr>
+<h2 id="example-5-reuse-fluentvalidation-instead-of-duplicating-rules">Example 5: reuse FluentValidation instead of duplicating rules</h2>
+<p><strong>Problem:</strong> teams often end up validating once in the domain and again in the API. That is tedious and easy to drift out of sync.</p>
+<pre><code class="lang-csharp">using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record CreateCustomer(string Email);
+
+var validator = new InlineValidator&lt;CreateCustomer&gt;();
+validator.RuleFor(x =&gt; x.Email).NotEmpty().EmailAddress();
+
+Result&lt;CreateCustomer&gt; result = validator.ValidateToResult(new CreateCustomer(&quot;user@example.com&quot;));
+</code></pre>
+<p>If validation fails, the result becomes a <code>Error.UnprocessableContent</code> with field-level details. That makes it easy to carry the same rule set from your application layer to HTTP responses.</p>
+<p>See <a href="integration-fluentvalidation.html">FluentValidation Integration</a> for a full walkthrough.</p>
+<hr>
+<h2 id="example-6-recover-from-a-failure-when-a-fallback-is-acceptable">Example 6: recover from a failure when a fallback is acceptable</h2>
+<p><strong>Problem:</strong> sometimes failure should not be the end of the story. A cache miss can fall back to the database, or a secondary provider can take over.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed record PricingSnapshot(string Source);
+
+Result&lt;PricingSnapshot&gt; cacheResult = new Error.NotFound(ResourceRef.For(&quot;Price&quot;)) { Detail = &quot;Price not found in cache.&quot; };
+Result&lt;PricingSnapshot&gt; databaseResult = Result.Ok(new PricingSnapshot(&quot;database&quot;));
+
+Result&lt;PricingSnapshot&gt; finalResult = cacheResult.RecoverOnFailure(
+    predicate: error =&gt; error is Error.NotFound,
+    func: _ =&gt; databaseResult);
+</code></pre>
+<p>This keeps the fallback logic explicit and local to the workflow.</p>
+<hr>
+<h2 id="example-7-handle-async-side-effects-and-notifications-cleanly">Example 7: handle async side effects and notifications cleanly</h2>
+<p><strong>Problem:</strong> async application code becomes noisy when loading data, checking rules, mutating state, and notifying another system all happen together.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed class Customer
+{
+    public Customer(string email, bool canBePromoted)
+    {
+        Email = email;
+        CanBePromoted = canBePromoted;
+    }
+
+    public string Email { get; }
+    public bool CanBePromoted { get; }
+    public Task PromoteAsync() =&gt; Task.CompletedTask;
+}
+
+static Task&lt;Customer?&gt; GetCustomerByIdAsync(long id) =&gt;
+    Task.FromResult(id == 1 ? new Customer(&quot;customer@example.com&quot;, true) : null);
+
+static Task&lt;Result&lt;Unit&gt;&gt; SendPromotionNotificationAsync(string email) =&gt;
+    Task.FromResult(Result.Ok());
+
+string message = await GetCustomerByIdAsync(1)
+    .ToResultAsync(new Error.NotFound(ResourceRef.For(&quot;Customer&quot;, 1)) { Detail = &quot;Customer not found.&quot; })
+    .EnsureAsync(customer =&gt; customer.CanBePromoted, new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = &quot;Customer cannot be promoted.&quot; })
+    .TapAsync(customer =&gt; customer.PromoteAsync())
+    .BindAsync(customer =&gt; SendPromotionNotificationAsync(customer.Email))
+    .MatchAsync(
+        onSuccess: _ =&gt; &quot;Promotion completed.&quot;,
+        onFailure: error =&gt; error.Detail);
+</code></pre>
+<p>The shape is the same as the synchronous version. That is one of the nicest parts of Trellis.</p>
+<hr>
+<h2 id="example-8-branch-on-specific-error-types-when-the-caller-cares">Example 8: branch on specific error types when the caller cares</h2>
+<p><strong>Problem:</strong> some endpoints need different behavior for validation failures, missing data, and unexpected faults.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Http;
+using Trellis;
+
+Result&lt;string&gt; result = new Error.NotFound(ResourceRef.For(&quot;Order&quot;)) { Detail = &quot;Order not found.&quot; };
+
+IResult httpResult = result.Match(
+    onSuccess: order =&gt; Results.Ok(order),
+    onFailure: error =&gt; error switch
+    {
+        Error.UnprocessableContent uc =&gt; Results.UnprocessableEntity(uc.Fields.Items),
+        Error.NotFound nf             =&gt; Results.NotFound(nf.Detail),
+        Error.Conflict c              =&gt; Results.Conflict(c.Detail),
+        _                              =&gt; Results.StatusCode(StatusCodes.Status500InternalServerError)
+    });
+</code></pre>
+<p>This is especially handy when you want to shape the HTTP response yourself instead of delegating to <code>ToHttpResponse()</code>.</p>
+<hr>
+<h2 id="a-few-patterns-worth-memorizing">A few patterns worth memorizing</h2>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Validate several incoming fields</td>
+<td><code>A.TryCreate(...).Combine(B.TryCreate(...))</code></td>
+</tr>
+<tr>
+<td>Move from validated input to domain logic</td>
+<td><code>.Bind(...)</code></td>
+</tr>
+<tr>
+<td>Add a business rule</td>
+<td><code>.Ensure(..., new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = ... })</code></td>
+</tr>
+<tr>
+<td>Save or notify on success</td>
+<td><code>.Tap(...)</code> / <code>.TapAsync(...)</code></td>
+</tr>
+<tr>
+<td>Fallback on acceptable failures</td>
+<td><code>.RecoverOnFailure(...)</code></td>
+</tr>
+<tr>
+<td>Return HTTP from MVC or Minimal API</td>
+<td><code>.ToHttpResponse()</code> / <code>.ToHttpResponse().AsActionResult&lt;T&gt;()</code></td>
+</tr>
+<tr>
+<td>Branch by concrete error type</td>
+<td><code>result.Match(_, e =&gt; e switch { Error.X =&gt; ..., ... })</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="where-to-go-next">Where to go next</h2>
+<ul>
+<li>Need the operator-by-operator tutorial? Read <a href="basics.html">Basics</a></li>
+<li>Want the reasoning behind the framework? Read <a href="intro.html">Introduction</a></li>
+<li>Building APIs? Read <a href="integration-aspnet.html">ASP.NET Core Integration</a></li>
+<li>Need exact signatures? Use the <a href="../api/index.html">API reference</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/examples.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

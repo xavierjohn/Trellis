@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Error | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Error | Trellis ">
+      
+      <meta name="description" content="Closed discriminated union of error values. Each case is a nested sealed record that mirrors a status from the IANA HTTP Status Code Registry (RFC 9110, RFC 6585) and carries a strongly-typed payload describing what went wrong.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Error.md&amp;value=---%0Auid%3A%20Trellis.Error%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Error">
+
+
+
+  <h1 id="Trellis_Error" data-uid="Trellis.Error" class="text-break">
+Class Error  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Closed discriminated union of error values. Each case is a nested <code>sealed record</code>
+that mirrors a status from the IANA HTTP Status Code Registry (RFC 9110, RFC 6585) and carries
+a strongly-typed payload describing what went wrong.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract record Error : IEquatable&lt;Error&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">Error</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.Error.html">Error</a>&gt;</div>
+    </dd>
+  </dl>
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.Error.Aggregate.html">Error.Aggregate</a></div>
+      <div><a class="xref" href="Trellis.Error.BadRequest.html">Error.BadRequest</a></div>
+      <div><a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.Conflict.html">Conflict</a></div>
+      <div><a class="xref" href="Trellis.Error.ContentTooLarge.html">Error.ContentTooLarge</a></div>
+      <div><a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a></div>
+      <div><a class="xref" href="Trellis.Error.Gone.html">Error.Gone</a></div>
+      <div><a class="xref" href="Trellis.Error.InternalServerError.html">Error.InternalServerError</a></div>
+      <div><a class="xref" href="Trellis.Error.MethodNotAllowed.html">Error.MethodNotAllowed</a></div>
+      <div><a class="xref" href="Trellis.Error.NotAcceptable.html">Error.NotAcceptable</a></div>
+      <div><a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a></div>
+      <div><a class="xref" href="Trellis.Error.NotImplemented.html">Error.NotImplemented</a></div>
+      <div><a class="xref" href="Trellis.Error.PreconditionFailed.html">Error.PreconditionFailed</a></div>
+      <div><a class="xref" href="Trellis.Error.PreconditionRequired.html">Error.PreconditionRequired</a></div>
+      <div><a class="xref" href="Trellis.Error.RangeNotSatisfiable.html">Error.RangeNotSatisfiable</a></div>
+      <div><a class="xref" href="Trellis.Error.ServiceUnavailable.html">Error.ServiceUnavailable</a></div>
+      <div><a class="xref" href="Trellis.Error.TooManyRequests.html">Error.TooManyRequests</a></div>
+      <div><a class="xref" href="Trellis.Error.Unauthorized.html">Error.Unauthorized</a></div>
+      <div><a class="xref" href="Trellis.Error.Unexpected.html">Error.Unexpected</a></div>
+      <div><a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.UnprocessableContent.html">UnprocessableContent</a></div>
+      <div><a class="xref" href="Trellis.Error.UnsupportedMediaType.html">Error.UnsupportedMediaType</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.CombineErrorExtensions.html#Trellis_CombineErrorExtensions_Combine_Trellis_Error_Trellis_Error_">CombineErrorExtensions.Combine(Error?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Error_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+<b>Closure.</b> The base record has a private constructor; only nested cases declared in this
+file may inherit from <a class="xref" href="Trellis.Error.html">Error</a>. External code cannot extend the catalog, so
+<code>switch</code> over an <a class="xref" href="Trellis.Error.html">Error</a> reference is exhaustive at the language level.
+</p>
+<p>
+<b>Identity.</b> <a class="xref" href="Trellis.Error.html#Trellis_Error_Kind">Kind</a> is a stable, IANA-aligned slug (e.g. <code>"not-found"</code>)
+that survives CLR renames. <a class="xref" href="Trellis.Error.html#Trellis_Error_Code">Code</a> defaults to <a class="xref" href="Trellis.Error.html#Trellis_Error_Kind">Kind</a> and is overridden
+by cases whose payload carries a per-instance reason code (for example <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a>
+returns its <code>ReasonCode</code>).
+</p>
+<p>
+<b>Detail.</b> Every case inherits an optional <code>Detail</code> property from the base. Callers
+supply it via object-initializer syntax: <code>new Error.NotFound(resource) { Detail = "..." }</code>.
+The boundary renderer prefers <code>Detail</code> when present; otherwise it computes a localized
+message from <a class="xref" href="Trellis.Error.html#Trellis_Error_Kind">Kind</a>, <a class="xref" href="Trellis.Error.html#Trellis_Error_Code">Code</a>, and the typed payload.
+</p>
+<p>
+<b>Equality.</b> Value-based equality over the discriminator, the typed payload, and
+<a class="xref" href="Trellis.Error.html#Trellis_Error_Detail">Detail</a>. <a class="xref" href="Trellis.Error.html#Trellis_Error_Cause">Cause</a> is intentionally excluded from equality so that
+two errors with identical surface payload compare equal regardless of how deeply they were
+wrapped — see the <a class="xref" href="Trellis.Error.html#Trellis_Error_Equals_Trellis_Error_">Equals(Error?)</a> override for the rationale.
+Collection-bearing payloads use <a class="xref" href="Trellis.EquatableArray-1.html">EquatableArray&lt;T&gt;</a> for sequence equality.
+</p>
+<p>
+<b>Cause chain.</b> <a class="xref" href="Trellis.Error.html#Trellis_Error_Cause">Cause</a> is a structured chain (never a live <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>).
+Cycles are detected at <code>init</code> time and throw <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Error_Cause_" data-uid="Trellis.Error.Cause*"></a>
+
+  <h3 id="Trellis_Error_Cause" data-uid="Trellis.Error.Cause">
+  Cause
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the optional structured cause of this error. Never holds a live <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>;
+use a child <a class="xref" href="Trellis.Error.html">Error</a> to attach causal context.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Error? Cause { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Error_Code_" data-uid="Trellis.Error.Code*"></a>
+
+  <h3 id="Trellis_Error_Code" data-uid="Trellis.Error.Code">
+  Code
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the per-instance machine-readable code. Defaults to <a class="xref" href="Trellis.Error.html#Trellis_Error_Kind">Kind</a>; cases
+whose payload carries a per-instance <code>ReasonCode</code> override this.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual string Code { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Error_Detail_" data-uid="Trellis.Error.Detail*"></a>
+
+  <h3 id="Trellis_Error_Detail" data-uid="Trellis.Error.Detail">
+  Detail
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the optional human-readable detail. When non-null the boundary renderer prefers
+this over the default template for <a class="xref" href="Trellis.Error.html#Trellis_Error_Code">Code</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string? Detail { get; init; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Error_Kind_" data-uid="Trellis.Error.Kind*"></a>
+
+  <h3 id="Trellis_Error_Kind" data-uid="Trellis.Error.Kind">
+  Kind
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the stable, IANA-aligned identifier for this case (e.g. <code>&quot;not-found&quot;</code>,
+<code>&quot;unprocessable-content&quot;</code>). Suitable for telemetry, problem-details
+<code>type</code> URI synthesis, and wire serialization.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract string Kind { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Error_Equals_" data-uid="Trellis.Error.Equals*"></a>
+
+  <h3 id="Trellis_Error_Equals_Trellis_Error_" data-uid="Trellis.Error.Equals(Trellis.Error)">
+  Equals(Error?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L157"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Value equality over the discriminator (<span class="xref">Trellis.Error.EqualityContract</span>) and <a class="xref" href="Trellis.Error.html#Trellis_Error_Detail">Detail</a>,
+plus each derived case's positional payload. <a class="xref" href="Trellis.Error.html#Trellis_Error_Cause">Cause</a> is intentionally
+<b>excluded</b> from equality and hashing — two errors with identical kind, payload,
+and detail represent the same logical failure regardless of how deeply they were
+wrapped. This mirrors <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, whose equality does not recurse
+into <code>InnerException</code>, and keeps test assertions ergonomic (callers assert on
+the surface error without reconstructing the entire causal chain).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual bool Equals(Error? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Error_GetDisplayMessage_" data-uid="Trellis.Error.GetDisplayMessage*"></a>
+
+  <h3 id="Trellis_Error_GetDisplayMessage" data-uid="Trellis.Error.GetDisplayMessage">
+  GetDisplayMessage()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L105"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a human-readable message suitable for logging, tracing, and diagnostic
+surfaces. Prefers the explicit <a class="xref" href="Trellis.Error.html#Trellis_Error_Detail">Detail</a> when set; otherwise flattens
+any per-field violation messages (for <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a>) before
+falling back to <a class="xref" href="Trellis.Error.html#Trellis_Error_Code">Code</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual string GetDisplayMessage()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Error_GetHashCode_" data-uid="Trellis.Error.GetHashCode*"></a>
+
+  <h3 id="Trellis_Error_GetHashCode" data-uid="Trellis.Error.GetHashCode">
+  GetHashCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L166"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Serves as the default hash function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A hash code for the current object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Error_ToString_" data-uid="Trellis.Error.ToString*"></a>
+
+  <h3 id="Trellis_Error_ToString" data-uid="Trellis.Error.ToString">
+  ToString()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L97"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a string that represents the current object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A string that represents the current object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/Error.cs/#L42" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

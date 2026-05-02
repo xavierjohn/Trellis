@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Namespace Trellis.EntityFrameworkCore | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Namespace Trellis.EntityFrameworkCore | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.EntityFrameworkCore">
+
+  <h1 id="Trellis_EntityFrameworkCore" data-uid="Trellis.EntityFrameworkCore" class="text-break">Namespace Trellis.EntityFrameworkCore</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+
+    <h3 id="classes">
+Classes
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.DbContextExtensions.html">DbContextExtensions</a></dt>
+      <dd><p>Extension methods on <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> that wrap <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext.savechangesasync#microsoft-entityframeworkcore-dbcontext-savechangesasync(system-threading-cancellationtoken)">SaveChangesAsync(CancellationToken)</a>
+and convert expected database exceptions to <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> failures.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.DbContextOptionsBuilderExtensions.html">DbContextOptionsBuilderExtensions</a></dt>
+      <dd><p>Extension methods for <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontextoptionsbuilder">DbContextOptionsBuilder</a> that register Trellis EF Core interceptors.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.DbExceptionClassifier.html">DbExceptionClassifier</a></dt>
+      <dd><p>Classifies database exceptions across providers (SQL Server, PostgreSQL, SQLite).
+Used internally by both <a class="xref" href="Trellis.EntityFrameworkCore.DbContextExtensions.html#Trellis_EntityFrameworkCore_DbContextExtensions_SaveChangesResultAsync_Microsoft_EntityFrameworkCore_DbContext_System_Threading_CancellationToken_">SaveChangesResultAsync(DbContext, CancellationToken)</a>
+and <a class="xref" href="Trellis.EntityFrameworkCore.DbContextExtensions.html#Trellis_EntityFrameworkCore_DbContextExtensions_SaveChangesResultAsync_Microsoft_EntityFrameworkCore_DbContext_System_Boolean_System_Threading_CancellationToken_">SaveChangesResultAsync(DbContext, bool, CancellationToken)</a> overloads.
+Also available for direct use in repositories that need custom error messages per exception type.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.EfUnitOfWork-1.html">EfUnitOfWork&lt;TContext&gt;</a></dt>
+      <dd><p>EF Core implementation of <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html">IUnitOfWork</a>.
+Delegates to <a class="xref" href="Trellis.EntityFrameworkCore.DbContextExtensions.html#Trellis_EntityFrameworkCore_DbContextExtensions_SaveChangesResultUnitAsync_Microsoft_EntityFrameworkCore_DbContext_System_Threading_CancellationToken_">SaveChangesResultUnitAsync(DbContext, CancellationToken)</a>
+which already maps <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbupdateconcurrencyexception">DbUpdateConcurrencyException</a> to <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a>,
+duplicate-key exceptions to <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a>,
+and foreign-key violations to <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.EntityTimestampInterceptor.html">EntityTimestampInterceptor</a></dt>
+      <dd><p>EF Core SaveChanges interceptor that automatically sets <a class="xref" href="Trellis.IEntity.html#Trellis_IEntity_CreatedAt">CreatedAt</a>
+and <a class="xref" href="Trellis.IEntity.html#Trellis_IEntity_LastModified">LastModified</a> on entities before save.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.MaybeEntityTypeBuilderExtensions.html">MaybeEntityTypeBuilderExtensions</a></dt>
+      <dd><p>Entity type builder helpers that resolve <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> properties to their mapped storage members.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.MaybeModelExtensions.html">MaybeModelExtensions</a></dt>
+      <dd><p>Diagnostics helpers for inspecting resolved EF Core mappings for <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> properties.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.MaybePropertyMapping.html">MaybePropertyMapping</a></dt>
+      <dd><p>Describes how a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> property resolved to an EF Core mapped backing field.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.MaybeQueryInterceptor.html">MaybeQueryInterceptor</a></dt>
+      <dd><p>An EF Core query expression interceptor that automatically rewrites <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>
+property accesses in LINQ expression trees to their underlying storage member equivalents.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.MaybeQueryableExtensions.html">MaybeQueryableExtensions</a></dt>
+      <dd><p>LINQ query extensions for <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> properties backed by generated nullable storage members.
+These methods rewrite the expression tree to target the underlying <code>_camelCase</code> storage member
+via <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.ef.property">Property&lt;TProperty&gt;(object, string)</a>, enabling EF Core to translate the query to SQL.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.MaybeUpdateExtensions.html">MaybeUpdateExtensions</a></dt>
+      <dd><p>ExecuteUpdate helpers for setting and clearing mapped <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> properties via CLR selectors.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.ModelConfigurationBuilderExtensions.html">ModelConfigurationBuilderExtensions</a></dt>
+      <dd><p>Extension methods for <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.modelconfigurationbuilder">ModelConfigurationBuilder</a> that register
+Trellis value object conventions before EF Core model building.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.OwnedEntityAttribute.html">OwnedEntityAttribute</a></dt>
+      <dd><p>Marks a composite <a class="xref" href="Trellis.ValueObject.html">ValueObject</a> as an EF Core owned entity type,
+triggering source generation of the private parameterless constructor required for EF Core
+materialization.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.QueryableExtensions.html">QueryableExtensions</a></dt>
+      <dd><p>Extension methods on <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.iqueryable-1">IQueryable&lt;T&gt;</a> that wrap EF Core query results
+in <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> or <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html">RepositoryBase&lt;TAggregate, TId&gt;</a></dt>
+      <dd><p>Base class for EF Core repositories that persist <a class="xref" href="Trellis.Aggregate-1.html">Aggregate&lt;TId&gt;</a> instances.
+Provides standard read and staging methods. Repositories stage changes to the
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> change tracker; the <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html">IUnitOfWork</a> (typically driven
+by a pipeline behavior) is responsible for committing staged changes.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.ScalarValueQueryInterceptor.html">ScalarValueQueryInterceptor</a></dt>
+      <dd><p>An EF Core query expression interceptor that enables natural scalar value object
+syntax in LINQ queries — comparisons, string methods, and properties translate to SQL
+without requiring <code>.Value</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.TransactionalCommandBehavior-2.html">TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that automatically commits staged changes after a successful command handler.</p>
+<p>
+The behavior calls <code>next</code> to run the handler (which stages changes via repositories),
+then calls <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html#Trellis_EntityFrameworkCore_IUnitOfWork_CommitAsync_System_Threading_CancellationToken_">CommitAsync(CancellationToken)</a> if the handler returned success.
+If the handler returned a failure <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>, no commit occurs and the
+staged changes are discarded when the <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> is disposed.
+</p>
+<p>
+This behavior is constrained to <span class="xref">Mediator.ICommand&lt;TResponse&gt;</span> messages — queries
+are not wrapped and incur no overhead.
+</p>
+<p>
+<b>Atomicity:</b> EF Core wraps each <code>SaveChanges</code> call in an implicit database
+transaction, so all staged changes within a single handler are committed atomically.
+Cross-aggregate operations that share the same <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a>
+are automatically transactional.
+</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.TrellisPersistenceMappingException.html">TrellisPersistenceMappingException</a></dt>
+      <dd><p>Represents a failure to materialize a Trellis value object from persisted data.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.TrellisScalarConverter-2.html">TrellisScalarConverter&lt;TModel, TProvider&gt;</a></dt>
+      <dd><p>Value converter for Trellis <a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a> types.</p>
+<p>
+Converts to database using the <code>Value</code> property and from database
+using the type's validation factory methods. Invalid persisted values throw
+<a class="xref" href="Trellis.EntityFrameworkCore.TrellisPersistenceMappingException.html">TrellisPersistenceMappingException</a> with explicit materialization details.
+</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.UnitOfWorkServiceCollectionExtensions.html">UnitOfWorkServiceCollectionExtensions</a></dt>
+      <dd><p>Extension methods for registering <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html">IUnitOfWork</a> and the
+<a class="xref" href="Trellis.EntityFrameworkCore.TransactionalCommandBehavior-2.html">TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</a> pipeline behavior.</p>
+</dd>
+    </dl>
+    <h3 id="interfaces">
+Interfaces
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html">IUnitOfWork</a></dt>
+      <dd><p>Abstraction over the commit boundary for staged changes.
+Repositories stage changes; calling <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html#Trellis_EntityFrameworkCore_IUnitOfWork_CommitAsync_System_Threading_CancellationToken_">CommitAsync(CancellationToken)</a> persists them.</p>
+<p>
+In the standard Trellis pipeline, commit is handled automatically by
+<a class="xref" href="Trellis.EntityFrameworkCore.TransactionalCommandBehavior-2.html">TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</a> after a successful handler.
+Inject <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html">IUnitOfWork</a> directly only in non-pipeline scenarios
+(background jobs, integration tests, etc.).
+</p>
+</dd>
+    </dl>
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

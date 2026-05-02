@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Observability and Monitoring | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Observability and Monitoring | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-observability.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="observability-and-monitoring">Observability and Monitoring</h1>
+
+<p>Trellis emits OpenTelemetry <code>Activity</code> spans and <code>ILogger</code> entries from three <code>ActivitySource</code>s — <code>Trellis.Mediator</code>, <code>Trellis.Primitives</code>, and <code>Trellis.Core</code> — wired through the canonical <code>AddTrellis(...)</code> composition root.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wire mediator tracing + logging via the composition root</td>
+<td><code>services.AddTrellis(o =&gt; o.UseMediator())</code></td>
+<td><a href="#default-registration">Default registration</a></td>
+</tr>
+<tr>
+<td>Subscribe an OTel <code>TracerProvider</code> to mediator spans</td>
+<td><code>tracing.AddSource(&quot;Trellis.Mediator&quot;)</code></td>
+<td><a href="#tracing">Tracing</a></td>
+</tr>
+<tr>
+<td>Subscribe to value-object spans (validation/parsing)</td>
+<td><code>tracing.AddPrimitiveValueObjectInstrumentation()</code></td>
+<td><a href="#tracing">Tracing</a></td>
+</tr>
+<tr>
+<td>Subscribe to ROP spans (deep <code>Bind</code> / <code>Map</code> debugging)</td>
+<td><code>tracing.AddResultsInstrumentation()</code></td>
+<td><a href="#tracing">Tracing</a></td>
+</tr>
+<tr>
+<td>Read structured per-message logs with elapsed-ms outcomes</td>
+<td>Built in via <code>LoggingBehavior&lt;,&gt;</code></td>
+<td><a href="#logging">Logging</a></td>
+</tr>
+<tr>
+<td>Allow <code>Error.Detail</code> into telemetry (non-PII environments only)</td>
+<td><code>o.UseMediator(t =&gt; t.IncludeErrorDetail = true)</code></td>
+<td><a href="#redaction">Redaction</a></td>
+</tr>
+<tr>
+<td>Add business tags to the mediator span from a handler</td>
+<td><code>Activity.Current?.SetTag(...)</code></td>
+<td><a href="#custom-enrichment">Custom enrichment</a></td>
+</tr>
+<tr>
+<td>Get HTTP / DB / runtime metrics</td>
+<td>Standard OTel instrumentation packages</td>
+<td><a href="#metrics">Metrics</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You are wiring observability into a Trellis composition root and want the same span/log surface as <code>AddTrellisBehaviors()</code> produces.</li>
+<li>You need to know exactly which tags <code>TracingBehavior&lt;,&gt;</code> writes on success vs. failure, and what <code>LoggingBehavior&lt;,&gt;</code> emits.</li>
+<li>You are deciding which <code>ActivitySource</code>s to subscribe to — and which to leave off because they are noisy.</li>
+<li>You need to confirm that <code>Error.Detail</code> is redacted by default and how to opt in.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Type / API</th>
+<th>Emits</th>
+<th>Subscribed via</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mediator tracing</td>
+<td><code>TracingBehavior&lt;TMessage, TResponse&gt;</code> (<code>Trellis.Mediator</code>)</td>
+<td>One <code>Activity</code> per mediator message; tags <code>error.code</code>, <code>error.type</code>; <code>ActivityStatusCode.Ok</code> / <code>Error</code></td>
+<td>Registered by <code>AddTrellisBehaviors()</code>; subscribe with <code>tracing.AddSource(TracingBehavior&lt;,&gt;.ActivitySourceName)</code> (value: <code>&quot;Trellis.Mediator&quot;</code>)</td>
+</tr>
+<tr>
+<td>Mediator logging</td>
+<td><code>LoggingBehavior&lt;TMessage, TResponse&gt;</code> (<code>Trellis.Mediator</code>)</td>
+<td><code>Information</code> start, <code>Information</code> end (with elapsed ms), <code>Warning</code> on failure (with <code>Error.Code</code>)</td>
+<td>Registered by <code>AddTrellisBehaviors()</code>; consumed by any <code>ILogger</code> provider</td>
+</tr>
+<tr>
+<td>Redaction</td>
+<td><code>TrellisMediatorTelemetryOptions</code> (<code>Trellis.Mediator</code>)</td>
+<td>Controls whether <code>Error.Detail</code> flows into the activity status description and log message</td>
+<td>DI singleton, configured via <code>o.UseMediator(t =&gt; ...)</code> or <code>AddTrellisBehaviors(t =&gt; ...)</code></td>
+</tr>
+<tr>
+<td>Primitive value-object tracing</td>
+<td><code>Trellis.Primitives</code> <code>ActivitySource</code></td>
+<td>One <code>Activity</code> per <code>TryCreate</code> / <code>Parse</code> on a <code>Required*&lt;TSelf&gt;</code> value object</td>
+<td><code>tracing.AddPrimitiveValueObjectInstrumentation()</code></td>
+</tr>
+<tr>
+<td>Result / ROP tracing</td>
+<td><code>Trellis.Core</code> <code>ActivitySource</code> (<code>RopTrace.ActivitySourceName</code>)</td>
+<td>Spans for individual <code>Result</code> operations — verbose; intended for diagnostics</td>
+<td><code>tracing.AddResultsInstrumentation()</code></td>
+</tr>
+<tr>
+<td>Composition root</td>
+<td><code>TrellisServiceBuilder.UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</code></td>
+<td>Registers the five canonical behaviors and the telemetry options</td>
+<td><code>services.AddTrellis(o =&gt; o.UseMediator(...))</code></td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-servicedefaults.html"><code>trellis-api-servicedefaults.md</code></a>, <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a>, <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.ServiceDefaults
+dotnet add package OpenTelemetry.Extensions.Hosting
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
+dotnet add package OpenTelemetry.Instrumentation.AspNetCore
+dotnet add package OpenTelemetry.Instrumentation.Http
+</code></pre>
+<p><code>Trellis.Core</code> already references the OpenTelemetry SDK so <code>AddResultsInstrumentation()</code> and <code>AddPrimitiveValueObjectInstrumentation()</code> work without extra packages. The exporter and ASP.NET Core / HTTP instrumentation packages above are standard OTel — Trellis does not wrap them.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>Register Trellis (which wires <code>TracingBehavior&lt;,&gt;</code> and <code>LoggingBehavior&lt;,&gt;</code> into the mediator pipeline) and subscribe an OpenTelemetry <code>TracerProvider</code> to the mediator activity source.</p>
+<pre><code class="lang-csharp">using Mediator;
+using OpenTelemetry.Trace;
+using Trellis;
+using Trellis.Mediator;
+using Trellis.ServiceDefaults;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediator();
+builder.Services.AddTrellis(options =&gt; options
+    .UseAsp()
+    .UseMediator());
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =&gt; tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(TracingBehavior&lt;IMessage, IResult&gt;.ActivitySourceName)
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddOtlpExporter());
+
+var app = builder.Build();
+app.Run();
+
+public sealed record CreateOrder(string CustomerId, decimal Total) : ICommand&lt;Result&lt;Unit&gt;&gt;;
+
+public sealed class CreateOrderHandler : ICommandHandler&lt;CreateOrder, Result&lt;Unit&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(CreateOrder command, CancellationToken cancellationToken)
+        =&gt; ValueTask.FromResult(Result.Ok());
+}
+</code></pre>
+<p>Every dispatch of <code>CreateOrder</code> now produces:</p>
+<ul>
+<li>one <code>Activity</code> named <code>&quot;CreateOrder&quot;</code> under source <code>&quot;Trellis.Mediator&quot;</code>, and</li>
+<li>two structured log entries (<code>Handling CreateOrder</code>, <code>Handled CreateOrder in N.NNms</code>).</li>
+</ul>
+<h2 id="default-registration">Default registration</h2>
+<p><code>AddTrellis(o =&gt; o.UseMediator())</code> is the canonical entry point. It calls <code>AddTrellisBehaviors()</code> and is <strong>idempotent</strong> — <code>UseFluentValidation</code>, <code>UseResourceAuthorization</code>, and <code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;</code> all imply <code>UseMediator</code>, so repeating the call cannot duplicate registrations.</p>
+<table>
+<thead>
+<tr>
+<th>Wiring step</th>
+<th>What it adds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>o.UseMediator()</code></td>
+<td>Registers <code>ExceptionBehavior&lt;,&gt;</code>, <code>TracingBehavior&lt;,&gt;</code>, <code>LoggingBehavior&lt;,&gt;</code>, <code>AuthorizationBehavior&lt;,&gt;</code>, <code>ValidationBehavior&lt;,&gt;</code> and a default <code>TrellisMediatorTelemetryOptions</code> (Detail redacted).</td>
+</tr>
+<tr>
+<td><code>o.UseMediator(t =&gt; t.IncludeErrorDetail = true)</code></td>
+<td>Same, but replaces the options singleton so <code>Error.Detail</code> flows into telemetry.</td>
+</tr>
+</tbody>
+</table>
+<p>Pipeline order (outermost → innermost) is: Exception → Tracing → Logging → Authorization → (ResourceAuthorization, opt-in) → Validation → (Transactional, opt-in via <code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;</code>). Every inner behavior runs <em>inside</em> the <code>Trellis.Mediator</code> activity, so its logs and child spans inherit the same trace and span correlation IDs. See <a href="../api_reference/trellis-api-mediator.html#canonical-pipeline-order"><code>trellis-api-mediator.md</code> → Canonical pipeline order</a>.</p>
+<h2 id="tracing">Tracing</h2>
+<p>Trellis ships three independent <code>ActivitySource</code>s. Subscribe to each on its own merits.</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Constant</th>
+<th>Volume</th>
+<th>When to subscribe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;Trellis.Mediator&quot;</code></td>
+<td><code>TracingBehavior&lt;,&gt;.ActivitySourceName</code></td>
+<td>One span per mediator message</td>
+<td>Always — this is the primary failure-localisation surface.</td>
+</tr>
+<tr>
+<td><code>&quot;Trellis.Primitives&quot;</code></td>
+<td>(internal — use <code>AddPrimitiveValueObjectInstrumentation()</code>)</td>
+<td>One span per <code>TryCreate</code> / <code>Parse</code> on a <code>Required*&lt;TSelf&gt;</code> value object</td>
+<td>When you need to see <em>why</em> input validation rejected a request at the edge.</td>
+</tr>
+<tr>
+<td><code>&quot;Trellis.Core&quot;</code></td>
+<td><code>RopTrace.ActivitySourceName</code> (= <code>&quot;Trellis.Core&quot;</code>)</td>
+<td>One span per individual <code>Result</code> operation (<code>Bind</code>, <code>Map</code>, <code>Tap</code>, …)</td>
+<td>Only for break-glass diagnostics — high cardinality, high volume.</td>
+</tr>
+</tbody>
+</table>
+<p><code>TracingBehavior&lt;,&gt;</code> writes the following on every dispatched message:</p>
+<table>
+<thead>
+<tr>
+<th>Outcome</th>
+<th>Activity status</th>
+<th>Tags written</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Handler returns success</td>
+<td><code>ActivityStatusCode.Ok</code></td>
+<td>(none)</td>
+</tr>
+<tr>
+<td>Handler returns <code>Result.Fail(error)</code></td>
+<td><code>ActivityStatusCode.Error</code></td>
+<td><code>error.code</code> = <code>error.Code</code>; <code>error.type</code> = stable error class name (e.g. <code>Error.NotFound</code>); <code>StatusDescription</code> left empty unless <code>IncludeErrorDetail = true</code></td>
+</tr>
+<tr>
+<td>Handler throws</td>
+<td><code>ActivityStatusCode.Error</code></td>
+<td><code>error.type</code> = exception type name; the exception is <strong>rethrown</strong>; the exception message is <strong>not</strong> copied into telemetry</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Mediator;
+using OpenTelemetry.Trace;
+using Trellis.Mediator;
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =&gt; tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(TracingBehavior&lt;IMessage, IResult&gt;.ActivitySourceName)
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddOtlpExporter());
+</code></pre>
+<p>To enable ROP forensics during an investigation, add <code>.AddResultsInstrumentation()</code> on top — and remove it again when the investigation is over.</p>
+<pre><code class="lang-csharp">builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =&gt; tracing
+        .AddSource(TracingBehavior&lt;IMessage, IResult&gt;.ActivitySourceName)
+        .AddPrimitiveValueObjectInstrumentation()
+        .AddResultsInstrumentation()
+        .AddConsoleExporter());
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>AddResultsInstrumentation()</code> is a debugging tool. It traces every <code>Bind</code>, <code>Map</code>, and <code>Tap</code> and can flood your collector. Keep it off in production unless you have an active incident.</p>
+</div>
+<h2 id="logging">Logging</h2>
+<p><code>LoggingBehavior&lt;,&gt;</code> is registered alongside <code>TracingBehavior&lt;,&gt;</code> and uses source-generated <code>LoggerMessage</code> methods — no allocation on the hot path. It emits exactly three messages per dispatch:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Level</th>
+<th>Template</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entry</td>
+<td><code>Information</code></td>
+<td><code>Handling {MessageName}</code></td>
+</tr>
+<tr>
+<td>Success exit</td>
+<td><code>Information</code></td>
+<td><code>Handled {MessageName} in {ElapsedMs:0.00}ms</code></td>
+</tr>
+<tr>
+<td>Failure exit</td>
+<td><code>Warning</code></td>
+<td><code>Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>{MessageName}</code> is <code>typeof(TMessage).Name</code>. <code>{ErrorSummary}</code> is <code>error.Code</code> by default; it becomes <code>error.GetDisplayMessage()</code> (which includes <code>Error.Detail</code>) only when <code>IncludeErrorDetail = true</code>. Because the log entries are written inside the mediator activity, every entry already carries the trace/span IDs propagated by your logging provider's OTel integration.</p>
+<pre><code class="lang-csharp">builder.Logging.AddOpenTelemetry(o =&gt;
+{
+    o.IncludeFormattedMessage = true;
+    o.IncludeScopes = true;
+    o.AddOtlpExporter();
+});
+</code></pre>
+<h2 id="redaction">Redaction</h2>
+<p><code>TrellisMediatorTelemetryOptions.IncludeErrorDetail</code> is the single redaction switch. It defaults to <code>false</code>. Both <code>TracingBehavior&lt;,&gt;</code> and <code>LoggingBehavior&lt;,&gt;</code> consume it.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th><code>error.Code</code></th>
+<th><code>error.type</code></th>
+<th><code>Error.Detail</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IncludeErrorDetail = false</code> (default)</td>
+<td>Emitted</td>
+<td>Emitted</td>
+<td>Redacted from <code>Activity.StatusDescription</code> and from log messages</td>
+</tr>
+<tr>
+<td><code>IncludeErrorDetail = true</code></td>
+<td>Emitted</td>
+<td>Emitted</td>
+<td>Included in <code>Activity.StatusDescription</code> and the failure log message</td>
+</tr>
+</tbody>
+</table>
+<p>Configure via the composition root:</p>
+<pre><code class="lang-csharp">services.AddTrellis(options =&gt; options
+    .UseAsp()
+    .UseMediator(telemetry =&gt; telemetry.IncludeErrorDetail = builder.Environment.IsDevelopment()));
+</code></pre>
+<p>Or directly when not using <code>AddTrellis(...)</code>:</p>
+<pre><code class="lang-csharp">services.AddTrellisBehaviors(telemetry =&gt; telemetry.IncludeErrorDetail = false);
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>Error.Detail</code> is the only Trellis-emitted field that may carry user input or domain payloads (an order id, an email address, a free-text validation message). <code>Error.Code</code> and the stable error type name are operator-defined identifiers and remain PII-free regardless of this setting.</p>
+</div>
+<h2 id="metrics">Metrics</h2>
+<p>Trellis does not register an OpenTelemetry <code>Meter</code> and emits no framework counters or histograms. Use the standard OpenTelemetry instrumentation packages for runtime, ASP.NET Core, and HTTP-client metrics:</p>
+<pre><code class="lang-csharp">builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =&gt; metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddOtlpExporter());
+</code></pre>
+<p>For per-message latency dashboards, derive metrics from the mediator activity (<code>Trellis.Mediator</code>) or from the <code>Handled {MessageName} in {ElapsedMs:0.00}ms</code> log entries — both already carry the elapsed time.</p>
+<h2 id="custom-enrichment">Custom enrichment</h2>
+<p><code>TracingBehavior&lt;,&gt;</code> opens its activity <em>before</em> the inner behaviors run, so any code inside the handler (or in inner behaviors) can tag the same activity through <code>Activity.Current</code>.</p>
+<pre><code class="lang-csharp">using System.Diagnostics;
+using Mediator;
+using Trellis;
+
+public sealed record SubmitInvoice(string CustomerId, decimal Amount) : ICommand&lt;Result&lt;Unit&gt;&gt;;
+
+public sealed class SubmitInvoiceHandler : ICommandHandler&lt;SubmitInvoice, Result&lt;Unit&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(SubmitInvoice command, CancellationToken cancellationToken)
+    {
+        Activity.Current?.SetTag(&quot;invoice.customer_id&quot;, command.CustomerId);
+        Activity.Current?.SetTag(&quot;invoice.amount&quot;, command.Amount);
+
+        return ValueTask.FromResult(Result.Ok());
+    }
+}
+</code></pre>
+<p>For broader cross-cutting enrichment (every span, not just mediator messages), use a standard OpenTelemetry <code>BaseProcessor&lt;Activity&gt;</code> registered on the <code>TracerProviderBuilder</code> — Trellis does not provide a wrapper because the OTel SDK already does.</p>
+<h2 id="composition">Composition</h2>
+<p>The mediator activity is the natural parent for any spans your business code opens around the same operation. Open a child <code>ActivitySource</code> from your application, and it will be correlated with the <code>Trellis.Mediator</code> activity (and any ASP.NET Core request span above it) automatically.</p>
+<pre><code class="lang-csharp">using System.Diagnostics;
+using Mediator;
+using Trellis;
+
+public sealed record SettleBatch(string BatchId) : ICommand&lt;Result&lt;Unit&gt;&gt;;
+
+public sealed class SettleBatchHandler : ICommandHandler&lt;SettleBatch, Result&lt;Unit&gt;&gt;
+{
+    private static readonly ActivitySource Source = new(&quot;Acme.Billing&quot;);
+
+    public ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(SettleBatch command, CancellationToken cancellationToken)
+    {
+        using var activity = Source.StartActivity(&quot;Billing.SettleBatch&quot;);
+        activity?.SetTag(&quot;batch.id&quot;, command.BatchId);
+
+        return ValueTask.FromResult(Result.Ok());
+    }
+}
+</code></pre>
+<p>Subscribe to the new source the same way:</p>
+<pre><code class="lang-csharp">tracing.AddSource(&quot;Acme.Billing&quot;);
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Subscribe to <code>Trellis.Mediator</code> always.</strong> It is one span per message and is the cheapest lever for failure localisation.</li>
+<li><strong>Add <code>AddPrimitiveValueObjectInstrumentation()</code> early.</strong> Validation traces are the clearest signal for &quot;why is this request being rejected at the edge?&quot;.</li>
+<li><strong>Treat <code>AddResultsInstrumentation()</code> as break-glass.</strong> Turn it on for an incident, turn it off afterwards.</li>
+<li><strong>Keep <code>IncludeErrorDetail = false</code> in production.</strong> Code + type are sufficient for dashboards and alerts; flip it on per-environment only when you have audited every <code>Error.Detail</code> write site.</li>
+<li><strong>Sample at the collector or via OTel.</strong> Trellis does not sample. Set <code>SetSampler(new TraceIdRatioBasedSampler(0.1))</code> on the <code>TracerProvider</code> if you need to throttle.</li>
+<li><strong>Use <code>error.code</code> for grouping.</strong> It is stable across releases (e.g. <code>validation.error</code>, <code>not.found.error</code>, <code>forbidden.error</code>) and far better than free-form messages.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>Composition-root API: <a href="../api_reference/trellis-api-servicedefaults.html"><code>trellis-api-servicedefaults.md</code></a></li>
+<li>Mediator behaviors, redaction options, pipeline order: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a></li>
+<li>ROP <code>ActivitySource</code> and <code>AddResultsInstrumentation</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Primitive value-object instrumentation: <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a></li>
+<li>Mediator integration article: <a href="integration-mediator.html"><code>integration-mediator.md</code></a></li>
+<li>HTTP-client integration article: <a href="integration-http.html"><code>integration-http.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-observability.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

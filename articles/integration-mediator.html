@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Mediator Pipeline | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Mediator Pipeline | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-mediator.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="mediator-pipeline">Mediator Pipeline</h1>
+
+<p><code>Trellis.Mediator</code> registers result-aware pipeline behaviors around the <a href="https://github.com/martinothamar/Mediator">Mediator</a> library so handlers stay focused on business work while exception safety, tracing, logging, authorization, and validation run as composable pre/post stages.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Register the standard Trellis behaviors</td>
+<td><code>services.AddTrellisBehaviors()</code></td>
+<td><a href="#quick-start">Quick start</a></td>
+</tr>
+<tr>
+<td>Inspect or override the canonical behavior order</td>
+<td><code>ServiceCollectionExtensions.PipelineBehaviors</code></td>
+<td><a href="#pipeline-order">Pipeline order</a></td>
+</tr>
+<tr>
+<td>Gate a message on static permissions</td>
+<td>Implement <code>IAuthorize</code> on the message</td>
+<td><a href="#permission-authorization">Permission authorization</a></td>
+</tr>
+<tr>
+<td>Authorize against a loaded resource (ownership, tenancy)</td>
+<td>Implement <code>IAuthorizeResource&lt;T&gt;</code> and register a loader</td>
+<td><a href="#resource-authorization">Resource authorization</a></td>
+</tr>
+<tr>
+<td>Reuse one loader across many commands for the same resource</td>
+<td><code>IIdentifyResource&lt;T, TId&gt;</code> + <code>SharedResourceLoaderById&lt;T, TId&gt;</code></td>
+<td><a href="#shared-resource-loaders">Shared resource loaders</a></td>
+</tr>
+<tr>
+<td>Self-validate a message</td>
+<td>Implement <code>IValidate.Validate()</code></td>
+<td><a href="#validation">Validation</a></td>
+</tr>
+<tr>
+<td>Plug FluentValidation into the same stage</td>
+<td><code>services.AddTrellisFluentValidation()</code></td>
+<td><a href="#fluentvalidation-adapter">FluentValidation adapter</a></td>
+</tr>
+<tr>
+<td>Show <code>Error.Detail</code> in logs/traces (dev only)</td>
+<td><code>AddTrellisBehaviors(o =&gt; o.IncludeErrorDetail = true)</code></td>
+<td><a href="#telemetry-redaction">Telemetry redaction</a></td>
+</tr>
+<tr>
+<td>Convert thrown exceptions to typed failures</td>
+<td><code>ExceptionBehavior</code> (always-on)</td>
+<td><a href="#exception-safety-net">Exception safety net</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You are wiring <code>Trellis.Mediator</code> into a Web API or Worker host and need the canonical behavior registration.</li>
+<li>You want to move authorization or validation off your handlers and into the pipeline.</li>
+<li>You want consistent OpenTelemetry spans and structured logs for every command/query.</li>
+<li>You need to plug FluentValidation (or another validation library) into the same validation stage as <code>IValidate</code>.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Type / member</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddTrellisBehaviors()</code></td>
+<td>DI extension</td>
+<td>Registers the five always-on behaviors (idempotent).</td>
+</tr>
+<tr>
+<td><code>AddTrellisBehaviors(Action&lt;TrellisMediatorTelemetryOptions&gt;)</code></td>
+<td>DI extension</td>
+<td>Same, with telemetry options (e.g., <code>IncludeErrorDetail</code>).</td>
+</tr>
+<tr>
+<td><code>AddResourceAuthorization(params Assembly[])</code></td>
+<td>DI extension</td>
+<td>Scans assemblies for <code>IAuthorizeResource&lt;&gt;</code>, loaders, and shared loaders.</td>
+</tr>
+<tr>
+<td><code>AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</code></td>
+<td>DI extension</td>
+<td>Explicit registration (AOT/trimming friendly).</td>
+</tr>
+<tr>
+<td><code>AddSharedResourceLoader&lt;TMessage, TResource, TId&gt;()</code></td>
+<td>DI extension</td>
+<td>Bridges an <code>IIdentifyResource&lt;T,TId&gt;</code> message to a <code>SharedResourceLoaderById&lt;T,TId&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>IValidate</code></td>
+<td>Interface</td>
+<td>Message-side hook; <code>IResult Validate()</code> runs before the handler.</td>
+</tr>
+<tr>
+<td><code>IMessageValidator&lt;TMessage&gt;</code></td>
+<td>Interface</td>
+<td>DI-resolved async validator; aggregated by <code>ValidationBehavior</code>.</td>
+</tr>
+<tr>
+<td><code>TrellisMediatorTelemetryOptions.IncludeErrorDetail</code></td>
+<td>Property</td>
+<td>Opt-in to include <code>Error.Detail</code> in logs/traces (default <code>false</code>).</td>
+</tr>
+<tr>
+<td><code>TracingBehavior&lt;,&gt;.ActivitySourceName</code></td>
+<td><code>const string</code></td>
+<td><code>&quot;Trellis.Mediator&quot;</code> — add this to your OpenTelemetry config.</td>
+</tr>
+<tr>
+<td><code>ServiceCollectionExtensions.PipelineBehaviors</code></td>
+<td>Property</td>
+<td>Ordered behavior list for AOT <code>MediatorOptions.PipelineBehaviors</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Mediator
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>Register Mediator with the <strong>scoped</strong> lifetime, add the Trellis behaviors, and your handlers immediately get exception safety, tracing, logging, authorization, and validation.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Mediator;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+
+var app = builder.Build();
+app.Run();
+
+public sealed record PublishDocumentCommand(string DocumentId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;documents:publish&quot;];
+}
+
+public sealed class PublishDocumentHandler : ICommandHandler&lt;PublishDocumentCommand, Result&lt;Unit&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(PublishDocumentCommand command, CancellationToken cancellationToken) =&gt;
+        ValueTask.FromResult(Result.Ok(Unit.Value));
+}
+</code></pre>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>Pass <code>opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped</code>. The Trellis behaviors depend on per-request services (<code>IActorProvider</code>, <code>IUnitOfWork</code>, <code>IMessageValidator&lt;&gt;</code> adapters). Mediator's default lifetime is <code>Singleton</code>, which fails ASP.NET's root-scope validation as soon as a behavior tries to resolve a scoped dependency.</p>
+</div>
+<h2 id="pipeline-order">Pipeline order</h2>
+<p><code>AddTrellisBehaviors()</code> registers the five always-on behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 5 and 7 slot in only when their registration helpers are called.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Behavior</th>
+<th>Runs for</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>ExceptionBehavior</code></td>
+<td>all messages</td>
+<td>Catches everything except <code>OperationCanceledException</code>; returns <code>Error.InternalServerError</code>.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>TracingBehavior</code></td>
+<td>all messages</td>
+<td>Opens an <code>Activity</code> under <code>&quot;Trellis.Mediator&quot;</code>; tags <code>error.code</code> / <code>error.type</code> on failure.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>LoggingBehavior</code></td>
+<td>all messages</td>
+<td>Structured start/end with elapsed ms; emits <code>Error.Code</code> on failure.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>AuthorizationBehavior</code></td>
+<td><code>IAuthorize</code> messages</td>
+<td>Resolves the actor and checks <code>RequiredPermissions</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>ResourceAuthorizationBehavior</code> <em>(opt-in)</em></td>
+<td><code>IAuthorizeResource&lt;T&gt;</code> messages</td>
+<td>Loads the resource and calls <code>Authorize(actor, resource)</code>. Inserted by <code>AddResourceAuthorization(...)</code> immediately before <code>ValidationBehavior</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>ValidationBehavior</code></td>
+<td>all messages</td>
+<td>Runs <code>IValidate.Validate()</code> and every <code>IMessageValidator&lt;TMessage&gt;</code>; aggregates <code>Error.UnprocessableContent</code>.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>TransactionalCommandBehavior</code> <em>(opt-in, EFCore)</em></td>
+<td><code>ICommand&lt;TResponse&gt;</code></td>
+<td><code>IUnitOfWork.CommitAsync</code> on success. Register <strong>after</strong> <code>AddTrellisBehaviors()</code> so it lands innermost.</td>
+</tr>
+</tbody>
+</table>
+<p>The first five live in <code>ServiceCollectionExtensions.PipelineBehaviors</code> for the AOT-friendly source-generator path; assign that list to <code>MediatorOptions.PipelineBehaviors</code> when configuring <code>AddMediator</code>.</p>
+<h2 id="permission-authorization">Permission authorization</h2>
+<p>Implement <code>IAuthorize</code> when a message always requires the same permission set. <code>AuthorizationBehavior</code> resolves the current <code>Actor</code> from <code>IActorProvider</code> and rejects with <code>new Error.Forbidden(&quot;authorization.insufficient.permissions&quot;) { Detail = &quot;Insufficient permissions.&quot; }</code> when any required permission is missing.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Mediator;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record PublishDocumentCommand(string DocumentId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;documents:publish&quot;];
+}
+</code></pre>
+<p><code>AuthorizationBehavior</code> performs no I/O — it only reads from the resolved <code>Actor</code>. Use <code>IAuthorizeResource&lt;T&gt;</code> (next section) when the answer depends on the resource itself.</p>
+<h2 id="resource-authorization">Resource authorization</h2>
+<p>Use <code>IAuthorizeResource&lt;TResource&gt;</code> when authorization depends on the resource (ownership, tenancy, state). The pipeline loads the resource first, then calls <code>message.Authorize(actor, resource)</code>.</p>
+<p><code>ResourceAuthorizationBehavior</code> is <strong>opt-in</strong>: it is added only when you call <code>AddResourceAuthorization(...)</code>. Without that call the behavior never runs even if the message implements <code>IAuthorizeResource&lt;T&gt;</code>.</p>
+<h3 id="per-message-loader">Per-message loader</h3>
+<p>Use <code>ResourceLoaderById&lt;TMessage, TResource, TId&gt;</code> for the common &quot;message has an id, repository loads by id&quot; case.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Mediator;
+
+public sealed record Document(Guid Id, string OwnerId, string Title);
+
+public interface IDocumentRepository
+{
+    Task&lt;Result&lt;Document&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task&lt;Result&lt;Document&gt;&gt; RenameAsync(Document document, string title, CancellationToken cancellationToken);
+}
+
+public sealed record RenameDocumentCommand(Guid DocumentId, string Title)
+    : ICommand&lt;Result&lt;Document&gt;&gt;, IAuthorize, IAuthorizeResource&lt;Document&gt;
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;documents:edit&quot;];
+
+    public IResult Authorize(Actor actor, Document resource) =&gt;
+        actor.IsOwner(resource.OwnerId)
+            ? Result.Ok()
+            : Result.Fail(new Error.Forbidden(&quot;documents.rename&quot;) { Detail = &quot;Only the owner can rename this document.&quot; });
+}
+
+public sealed class RenameDocumentResourceLoader(IDocumentRepository repository)
+    : ResourceLoaderById&lt;RenameDocumentCommand, Document, Guid&gt;
+{
+    protected override Guid GetId(RenameDocumentCommand message) =&gt; message.DocumentId;
+
+    protected override Task&lt;Result&lt;Document&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken) =&gt;
+        repository.GetByIdAsync(id, cancellationToken);
+}
+
+public static class Composition
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+        builder.Services.AddTrellisBehaviors();
+        builder.Services.AddResourceAuthorization(typeof(RenameDocumentCommand).Assembly);
+    }
+}
+</code></pre>
+<p>For the <code>RenameDocumentCommand</code> above, the per-request order becomes: permission check → resource load + <code>Authorize(actor, resource)</code> → validation → handler.</p>
+<h3 id="shared-resource-loaders">Shared resource loaders</h3>
+<p>When several commands authorize against the same resource, register one <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> and let messages declare <code>IIdentifyResource&lt;TResource, TId&gt;</code>. Assembly scanning auto-bridges them; explicit registration uses <code>AddSharedResourceLoader&lt;,,&gt;</code>.</p>
+<pre><code class="lang-csharp">using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Mediator;
+
+public sealed record Order(Guid Id, string OwnerId);
+
+public interface IOrderRepository
+{
+    Task&lt;Result&lt;Order&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken);
+}
+
+public sealed class OrderResourceLoader(IOrderRepository repository)
+    : SharedResourceLoaderById&lt;Order, Guid&gt;
+{
+    public override Task&lt;Result&lt;Order&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken) =&gt;
+        repository.GetByIdAsync(id, cancellationToken);
+}
+
+public sealed record CancelOrderCommand(Guid OrderId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, Guid&gt;
+{
+    public Guid GetResourceId() =&gt; OrderId;
+
+    public IResult Authorize(Actor actor, Order resource) =&gt;
+        actor.IsOwner(resource.OwnerId)
+            ? Result.Ok()
+            : Result.Fail(new Error.Forbidden(&quot;orders.cancel&quot;) { Detail = &quot;Only the owner can cancel this order.&quot; });
+}
+
+public static class Composition
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+        builder.Services.AddTrellisBehaviors();
+        builder.Services.AddScoped&lt;SharedResourceLoaderById&lt;Order, Guid&gt;, OrderResourceLoader&gt;();
+
+        // Explicit (AOT/trimming friendly):
+        builder.Services.AddResourceAuthorization&lt;CancelOrderCommand, Order, Result&lt;Unit&gt;&gt;();
+        builder.Services.AddSharedResourceLoader&lt;CancelOrderCommand, Order, Guid&gt;();
+
+        // Equivalent via assembly scan (not AOT-friendly):
+        // builder.Services.AddResourceAuthorization(typeof(CancelOrderCommand).Assembly);
+    }
+}
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Explicit <code>IResourceLoader&lt;TMessage, TResource&gt;</code> registrations always win over the shared-loader bridge.</p>
+</div>
+<h2 id="validation">Validation</h2>
+<p><code>ValidationBehavior</code> runs for every message and pulls violations from two sources.</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Use it for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IValidate.Validate()</code> on the message</td>
+<td>Cross-field invariants and domain rules awkward to express as property checks.</td>
+</tr>
+<tr>
+<td><code>IEnumerable&lt;IMessageValidator&lt;TMessage&gt;&gt;</code> from DI</td>
+<td>Property-level validation, FluentValidation adapter, or any custom validator package.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Aggregation rules</strong></p>
+<ul>
+<li>All <code>Error.UnprocessableContent</code> failures from both sources are merged into a single <code>Error.UnprocessableContent</code> whose <code>Fields</code> and <code>Rules</code> collect every reported violation. The caller never gets &quot;the first failure&quot; — they get the full list in one round trip.</li>
+<li>An <code>Error.UnprocessableContent</code> with empty <code>Fields</code> and empty <code>Rules</code> still short-circuits the handler.</li>
+<li>A non-<code>Error.UnprocessableContent</code> failure (e.g., <code>Error.Conflict</code>, <code>Error.Forbidden</code>) returned by any source short-circuits the stage immediately and is propagated as-is.</li>
+</ul>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed record ArchiveDocumentCommand(string DocumentId, bool IsArchived)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IValidate
+{
+    public IResult Validate() =&gt;
+        IsArchived
+            ? Result.Ok()
+            : Result.Fail(new Error.Conflict(null, &quot;domain.violation&quot;) { Detail = &quot;Only archived documents can be processed.&quot; });
+}
+
+public sealed class ArchiveDocumentHandler : ICommandHandler&lt;ArchiveDocumentCommand, Result&lt;Unit&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(ArchiveDocumentCommand command, CancellationToken cancellationToken) =&gt;
+        ValueTask.FromResult(Result.Ok(Unit.Value));
+}
+</code></pre>
+<h3 id="custom-imessagevalidatortmessage">Custom <code>IMessageValidator&lt;TMessage&gt;</code></h3>
+<p>Implement <code>IMessageValidator&lt;TMessage&gt;</code> to plug an arbitrary async validator into the same stage as <code>IValidate</code>. Field-level violations should be wrapped in <code>Error.UnprocessableContent</code> so they aggregate with other validators' output.</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed record CreateUserCommand(string Email)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;;
+
+public interface IUserDirectory
+{
+    Task&lt;bool&gt; IsEmailTakenAsync(string email, CancellationToken cancellationToken);
+}
+
+public sealed class UniqueEmailValidator(IUserDirectory directory)
+    : IMessageValidator&lt;CreateUserCommand&gt;
+{
+    public async ValueTask&lt;IResult&gt; ValidateAsync(CreateUserCommand message, CancellationToken cancellationToken)
+    {
+        var taken = await directory.IsEmailTakenAsync(message.Email, cancellationToken).ConfigureAwait(false);
+        return taken
+            ? Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(
+                new FieldViolation(InputPointer.ForProperty(nameof(message.Email)), &quot;email.taken&quot;) { Detail = &quot;Email already in use.&quot; })))
+            : Result.Ok();
+    }
+}
+
+public static class Composition
+{
+    public static void Register(IServiceCollection services) =&gt;
+        services.AddScoped&lt;IMessageValidator&lt;CreateUserCommand&gt;, UniqueEmailValidator&gt;();
+}
+</code></pre>
+<h3 id="fluentvalidation-adapter">FluentValidation adapter</h3>
+<p>Add the optional <code>Trellis.FluentValidation</code> package and call <code>AddTrellisFluentValidation()</code> to surface every registered <code>IValidator&lt;TMessage&gt;</code> through <code>IMessageValidator&lt;TMessage&gt;</code>. The adapter normalizes FluentValidation property paths (e.g., <code>Lines[0].Memo</code>) into RFC 6901 JSON Pointers (<code>/Lines/0/Memo</code>) so <code>Error.UnprocessableContent.Fields</code> has a consistent pointer shape regardless of which source produced each violation.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using FluentValidation;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+
+public sealed record TransferLine(string TargetAccount, decimal Amount, string? Memo);
+
+public sealed record SubmitBatchTransfersCommand(string SourceAccount, IReadOnlyList&lt;TransferLine&gt; Lines)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;;
+
+public sealed class SubmitBatchTransfersValidator : AbstractValidator&lt;SubmitBatchTransfersCommand&gt;
+{
+    public SubmitBatchTransfersValidator()
+    {
+        RuleFor(x =&gt; x.SourceAccount).NotEmpty();
+        RuleForEach(x =&gt; x.Lines).ChildRules(line =&gt;
+        {
+            line.RuleFor(l =&gt; l.TargetAccount).NotEmpty();
+            line.RuleFor(l =&gt; l.Amount).GreaterThan(0);
+        });
+    }
+}
+
+public static class Composition
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+        builder.Services.AddTrellisBehaviors();
+        builder.Services.AddTrellisFluentValidation();
+        builder.Services.AddScoped&lt;IValidator&lt;SubmitBatchTransfersCommand&gt;, SubmitBatchTransfersValidator&gt;();
+    }
+}
+</code></pre>
+<p>See <a href="integration-fluentvalidation.html#mediator-integration">FluentValidation Integration</a> for the AOT vs. assembly-scanning registration overloads.</p>
+<h2 id="exception-safety-net">Exception safety net</h2>
+<p><code>ExceptionBehavior</code> is the outermost behavior. It:</p>
+<ul>
+<li>Catches every unhandled exception <strong>except</strong> <code>OperationCanceledException</code> (which propagates so cancellation flows correctly).</li>
+<li>Logs the exception, then returns <code>TResponse.CreateFailure(new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = &quot;An unexpected error occurred while processing the request.&quot; })</code>.</li>
+</ul>
+<p>The generated <code>&quot;N&quot;</code>-format Guid is the fault correlation id surfaced in <code>Error.Code</code> so operators can join the failed response to the logged stack trace.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Don't use exceptions for expected business outcomes — return <code>Result&lt;T&gt;</code> failures instead and let <code>ExceptionBehavior</code> handle only true surprises.</p>
+</div>
+<h2 id="telemetry">Telemetry</h2>
+<p><code>TracingBehavior</code> opens an <code>Activity</code> per message under the activity source <code>&quot;Trellis.Mediator&quot;</code> (also exposed as the constant <code>TracingBehavior&lt;,&gt;.ActivitySourceName</code>). Add it to your OpenTelemetry tracing config or you will get no spans:</p>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Trace;
+
+builder.Services.AddOpenTelemetry().WithTracing(tracing =&gt;
+    tracing.AddSource(&quot;Trellis.Mediator&quot;));
+</code></pre>
+<p>On a failed result, both <code>LoggingBehavior</code> and <code>TracingBehavior</code> always emit:</p>
+<ul>
+<li><code>Error.Code</code> (operator-defined identifier, e.g., <code>&quot;orders.cancel&quot;</code>).</li>
+<li>The stable <code>Error</code> type name (e.g., <code>Error.Forbidden</code>) on the activity as <code>error.type</code>.</li>
+</ul>
+<p><code>LoggingBehavior</code> writes Information on success and Warning on failure; <code>TracingBehavior</code> sets <code>ActivityStatusCode.Error</code> on the failure path.</p>
+<h3 id="telemetry-redaction">Telemetry redaction</h3>
+<p>The free-text <code>Error.Detail</code> string is <strong>redacted by default</strong> because it is frequently composed from user input or domain payloads (an order id, an email, a free-text validation message) and must not flow into log aggregators or distributed traces without explicit opt-in.</p>
+<p>To opt in (typically development only, or environments verified PII-free):</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Mediator;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors(options =&gt; options.IncludeErrorDetail = true);
+</code></pre>
+<p>The <code>error.code</code> tag and the <code>Error.Code</code> value are operator-defined identifiers and are always emitted regardless of this setting.</p>
+<h2 id="composition">Composition</h2>
+<p>Resource authorization, FluentValidation, and the EF Core unit-of-work behavior compose into one pipeline. Register Trellis behaviors first, then any extension validators, then the actor provider, and finally <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> so the transactional behavior lands innermost (closest to the handler) and commit failures stay visible to outer logging/tracing.</p>
+<pre><code class="lang-csharp">using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Trellis.Asp.Authorization;
+using Trellis.EntityFrameworkCore;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+builder.Services.AddTrellisFluentValidation();
+builder.Services.AddResourceAuthorization(typeof(Program).Assembly);
+
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddDevelopmentActorProvider();
+else
+    builder.Services.AddEntraActorProvider();
+
+builder.Services.AddTrellisUnitOfWork&lt;AppDbContext&gt;();
+
+var app = builder.Build();
+app.Run();
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Use the <code>Scoped</code> Mediator lifetime.</strong> All Trellis behaviors depend on per-request services; <code>Singleton</code> (the Mediator default) fails the root-scope check on first request.</li>
+<li><strong><code>IAuthorize</code> for coarse gates, <code>IAuthorizeResource&lt;T&gt;</code> for fine rules.</strong> Static permissions (<code>documents:edit</code>) belong on <code>IAuthorize</code>; ownership / tenancy / state rules belong on <code>IAuthorizeResource&lt;T&gt;</code>.</li>
+<li><strong>Prefer shared resource loaders.</strong> Register one <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> per resource and let messages implement <code>IIdentifyResource&lt;,&gt;</code> — avoids one loader class per command.</li>
+<li><strong>Don't forget <code>AddResourceAuthorization(...)</code>.</strong> Implementing <code>IAuthorizeResource&lt;T&gt;</code> is not enough; the behavior must be registered or it never runs.</li>
+<li><strong>Keep <code>IValidate.Validate()</code> synchronous and cheap.</strong> It runs on every request. Push I/O-bound checks into an <code>IMessageValidator&lt;TMessage&gt;</code> (which is async) or into the handler.</li>
+<li><strong>Return <code>Result&lt;Unit&gt;</code> from commands</strong> (not bare <code>Result</code>), and never throw for expected business outcomes — <code>ExceptionBehavior</code> is for surprises only.</li>
+<li><strong>Leave <code>IncludeErrorDetail = false</code> in production.</strong> <code>Error.Detail</code> is free text and may contain PII.</li>
+<li><strong>Add the <code>&quot;Trellis.Mediator&quot;</code> activity source</strong> to your OpenTelemetry config or you will not see mediator spans.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a></li>
+<li><code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, <code>Error</code> semantics: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Authorization primitives (<code>Actor</code>, <code>IAuthorize</code>, <code>IAuthorizeResource</code>, loaders): <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a></li>
+<li>FluentValidation integration article: <a href="integration-fluentvalidation.html">integration-fluentvalidation.md</a></li>
+<li>ASP.NET integration (<code>IActorProvider</code> wiring): <a href="integration-asp-authorization.html">integration-asp-authorization.md</a></li>
+<li>Observability article: <a href="integration-observability.html">integration-observability.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-mediator.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

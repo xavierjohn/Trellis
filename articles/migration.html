@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Migrating from v1 to v2 | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Migrating from v1 to v2 | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="migrating-from-v1-to-v2">Migrating from v1 to v2</h1>
+
+<p>A package- and namespace-rename combined with a tightened public surface. Per-package &quot;Breaking changes from v1&quot; sections in <code>api_reference/</code> are the authoritative source of truth; this guide is the cross-cutting index and the recommended migration order.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Old API / artifact</th>
+<th>New API / artifact</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Result.Success(...)</code> / <code>Result.Failure(...)</code></td>
+<td><code>Result.Ok(...)</code> / <code>Result.Fail(...)</code></td>
+<td><a href="#result-and-error-renames-trelliscore">Result and Error renames</a></td>
+</tr>
+<tr>
+<td>Implicit <code>T → Result&lt;T&gt;</code> / <code>Error → Result&lt;T&gt;</code></td>
+<td>Explicit <code>Result.Ok(value)</code> / <code>Result.Fail&lt;T&gt;(error)</code></td>
+<td><a href="#result-and-error-renames-trelliscore">Result and Error renames</a></td>
+</tr>
+<tr>
+<td><code>Result.SuccessIf</code> / <code>Result.FailureIf</code> / <code>*Async</code> variants</td>
+<td>Inline ternary</td>
+<td><a href="#removed-factories">Removed factories</a></td>
+</tr>
+<tr>
+<td><code>Result.FromException(ex)</code></td>
+<td><code>Result.Try</code> / <code>Result.TryAsync</code> or <code>new Error.InternalServerError(...)</code></td>
+<td><a href="#removed-factories">Removed factories</a></td>
+</tr>
+<tr>
+<td>Non-generic <code>Result</code> instance type</td>
+<td><code>Result&lt;Unit&gt;</code> (ADR-005)</td>
+<td><a href="#non-generic-result-removed-adr-005">Non-generic Result removed (ADR-005)</a></td>
+</tr>
+<tr>
+<td><code>result.Value</code> getter</td>
+<td><code>TryGetValue</code> / <code>Match</code> / <code>var (ok, v, err) = result;</code></td>
+<td><a href="#accessor-changes">Accessor changes</a></td>
+</tr>
+<tr>
+<td><code>Error</code> open class hierarchy + <code>Error.X(&quot;msg&quot;)</code> factories</td>
+<td><code>Error</code> closed ADT + <code>new Error.X(payload) { Detail = &quot;msg&quot; }</code></td>
+<td><a href="#error-becomes-a-closed-adt">Error becomes a closed ADT</a></td>
+</tr>
+<tr>
+<td><code>MatchErrorExtensions.MatchError(...)</code></td>
+<td><code>Match(...)</code> + <code>switch</code> over the closed ADT</td>
+<td><a href="#removed-extensions">Removed extensions</a></td>
+</tr>
+<tr>
+<td><code>FlattenValidationErrorsExtensions</code></td>
+<td><code>Combine</code> (auto-merges <code>Error.UnprocessableContent.Fields</code> / <code>.Rules</code>)</td>
+<td><a href="#removed-extensions">Removed extensions</a></td>
+</tr>
+<tr>
+<td><code>Error.Instance</code> field</td>
+<td>Synthesized by ASP wire layer from request URL + <code>ResourceRef</code></td>
+<td><a href="#removed-extensions">Removed extensions</a></td>
+</tr>
+<tr>
+<td><code>Trellis.Asp.WriteOutcome&lt;T&gt;</code></td>
+<td><code>Trellis.WriteOutcome&lt;T&gt;</code> (in <code>Trellis.Core</code>)</td>
+<td><a href="#aspnet-core-trellisasp">ASP.NET Core (Trellis.Asp)</a></td>
+</tr>
+<tr>
+<td><code>Trellis.Stateless</code> package + namespace</td>
+<td><code>Trellis.StateMachine</code> package + namespace</td>
+<td><a href="#state-machine-trellisstatemachine">State machine (Trellis.StateMachine)</a></td>
+</tr>
+<tr>
+<td><code>ReadResultFromJsonAsync&lt;T&gt;</code></td>
+<td><code>ReadJsonAsync&lt;T&gt;</code></td>
+<td><a href="#http-trellishttp">HTTP (Trellis.Http)</a></td>
+</tr>
+<tr>
+<td><code>ReadResultMaybeFromJsonAsync&lt;T&gt;</code></td>
+<td><code>ReadJsonMaybeAsync&lt;T&gt;</code></td>
+<td><a href="#http-trellishttp">HTTP (Trellis.Http)</a></td>
+</tr>
+<tr>
+<td><code>HandleForbidden*</code> / <code>HandleClientError*</code> / <code>HandleServerError*</code> / <code>EnsureSuccess*</code> / <code>HandleFailureAsync&lt;TContext&gt;</code></td>
+<td><code>ToResultAsync(statusMap)</code> or body-aware <code>ToResultAsync(mapper, ct)</code></td>
+<td><a href="#http-trellishttp">HTTP (Trellis.Http)</a></td>
+</tr>
+<tr>
+<td>Sync HTTP receivers (<code>HttpResponseMessage</code> / <code>Result&lt;HRM&gt;</code>)</td>
+<td>Async-only canonical chain</td>
+<td><a href="#http-trellishttp">HTTP (Trellis.Http)</a></td>
+</tr>
+<tr>
+<td><code>Trellis.Results</code> package</td>
+<td><code>Trellis.Core</code> package (CLR namespace unchanged)</td>
+<td><a href="#package-map-legacy--current">Package map</a></td>
+</tr>
+<tr>
+<td><code>Trellis.DomainDrivenDesign</code> package</td>
+<td>Folded into <code>Trellis.Core</code></td>
+<td><a href="#package-map-legacy--current">Package map</a></td>
+</tr>
+<tr>
+<td><code>Trellis.Primitives.Generator</code> package</td>
+<td>Bundled in <code>Trellis.Core.nupkg</code></td>
+<td><a href="#package-map-legacy--current">Package map</a></td>
+</tr>
+<tr>
+<td><code>Trellis.AspSourceGenerator</code> package</td>
+<td>Bundled in <code>Trellis.Asp.nupkg</code></td>
+<td><a href="#package-map-legacy--current">Package map</a></td>
+</tr>
+<tr>
+<td><code>Trellis.EntityFrameworkCore.Generator</code> package</td>
+<td>Bundled in <code>Trellis.EntityFrameworkCore.nupkg</code></td>
+<td><a href="#package-map-legacy--current">Package map</a></td>
+</tr>
+<tr>
+<td><code>Trellis.Asp.Authorization</code> package</td>
+<td>Folded into <code>Trellis.Asp.nupkg</code> (namespace unchanged)</td>
+<td><a href="#package-map-legacy--current">Package map</a></td>
+</tr>
+<tr>
+<td>OpenTelemetry source <code>&quot;Trellis.Results&quot;</code></td>
+<td><code>&quot;Trellis.Core&quot;</code> (<code>RopTrace.ActivitySourceName</code>)</td>
+<td><a href="#observability">Observability</a></td>
+</tr>
+<tr>
+<td>Analyzer IDs <code>TRLSGEN001</code>..<code>TRLSGEN103</code></td>
+<td><code>TRLS031</code>..<code>TRLS038</code></td>
+<td><a href="#analyzer-id-renames">Analyzer ID renames</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You are upgrading a service from a v1 <code>Trellis.*</code> surface (<code>Trellis.Results</code>, <code>Trellis.DomainDrivenDesign</code>, <code>Trellis.Stateless</code>, <code>Trellis.Asp.Authorization</code>, <code>Trellis.AspSourceGenerator</code>, <code>Trellis.EntityFrameworkCore.Generator</code>, <code>Trellis.Primitives.Generator</code>) to the consolidated v2 packages.</li>
+<li>You hit <code>CS0029</code> after pulling v2 because implicit <code>T → Result&lt;T&gt;</code> and <code>Error → Result&lt;T&gt;</code> operators were removed.</li>
+<li>You hit <code>CS1061</code> reading <code>result.Value</code> — the throwing getter was deleted.</li>
+<li>You hit <code>CS0117</code> calling <code>Result.Success(...)</code> / <code>Result.Failure(...)</code> / <code>Result.SuccessIf(...)</code> / <code>Result.FromException(...)</code>.</li>
+<li>Your handlers return <code>Task&lt;Result&gt;</code> and you need to migrate to <code>Task&lt;Result&lt;Unit&gt;&gt;</code> per ADR-005.</li>
+<li>You consumed the v1 <code>Trellis.Http</code> surface (60+ overloads) and need the canonical seven-method shape.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>What changed</th>
+<th>Authoritative diff</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Result factories</td>
+<td><code>Success</code>/<code>Failure</code> renamed to <code>Ok</code>/<code>Fail</code>; deferred / conditional / exception factories removed</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>Result accessors</td>
+<td><code>.Value</code> getter removed; <code>.Error</code> is <code>Error?</code> and never throws</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>Implicit conversions</td>
+<td>Removed on <code>Result&lt;T&gt;</code>; explicit factory required</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>Non-generic <code>Result</code> instance type</td>
+<td>Removed; use <code>Result&lt;Unit&gt;</code>. <code>Result</code> is now a static factory class only.</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a>, <a href="../adr/ADR-005-reintroduce-unit.html">ADR-005</a></td>
+</tr>
+<tr>
+<td><code>Error</code> model</td>
+<td>Open <code>class</code> + 18 subclasses + static factories → <code>abstract record</code> with 20 nested <code>sealed record</code> cases</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>Removed extensions</td>
+<td><code>MatchError</code>, <code>FlattenValidationErrors</code>, <code>Error.Instance</code> field</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>Package merges</td>
+<td>DDD, Primitives generator, Asp source generator, EF Core generator, Asp authorization</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td><code>WriteOutcome&lt;T&gt;</code> move</td>
+<td><code>Trellis.Asp.WriteOutcome&lt;T&gt;</code> → <code>Trellis.WriteOutcome&lt;T&gt;</code> (in <code>Trellis.Core</code>)</td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>Test helper namespace</td>
+<td><code>Trellis.Results.Tests.*</code> → <code>Trellis.Core.Tests.*</code></td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>OTel <code>ActivitySource</code> name</td>
+<td><code>&quot;Trellis.Results&quot;</code> → <code>&quot;Trellis.Core&quot;</code></td>
+<td><a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>HTTP surface</td>
+<td>60+ overloads collapsed to one static class with seven methods; all sync removed; new disposal contract</td>
+<td><a href="../api_reference/trellis-api-http.html#breaking-changes-from-v1"><code>trellis-api-http.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>State machine</td>
+<td>Package and namespace renamed <code>Trellis.Stateless</code> → <code>Trellis.StateMachine</code>; public surface otherwise identical</td>
+<td><a href="../api_reference/trellis-api-statemachine.html#breaking-changes-from-v1"><code>trellis-api-statemachine.md</code> → Breaking changes from v1</a></td>
+</tr>
+<tr>
+<td>Analyzer IDs</td>
+<td><code>TRLSGEN001</code>–<code>TRLSGEN103</code> renamed to <code>TRLS031</code>–<code>TRLS038</code></td>
+<td><a href="../api_reference/trellis-api-analyzers.html"><code>trellis-api-analyzers.md</code></a></td>
+</tr>
+</tbody>
+</table>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Start with package and namespace rewrites, then run a build. The compiler will surface most remaining work via <code>CS0029</code>, <code>CS0117</code>, <code>CS1061</code>, and <code>CS1593</code>.</p>
+</div>
+<h2 id="result-and-error-renames-trelliscore">Result and Error renames (Trellis.Core)</h2>
+<p>The full row-by-row diff (with migration notes) lives in <a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a>. Headlines below.</p>
+<h3 id="renamed-factories">Renamed factories</h3>
+<table>
+<thead>
+<tr>
+<th>v1</th>
+<th>v2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Result.Success(value)</code> / <code>Result.Success&lt;T&gt;(...)</code> / <code>Result.Success()</code></td>
+<td><code>Result.Ok(value)</code> / <code>Result.Ok&lt;T&gt;(...)</code> / <code>Result.Ok()</code></td>
+</tr>
+<tr>
+<td><code>Result.Failure&lt;T&gt;(error)</code> / <code>Result.Failure(error)</code></td>
+<td><code>Result.Fail&lt;T&gt;(error)</code> / <code>Result.Fail(error)</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>IsSuccess</code> / <code>IsFailure</code> are <strong>not</strong> renamed — predicates read as questions and stay long-form.</p>
+<h3 id="removed-factories">Removed factories</h3>
+<p><code>Result.Success(Func&lt;T&gt;)</code>, <code>Result.Failure&lt;T&gt;(Func&lt;Error&gt;)</code>, <code>Result.SuccessIf</code>, <code>Result.FailureIf</code>, <code>Result.SuccessIfAsync</code>, <code>Result.FailureIfAsync</code>, <code>Result.FromException</code> / <code>Result.FromException&lt;T&gt;</code> were removed. Migration patterns:</p>
+<pre><code class="lang-csharp">// Deferred factory: inline the call
+Result.Ok(funcOk());
+Result.Fail&lt;T&gt;(errorFactory());
+
+// Conditional: use a ternary
+return cond ? Result.Ok(value) : Result.Fail&lt;T&gt;(error);
+
+// Async conditional: parens are required because await binds tighter than ?:
+return (await predicate()) ? Result.Ok(value) : Result.Fail&lt;T&gt;(error);
+
+// Exception → result: use Try / TryAsync, or build the error explicitly
+return Result.Try(() =&gt; DoWork());
+return Result.Fail&lt;T&gt;(new Error.InternalServerError(faultId) { Detail = ex.Message, Cause = ex });
+</code></pre>
+<p><code>OperationCanceledException</code> is always rethrown by <code>Try</code> / <code>TryAsync</code> rather than mapped.</p>
+<h3 id="implicit-conversions-removed">Implicit conversions removed</h3>
+<pre><code class="lang-csharp">// v1 (compiles)
+Result&lt;int&gt; r = 5;
+Result&lt;int&gt; r = error;
+
+// v2 (CS0029) — use the explicit factory
+Result&lt;int&gt; r = Result.Ok(5);
+Result&lt;int&gt; r = Result.Fail&lt;int&gt;(error);
+</code></pre>
+<p>The compiler flags every site with <code>CS0029</code>.</p>
+<h3 id="accessor-changes">Accessor changes</h3>
+<p><code>Result&lt;T&gt;.Value</code> is gone. <code>Result&lt;T&gt;.Error</code> stays but is now <code>Error?</code> and never throws.</p>
+<pre><code class="lang-csharp">// v2 — extract the value
+if (result.TryGetValue(out var v)) { /* use v */ }
+result.Match(onSuccess: v =&gt; ..., onFailure: e =&gt; ...);
+var (ok, v, err) = result;            // Deconstruct
+
+// v2 — read the error (never throws)
+if (result.Error is { } error) { /* use error */ }
+result.TryGetError(out var err);
+</code></pre>
+<p><code>Maybe&lt;T&gt;.Value</code> still exists but is hidden from IntelliSense and gated by analyzer <code>TRLS003</code> — guard with <code>HasValue</code> / <code>TryGetValue</code> / <code>Match</code> / <code>GetValueOrDefault</code>. The two types do not have symmetric value-access ergonomics.</p>
+<h3 id="error-becomes-a-closed-adt">Error becomes a closed ADT</h3>
+<p>v1 <code>Error</code> was a <code>class</code> with 18 hand-written subclasses (<code>ValidationError</code>, <code>NotFoundError</code>, …) and static factory helpers (<code>Error.Validation(...)</code>, <code>Error.NotFound(...)</code>). <!-- v1-stale-ok --></p>
+<p>v2 <code>Error</code> is an <code>abstract record</code> with <strong>20 nested <code>sealed record</code> cases</strong> (<code>Error.NotFound</code>, <code>Error.UnprocessableContent</code>, …). The base constructor is <code>private</code> so the catalog is closed; there are no static factories.</p>
+<pre><code class="lang-csharp">// v1
+return Result.Failure&lt;Order&gt;(Error.NotFound(&quot;Order missing&quot;)); // v1-stale-ok
+
+// v2
+return Result.Fail&lt;Order&gt;(new Error.NotFound(ResourceRef.For&lt;Order&gt;(id)) { Detail = &quot;Order missing&quot; });
+</code></pre>
+<p>C# verifies exhaustiveness against the closed catalog when you <code>switch</code> on the cases.</p>
+<h3 id="removed-extensions">Removed extensions</h3>
+<table>
+<thead>
+<tr>
+<th>v1</th>
+<th>v2 replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)</code></td>
+<td><code>result.Match(_ =&gt; ..., e =&gt; e switch { Error.NotFound nf =&gt; ..., Error.UnprocessableContent uc =&gt; ..., _ =&gt; ... })</code></td>
+</tr>
+<tr>
+<td><code>result.FlattenValidationErrors()</code></td>
+<td><code>Result.Combine(...)</code> automatically merges <code>Error.UnprocessableContent.Fields</code> and <code>.Rules</code></td>
+</tr>
+<tr>
+<td><code>error.Instance</code> field</td>
+<td>Synthesized by the ASP wire layer from request URL + any <code>ResourceRef</code> carried by the typed payload</td>
+</tr>
+</tbody>
+</table>
+<h3 id="non-generic-result-removed-adr-005">Non-generic Result removed (ADR-005)</h3>
+<p>The non-generic <code>Result</code> instance type (peer to <code>Result&lt;T&gt;</code>) was removed. <code>Result</code> is now a <code>public static partial class</code> factory only. For no-payload success/failure, use <code>Result&lt;Unit&gt;</code> — returned by parameterless <code>Result.Ok()</code>, <code>Result.Fail(error)</code>, <code>Result.Ensure(...)</code>, <code>Result.Try(...)</code> factories. <code>Trellis.Unit</code> is a public <code>readonly record struct</code> with a single value (<code>Unit.Default</code>).</p>
+<pre><code class="lang-csharp">// v1
+public async ValueTask&lt;Result&gt; Handle(SubmitOrderCommand cmd, CancellationToken ct) { ... }
+
+// v2 (ADR-005)
+public async ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(SubmitOrderCommand cmd, CancellationToken ct) { ... }
+</code></pre>
+<p>In lambdas after <code>.Bind(...)</code> / <code>BindAsync(...)</code>, accept the <code>Unit</code> argument explicitly: <code>_ =&gt;</code> or <code>(Unit _) =&gt;</code>. <code>AsUnit()</code> on <code>Result&lt;T&gt;</code> now returns <code>Result&lt;Unit&gt;</code> (it bridges value-bearing chains back to a no-payload terminal without crossing a type boundary). Background and trade-off analysis: <a href="../adr/ADR-005-reintroduce-unit.html">ADR-005</a>.</p>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p><code>default(Result&lt;T&gt;)</code> is a <strong>failure</strong> carrying <code>new Error.Unexpected(&quot;default_initialized&quot;)</code>. Always construct via <code>Result.Ok(...)</code> / <code>Result.Fail(...)</code>. Analyzer <code>TRLS019</code> flags explicit <code>default(Result&lt;T&gt;)</code> at call sites.</p>
+</div>
+<h2 id="http-trellishttp">HTTP (Trellis.Http)</h2>
+<p>The v1 surface (60+ overloads across two static classes) collapsed to one static class with seven methods. There are no shims or compatibility redirects — this is a clean, pre-GA cut.</p>
+<table>
+<thead>
+<tr>
+<th>v1</th>
+<th>v2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReadResultFromJsonAsync&lt;T&gt;</code> (sync, <code>Result&lt;HRM&gt;</code>, <code>Task&lt;HRM&gt;</code>, <code>Task&lt;Result&lt;HRM&gt;&gt;</code>)</td>
+<td><code>ReadJsonAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</code></td>
+</tr>
+<tr>
+<td><code>ReadResultMaybeFromJsonAsync&lt;T&gt;</code> (all shapes)</td>
+<td><code>ReadJsonMaybeAsync&lt;T&gt;(this Task&lt;Result&lt;HttpResponseMessage&gt;&gt;, JsonTypeInfo&lt;T&gt;, CancellationToken)</code></td>
+</tr>
+<tr>
+<td><code>HandleNotFound</code> / <code>HandleConflict</code> / <code>HandleUnauthorized</code> (all shapes)</td>
+<td><code>Handle{NotFound,Conflict,Unauthorized}Async(this Task&lt;HttpResponseMessage&gt;, Error.{NotFound,Conflict,Unauthorized})</code></td>
+</tr>
+<tr>
+<td><code>HandleForbidden*</code></td>
+<td><strong>Removed.</strong> Use <code>ToResultAsync(status =&gt; status == HttpStatusCode.Forbidden ? new Error.Forbidden(...) : null)</code>.</td>
+</tr>
+<tr>
+<td><code>HandleClientError*</code> (4xx) / <code>HandleServerError*</code> (5xx)</td>
+<td><strong>Removed.</strong> Use <code>ToResultAsync(statusMap)</code> with a <code>switch</code> over <code>HttpStatusCode</code>.</td>
+</tr>
+<tr>
+<td><code>EnsureSuccess</code> / <code>EnsureSuccessAsync</code> (all shapes)</td>
+<td><strong>Removed.</strong> Use <code>ToResultAsync(status =&gt; (int)status &gt;= 400 ? error : null)</code> or body-aware <code>ToResultAsync(mapper, ct)</code>.</td>
+</tr>
+<tr>
+<td><code>HandleFailureAsync&lt;TContext&gt;</code></td>
+<td><strong>Removed.</strong> Use body-aware <code>ToResultAsync(mapper, ct)</code>; capture additional state via closure.</td>
+</tr>
+<tr>
+<td>Sync receivers (<code>HttpResponseMessage</code>, <code>Result&lt;HRM&gt;</code>)</td>
+<td><strong>Removed.</strong> Wrap with <code>Task.FromResult(...)</code> if needed; in practice every <code>HttpClient</code> call is already async.</td>
+</tr>
+</tbody>
+</table>
+<p>Plus a new disposal contract: <code>Trellis.Http</code> disposes the underlying <code>HttpResponseMessage</code> on terminal and transformative paths; pass-through paths leave disposal to the caller until the chain reaches <code>ReadJson*</code>.</p>
+<p>Full table and explanations: <a href="../api_reference/trellis-api-http.html#breaking-changes-from-v1"><code>trellis-api-http.md</code> → Breaking changes from v1</a>. Practical recipes: <a href="integration-http.html"><code>integration-http.md</code></a>.</p>
+<h2 id="state-machine-trellisstatemachine">State machine (Trellis.StateMachine)</h2>
+<pre><code class="lang-diff">- &lt;PackageReference Include=&quot;Trellis.Stateless&quot; Version=&quot;...&quot; /&gt;
++ &lt;PackageReference Include=&quot;Trellis.StateMachine&quot; Version=&quot;...&quot; /&gt;
+
+- using Trellis.Stateless;
++ using Trellis.StateMachine;
+</code></pre>
+<p>The public surface is otherwise identical — <code>StateMachineExtensions.FireResult&lt;TState, TTrigger&gt;(...)</code> and <code>LazyStateMachine&lt;TState, TTrigger&gt;</code> are unchanged. The underlying <a href="https://github.com/dotnet-state-machine/stateless">Stateless</a> library is still referenced directly, so <code>StateMachine&lt;TState, TTrigger&gt;</code> from the <code>Stateless</code> namespace remains visible in user code. There is no metapackage redirect — update the <code>PackageReference</code> directly. Full notes: <a href="../api_reference/trellis-api-statemachine.html#breaking-changes-from-v1"><code>trellis-api-statemachine.md</code> → Breaking changes from v1</a>.</p>
+<h2 id="aspnet-core-trellisasp">ASP.NET Core (Trellis.Asp)</h2>
+<p>Two cross-cutting changes affect ASP consumers:</p>
+<ul>
+<li><strong><code>WriteOutcome&lt;T&gt;</code> moved to <code>Trellis.Core</code>.</strong> The type, its case records, and member shapes are unchanged; only the assembly and namespace move. Replace <code>using Trellis.Asp;</code> with <code>using Trellis;</code> for any file that names <code>WriteOutcome&lt;T&gt;</code> directly. ASP-specific HTTP mapping stays in <code>Trellis.Asp</code> via <code>ToHttpResponse(...)</code> / <code>ToHttpResponseAsync(...)</code> and the typed MVC adapters <code>AsActionResult&lt;T&gt;()</code> / <code>AsActionResultAsync&lt;T&gt;()</code>.</li>
+<li><strong><code>Trellis.Asp.Authorization</code> package was folded into <code>Trellis.Asp.nupkg</code>.</strong> The actor providers (<code>ClaimsActorProvider</code>, <code>EntraActorProvider</code>, <code>DevelopmentActorProvider</code>, <code>CachingActorProvider</code>) and the <code>AddTrellisAspAuthorization()</code> extension are unchanged; the namespace stays <code>Trellis.Asp.Authorization</code>. Drop the standalone <code>PackageReference</code>. <code>Trellis.Asp</code> now transitively brings in <code>Trellis.Authorization</code>.</li>
+</ul>
+<p>Both rows are documented in <a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a> (the <code>WriteOutcome</code> move and the package-merge entries). The current ASP API surface lives in <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a>.</p>
+<h2 id="mediator-trellismediator">Mediator (Trellis.Mediator)</h2>
+<p>Mediator does not have its own v1 breaking-changes section; the migration impact is downstream of two <code>Trellis.Core</code> changes:</p>
+<ul>
+<li>Handlers that returned <code>Task&lt;Result&gt;</code> now return <code>Task&lt;Result&lt;Unit&gt;&gt;</code> (ADR-005). Update handler signatures and adjust trailing <code>_ =&gt;</code> lambdas.</li>
+<li>Pipeline behaviors are constrained by <code>IFailureFactory&lt;TResponse&gt;</code>. With <code>Result&lt;Unit&gt;</code> as the canonical no-payload response, the constraint is satisfied without any new shape.</li>
+</ul>
+<p>Behavioral semantics, registration helpers, and the validation-aggregation rule are documented in <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a>.</p>
+<h2 id="package-map-legacy--current">Package map (legacy → current)</h2>
+<table>
+<thead>
+<tr>
+<th>Legacy package</th>
+<th>Current package</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trellis.Results</code></td>
+<td><code>Trellis.Core</code></td>
+<td>CLR namespace stays <code>Trellis</code> — no <code>using</code> changes. Legacy package is unlisted; no metapackage shim.</td>
+</tr>
+<tr>
+<td><code>Trellis.DomainDrivenDesign</code></td>
+<td><em>(removed — merged into <code>Trellis.Core</code>)</em></td>
+<td>DDD types (<code>Aggregate&lt;T&gt;</code>, <code>Entity&lt;T&gt;</code>, <code>ValueObject</code>, <code>Specification&lt;T&gt;</code>) moved into <code>Trellis.Core</code>. Namespace <code>Trellis</code> unchanged.</td>
+</tr>
+<tr>
+<td><code>Trellis.Primitives.Generator</code></td>
+<td><em>(removed — bundled in <code>Trellis.Core.nupkg</code>)</em></td>
+<td>Source generator now ships at <code>analyzers/dotnet/cs/Trellis.Core.Generator.dll</code>.</td>
+</tr>
+<tr>
+<td><code>Trellis.AspSourceGenerator</code></td>
+<td><em>(removed — bundled in <code>Trellis.Asp.nupkg</code>)</em></td>
+<td>Generator ships at <code>analyzers/dotnet/cs/Trellis.AspSourceGenerator.dll</code>.</td>
+</tr>
+<tr>
+<td><code>Trellis.EntityFrameworkCore.Generator</code></td>
+<td><em>(removed — bundled in <code>Trellis.EntityFrameworkCore.nupkg</code>)</em></td>
+<td>Generator ships at <code>analyzers/dotnet/cs/Trellis.EntityFrameworkCore.Generator.dll</code>.</td>
+</tr>
+<tr>
+<td><code>Trellis.Asp.Authorization</code></td>
+<td><em>(removed — folded into <code>Trellis.Asp.nupkg</code>)</em></td>
+<td>Namespace <code>Trellis.Asp.Authorization</code> unchanged; actor providers and <code>AddTrellisAspAuthorization()</code> are unchanged.</td>
+</tr>
+<tr>
+<td><code>Trellis.Stateless</code></td>
+<td><code>Trellis.StateMachine</code></td>
+<td>Namespace also renamed; public surface unchanged.</td>
+</tr>
+</tbody>
+</table>
+<p>Authoritative diff (with <code>&lt;PackageReference&gt;</code> snippets): <a href="../api_reference/trellis-api-core.html#breaking-changes-from-v1"><code>trellis-api-core.md</code> → Breaking changes from v1</a>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Earlier predecessors (<code>FunctionalDdd.RailwayOrientedProgramming</code>, <code>FunctionalDdd.DomainDrivenDesign</code>, <code>FunctionalDdd.PrimitiveValueObjects</code>, <code>FunctionalDdd.Asp</code>, <code>FunctionalDdd.Http</code>, <code>FunctionalDdd.FluentValidation</code>, <code>FunctionalDdd.PrimitiveValueObjectGenerator</code>) are not part of the v1 → v2 cut and are not documented in the api_reference breaking-changes sections. Treat them as out of scope; rename to the matching v2 package and then apply this guide.</p>
+</div>
+<h2 id="observability">Observability</h2>
+<p>Update OpenTelemetry subscriptions when you upgrade:</p>
+<pre><code class="lang-csharp">// v1
+builder.AddSource(&quot;Trellis.Results&quot;);
+
+// v2
+builder.AddSource(&quot;Trellis.Core&quot;);
+// or, programmatically:
+builder.AddSource(RopTrace.ActivitySourceName);
+</code></pre>
+<p>The OTel extension method names (<code>AddResultsInstrumentation()</code>, <code>AddPrimitiveValueObjectInstrumentation()</code>) are unchanged. See <a href="integration-observability.html"><code>integration-observability.md</code></a> for tracing setup and <a href="debugging.html"><code>debugging.md</code></a> for ROP-trace forensics.</p>
+<h2 id="analyzer-id-renames">Analyzer ID renames</h2>
+<p>The Primitives and EF Core source-generator diagnostics were renumbered into the main <code>TRLS</code> range:</p>
+<table>
+<thead>
+<tr>
+<th>v1 ID</th>
+<th>v2 ID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRLSGEN001</code></td>
+<td><code>TRLS031</code></td>
+</tr>
+<tr>
+<td><code>TRLSGEN002</code></td>
+<td><code>TRLS032</code></td>
+</tr>
+<tr>
+<td><code>TRLSGEN003</code></td>
+<td><code>TRLS033</code></td>
+</tr>
+<tr>
+<td><code>TRLSGEN004</code></td>
+<td><code>TRLS034</code></td>
+</tr>
+<tr>
+<td><code>TRLSGEN100</code></td>
+<td><code>TRLS035</code></td>
+</tr>
+<tr>
+<td><code>TRLSGEN101</code></td>
+<td><code>TRLS036</code></td>
+</tr>
+<tr>
+<td><code>TRLSGEN102</code></td>
+<td><code>TRLS037</code></td>
+</tr>
+<tr>
+<td><code>TRLSGEN103</code></td>
+<td><code>TRLS038</code></td>
+</tr>
+</tbody>
+</table>
+<p>Update any <code>&lt;NoWarn&gt;</code> / <code>#pragma warning disable</code> / editorconfig severity overrides accordingly. Full diagnostic catalog: <a href="../api_reference/trellis-api-analyzers.html"><code>trellis-api-analyzers.md</code></a>.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<p>Recommended order — each step is small enough that the build should succeed before the next:</p>
+<ol>
+<li><strong>Pin a green baseline.</strong> Tag the v1 commit and confirm <code>dotnet build</code> and <code>dotnet test</code> are clean.</li>
+<li><strong>Update <code>PackageReference</code> / <code>Directory.Packages.props</code>.</strong> Apply the <a href="#package-map-legacy--current">Package map</a>. Drop generator packages that are now bundled. Add <code>Trellis.StateMachine</code> if you used <code>Trellis.Stateless</code>.</li>
+<li><strong>Mechanical rename of factories.</strong> <code>Result.Success</code> → <code>Result.Ok</code>; <code>Result.Failure</code> → <code>Result.Fail</code>. Find-and-replace is safe because <code>IsSuccess</code> / <code>IsFailure</code> are unchanged and not affected.</li>
+<li><strong>Replace <code>Result</code> returns and parameters with <code>Result&lt;Unit&gt;</code> (ADR-005).</strong> Including <code>Task&lt;Result&gt;</code> → <code>Task&lt;Result&lt;Unit&gt;&gt;</code>. Add <code>_ =&gt;</code> or <code>(Unit _) =&gt;</code> to lambdas after <code>.Bind</code>/<code>.BindAsync</code>/<code>.Tap</code>/etc.</li>
+<li><strong>Convert <code>Error.X(&quot;msg&quot;)</code> factory calls to constructor + <code>with</code> syntax.</strong> <code>new Error.X(payload) { Detail = &quot;msg&quot; }</code>. Replace concrete subclass type names (<code>ValidationError</code>, <code>NotFoundError</code>) with the closed cases (<code>Error.UnprocessableContent</code>, <code>Error.NotFound</code>).</li>
+<li><strong>Replace <code>result.Value</code> reads.</strong> Use <code>TryGetValue</code>, <code>Match</code>, or deconstruction. Replace <code>result.Error</code> reads with <code>if (result.Error is { } e)</code> or <code>result.TryGetError(out var e)</code>.</li>
+<li><strong>Remove <code>MatchError</code> / <code>FlattenValidationErrors</code> calls.</strong> <code>MatchError</code> → <code>Match</code> + <code>switch</code>. <code>FlattenValidationErrors</code> is no-op — <code>Combine</code> already merges field/rule violations.</li>
+<li><strong>Audit HTTP call sites.</strong> Replace <code>EnsureSuccess*</code> / <code>HandleClientError*</code> / <code>HandleServerError*</code> / <code>HandleForbidden*</code> / <code>HandleFailureAsync&lt;TContext&gt;</code> with <code>ToResultAsync(statusMap)</code> or body-aware <code>ToResultAsync(mapper, ct)</code>. Rename <code>ReadResultFromJsonAsync</code> / <code>ReadResultMaybeFromJsonAsync</code> to <code>ReadJsonAsync</code> / <code>ReadJsonMaybeAsync</code>. Stop disposing <code>HttpResponseMessage</code> after the chain reaches <code>ReadJson*</code> — <code>Trellis.Http</code> owns it.</li>
+<li><strong>Update OTel sources.</strong> <code>&quot;Trellis.Results&quot;</code> → <code>&quot;Trellis.Core&quot;</code> (or <code>RopTrace.ActivitySourceName</code>).</li>
+<li><strong>Update analyzer suppressions.</strong> Apply the <code>TRLSGEN*</code> → <code>TRLS0xx</code> map.</li>
+<li><strong>Build, run tests, and iterate.</strong> The compiler errors (<code>CS0029</code>, <code>CS0117</code>, <code>CS1061</code>, <code>CS1593</code>) are deliberately the migration map — work through them top-down.</li>
+<li><strong>Add <code>Trellis.Analyzers</code></strong> if you want the compiler to enforce current patterns (notably <code>TRLS003</code> on <code>Maybe&lt;T&gt;.Value</code> and <code>TRLS019</code> on <code>default(Result&lt;T&gt;)</code>).</li>
+</ol>
+<div class="TIP">
+<h5>Tip</h5>
+<p>There are no shims or compatibility redirects — this is a clean pre-GA cut. The compiler is the migration script.</p>
+</div>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>Result / Error / <code>Unit</code> semantics: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a>, <a href="../adr/ADR-005-reintroduce-unit.html">ADR-005</a></li>
+<li>HTTP migration table (full): <a href="../api_reference/trellis-api-http.html#breaking-changes-from-v1"><code>trellis-api-http.md</code> → Breaking changes from v1</a></li>
+<li>HTTP usage recipes: <a href="integration-http.html"><code>integration-http.md</code></a></li>
+<li>State machine package/namespace rename: <a href="../api_reference/trellis-api-statemachine.html#breaking-changes-from-v1"><code>trellis-api-statemachine.md</code> → Breaking changes from v1</a></li>
+<li>ASP.NET Core surface (post-merge): <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+<li>Mediator pipeline behaviors: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a></li>
+<li>Analyzer catalog: <a href="../api_reference/trellis-api-analyzers.html"><code>trellis-api-analyzers.md</code></a></li>
+<li>OTel wiring: <a href="integration-observability.html"><code>integration-observability.md</code></a></li>
+<li>Recipe lookup table: <a href="../api_reference/trellis-api-cookbook.html"><code>trellis-api-cookbook.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

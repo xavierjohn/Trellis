@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class RepositoryBase&lt;TAggregate, TId&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class RepositoryBase&lt;TAggregate, TId&gt; | Trellis ">
+      
+      <meta name="description" content="Base class for EF Core repositories that persist  instances. Provides standard read and staging methods. Repositories stage changes to the  change tracker; the  (typically driven by a pipeline behavior) is responsible for committing staged changes.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_EntityFrameworkCore_RepositoryBase_2.md&amp;value=---%0Auid%3A%20Trellis.EntityFrameworkCore.RepositoryBase%602%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2">
+
+
+
+  <h1 id="Trellis_EntityFrameworkCore_RepositoryBase_2" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2" class="text-break">
+Class RepositoryBase&lt;TAggregate, TId&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.EntityFrameworkCore.html">EntityFrameworkCore</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.EntityFrameworkCore.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for EF Core repositories that persist <a class="xref" href="Trellis.Aggregate-1.html">Aggregate&lt;TId&gt;</a> instances.
+Provides standard read and staging methods. Repositories stage changes to the
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> change tracker; the <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html">IUnitOfWork</a> (typically driven
+by a pipeline behavior) is responsible for committing staged changes.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class RepositoryBase&lt;TAggregate, TId&gt; where TAggregate : Aggregate&lt;TId&gt; where TId : notnull</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TAggregate</code></dt>
+    <dd><p>The aggregate root type.</p>
+</dd>
+    <dt><code>TId</code></dt>
+    <dd><p>The type of the aggregate's unique identifier.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">RepositoryBase&lt;TAggregate, TId&gt;</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_EntityFrameworkCore_RepositoryBase_2_examples">Examples</h2>
+  <pre><code class="lang-csharp">public class OrderRepository : RepositoryBase&lt;Order, OrderId&gt;
+{
+    public OrderRepository(AppDbContext context) : base(context) { }
+
+    protected override IQueryable&lt;Order&gt; BuildFindByIdQuery()
+        =&gt; base.BuildFindByIdQuery().Include(o =&gt; o.LineItems);
+}</code></pre>
+
+
+  <h2 id="Trellis_EntityFrameworkCore_RepositoryBase_2_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This base class eliminates the repetitive find/query/add/remove boilerplate that appears in every
+concrete repository. Repositories with custom queries inherit and add methods.
+</p>
+<p>
+Override <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_BuildFindByIdQuery">BuildFindByIdQuery()</a> or <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_BuildQueryBase">BuildQueryBase()</a> to add
+<code>.Include()</code> chains for eager loading.
+</p>
+<p>
+<b>Staging vs. Committing:</b> Methods like <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_Add__0_">Add(TAggregate)</a>, <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_Remove__0_">Remove(TAggregate)</a>,
+and <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_RemoveByIdAsync__1_System_Threading_CancellationToken_">RemoveByIdAsync(TId, CancellationToken)</a> stage changes in the EF Core change tracker but never
+call <code>SaveChanges</code>. The commit boundary is owned by the pipeline
+(see <a class="xref" href="Trellis.EntityFrameworkCore.TransactionalCommandBehavior-2.html">TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</a>) or by explicitly
+calling <a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html#Trellis_EntityFrameworkCore_IUnitOfWork_CommitAsync_System_Threading_CancellationToken_">CommitAsync(CancellationToken)</a>.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2__ctor_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.#ctor*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2__ctor_Microsoft_EntityFrameworkCore_DbContext_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.#ctor(Microsoft.EntityFrameworkCore.DbContext)">
+  RepositoryBase(DbContext)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html">RepositoryBase&lt;TAggregate, TId&gt;</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected RepositoryBase(DbContext context)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>context</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> used for persistence.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_Context_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.Context*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_Context" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.Context">
+  Context
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L70"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a>.
+Use sparingly — prefer the repository methods for standard operations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected DbContext Context { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_DbSet_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.DbSet*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_DbSet" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.DbSet">
+  DbSet
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbset-1">DbSet&lt;TEntity&gt;</a> for this aggregate type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected DbSet&lt;TAggregate&gt; DbSet { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbset-1">DbSet</a>&lt;TAggregate&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_Add_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.Add*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_Add__0_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.Add(`0)">
+  Add(TAggregate)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L179"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Stages a new aggregate for insertion. If the aggregate is already tracked,
+this is a no-op (EF Core will detect modifications automatically).
+Does not call <code>SaveChanges</code> — the commit is deferred to the pipeline or
+<a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html#Trellis_EntityFrameworkCore_IUnitOfWork_CommitAsync_System_Threading_CancellationToken_">CommitAsync(CancellationToken)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual void Add(TAggregate aggregate)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>aggregate</code> <span class="xref">TAggregate</span></dt>
+    <dd><p>The aggregate to stage for insertion.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_BuildFindByIdQuery_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.BuildFindByIdQuery*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_BuildFindByIdQuery" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.BuildFindByIdQuery">
+  BuildFindByIdQuery()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Builds the base query used by <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_FindByIdAsync__1_System_Threading_CancellationToken_">FindByIdAsync(TId, CancellationToken)</a>. Override to add
+<code>.Include()</code> chains for eager loading when finding by ID.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual IQueryable&lt;TAggregate&gt; BuildFindByIdQuery()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.iqueryable-1">IQueryable</a>&lt;TAggregate&gt;</dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.iqueryable-1">IQueryable&lt;T&gt;</a> starting from <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_DbSet">DbSet</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_BuildQueryBase_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.BuildQueryBase*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_BuildQueryBase" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.BuildQueryBase">
+  BuildQueryBase()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L89"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Builds the base query used by <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_QueryAsync_Trellis_Specification__0__System_Threading_CancellationToken_">QueryAsync(Specification&lt;TAggregate&gt;, CancellationToken)</a>, <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_ExistsAsync_Trellis_Specification__0__System_Threading_CancellationToken_">ExistsAsync(Specification&lt;TAggregate&gt;, CancellationToken)</a>,
+and <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_CountAsync_Trellis_Specification__0__System_Threading_CancellationToken_">CountAsync(Specification&lt;TAggregate&gt;, CancellationToken)</a>. Override to add <code>.Include()</code> chains for list/search queries.
+The default query is no-tracking to avoid unnecessary change tracking for read operations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual IQueryable&lt;TAggregate&gt; BuildQueryBase()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.iqueryable-1">IQueryable</a>&lt;TAggregate&gt;</dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.iqueryable-1">IQueryable&lt;T&gt;</a> starting from <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_DbSet">DbSet</a> with no tracking.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_CountAsync_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.CountAsync*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_CountAsync_Trellis_Specification__0__System_Threading_CancellationToken_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.CountAsync(Trellis.Specification{`0},System.Threading.CancellationToken)">
+  CountAsync(Specification&lt;TAggregate&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L160"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Counts aggregates matching the given specification.
+Uses <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_BuildQueryBase">BuildQueryBase()</a> (no-tracking by default).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task&lt;int&gt; CountAsync(Specification&lt;TAggregate&gt; specification, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>specification</code> <a class="xref" href="Trellis.Specification-1.html">Specification</a>&lt;TAggregate&gt;</dt>
+    <dd><p>The specification to filter by.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting for the task to complete.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The number of matching aggregates.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_ExistsAsync_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.ExistsAsync*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_ExistsAsync_Trellis_Specification__0__System_Threading_CancellationToken_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.ExistsAsync(Trellis.Specification{`0},System.Threading.CancellationToken)">
+  ExistsAsync(Specification&lt;TAggregate&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L145"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks whether any aggregate matches the given specification.
+Uses <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_BuildQueryBase">BuildQueryBase()</a> (no-tracking by default).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task&lt;bool&gt; ExistsAsync(Specification&lt;TAggregate&gt; specification, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>specification</code> <a class="xref" href="Trellis.Specification-1.html">Specification</a>&lt;TAggregate&gt;</dt>
+    <dd><p>The specification to test.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting for the task to complete.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if at least one aggregate matches; otherwise <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_ExistsAsync_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.ExistsAsync*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_ExistsAsync__1_System_Threading_CancellationToken_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.ExistsAsync(`1,System.Threading.CancellationToken)">
+  ExistsAsync(TId, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L132"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks whether an aggregate with the given identifier exists.
+Uses <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_BuildQueryBase">BuildQueryBase()</a> (no-tracking, lightweight — no entity materialization)
+so that repository-level query customization (e.g., soft-delete or tenant filters) is respected.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task&lt;bool&gt; ExistsAsync(TId id, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate identifier to check.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting for the task to complete.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if an aggregate with the given ID exists; otherwise <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_FindByIdAsync_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.FindByIdAsync*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_FindByIdAsync__1_System_Threading_CancellationToken_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.FindByIdAsync(`1,System.Threading.CancellationToken)">
+  FindByIdAsync(TId, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L103"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Finds an aggregate by its unique identifier.
+The returned aggregate is tracked by the change tracker (suitable for mutations).
+Returns <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a> if not found.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task&lt;Maybe&lt;TAggregate&gt;&gt; FindByIdAsync(TId id, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate identifier to search for.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting for the task to complete.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TAggregate&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> containing the aggregate, or None if not found.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_QueryAsync_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.QueryAsync*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_QueryAsync_Trellis_Specification__0__System_Threading_CancellationToken_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.QueryAsync(Trellis.Specification{`0},System.Threading.CancellationToken)">
+  QueryAsync(Specification&lt;TAggregate&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Queries aggregates matching the given specification.
+Results are no-tracking by default (via <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_BuildQueryBase">BuildQueryBase()</a>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task&lt;IReadOnlyList&lt;TAggregate&gt;&gt; QueryAsync(Specification&lt;TAggregate&gt; specification, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>specification</code> <a class="xref" href="Trellis.Specification-1.html">Specification</a>&lt;TAggregate&gt;</dt>
+    <dd><p>The specification to filter by.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting for the task to complete.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TAggregate&gt;&gt;</dt>
+    <dd><p>A read-only list of matching aggregates.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_Remove_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.Remove*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_Remove__0_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.Remove(`0)">
+  Remove(TAggregate)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L194"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Stages an aggregate for deletion. The aggregate must be tracked or will be attached
+before marking for deletion.
+Does not call <code>SaveChanges</code> — the commit is deferred to the pipeline or
+<a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html#Trellis_EntityFrameworkCore_IUnitOfWork_CommitAsync_System_Threading_CancellationToken_">CommitAsync(CancellationToken)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual void Remove(TAggregate aggregate)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>aggregate</code> <span class="xref">TAggregate</span></dt>
+    <dd><p>The aggregate to stage for deletion.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_RepositoryBase_2_RemoveByIdAsync_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.RemoveByIdAsync*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_RepositoryBase_2_RemoveByIdAsync__1_System_Threading_CancellationToken_" data-uid="Trellis.EntityFrameworkCore.RepositoryBase`2.RemoveByIdAsync(`1,System.Threading.CancellationToken)">
+  RemoveByIdAsync(TId, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L219"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Looks up an aggregate by ID and stages it for deletion.
+Uses <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbset-1.findasync#microsoft-entityframeworkcore-dbset-1-findasync(system-object()-system-threading-cancellationtoken)">FindAsync(object[], CancellationToken)</a> directly
+(not <a class="xref" href="Trellis.EntityFrameworkCore.RepositoryBase-2.html#Trellis_EntityFrameworkCore_RepositoryBase_2_BuildFindByIdQuery">BuildFindByIdQuery()</a>) to avoid loading heavy Include graphs.
+Returns a not-found error if the aggregate does not exist.
+Does not call <code>SaveChanges</code> — the commit is deferred to the pipeline or
+<a class="xref" href="Trellis.EntityFrameworkCore.IUnitOfWork.html#Trellis_EntityFrameworkCore_IUnitOfWork_CommitAsync_System_Threading_CancellationToken_">CommitAsync(CancellationToken)</a>.</p>
+<p>
+<b>Query filters:</b> Starting with EF Core 8, <code>FindAsync</code> applies global
+query filters (soft-delete, multi-tenant). A row excluded by a filter is treated
+as not-existing and yields <a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a> — the safe default. Tests
+in <code>RepositoryBaseFilterTests</code> guard this contract. Override this method only
+if you intentionally want to operate over filtered rows (in which case use
+<code>DbSet.IgnoreQueryFilters().FirstOrDefaultAsync(BuildIdPredicate(id), ct)</code>).
+</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task&lt;Result&lt;Unit&gt;&gt; RemoveByIdAsync(TId id, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate identifier to remove.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting for the task to complete.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> with <a class="xref" href="Trellis.Unit.html">Unit</a> representing success (staged) or not-found failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/RepositoryBase.cs/#L42" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

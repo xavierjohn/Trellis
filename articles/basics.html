@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Basics | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Basics | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/basics.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="basics">Basics</h1>
+
+<p>This article teaches the handful of Trellis concepts you will use most often: <strong>value objects</strong>, <strong><code>Result&lt;T&gt;</code></strong>, and the core operators that turn a multi-step workflow into readable code.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Replace primitive parameters with typed value objects</td>
+<td><code>RequiredString&lt;T&gt;</code> / <code>RequiredGuid&lt;T&gt;</code> partial classes</td>
+<td><a href="#why-avoid-primitive-obsession">Why avoid primitive obsession?</a></td>
+</tr>
+<tr>
+<td>Validate several independent fields and keep all failures</td>
+<td><code>Combine</code></td>
+<td><a href="#combine-validate-independent-inputs-together"><code>Combine</code></a></td>
+</tr>
+<tr>
+<td>Call the next result-producing step</td>
+<td><code>Bind</code></td>
+<td><a href="#bind-call-the-next-result-producing-step"><code>Bind</code></a></td>
+</tr>
+<tr>
+<td>Transform a success value with a non-failing function</td>
+<td><code>Map</code></td>
+<td><a href="#map-transform-a-successful-value"><code>Map</code></a></td>
+</tr>
+<tr>
+<td>Add a single business rule</td>
+<td><code>Ensure</code></td>
+<td><a href="#ensure-add-a-business-rule"><code>Ensure</code></a></td>
+</tr>
+<tr>
+<td>Collect several rule violations together</td>
+<td><code>EnsureAll</code></td>
+<td><a href="#ensureall-collect-several-business-rule-failures-at-once"><code>EnsureAll</code></a></td>
+</tr>
+<tr>
+<td>Run a side effect on the success path</td>
+<td><code>Tap</code></td>
+<td><a href="#tap-run-a-side-effect-without-changing-the-result"><code>Tap</code></a></td>
+</tr>
+<tr>
+<td>Provide a fallback when an error matches a predicate</td>
+<td><code>RecoverOnFailure</code></td>
+<td><a href="#recoveronfailure-provide-a-fallback-path"><code>RecoverOnFailure</code></a></td>
+</tr>
+<tr>
+<td>Finish the pipeline and produce a plain value</td>
+<td><code>Match</code></td>
+<td><a href="#match-finish-the-pipeline"><code>Match</code></a></td>
+</tr>
+<tr>
+<td>Chain over async I/O without losing readability</td>
+<td><code>BindAsync</code> / <code>TapAsync</code> / <code>MatchAsync</code></td>
+<td><a href="#working-with-async-operations">Working with async operations</a></td>
+</tr>
+<tr>
+<td>Run independent async work in parallel and combine</td>
+<td><code>Result.ParallelAsync(...).WhenAllAsync()</code></td>
+<td><a href="#parallel-async-work">Parallel async work</a></td>
+</tr>
+</tbody>
+</table>
+<p>Full operator signatures and overloads: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a>. Built-in value-object base classes: <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a>.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#what-problem-does-railway-oriented-programming-solve">What problem does Railway-Oriented Programming solve?</a></li>
+<li><a href="#why-avoid-primitive-obsession">Why avoid primitive obsession?</a></li>
+<li><a href="#meet-resultt">Meet <code>Result&lt;T&gt;</code></a></li>
+<li><a href="#core-operations">Core operations</a></li>
+<li><a href="#putting-it-together">Putting it together</a></li>
+<li><a href="#working-with-async-operations">Working with async operations</a></li>
+<li><a href="#common-beginner-questions">Common beginner questions</a></li>
+<li><a href="#quick-reference">Quick reference</a></li>
+<li><a href="#next-steps">Next steps</a></li>
+</ul>
+<h2 id="what-problem-does-railway-oriented-programming-solve">What problem does Railway-Oriented Programming solve?</h2>
+<p>The answer is: <strong>it keeps the happy path readable even when every step can fail.</strong></p>
+<p>Without ROP, each validation or database check forces another <code>if</code>, another <code>return</code>, or another exception path. With Trellis, a failure automatically moves the workflow onto the failure track and the remaining success steps are skipped.</p>
+<pre><code class="lang-mermaid">graph LR
+    A[Start] --&gt; B{Validate input}
+    B --&gt;|Success| C{Load data}
+    B --&gt;|Failure| F[Failure result]
+    C --&gt;|Success| D{Apply rule}
+    C --&gt;|Failure| F
+    D --&gt;|Success| E[Success result]
+    D --&gt;|Failure| F
+</code></pre>
+<h3 id="before-and-after">Before and after</h3>
+<pre><code class="lang-csharp">var firstName = ValidateFirstName(input.FirstName);
+if (firstName is null)
+    return BadRequest(&quot;Invalid first name.&quot;);
+
+var lastName = ValidateLastName(input.LastName);
+if (lastName is null)
+    return BadRequest(&quot;Invalid last name.&quot;);
+
+var email = ValidateEmail(input.Email);
+if (email is null)
+    return BadRequest(&quot;Invalid email.&quot;);
+
+if (_repository.EmailExists(email))
+    return Conflict(&quot;Email already registered.&quot;);
+
+var user = new User(firstName, lastName, email);
+_repository.Save(user);
+
+return Ok(user);
+</code></pre>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+public partial class CustomerEmail : RequiredString&lt;CustomerEmail&gt; { }
+
+public sealed record RegisterUserInput(string FirstName, string LastName, string Email);
+
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
+{
+    public static Result&lt;User&gt; TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =&gt;
+        Result.Ok(new User(firstName, lastName, email));
+}
+
+public static Result&lt;User&gt; RegisterUser(RegisterUserInput input, Func&lt;CustomerEmail, bool&gt; emailExists)
+{
+    return FirstName.TryCreate(input.FirstName)
+        .Combine(LastName.TryCreate(input.LastName))
+        .Combine(CustomerEmail.TryCreate(input.Email, fieldName: &quot;email&quot;))
+        .Bind((firstName, lastName, email) =&gt; User.TryCreate(firstName, lastName, email))
+        .Ensure(user =&gt; !emailExists(user.Email), new Error.Conflict(null, &quot;conflict&quot;) { Detail = &quot;Email already registered.&quot; });
+}
+</code></pre>
+<p>The second version reads like the business process instead of the defensive scaffolding around it.</p>
+<h2 id="why-avoid-primitive-obsession">Why avoid primitive obsession?</h2>
+<p>The problem with primitives is not that they are simple. The problem is that <strong>they erase intent</strong>.</p>
+<pre><code class="lang-csharp">public sealed record Person(string FirstName, string LastName);
+
+Person CreatePerson(string firstName, string lastName) =&gt; new(firstName, lastName);
+
+var person = CreatePerson(&quot;Smith&quot;, &quot;Jane&quot;);
+</code></pre>
+<p>That compiles even if the arguments are in the wrong order.</p>
+<h3 id="replace-raw-primitives-with-value-objects">Replace raw primitives with value objects</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+[StringLength(100)]
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+
+[StringLength(100)]
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+
+public sealed record Person(FirstName FirstName, LastName LastName);
+
+Person CreatePerson(FirstName firstName, LastName lastName) =&gt; new(firstName, lastName);
+</code></pre>
+<p>Now invalid strings are rejected when you create the value object, and parameter mix-ups become compiler errors.</p>
+<pre><code class="lang-csharp">Result&lt;FirstName&gt; firstName = FirstName.TryCreate(&quot;Jane&quot;);
+Result&lt;LastName&gt; lastName = LastName.TryCreate(&quot;Smith&quot;);
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>If you need domain-specific rules beyond required text, implement the optional <code>ValidateAdditional(...)</code> partial method described in the primitives API reference.</p>
+</div>
+<h2 id="meet-resultt">Meet <code>Result&lt;T&gt;</code></h2>
+<p>The answer to &quot;how do I represent success or failure explicitly?&quot; is <strong><code>Result&lt;T&gt;</code></strong>.</p>
+<p>A <code>Result&lt;T&gt;</code> contains either:</p>
+<ul>
+<li>a successful <strong>value</strong>, or</li>
+<li>a failed <strong>error</strong></li>
+</ul>
+<p>It never contains both.</p>
+<pre><code class="lang-csharp">Result&lt;FirstName&gt; result = FirstName.TryCreate(&quot;Jane&quot;);
+</code></pre>
+<h3 id="safe-ways-to-consume-a-result">Safe ways to consume a result</h3>
+<h4 id="option-1-match">Option 1: <code>Match</code></h4>
+<pre><code class="lang-csharp">string message = result.Match(
+    onSuccess: name =&gt; $&quot;Hello, {name}.&quot;,
+    onFailure: error =&gt; $&quot;Validation failed: {error.Detail}&quot;
+);
+</code></pre>
+<h4 id="option-2-trygetvalue">Option 2: <code>TryGetValue</code></h4>
+<pre><code class="lang-csharp">if (result.TryGetValue(out var name))
+    Console.WriteLine(name);
+else if (result.TryGetError(out var error))
+    Console.WriteLine(error.Detail);
+</code></pre>
+<h4 id="option-3-deconstruct">Option 3: deconstruct</h4>
+<pre><code class="lang-csharp">var (isSuccess, name, error) = result;
+if (isSuccess)
+    Console.WriteLine(name);
+else
+    Console.WriteLine(error?.Detail);
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>Result&lt;T&gt;.Value</code> no longer exists. Use <code>Match</code>, <code>TryGetValue</code>, or deconstruction to extract the success value. <code>result.Error</code> is <code>null</code> on success and never throws.</p>
+</div>
+<h2 id="core-operations">Core operations</h2>
+<p>Each operator solves a different problem. Once you learn these, most Trellis pipelines become easy to read.</p>
+<h3 id="combine-validate-independent-inputs-together"><code>Combine</code>: validate independent inputs together</h3>
+<p>Use <code>Combine</code> when the inputs do not depend on each other and you want to keep all validation failures.</p>
+<pre><code class="lang-csharp">var result = FirstName.TryCreate(&quot;Jane&quot;)
+    .Combine(LastName.TryCreate(&quot;Smith&quot;))
+    .Combine(CustomerEmail.TryCreate(&quot;jane@example.com&quot;, fieldName: &quot;email&quot;));
+</code></pre>
+<p><strong>Why it matters:</strong> form-style input usually has multiple invalid fields at once. <code>Combine</code> lets you surface them together instead of stopping at the first problem.</p>
+<h3 id="bind-call-the-next-result-producing-step"><code>Bind</code>: call the next result-producing step</h3>
+<p>Use <code>Bind</code> when the next step already returns <code>Result&lt;T&gt;</code>.</p>
+<pre><code class="lang-csharp">public static Result&lt;Person&gt; CreatePerson(FirstName firstName, LastName lastName) =&gt;
+    Result.Ok(new Person(firstName, lastName));
+
+var result = FirstName.TryCreate(&quot;Jane&quot;)
+    .Combine(LastName.TryCreate(&quot;Smith&quot;))
+    .Bind((firstName, lastName) =&gt; CreatePerson(firstName, lastName));
+</code></pre>
+<p><strong>Rule of thumb:</strong> if your lambda returns a <code>Result</code>, you almost always want <code>Bind</code>.</p>
+<h3 id="map-transform-a-successful-value"><code>Map</code>: transform a successful value</h3>
+<p>Use <code>Map</code> when the transformation itself cannot fail.</p>
+<pre><code class="lang-csharp">var result = FirstName.TryCreate(&quot;Jane&quot;)
+    .Map(name =&gt; name.Value.ToUpperInvariant());
+</code></pre>
+<p><code>Map</code> changes the success value but leaves failures alone.</p>
+<h3 id="ensure-add-a-business-rule"><code>Ensure</code>: add a business rule</h3>
+<p>Use <code>Ensure</code> when the value is structurally valid, but you still need a domain rule.</p>
+<pre><code class="lang-csharp">var result = CustomerEmail.TryCreate(&quot;jane@example.com&quot;, fieldName: &quot;email&quot;)
+    .Ensure(email =&gt; !email.Value.EndsWith(&quot;@blocked.example&quot;, StringComparison.OrdinalIgnoreCase),
+        new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;email&quot;), &quot;validation.error&quot;) { Detail = &quot;Blocked email domains are not allowed.&quot; })));
+</code></pre>
+<p>A good mental model is:</p>
+<ul>
+<li><strong><code>TryCreate</code></strong> checks shape and basic validity</li>
+<li><strong><code>Ensure</code></strong> checks context-specific business rules</li>
+</ul>
+<h3 id="tap-run-a-side-effect-without-changing-the-result"><code>Tap</code>: run a side effect without changing the result</h3>
+<p>Use <code>Tap</code> when you want to log, save, publish, or notify on the success path.</p>
+<pre><code class="lang-csharp">var saved = false;
+
+var result = FirstName.TryCreate(&quot;Jane&quot;)
+    .Tap(_ =&gt; saved = true);
+</code></pre>
+<p>The result still contains the original <code>FirstName</code>. <code>Tap</code> is for side effects, not transformations.</p>
+<h3 id="ensureall-collect-several-business-rule-failures-at-once"><code>EnsureAll</code>: collect several business-rule failures at once</h3>
+<p>Use <code>EnsureAll</code> when showing all rule violations is better than stopping at the first one.</p>
+<pre><code class="lang-csharp">public sealed record CheckoutRequest(string CouponCode, decimal Subtotal, string Currency);
+
+var result = Result.Ok(new CheckoutRequest(&quot;SPRING25&quot;, 125m, &quot;USD&quot;))
+    .EnsureAll(
+        (request =&gt; request.Subtotal &gt; 0m, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;subtotal&quot;), &quot;validation.error&quot;) { Detail = &quot;Subtotal must be greater than zero.&quot; }))),
+        (request =&gt; request.Currency.Length == 3, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;currency&quot;), &quot;validation.error&quot;) { Detail = &quot;Currency must be a 3-letter code.&quot; }))),
+        (request =&gt; request.CouponCode.Length &lt;= 20, new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(&quot;couponCode&quot;), &quot;validation.error&quot;) { Detail = &quot;Coupon code is too long.&quot; }))));
+</code></pre>
+<h3 id="recoveronfailure-provide-a-fallback-path"><code>RecoverOnFailure</code>: provide a fallback path</h3>
+<p>Use <code>RecoverOnFailure</code> when a failure should trigger another attempt.</p>
+<pre><code class="lang-csharp">public sealed record CustomerProfile(string Source);
+
+Result&lt;CustomerProfile&gt; fromCache = new Error.NotFound(ResourceRef.For(&quot;CustomerProfile&quot;)) { Detail = &quot;Customer not found in cache.&quot; };
+Result&lt;CustomerProfile&gt; fromDatabase = Result.Ok(new CustomerProfile(&quot;database&quot;));
+
+Result&lt;CustomerProfile&gt; result = fromCache.RecoverOnFailure(
+    predicate: error =&gt; error is Error.NotFound,
+    func: _ =&gt; fromDatabase);
+</code></pre>
+<h3 id="match-finish-the-pipeline"><code>Match</code>: finish the pipeline</h3>
+<p>Use <code>Match</code> at the edge of your workflow when you need a plain value.</p>
+<pre><code class="lang-csharp">string response = RegisterUser(new RegisterUserInput(&quot;Jane&quot;, &quot;Smith&quot;, &quot;jane@example.com&quot;), _ =&gt; false)
+    .Match(
+        onSuccess: user =&gt; $&quot;Registered {user.Email}.&quot;,
+        onFailure: error =&gt; $&quot;Registration failed: {error.Detail}&quot;
+    );
+</code></pre>
+<h2 id="putting-it-together">Putting it together</h2>
+<p>Here is a complete example using the core operators in one flow.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+public partial class CustomerEmail : RequiredString&lt;CustomerEmail&gt; { }
+
+public sealed record RegisterUserInput(string FirstName, string LastName, string Email);
+
+public sealed record User(FirstName FirstName, LastName LastName, CustomerEmail Email)
+{
+    public static Result&lt;User&gt; TryCreate(FirstName firstName, LastName lastName, CustomerEmail email) =&gt;
+        Result.Ok(new User(firstName, lastName, email));
+}
+
+public static Result&lt;User&gt; RegisterUser(
+    RegisterUserInput input,
+    Func&lt;CustomerEmail, bool&gt; emailExists,
+    Action&lt;User&gt; saveUser,
+    Action&lt;CustomerEmail&gt; sendWelcomeEmail)
+{
+    return FirstName.TryCreate(input.FirstName)
+        .Combine(LastName.TryCreate(input.LastName))
+        .Combine(CustomerEmail.TryCreate(input.Email, fieldName: &quot;email&quot;))
+        .Bind((firstName, lastName, email) =&gt; User.TryCreate(firstName, lastName, email))
+        .Ensure(user =&gt; !emailExists(user.Email), new Error.Conflict(null, &quot;conflict&quot;) { Detail = &quot;Email already registered.&quot; })
+        .Tap(saveUser)
+        .Tap(user =&gt; sendWelcomeEmail(user.Email));
+}
+</code></pre>
+<p>Read that pipeline left to right:</p>
+<ol>
+<li>validate the incoming fields</li>
+<li>create the domain object</li>
+<li>enforce the duplicate-email rule</li>
+<li>save the user</li>
+<li>send the welcome email</li>
+</ol>
+<p>That is the everyday Trellis experience.</p>
+<h2 id="working-with-async-operations">Working with async operations</h2>
+<p>The async story is the same mental model: <strong>keep the workflow readable while I/O happens in the background</strong>.</p>
+<h3 id="simple-async-chain">Simple async chain</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed class Customer
+{
+    public Customer(string email, bool canBePromoted)
+    {
+        Email = email;
+        CanBePromoted = canBePromoted;
+    }
+
+    public string Email { get; }
+    public bool CanBePromoted { get; }
+    public Task PromoteAsync() =&gt; Task.CompletedTask;
+}
+
+public static Task&lt;Customer?&gt; GetCustomerByIdAsync(long id) =&gt;
+    Task.FromResult(id == 1 ? new Customer(&quot;customer@example.com&quot;, true) : null);
+
+public static Task&lt;Result&lt;Unit&gt;&gt; SendPromotionNotificationAsync(string email) =&gt;
+    Task.FromResult(Result.Ok());
+
+string message = await GetCustomerByIdAsync(1)
+    .ToResultAsync(new Error.NotFound(ResourceRef.For(&quot;Customer&quot;, 1)) { Detail = &quot;Customer not found.&quot; })
+    .EnsureAsync(customer =&gt; customer.CanBePromoted, new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = &quot;Customer cannot be promoted.&quot; })
+    .TapAsync(customer =&gt; customer.PromoteAsync())
+    .BindAsync(customer =&gt; SendPromotionNotificationAsync(customer.Email))
+    .MatchAsync(
+        onSuccess: _ =&gt; &quot;Promotion completed.&quot;,
+        onFailure: error =&gt; error.Detail);
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Use <code>Result.Ok()</code> for successful operations that do not produce a payload.</p>
+</div>
+<h3 id="parallel-async-work">Parallel async work</h3>
+<p>When several calls are independent, run them in parallel and combine the results afterward.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed record Dashboard(string Profile, string Orders, string Preferences);
+
+static Task&lt;Result&lt;string&gt;&gt; FetchUserProfileAsync(string userId) =&gt;
+    Task.FromResult(Result.Ok($&quot;Profile for {userId}&quot;));
+
+static Task&lt;Result&lt;string&gt;&gt; FetchUserOrdersAsync(string userId) =&gt;
+    Task.FromResult(Result.Ok($&quot;Orders for {userId}&quot;));
+
+static Task&lt;Result&lt;string&gt;&gt; FetchUserPreferencesAsync(string userId) =&gt;
+    Task.FromResult(Result.Ok($&quot;Preferences for {userId}&quot;));
+
+Result&lt;Dashboard&gt; dashboard = await Result.ParallelAsync(
+        () =&gt; FetchUserProfileAsync(&quot;user-123&quot;),
+        () =&gt; FetchUserOrdersAsync(&quot;user-123&quot;),
+        () =&gt; FetchUserPreferencesAsync(&quot;user-123&quot;))
+    .WhenAllAsync()
+    .MapAsync((profile, orders, preferences) =&gt;
+        new Dashboard(profile, orders, preferences));
+</code></pre>
+<p>Use this when the operations do not depend on each other and latency matters.</p>
+<h2 id="common-beginner-questions">Common beginner questions</h2>
+<h3 id="when-should-i-use-bind-instead-of-map">When should I use <code>Bind</code> instead of <code>Map</code>?</h3>
+<p>Use <strong><code>Bind</code></strong> when your function returns <code>Result&lt;T&gt;</code>.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed record Person(long Id, string Name);
+
+Result&lt;Person&gt; LoadPerson(long id) =&gt; Result.Ok(new Person(id, &quot;Jane&quot;));
+</code></pre>
+<p>Use <strong><code>Map</code></strong> when your function returns a plain value.</p>
+<pre><code class="lang-csharp">string FormatName(Person person) =&gt; person.Name.ToUpperInvariant();
+</code></pre>
+<h3 id="how-do-i-handle-different-error-types">How do I handle different error types?</h3>
+<p>Use a <code>switch</code> expression on the closed <code>Error</code> ADT when the response should depend on the concrete case.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Http;
+using Trellis;
+
+Result&lt;string&gt; result = new Error.NotFound(ResourceRef.For(&quot;Order&quot;)) { Detail = &quot;Order not found.&quot; };
+
+IResult httpResult = result.Match(
+    onSuccess: value =&gt; Results.Ok(value),
+    onFailure: error =&gt; error switch
+    {
+        Error.UnprocessableContent uc =&gt; Results.UnprocessableEntity(uc.Fields.Items),
+        Error.NotFound nf             =&gt; Results.NotFound(nf.Detail),
+        Error.Conflict c              =&gt; Results.Conflict(c.Detail),
+        _                              =&gt; Results.StatusCode(StatusCodes.Status500InternalServerError)
+    });
+</code></pre>
+<h3 id="what-if-i-need-to-inspect-failures-in-the-middle-of-a-chain">What if I need to inspect failures in the middle of a chain?</h3>
+<p>Use <code>TapOnFailure</code>.</p>
+<pre><code class="lang-csharp">Result&lt;string&gt; result = new Error.InternalServerError(&quot;fault-id&quot;) { Detail = &quot;Email service offline.&quot; }
+    .TapOnFailure(error =&gt; Console.WriteLine($&quot;Failure: {error.Code}&quot;));
+</code></pre>
+<h2 id="quick-reference">Quick reference</h2>
+<h3 id="choosing-an-operator">Choosing an operator</h3>
+<table>
+<thead>
+<tr>
+<th>If you need to...</th>
+<th>Use...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>validate several independent inputs</td>
+<td><code>Combine</code></td>
+</tr>
+<tr>
+<td>call the next result-producing operation</td>
+<td><code>Bind</code></td>
+</tr>
+<tr>
+<td>transform a success value</td>
+<td><code>Map</code></td>
+</tr>
+<tr>
+<td>add a business rule</td>
+<td><code>Ensure</code></td>
+</tr>
+<tr>
+<td>collect several rule failures</td>
+<td><code>EnsureAll</code></td>
+</tr>
+<tr>
+<td>run a side effect on success</td>
+<td><code>Tap</code></td>
+</tr>
+<tr>
+<td>run a side effect on failure</td>
+<td><code>TapOnFailure</code></td>
+</tr>
+<tr>
+<td>recover from a failure</td>
+<td><code>RecoverOnFailure</code></td>
+</tr>
+<tr>
+<td>finish the chain</td>
+<td><code>Match</code> (with a <code>switch</code> expression on the closed <code>Error</code> ADT)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cheat-sheet">Cheat sheet</h3>
+<pre><code class="lang-mermaid">flowchart TD
+    START{What do you need?}
+    START --&gt;|Validate multiple inputs| COMBINE[Combine]
+    START --&gt;|Call another Result-returning method| BIND[Bind]
+    START --&gt;|Transform a success value| MAP[Map]
+    START --&gt;|Add a rule| ENSURE[Ensure]
+    START --&gt;|Run side effects| TAP[Tap]
+    START --&gt;|Recover from failure| RECOVER[RecoverOnFailure]
+    START --&gt;|Turn the result into a response| MATCH[Match]
+</code></pre>
+<h3 id="creating-value-objects">Creating value objects</h3>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class OrderNumber : RequiredString&lt;OrderNumber&gt; { }
+public partial class OrderId : RequiredGuid&lt;OrderId&gt; { }
+
+Result&lt;OrderNumber&gt; orderNumber = OrderNumber.TryCreate(&quot;SO-2025-0001&quot;);
+OrderId newId = OrderId.NewUniqueV7();
+</code></pre>
+<h2 id="next-steps">Next steps</h2>
+<ul>
+<li>Read <a href="examples.html">Examples</a> for end-to-end scenarios</li>
+<li>Read <a href="intro.html">Introduction</a> if you want the bigger picture again</li>
+<li>Read <a href="integration-aspnet.html">ASP.NET Core Integration</a> when you are ready to map results to HTTP</li>
+<li>Keep the <a href="../api/index.html">API reference</a> nearby for exact signatures</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/basics.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

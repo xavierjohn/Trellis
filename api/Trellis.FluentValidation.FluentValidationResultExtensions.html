@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class FluentValidationResultExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class FluentValidationResultExtensions | Trellis ">
+      
+      <meta name="description" content="Provides extension methods to integrate FluentValidation with Railway Oriented Programming Result types. Enables seamless conversion of FluentValidation results to Result&amp;lt;T&amp;gt; for functional error handling.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_FluentValidation_FluentValidationResultExtensions.md&amp;value=---%0Auid%3A%20Trellis.FluentValidation.FluentValidationResultExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.FluentValidation.FluentValidationResultExtensions">
+
+
+
+  <h1 id="Trellis_FluentValidation_FluentValidationResultExtensions" data-uid="Trellis.FluentValidation.FluentValidationResultExtensions" class="text-break">
+Class FluentValidationResultExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.FluentValidation/src/FluentValidationExtension.cs/#L129"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.FluentValidation.html">FluentValidation</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.FluentValidation.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides extension methods to integrate FluentValidation with Railway Oriented Programming Result types.
+Enables seamless conversion of FluentValidation results to Result&lt;T&gt; for functional error handling.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class FluentValidationResultExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">FluentValidationResultExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_FluentValidation_FluentValidationResultExtensions_examples">Examples</h2>
+  <p>Complete example with aggregate, validator, and factory method:</p>
+<pre><code class="lang-csharp">// Define the aggregate
+public class User : Aggregate&lt;UserId&gt;
+{
+    public FirstName FirstName { get; }
+    public LastName LastName { get; }
+    public EmailAddress Email { get; }
+    public string Password { get; }
+
+    // Factory method with validation
+    public static Result&lt;User&gt; TryCreate(
+        FirstName firstName, 
+        LastName lastName, 
+        EmailAddress email, 
+        string password)
+    {
+        var user = new User(firstName, lastName, email, password);
+        return s_validator.ValidateToResult(user);
+    }
+
+    private User(FirstName firstName, LastName lastName, EmailAddress email, string password)
+        : base(UserId.NewUnique())
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        Email = email;
+        Password = password;
+    }
+
+    // Inline validator for business rules
+    private static readonly InlineValidator&lt;User&gt; s_validator = new()
+    {
+        v =&gt; v.RuleFor(x =&gt; x.FirstName).NotNull(),
+        v =&gt; v.RuleFor(x =&gt; x.LastName).NotNull(),
+        v =&gt; v.RuleFor(x =&gt; x.Email).NotNull(),
+        v =&gt; v.RuleFor(x =&gt; x.Password)
+            .Matches("(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9])(?=.{8,})")
+            .WithMessage("Password must be at least 8 characters with uppercase, lowercase, digit and special character")
+    };
+}
+
+// Usage in application code
+var result = User.TryCreate(firstName, lastName, email, password);
+// Returns: Success(user) or Failure(Error.UnprocessableContent with field violations)</code></pre>
+
+  <p>Using with API request validation:</p>
+<pre><code class="lang-csharp">// Request DTO
+public record CreateUserRequest(string FirstName, string LastName, string Email, string Password);
+
+// FluentValidation validator
+public class CreateUserRequestValidator : AbstractValidator&lt;CreateUserRequest&gt;
+{
+    public CreateUserRequestValidator()
+    {
+        RuleFor(x =&gt; x.FirstName)
+            .NotEmpty().WithMessage("First name is required")
+            .MaximumLength(50);
+
+        RuleFor(x =&gt; x.LastName)
+            .NotEmpty().WithMessage("Last name is required")
+            .MaximumLength(50);
+
+        RuleFor(x =&gt; x.Email)
+            .NotEmpty()
+            .EmailAddress().WithMessage("Invalid email format");
+
+        RuleFor(x =&gt; x.Password)
+            .MinimumLength(8)
+            .Matches("[A-Z]").WithMessage("Password must contain uppercase")
+            .Matches("[a-z]").WithMessage("Password must contain lowercase")
+            .Matches("[0-9]").WithMessage("Password must contain digit");
+    }
+}
+
+// API endpoint
+app.MapPost("/users", (CreateUserRequest request, IUserService service) =&gt;
+{
+    var validator = new CreateUserRequestValidator();
+    return validator.ValidateToResult(request)
+        .Bind(req =&gt; FirstName.TryCreate(req.FirstName)
+            .Combine(LastName.TryCreate(req.LastName))
+            .Combine(EmailAddress.TryCreate(req.Email))
+            .Bind((first, last, email) =&gt; service.CreateUser(first, last, email, req.Password)))
+        .ToHttpResponse();
+});
+
+// Validation errors automatically formatted with field names</code></pre>
+
+
+  <h2 id="Trellis_FluentValidation_FluentValidationResultExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This class bridges FluentValidation's imperative validation model with Trellis'
+Railway Oriented Programming approach. Key benefits:
+<ul><li>Automatic conversion of validation errors to <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a></li><li>Field-level error grouping for structured error responses</li><li>Integration with Result type for consistent error handling</li><li>Support for both sync and async validation scenarios</li><li>Null-safety with automatic parameter name capture</li></ul>
+
+<p>
+Common usage patterns:
+<ul><li>Factory method validation in aggregates and entities</li><li>DTO/request validation in API endpoints</li><li>Complex business rule validation with FluentValidation's powerful API</li><li>Chaining validation with other Result operations using Bind</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_FluentValidation_FluentValidationResultExtensions_ToResult_" data-uid="Trellis.FluentValidation.FluentValidationResultExtensions.ToResult*"></a>
+
+  <h3 id="Trellis_FluentValidation_FluentValidationResultExtensions_ToResult__1_FluentValidation_Results_ValidationResult___0_System_String_" data-uid="Trellis.FluentValidation.FluentValidationResultExtensions.ToResult``1(FluentValidation.Results.ValidationResult,``0,System.String)">
+  ToResult&lt;T&gt;(ValidationResult, T, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.FluentValidation/src/FluentValidationExtension.cs/#L195"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts a FluentValidation <span class="xref">FluentValidation.Results.ValidationResult</span> to a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;T&gt; ToResult&lt;T&gt;(this ValidationResult validationResult, T value, string paramName = &quot;value&quot;)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>validationResult</code> <span class="xref">ValidationResult</span></dt>
+    <dd><p>The FluentValidation result containing validation state and errors.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value that was validated.</p>
+</dd>
+    <dt><code>paramName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The caller argument expression for <code class="paramref">value</code>. Used as the field name when
+FluentValidation reports a root-level failure with no property name.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;</dt>
+    <dd><ul><li>Success containing the value if validation passed</li><li>Failure with validation errors if validation failed or value is null</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of the value being validated.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_FluentValidation_FluentValidationResultExtensions_ToResult__1_FluentValidation_Results_ValidationResult___0_System_String__examples">Examples</h4>
+  <p>Manual validation and conversion:</p>
+<pre><code class="lang-csharp">var validator = new UserValidator();
+var user = new User { Name = "", Email = "invalid" };
+var validationResult = validator.Validate(user);
+var result = validationResult.ToResult(user);
+
+if (result.IsFailure)
+{
+    var error = (Error.UnprocessableContent)result.Error;
+    foreach (var fv in error.Fields)
+    {
+        Console.WriteLine($"{fv.Field.Path}: {fv.Detail} ({fv.ReasonCode})");
+    }
+}
+// Output:
+// /Name:  Name is required (validation.error)
+// /Email: Email must be a valid email address (validation.error)</code></pre>
+
+
+  <h4 class="section" id="Trellis_FluentValidation_FluentValidationResultExtensions_ToResult__1_FluentValidation_Results_ValidationResult___0_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Each <span class="xref">FluentValidation.Results.ValidationFailure</span> becomes one <a class="xref" href="Trellis.FieldViolation.html">FieldViolation</a>. The
+failure's <span class="xref">FluentValidation.Results.ValidationFailure.PropertyName</span> is normalized to an RFC 6901
+JSON Pointer before being placed on <a class="xref" href="Trellis.FieldViolation.html#Trellis_FieldViolation_Field">Field</a>: dotted member
+paths become path segments and array/list indexers become numeric segments
+(e.g., <code>"Address.PostCode"</code> → <code>/Address/PostCode</code>,
+<code>"Lines[0].Sku"</code> → <code>/Lines/0/Sku</code>). Special characters in segments are
+escaped per RFC 6901 (<code>~</code> → <code>~0</code>, <code>/</code> → <code>~1</code>). Property names that
+already start with <code>/</code> are passed through unchanged. When
+<span class="xref">FluentValidation.Results.ValidationFailure.PropertyName</span> is empty, the caller-captured
+<code class="paramref">paramName</code> is normalized and used as the pointer.
+</p>
+<p>
+The <span class="xref">FluentValidation.Results.ValidationFailure.ErrorCode</span> becomes <a class="xref" href="Trellis.FieldViolation.html#Trellis_FieldViolation_ReasonCode">ReasonCode</a>
+(falling back to <code>"validation.error"</code>), and the <span class="xref">FluentValidation.Results.ValidationFailure.ErrorMessage</span>
+becomes <a class="xref" href="Trellis.FieldViolation.html#Trellis_FieldViolation_Detail">Detail</a>. Multiple failures on the same property produce
+multiple <a class="xref" href="Trellis.FieldViolation.html">FieldViolation</a> entries — no information is lost.
+</p>
+<p>
+The resulting <a class="xref" href="Trellis.Error.UnprocessableContent.html">Error.UnprocessableContent</a> can be automatically converted to:
+<ul><li>HTTP 422 Unprocessable Content with validation problem details (via ToHttpResponse)</li><li>Structured error responses with field-level error messages</li></ul>
+
+</div>
+
+
+
+
+  <a id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResultAsync_" data-uid="Trellis.FluentValidation.FluentValidationResultExtensions.ValidateToResultAsync*"></a>
+
+  <h3 id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResultAsync__1_FluentValidation_IValidator___0____0_System_String_System_String_System_Threading_CancellationToken_" data-uid="Trellis.FluentValidation.FluentValidationResultExtensions.ValidateToResultAsync``1(FluentValidation.IValidator{``0},``0,System.String,System.String,System.Threading.CancellationToken)">
+  ValidateToResultAsync&lt;T&gt;(IValidator&lt;T&gt;, T, string, string?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.FluentValidation/src/FluentValidationExtension.cs/#L425"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously validates the specified value using FluentValidation and converts the result to <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;T&gt;&gt; ValidateToResultAsync&lt;T&gt;(this IValidator&lt;T&gt; validator, T value, string paramName = &quot;value&quot;, string? message = null, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>validator</code> <span class="xref">IValidator</span>&lt;T&gt;</dt>
+    <dd><p>The FluentValidation validator to use.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to validate.</p>
+</dd>
+    <dt><code>paramName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The parameter name for error messages. Automatically captured from the caller expression.</p>
+</dd>
+    <dt><code>message</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional custom error message when value is null.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token to observe.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;&gt;</dt>
+    <dd><p>A task representing the asynchronous validation operation, containing:</p>
+<ul><li>Success with the value if validation passed</li><li>Failure with validation errors if validation failed or value is null</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of the value being validated.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResultAsync__1_FluentValidation_IValidator___0____0_System_String_System_String_System_Threading_CancellationToken__examples">Examples</h4>
+  <p>Using with async validation rules:</p>
+<pre><code class="lang-csharp">public class CreateUserRequestValidator : AbstractValidator&lt;CreateUserRequest&gt;
+{
+    private readonly IUserRepository _repository;
+
+    public CreateUserRequestValidator(IUserRepository repository)
+    {
+        _repository = repository;
+
+        RuleFor(x =&gt; x.Email)
+            .NotEmpty()
+            .EmailAddress()
+            .MustAsync(async (email, ct) =&gt; 
+                !await _repository.ExistsByEmailAsync(email, ct))
+            .WithMessage("Email already in use");
+    }
+}
+
+// API endpoint with async validation
+app.MapPost("/users", async (
+    CreateUserRequest request,
+    CreateUserRequestValidator validator,
+    IUserService service,
+    CancellationToken ct) =&gt;
+    await validator.ValidateToResultAsync(request, cancellationToken: ct)
+        .BindAsync(req =&gt; service.CreateUserAsync(req, ct), ct)
+        .ToHttpResponseAsync());</code></pre>
+
+  <p>Async validation in application service:</p>
+<pre><code class="lang-csharp">public async Task&lt;Result&lt;Product&gt;&gt; CreateProductAsync(
+    CreateProductRequest request,
+    CancellationToken ct)
+{
+    return await _createProductValidator.ValidateToResultAsync(request, cancellationToken: ct)
+        .BindAsync(req =&gt; ProductName.TryCreate(req.Name), ct)
+        .BindAsync(name =&gt; Money.TryCreate(req.Price), ct)
+        .BindAsync((name, price) =&gt; Product.CreateAsync(name, price, ct), ct)
+        .TapAsync(async product =&gt; await _repository.AddAsync(product, ct), ct);
+}</code></pre>
+
+  <p>Handling validation errors in the caller:</p>
+<pre><code class="lang-csharp">var result = await validator.ValidateToResultAsync(request, cancellationToken: ct);
+
+return result.Match(
+    onSuccess: user =&gt; Ok(new UserDto(user)),
+    onFailure: error =&gt; error is Error.UnprocessableContent uc
+        ? BadRequest(uc.Fields)
+        : StatusCode(500, error.Detail)
+);</code></pre>
+
+  <p>Handling validation errors in the caller (sync variant):</p>
+<pre><code class="lang-csharp">var result = validator.ValidateToResult(request);
+
+return result.Match(
+    onSuccess: user =&gt; Ok(new UserDto(user)),
+    onFailure: error =&gt; error is Error.UnprocessableContent uc
+        ? BadRequest(uc.Fields)
+        : StatusCode(500, error.Detail)
+);</code></pre>
+
+
+  <h4 class="section" id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResultAsync__1_FluentValidation_IValidator___0____0_System_String_System_String_System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This async variant is essential when validation rules perform async operations such as:
+<ul><li>Database uniqueness checks</li><li>External API validations</li><li>File system validations</li><li>Any I/O-bound validation logic</li></ul>
+
+<p>
+Like the synchronous variant, this method provides null-safety and automatic
+parameter name capture for informative error messages.
+</p>
+<p>
+Respects cancellation tokens to enable responsive cancellation of long-running validations.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResult_" data-uid="Trellis.FluentValidation.FluentValidationResultExtensions.ValidateToResult*"></a>
+
+  <h3 id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResult__1_FluentValidation_IValidator___0____0_System_String_System_String_" data-uid="Trellis.FluentValidation.FluentValidationResultExtensions.ValidateToResult``1(FluentValidation.IValidator{``0},``0,System.String,System.String)">
+  ValidateToResult&lt;T&gt;(IValidator&lt;T&gt;, T, string, string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.FluentValidation/src/FluentValidationExtension.cs/#L300"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Validates the specified value using FluentValidation and converts the result to <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;T&gt; ValidateToResult&lt;T&gt;(this IValidator&lt;T&gt; validator, T value, string paramName = &quot;value&quot;, string? message = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>validator</code> <span class="xref">IValidator</span>&lt;T&gt;</dt>
+    <dd><p>The FluentValidation validator to use.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to validate.</p>
+</dd>
+    <dt><code>paramName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The parameter name for error messages. Automatically captured from the caller expression.</p>
+</dd>
+    <dt><code>message</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional custom error message when value is null.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;</dt>
+    <dd><ul><li>Success containing the value if validation passed</li><li>Failure with validation errors if validation failed or value is null</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of the value being validated.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResult__1_FluentValidation_IValidator___0____0_System_String_System_String__examples">Examples</h4>
+  <p>Using in an aggregate factory method:</p>
+<pre><code class="lang-csharp">public class Order : Aggregate&lt;OrderId&gt;
+{
+    public CustomerId CustomerId { get; }
+    public IReadOnlyList&lt;OrderLine&gt; Lines { get; }
+
+    public static Result&lt;Order&gt; TryCreate(CustomerId customerId, List&lt;OrderLine&gt; lines)
+    {
+        var order = new Order(customerId, lines);
+        return s_validator.ValidateToResult(order);
+    }
+
+    private static readonly InlineValidator&lt;Order&gt; s_validator = new()
+    {
+        v =&gt; v.RuleFor(x =&gt; x.CustomerId).NotNull(),
+        v =&gt; v.RuleFor(x =&gt; x.Lines)
+            .NotEmpty().WithMessage("Order must have at least one line")
+            .Must(lines =&gt; lines.Count &lt;= 100).WithMessage("Order cannot exceed 100 lines")
+    };
+}</code></pre>
+
+  <p>Chaining validation with other operations:</p>
+<pre><code class="lang-csharp">public Result&lt;User&gt; CreateUser(CreateUserRequest request)
+{
+    return _requestValidator.ValidateToResult(request)
+        .Bind(req =&gt; EmailAddress.TryCreate(req.Email)
+            .Combine(FirstName.TryCreate(req.FirstName))
+            .Bind((email, name) =&gt; User.TryCreate(email, name, req.Password)))
+        .Tap(user =&gt; _repository.Add(user));
+}</code></pre>
+
+  <p>Null-safety demonstration:</p>
+<pre><code class="lang-csharp">var validator = new UserValidator();
+User? nullUser = null;
+var result = validator.ValidateToResult(nullUser);
+// Returns: Failure with error "'nullUser' must not be empty."
+// Validator.Validate() is never called</code></pre>
+
+
+  <h4 class="section" id="Trellis_FluentValidation_FluentValidationResultExtensions_ValidateToResult__1_FluentValidation_IValidator___0____0_System_String_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method provides null-safety by checking for null values before validation.
+If the value is null, it returns a validation failure without calling the validator.
+</p>
+<p>
+The parameter name is automatically captured using <code>[CallerArgumentExpression]</code>,
+making error messages more informative without manual string entry.
+</p>
+<p>
+Common usage patterns:
+<ul><li>Aggregate/Entity factory methods</li><li>Value object creation with complex validation rules</li><li>DTO validation before processing</li><li>Integration with Bind/Map for validation chains</li></ul>
+
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.FluentValidation/src/FluentValidationExtension.cs/#L129" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.StateMachine — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.StateMachine — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-statemachine.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisstatemachine--api-reference">Trellis.StateMachine — API Reference</h1>
+
+<h2 id="header">Header</h2>
+<ul>
+<li><strong>Package:</strong> <code>Trellis.StateMachine</code></li>
+<li><strong>Namespace:</strong> <code>Trellis.StateMachine</code></li>
+<li><strong>Purpose:</strong> Wraps Stateless state transitions in Trellis <code>Result&lt;TState&gt;</code> APIs and provides lazy state-machine construction for aggregate materialization scenarios.</li>
+</ul>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are wrapping Stateless transitions in Trellis <code>Result&lt;TState&gt;</code> values.</li>
+<li>You need lazy state-machine construction for aggregates materialized by an ORM.</li>
+<li>You need the exact invalid-transition behavior of <code>FireResult</code>.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fire a Stateless trigger and get a Trellis result</td>
+<td><code>stateMachine.FireResult(trigger)</code></td>
+<td><a href="#statemachineextensions"><code>StateMachineExtensions</code></a></td>
+</tr>
+<tr>
+<td>Store a state machine inside an aggregate</td>
+<td><code>LazyStateMachine&lt;TState,TTrigger&gt;</code> with state accessor/mutator delegates</td>
+<td><a href="#lazystatemachinetstate-ttrigger"><code>LazyStateMachine&lt;TState, TTrigger&gt;</code></a></td>
+</tr>
+<tr>
+<td>Treat invalid transitions as validation failures</td>
+<td>Let <code>FireResult</code> map default unhandled-trigger <code>InvalidOperationException</code> to <code>Error.UnprocessableContent</code></td>
+<td><a href="#behavioral-notes">Behavioral notes</a></td>
+</tr>
+<tr>
+<td>Apply business mutations after successful transition</td>
+<td>Call <code>.FireResult(...)</code>, then mutate/domain-event in a <code>.Tap(...)</code> or explicit success branch</td>
+<td><a href="#code-examples">Code examples</a>, <a href="trellis-api-cookbook.html#recipe-9--state-machine-canfire--fire-pattern-with-fireresult">Cookbook Recipe 9</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li>Do not model triggers as raw strings when the domain already has a typed enum/value object.</li>
+<li>Do not put business side effects in Stateless configuration unless they are purely transition mechanics. Keep domain mutation and events after <code>FireResult</code> succeeds.</li>
+<li><code>FireResult</code> does not make Stateless thread-safe; external synchronization is still required for concurrent use.</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="statemachineextensions"><code>StateMachineExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class StateMachineExtensions
+</code></pre>
+<p><strong>Constructors</strong></p>
+<ul>
+<li>None. This is a static class.</li>
+</ul>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>—</td>
+<td>This static class exposes no public properties.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;TState&gt; FireResult&lt;TState, TTrigger&gt;(this StateMachine&lt;TState, TTrigger&gt; stateMachine, TTrigger trigger) where TState : notnull where TTrigger : notnull</code></td>
+<td><code>Result&lt;TState&gt;</code></td>
+<td>Pre-checks with <code>stateMachine.CanFire(trigger)</code> (which honors <code>PermitIf</code>/<code>IgnoreIf</code> guards). When permitted, calls <code>stateMachine.Fire(trigger)</code> and returns <code>Result.Ok(stateMachine.State)</code>. When not permitted, still invokes <code>Fire(trigger)</code> so any user-configured <code>OnUnhandledTrigger</code> callback runs: an <code>InvalidOperationException</code> from that path is translated to <code>Error.UnprocessableContent.ForRule(&quot;state.machine.invalid.transition&quot;, $&quot;Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.&quot;)</code> (HTTP 422 — invalid transitions are semantic rule violations, not concurrent-modification conflicts). If a custom unhandled-trigger handler swallows the trigger, returns <code>Result.Ok(stateMachine.State)</code> (state unchanged). Other exception types from user entry/exit/transition actions propagate untouched. Independent of Stateless's exception message format.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="lazystatemachinetstate-ttrigger"><code>LazyStateMachine&lt;TState, TTrigger&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class LazyStateMachine&lt;TState, TTrigger&gt;
+    where TState : notnull
+    where TTrigger : notnull
+</code></pre>
+<p><strong>Constructors</strong></p>
+<ul>
+<li><code>public LazyStateMachine(Func&lt;TState&gt; stateAccessor, Action&lt;TState&gt; stateMutator, Action&lt;StateMachine&lt;TState, TTrigger&gt;&gt; configure)</code><br>
+Throws <code>ArgumentNullException</code> when <code>stateAccessor</code>, <code>stateMutator</code>, or <code>configure</code> is <code>null</code>. The constructor stores the delegates only; it does not invoke <code>stateAccessor</code>, <code>stateMutator</code>, or <code>configure</code>.</li>
+</ul>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Machine</code></td>
+<td><code>StateMachine&lt;TState, TTrigger&gt;</code></td>
+<td>Returns <code>_machine ??= CreateMachine()</code>. First access constructs <code>new StateMachine&lt;TState, TTrigger&gt;(_stateAccessor, _stateMutator)</code>, invokes <code>_configure(machine)</code>, caches the instance, and returns it.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public Result&lt;TState&gt; FireResult(TTrigger trigger)</code></td>
+<td><code>Result&lt;TState&gt;</code></td>
+<td>Delegates to <code>Machine.FireResult(trigger)</code>. On first use, this also triggers lazy creation and configuration of the underlying <code>StateMachine&lt;TState, TTrigger&gt;</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="extension-methods">Extension methods</h2>
+<h3 id="statemachineextensions-1"><code>StateMachineExtensions</code></h3>
+<pre><code class="lang-csharp">public static Result&lt;TState&gt; FireResult&lt;TState, TTrigger&gt;(
+    this StateMachine&lt;TState, TTrigger&gt; stateMachine,
+    TTrigger trigger)
+    where TState : notnull
+    where TTrigger : notnull
+</code></pre>
+<h2 id="behavioral-notes">Behavioral notes</h2>
+<ul>
+<li><code>StateMachineExtensions.FireResult</code> does <strong>not</strong> make Stateless thread-safe. Concurrent use of the same <code>StateMachine&lt;TState, TTrigger&gt;</code> instance still requires external synchronization. Because Stateless is single-threaded by contract, the <code>CanFire</code>+<code>Fire</code> pre-check pattern is race-free when used as documented.</li>
+<li><code>StateMachineExtensions.FireResult</code> does not null-check <code>stateMachine</code>; a <code>null</code> receiver will fail before any Trellis error conversion occurs.</li>
+<li><code>LazyStateMachine&lt;TState, TTrigger&gt;</code> is also <strong>not</strong> thread-safe. Its lazy initialization uses <code>_machine ??= CreateMachine()</code> with no locking.</li>
+<li>Invalid-transition detection uses <code>StateMachine.CanFire(trigger)</code> (which honors <code>PermitIf</code>/<code>IgnoreIf</code> guards) — no message-string parsing, so it is resilient to Stateless library upgrades.</li>
+<li>When <code>CanFire</code> returns <code>false</code>, <code>Fire</code> is still invoked so any user-configured <code>OnUnhandledTrigger</code> callback runs. If the default unhandled-trigger handler throws <code>InvalidOperationException</code>, that path is translated to <code>Error.UnprocessableContent.ForRule(&quot;state.machine.invalid.transition&quot;, $&quot;Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.&quot;)</code> (HTTP 422). A custom handler that swallows the trigger results in <code>Result.Ok(stateMachine.State)</code> with state unchanged.</li>
+<li>Exceptions thrown by user entry, exit, transition, guard, accessor, mutator, or configuration code are not swallowed.</li>
+<li><code>LazyStateMachine&lt;TState, TTrigger&gt;</code> exists to defer state-machine construction until after entity state is available, which is useful when ORMs materialize an object before populating its state properties.</li>
+</ul>
+<h2 id="code-examples">Code examples</h2>
+<h3 id="use-fireresult-on-a-regular-stateless-machine">Use <code>FireResult</code> on a regular Stateless machine</h3>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+enum OrderState { Draft, Submitted, Cancelled }
+enum OrderTrigger { Submit, Cancel }
+
+var machine = new StateMachine&lt;OrderState, OrderTrigger&gt;(OrderState.Draft);
+machine.Configure(OrderState.Draft)
+    .Permit(OrderTrigger.Submit, OrderState.Submitted)
+    .Permit(OrderTrigger.Cancel, OrderState.Cancelled);
+
+Result&lt;OrderState&gt; submitResult = machine.FireResult(OrderTrigger.Submit);
+Result&lt;OrderState&gt; invalidResult = machine.FireResult(OrderTrigger.Submit);
+</code></pre>
+<h3 id="use-lazystatemachinetstate-ttrigger">Use <code>LazyStateMachine&lt;TState, TTrigger&gt;</code></h3>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+enum DocumentState { Draft, Published }
+enum DocumentTrigger { Publish }
+
+var state = DocumentState.Draft;
+
+var lazyMachine = new LazyStateMachine&lt;DocumentState, DocumentTrigger&gt;(
+    () =&gt; state,
+    s =&gt; state = s,
+    machine =&gt; machine.Configure(DocumentState.Draft)
+        .Permit(DocumentTrigger.Publish, DocumentState.Published));
+
+Result&lt;DocumentState&gt; result = lazyMachine.FireResult(DocumentTrigger.Publish);
+StateMachine&lt;DocumentState, DocumentTrigger&gt; machine = lazyMachine.Machine;
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a></li>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a></li>
+</ul>
+<h2 id="breaking-changes-from-v1">Breaking changes from v1</h2>
+<ul>
+<li><strong>Package renamed:</strong> <code>Trellis.Stateless</code> → <code>Trellis.StateMachine</code>. Vendor independence in the <em>name</em>, not the <em>implementation</em> — the underlying <a href="https://github.com/dotnet-state-machine/stateless">Stateless</a> library is still referenced directly, and <code>StateMachine&lt;TState, TTrigger&gt;</code> from the <code>Stateless</code> namespace remains visible in user code.</li>
+<li><strong>Namespace renamed:</strong> <code>Trellis.Stateless</code> → <code>Trellis.StateMachine</code>. Replace <code>using Trellis.Stateless;</code> with <code>using Trellis.StateMachine;</code>.</li>
+<li><strong>Public surface is otherwise identical:</strong> <code>StateMachineExtensions.FireResult&lt;TState, TTrigger&gt;(...)</code> and <code>LazyStateMachine&lt;TState, TTrigger&gt;</code> are unchanged.</li>
+<li><strong>No metapackage redirect.</strong> The old <code>Trellis.Stateless</code> package is not shipped and there is no shim. Update your <code>PackageReference</code> directly.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-statemachine.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

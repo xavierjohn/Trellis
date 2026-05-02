@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Authorization — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Authorization — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-authorization.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisauthorization--api-reference">Trellis.Authorization — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Authorization</code>
+<strong>Namespace:</strong> <code>Trellis.Authorization</code>
+<strong>Purpose:</strong> Domain-layer authorization primitives — actor identity / permission / attribute model and the contracts used by the mediator's authorization behavior to perform static (permission) and resource-based authorization. This package contains no ASP.NET Core dependencies; the <code>IActorProvider</code> implementations and DI helpers ship in <code>Trellis.Asp</code> (see <a href="trellis-api-asp.html"><code>trellis-api-asp.md</code></a>, namespace <code>Trellis.Asp.Authorization</code>).</p>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are modeling actors, permissions, forbidden permissions, or actor attributes without ASP.NET dependencies.</li>
+<li>You are implementing static permission authorization through <code>IAuthorize</code>.</li>
+<li>You are implementing resource-based authorization through <code>IAuthorizeResource&lt;TResource&gt;</code> and want the canonical guard shape.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Represent the current user/service</td>
+<td><code>Actor</code></td>
+<td><a href="#actor"><code>Actor</code></a></td>
+</tr>
+<tr>
+<td>Check granted permissions with explicit deny override</td>
+<td><code>actor.HasPermission(...)</code>, <code>HasAllPermissions(...)</code>, <code>HasAnyPermission(...)</code></td>
+<td><a href="#actor"><code>Actor</code></a></td>
+</tr>
+<tr>
+<td>Resolve actor for a request/message</td>
+<td><code>IActorProvider.GetCurrentActorAsync(...)</code></td>
+<td><a href="#iactorprovider"><code>IActorProvider</code></a></td>
+</tr>
+<tr>
+<td>Require static permissions on a message</td>
+<td>Implement <code>IAuthorize.RequiredPermissions</code></td>
+<td><a href="#iauthorize"><code>IAuthorize</code></a></td>
+</tr>
+<tr>
+<td>Authorize against a loaded resource</td>
+<td>Implement <code>IAuthorizeResource&lt;TResource&gt;.Authorize(actor, resource)</code></td>
+<td><a href="#iauthorizeresourcetresource"><code>IAuthorizeResource&lt;TResource&gt;</code></a></td>
+</tr>
+<tr>
+<td>Write owner/admin resource guards</td>
+<td><code>Result.Ensure(condition, new Error.Forbidden(...))</code></td>
+<td><a href="#iauthorizeresourcetresource"><code>IAuthorizeResource&lt;TResource&gt;</code></a>, <a href="trellis-api-core.html#public-static-partial-class-result">Core <code>Result.Ensure</code></a></td>
+</tr>
+<tr>
+<td>Identify a resource by id for shared loading</td>
+<td><code>IIdentifyResource&lt;TResource, TId&gt;</code></td>
+<td><a href="#iidentifyresourcetresource-tid"><code>IIdentifyResource&lt;TResource, TId&gt;</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li><code>Trellis.Authorization</code> is domain/application-layer only. ASP.NET actor providers are documented in <a href="trellis-api-asp.html#namespace-trellisaspauthorization">trellis-api-asp.md</a>.</li>
+<li>Prefer <code>Result.Ensure</code> for boolean authorization guards so generated code uses the same ROP primitive as the rest of Trellis.</li>
+<li>Do not mutate <code>RequiredPermissions</code>; expose the complete permission list as an immutable/read-only collection.</li>
+<li>The DI registration extension <code>AddResourceAuthorization(...)</code> lives in <code>Trellis.Mediator</code> (<code>namespace Trellis.Mediator</code>), not in <code>Trellis.Authorization</code>. Wiring an <code>IAuthorizeResource&lt;TResource&gt;</code> therefore typically requires both <code>using Trellis.Authorization;</code> (for the interfaces) and <code>using Trellis.Mediator;</code> (for the DI extension). The compile error if the second is missing is <code>CS1061: 'IServiceCollection' does not contain a definition for 'AddResourceAuthorization' and no accessible extension method 'AddResourceAuthorization' accepting a first argument of type 'IServiceCollection' could be found</code> — see <a href="trellis-api-mediator.html#servicecollectionextensions">trellis-api-mediator.md</a>.</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="namespace-trellisauthorization">Namespace <code>Trellis.Authorization</code></h3>
+<h3 id="actor"><code>Actor</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed record Actor
+</code></pre>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public Actor(string id, IReadOnlySet&lt;string&gt; permissions, IReadOnlySet&lt;string&gt; forbiddenPermissions, IReadOnlyDictionary&lt;string, string&gt; attributes)</code></td>
+<td>Snapshots the supplied state into frozen collections (ordinal comparison). Throws <code>ArgumentException</code> for null/whitespace <code>id</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fields</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PermissionScopeSeparator</code></td>
+<td><code>const char</code></td>
+<td>Separator used between permission name and scope in scoped permission strings. Value: <code>':'</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Id</code></td>
+<td><code>string</code></td>
+<td>Unique actor identifier (e.g. JWT <code>sub</code>).</td>
+</tr>
+<tr>
+<td><code>Permissions</code></td>
+<td><code>IReadOnlySet&lt;string&gt;</code></td>
+<td>Granted permissions. Ordinal comparison; setter snapshots into a <code>FrozenSet&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>ForbiddenPermissions</code></td>
+<td><code>IReadOnlySet&lt;string&gt;</code></td>
+<td>Explicit deny-list. Deny always overrides allow. Snapshotted into a <code>FrozenSet&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>Attributes</code></td>
+<td><code>IReadOnlyDictionary&lt;string, string&gt;</code></td>
+<td>ABAC attributes. Snapshotted into a <code>FrozenDictionary&lt;string, string&gt;</code> with ordinal comparer.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Actor Create(string id, IReadOnlySet&lt;string&gt; permissions)</code></td>
+<td><code>Actor</code></td>
+<td>Creates an actor with empty <code>ForbiddenPermissions</code> and empty <code>Attributes</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasPermission(string permission)</code></td>
+<td><code>bool</code></td>
+<td>Returns <code>true</code> only when <code>permission</code> is in <code>Permissions</code> and not in <code>ForbiddenPermissions</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasPermission(string permission, string scope)</code></td>
+<td><code>bool</code></td>
+<td>Checks the scoped permission <code>${permission}:${scope}</code> (deny-aware).</td>
+</tr>
+<tr>
+<td><code>public bool HasAllPermissions(IEnumerable&lt;string&gt; permissions)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when every entry passes <code>HasPermission</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasAnyPermission(IEnumerable&lt;string&gt; permissions)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when at least one entry passes <code>HasPermission</code>.</td>
+</tr>
+<tr>
+<td><code>public bool IsOwner(string resourceOwnerId)</code></td>
+<td><code>bool</code></td>
+<td>Compares <code>Id</code> and <code>resourceOwnerId</code> with <code>StringComparison.Ordinal</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasAttribute(string key)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when <code>Attributes</code> contains <code>key</code>.</td>
+</tr>
+<tr>
+<td><code>public string? GetAttribute(string key)</code></td>
+<td><code>string?</code></td>
+<td>Returns the attribute value or <code>null</code> when absent.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="actorattributes"><code>ActorAttributes</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ActorAttributes
+</code></pre>
+<p>Well-known string keys for <code>Actor.Attributes</code>. Claim-derived keys align with Azure Entra ID v2.0 access tokens.</p>
+<p><strong>Fields</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TenantId</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>tid</code> claim — issuing tenant GUID. Value: <code>&quot;tid&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>PreferredUsername</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>preferred_username</code> claim. Value: <code>&quot;preferred_username&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>AuthorizedParty</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>azp</code> claim — application ID of the calling client. Value: <code>&quot;azp&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>AuthorizedPartyAcr</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>azpacr</code> claim — client authentication strength (<code>0</code> public, <code>1</code> secret, <code>2</code> certificate). Value: <code>&quot;azpacr&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>AuthContextClassReference</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>acrs</code> claim — Conditional Access auth-context references. Value: <code>&quot;acrs&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>IpAddress</code></td>
+<td><code>const string</code></td>
+<td>Request IP address, populated from <code>HttpContext.Connection.RemoteIpAddress</code>. Value: <code>&quot;ip_address&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>MfaAuthenticated</code></td>
+<td><code>const string</code></td>
+<td>Whether the actor authenticated with MFA — derived from the <code>amr</code> claim. Value: <code>&quot;mfa&quot;</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iactorprovider"><code>IActorProvider</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IActorProvider
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Actor&gt;</code></td>
+<td>Returns the current authenticated actor. Implementations should throw <code>InvalidOperationException</code> (or equivalent) when the request is unauthenticated or the actor cannot be resolved. Register as scoped.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iauthorize"><code>IAuthorize</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IAuthorize
+</code></pre>
+<p>Marker for commands/queries enforcing static (permission-only) authorization. The mediator's <code>AuthorizationBehavior&lt;TMessage, TResponse&gt;</code> requires the current actor to hold <strong>all</strong> listed permissions (AND semantics).</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RequiredPermissions</code></td>
+<td><code>IReadOnlyList&lt;string&gt;</code></td>
+<td>Permissions every caller must hold.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iauthorizeresourcetresource"><code>IAuthorizeResource&lt;TResource&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IAuthorizeResource&lt;in TResource&gt;
+</code></pre>
+<p>Implemented by a command/query to perform resource-based authorization once the resource has been loaded.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IResult Authorize(Actor actor, TResource resource)</code></td>
+<td><code>IResult</code></td>
+<td>Returns success to proceed or a failure (typically <code>Error.Forbidden</code>) to short-circuit the pipeline.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iidentifyresourcetresource-tid"><code>IIdentifyResource&lt;TResource, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IIdentifyResource&lt;TResource, out TId&gt;
+</code></pre>
+<p>Companion to <code>IAuthorizeResource&lt;TResource&gt;</code> that exposes a typed resource identifier so the pipeline can use a <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> instead of a per-command loader.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TId GetResourceId()</code></td>
+<td><code>TId</code></td>
+<td>Extracts the typed resource ID from the message.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iresourceloadertmessage-tresource"><code>IResourceLoader&lt;TMessage, TResource&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IResourceLoader&lt;in TMessage, TResource&gt;
+</code></pre>
+<p>Loads the resource required for resource-based authorization. Resolved per request from DI as scoped.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt; LoadAsync(TMessage message, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Returns the loaded resource or a failure (typically <code>Error.NotFound</code>). The pipeline short-circuits on failure before invoking <code>IAuthorizeResource&lt;TResource&gt;.Authorize</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resourceloaderbyidtmessage-tresource-tid"><code>ResourceLoaderById&lt;TMessage, TResource, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public abstract class ResourceLoaderById&lt;TMessage, TResource, TId&gt; : IResourceLoader&lt;TMessage, TResource&gt;
+</code></pre>
+<p>Convenience base for loaders that extract an ID from the message and call a repository.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected abstract TId GetId(TMessage message)</code></td>
+<td><code>TId</code></td>
+<td>Extract the resource ID from the message.</td>
+</tr>
+<tr>
+<td><code>protected abstract Task&lt;Result&lt;TResource&gt;&gt; GetByIdAsync(TId id, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Fetch the resource by ID; return <code>Result.Fail</code> with <code>Error.NotFound</code> when missing.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;Result&lt;TResource&gt;&gt; LoadAsync(TMessage message, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Sealed glue: calls <code>GetId(message)</code> then <code>GetByIdAsync(...)</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sharedresourceloaderbyidtresource-tid"><code>SharedResourceLoaderById&lt;TResource, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public abstract class SharedResourceLoaderById&lt;TResource, TId&gt;
+</code></pre>
+<p>A single loader shared across every command that authorizes against the same <code>TResource</code>. When a command implements both <code>IAuthorizeResource&lt;TResource&gt;</code> and <code>IIdentifyResource&lt;TResource, TId&gt;</code> the pipeline bridges to this shared loader automatically. Explicit <code>IResourceLoader&lt;TMessage, TResource&gt;</code> registrations win over the shared loader.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public abstract Task&lt;Result&lt;TResource&gt;&gt; GetByIdAsync(TId id, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Load the resource by ID; return <code>Result.Fail</code> with <code>Error.NotFound</code> when missing.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="behavioral-notes">Behavioral notes</h2>
+<ul>
+<li><strong>Deny overrides allow.</strong> A permission listed in both <code>Permissions</code> and <code>ForbiddenPermissions</code> is denied. <code>HasPermission</code>, <code>HasAllPermissions</code>, <code>HasAnyPermission</code>, and <code>HasPermission(permission, scope)</code> all observe this rule.</li>
+<li><strong>Ordinal comparison everywhere.</strong> Permission lookups, attribute lookups, and <code>IsOwner</code> use <code>StringComparison.Ordinal</code>. Hydrate permissions and attributes with consistent casing.</li>
+<li><strong>Permissions snapshot to frozen collections.</strong> Mutating a collection passed into <code>Actor</code> after construction has no effect; the actor exposes a <code>FrozenSet&lt;string&gt;</code> / <code>FrozenDictionary&lt;string, string&gt;</code> snapshot for O(1) lookups.</li>
+<li><strong>Scoped permissions</strong> use the <code>&quot;Permission:Scope&quot;</code> convention (<code>Document.Edit:Tenant_A</code>). Add scoped entries directly to <code>Permissions</code> and check via <code>HasPermission(string, string)</code> — no separate scope collection.</li>
+<li><strong>Pipeline ordering.</strong> When a command implements both <code>IAuthorize</code> (static) and <code>IAuthorizeResource&lt;TResource&gt;</code> (resource), the mediator behavior runs static checks first; resource loading and <code>Authorize(actor, resource)</code> only execute if the static check passes. A loader failure short-circuits before <code>Authorize</code> is called.</li>
+</ul>
+<h2 id="code-examples">Code examples</h2>
+<h3 id="static-permission-authorization">Static permission authorization</h3>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Authorization;
+
+public sealed partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions { get; } = [&quot;orders:delete&quot;];
+}
+</code></pre>
+<h3 id="resource-based-authorization-with-a-shared-loader">Resource-based authorization with a shared loader</h3>
+<blockquote>
+<p><strong>Preferred in generated services.</strong> Use <code>IIdentifyResource&lt;TResource, TId&gt;</code> + <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> for resource authorization. A per-command <code>IResourceLoader&lt;TMessage, TResource&gt;</code> is an escape hatch for request-scoped state or command-specific load logic.</p>
+</blockquote>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Authorization;
+
+public sealed partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+public sealed partial class ActorId : RequiredString&lt;ActorId&gt;;
+
+public sealed record Order(OrderId Id, ActorId OwnerId);
+
+public sealed record CancelOrderCommand(OrderId OrderId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, OrderId&gt;
+{
+    public OrderId GetResourceId() =&gt; OrderId;
+
+    public IResult Authorize(Actor actor, Order order) =&gt;
+        Result.Ensure(
+            order.OwnerId.Value == actor.Id || actor.HasPermission(&quot;orders:cancel-any&quot;),
+            new Error.Forbidden(&quot;orders.cancel&quot;)
+                { Detail = &quot;Only the owner can cancel this order.&quot; });
+}
+
+public interface IOrderRepository
+{
+    Task&lt;Maybe&lt;Order&gt;&gt; GetByIdAsync(OrderId id, CancellationToken ct);
+}
+
+public sealed class OrderResourceLoader(IOrderRepository repo)
+    : SharedResourceLoaderById&lt;Order, OrderId&gt;
+{
+    public override async Task&lt;Result&lt;Order&gt;&gt; GetByIdAsync(OrderId id, CancellationToken ct) =&gt;
+        (await repo.GetByIdAsync(id, ct)).ToResult(new Error.NotFound(ResourceRef.For&lt;Order&gt;(id)));
+}
+</code></pre>
+<h3 id="constructing-an-actor-directly-tests-custom-providers">Constructing an <code>Actor</code> directly (tests, custom providers)</h3>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Trellis.Authorization;
+
+var actor = new Actor(
+    id: &quot;user-1&quot;,
+    permissions: new HashSet&lt;string&gt;
+    {
+        &quot;orders:cancel&quot;,
+        $&quot;orders:view{Actor.PermissionScopeSeparator}tenant-1&quot;,
+    },
+    forbiddenPermissions: new HashSet&lt;string&gt;(),
+    attributes: new Dictionary&lt;string, string&gt;
+    {
+        [ActorAttributes.TenantId] = &quot;tenant-1&quot;,
+        [ActorAttributes.MfaAuthenticated] = &quot;true&quot;,
+    });
+
+bool canCancel = actor.HasPermission(&quot;orders:cancel&quot;);
+bool canViewTenant = actor.HasPermission(&quot;orders:view&quot;, &quot;tenant-1&quot;);
+string? tenant = actor.GetAttribute(ActorAttributes.TenantId);
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-asp.html">trellis-api-asp.md</a> — <code>Trellis.Asp.Authorization</code> actor providers (<code>ClaimsActorProvider</code>, <code>EntraActorProvider</code>, <code>DevelopmentActorProvider</code>, <code>CachingActorProvider</code>) and the matching <code>AddClaimsActorProvider</code> / <code>AddEntraActorProvider</code> / <code>AddDevelopmentActorProvider</code> / <code>AddCachingActorProvider&lt;T&gt;</code> registration helpers.</li>
+<li><a href="trellis-api-mediator.html">trellis-api-mediator.md</a> — <code>AuthorizationBehavior&lt;TMessage, TResponse&gt;</code> pipeline behavior.</li>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a> — <code>Result</code>, <code>Error.Forbidden</code>, <code>Error.NotFound</code>.</li>
+<li><a href="trellis-api-testing-aspnetcore.html">trellis-api-testing-aspnetcore.md</a> — <code>WebApplicationFactoryExtensions.CreateClientWithActor</code> (writes the <code>X-Test-Actor</code> header consumed by <code>DevelopmentActorProvider</code>).</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-authorization.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Primitive Value Objects | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Primitive Value Objects | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/primitives.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="primitive-value-objects">Primitive Value Objects</h1>
+
+<p><code>Trellis.Primitives</code> turns raw CLR values into small, validated domain types so <code>&quot;USD&quot;</code>, <code>&quot;john@example.com&quot;</code>, <code>42</code>, and <code>true</code> stop carrying business meaning the compiler cannot see.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Use a ready-made validated email / URL / phone / ISO code</td>
+<td>Built-in concrete VOs in <code>Trellis.Primitives</code> (<code>EmailAddress</code>, <code>Url</code>, <code>PhoneNumber</code>, <code>CountryCode</code>, ...)</td>
+<td><a href="#built-in-primitives">Built-in primitives</a></td>
+</tr>
+<tr>
+<td>Wrap an ID, name, count, flag, or timestamp from your own domain</td>
+<td><code>partial class X : Required*&lt;X&gt;</code> from <code>Trellis.Core</code></td>
+<td><a href="#defining-custom-primitives">Defining custom primitives</a></td>
+</tr>
+<tr>
+<td>Constrain a custom string length or numeric range</td>
+<td><code>[Trellis.StringLength(...)]</code> / <code>[Trellis.Range(...)]</code> on the partial class</td>
+<td><a href="#validation">Validation</a></td>
+</tr>
+<tr>
+<td>Add a regex / pattern check</td>
+<td>Override <code>static partial void ValidateAdditional(...)</code></td>
+<td><a href="#validation">Validation</a></td>
+</tr>
+<tr>
+<td>Construct from untrusted input on the railway</td>
+<td><code>TSelf.TryCreate(value, &quot;field&quot;)</code> returning <code>Result&lt;TSelf&gt;</code></td>
+<td><a href="#factory-methods">Factory methods</a></td>
+</tr>
+<tr>
+<td>Construct in tests / from trusted constants</td>
+<td><code>TSelf.Create(value)</code> (throws on invalid input)</td>
+<td><a href="#factory-methods">Factory methods</a></td>
+</tr>
+<tr>
+<td>Generate a new ID</td>
+<td><code>TId.NewUniqueV4()</code> / <code>TId.NewUniqueV7()</code></td>
+<td><a href="#defining-custom-primitives">Defining custom primitives</a></td>
+</tr>
+<tr>
+<td>Serialize a scalar primitive to/from JSON</td>
+<td><code>ParsableJsonConverter&lt;T&gt;</code> (auto-applied by the generator)</td>
+<td><a href="#json-binding">JSON binding</a></td>
+</tr>
+<tr>
+<td>Serialize a multi-field value object (e.g., <code>Money</code>-shaped)</td>
+<td><code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;MyVo&gt;))]</code></td>
+<td><a href="#json-binding">JSON binding</a></td>
+</tr>
+<tr>
+<td>Translate <code>StartsWith</code> / <code>Contains</code> / <code>Length</code> in EF Core LINQ</td>
+<td>Register <code>AddTrellisInterceptors()</code> on the <code>DbContextOptionsBuilder</code></td>
+<td><a href="#ef-core-interop">EF Core interop</a></td>
+</tr>
+<tr>
+<td>Combine several <code>TryCreate</code> calls into one validated command</td>
+<td><code>Result.Combine(...)</code> (see <code>Trellis.Core</code>)</td>
+<td><a href="#composition">Composition</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You want a typed domain instead of <code>string</code> / <code>int</code> / <code>Guid</code> parameters with implicit validation rules.</li>
+<li>You need JSON, model-binding, and EF Core to flow through a single <code>TryCreate(...)</code> so validation is enforced at every seam.</li>
+<li>You are deciding between a built-in primitive (<code>EmailAddress</code>, <code>Money</code>, ...) and a custom <code>Required*&lt;TSelf&gt;</code> for your own SKU, order id, or display name.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.Primitives</code> ships 13 ready-made concrete value objects plus the JSON / tracing infrastructure that backs them. The <code>Required*&lt;TSelf&gt;</code> base classes, validation attributes, and source generator that you use to define <strong>your own</strong> primitives all live in <code>Trellis.Core</code> and are pulled in transitively.</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Key APIs</th>
+<th>Lives in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Built-in scalar VOs</td>
+<td><code>Age</code>, <code>CountryCode</code>, <code>CurrencyCode</code>, <code>EmailAddress</code>, <code>Hostname</code>, <code>IpAddress</code>, <code>LanguageCode</code>, <code>MonetaryAmount</code>, <code>Percentage</code>, <code>PhoneNumber</code>, <code>Slug</code>, <code>Url</code></td>
+<td><code>Trellis.Primitives</code></td>
+</tr>
+<tr>
+<td>Built-in structured VO</td>
+<td><code>Money</code> (<code>amount</code> + <code>currency</code>)</td>
+<td><code>Trellis.Primitives</code></td>
+</tr>
+<tr>
+<td>Custom-primitive bases</td>
+<td><code>RequiredString&lt;TSelf&gt;</code>, <code>RequiredGuid&lt;TSelf&gt;</code>, <code>RequiredInt&lt;TSelf&gt;</code>, <code>RequiredLong&lt;TSelf&gt;</code>, <code>RequiredDecimal&lt;TSelf&gt;</code>, <code>RequiredBool&lt;TSelf&gt;</code>, <code>RequiredDateTime&lt;TSelf&gt;</code>, <code>RequiredEnum&lt;TSelf&gt;</code></td>
+<td><code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td>Validation attributes</td>
+<td><code>[Trellis.StringLength]</code>, <code>[Trellis.Range]</code>, <code>[Trellis.EnumValue]</code></td>
+<td><code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td>Pattern / cross-field hook</td>
+<td><code>static partial void ValidateAdditional(value, fieldName, ref string? errorMessage)</code></td>
+<td>generator-emitted</td>
+</tr>
+<tr>
+<td>JSON converters</td>
+<td><code>ParsableJsonConverter&lt;T&gt;</code> (scalars), <code>CompositeValueObjectJsonConverter&lt;T&gt;</code> (composites), <code>RequiredEnumJsonConverter&lt;TRequiredEnum&gt;</code></td>
+<td><code>Trellis.Primitives</code> / <code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td>Tracing</td>
+<td><code>PrimitiveValueObjectTrace.ActivitySource</code>, <code>AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder)</code></td>
+<td><code>Trellis.Primitives</code></td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-primitives.html">trellis-api-primitives.md</a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Primitives
+</code></pre>
+<p><code>Trellis.Primitives</code> depends on <code>Trellis.Core</code>, which carries the <code>Required*&lt;TSelf&gt;</code> base classes, the validation attributes, and the source generator (bundled at <code>analyzers/dotnet/cs/Trellis.Core.Generator.dll</code>). Installing <code>Trellis.Primitives</code> is enough — you do not need a separate generator package.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>Define a few primitives, then build an entity that cannot be constructed from invalid input.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+namespace QuickStart;
+
+public partial class CustomerId : RequiredGuid&lt;CustomerId&gt; { }
+
+[Trellis.StringLength(200, MinimumLength = 1)]
+public partial class DisplayName : RequiredString&lt;DisplayName&gt; { }
+
+[Trellis.Range(0, 150)]
+public partial class LoyaltyScore : RequiredInt&lt;LoyaltyScore&gt; { }
+
+public partial class IsVipCustomer : RequiredBool&lt;IsVipCustomer&gt; { }
+public partial class LastPurchaseAt : RequiredDateTime&lt;LastPurchaseAt&gt; { }
+
+public sealed class Customer : Entity&lt;CustomerId&gt;
+{
+    public Customer(
+        CustomerId id,
+        DisplayName displayName,
+        EmailAddress email,
+        LoyaltyScore loyaltyScore,
+        IsVipCustomer isVipCustomer,
+        LastPurchaseAt lastPurchaseAt)
+        : base(id)
+    {
+        DisplayName = displayName;
+        Email = email;
+        LoyaltyScore = loyaltyScore;
+        IsVipCustomer = isVipCustomer;
+        LastPurchaseAt = lastPurchaseAt;
+    }
+
+    public DisplayName DisplayName { get; }
+    public EmailAddress Email { get; }
+    public LoyaltyScore LoyaltyScore { get; }
+    public IsVipCustomer IsVipCustomer { get; }
+    public LastPurchaseAt LastPurchaseAt { get; }
+}
+
+public static class Construction
+{
+    public static Result&lt;Customer&gt; Build(string displayName, string email, int loyaltyScore, bool isVip, DateTime lastPurchase) =&gt;
+        DisplayName.TryCreate(displayName, &quot;displayName&quot;)
+            .Combine(EmailAddress.TryCreate(email, &quot;email&quot;))
+            .Combine(LoyaltyScore.TryCreate(loyaltyScore, &quot;loyaltyScore&quot;))
+            .Combine(IsVipCustomer.TryCreate(isVip, &quot;isVip&quot;))
+            .Combine(LastPurchaseAt.TryCreate(lastPurchase, &quot;lastPurchaseAt&quot;))
+            .Map(((((DisplayName n, EmailAddress e), LoyaltyScore s), IsVipCustomer v), LastPurchaseAt t) =&gt;
+                new Customer(CustomerId.NewUniqueV7(), n, e, s, v, t));
+}
+</code></pre>
+<p>Every primitive enforces its rule on the way in, so the entity body has nothing to validate.</p>
+<h2 id="defining-custom-primitives">Defining custom primitives</h2>
+<p>A custom primitive is a <code>partial class</code> that inherits the appropriate <code>Required*&lt;TSelf&gt;</code> base. <code>partial</code> is required — the source generator emits the factory methods, parser, JSON converter, and the optional <code>ValidateAdditional</code> hook into the partial half.</p>
+<table>
+<thead>
+<tr>
+<th>Base class</th>
+<th>Underlying type</th>
+<th>Built-in validation</th>
+<th>Notable extras</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RequiredString&lt;TSelf&gt;</code></td>
+<td><code>string</code></td>
+<td>null / empty / whitespace rejected, value trimmed; <code>[StringLength]</code> enforced</td>
+<td><code>Length</code>, <code>StartsWith(string)</code>, <code>Contains(string)</code>, <code>EndsWith(string)</code></td>
+</tr>
+<tr>
+<td><code>RequiredGuid&lt;TSelf&gt;</code></td>
+<td><code>Guid</code></td>
+<td><code>Guid.Empty</code> rejected</td>
+<td><code>NewUniqueV4()</code>, <code>NewUniqueV7()</code></td>
+</tr>
+<tr>
+<td><code>RequiredInt&lt;TSelf&gt;</code></td>
+<td><code>int</code></td>
+<td><code>null</code> rejected for nullable inputs; <code>[Range(int, int)]</code> enforced</td>
+<td>invariant + culture-aware string parsing</td>
+</tr>
+<tr>
+<td><code>RequiredLong&lt;TSelf&gt;</code></td>
+<td><code>long</code></td>
+<td><code>null</code> rejected for nullable inputs; <code>[Range(long, long)]</code> enforced</td>
+<td>invariant + culture-aware string parsing</td>
+</tr>
+<tr>
+<td><code>RequiredDecimal&lt;TSelf&gt;</code></td>
+<td><code>decimal</code></td>
+<td><code>null</code> rejected for nullable inputs; <code>[Range(int, int)]</code> or <code>[Range(double, double)]</code> enforced</td>
+<td>invariant + culture-aware string parsing</td>
+</tr>
+<tr>
+<td><code>RequiredBool&lt;TSelf&gt;</code></td>
+<td><code>bool</code></td>
+<td><code>null</code> rejected for nullable inputs; <code>false</code> is valid</td>
+<td>string parsing of <code>&quot;true&quot;</code>/<code>&quot;false&quot;</code></td>
+</tr>
+<tr>
+<td><code>RequiredDateTime&lt;TSelf&gt;</code></td>
+<td><code>DateTime</code></td>
+<td><code>DateTime.MinValue</code> rejected</td>
+<td>invariant round-trip <code>&quot;O&quot;</code> formatting</td>
+</tr>
+<tr>
+<td><code>RequiredEnum&lt;TSelf&gt;</code></td>
+<td><code>string</code></td>
+<td><code>TryFromName</code> lookup against <code>public static readonly TSelf</code> fields</td>
+<td><code>[EnumValue(&quot;...&quot;)]</code> on each field overrides the wire name</td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The base contracts (<code>IScalarValue&lt;TSelf, TPrimitive&gt;</code>, <code>IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</code>) and shared bases (<code>ValueObject</code>, <code>ScalarValueObject&lt;TSelf, T&gt;</code>) live in <code>Trellis.Core</code>. <code>ScalarValueObject&lt;TSelf, T&gt;</code> implements <code>IConvertible</code> and <code>IFormattable</code> so scalar primitives behave naturally in formatting and conversion scenarios.</p>
+</div>
+<pre><code class="lang-csharp">using Trellis;
+
+namespace CustomPrimitives;
+
+public partial class OrderId : RequiredGuid&lt;OrderId&gt; { }
+
+[Trellis.StringLength(100)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+[Trellis.Range(1, 1000)]
+public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
+
+public partial class IsPublished : RequiredBool&lt;IsPublished&gt; { }
+public partial class PublishedAt : RequiredDateTime&lt;PublishedAt&gt; { }
+public partial class ExternalSequence : RequiredLong&lt;ExternalSequence&gt; { }
+</code></pre>
+<h3 id="factory-methods">Factory methods</h3>
+<p>The generator emits the same factory shape on every <code>Required*&lt;TSelf&gt;</code> derivation:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Use it for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TryCreate(value, fieldName?)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td>User input, file input, HTTP / JSON input — anything that may fail. Also accepts the nullable underlying type and the string form.</td>
+</tr>
+<tr>
+<td><code>Create(value)</code> (and <code>Create(string)</code>)</td>
+<td><code>TSelf</code></td>
+<td>Trusted test data and hard-coded constants. Throws on invalid input.</td>
+</tr>
+<tr>
+<td><code>Parse(s, provider)</code></td>
+<td><code>TSelf</code></td>
+<td><code>IParsable&lt;TSelf&gt;</code> integration. Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>TryParse(s, provider, out result)</code></td>
+<td><code>bool</code></td>
+<td><code>IParsable&lt;TSelf&gt;</code> integration. Non-throwing.</td>
+</tr>
+<tr>
+<td><code>(TSelf)value</code> (explicit cast)</td>
+<td><code>TSelf</code></td>
+<td>Conversion via <code>Create(...)</code> — same throwing semantics.</td>
+</tr>
+<tr>
+<td><code>NewUniqueV4()</code> / <code>NewUniqueV7()</code></td>
+<td><code>TSelf</code></td>
+<td><code>RequiredGuid&lt;TSelf&gt;</code> only. Time-ordered v7 GUIDs are recommended for new IDs.</td>
+</tr>
+</tbody>
+</table>
+<p>Stay on the railway at boundaries:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+[Trellis.StringLength(100)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+[Trellis.Range(1, 1000)]
+public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
+
+public sealed record AddToCart(string Email, string Product, int Qty);
+
+public static Result&lt;(EmailAddress, ProductName, Quantity)&gt; Parse(AddToCart input) =&gt;
+    EmailAddress.TryCreate(input.Email, &quot;email&quot;)
+        .Combine(ProductName.TryCreate(input.Product, &quot;name&quot;))
+        .Combine(Quantity.TryCreate(input.Qty, &quot;quantity&quot;))
+        .Map(((EmailAddress e, ProductName p) ep, Quantity q) =&gt; (ep.e, ep.p, q));
+</code></pre>
+<h3 id="requiredenumtself-shape"><code>RequiredEnum&lt;TSelf&gt;</code> shape</h3>
+<p>Use <code>RequiredEnum&lt;TSelf&gt;</code> when you need a finite, symbolic, extensible set with a stable wire name per member.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public partial class OrderState : RequiredEnum&lt;OrderState&gt;
+{
+    public static readonly OrderState Draft = new();
+
+    [EnumValue(&quot;submitted&quot;)]
+    public static readonly OrderState Submitted = new();
+}
+</code></pre>
+<p><code>EnumValueAttribute</code> is the only Trellis primitive attribute that targets a field (each <code>public static readonly TSelf</code>). Without it, the wire name is the field identifier. See <a href="../api_reference/trellis-api-core.html#requiredenumtself">trellis-api-core.md</a> for <code>GetAll</code>, <code>TryFromName</code>, <code>Is(...)</code>, and equality semantics, and the dedicated <a href="required-enum.html">required-enum.md</a> article for usage patterns.</p>
+<h2 id="validation">Validation</h2>
+<p>Trellis primitives enforce their rules in the generated <code>TryCreate</code>. There are three layers, in order of precedence:</p>
+<ol>
+<li><strong>Built-in checks</strong> (per base class — see the table above).</li>
+<li><strong>Class-targeted attributes</strong> declared on the partial class.</li>
+<li><strong><code>ValidateAdditional</code></strong> — your own pattern / cross-field rule, called last.</li>
+</ol>
+<h3 id="class-targeted-attributes">Class-targeted attributes</h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Target</th>
+<th>Constructors</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trellis.StringLengthAttribute</code></td>
+<td><code>partial class X : RequiredString&lt;X&gt;</code></td>
+<td><code>StringLength(int maximumLength)</code>; set <code>MinimumLength = N</code> via property initializer</td>
+<td><code>maximumLength</code> must be <code>&gt;= 1</code>. Enforced after the null/empty/whitespace check.</td>
+</tr>
+<tr>
+<td><code>Trellis.RangeAttribute</code></td>
+<td><code>partial class X : RequiredInt&lt;X&gt;</code> / <code>RequiredLong&lt;X&gt;</code> / <code>RequiredDecimal&lt;X&gt;</code></td>
+<td><code>(int, int)</code>, <code>(long, long)</code>, <code>(double, double)</code></td>
+<td>The constructor selected determines which generator template fires. There is <strong>no</strong> <code>RangeAttribute(typeof(decimal), &quot;0.01&quot;, &quot;999999.99&quot;)</code> overload — use <code>(double, double)</code> for fractional ranges.</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>The <code>System.ComponentModel.DataAnnotations</code> attributes of the same name <strong>do not work</strong>. <code>[DataAnnotations.StringLength]</code> on the class fails to compile (<code>CS0592</code>); on a property of a <code>Required*&lt;TSelf&gt;</code> it compiles but is <strong>silently ignored</strong> by the generator. The analyzer rule <code>TRLS017</code> flags the class-placement case. Always import from <code>namespace Trellis</code>.</p>
+</div>
+<h3 id="patterns-and-regex">Patterns and regex</h3>
+<p>There is no <code>[RegularExpression]</code> analog. Override the generated <code>ValidateAdditional</code> partial:</p>
+<pre><code class="lang-csharp">using System.Text.RegularExpressions;
+using Trellis;
+
+[Trellis.StringLength(8)]
+public partial class Sku : RequiredString&lt;Sku&gt;
+{
+    private static readonly Regex Pattern = new(@&quot;^[A-Z]{3}\d{4}$&quot;, RegexOptions.Compiled);
+
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+    {
+        if (!Pattern.IsMatch(value))
+            errorMessage = $&quot;{fieldName} must match XXX9999.&quot;;
+    }
+}
+</code></pre>
+<p>The signature varies by base class — <code>string</code> for <code>RequiredString</code>, <code>Guid</code> for <code>RequiredGuid</code>, <code>int</code>/<code>long</code>/<code>decimal</code>/<code>bool</code>/<code>DateTime</code> for the others. See the source-generated members table in <a href="../api_reference/trellis-api-core.html#source-generated-members">trellis-api-core.md</a>.</p>
+<h3 id="culture-aware-parsing">Culture-aware parsing</h3>
+<p>Numeric and date primitives expose both invariant and culture-aware string overloads through <code>IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</code>.</p>
+<pre><code class="lang-csharp">using System.Globalization;
+using Trellis.Primitives;
+
+var invariant = MonetaryAmount.TryCreate(&quot;12.34&quot;);
+var french    = MonetaryAmount.TryCreate(&quot;12,34&quot;, CultureInfo.GetCultureInfo(&quot;fr-FR&quot;));
+</code></pre>
+<h2 id="json-binding">JSON binding</h2>
+<h3 id="scalar-primitives--automatic">Scalar primitives — automatic</h3>
+<p>Every <code>Required*&lt;TSelf&gt;</code> partial gets <code>[JsonConverter(typeof(ParsableJsonConverter&lt;TSelf&gt;))]</code> from the generator. Each built-in scalar VO in <code>Trellis.Primitives</code> (<code>EmailAddress</code>, <code>Url</code>, <code>MonetaryAmount</code>, ...) follows the same pattern. There is <strong>nothing to register</strong> — the converter:</p>
+<ul>
+<li>Accepts JSON <code>string</code>, <code>number</code>, <code>true</code>, <code>false</code>; converts to text and calls <code>TSelf.Parse(...)</code>.</li>
+<li>Writes JSON numbers for numeric scalars and JSON strings for everything else.</li>
+<li>Throws on JSON <code>null</code> because Trellis scalars are non-nullable.</li>
+</ul>
+<p><code>RequiredEnum&lt;TSelf&gt;</code> uses <code>RequiredEnumJsonConverter&lt;TSelf&gt;</code> (string in, string out via <code>TryFromName</code>).</p>
+<h3 id="composite-value-objects--opt-in">Composite value objects — opt in</h3>
+<p>Multi-field value objects (the <code>Money</code> shape) need <code>CompositeValueObjectJsonConverter&lt;T&gt;</code> applied <strong>per type</strong>:</p>
+<pre><code class="lang-csharp">using System.Text.Json.Serialization;
+using Trellis;
+using Trellis.Primitives;
+
+[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;ShippingAddress&gt;))]
+public sealed class ShippingAddress : ValueObject
+{
+    public ShippingAddress(CountryCode country, string line1, string postcode)
+    {
+        Country = country;
+        Line1 = line1;
+        Postcode = postcode;
+    }
+
+    public CountryCode Country { get; }
+    public string Line1 { get; }
+    public string Postcode { get; }
+
+    public static Result&lt;ShippingAddress&gt; TryCreate(string country, string line1, string postcode, string? fieldName = null) =&gt;
+        CountryCode.TryCreate(country, $&quot;{fieldName}.country&quot;)
+            .Map(c =&gt; new ShippingAddress(c, line1, postcode));
+}
+</code></pre>
+<p>The converter discovers properties in declaration order, populates a matching <code>static Result&lt;T&gt; TryCreate(p1, ..., pN[, string? fieldName])</code>, and throws <code>TrellisJsonValidationException</code> on missing properties or <code>TryCreate</code> failure. Reflection runs once per generic instantiation and is cached. Native AOT scenarios should hand-write a <code>JsonConverter&lt;T&gt;</code>.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Without <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;MyVo&gt;))]</code> on a composite VO used in a request DTO, model binding falls back to default construction and <strong>silently bypasses <code>TryCreate</code></strong> — inner-field validation never runs. See <a href="../api_reference/trellis-api-cookbook.html#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Cookbook Recipe 13</a> for the full Domain + API + EF walkthrough.</p>
+</div>
+<h2 id="built-in-primitives">Built-in primitives</h2>
+<p><code>Trellis.Primitives</code> ships 13 concrete value objects so you do not re-derive <code>Email</code>, <code>Money</code>, or <code>Slug</code> in every project.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Category</th>
+<th>Wire shape</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Age</code></td>
+<td>scalar <code>int</code></td>
+<td>JSON number / numeric string</td>
+<td>Range <code>0..150</code>.</td>
+</tr>
+<tr>
+<td><code>CountryCode</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>Uppercase ISO 3166-1 alpha-2 (exactly two letters).</td>
+</tr>
+<tr>
+<td><code>CurrencyCode</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>Uppercase ISO 4217 (exactly three letters).</td>
+</tr>
+<tr>
+<td><code>EmailAddress</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>Trimmed, regex-validated.</td>
+</tr>
+<tr>
+<td><code>Hostname</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>RFC 1123 hostname.</td>
+</tr>
+<tr>
+<td><code>IpAddress</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>IPv4/IPv6 via <code>IPAddress.TryParse</code>; <code>ToIPAddress()</code> returns the cached parse.</td>
+</tr>
+<tr>
+<td><code>LanguageCode</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>Lowercase ISO 639-1 alpha-2.</td>
+</tr>
+<tr>
+<td><code>MonetaryAmount</code></td>
+<td>scalar <code>decimal</code></td>
+<td>JSON number / numeric string</td>
+<td>Non-negative; rounds to two decimals (<code>MidpointRounding.AwayFromZero</code>). Single-currency. <code>Add</code> / <code>Subtract</code> / <code>Multiply</code> / <code>Sum</code> return <code>Result</code>.</td>
+</tr>
+<tr>
+<td><code>Money</code></td>
+<td>structured <code>ValueObject</code></td>
+<td>JSON object <code>{ &quot;amount&quot;: number, &quot;currency&quot;: string }</code></td>
+<td>Amount + <code>CurrencyCode</code>. <code>Add</code> / <code>Subtract</code> / <code>Sum</code> require matching currencies. <code>Allocate(int[] ratios)</code> distributes remainders.</td>
+</tr>
+<tr>
+<td><code>Percentage</code></td>
+<td>scalar <code>decimal</code></td>
+<td>JSON number / numeric string</td>
+<td>Range <code>0..100</code>; <code>ToString()</code> appends <code>%</code>; <code>FromFraction(0..1)</code> and <code>Of(amount)</code> helpers.</td>
+</tr>
+<tr>
+<td><code>PhoneNumber</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>Strips spaces / dashes / parentheses then validates E.164; <code>GetCountryCode()</code> extracts the calling code.</td>
+</tr>
+<tr>
+<td><code>Slug</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>Lowercase letters, digits, single-hyphen separators.</td>
+</tr>
+<tr>
+<td><code>Url</code></td>
+<td>scalar <code>string</code></td>
+<td>JSON string</td>
+<td>Absolute HTTP/HTTPS only; exposes <code>Scheme</code>, <code>Host</code>, <code>Port</code>, <code>Path</code>, <code>Query</code>, <code>IsSecure</code>, <code>ToUri()</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="monetaryamount-vs-money"><code>MonetaryAmount</code> vs <code>Money</code></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Use it when</th>
+<th>Shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MonetaryAmount</code></td>
+<td>The whole bounded context uses one currency policy.</td>
+<td>scalar <code>decimal</code></td>
+</tr>
+<tr>
+<td><code>Money</code></td>
+<td>Currency is part of the value's identity.</td>
+<td>structured (<code>amount</code> + <code>currency</code>)</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis.Primitives;
+
+var subtotal = MonetaryAmount.Create(120.00m);
+var tax      = subtotal.Multiply(0.08m).TryGetValue(out var t) ? t : MonetaryAmount.Zero;
+var total    = subtotal.Add(tax).TryGetValue(out var s) ? s : subtotal;
+
+var price    = Money.Create(120.00m, &quot;USD&quot;);
+var shipping = Money.Create(10.00m, &quot;USD&quot;);
+var grand    = price.Add(shipping).TryGetValue(out var g) ? g : price;
+</code></pre>
+<p>For full signatures of every built-in (<code>Add</code>, <code>Multiply</code>, <code>Allocate</code>, <code>Sum</code>, <code>FromFraction</code>, ...), see <a href="../api_reference/trellis-api-primitives.html">trellis-api-primitives.md</a>.</p>
+<h2 id="aspnet-integration">ASP.NET integration</h2>
+<p>Scalar primitives bind from route / query / body once you call <code>AddTrellisAsp()</code> or <code>AddScalarValueValidation()</code> from <code>Trellis.Asp</code>:</p>
+<ul>
+<li>Model binders read the raw value, call <code>TValue.TryCreate</code>, and add validation errors to <code>ModelState</code> on failure.</li>
+<li>JSON converters write the underlying primitive on <code>Write</code>, read with <code>TryCreate</code> on <code>Read</code>, and route failures into the <code>Error.UnprocessableContent</code> aggregator.</li>
+<li><code>Maybe&lt;TValue&gt;</code> wrappers pass <code>null</code> through as <code>Maybe.None</code>.</li>
+</ul>
+<p>Composite VOs need the explicit <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;...&gt;))]</code> shown above — <code>AddScalarValueValidation</code> only wires scalar converters.</p>
+<p>See <a href="integration-aspnet.html">integration-aspnet.md</a> for the request pipeline and <a href="../api_reference/trellis-api-asp.html#namespace-trellisaspvalidation">trellis-api-asp.md</a> for the validation surface.</p>
+<h2 id="ef-core-interop">EF Core interop</h2>
+<p>Trellis primitives are designed to read naturally in LINQ; you usually do not reach into <code>.Value</code>.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using Trellis;
+
+[Trellis.StringLength(200)]
+public partial class DisplayName : RequiredString&lt;DisplayName&gt; { }
+
+public partial class IsVipCustomer : RequiredBool&lt;IsVipCustomer&gt; { }
+
+public sealed class Customer
+{
+    public int Id { get; set; }
+    public DisplayName DisplayName { get; set; } = null!;
+    public IsVipCustomer IsVipCustomer { get; set; } = null!;
+}
+
+public static IQueryable&lt;Customer&gt; Vips(DbContext db) =&gt;
+    db.Set&lt;Customer&gt;()
+        .Where(c =&gt; c.DisplayName.StartsWith(&quot;Tre&quot;))
+        .Where(c =&gt; c.DisplayName.Length &gt; 3)
+        .Where(c =&gt; c.IsVipCustomer == IsVipCustomer.Create(true));
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Translation of <code>RequiredString&lt;TSelf&gt;</code> helpers (<code>StartsWith</code>, <code>Contains</code>, <code>EndsWith</code>, <code>Length</code>) requires <code>optionsBuilder.AddTrellisInterceptors()</code> from <code>Trellis.EntityFrameworkCore</code>. The same call wires <code>MaybeQueryInterceptor</code>, the ETag interceptor, and the entity-timestamp interceptor. See <a href="integration-ef.html">integration-ef.md</a>.</p>
+</div>
+<p>For composite VOs (e.g., <code>Money</code>), <code>ApplyTrellisConventions</code> registers <code>CompositeValueObjectConvention</code>, which maps owned types via table-splitting where valid and falls back to <code>{Owner}_{Property}</code> tables when nested owned navigations exist. See <a href="../api_reference/trellis-api-efcore.html">trellis-api-efcore.md</a>.</p>
+<h2 id="composition">Composition</h2>
+<p><code>TryCreate</code> returns <code>Result&lt;T&gt;</code>, so primitives compose with the rest of Trellis (<code>Combine</code>, <code>Map</code>, <code>Bind</code>, <code>Ensure</code>).</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+[Trellis.StringLength(100)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+[Trellis.Range(1, 1000)]
+public partial class Quantity : RequiredInt&lt;Quantity&gt; { }
+
+public sealed record PlaceOrderCommand(EmailAddress Email, ProductName Product, Quantity Qty);
+
+public static Result&lt;PlaceOrderCommand&gt; ParseCommand(string email, string product, int qty) =&gt;
+    EmailAddress.TryCreate(email, &quot;email&quot;)
+        .Combine(ProductName.TryCreate(product, &quot;product&quot;))
+        .Combine(Quantity.TryCreate(qty, &quot;qty&quot;))
+        .Map(((EmailAddress e, ProductName p) ep, Quantity q) =&gt; new PlaceOrderCommand(ep.e, ep.p, q));
+</code></pre>
+<p><code>Combine</code> aggregates field-level failures into one <code>Error.UnprocessableContent</code> so every invalid field is reported in a single response. See <a href="../api_reference/trellis-api-core.html">trellis-api-core.md</a> for the full ROP surface.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Wrap IDs immediately.</strong> Every entity gets a <code>RequiredGuid&lt;TSelf&gt;</code> id; never let a raw <code>Guid</code> cross the application boundary.</li>
+<li><strong>Reach for the built-ins first.</strong> Use <code>EmailAddress</code>, <code>Url</code>, <code>Money</code>, <code>CountryCode</code>, ... before declaring your own. Define a custom primitive only when the name needs domain meaning, the validation rules differ, or the type should carry domain-specific behavior.</li>
+<li><strong>Use <code>TryCreate(...)</code> at boundaries</strong> (HTTP, file, queue, CLI). Reserve <code>Create(...)</code> for trusted constants and tests.</li>
+<li><strong>Always use <code>Trellis.*</code> attributes</strong>, never <code>System.ComponentModel.DataAnnotations.*</code>. The DataAnnotations attributes of the same name compile in some positions but are silently ignored by the generator.</li>
+<li><strong>Keep parsing out of handlers.</strong> Convert transport primitives to value objects at the DTO / controller / application seam, then pass shaped commands inward.</li>
+<li><strong>Pick <code>MonetaryAmount</code> over <code>Money</code> only when currency is external policy</strong> for the whole bounded context.</li>
+<li><strong>Prefer v7 GUIDs</strong> (<code>NewUniqueV7()</code>) over v4 for new IDs — they are time-ordered and storage-friendly.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface — built-in VOs and JSON converters: <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a></li>
+<li>API surface — <code>Required*&lt;TSelf&gt;</code> bases, attributes, generated members, <code>Result&lt;T&gt;</code> / <code>Maybe&lt;T&gt;</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Symbolic enums in depth: <a href="required-enum.html">required-enum.md</a></li>
+<li>Specifications over primitives: <a href="specifications.html">specifications.md</a></li>
+<li>HTTP request pipeline + scalar binders: <a href="integration-aspnet.html">integration-aspnet.md</a>, <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+<li>EF Core mapping + LINQ translation: <a href="integration-ef.html">integration-ef.md</a>, <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a></li>
+<li>Composite VO end-to-end recipe: <a href="../api_reference/trellis-api-cookbook.html#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Cookbook Recipe 13</a></li>
+<li>Value-object taxonomy: <a href="../api_reference/trellis-value-object-taxonomy.html"><code>trellis-value-object-taxonomy.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/primitives.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

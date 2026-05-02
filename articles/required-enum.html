@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>RequiredEnum | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="RequiredEnum | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/required-enum.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="requiredenum">RequiredEnum</h1>
+
+<p><code>RequiredEnum&lt;TSelf&gt;</code> is the Trellis primitive base for finite, behavior-rich symbolic value sets — a typed replacement for <code>enum</code> that round-trips through JSON, model binding, and EF Core via the bundled source generator.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Declare a symbolic set with optional behavior</td>
+<td><code>partial class : RequiredEnum&lt;TSelf&gt;</code> + <code>public static readonly TSelf</code> fields</td>
+<td><a href="#defining-members">Defining members</a></td>
+</tr>
+<tr>
+<td>Override the wire / serialized name for one member</td>
+<td><code>[EnumValue(&quot;...&quot;)]</code> on the field</td>
+<td><a href="#symbolic-value-names">Symbolic value names</a></td>
+</tr>
+<tr>
+<td>Parse user input safely (nullable, with field name)</td>
+<td><code>TryCreate(string?, fieldName?)</code> → <code>Result&lt;TSelf&gt;</code></td>
+<td><a href="#parsing-and-creation">Parsing and creation</a></td>
+</tr>
+<tr>
+<td>Throwing factory for trusted input</td>
+<td><code>Create(string)</code></td>
+<td><a href="#parsing-and-creation">Parsing and creation</a></td>
+</tr>
+<tr>
+<td>Look up by symbolic name (case-insensitive)</td>
+<td><code>TryFromName(string?, fieldName?)</code></td>
+<td><a href="#parsing-and-creation">Parsing and creation</a></td>
+</tr>
+<tr>
+<td><code>IParsable&lt;TSelf&gt;</code> for ASP.NET binding pipelines</td>
+<td><code>Parse(s, provider)</code> / <code>TryParse(s, provider, out)</code></td>
+<td><a href="#parsing-and-creation">Parsing and creation</a></td>
+</tr>
+<tr>
+<td>JSON round-trip in <code>System.Text.Json</code></td>
+<td>Auto-applied <code>[JsonConverter(typeof(RequiredEnumJsonConverter&lt;TSelf&gt;))]</code></td>
+<td><a href="#json-serialization">JSON serialization</a></td>
+</tr>
+<tr>
+<td>Membership and negated membership</td>
+<td><code>Is(params TSelf[])</code> / <code>IsNot(params TSelf[])</code></td>
+<td><a href="#equality-and-membership">Equality and membership</a></td>
+</tr>
+<tr>
+<td>Persist symbolic values in EF Core</td>
+<td><code>HasConversion(status =&gt; status.Value, value =&gt; Status.Create(value))</code></td>
+<td><a href="#composition">Composition</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You want a closed set of named domain values that carry data or behavior, not just an <code>int</code>.</li>
+<li>You need stable string identities for JSON, model binding, and EF Core columns.</li>
+<li>You want invalid values to be unrepresentable — no <code>(OrderStatus)999</code> cast hole.</li>
+<li>You need a Result-returning factory and case-insensitive symbolic lookup baked into the type.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>RequiredEnum&lt;TSelf&gt;</code> lives in <code>Trellis.Core</code>, namespace <code>Trellis</code>. The base type is hand-written; the per-derived members are emitted by the bundled <code>Trellis.Core.Generator</code> (attached automatically via <code>analyzers/dotnet/cs/</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code> (<code>string</code>)</td>
+<td>base</td>
+<td>Canonical symbolic identity. Defaults to the field name unless <code>[EnumValue]</code> overrides it.</td>
+</tr>
+<tr>
+<td><code>Ordinal</code> (<code>int</code>)</td>
+<td>base</td>
+<td>Declaration-order metadata. Not a wire / storage identity.</td>
+</tr>
+<tr>
+<td><code>static GetAll()</code></td>
+<td>base</td>
+<td>All discovered <code>public static readonly TSelf</code> members, in declaration order.</td>
+</tr>
+<tr>
+<td><code>static TryFromName(string? name, string? fieldName = null)</code></td>
+<td>base</td>
+<td>Case-insensitive lookup → <code>Result&lt;TSelf&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>Is(params TSelf[])</code> / <code>IsNot(params TSelf[])</code></td>
+<td>base</td>
+<td>Membership / negated membership.</td>
+</tr>
+<tr>
+<td><code>Equals</code> / <code>==</code> / <code>!=</code> / <code>GetHashCode</code></td>
+<td>base</td>
+<td>Case-insensitive symbolic equality on <code>Value</code>.</td>
+</tr>
+<tr>
+<td><code>static TryCreate(string)</code> and <code>static TryCreate(string?, string? fieldName = null)</code></td>
+<td>generated</td>
+<td>Result-returning factories; both delegate to <code>TryFromName</code>.</td>
+</tr>
+<tr>
+<td><code>static Create(string)</code></td>
+<td>generated</td>
+<td>Throwing factory.</td>
+</tr>
+<tr>
+<td><code>static Parse(string, IFormatProvider?)</code> / <code>TryParse(...)</code></td>
+<td>generated</td>
+<td><code>IParsable&lt;TSelf&gt;</code> implementation for binding pipelines.</td>
+</tr>
+<tr>
+<td><code>[JsonConverter(typeof(RequiredEnumJsonConverter&lt;TSelf&gt;))]</code></td>
+<td>generated</td>
+<td>Applied to the derived class — no manual registration needed.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-core.html#requiredenumtself"><code>trellis-api-core.md</code> → <code>RequiredEnum&lt;TSelf&gt;</code></a> and the <a href="../api_reference/trellis-api-core.html#requiredenumtself-1">source-generated members section</a>. Package scope: <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Generated <code>TryCreate</code> delegates only to <code>TryFromName</code>. There is no <code>TryFromValue</code> API path; the JSON converter and parser also resolve through <code>TryFromName</code>.</p>
+</div>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+</code></pre>
+<p><code>Trellis.Primitives</code> transitively depends on <code>Trellis.Core</code>, so projects that already use the primitive value-object library do not need a separate install.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>A <code>partial class</code> derivation, behavior-carrying members, and a Result-returning lookup — no other plumbing required.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+namespace QuickStart;
+
+public partial class OrderStatus : RequiredEnum&lt;OrderStatus&gt;
+{
+    public static readonly OrderStatus Draft = new(canShip: false, isTerminal: false);
+
+    [EnumValue(&quot;awaiting-payment&quot;)]
+    public static readonly OrderStatus AwaitingPayment = new(canShip: false, isTerminal: false);
+
+    public static readonly OrderStatus Paid = new(canShip: true, isTerminal: false);
+    public static readonly OrderStatus Shipped = new(canShip: false, isTerminal: false);
+    public static readonly OrderStatus Cancelled = new(canShip: false, isTerminal: true);
+
+    private OrderStatus(bool canShip, bool isTerminal)
+    {
+        CanShip = canShip;
+        IsTerminal = isTerminal;
+    }
+
+    public bool CanShip { get; }
+    public bool IsTerminal { get; }
+}
+
+public static class Demo
+{
+    public static void Run()
+    {
+        Result&lt;OrderStatus&gt; parsed = OrderStatus.TryCreate(&quot;awaiting-payment&quot;);
+        OrderStatus paid = OrderStatus.Create(&quot;Paid&quot;);
+        bool isOpen = paid.Is(OrderStatus.Draft, OrderStatus.AwaitingPayment, OrderStatus.Paid);
+        bool notDone = paid.IsNot(OrderStatus.Cancelled);
+        IReadOnlyCollection&lt;OrderStatus&gt; all = OrderStatus.GetAll();
+    }
+}
+</code></pre>
+<h2 id="defining-members">Defining members</h2>
+<p>Members are <code>public static readonly</code> fields of type <code>TSelf</code>. The base type discovers them by reflection on first access (then caches). The discovery contract:</p>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Class must be <code>partial</code></td>
+<td>The generator augments it with <code>IScalarValue&lt;TSelf, string&gt;</code>, the factories, and the <code>[JsonConverter]</code> attribute.</td>
+</tr>
+<tr>
+<td>Fields must be <code>public static readonly TSelf</code></td>
+<td>Reflection inspects only <code>Public \| Static \| DeclaredOnly</code> init-only fields whose type equals <code>TSelf</code>.</td>
+</tr>
+<tr>
+<td>Constructors should be <code>private</code> (or <code>protected</code>)</td>
+<td>Prevents external instantiation outside the declared set.</td>
+</tr>
+<tr>
+<td>Each <code>Value</code> must be unique (case-insensitive)</td>
+<td>Duplicate detection runs the first time <code>GetAll</code> / <code>TryFromName</code> / <code>Value</code> is touched and throws <code>InvalidOperationException</code> naming the duplicate.</td>
+</tr>
+</tbody>
+</table>
+<p><code>Ordinal</code> is assigned during discovery in declaration order (0, 1, 2, …). Reordering fields changes ordinals — do not persist or transmit them.</p>
+<h2 id="symbolic-value-names">Symbolic value names</h2>
+<p>By default, <code>Value</code> equals the C# field name:</p>
+<pre><code class="lang-csharp">OrderStatus.Paid.Value == &quot;Paid&quot;; // true
+</code></pre>
+<p>Apply <code>[EnumValue(&quot;...&quot;)]</code> only when the external symbolic name must differ from the identifier (kebab-case wire formats, legacy compatibility, etc.):</p>
+<pre><code class="lang-csharp">[EnumValue(&quot;awaiting-payment&quot;)]
+public static readonly OrderStatus AwaitingPayment = new(canShip: false, isTerminal: false);
+
+OrderStatus.AwaitingPayment.Value == &quot;awaiting-payment&quot;; // true
+</code></pre>
+<p><code>EnumValueAttribute</code> is field-targeted and lives in <code>Trellis.Core</code>, namespace <code>Trellis</code>. See <a href="../api_reference/trellis-api-core.html#enumvalueattribute"><code>trellis-api-core.md</code> → <code>EnumValueAttribute</code></a> for the full signature. Keep the field name equal to <code>Value</code> whenever possible — one source of truth is easier to read and to grep for.</p>
+<h2 id="parsing-and-creation">Parsing and creation</h2>
+<p>The generator emits five entry points; all of them resolve through the base-type <code>TryFromName</code>.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Returns</th>
+<th>Failure mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TryCreate(string value)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td><code>Fail</code> with <code>Error.UnprocessableContent</code> for null, empty, whitespace, or unknown name.</td>
+</tr>
+<tr>
+<td><code>TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td>Same; <code>fieldName</code> is included in the field violation.</td>
+</tr>
+<tr>
+<td><code>TryFromName(string? name, string? fieldName = null)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td>Base-type lookup that all generated factories delegate to.</td>
+</tr>
+<tr>
+<td><code>Create(string value)</code></td>
+<td><code>TSelf</code></td>
+<td>Throws on failure. Use only for trusted, internally-known names.</td>
+</tr>
+<tr>
+<td><code>Parse(string s, IFormatProvider? provider)</code> / <code>TryParse(...)</code></td>
+<td><code>TSelf</code> / <code>bool</code></td>
+<td><code>IParsable&lt;TSelf&gt;</code> for ASP.NET model binding pipelines.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">Result&lt;OrderStatus&gt; ok   = OrderStatus.TryCreate(&quot;Paid&quot;);          // Ok(Paid)
+Result&lt;OrderStatus&gt; fail = OrderStatus.TryCreate(&quot;paid-in-full&quot;);  // Fail(UnprocessableContent)
+Result&lt;OrderStatus&gt; none = OrderStatus.TryCreate(null, &quot;status&quot;);  // Fail(&quot;status cannot be empty.&quot;)
+
+OrderStatus paid = OrderStatus.Create(&quot;Paid&quot;);                     // throws on unknown
+</code></pre>
+<p>Lookup is case-insensitive (<code>OrdinalIgnoreCase</code>). The error message on an unknown value lists every valid name, alphabetised — convenient for API responses but verbose; trim before exposing externally if needed.</p>
+<h2 id="json-serialization">JSON serialization</h2>
+<p>The generator emits <code>[JsonConverter(typeof(RequiredEnumJsonConverter&lt;TSelf&gt;))]</code> on the derived class, so <code>System.Text.Json</code> round-trips with no extra registration.</p>
+<table>
+<thead>
+<tr>
+<th>Direction</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read</td>
+<td>Accepts JSON <code>string</code> and <code>null</code>; resolves the string through <code>TryFromName</code>. Other token types (number, object, array, bool) throw <code>JsonException</code>.</td>
+</tr>
+<tr>
+<td>Write</td>
+<td>Emits <code>value.Value</code> as a JSON string.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using System.Text.Json;
+
+string json = JsonSerializer.Serialize(OrderStatus.AwaitingPayment); // &quot;\&quot;awaiting-payment\&quot;&quot;
+OrderStatus back = JsonSerializer.Deserialize&lt;OrderStatus&gt;(json)!;   // OrderStatus.AwaitingPayment
+</code></pre>
+<p>Converter signature: <a href="../api_reference/trellis-api-core.html#requiredenumjsonconvertertrequiredenum"><code>trellis-api-core.md</code> → <code>RequiredEnumJsonConverter&lt;TRequiredEnum&gt;</code></a>.</p>
+<h2 id="equality-and-membership">Equality and membership</h2>
+<p><code>RequiredEnum&lt;TSelf&gt;</code> produces reference-stable singletons but uses <strong>case-insensitive symbolic equality</strong> on <code>Value</code>. All four — <code>Equals(object?)</code>, <code>Equals(RequiredEnum&lt;TSelf&gt;?)</code>, <code>==</code>, and <code>!=</code> — agree, and <code>GetHashCode</code> matches.</p>
+<pre><code class="lang-csharp">OrderStatus.Paid == OrderStatus.Paid;      // true (also reference-equal)
+OrderStatus.Paid.Equals(OrderStatus.Paid); // true
+
+OrderStatus paid = OrderStatus.Create(&quot;PAID&quot;); // resolves to OrderStatus.Paid
+ReferenceEquals(paid, OrderStatus.Paid);       // true — Create returns the singleton
+
+bool isOpen  = paid.Is(OrderStatus.Draft, OrderStatus.AwaitingPayment, OrderStatus.Paid);
+bool notDone = paid.IsNot(OrderStatus.Cancelled);
+</code></pre>
+<p><code>Is</code> and <code>IsNot</code> accept <code>params TSelf[]</code> and call <code>Contains</code> on the array — fine for short lists; for hot paths with large sets, pre-build a <code>HashSet&lt;TSelf&gt;</code> once and check membership against that.</p>
+<h2 id="validation-rules">Validation rules</h2>
+<table>
+<thead>
+<tr>
+<th>Input or condition</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>null</code> or whitespace name passed to <code>TryCreate</code> / <code>TryFromName</code></td>
+<td><code>Fail</code> with <code>Error.UnprocessableContent.ForField(field, &quot;validation.error&quot;, &quot;{Type} cannot be empty.&quot;)</code></td>
+</tr>
+<tr>
+<td>Unknown name</td>
+<td><code>Fail</code> with message <code>'{name}' is not a valid {Type}. Valid values: {alphabetised list}</code></td>
+</tr>
+<tr>
+<td>Two members declared with the same <code>Value</code> (case-insensitive)</td>
+<td><code>InvalidOperationException</code> thrown by the base class on first cache build, naming the duplicate symbol</td>
+</tr>
+<tr>
+<td><code>[EnumValue]</code> on a non-<code>TSelf</code> field, an instance member, or a non-<code>readonly</code> field</td>
+<td>Silently ignored — only <code>public static readonly TSelf</code> init-only fields are discovered</td>
+</tr>
+</tbody>
+</table>
+<p><code>fieldName</code> defaults to the camelCased type name (e.g., <code>orderStatus</code>) when omitted. Pass it explicitly to align field-violation paths with the calling DTO property.</p>
+<h2 id="analyzer-warnings">Analyzer warnings</h2>
+<p>Two analyzer / generator diagnostics commonly affect <code>RequiredEnum&lt;TSelf&gt;</code>-derived types. Full reference: <a href="../api_reference/trellis-api-analyzers.html"><code>trellis-api-analyzers.md</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Severity</th>
+<th>Trigger</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRLS017</code></td>
+<td>Warning</td>
+<td><code>[StringLength]</code> / <code>[Range]</code> from <code>System.ComponentModel.DataAnnotations</code> applied to a Trellis primitive class. The Trellis generator only inspects attributes from <code>namespace Trellis</code>.</td>
+<td>Switch the <code>using</code> to <code>using Trellis;</code> or fully-qualify (<code>[Trellis.StringLength(...)]</code>).</td>
+</tr>
+<tr>
+<td><code>TRLS031</code></td>
+<td>Warning</td>
+<td>Source generator detected a <code>Required*</code>-derived class whose base is not in the supported set (<code>RequiredString</code>, <code>RequiredGuid</code>, <code>RequiredInt</code>, <code>RequiredLong</code>, <code>RequiredDecimal</code>, <code>RequiredBool</code>, <code>RequiredDateTime</code>, <code>RequiredEnum</code>).</td>
+<td>Inherit directly from <code>RequiredEnum&lt;TSelf&gt;</code>; do not insert intermediate base classes.</td>
+</tr>
+</tbody>
+</table>
+<p>There is no analyzer that flags a <code>RequiredEnum&lt;TSelf&gt;</code> declared without <code>partial</code>. The build will simply fail to find the generated <code>IScalarValue&lt;TSelf, string&gt;</code> implementation — if <code>TryCreate</code> / <code>Parse</code> look missing on the derived class, the class is almost always missing the <code>partial</code> keyword.</p>
+<h2 id="composition">Composition</h2>
+<p><code>RequiredEnum&lt;TSelf&gt;</code> round-trips cleanly through every Trellis surface that consumes <code>IScalarValue&lt;TSelf, string&gt;</code> — ASP.NET model binding, FluentValidation rules, and EF Core via a value converter on <code>Value</code>.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using QuickStart;
+
+public sealed class Order
+{
+    public Guid Id { get; set; }
+    public OrderStatus Status { get; set; } = null!;
+}
+
+public sealed class OrderConfiguration : IEntityTypeConfiguration&lt;Order&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Order&gt; builder)
+    {
+        builder.Property(order =&gt; order.Status)
+            .HasConversion(
+                status =&gt; status.Value,
+                value  =&gt; OrderStatus.Create(value))
+            .IsRequired();
+    }
+}
+</code></pre>
+<p>Because <code>TryCreate</code> returns <code>Result&lt;TSelf&gt;</code>, member parsing also composes inside ROP pipelines:</p>
+<pre><code class="lang-csharp">public static Result&lt;Order&gt; Submit(Guid id, string statusName) =&gt;
+    OrderStatus.TryCreate(statusName, fieldName: &quot;status&quot;)
+        .Map(status =&gt; new Order { Id = id, Status = status });
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Persist <code>Value</code>, never <code>Ordinal</code>. <code>Ordinal</code> is reflection-derived from declaration order and silently changes when fields are reordered.</p>
+</div>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Default to field names; reach for <code>[EnumValue]</code> only when the wire name must differ.</strong> Two names per member is one too many to keep in sync.</li>
+<li><strong>Keep constructors <code>private</code>.</strong> The point of <code>RequiredEnum&lt;TSelf&gt;</code> is that the declared set is the entire set.</li>
+<li><strong>Use <code>TryCreate</code> at boundaries, <code>Create</code> for trusted constants.</strong> <code>Create</code> throws — pair it with literal strings, not user input.</li>
+<li><strong>Prefer <code>Is</code> / <code>IsNot</code> over <code>switch</code> chains for membership checks.</strong> They read like the domain language.</li>
+<li><strong>Model state-transition rules on the type itself</strong>, not in the caller — that is the point of moving from <code>enum</code> to value object.</li>
+<li><strong>Persist <code>Value</code>. Index <code>Value</code>. Never persist <code>Ordinal</code>.</strong></li>
+<li><strong>For hot membership checks against large sets, cache a <code>HashSet&lt;TSelf&gt;</code> once</strong> instead of re-allocating a <code>params</code> array on every call.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface and source-generated members: <a href="../api_reference/trellis-api-core.html#requiredenumtself"><code>trellis-api-core.md</code> → <code>RequiredEnum&lt;TSelf&gt;</code></a></li>
+<li>Concrete primitives derived from <code>Required*&lt;TSelf&gt;</code> bases: <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a></li>
+<li>Analyzer / generator diagnostics: <a href="../api_reference/trellis-api-analyzers.html"><code>trellis-api-analyzers.md</code></a> (in particular <code>TRLS017</code>, <code>TRLS031</code>)</li>
+<li>JSON converter: <a href="../api_reference/trellis-api-core.html#requiredenumjsonconvertertrequiredenum"><code>trellis-api-core.md</code> → <code>RequiredEnumJsonConverter&lt;TRequiredEnum&gt;</code></a></li>
+<li>Companion article on scalar primitives: <a href="primitives.html"><code>primitives.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/required-enum.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

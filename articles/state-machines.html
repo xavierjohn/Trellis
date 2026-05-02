@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>State Machines | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="State Machines | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/state-machines.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="state-machines">State Machines</h1>
+
+<p><code>Trellis.StateMachine</code> wraps the <a href="https://github.com/dotnet-state-machine/stateless">Stateless</a> library so invalid transitions become typed <code>Result&lt;TState&gt;</code> failures instead of <code>InvalidOperationException</code>s — keeping workflow logic inside the same railway as the rest of your domain code.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fire a Stateless trigger and get a <code>Result&lt;TState&gt;</code></td>
+<td><code>stateMachine.FireResult(trigger)</code></td>
+<td><a href="#quick-start">Quick start</a></td>
+</tr>
+<tr>
+<td>Treat invalid transitions as 422 rule violations</td>
+<td>Default <code>FireResult</code> behavior — match on reason code <code>state.machine.invalid.transition</code></td>
+<td><a href="#what-fireresult-guarantees">What <code>FireResult</code> guarantees</a></td>
+</tr>
+<tr>
+<td>Defer machine construction until entity state is populated (ORM materialization)</td>
+<td><code>LazyStateMachine&lt;TState, TTrigger&gt;</code></td>
+<td><a href="#lazy-construction-for-aggregates">Lazy construction for aggregates</a></td>
+</tr>
+<tr>
+<td>Compose a transition with domain side effects and events</td>
+<td><code>FireResult(...).Tap(...).Map(...)</code></td>
+<td><a href="#composition">Composition</a></td>
+</tr>
+<tr>
+<td>Block transitions on dynamic conditions</td>
+<td>Stateless <code>PermitIf</code> / <code>IgnoreIf</code> (honored by <code>CanFire</code>)</td>
+<td><a href="#guards">Guards</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>The order of operations is part of the business rule (orders, approvals, publishing, fulfillment).</li>
+<li>You want invalid transitions to flow through the same <code>Result&lt;T&gt;</code> pipeline as validation errors and HTTP failures.</li>
+<li>An ORM (e.g., EF Core) materializes your aggregate before populating its state property, and an eagerly-constructed Stateless machine would read the wrong initial state.</li>
+<li>You need invalid-transition detection that survives Stateless library upgrades (no exception-message parsing).</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.StateMachine</code> exposes one static class and one sealed wrapper. The <code>StateMachine&lt;TState, TTrigger&gt;</code> type itself comes from the upstream <code>Stateless</code> namespace and remains visible in user code.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StateMachineExtensions</code></td>
+<td><code>static class</code></td>
+<td>Adds <code>FireResult&lt;TState, TTrigger&gt;(this StateMachine&lt;TState, TTrigger&gt;, TTrigger)</code> returning <code>Result&lt;TState&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>LazyStateMachine&lt;TState, TTrigger&gt;</code></td>
+<td><code>sealed class</code></td>
+<td>Defers machine creation and configuration until first access via <code>Machine</code> or <code>FireResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Both generics carry <code>where TState : notnull</code> and <code>where TTrigger : notnull</code> constraints.</p>
+<p>Full signatures: <a href="../api_reference/trellis-api-statemachine.html"><code>trellis-api-statemachine.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.StateMachine
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>Configure a Stateless machine, then call <code>FireResult</code> instead of <code>Fire</code>. Invalid transitions become a typed <code>Result</code> failure.</p>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+public enum OrderState { Draft, Submitted, Approved, Shipped, Cancelled }
+public enum OrderTrigger { Submit, Approve, Ship, Cancel }
+
+var state = OrderState.Draft;
+var machine = new StateMachine&lt;OrderState, OrderTrigger&gt;(() =&gt; state, s =&gt; state = s);
+
+machine.Configure(OrderState.Draft)
+    .Permit(OrderTrigger.Submit, OrderState.Submitted)
+    .Permit(OrderTrigger.Cancel, OrderState.Cancelled);
+
+machine.Configure(OrderState.Submitted)
+    .Permit(OrderTrigger.Approve, OrderState.Approved)
+    .Permit(OrderTrigger.Cancel, OrderState.Cancelled);
+
+machine.Configure(OrderState.Approved)
+    .Permit(OrderTrigger.Ship, OrderState.Shipped);
+
+Result&lt;OrderState&gt; submit  = machine.FireResult(OrderTrigger.Submit);  // Ok(Submitted)
+Result&lt;OrderState&gt; approve = machine.FireResult(OrderTrigger.Approve); // Ok(Approved)
+Result&lt;OrderState&gt; invalid = machine.FireResult(OrderTrigger.Submit);  // Fail (UnprocessableContent)
+</code></pre>
+<h2 id="what-fireresult-guarantees">What <code>FireResult</code> guarantees</h2>
+<p><code>FireResult</code> is intentionally narrow — see <a href="../api_reference/trellis-api-statemachine.html#statemachineextensions"><code>trellis-api-statemachine.md</code></a> for the exact signature and translation rules.</p>
+<table>
+<thead>
+<tr>
+<th>Outcome</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CanFire(trigger)</code> is <code>true</code></td>
+<td>Calls <code>Fire(trigger)</code>, returns <code>Result.Ok(stateMachine.State)</code>.</td>
+</tr>
+<tr>
+<td><code>CanFire(trigger)</code> is <code>false</code>, default unhandled-trigger handler throws</td>
+<td>Returns <code>Error.UnprocessableContent</code> (HTTP 422) carrying a <code>RuleViolation</code> with reason code <code>state.machine.invalid.transition</code>.</td>
+</tr>
+<tr>
+<td><code>CanFire(trigger)</code> is <code>false</code>, custom <code>OnUnhandledTrigger</code> swallows the trigger</td>
+<td>Returns <code>Result.Ok(stateMachine.State)</code> — state unchanged.</td>
+</tr>
+<tr>
+<td>User entry/exit/transition/guard/accessor/mutator code throws</td>
+<td>Exception propagates untouched.</td>
+</tr>
+</tbody>
+</table>
+<p>Invalid-transition detection uses <code>CanFire</code> (which honors <code>PermitIf</code> / <code>IgnoreIf</code> guards) — there is no Stateless message-string parsing, so the failure shape is independent of Stateless's exception text.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Because <code>FireResult</code> evaluates the guard once via <code>CanFire</code> and (when permitted) again via <code>Fire</code>, transition guards must be <strong>idempotent and side-effect-free</strong> — already a Stateless requirement. Guards run at most twice per call.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Neither <code>FireResult</code> nor <code>LazyStateMachine</code> makes Stateless thread-safe. Stateless is single-threaded by contract; concurrent callers on the same machine instance must synchronize externally.</p>
+</div>
+<h2 id="guards">Guards</h2>
+<p>Guards are plain Stateless <code>PermitIf</code> / <code>IgnoreIf</code> predicates. <code>FireResult</code> honors them through <code>CanFire</code>, so a guard that returns <code>false</code> produces the same <code>Error.UnprocessableContent</code> as a missing transition.</p>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+public enum InvoiceState { Draft, Approved }
+public enum InvoiceTrigger { Approve }
+
+bool hasLineItems = false;
+
+var state = InvoiceState.Draft;
+var machine = new StateMachine&lt;InvoiceState, InvoiceTrigger&gt;(() =&gt; state, s =&gt; state = s);
+
+machine.Configure(InvoiceState.Draft)
+    .PermitIf(InvoiceTrigger.Approve, InvoiceState.Approved, () =&gt; hasLineItems);
+
+Result&lt;InvoiceState&gt; blocked = machine.FireResult(InvoiceTrigger.Approve); // Fail (guard false)
+hasLineItems = true;
+Result&lt;InvoiceState&gt; ok = machine.FireResult(InvoiceTrigger.Approve);      // Ok(Approved)
+</code></pre>
+<p>Because guards may run twice per <code>FireResult</code> call, do not mutate state inside them — read flags or value-object snapshots only.</p>
+<h2 id="lazy-construction-for-aggregates">Lazy construction for aggregates</h2>
+<p>ORMs typically construct an entity instance, then populate its properties. A state machine wired up in the constructor with <code>() =&gt; Status</code> will read whatever the property holds at construction time, not the materialized value. <code>LazyStateMachine&lt;TState, TTrigger&gt;</code> defers the accessor call, the mutator wiring, and the <code>configure</code> callback until first use.</p>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+public enum DocumentStatus { Draft, Published, Archived }
+public enum DocumentTrigger { Publish, Archive }
+
+public sealed class Document
+{
+    private readonly LazyStateMachine&lt;DocumentStatus, DocumentTrigger&gt; _machine;
+
+    public DocumentStatus Status { get; private set; } = DocumentStatus.Draft;
+
+    public Document()
+    {
+        _machine = new LazyStateMachine&lt;DocumentStatus, DocumentTrigger&gt;(
+            () =&gt; Status,
+            s =&gt; Status = s,
+            Configure);
+    }
+
+    public Result&lt;DocumentStatus&gt; Publish() =&gt; _machine.FireResult(DocumentTrigger.Publish);
+    public Result&lt;DocumentStatus&gt; Archive() =&gt; _machine.FireResult(DocumentTrigger.Archive);
+
+    private static void Configure(StateMachine&lt;DocumentStatus, DocumentTrigger&gt; machine)
+    {
+        machine.Configure(DocumentStatus.Draft)
+            .Permit(DocumentTrigger.Publish, DocumentStatus.Published);
+
+        machine.Configure(DocumentStatus.Published)
+            .Permit(DocumentTrigger.Archive, DocumentStatus.Archived);
+    }
+}
+</code></pre>
+<p>Key facts:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Class modifier</td>
+<td><code>sealed</code></td>
+</tr>
+<tr>
+<td>Thread-safety</td>
+<td>Not thread-safe; <code>_machine ??= CreateMachine()</code> has no locking.</td>
+</tr>
+<tr>
+<td>Configuration timing</td>
+<td>Once, on first access to <code>Machine</code> (or first <code>FireResult</code>).</td>
+</tr>
+<tr>
+<td>Direct Stateless access</td>
+<td>Available via the <code>Machine</code> property when you need raw Stateless APIs.</td>
+</tr>
+<tr>
+<td>Constructor null checks</td>
+<td>Throws <code>ArgumentNullException</code> for any <code>null</code> delegate.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="composition">Composition</h2>
+<p>The point of returning <code>Result&lt;TState&gt;</code> is that a transition composes with the rest of Trellis (<code>Tap</code>, <code>Map</code>, <code>Bind</code>, <code>Ensure</code>) — domain mutations, events, and validation chain off the same railway.</p>
+<pre><code class="lang-csharp">using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+public enum OrderStatus { Draft, Submitted, Approved }
+public enum OrderTrigger { Submit, Approve }
+
+public sealed class Order
+{
+    private readonly LazyStateMachine&lt;OrderStatus, OrderTrigger&gt; _machine;
+    private readonly List&lt;string&gt; _events = [];
+
+    public OrderStatus Status { get; private set; } = OrderStatus.Draft;
+    public IReadOnlyList&lt;string&gt; Events =&gt; _events;
+
+    public Order()
+    {
+        _machine = new LazyStateMachine&lt;OrderStatus, OrderTrigger&gt;(
+            () =&gt; Status,
+            s =&gt; Status = s,
+            machine =&gt;
+            {
+                machine.Configure(OrderStatus.Draft)
+                    .Permit(OrderTrigger.Submit, OrderStatus.Submitted);
+                machine.Configure(OrderStatus.Submitted)
+                    .Permit(OrderTrigger.Approve, OrderStatus.Approved);
+            });
+    }
+
+    public Result&lt;Order&gt; Submit() =&gt;
+        _machine.FireResult(OrderTrigger.Submit)
+            .Tap(_ =&gt; _events.Add(&quot;OrderSubmitted&quot;))
+            .Map(_ =&gt; this);
+
+    public Result&lt;Order&gt; Approve() =&gt;
+        _machine.FireResult(OrderTrigger.Approve)
+            .Tap(_ =&gt; _events.Add(&quot;OrderApproved&quot;))
+            .Map(_ =&gt; this);
+}
+</code></pre>
+<p>The pattern is consistent: <code>FireResult(...)</code> for the transition, <code>Tap(...)</code> for domain side effects (events, audit), <code>Map(_ =&gt; this)</code> to return the richer aggregate.</p>
+<p>Keep business mutations <strong>after</strong> <code>FireResult</code> succeeds. Do not place domain side effects inside Stateless <code>OnEntry</code>/<code>OnExit</code> callbacks — those are for transition mechanics only.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Use <code>FireResult</code>, not <code>Fire</code>.</strong> The whole reason to take this dependency is to keep invalid transitions inside the result pipeline.</li>
+<li><strong>Distinguish state-machine 422s.</strong> All <code>FireResult</code> failures share the reason code <code>state.machine.invalid.transition</code> — match on it when callers need to react specifically to workflow rejections.</li>
+<li><strong>422, not 409.</strong> Invalid transitions are semantic rule violations, not concurrent-modification conflicts; retrying will not help. That is why the failure is <code>Error.UnprocessableContent</code>.</li>
+<li><strong>One state machine per aggregate instance.</strong> They are not thread-safe; do not share across requests or threads.</li>
+<li><strong>Keep guards pure.</strong> They run via <code>CanFire</code> and again via <code>Fire</code>, so any side effect would execute twice on the success path.</li>
+<li><strong>Use <code>LazyStateMachine</code> for ORM-materialized aggregates.</strong> It removes the manual <code>_machine ??= Configure()</code> boilerplate and ensures the accessor reads the populated value.</li>
+<li><strong>Reach for state machines when the workflow is the rule.</strong> Orders, approvals, publishing, onboarding — yes. Cosmetic UI flags or trivial CRUD lifecycles — no.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-statemachine.html"><code>trellis-api-statemachine.md</code></a></li>
+<li><code>Result&lt;T&gt;</code>, <code>Error.UnprocessableContent</code>, <code>RuleViolation</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Cookbook recipe (CanFire + Fire pattern with <code>FireResult</code>): <a href="../api_reference/trellis-api-cookbook.html#recipe-9--state-machine-canfire--fire-pattern-with-fireresult"><code>trellis-api-cookbook.md</code></a></li>
+<li>Upstream library: <a href="https://github.com/dotnet-state-machine/stateless">Stateless on GitHub</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/state-machines.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

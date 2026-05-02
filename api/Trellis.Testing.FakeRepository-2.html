@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class FakeRepository&lt;TAggregate, TId&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class FakeRepository&lt;TAggregate, TId&gt; | Trellis ">
+      
+      <meta name="description" content="In-memory fake repository for testing aggregates. Provides a simple in-memory store with domain event tracking.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Testing_FakeRepository_2.md&amp;value=---%0Auid%3A%20Trellis.Testing.FakeRepository%602%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing.FakeRepository`2">
+
+
+
+  <h1 id="Trellis_Testing_FakeRepository_2" data-uid="Trellis.Testing.FakeRepository`2" class="text-break">
+Class FakeRepository&lt;TAggregate, TId&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Testing.html">Testing</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Testing.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>In-memory fake repository for testing aggregates.
+Provides a simple in-memory store with domain event tracking.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class FakeRepository&lt;TAggregate, TId&gt; where TAggregate : Aggregate&lt;TId&gt; where TId : notnull</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TAggregate</code></dt>
+    <dd><p>The aggregate type.</p>
+</dd>
+    <dt><code>TId</code></dt>
+    <dd><p>The aggregate ID type.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">FakeRepository&lt;TAggregate, TId&gt;</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Testing_FakeRepository_2_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Two persistence surfaces are exposed and they are intentional opposites:
+</p>
+<ul><li><b>Setup surface</b> — <a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_Add__0_">Add(TAggregate)</a>, <a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_Remove__0_">Remove(TAggregate)</a>,
+<a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_RemoveByIdAsync__1_System_Threading_CancellationToken_">RemoveByIdAsync(TId, CancellationToken)</a>. Mirror the production
+<code>RepositoryBase&lt;TAggregate, TId&gt;</code> staging API so the same
+<code>IRepository</code> contract works in handlers and in tests. Use these to seed the
+store and to exercise the same code path the handler will run against EF.</li><li><b>Result-shape surface</b> — <a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_SaveAsync__0_System_Threading_CancellationToken_">SaveAsync(TAggregate, CancellationToken)</a>,
+<a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_DeleteAsync__1_System_Threading_CancellationToken_">DeleteAsync(TId, CancellationToken)</a>. Return <a class="xref" href="Trellis.Result.html">Result</a> directly so tests that
+specifically assert on conflict-handling or not-found-result behavior have a
+concrete <a class="xref" href="Trellis.Result.html">Result</a> to assert on. They are not part of the production
+<code>RepositoryBase</code> surface and should not appear on production
+<code>IRepository</code> contracts.</li></ul>
+<p>
+See cookbook <code>Recipe 16 — Unit of work in handlers: Add staging vs immediate SaveAsync</code>
+for the full guidance on which method to call from where.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Testing_FakeRepository_2_Count_" data-uid="Trellis.Testing.FakeRepository`2.Count*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_Count" data-uid="Trellis.Testing.FakeRepository`2.Count">
+  Count
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L282"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the count of stored aggregates.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Count { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_PublishedEvents_" data-uid="Trellis.Testing.FakeRepository`2.PublishedEvents*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_PublishedEvents" data-uid="Trellis.Testing.FakeRepository`2.PublishedEvents">
+  PublishedEvents
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the list of domain events published by saved aggregates.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyList&lt;IDomainEvent&gt; PublishedEvents { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Trellis.IDomainEvent.html">IDomainEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Testing_FakeRepository_2_Add_" data-uid="Trellis.Testing.FakeRepository`2.Add*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_Add__0_" data-uid="Trellis.Testing.FakeRepository`2.Add(`0)">
+  Add(TAggregate)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Stages a new aggregate for insertion into the in-memory store, mirroring
+<code>RepositoryBase&lt;TAggregate, TId&gt;.Add</code>. Use this from handlers (and from
+test setup that exercises handlers) so the same <code>void Add(T)</code> surface works
+in both the EF and fake implementations of an <code>IRepository</code> contract.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Add(TAggregate aggregate)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>aggregate</code> <span class="xref">TAggregate</span></dt>
+    <dd><p>The aggregate to stage.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_FakeRepository_2_Add__0__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+The fake has no separate commit boundary — <code>Add</code> immediately makes the
+aggregate visible to subsequent <code>FindByIdAsync</code>/<code>WhereAsync</code> calls and
+captures its uncommitted domain events into <a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_PublishedEvents">PublishedEvents</a>.
+</p>
+<p>
+Unique constraints registered with <a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_WithUniqueConstraint_System_Func__0_System_Object__">WithUniqueConstraint(Func&lt;TAggregate, object?&gt;)</a> are
+enforced eagerly here: a violation throws <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>
+rather than returning <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a>. The reason is that
+<code>Add</code> is a setup affordance — failures usually mean the test itself is
+wrong, and a loud throw points to the offending call site immediately. To test
+production conflict handling, call <a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_SaveAsync__0_System_Threading_CancellationToken_">SaveAsync(TAggregate, CancellationToken)</a> instead and assert on
+the returned <a class="xref" href="Trellis.Result.html">Result</a>.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_Clear_" data-uid="Trellis.Testing.FakeRepository`2.Clear*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_Clear" data-uid="Trellis.Testing.FakeRepository`2.Clear">
+  Clear()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L216"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Clears all stored aggregates and published events.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Clear()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_DeleteAsync_" data-uid="Trellis.Testing.FakeRepository`2.DeleteAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_DeleteAsync__1_System_Threading_CancellationToken_" data-uid="Trellis.Testing.FakeRepository`2.DeleteAsync(`1,System.Threading.CancellationToken)">
+  DeleteAsync(TId, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L204"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Deletes an aggregate by its ID.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;Result&lt;Unit&gt;&gt; DeleteAsync(TId id, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate ID.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> with <a class="xref" href="Trellis.Unit.html">Unit</a> indicating success or <a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_Exists_" data-uid="Trellis.Testing.FakeRepository`2.Exists*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_Exists__1_" data-uid="Trellis.Testing.FakeRepository`2.Exists(`1)">
+  Exists(TId)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L227"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks if an aggregate with the specified ID exists.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Exists(TId id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate ID.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if the aggregate exists, false otherwise.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_FindAsync_" data-uid="Trellis.Testing.FakeRepository`2.FindAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_FindAsync_System_Func__0_System_Boolean__" data-uid="Trellis.Testing.FakeRepository`2.FindAsync(System.Func{`0,System.Boolean})">
+  FindAsync(Func&lt;TAggregate, bool&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L248"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Finds the first aggregate matching the predicate, returning <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a> if no match.
+Use in test repository adapters for custom query methods (e.g., <code>FindByEmailAsync</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;Maybe&lt;TAggregate&gt;&gt; FindAsync(Func&lt;TAggregate, bool&gt; predicate)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TAggregate, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p>The predicate to match.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TAggregate&gt;&gt;</dt>
+    <dd><p>Maybe with the first matching aggregate or None.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_FindByIdAsync_" data-uid="Trellis.Testing.FakeRepository`2.FindByIdAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_FindByIdAsync__1_System_Threading_CancellationToken_" data-uid="Trellis.Testing.FakeRepository`2.FindByIdAsync(`1,System.Threading.CancellationToken)">
+  FindByIdAsync(TId, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Finds an aggregate by its ID, returning Maybe if not found.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;Maybe&lt;TAggregate&gt;&gt; FindByIdAsync(TId id, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate ID.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TAggregate&gt;&gt;</dt>
+    <dd><p>Maybe with the aggregate or None.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_Get_" data-uid="Trellis.Testing.FakeRepository`2.Get*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_Get__1_" data-uid="Trellis.Testing.FakeRepository`2.Get(`1)">
+  Get(TId)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L234"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets an aggregate by ID without wrapping in Result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TAggregate? Get(TId id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate ID.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TAggregate</span></dt>
+    <dd><p>The aggregate or null if not found.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_GetAll_" data-uid="Trellis.Testing.FakeRepository`2.GetAll*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_GetAll" data-uid="Trellis.Testing.FakeRepository`2.GetAll">
+  GetAll()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L240"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets all stored aggregates.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IEnumerable&lt;TAggregate&gt; GetAll()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;TAggregate&gt;</dt>
+    <dd><p>All aggregates in the repository.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_GetByIdAsync_" data-uid="Trellis.Testing.FakeRepository`2.GetByIdAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_GetByIdAsync__1_System_Threading_CancellationToken_" data-uid="Trellis.Testing.FakeRepository`2.GetByIdAsync(`1,System.Threading.CancellationToken)">
+  GetByIdAsync(TId, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets an aggregate by its ID.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;Result&lt;TAggregate&gt;&gt; GetByIdAsync(TId id, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate ID.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TAggregate&gt;&gt;</dt>
+    <dd><p>A Result containing the aggregate or an <a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_Remove_" data-uid="Trellis.Testing.FakeRepository`2.Remove*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_Remove__0_" data-uid="Trellis.Testing.FakeRepository`2.Remove(`0)">
+  Remove(TAggregate)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L153"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Stages an aggregate for deletion from the in-memory store, mirroring
+<code>RepositoryBase&lt;TAggregate, TId&gt;.Remove</code>. No-op if the aggregate is not
+in the store (matching the EF semantics where the change tracker accepts
+the call without verifying database existence).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Remove(TAggregate aggregate)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>aggregate</code> <span class="xref">TAggregate</span></dt>
+    <dd><p>The aggregate to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_RemoveByIdAsync_" data-uid="Trellis.Testing.FakeRepository`2.RemoveByIdAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_RemoveByIdAsync__1_System_Threading_CancellationToken_" data-uid="Trellis.Testing.FakeRepository`2.RemoveByIdAsync(`1,System.Threading.CancellationToken)">
+  RemoveByIdAsync(TId, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Looks up an aggregate by ID and removes it. Returns <a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a>
+if the aggregate does not exist. Mirrors
+<code>RepositoryBase&lt;TAggregate, TId&gt;.RemoveByIdAsync</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;Result&lt;Unit&gt;&gt; RemoveByIdAsync(TId id, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The aggregate ID to remove.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token (ignored — operation is synchronous).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> with <a class="xref" href="Trellis.Unit.html">Unit</a> indicating success or not-found failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_SaveAsync_" data-uid="Trellis.Testing.FakeRepository`2.SaveAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_SaveAsync__0_System_Threading_CancellationToken_" data-uid="Trellis.Testing.FakeRepository`2.SaveAsync(`0,System.Threading.CancellationToken)">
+  SaveAsync(TAggregate, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L176"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Saves an aggregate and captures its domain events.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;Result&lt;Unit&gt;&gt; SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>aggregate</code> <span class="xref">TAggregate</span></dt>
+    <dd><p>The aggregate to save.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Cancellation token.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> with <a class="xref" href="Trellis.Unit.html">Unit</a> indicating success or failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_WhereAsync_" data-uid="Trellis.Testing.FakeRepository`2.WhereAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_WhereAsync_System_Func__0_System_Boolean__" data-uid="Trellis.Testing.FakeRepository`2.WhereAsync(System.Func{`0,System.Boolean})">
+  WhereAsync(Func&lt;TAggregate, bool&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L261"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns all aggregates matching the predicate.
+Use in test repository adapters for custom query methods (e.g., <code>GetByCustomerIdAsync</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;IReadOnlyList&lt;TAggregate&gt;&gt; WhereAsync(Func&lt;TAggregate, bool&gt; predicate)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TAggregate, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p>The predicate to filter by.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TAggregate&gt;&gt;</dt>
+    <dd><p>A list of matching aggregates.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_WhereAsync_" data-uid="Trellis.Testing.FakeRepository`2.WhereAsync*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_WhereAsync_Trellis_Specification__0__" data-uid="Trellis.Testing.FakeRepository`2.WhereAsync(Trellis.Specification{`0})">
+  WhereAsync(Specification&lt;TAggregate&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L273"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns all aggregates matching the specification.
+Use in test repository adapters for specification-based queries (e.g., <code>GetOverdueOrdersAsync</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;IReadOnlyList&lt;TAggregate&gt;&gt; WhereAsync(Specification&lt;TAggregate&gt; specification)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>specification</code> <a class="xref" href="Trellis.Specification-1.html">Specification</a>&lt;TAggregate&gt;</dt>
+    <dd><p>The specification to evaluate.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TAggregate&gt;&gt;</dt>
+    <dd><p>A list of matching aggregates.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_FakeRepository_2_WithUniqueConstraint_" data-uid="Trellis.Testing.FakeRepository`2.WithUniqueConstraint*"></a>
+
+  <h3 id="Trellis_Testing_FakeRepository_2_WithUniqueConstraint_System_Func__0_System_Object__" data-uid="Trellis.Testing.FakeRepository`2.WithUniqueConstraint(System.Func{`0,System.Object})">
+  WithUniqueConstraint(Func&lt;TAggregate, object?&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds a unique constraint on the specified property. When <a class="xref" href="Trellis.Testing.FakeRepository-2.html#Trellis_Testing_FakeRepository_2_SaveAsync__0_System_Threading_CancellationToken_">SaveAsync(TAggregate, CancellationToken)</a> is called,
+the repository checks that no other aggregate (with a different ID) has the same value
+for this property. Returns an <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a> on violation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FakeRepository&lt;TAggregate, TId&gt; WithUniqueConstraint(Func&lt;TAggregate, object?&gt; propertySelector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>propertySelector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TAggregate, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>&gt;</dt>
+    <dd><p>A function selecting the property to constrain.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Testing.FakeRepository-2.html">FakeRepository</a>&lt;TAggregate, TId&gt;</dt>
+    <dd><p>This repository for fluent chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_FakeRepository_2_WithUniqueConstraint_System_Func__0_System_Object___examples">Examples</h4>
+  <pre><code class="lang-csharp">var repo = new FakeRepository&lt;Customer, CustomerId&gt;()
+    .WithUniqueConstraint(c =&gt; c.Email);</code></pre>
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/FakeRepository.cs/#L37" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

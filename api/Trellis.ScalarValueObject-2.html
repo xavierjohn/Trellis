@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ScalarValueObject&lt;TSelf, T&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ScalarValueObject&lt;TSelf, T&gt; | Trellis ">
+      
+      <meta name="description" content="Base class for value objects that wrap a single scalar value. Provides a strongly-typed wrapper around primitive types with domain semantics.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_ScalarValueObject_2.md&amp;value=---%0Auid%3A%20Trellis.ScalarValueObject%602%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.ScalarValueObject`2">
+
+
+
+  <h1 id="Trellis_ScalarValueObject_2" data-uid="Trellis.ScalarValueObject`2" class="text-break">
+Class ScalarValueObject&lt;TSelf, T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for value objects that wrap a single scalar value.
+Provides a strongly-typed wrapper around primitive types with domain semantics.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class ScalarValueObject&lt;TSelf, T&gt; : ValueObject, IComparable&lt;ValueObject&gt;, IComparable, IEquatable&lt;ValueObject&gt;, IConvertible, IFormattable where TSelf : ScalarValueObject&lt;TSelf, T&gt;, IScalarValue&lt;TSelf, T&gt; where T : IComparable</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TSelf</code></dt>
+    <dd><p>The derived value object type itself (CRTP pattern).</p>
+</dd>
+    <dt><code>T</code></dt>
+    <dd><p>The type of the wrapped scalar value. Must implement <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a>.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="Trellis.ValueObject.html">ValueObject</a></div>
+      <div><span class="xref">ScalarValueObject&lt;TSelf, T&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable-1">IComparable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iconvertible">IConvertible</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformattable">IFormattable</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.Primitives.Age.html">Age</a></div>
+      <div><a class="xref" href="Trellis.Primitives.CountryCode.html">CountryCode</a></div>
+      <div><a class="xref" href="Trellis.Primitives.CurrencyCode.html">CurrencyCode</a></div>
+      <div><a class="xref" href="Trellis.Primitives.EmailAddress.html">EmailAddress</a></div>
+      <div><a class="xref" href="Trellis.Primitives.Hostname.html">Hostname</a></div>
+      <div><a class="xref" href="Trellis.Primitives.IpAddress.html">IpAddress</a></div>
+      <div><a class="xref" href="Trellis.Primitives.LanguageCode.html">LanguageCode</a></div>
+      <div><a class="xref" href="Trellis.Primitives.MonetaryAmount.html">MonetaryAmount</a></div>
+      <div><a class="xref" href="Trellis.Primitives.Percentage.html">Percentage</a></div>
+      <div><a class="xref" href="Trellis.Primitives.PhoneNumber.html">PhoneNumber</a></div>
+      <div><a class="xref" href="Trellis.Primitives.Slug.html">Slug</a></div>
+      <div><a class="xref" href="Trellis.Primitives.Url.html">Url</a></div>
+      <div><a class="xref" href="Trellis.RequiredBool-1.html">RequiredBool&lt;TSelf&gt;</a></div>
+      <div><a class="xref" href="Trellis.RequiredDateTime-1.html">RequiredDateTime&lt;TSelf&gt;</a></div>
+      <div><a class="xref" href="Trellis.RequiredDecimal-1.html">RequiredDecimal&lt;TSelf&gt;</a></div>
+      <div><a class="xref" href="Trellis.RequiredGuid-1.html">RequiredGuid&lt;TSelf&gt;</a></div>
+      <div><a class="xref" href="Trellis.RequiredInt-1.html">RequiredInt&lt;TSelf&gt;</a></div>
+      <div><a class="xref" href="Trellis.RequiredLong-1.html">RequiredLong&lt;TSelf&gt;</a></div>
+      <div><a class="xref" href="Trellis.RequiredString-1.html">RequiredString&lt;TSelf&gt;</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_MaybeComponent__1_Trellis_Maybe___0__">ValueObject.MaybeComponent&lt;T&gt;(Maybe&lt;T&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_System_Object_">ValueObject.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_Trellis_ValueObject_">ValueObject.Equals(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetHashCode">ValueObject.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_CompareTo_Trellis_ValueObject_">ValueObject.CompareTo(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_ScalarValueObject_2_examples">Examples</h2>
+  <p>Simple scalar value object for a strongly-typed ID:</p>
+<pre><code class="lang-csharp">public class CustomerId : ScalarValueObject&lt;CustomerId, Guid&gt;
+{
+    private CustomerId(Guid value) : base(value) { }
+
+    public static CustomerId NewUnique() =&gt; new(Guid.NewGuid());
+
+    public static Result&lt;CustomerId&gt; TryCreate(Guid value) =&gt;
+        value.ToResult()
+            .Ensure(v =&gt; v != Guid.Empty, Error.UnprocessableContent.ForField("customerId", "invalid", "Customer ID cannot be empty"))
+            .Map(v =&gt; new CustomerId(v));
+
+    public static Result&lt;CustomerId&gt; TryCreate(string? stringOrNull) =&gt;
+        stringOrNull.ToResult(Error.UnprocessableContent.ForField("customerId", "invalid", "Customer ID cannot be empty"))
+            .Bind(s =&gt; Guid.TryParse(s, out var guid)
+                ? Result.Ok(guid)
+                : Error.UnprocessableContent.ForField("customerId", "invalid", "Invalid GUID format"))
+            .Bind(TryCreate);
+}
+
+// Usage
+var id = CustomerId.NewUnique();
+Guid guidValue = id; // Implicit conversion to Guid</code></pre>
+
+  <p>Scalar value object with custom equality and validation:</p>
+<pre><code class="lang-csharp">public class Temperature : ScalarValueObject&lt;Temperature, decimal&gt;
+{
+    private Temperature(decimal value) : base(value) { }
+
+    public static Result&lt;Temperature&gt; TryCreate(decimal value) =&gt;
+        value.ToResult()
+            .Ensure(v =&gt; v &gt;= -273.15m, 
+                   Error.UnprocessableContent.ForField("temperature", "invalid", "Temperature cannot be below absolute zero"))
+            .Ensure(v =&gt; v &lt;= 1_000_000m,
+                   Error.UnprocessableContent.ForField("temperature", "invalid", "Temperature exceeds physical limits"))
+            .Map(v =&gt; new Temperature(v));
+
+    // Custom equality - round to 2 decimal places
+    protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    {
+        yield return Math.Round(Value, 2);
+    }
+
+    // Domain operations
+    public static Temperature FromCelsius(decimal celsius) =&gt; new(celsius);
+    public static Temperature FromFahrenheit(decimal fahrenheit) =&gt; 
+        new((fahrenheit - 32) * 5 / 9);
+
+    public decimal ToCelsius() =&gt; Value;
+    public decimal ToFahrenheit() =&gt; (Value * 9 / 5) + 32;
+}
+
+// Usage
+var temp1 = Temperature.TryCreate(98.6m);
+var temp2 = Temperature.TryCreate(98.60m);
+temp1 == temp2; // true - rounded to same value
+
+decimal celsius = temp1.Value; // Access underlying value</code></pre>
+
+  <p>Scalar value object for email addresses:</p>
+<pre><code class="lang-csharp">public class EmailAddress : ScalarValueObject&lt;EmailAddress, string&gt;
+{
+    private EmailAddress(string value) : base(value) { }
+
+    public static Result&lt;EmailAddress&gt; TryCreate(string email) =&gt;
+        email.ToResult(Error.UnprocessableContent.ForField("email", "invalid", "Email is required"))
+            .Ensure(e =&gt; !string.IsNullOrWhiteSpace(e),
+                   Error.UnprocessableContent.ForField("email", "invalid", "Email cannot be empty"))
+            .Ensure(e =&gt; e.Contains("@"),
+                   Error.UnprocessableContent.ForField("email", "invalid", "Email must contain @"))
+            .Ensure(e =&gt; e.Length &lt;= 254,
+                   Error.UnprocessableContent.ForField("email", "invalid", "Email too long"))
+            .Map(e =&gt; new EmailAddress(e.Trim().ToLowerInvariant()));
+
+    public string Domain =&gt; Value.Split('@')[1];
+    public string LocalPart =&gt; Value.Split('@')[0];
+}</code></pre>
+
+
+  <h2 id="Trellis_ScalarValueObject_2_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Scalar value objects wrap a single primitive value (int, string, decimal, Guid, etc.) to provide:
+<ul><li>Type safety: Prevents mixing of semantically different values (e.g., CustomerId vs OrderId)</li><li>Domain semantics: Makes code more expressive and self-documenting</li><li>Validation: Encapsulates validation rules for the wrapped value</li><li>Implicit conversion: Allows transparent usage as the underlying type</li><li>IConvertible support: Enables conversion to other types when needed</li><li>IFormattable support: Enables culture-aware formatting, including use with <a class="xref" href="Trellis.Error.html">Error</a> factory instance parameters</li></ul>
+
+<p>
+Common use cases:
+<ul><li>Entity identifiers (CustomerId, OrderId, ProductId)</li><li>Domain primitives (EmailAddress, PhoneNumber, PostalCode)</li><li>Measurements (Temperature, Distance, Weight)</li><li>Quantifiers (Percentage, Quantity, Amount)</li></ul>
+
+<p>
+The class implements <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iconvertible">IConvertible</a> to allow conversion operations
+and <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformattable">IFormattable</a> to enable culture-aware formatting,
+and provides an implicit operator to seamlessly convert to the underlying type.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_ScalarValueObject_2__ctor_" data-uid="Trellis.ScalarValueObject`2.#ctor*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2__ctor__1_" data-uid="Trellis.ScalarValueObject`2.#ctor(`1)">
+  ScalarValueObject(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L145"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject&lt;TSelf, T&gt;</a> class with the specified value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected ScalarValueObject(T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to wrap.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2__ctor__1__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This constructor is protected to enforce creation through factory methods
+(typically TryCreate) that implement validation logic.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_ScalarValueObject_2_Value_" data-uid="Trellis.ScalarValueObject`2.Value*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_Value" data-uid="Trellis.ScalarValueObject`2.Value">
+  Value
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L135"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the wrapped scalar value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public T Value { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd><p>The underlying primitive value wrapped by this value object.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2_Value_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>While the value is publicly accessible, the constructor is typically protected,
+forcing creation through factory methods that enforce validation.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_ScalarValueObject_2_Create_" data-uid="Trellis.ScalarValueObject`2.Create*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_Create__1_" data-uid="Trellis.ScalarValueObject`2.Create(`1)">
+  Create(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L233"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a validated value object from a primitive value.
+Throws an exception if validation fails.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static TSelf Create(T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The raw primitive value</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TSelf</span></dt>
+    <dd><p>The validated value object</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2_Create__1__examples">Examples</h4>
+  <p>Use in tests or with known-valid values:</p>
+<pre><code class="lang-csharp">// ✅ Good - Test data
+var email = EmailAddress.Create("test@example.com");
+
+// ✅ Good - Building from validated data
+var temp = Temperature.Create(98.6m);
+
+// ❌ Bad - User input (use TryCreate instead)
+var email = EmailAddress.Create(userInput);</code></pre>
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2_Create__1__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Use this method when you know the value is valid (e.g., in tests, with constants,
+or when building from other validated value objects). This provides cleaner code
+than calling <code>TryCreate().Value</code>.
+</p>
+<p>
+⚠️ Don't use this method with user input or uncertain data - use <code>TryCreate</code>
+instead to handle validation errors gracefully.
+</p>
+<p>
+This is a default implementation that can be overridden if custom behavior is needed.
+</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when validation fails</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_ScalarValueObject_2_GetEqualityComponents_" data-uid="Trellis.ScalarValueObject`2.GetEqualityComponents*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_GetEqualityComponents" data-uid="Trellis.ScalarValueObject`2.GetEqualityComponents">
+  GetEqualityComponents()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the components used for equality comparison.
+By default, returns the wrapped <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_Value">Value</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a>&gt;</dt>
+    <dd><p>An enumerable containing the scalar value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2_GetEqualityComponents_examples">Examples</h4>
+  <pre><code class="lang-csharp">// Custom equality for Temperature - round to 2 decimal places
+protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+{
+    yield return Math.Round(Value, 2);
+}</code></pre>
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2_GetEqualityComponents_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Override this method to customize equality comparison.
+For example, to compare email addresses case-insensitively or to round decimal values.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_GetTypeCode_" data-uid="Trellis.ScalarValueObject`2.GetTypeCode*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_GetTypeCode" data-uid="Trellis.ScalarValueObject`2.GetTypeCode">
+  GetTypeCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L245"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the type code of the wrapped value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TypeCode GetTypeCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.typecode">TypeCode</a></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.typecode">TypeCode</a> of type <code class="typeparamref">T</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToBoolean_" data-uid="Trellis.ScalarValueObject`2.ToBoolean*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToBoolean_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToBoolean(System.IFormatProvider)">
+  ToBoolean(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L252"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ToBoolean(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToByte_" data-uid="Trellis.ScalarValueObject`2.ToByte*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToByte_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToByte(System.IFormatProvider)">
+  ToByte(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L259"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public byte ToByte(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToChar_" data-uid="Trellis.ScalarValueObject`2.ToChar*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToChar_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToChar(System.IFormatProvider)">
+  ToChar(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L266"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public char ToChar(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToDateTime_" data-uid="Trellis.ScalarValueObject`2.ToDateTime*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToDateTime_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToDateTime(System.IFormatProvider)">
+  ToDateTime(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L273"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DateTime ToDateTime(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToDecimal_" data-uid="Trellis.ScalarValueObject`2.ToDecimal*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToDecimal_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToDecimal(System.IFormatProvider)">
+  ToDecimal(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L280"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public decimal ToDecimal(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToDouble_" data-uid="Trellis.ScalarValueObject`2.ToDouble*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToDouble_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToDouble(System.IFormatProvider)">
+  ToDouble(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L287"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public double ToDouble(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToInt16_" data-uid="Trellis.ScalarValueObject`2.ToInt16*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToInt16_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToInt16(System.IFormatProvider)">
+  ToInt16(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L294"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public short ToInt16(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToInt32_" data-uid="Trellis.ScalarValueObject`2.ToInt32*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToInt32_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToInt32(System.IFormatProvider)">
+  ToInt32(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L301"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int ToInt32(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The wrapped value converted to an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToInt64_" data-uid="Trellis.ScalarValueObject`2.ToInt64*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToInt64_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToInt64(System.IFormatProvider)">
+  ToInt64(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L308"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long ToInt64(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToSByte_" data-uid="Trellis.ScalarValueObject`2.ToSByte*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToSByte_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToSByte(System.IFormatProvider)">
+  ToSByte(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L315"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.sbyte">sbyte</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sbyte ToSByte(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.sbyte">sbyte</a></dt>
+    <dd><p>The wrapped value converted to an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.sbyte">sbyte</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToSingle_" data-uid="Trellis.ScalarValueObject`2.ToSingle*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToSingle_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToSingle(System.IFormatProvider)">
+  ToSingle(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L322"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public float ToSingle(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToString_" data-uid="Trellis.ScalarValueObject`2.ToString*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToString" data-uid="Trellis.ScalarValueObject`2.ToString">
+  ToString()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L176"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a string representation of the wrapped value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The string representation of <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_Value">Value</a>, or an empty string if null.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToString_" data-uid="Trellis.ScalarValueObject`2.ToString*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToString_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToString(System.IFormatProvider)">
+  ToString(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L329"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a> using the specified format provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ToString(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, or an empty string if null.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToString_" data-uid="Trellis.ScalarValueObject`2.ToString*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToString_System_String_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToString(System.String,System.IFormatProvider)">
+  ToString(string?, IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L339"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Formats the wrapped value using the specified format and provider.
+Delegates to the underlying value's <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformattable">IFormattable</a> implementation if available;
+otherwise falls back to <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iconvertible.tostring">ToString(IFormatProvider)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ToString(string? format, IFormatProvider? formatProvider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>format</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A format string, or null for the default format.</p>
+</dd>
+    <dt><code>formatProvider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting, or null for the current culture.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The formatted string representation of the wrapped value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToType_" data-uid="Trellis.ScalarValueObject`2.ToType*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToType_System_Type_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToType(System.Type,System.IFormatProvider)">
+  ToType(Type, IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L350"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to the specified type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public object ToType(Type conversionType, IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>conversionType</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.type">Type</a></dt>
+    <dd><p>The type to convert to.</p>
+</dd>
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The wrapped value converted to the specified type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToUInt16_" data-uid="Trellis.ScalarValueObject`2.ToUInt16*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToUInt16_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToUInt16(System.IFormatProvider)">
+  ToUInt16(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L357"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ushort ToUInt16(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToUInt32_" data-uid="Trellis.ScalarValueObject`2.ToUInt32*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToUInt32_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToUInt32(System.IFormatProvider)">
+  ToUInt32(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L364"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint32">uint</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public uint ToUInt32(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint32">uint</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint32">uint</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ScalarValueObject_2_ToUInt64_" data-uid="Trellis.ScalarValueObject`2.ToUInt64*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_ToUInt64_System_IFormatProvider_" data-uid="Trellis.ScalarValueObject`2.ToUInt64(System.IFormatProvider)">
+  ToUInt64(IFormatProvider?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L371"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Converts the wrapped value to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ulong ToUInt64(IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> for culture-specific formatting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a></dt>
+    <dd><p>The wrapped value converted to a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint64">ulong</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="Trellis_ScalarValueObject_2_op_Implicit_" data-uid="Trellis.ScalarValueObject`2.op_Implicit*"></a>
+
+  <h3 id="Trellis_ScalarValueObject_2_op_Implicit_Trellis_ScalarValueObject__0__1____1" data-uid="Trellis.ScalarValueObject`2.op_Implicit(Trellis.ScalarValueObject{`0,`1})~`1">
+  implicit operator T(ScalarValueObject&lt;TSelf, T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L196"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Implicitly converts the scalar value object to its underlying type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator T(ScalarValueObject&lt;TSelf, T&gt; valueObject)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>valueObject</code> <a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject</a>&lt;TSelf, T&gt;</dt>
+    <dd><p>The scalar value object to convert.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd><p>The wrapped value of type <code class="typeparamref">T</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2_op_Implicit_Trellis_ScalarValueObject__0__1____1_examples">Examples</h4>
+  <pre><code class="lang-csharp">var customerId = CustomerId.NewUnique();
+Guid guid = customerId; // Implicit conversion
+
+var temperature = Temperature.Create(98.6m);
+decimal value = temperature; // Implicit conversion</code></pre>
+
+
+  <h4 class="section" id="Trellis_ScalarValueObject_2_op_Implicit_Trellis_ScalarValueObject__0__1____1_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This implicit operator allows scalar value objects to be used transparently
+as their underlying type in most contexts, reducing the need for explicit unwrapping.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/ScalarValueObject.cs/#L123" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

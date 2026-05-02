@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class WebApplicationFactoryTimeExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class WebApplicationFactoryTimeExtensions | Trellis ">
+      
+      <meta name="description" content="Extension methods for  that simplify controlling time in integration tests.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions.md&amp;value=---%0Auid%3A%20Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions">
+
+
+
+  <h1 id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions" class="text-break">
+Class WebApplicationFactoryTimeExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/WebApplicationFactoryTimeExtensions.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Testing.html">Testing</a>.<a class="xref" href="Trellis.Testing.AspNetCore.html">AspNetCore</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Testing.AspNetCore.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Extension methods for <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory&lt;TEntryPoint&gt;</a>
+that simplify controlling time in integration tests.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class WebApplicationFactoryTimeExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">WebApplicationFactoryTimeExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+The factory-out overloads default to the well-known fixed instant
+<a class="xref" href="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.html#Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_DefaultTestStartInstant">DefaultTestStartInstant</a> (<code>2024-01-01T00:00:00Z</code>) so tests
+are deterministic by default — repeated runs use the same starting clock and
+any test that asserts on absolute timestamps does not flake based on wall time.
+Pass an explicit <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a> when you need a different baseline.
+</p>
+</div>
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_DefaultTestStartInstant" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.DefaultTestStartInstant">
+  DefaultTestStartInstant
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/WebApplicationFactoryTimeExtensions.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The deterministic default starting instant used by the
+<a class="xref" href="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.html#Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__Microsoft_Extensions_Time_Testing_FakeTimeProvider__">WithFakeTimeProvider&lt;TEntryPoint&gt;(WebApplicationFactory&lt;TEntryPoint&gt;, out FakeTimeProvider)</a>
+overload — <code>2024-01-01T00:00:00Z</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static readonly DateTimeOffset DefaultTestStartInstant</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_DefaultTestStartInstant_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Chosen as a recent, round-numbered UTC instant to keep test diagnostics readable
+while remaining stable across runs. Tests that need a different baseline should
+use the overload that accepts an explicit <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a>.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider_" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.WithFakeTimeProvider*"></a>
+
+  <h3 id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__Microsoft_Extensions_Time_Testing_FakeTimeProvider_" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.WithFakeTimeProvider``1(Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory{``0},Microsoft.Extensions.Time.Testing.FakeTimeProvider)">
+  WithFakeTimeProvider&lt;TEntryPoint&gt;(WebApplicationFactory&lt;TEntryPoint&gt;, FakeTimeProvider)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/WebApplicationFactoryTimeExtensions.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a new <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory&lt;TEntryPoint&gt;</a> that replaces the
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timeprovider">TimeProvider</a> singleton with a <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span>.
+Tests can rewind/advance time via <code class="paramref">fakeTimeProvider</code> to control
+timestamps set by domain logic and <code>EntityTimestampInterceptor</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static WebApplicationFactory&lt;TEntryPoint&gt; WithFakeTimeProvider&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, FakeTimeProvider fakeTimeProvider) where TEntryPoint : class</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>factory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory</a>&lt;TEntryPoint&gt;</dt>
+    <dd><p>The web application factory.</p>
+</dd>
+    <dt><code>fakeTimeProvider</code> <span class="xref">FakeTimeProvider</span></dt>
+    <dd><p>The shared <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span> instance that tests use to control time.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory</a>&lt;TEntryPoint&gt;</dt>
+    <dd><p>A new factory with the fake time provider registered.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEntryPoint</code></dt>
+    <dd><p>The entry point class of the web application under test.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__Microsoft_Extensions_Time_Testing_FakeTimeProvider__examples">Examples</h4>
+  <pre><code class="lang-csharp">// Seed the fake clock 8 days before the "now" the test cares about so the test
+// only ever advances time forward — FakeTimeProvider.Advance rejects negative spans.
+var fakeTime = new FakeTimeProvider(WebApplicationFactoryTimeExtensions.DefaultTestStartInstant);
+_factory = _factory.WithFakeTimeProvider(fakeTime);
+
+// The order is submitted at "T0" (the deterministic baseline).
+await client.PostAsync("/api/orders/1/submission", null, ct);
+
+// Advance 8 days; the overdue endpoint now sees the order as past-due.
+fakeTime.Advance(TimeSpan.FromDays(8));
+var response = await client.GetAsync("/api/orders/overdue", ct);</code></pre>
+
+
+  <h4 class="section" id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__Microsoft_Extensions_Time_Testing_FakeTimeProvider__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span> is registered as a singleton, so all scopes
+(including per-request scopes in the HTTP pipeline) share the same clock.</p>
+<p>For full time control including EF Core interceptors, also wire
+<code>AddTrellisInterceptors(fakeTimeProvider)</code> via
+<a class="xref" href="Trellis.Testing.AspNetCore.ServiceCollectionDbProviderExtensions.html#Trellis_Testing_AspNetCore_ServiceCollectionDbProviderExtensions_ReplaceDbProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Microsoft_EntityFrameworkCore_DbContextOptionsBuilder__">ReplaceDbProvider&lt;TContext&gt;(IServiceCollection, Action&lt;DbContextOptionsBuilder&gt;)</a>.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider_" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.WithFakeTimeProvider*"></a>
+
+  <h3 id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__Microsoft_Extensions_Time_Testing_FakeTimeProvider__" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.WithFakeTimeProvider``1(Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory{``0},Microsoft.Extensions.Time.Testing.FakeTimeProvider@)">
+  WithFakeTimeProvider&lt;TEntryPoint&gt;(WebApplicationFactory&lt;TEntryPoint&gt;, out FakeTimeProvider)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/WebApplicationFactoryTimeExtensions.cs/#L95"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a new <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory&lt;TEntryPoint&gt;</a> with a <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span>
+registered, and outputs the provider for test use. The provider is initialized to the
+deterministic <a class="xref" href="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.html#Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_DefaultTestStartInstant">DefaultTestStartInstant</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static WebApplicationFactory&lt;TEntryPoint&gt; WithFakeTimeProvider&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, out FakeTimeProvider fakeTimeProvider) where TEntryPoint : class</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>factory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory</a>&lt;TEntryPoint&gt;</dt>
+    <dd><p>The web application factory.</p>
+</dd>
+    <dt><code>fakeTimeProvider</code> <span class="xref">FakeTimeProvider</span></dt>
+    <dd><p>When this method returns, contains the <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span> instance.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory</a>&lt;TEntryPoint&gt;</dt>
+    <dd><p>A new factory with the fake time provider registered.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEntryPoint</code></dt>
+    <dd><p>The entry point class of the web application under test.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__Microsoft_Extensions_Time_Testing_FakeTimeProvider___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Defaults to <a class="xref" href="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.html#Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_DefaultTestStartInstant">DefaultTestStartInstant</a> — <code>2024-01-01T00:00:00Z</code> — to keep
+integration tests deterministic across runs. If your test needs a specific baseline,
+use the overload that accepts an explicit <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a>.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider_" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.WithFakeTimeProvider*"></a>
+
+  <h3 id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__System_DateTimeOffset_Microsoft_Extensions_Time_Testing_FakeTimeProvider__" data-uid="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.WithFakeTimeProvider``1(Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory{``0},System.DateTimeOffset,Microsoft.Extensions.Time.Testing.FakeTimeProvider@)">
+  WithFakeTimeProvider&lt;TEntryPoint&gt;(WebApplicationFactory&lt;TEntryPoint&gt;, DateTimeOffset, out FakeTimeProvider)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/WebApplicationFactoryTimeExtensions.cs/#L115"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a new <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory&lt;TEntryPoint&gt;</a> with a <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span>
+registered at the specified <code class="paramref">startInstant</code>, and outputs the provider for test use.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static WebApplicationFactory&lt;TEntryPoint&gt; WithFakeTimeProvider&lt;TEntryPoint&gt;(this WebApplicationFactory&lt;TEntryPoint&gt; factory, DateTimeOffset startInstant, out FakeTimeProvider fakeTimeProvider) where TEntryPoint : class</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>factory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory</a>&lt;TEntryPoint&gt;</dt>
+    <dd><p>The web application factory.</p>
+</dd>
+    <dt><code>startInstant</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a></dt>
+    <dd><p>The instant the fake clock should report at start.</p>
+</dd>
+    <dt><code>fakeTimeProvider</code> <span class="xref">FakeTimeProvider</span></dt>
+    <dd><p>When this method returns, contains the <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span> instance.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.mvc.testing.webapplicationfactory-1">WebApplicationFactory</a>&lt;TEntryPoint&gt;</dt>
+    <dd><p>A new factory with the fake time provider registered.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEntryPoint</code></dt>
+    <dd><p>The entry point class of the web application under test.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_WithFakeTimeProvider__1_Microsoft_AspNetCore_Mvc_Testing_WebApplicationFactory___0__System_DateTimeOffset_Microsoft_Extensions_Time_Testing_FakeTimeProvider___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Use this overload when a test needs a specific baseline — for example, a fixed-date
+fixture or a value that maps to a known database seed. Otherwise prefer the
+parameterless out-overload, which uses <a class="xref" href="Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.html#Trellis_Testing_AspNetCore_WebApplicationFactoryTimeExtensions_DefaultTestStartInstant">DefaultTestStartInstant</a>.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.AspNetCore/src/WebApplicationFactoryTimeExtensions.cs/#L21" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

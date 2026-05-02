@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Aggregate&lt;TId&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Aggregate&lt;TId&gt; | Trellis ">
+      
+      <meta name="description" content="Base class for aggregate roots in Domain-Driven Design. An aggregate is a cluster of domain objects (entities and value objects) that form a consistency boundary. The aggregate root is the only entry point for modifications and ensures all invariants within the boundary are maintained.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Aggregate_1.md&amp;value=---%0Auid%3A%20Trellis.Aggregate%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Aggregate`1">
+
+
+
+  <h1 id="Trellis_Aggregate_1" data-uid="Trellis.Aggregate`1" class="text-break">
+Class Aggregate&lt;TId&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for aggregate roots in Domain-Driven Design.
+An aggregate is a cluster of domain objects (entities and value objects) that form a consistency boundary.
+The aggregate root is the only entry point for modifications and ensures all invariants within the boundary are maintained.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class Aggregate&lt;TId&gt; : Entity&lt;TId&gt;, IEntity, IAggregate, IChangeTracking where TId : notnull</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TId</code></dt>
+    <dd><p>The type of the aggregate root's unique identifier. Must be non-nullable.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="Trellis.Entity-1.html">Entity</a>&lt;TId&gt;</div>
+      <div><span class="xref">Aggregate&lt;TId&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.IEntity.html">IEntity</a></div>
+      <div><a class="xref" href="Trellis.IAggregate.html">IAggregate</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking">IChangeTracking</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="Trellis.Entity-1.html#Trellis_Entity_1_Id">Entity&lt;TId&gt;.Id</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.Entity-1.html#Trellis_Entity_1_CreatedAt">Entity&lt;TId&gt;.CreatedAt</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.Entity-1.html#Trellis_Entity_1_LastModified">Entity&lt;TId&gt;.LastModified</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.Entity-1.html#Trellis_Entity_1_Equals_System_Object_">Entity&lt;TId&gt;.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.Entity-1.html#Trellis_Entity_1_GetHashCode">Entity&lt;TId&gt;.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_Aggregate_1_examples">Examples</h2>
+  <p>Simple aggregate with validation and domain events:</p>
+<pre><code class="lang-csharp">public class Order : Aggregate&lt;OrderId&gt;
+{
+    private readonly List&lt;OrderLine&gt; _lines = [];
+
+    public CustomerId CustomerId { get; private set; }
+    public OrderStatus Status { get; private set; }
+    public Money Total { get; private set; }
+    public DateTime? SubmittedAt { get; private set; }
+
+    // CreatedAt and LastModified are inherited from Entity&amp;lt;TId&amp;gt;
+    // and automatically managed by EntityTimestampInterceptor.
+
+    // Internal entities are protected and accessed through methods
+    public IReadOnlyList&lt;OrderLine&gt; Lines =&gt; _lines.AsReadOnly();
+
+    private Order(OrderId id, CustomerId customerId)
+        : base(id)
+    {
+        CustomerId = customerId;
+        Status = OrderStatus.Draft;
+        Total = Money.Zero;
+    }
+
+    public static Result&lt;Order&gt; Create(CustomerId customerId) =&gt;
+        customerId.ToResult(Error.UnprocessableContent.ForField("customerId", "invalid", "Customer ID required"))
+            .Map(id =&gt; new Order(OrderId.NewUnique(), id));
+
+    // All modifications go through methods that enforce invariants
+    public Result&lt;Order&gt; AddLine(ProductId productId, int quantity, Money unitPrice) =&gt;
+        this.ToResult()
+            .Ensure(_ =&gt; Status == OrderStatus.Draft,
+                   Error.UnprocessableContent.ForRule("invalid", "Cannot modify submitted order"))
+            .Ensure(_ =&gt; quantity &gt; 0,
+                   Error.UnprocessableContent.ForField("quantity", "invalid", "Quantity must be positive"))
+            .Ensure(_ =&gt; _lines.Count &lt; 100,
+                   Error.UnprocessableContent.ForRule("invalid", "Order cannot have more than 100 lines"))
+            .Tap(_ =&gt;
+            {
+                var line = new OrderLine(productId, quantity, unitPrice);
+                _lines.Add(line);
+                Total = Total.Add(unitPrice.Multiply(quantity));
+
+                // Raise domain event
+                DomainEvents.Add(new OrderLineAddedEvent(Id, productId, quantity));
+            });
+
+    public Result&lt;Order&gt; Submit() =&gt;
+        this.ToResult()
+            .Ensure(_ =&gt; Status == OrderStatus.Draft,
+                   Error.UnprocessableContent.ForRule("invalid", "Order already submitted"))
+            .Ensure(_ =&gt; _lines.Count &gt; 0,
+                   Error.UnprocessableContent.ForRule("invalid", "Cannot submit empty order"))
+            .Tap(_ =&gt;
+            {
+                Status = OrderStatus.Submitted;
+                SubmittedAt = DateTime.UtcNow;
+
+                // Raise domain event
+                DomainEvents.Add(new OrderSubmittedEvent(Id, CustomerId, Total, SubmittedAt.Value));
+            });
+}
+
+// Internal entity - never exposed outside the aggregate
+internal class OrderLine : Entity&lt;Guid&gt;
+{
+    public ProductId ProductId { get; }
+    public int Quantity { get; }
+    public Money UnitPrice { get; }
+
+    internal OrderLine(ProductId productId, int quantity, Money unitPrice)
+        : base(Guid.NewGuid())
+    {
+        ProductId = productId;
+        Quantity = quantity;
+        UnitPrice = unitPrice;
+    }
+}</code></pre>
+
+  <p>Repository pattern with aggregate persistence and event publishing:</p>
+<pre><code class="lang-csharp">public class OrderRepository
+{
+    private readonly IDbContext _dbContext;
+    private readonly IEventBus _eventBus;
+
+    public async Task&lt;Result&gt; SaveAsync(Order order, CancellationToken ct)
+    {
+        // 1. Save aggregate to database
+        _dbContext.Orders.Update(order);
+        await _dbContext.SaveChangesAsync(ct);
+
+        // 2. Publish uncommitted events
+        var events = order.UncommittedEvents();
+        foreach (var domainEvent in events)
+        {
+            await _eventBus.PublishAsync(domainEvent, ct);
+        }
+
+        // 3. Mark changes as committed
+        order.AcceptChanges();
+
+        return Result.Ok();
+    }
+}
+
+// Usage in an application service
+public async Task&lt;Result&gt; SubmitOrderAsync(OrderId orderId, CancellationToken ct)
+{
+    var order = await _orderRepository.GetAsync(orderId, ct);
+
+    return await order
+        .Bind(o =&gt; o.Submit())
+        .BindAsync(o =&gt; _orderRepository.SaveAsync(o, ct));
+}</code></pre>
+
+
+  <h2 id="Trellis_Aggregate_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Aggregates are the fundamental building blocks for maintaining consistency in DDD. Key characteristics:
+<ul><li>Consistency boundary: All business rules and invariants within the aggregate are enforced</li><li>Single entry point: External objects can only modify the aggregate through the aggregate root</li><li>Transaction boundary: Changes to an aggregate are typically saved atomically</li><li>Event source: Aggregates raise domain events to communicate state changes</li><li>Lifecycle: The root controls the lifecycle of all entities within the aggregate</li></ul>
+
+<p>
+Design principles for aggregates:
+<ul><li><strong>Keep them small</strong>: Only include entities that must change together</li><li><strong>Reference by ID</strong>: Use IDs to reference other aggregates, not object references</li><li><strong>Enforce invariants</strong>: All business rules must be maintained after each operation</li><li><strong>Eventual consistency</strong>: Use domain events for cross-aggregate consistency</li><li><strong>Protect internals</strong>: Internal entities should not be exposed outside the aggregate</li></ul>
+
+<p>
+This base class combines:
+<ul><li><a class="xref" href="Trellis.Entity-1.html">Entity&lt;TId&gt;</a>: Provides identity-based equality</li><li><a class="xref" href="Trellis.IAggregate.html">IAggregate</a>: Provides domain event tracking</li><li><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking">IChangeTracking</a>: Provides change tracking support</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Aggregate_1__ctor_" data-uid="Trellis.Aggregate`1.#ctor*"></a>
+
+  <h3 id="Trellis_Aggregate_1__ctor__0_" data-uid="Trellis.Aggregate`1.#ctor(`0)">
+  Aggregate(TId)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L245"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Aggregate-1.html">Aggregate&lt;TId&gt;</a> class with the specified identifier.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Aggregate(TId id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>id</code> <span class="xref">TId</span></dt>
+    <dd><p>The unique identifier for this aggregate root. Must not be null or default.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Aggregate_1__ctor__0__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This constructor should be called by derived classes to set the aggregate's identity.
+Aggregates typically have a private constructor and a static factory method (e.g., Create)
+that performs validation and returns a Result.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Aggregate_1_DomainEvents_" data-uid="Trellis.Aggregate`1.DomainEvents*"></a>
+
+  <h3 id="Trellis_Aggregate_1_DomainEvents" data-uid="Trellis.Aggregate`1.DomainEvents">
+  DomainEvents
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L181"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the list of domain events that have been raised but not yet committed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected List&lt;IDomainEvent&gt; DomainEvents { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="Trellis.IDomainEvent.html">IDomainEvent</a>&gt;</dt>
+    <dd><p>A mutable list of domain events. Add events to this list when state changes occur.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_Aggregate_1_DomainEvents_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This property is protected to allow derived classes to add events using:
+<pre><code class="lang-csharp">DomainEvents.Add(new SomethingHappenedEvent(...));</code></pre>
+
+<p>
+Events should be added within methods that change state, typically inside Tap or Map operations
+to ensure they're only added when the operation succeeds.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Aggregate_1_ETag_" data-uid="Trellis.Aggregate`1.ETag*"></a>
+
+  <h3 id="Trellis_Aggregate_1_ETag" data-uid="Trellis.Aggregate`1.ETag">
+  ETag
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the entity tag (ETag) for optimistic concurrency per RFC 9110.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string ETag { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>An opaque string token that is automatically generated each time the aggregate
+is persisted by the infrastructure layer.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_Aggregate_1_ETag_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This property enables optimistic concurrency control via HTTP conditional requests:
+<ul><li>GET responses include the <code>ETag</code> header (derived from this property)</li><li>PUT/PATCH/DELETE requests include <code>If-Match</code> header with the expected ETag</li><li>If the ETag doesn't match, the server returns 412 Precondition Failed</li></ul>
+
+<p>
+At the persistence layer, EF Core uses this as a concurrency token. The generated SQL
+includes <code>WHERE ETag = @originalETag</code>. If another process modified the aggregate,
+the update affects zero rows and EF Core throws <code>DbUpdateConcurrencyException</code>,
+which Trellis maps to <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a> (HTTP 409).
+</p>
+<p>
+The ETag is managed by <code>AggregateETagConvention</code> (marks it as a concurrency token)
+and <code>AggregateETagInterceptor</code> (generates a new value on save). Domain code should
+not modify this property directly.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Aggregate_1_IsChanged_" data-uid="Trellis.Aggregate`1.IsChanged*"></a>
+
+  <h3 id="Trellis_Aggregate_1_IsChanged" data-uid="Trellis.Aggregate`1.IsChanged">
+  IsChanged
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L233"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a value indicating whether the aggregate has uncommitted changes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonIgnore]
+public virtual bool IsChanged { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if there are uncommitted domain events; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_Aggregate_1_IsChanged_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This property implements <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking.ischanged">IsChanged</a>.
+The default implementation returns true if there are any uncommitted domain events.
+</p>
+<p>
+Override this property if your aggregate needs custom change tracking logic
+(e.g., tracking property changes independently of domain events).
+</p>
+<p>
+The <code>[JsonIgnore]</code> attribute prevents this property from being serialized,
+as it represents transient state that shouldn't be persisted.
+</p>
+</div>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Aggregate_1_AcceptChanges_" data-uid="Trellis.Aggregate`1.AcceptChanges*"></a>
+
+  <h3 id="Trellis_Aggregate_1_AcceptChanges" data-uid="Trellis.Aggregate`1.AcceptChanges">
+  AcceptChanges()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L336"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Marks all changes as committed and clears the list of uncommitted domain events.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AcceptChanges()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Aggregate_1_AcceptChanges_examples">Examples</h4>
+  <pre><code class="lang-csharp">// In a repository or unit of work
+public async Task&lt;Result&gt; SaveAsync(Order order, CancellationToken ct)
+{
+    using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+    try
+    {
+        // 1. Save aggregate
+        _dbContext.Orders.Update(order);
+        await _dbContext.SaveChangesAsync(ct);
+
+        // 2. Publish events
+        foreach (var evt in order.UncommittedEvents())
+        {
+            await _eventBus.PublishAsync(evt, ct);
+        }
+
+        // 3. Only after successful publish
+        order.AcceptChanges();
+
+        await transaction.CommitAsync(ct);
+        return Result.Ok();
+    }
+    catch (Exception ex)
+    {
+        await transaction.RollbackAsync(ct);
+        return new Error.Unexpected("transaction_failed") { Detail = ex.Message };
+    }
+}</code></pre>
+
+
+  <h4 class="section" id="Trellis_Aggregate_1_AcceptChanges_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method implements <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking.acceptchanges">AcceptChanges()</a>.
+It should be called after successfully persisting the aggregate and publishing its domain events.
+</p>
+<p>
+The method:
+<ul><li>Clears the <a class="xref" href="Trellis.Aggregate-1.html#Trellis_Aggregate_1_DomainEvents">DomainEvents</a> list</li><li>Causes <a class="xref" href="Trellis.Aggregate-1.html#Trellis_Aggregate_1_IsChanged">IsChanged</a> to return <code>false</code></li><li>Prepares the aggregate for the next set of changes</li></ul>
+
+<p>
+Important: Only call this method after events have been successfully published.
+If publishing fails, events should remain uncommitted so they can be retried.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Aggregate_1_UncommittedEvents_" data-uid="Trellis.Aggregate`1.UncommittedEvents*"></a>
+
+  <h3 id="Trellis_Aggregate_1_UncommittedEvents" data-uid="Trellis.Aggregate`1.UncommittedEvents">
+  UncommittedEvents()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L280"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets all domain events that have been raised since the last call to <a class="xref" href="Trellis.Aggregate-1.html#Trellis_Aggregate_1_AcceptChanges">AcceptChanges()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyList&lt;IDomainEvent&gt; UncommittedEvents()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Trellis.IDomainEvent.html">IDomainEvent</a>&gt;</dt>
+    <dd><p>A read-only list of uncommitted domain events. Returns an empty list if no events have been raised.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Aggregate_1_UncommittedEvents_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method is typically called by the repository or unit of work pattern after successfully
+persisting the aggregate to retrieve events for publishing.
+</p>
+<p>
+Typical workflow:
+<pre><code class="lang-csharp">// 1. Execute domain operation
+var result = order.Submit();
+
+// 2. Save to database
+await repository.SaveAsync(order);
+
+// 3. Publish events
+foreach (var evt in order.UncommittedEvents())
+{
+    await eventBus.PublishAsync(evt);
+}
+
+// 4. Clear events
+order.AcceptChanges();</code></pre>
+
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/DomainDrivenDesign/Aggregate.cs/#L162" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

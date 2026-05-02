@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Clean Architecture with Trellis | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Clean Architecture with Trellis | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/clean-architecture.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="clean-architecture-with-trellis">Clean Architecture with Trellis</h1>
+
+<p>If your API starts as “just a few endpoints,” it is easy for validation, orchestration, persistence, and business rules to end up tangled together.</p>
+<p>This article shows how Trellis helps you separate those concerns without losing momentum:</p>
+<ul>
+<li>start with a simple, direct architecture</li>
+<li>add an application layer only when the workflow becomes genuinely complex</li>
+<li>keep domain rules in aggregates and specifications</li>
+<li>keep failures explicit with <code>Result&lt;T&gt;</code></li>
+</ul>
+<div class="TIP">
+<h5>Tip</h5>
+<p>In Trellis, start simple first. Add CQRS or a dedicated application layer when you feel real pain, not because a template told you to.</p>
+</div>
+<h2 id="the-short-version">The short version</h2>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Recommended shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small API, focused service, straightforward rules</td>
+<td><strong>API -&gt; Domain -&gt; Infrastructure</strong></td>
+</tr>
+<tr>
+<td>Complex workflows, multiple integrations, rich orchestration</td>
+<td><strong>API -&gt; Application -&gt; Domain &lt;- Infrastructure</strong></td>
+</tr>
+<tr>
+<td>Unsure</td>
+<td>Start simple and evolve later</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-this-structure-works-well-with-trellis">Why this structure works well with Trellis</h2>
+<p>Trellis already gives you building blocks for clean boundaries:</p>
+<ul>
+<li><strong>Value objects</strong> validate input at the edge</li>
+<li><strong>Aggregates</strong> protect invariants in the domain</li>
+<li><strong><code>Result&lt;T&gt;</code></strong> keeps failures explicit</li>
+<li><strong>Specifications</strong> keep query logic reusable</li>
+<li><strong><code>IAggregate</code></strong> carries real behavior, not just identity</li>
+</ul>
+<p><code>IAggregate</code> is especially important here. It is <strong>not</strong> a marker interface. It:</p>
+<ul>
+<li>inherits <code>IChangeTracking</code></li>
+<li>exposes <code>ETag</code> for optimistic concurrency</li>
+<li>exposes <code>UncommittedEvents()</code></li>
+<li>relies on <code>AcceptChanges()</code> after persistence/event publication</li>
+</ul>
+<p>That means your architecture can treat aggregates as first-class consistency boundaries all the way from the API to persistence.</p>
+<h2 id="start-simple-api---domain---infrastructure">Start simple: API -&gt; Domain -&gt; Infrastructure</h2>
+<p>The simplest useful architecture is:</p>
+<pre><code class="lang-text">API -&gt; Domain -&gt; Infrastructure
+</code></pre>
+<p>Use it when one request maps cleanly to one aggregate operation.</p>
+<pre><code class="lang-mermaid">graph TB
+    Client[HTTP client] --&gt; Api[API layer]
+    Api --&gt; Domain[Domain layer]
+    Domain --&gt; Repo[Repository abstraction]
+    Repo --&gt; Infra[Infrastructure]
+    Infra --&gt; Db[(Database)]
+
+    style Api fill:#e1f5ff
+    style Domain fill:#fff4e1
+    style Infra fill:#f0f0f0
+</code></pre>
+<h3 id="a-working-example">A working example</h3>
+<p>The example below keeps each responsibility small:</p>
+<ul>
+<li>the request stays primitive</li>
+<li>the service converts primitives into value objects</li>
+<li>the aggregate enforces domain rules</li>
+<li>the repository hides persistence details</li>
+</ul>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+namespace SimpleArchitecture;
+
+public partial class UserId : RequiredGuid&lt;UserId&gt; { }
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+
+public sealed record RegisterUserRequest(string Email, string FirstName, string LastName);
+
+public sealed record UserRegistered(UserId UserId, DateTimeOffset OccurredAt) : IDomainEvent;
+
+public sealed class User : Aggregate&lt;UserId&gt;
+{
+    private User(UserId id, EmailAddress email, FirstName firstName, LastName lastName)
+        : base(id)
+    {
+        Email = email;
+        FirstName = firstName;
+        LastName = lastName;
+    }
+
+    private User() : base(null!)
+    {
+        Email = null!;
+        FirstName = null!;
+        LastName = null!;
+    }
+
+    public EmailAddress Email { get; private set; }
+    public FirstName FirstName { get; private set; }
+    public LastName LastName { get; private set; }
+
+    public static Result&lt;User&gt; TryCreate(
+        EmailAddress email,
+        FirstName firstName,
+        LastName lastName)
+    {
+        var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
+        user.DomainEvents.Add(new UserRegistered(user.Id, DateTimeOffset.UtcNow));
+        return Result.Ok(user);
+    }
+}
+
+public interface IUserRepository
+{
+    Task&lt;bool&gt; EmailExistsAsync(EmailAddress email, CancellationToken ct);
+    Task&lt;Result&lt;Unit&gt;&gt; AddAsync(User user, CancellationToken ct);
+}
+
+public sealed class RegisterUserService
+{
+    private readonly IUserRepository _repository;
+
+    public RegisterUserService(IUserRepository repository) =&gt; _repository = repository;
+
+    public async Task&lt;Result&lt;User&gt;&gt; HandleAsync(RegisterUserRequest request, CancellationToken ct)
+    {
+        var userResult = EmailAddress.TryCreate(request.Email, nameof(request.Email))
+            .Combine(FirstName.TryCreate(request.FirstName, nameof(request.FirstName)))
+            .Combine(LastName.TryCreate(request.LastName, nameof(request.LastName)))
+            .Bind(User.TryCreate);
+
+        if (!userResult.TryGetValue(out var user))
+            return userResult;
+
+        if (await _repository.EmailExistsAsync(user.Email, ct))
+            return Result.Fail&lt;User&gt;(new Error.Conflict(null, &quot;conflict&quot;) { Detail = $&quot;Email {user.Email} is already registered.&quot; });
+
+        var saveResult = await _repository.AddAsync(user, ct);
+        if (saveResult.TryGetError(out var saveError))
+            return Result.Fail&lt;User&gt;(saveError);
+
+        return Result.Ok(user);
+    }
+}
+</code></pre>
+<h3 id="why-this-version-stays-maintainable">Why this version stays maintainable</h3>
+<ul>
+<li><strong>API layer</strong> deals with transport shapes</li>
+<li><strong>Domain layer</strong> decides what a valid <code>User</code> is</li>
+<li><strong>Infrastructure</strong> decides how a <code>User</code> is stored</li>
+<li><strong>Errors stay explicit</strong> from edge to persistence</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In the simple version, orchestration can live in a controller, endpoint, or small service. The real goal is not “fewest classes.” The goal is “business rules stay out of infrastructure.”</p>
+</div>
+<h2 id="when-the-simple-version-starts-to-hurt">When the simple version starts to hurt</h2>
+<p>Move beyond the simple pattern when you notice things like:</p>
+<ul>
+<li>one request touches several repositories or external services</li>
+<li>you need retry logic, authorization, caching, or audit behavior around many use cases</li>
+<li>write-side workflows are much richer than read-side queries</li>
+<li>controllers or endpoints are becoming orchestration classes</li>
+</ul>
+<p>That is the moment to introduce an <strong>application layer</strong>.</p>
+<h2 id="add-an-application-layer-for-complex-use-cases">Add an application layer for complex use cases</h2>
+<p>Now the shape becomes:</p>
+<pre><code class="lang-text">API -&gt; Application -&gt; Domain &lt;- Infrastructure
+</code></pre>
+<pre><code class="lang-mermaid">graph TB
+    Client[HTTP client] --&gt; Api[API layer]
+    Api --&gt; App[Application layer]
+    App --&gt; Domain[Domain layer]
+    App --&gt; Repo[Repository interfaces]
+    Repo --&gt; Infra[Infrastructure]
+    Infra --&gt; Db[(Database)]
+
+    style Api fill:#e1f5ff
+    style App fill:#fffacd
+    style Domain fill:#fff4e1
+    style Infra fill:#f0f0f0
+</code></pre>
+<h3 id="what-changes">What changes?</h3>
+<p>The <strong>application layer</strong> owns orchestration:</p>
+<ul>
+<li>uniqueness checks</li>
+<li>repository calls</li>
+<li>integration with email, queues, or billing</li>
+<li>transaction boundaries</li>
+<li>event publication policies</li>
+</ul>
+<p>The <strong>domain layer</strong> still owns:</p>
+<ul>
+<li>invariants</li>
+<li>aggregate state transitions</li>
+<li>domain events</li>
+<li>specifications and value objects</li>
+</ul>
+<h3 id="a-working-application-layer-example">A working application-layer example</h3>
+<p>This version keeps validation at the edge, then hands a validated command to a handler.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+namespace ApplicationLayerExample;
+
+public partial class UserId : RequiredGuid&lt;UserId&gt; { }
+public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+public partial class LastName : RequiredString&lt;LastName&gt; { }
+
+public sealed record RegisterUserCommand(
+    EmailAddress Email,
+    FirstName FirstName,
+    LastName LastName)
+{
+    public static Result&lt;RegisterUserCommand&gt; TryCreate(string email, string firstName, string lastName) =&gt;
+        EmailAddress.TryCreate(email, nameof(email))
+            .Combine(FirstName.TryCreate(firstName, nameof(firstName)))
+            .Combine(LastName.TryCreate(lastName, nameof(lastName)))
+            .Map((validEmail, validFirstName, validLastName) =&gt;
+                new RegisterUserCommand(validEmail, validFirstName, validLastName));
+}
+
+public sealed record UserRegistered(UserId UserId, DateTimeOffset OccurredAt) : IDomainEvent;
+
+public sealed class User : Aggregate&lt;UserId&gt;
+{
+    private User(UserId id, EmailAddress email, FirstName firstName, LastName lastName)
+        : base(id)
+    {
+        Email = email;
+        FirstName = firstName;
+        LastName = lastName;
+        IsActive = true;
+    }
+
+    private User() : base(null!)
+    {
+        Email = null!;
+        FirstName = null!;
+        LastName = null!;
+    }
+
+    public EmailAddress Email { get; private set; }
+    public FirstName FirstName { get; private set; }
+    public LastName LastName { get; private set; }
+    public bool IsActive { get; private set; }
+
+    public static Result&lt;User&gt; TryCreate(
+        EmailAddress email,
+        FirstName firstName,
+        LastName lastName)
+    {
+        var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
+        user.DomainEvents.Add(new UserRegistered(user.Id, DateTimeOffset.UtcNow));
+        return Result.Ok(user);
+    }
+
+    public Result&lt;User&gt; Deactivate()
+    {
+        if (!IsActive)
+            return Result.Fail&lt;User&gt;(new Error.Conflict(null, &quot;domain.violation&quot;) { Detail = &quot;User is already inactive.&quot; });
+
+        IsActive = false;
+        return Result.Ok(this);
+    }
+}
+
+public interface IUserRepository
+{
+    Task&lt;bool&gt; EmailExistsAsync(EmailAddress email, CancellationToken ct);
+    Task&lt;Result&lt;Unit&gt;&gt; AddAsync(User user, CancellationToken ct);
+}
+
+public interface IWelcomeEmailSender
+{
+    Task&lt;Result&lt;Unit&gt;&gt; SendAsync(EmailAddress email, CancellationToken ct);
+}
+
+public sealed class RegisterUserHandler
+{
+    private readonly IUserRepository _repository;
+    private readonly IWelcomeEmailSender _welcomeEmailSender;
+
+    public RegisterUserHandler(IUserRepository repository, IWelcomeEmailSender welcomeEmailSender)
+    {
+        _repository = repository;
+        _welcomeEmailSender = welcomeEmailSender;
+    }
+
+    public async Task&lt;Result&lt;User&gt;&gt; HandleAsync(RegisterUserCommand command, CancellationToken ct)
+    {
+        if (await _repository.EmailExistsAsync(command.Email, ct))
+            return Result.Fail&lt;User&gt;(new Error.Conflict(null, &quot;conflict&quot;) { Detail = $&quot;Email {command.Email} is already registered.&quot; });
+
+        var userResult = User.TryCreate(command.Email, command.FirstName, command.LastName);
+        if (!userResult.TryGetValue(out var user))
+            return userResult;
+
+        var saveResult = await _repository.AddAsync(user, ct);
+        if (saveResult.TryGetError(out var saveError))
+            return Result.Fail&lt;User&gt;(saveError);
+
+        var emailResult = await _welcomeEmailSender.SendAsync(command.Email, ct);
+        if (emailResult.TryGetError(out var emailError))
+            return Result.Fail&lt;User&gt;(emailError);
+
+        return Result.Ok(user);
+    }
+}
+</code></pre>
+<h2 id="request-flow-at-a-glance">Request flow at a glance</h2>
+<pre><code class="lang-mermaid">sequenceDiagram
+    participant Client
+    participant API
+    participant App as Application
+    participant Domain
+    participant Repo as Repository
+
+    Client-&gt;&gt;API: POST /users
+    API-&gt;&gt;API: TryCreate value objects / command
+    API-&gt;&gt;App: Send validated request
+    App-&gt;&gt;Domain: Execute aggregate factory or method
+    App-&gt;&gt;Repo: Persist aggregate
+    Repo--&gt;&gt;App: Success / Failure
+    App--&gt;&gt;API: Result&lt;User&gt;
+    API--&gt;&gt;Client: HTTP response
+</code></pre>
+<h2 id="layer-responsibilities">Layer responsibilities</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Owns</th>
+<th>Does not own</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API</td>
+<td>HTTP, JSON, route/query/body binding, response mapping</td>
+<td>Domain rules, persistence logic</td>
+</tr>
+<tr>
+<td>Application</td>
+<td>Use-case orchestration, policies, transaction flow</td>
+<td>Core invariants, storage details</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td>Aggregates, entities, value objects, specifications, domain events</td>
+<td>HTTP, EF Core, message-bus wiring</td>
+</tr>
+<tr>
+<td>Infrastructure</td>
+<td>EF Core, repositories, external services</td>
+<td>Business decisions</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-aggregates-fit-into-the-architecture">How aggregates fit into the architecture</h2>
+<p>An aggregate root is your write-side consistency boundary.</p>
+<p>In Trellis:</p>
+<ul>
+<li><code>Aggregate&lt;TId&gt;</code> inherits <code>Entity&lt;TId&gt;</code></li>
+<li>it implements <code>IAggregate</code></li>
+<li>it tracks domain events internally</li>
+<li><code>UncommittedEvents()</code> returns the current event buffer</li>
+<li><code>AcceptChanges()</code> clears that buffer</li>
+<li><code>ETag</code> supports optimistic concurrency</li>
+</ul>
+<p>That is why write workflows usually look like this:</p>
+<ol>
+<li>create or load aggregate</li>
+<li>call aggregate method(s)</li>
+<li>persist aggregate</li>
+<li>publish <code>UncommittedEvents()</code></li>
+<li>call <code>AcceptChanges()</code></li>
+</ol>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Do not treat <code>IAggregate</code> as a marker. If your repository loads an aggregate, it should respect its <code>ETag</code>, change tracking, and uncommitted domain events.</p>
+</div>
+<h2 id="testing-strategy">Testing strategy</h2>
+<p>Clean architecture pays off fastest in tests.</p>
+<h3 id="domain-tests">Domain tests</h3>
+<p>Test aggregates and value objects without any infrastructure:</p>
+<ul>
+<li>creation rules</li>
+<li>state transitions</li>
+<li>event emission</li>
+<li>specifications</li>
+</ul>
+<h3 id="application-tests">Application tests</h3>
+<p>Test handlers or services with fakes:</p>
+<ul>
+<li>orchestration order</li>
+<li>conflict handling</li>
+<li>retries or side effects</li>
+</ul>
+<h3 id="api-tests">API tests</h3>
+<p>Test transport concerns separately:</p>
+<ul>
+<li>model binding</li>
+<li>HTTP status codes</li>
+<li>problem details responses</li>
+</ul>
+<h2 id="when-to-upgrade-from-simple-to-application-layer-architecture">When to upgrade from simple to application-layer architecture</h2>
+<p>Use the simple pattern by default. Introduce an application layer when:</p>
+<ul>
+<li>one endpoint orchestrates many steps</li>
+<li>the same workflow appears in multiple entry points</li>
+<li>command handling needs decorators/pipelines</li>
+<li>read and write concerns evolve at different speeds</li>
+</ul>
+<p>You do <strong>not</strong> need one pattern for the whole system. A codebase can keep simple flows simple and use handlers only where the complexity pays for them.</p>
+<h2 id="practical-rules-of-thumb">Practical rules of thumb</h2>
+<ol>
+<li><strong>Validate primitives at the edge</strong></li>
+<li><strong>Put invariants in aggregates</strong></li>
+<li><strong>Return <code>Result&lt;T&gt;</code> for expected failure paths</strong></li>
+<li><strong>Keep repositories boring</strong></li>
+<li><strong>Add orchestration layers only when orchestration is the real problem</strong></li>
+</ol>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="aggregate-factory-pattern.html">Aggregate Factory Pattern</a></li>
+<li><a href="primitives.html">Primitive Value Objects</a></li>
+<li><a href="specifications.html">Specifications</a></li>
+<li><a href="required-enum.html">RequiredEnum</a></li>
+<li>API surface for <code>Result&lt;T&gt;</code>, <code>Aggregate&lt;TId&gt;</code>, <code>IDomainEvent</code>, <code>Error.UnprocessableContent</code>, <code>Error.Conflict</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Value-object base classes (<code>RequiredString&lt;TSelf&gt;</code>, <code>RequiredGuid&lt;TSelf&gt;</code>, <code>EmailAddress</code>): <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/clean-architecture.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class RequiredEnum&lt;TSelf&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class RequiredEnum&lt;TSelf&gt; | Trellis ">
+      
+      <meta name="description" content="Base class for creating strongly-typed, behavior-rich enumeration value objects. Enum value objects are a DDD pattern that replaces C# enums with full-featured classes.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_RequiredEnum_1.md&amp;value=---%0Auid%3A%20Trellis.RequiredEnum%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.RequiredEnum`1">
+
+
+
+  <h1 id="Trellis_RequiredEnum_1" data-uid="Trellis.RequiredEnum`1" class="text-break">
+Class RequiredEnum&lt;TSelf&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L137"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for creating strongly-typed, behavior-rich enumeration value objects.
+Enum value objects are a DDD pattern that replaces C# enums with full-featured classes.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class RequiredEnum&lt;TSelf&gt; : IEquatable&lt;RequiredEnum&lt;TSelf&gt;&gt; where TSelf : RequiredEnum&lt;TSelf&gt;, IScalarValue&lt;TSelf, string&gt;</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TSelf</code></dt>
+    <dd><p>The derived enum value object type itself (CRTP pattern).</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">RequiredEnum&lt;TSelf&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum</a>&lt;TSelf&gt;&gt;</div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_RequiredEnum_1_examples">Examples</h2>
+  <p>Basic enum value object:</p>
+<pre><code class="lang-csharp">public partial class OrderState : RequiredEnum&lt;OrderState&gt;
+{
+    public static readonly OrderState Draft = new();
+    public static readonly OrderState Confirmed = new();
+    public static readonly OrderState Shipped = new();
+    public static readonly OrderState Delivered = new();
+    public static readonly OrderState Cancelled = new();
+}
+
+// The source generator automatically creates:
+// - IScalarValue&lt;OrderState, string&gt; interface implementation
+// - public static Result&lt;OrderState&gt; TryCreate(string value)
+// - public static Result&lt;OrderState&gt; TryCreate(string? value, string? fieldName = null)
+// - public static OrderState Parse(string s, IFormatProvider? provider)
+// - public static bool TryParse(string? s, IFormatProvider? provider, out OrderState result)
+// - [JsonConverter(typeof(RequiredEnumJsonConverter&lt;OrderState&gt;))] attribute
+
+// Usage - Value defaults to the field name
+var state = OrderState.Draft;           // Value = "Draft"
+var all = OrderState.GetAll();
+var result = OrderState.TryCreate("Draft");  // Result&lt;OrderState&gt;</code></pre>
+
+  <p>Enum value object with behavior, using field names by default and an override only where needed:</p>
+<pre><code class="lang-csharp">public partial class PaymentMethod : RequiredEnum&lt;PaymentMethod&gt;
+{
+    public static readonly PaymentMethod CreditCard = new(fee: 0.029m);
+    public static readonly PaymentMethod BankTransfer = new(fee: 0.005m);
+    [EnumValue("cash-payment")]
+    public static readonly PaymentMethod Cash = new(fee: 0m);
+
+    public decimal Fee { get; }
+
+    private PaymentMethod(decimal fee) =&gt; Fee = fee;
+
+    public decimal CalculateFee(decimal amount) =&gt; amount * Fee;
+}
+
+// CreditCard.Value == "CreditCard"
+// Cash.Value == "cash-payment"</code></pre>
+
+  <p>Using in ASP.NET Core DTOs with automatic validation:</p>
+<pre><code class="lang-csharp">public record UpdateOrderDto
+{
+    public OrderState State { get; init; } = null!;
+}
+
+// In controller - validation happens automatically
+[HttpPut("{id}")]
+public IActionResult UpdateOrder(Guid id, UpdateOrderDto dto)
+{
+    // If we reach here, dto.State is already validated!
+    return Ok(_orderService.UpdateState(id, dto.State));
+}</code></pre>
+
+
+  <h2 id="Trellis_RequiredEnum_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Enum value objects address limitations of C# enums:
+<ul><li><strong>Behavior</strong>: Each value can have associated behavior and properties</li><li><strong>Type safety</strong>: Invalid values are impossible (no <code>(OrderStatus)999</code>)</li><li><strong>Extensibility</strong>: Add methods, computed properties, and domain logic</li><li><strong>State machines</strong>: Model valid transitions between states</li></ul>
+
+<p>
+Each enum value object member is defined as a static readonly field:
+<ul><li>Members are discovered via reflection and cached for performance</li><li>The <a class="xref" href="Trellis.RequiredEnum-1.html#Trellis_RequiredEnum_1_Value">Value</a> property is the semantic string value. It defaults to the field name and can be overridden with <a class="xref" href="Trellis.EnumValueAttribute.html">EnumValueAttribute</a> only when the external name must differ.</li><li>The <a class="xref" href="Trellis.RequiredEnum-1.html#Trellis_RequiredEnum_1_Ordinal">Ordinal</a> property is secondary declaration-order metadata, not semantic identity</li></ul>
+
+<p>
+When used with the <code>partial</code> keyword, the PrimitiveValueObjectGenerator source generator
+automatically creates:
+<ul><li><code>IScalarValue&lt;TSelf, string&gt;</code> implementation for ASP.NET Core automatic validation</li><li><code>TryCreate(string)</code> - Factory method for non-nullable strings (required by IScalarValue)</li><li><code>TryCreate(string?, string?)</code> - Factory method with validation and custom field name</li><li><code>IParsable&lt;T&gt;</code> implementation (<code>Parse</code>, <code>TryParse</code>)</li><li>JSON serialization support via <code>RequiredEnumJsonConverter&lt;T&gt;</code></li><li>ASP.NET Core model binding from route/query/form/headers</li><li>OpenTelemetry activity tracing</li></ul>
+
+<p>
+Common use cases:
+<ul><li>Order/payment/shipping statuses</li><li>User roles and permissions</li><li>Document states in workflows</li><li>Any finite set of domain values with behavior</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_RequiredEnum_1__ctor_" data-uid="Trellis.RequiredEnum`1.#ctor*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1__ctor" data-uid="Trellis.RequiredEnum`1.#ctor">
+  RequiredEnum()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L187"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance. The symbolic value is assigned during member discovery.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected RequiredEnum()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_RequiredEnum_1_Ordinal_" data-uid="Trellis.RequiredEnum`1.Ordinal*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_Ordinal" data-uid="Trellis.RequiredEnum`1.Ordinal">
+  Ordinal
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L174"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets auto-generated declaration-order metadata for the member.
+This is a secondary infrastructure/detail value, not semantic identity.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Ordinal { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_RequiredEnum_1_Ordinal_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Ordinal values are assigned from declaration order (0, 1, 2, ...).
+Reordering fields changes ordinals, so they should not be treated as stable wire or storage contracts.</p>
+<p>
+Ordinal is lazily initialized on first access to avoid chicken-and-egg issues
+with static field initialization order.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_Value_" data-uid="Trellis.RequiredEnum`1.Value*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_Value" data-uid="Trellis.RequiredEnum`1.Value">
+  Value
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L152"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the string value of this enum value object member.
+Defaults to the field name during discovery and can be overridden with <a class="xref" href="Trellis.EnumValueAttribute.html">EnumValueAttribute</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Value { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_RequiredEnum_1_Value_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Value is lazily initialized on first access to avoid chicken-and-egg issues
+with static field initialization order.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_RequiredEnum_1_Equals_" data-uid="Trellis.RequiredEnum`1.Equals*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_Equals_System_Object_" data-uid="Trellis.RequiredEnum`1.Equals(System.Object)">
+  Equals(object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L239"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the specified object is equal to the current object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Equals(object? obj)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>obj</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare with the current object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the specified object  is equal to the current object; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_Equals_" data-uid="Trellis.RequiredEnum`1.Equals*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_Equals_Trellis_RequiredEnum__0__" data-uid="Trellis.RequiredEnum`1.Equals(Trellis.RequiredEnum{`0})">
+  Equals(RequiredEnum&lt;TSelf&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L242"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates whether the current object is equal to another object of the same type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Equals(RequiredEnum&lt;TSelf&gt;? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum</a>&lt;TSelf&gt;</dt>
+    <dd><p>An object to compare with this object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the current object is equal to the <code class="paramref">other</code> parameter; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_GetAll_" data-uid="Trellis.RequiredEnum`1.GetAll*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_GetAll" data-uid="Trellis.RequiredEnum`1.GetAll">
+  GetAll()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L195"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets all defined members of this enum value object type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IReadOnlyCollection&lt;TSelf&gt; GetAll()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlycollection-1">IReadOnlyCollection</a>&lt;TSelf&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_GetHashCode_" data-uid="Trellis.RequiredEnum`1.GetHashCode*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_GetHashCode" data-uid="Trellis.RequiredEnum`1.GetHashCode">
+  GetHashCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L236"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Serves as the default hash function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A hash code for the current object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_Is_" data-uid="Trellis.RequiredEnum`1.Is*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_Is__0___" data-uid="Trellis.RequiredEnum`1.Is(`0[])">
+  Is(params TSelf[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L223"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks if this instance is one of the specified values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool Is(params TSelf[] values)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>values</code> TSelf[]</dt>
+    <dd><p>The values to compare against.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if this instance matches any of the specified values; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_IsNot_" data-uid="Trellis.RequiredEnum`1.IsNot*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_IsNot__0___" data-uid="Trellis.RequiredEnum`1.IsNot(`0[])">
+  IsNot(params TSelf[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L230"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Checks if this instance is not one of the specified values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool IsNot(params TSelf[] values)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>values</code> TSelf[]</dt>
+    <dd><p>The values to compare against.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if this instance does not match any of the specified values; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_ToString_" data-uid="Trellis.RequiredEnum`1.ToString*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_ToString" data-uid="Trellis.RequiredEnum`1.ToString">
+  ToString()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L233"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a string that represents the current object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string ToString()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A string that represents the current object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_TryFromName_" data-uid="Trellis.RequiredEnum`1.TryFromName*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_TryFromName_System_String_System_String_" data-uid="Trellis.RequiredEnum`1.TryFromName(System.String,System.String)">
+  TryFromName(string?, string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L203"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Attempts to find a member by its symbolic value (case-insensitive).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TSelf&gt; TryFromName(string? name, string? fieldName = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The symbolic value to search for.</p>
+</dd>
+    <dt><code>fieldName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional field name for validation error messages.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TSelf&gt;</dt>
+    <dd><p>A <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> containing the matching member or a validation error.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="Trellis_RequiredEnum_1_op_Equality_" data-uid="Trellis.RequiredEnum`1.op_Equality*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_op_Equality_Trellis_RequiredEnum__0__Trellis_RequiredEnum__0__" data-uid="Trellis.RequiredEnum`1.op_Equality(Trellis.RequiredEnum{`0},Trellis.RequiredEnum{`0})">
+  operator ==(RequiredEnum&lt;TSelf&gt;?, RequiredEnum&lt;TSelf&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L251"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two instances are equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(RequiredEnum&lt;TSelf&gt;? left, RequiredEnum&lt;TSelf&gt;? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum</a>&lt;TSelf&gt;</dt>
+    <dd></dd>
+    <dt><code>right</code> <a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum</a>&lt;TSelf&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_RequiredEnum_1_op_Inequality_" data-uid="Trellis.RequiredEnum`1.op_Inequality*"></a>
+
+  <h3 id="Trellis_RequiredEnum_1_op_Inequality_Trellis_RequiredEnum__0__Trellis_RequiredEnum__0__" data-uid="Trellis.RequiredEnum`1.op_Inequality(Trellis.RequiredEnum{`0},Trellis.RequiredEnum{`0})">
+  operator !=(RequiredEnum&lt;TSelf&gt;?, RequiredEnum&lt;TSelf&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L255"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two instances are not equal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(RequiredEnum&lt;TSelf&gt;? left, RequiredEnum&lt;TSelf&gt;? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum</a>&lt;TSelf&gt;</dt>
+    <dd></dd>
+    <dt><code>right</code> <a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum</a>&lt;TSelf&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Primitives/RequiredEnum.cs/#L137" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

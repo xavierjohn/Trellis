@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Single Sign-On Integration | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Single Sign-On Integration | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-sso.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="single-sign-on-integration">Single Sign-On Integration</h1>
+
+<p><code>Trellis.Asp.Authorization</code> (shipped inside the <code>Trellis.Asp</code> package) turns an authenticated <code>JwtBearer</code> principal from any OIDC issuer (Entra ID, Auth0, Okta, Google, Keycloak) into a frozen <code>Actor</code> so handlers and endpoints stop parsing JWTs.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Validate Entra ID v2.0 tokens and project them onto an <code>Actor</code></td>
+<td><code>AddJwtBearer</code> + <code>AddEntraActorProvider(options?)</code></td>
+<td><a href="#entra-id-provider">Entra ID provider</a></td>
+</tr>
+<tr>
+<td>Validate any flat-claim OIDC token (Auth0, Okta, Google)</td>
+<td><code>AddJwtBearer</code> + <code>AddClaimsActorProvider(options?)</code></td>
+<td><a href="#generic-oidc-provider">Generic OIDC provider</a></td>
+</tr>
+<tr>
+<td>Project nested JSON claims (Keycloak <code>realm_access.roles</code>)</td>
+<td>Subclass <code>ClaimsActorProvider</code> + <code>AddCachingActorProvider&lt;T&gt;()</code></td>
+<td><a href="#nested-claim-providers">Nested-claim providers</a></td>
+</tr>
+<tr>
+<td>Use <code>roles</code> for app permissions (Entra app roles)</td>
+<td>Default <code>EntraActorOptions.MapPermissions</code></td>
+<td><a href="#claim-mapping">Claim mapping</a></td>
+</tr>
+<tr>
+<td>Use delegated scopes (<code>scp</code>) for permissions</td>
+<td>Override <code>EntraActorOptions.MapPermissions</code></td>
+<td><a href="#scope-and-permission-extraction">Scope and permission extraction</a></td>
+</tr>
+<tr>
+<td>Accept multi-tenant Entra tokens and pin allowed tenants</td>
+<td><code>JwtBearerOptions.TokenValidationParameters</code> + read <code>ActorAttributes.TenantId</code></td>
+<td><a href="#multi-tenant-entra">Multi-tenant Entra</a></td>
+</tr>
+<tr>
+<td>Use a fake actor in Development without a real IdP</td>
+<td><code>AddDevelopmentActorProvider(options?)</code> + <code>X-Test-Actor</code> header</td>
+<td><a href="#development-defaults">Development defaults</a></td>
+</tr>
+<tr>
+<td>Combine SSO with Trellis authorization rules</td>
+<td><code>IAuthorize</code> / <code>IAuthorizeResource&lt;T&gt;</code> via Mediator</td>
+<td><a href="#composition">Composition</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You front a Trellis service with <code>JwtBearer</code> and need a single, predictable <code>Actor</code> shape regardless of which OIDC provider issued the token.</li>
+<li>You want one configuration story for Entra (app roles), Auth0/Okta (delegated scopes), Google (sign-in only), and Keycloak (nested role claims).</li>
+<li>You need a Development-only seam (<code>X-Test-Actor</code>) that fail-closes outside <code>IsDevelopment()</code>.</li>
+<li>You need to host a multi-tenant Entra app and pin which tenants may call your API.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.Asp.Authorization</code> (namespace inside the <code>Trellis.Asp</code> package) exposes one set of DI extensions and four <code>IActorProvider</code> implementations.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddEntraActorProvider(this IServiceCollection, Action&lt;EntraActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>EntraActorProvider</code> (Entra v2.0 claim shape).</td>
+</tr>
+<tr>
+<td><code>AddClaimsActorProvider(this IServiceCollection, Action&lt;ClaimsActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>ClaimsActorProvider</code> (configurable flat-claim mapping).</td>
+</tr>
+<tr>
+<td><code>AddDevelopmentActorProvider(this IServiceCollection, Action&lt;DevelopmentActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>DevelopmentActorProvider</code>; reads <code>X-Test-Actor</code> JSON header; throws outside <code>IsDevelopment()</code>.</td>
+</tr>
+<tr>
+<td><code>AddCachingActorProvider&lt;T&gt;(this IServiceCollection)</code> where <code>T : class, IActorProvider</code></td>
+<td>DI extension</td>
+<td>Wraps <code>T</code> in <code>CachingActorProvider</code> so a single resolution task is shared per request.</td>
+</tr>
+<tr>
+<td><code>EntraActorOptions</code></td>
+<td>Options</td>
+<td><code>IdClaimType</code>, <code>MapPermissions</code>, <code>MapForbiddenPermissions</code>, <code>MapAttributes</code>.</td>
+</tr>
+<tr>
+<td><code>ClaimsActorOptions</code></td>
+<td>Options</td>
+<td><code>ActorIdClaim</code> (default <code>&quot;sub&quot;</code>), <code>PermissionsClaim</code> (default <code>&quot;permissions&quot;</code>). Verbatim claim-type match.</td>
+</tr>
+<tr>
+<td><code>DevelopmentActorOptions</code></td>
+<td>Options</td>
+<td><code>DefaultActorId</code>, <code>DefaultPermissions</code>, <code>ThrowOnMalformedHeader</code>.</td>
+</tr>
+<tr>
+<td><code>ActorAttributes</code> (in <code>Trellis.Authorization</code>)</td>
+<td>Constants</td>
+<td>Well-known attribute keys: <code>TenantId</code>, <code>PreferredUsername</code>, <code>AuthorizedParty</code>, <code>AuthorizedPartyAcr</code>, <code>AuthContextClassReference</code>, <code>IpAddress</code>, <code>MfaAuthenticated</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Asp
+</code></pre>
+<p>The actor providers ship in <code>Trellis.Asp</code> under namespace <code>Trellis.Asp.Authorization</code>. Domain primitives (<code>Actor</code>, <code>IActorProvider</code>, <code>ActorAttributes</code>) come from <code>Trellis.Authorization</code>. The legacy <code>Trellis.Asp.Authorization</code> package was absorbed into <code>Trellis.Asp</code>.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>Validate Entra v2.0 tokens with the standard ASP.NET Core <code>JwtBearer</code> middleware, register <code>EntraActorProvider</code>, and read the resolved <code>Actor</code> from a protected endpoint.</p>
+<pre><code class="lang-csharp">using System.Linq;
+using System.Threading;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+var builder = WebApplication.CreateBuilder(args);
+var auth = builder.Configuration.GetSection(&quot;Authentication&quot;);
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];
+        options.Audience  = auth[&quot;Audience&quot;];
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddEntraActorProvider();
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet(&quot;/me&quot;, [Authorize] async (IActorProvider actorProvider, CancellationToken ct) =&gt;
+{
+    var actor = await actorProvider.GetCurrentActorAsync(ct);
+    return Results.Ok(new
+    {
+        actor.Id,
+        Permissions = actor.Permissions.OrderBy(p =&gt; p).ToArray(),
+        TenantId = actor.GetAttribute(ActorAttributes.TenantId),
+        Mfa      = actor.GetAttribute(ActorAttributes.MfaAuthenticated),
+    });
+});
+
+app.Run();
+</code></pre>
+<p>Matching <code>appsettings.json</code>:</p>
+<pre><code class="lang-json">{
+  &quot;Authentication&quot;: {
+    &quot;Authority&quot;: &quot;https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0&quot;,
+    &quot;Audience&quot;:  &quot;&lt;api-client-id&gt;&quot;
+  }
+}
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The actor provider extracts an <code>Actor</code> from <code>HttpContext.User</code>. It does not validate tokens — keep <code>AddJwtBearer</code> (or any other authentication scheme) in front of it.</p>
+</div>
+<h2 id="provider-configuration">Provider configuration</h2>
+<p>Pick one provider per environment. The choice is driven by token shape, not by sign-in protocol.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EntraActorProvider</code></td>
+<td>Issuer is Microsoft Entra ID v2.0 and you want <code>oid</code> / <code>roles</code> / <code>tid</code> / <code>amr</code> mapped out of the box.</td>
+</tr>
+<tr>
+<td><code>ClaimsActorProvider</code></td>
+<td>Token has a flat actor-id claim and a flat permissions claim (Auth0 <code>permissions</code>, Okta <code>scp</code>, custom OIDC).</td>
+</tr>
+<tr>
+<td>Subclass of <code>ClaimsActorProvider</code></td>
+<td>Token has nested or computed claims (Keycloak <code>realm_access.roles</code>, claims merged from a database).</td>
+</tr>
+<tr>
+<td><code>DevelopmentActorProvider</code></td>
+<td>Local development or integration tests — <code>IsDevelopment()</code> only.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entra-id-provider">Entra ID provider</h3>
+<p>Use <code>AddEntraActorProvider</code> for Microsoft Entra ID (Azure AD) v2.0 tokens. The default mapping recognizes the standard Entra claim set without extra configuration.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+var auth = configuration.GetSection(&quot;Authentication&quot;);
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];   // https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0
+        options.Audience  = auth[&quot;Audience&quot;];    // api client id (no api:// prefix for v2.0 audiences)
+    });
+
+services.AddEntraActorProvider();
+</code></pre>
+<p><code>EntraActorProvider</code> derives from <code>ClaimsActorProvider</code> and overrides <code>GetCurrentActorAsync</code> to apply the Entra-specific delegates. When <code>IdClaimType</code> is the default long objectidentifier URI it falls back to the short <code>&quot;oid&quot;</code> claim before failing. See <code>EntraActorOptions</code> defaults in <a href="../api_reference/trellis-api-asp.html#entraactoroptions"><code>trellis-api-asp.md</code></a>.</p>
+<h3 id="generic-oidc-provider">Generic OIDC provider</h3>
+<p>For any provider whose token exposes the actor id and permissions as flat claim types — Auth0, Okta, Google, or a custom IdP — register <code>ClaimsActorProvider</code> and name the two claim types.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+var auth = configuration.GetSection(&quot;Authentication&quot;);
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];   // e.g. https://your-tenant.auth0.com/
+        options.Audience  = auth[&quot;Audience&quot;];    // your API audience
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim     = auth[&quot;ActorIdClaim&quot;]     ?? &quot;sub&quot;;
+    options.PermissionsClaim = auth[&quot;PermissionsClaim&quot;] ?? &quot;permissions&quot;;
+});
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Typical <code>ActorIdClaim</code></th>
+<th>Typical <code>PermissionsClaim</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth0 (RBAC)</td>
+<td><code>sub</code></td>
+<td><code>permissions</code></td>
+</tr>
+<tr>
+<td>Okta (custom claim)</td>
+<td><code>sub</code></td>
+<td><code>permissions</code> (or <code>scp</code> — see <a href="#scope-and-permission-extraction">Scope and permission extraction</a>)</td>
+</tr>
+<tr>
+<td>Google sign-in</td>
+<td><code>sub</code></td>
+<td>none — token only proves identity; load app permissions from your own store</td>
+</tr>
+</tbody>
+</table>
+<p>If the token only proves identity (Google is the canonical case), <code>Actor.Permissions</code> will be empty. That is a valid starting point: gate endpoints with <code>[Authorize]</code> for &quot;signed in&quot; and load fine-grained permissions from your database via a custom <code>IActorProvider</code> (see <a href="#composition">Composition</a>).</p>
+<h3 id="nested-claim-providers">Nested-claim providers</h3>
+<p><code>ClaimsActorOptions</code> matches <code>Claim.Type</code> verbatim — no JSON-path traversal. When a token contains a nested object (e.g. Keycloak's <code>{ &quot;realm_access&quot;: { &quot;roles&quot;: [...] } }</code>), the JWT handler stores the value as a raw JSON string under claim type <code>&quot;realm_access&quot;</code>. Subclass <code>ClaimsActorProvider</code> to project it.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Frozen;
+using System.Linq;
+using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+internal sealed record RealmAccess([property: JsonPropertyName(&quot;roles&quot;)] string[] Roles);
+
+[JsonSerializable(typeof(RealmAccess))]
+internal partial class KeycloakJsonContext : JsonSerializerContext { }
+
+public sealed class KeycloakActorProvider(
+    IHttpContextAccessor accessor,
+    IOptions&lt;ClaimsActorOptions&gt; options) : ClaimsActorProvider(accessor, options)
+{
+    public override Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var identity = HttpContextAccessor.HttpContext?.User.Identities
+            .FirstOrDefault(i =&gt; i.IsAuthenticated) as ClaimsIdentity
+            ?? throw new InvalidOperationException(&quot;No authenticated user.&quot;);
+
+        var sub = identity.FindFirst(Options.ActorIdClaim)?.Value
+            ?? throw new InvalidOperationException($&quot;Claim '{Options.ActorIdClaim}' missing.&quot;);
+
+        var raw = identity.FindFirst(&quot;realm_access&quot;)?.Value;
+        var roles = raw is null
+            ? FrozenSet&lt;string&gt;.Empty
+            : (JsonSerializer.Deserialize(raw, KeycloakJsonContext.Default.RealmAccess)?.Roles
+                ?? Array.Empty&lt;string&gt;()).ToFrozenSet();
+
+        return Task.FromResult(Actor.Create(sub, roles));
+    }
+}
+
+services.AddCachingActorProvider&lt;KeycloakActorProvider&gt;();
+</code></pre>
+<p><code>AddCachingActorProvider&lt;T&gt;</code> registers <code>T</code> as scoped and wraps it with <code>CachingActorProvider</code>, so the JSON parse runs once per request even if multiple handlers ask for the actor.</p>
+<h2 id="jwt-validation-options">JWT validation options</h2>
+<p>Trellis does not own JWT validation — that lives in <code>Microsoft.AspNetCore.Authentication.JwtBearer</code>. The fields <code>JwtBearerHandler</code> validates flow into Trellis as follows:</p>
+<table>
+<thead>
+<tr>
+<th><code>JwtBearerOptions</code> setting</th>
+<th>Effect on Trellis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Authority</code></td>
+<td>Determines OIDC discovery / signing keys. If validation fails, <code>HttpContext.User</code> is unauthenticated and any actor provider throws <code>InvalidOperationException(&quot;No authenticated user.&quot;)</code>.</td>
+</tr>
+<tr>
+<td><code>Audience</code> (or <code>TokenValidationParameters.ValidAudiences</code>)</td>
+<td>Must match the token <code>aud</code>. Mismatched audiences never reach the actor provider — the request is rejected with <code>401</code>.</td>
+</tr>
+<tr>
+<td><code>TokenValidationParameters.ValidIssuers</code></td>
+<td>Required when <code>Authority</code> does not match the literal <code>iss</code> claim (Google emits both <code>https://accounts.google.com</code> and <code>accounts.google.com</code>).</td>
+</tr>
+<tr>
+<td><code>TokenValidationParameters.ValidateIssuer = false</code></td>
+<td>Multi-tenant Entra requires this; tenant pinning then lives in <code>MapAttributes</code> or a custom validator. See <a href="#multi-tenant-entra">Multi-tenant Entra</a>.</td>
+</tr>
+<tr>
+<td><code>Events.OnTokenValidated</code></td>
+<td>The hook for synthesizing extra <code>Claim</code> instances before Trellis sees them — useful when your IdP issues identity but your app issues permissions.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = &quot;https://accounts.google.com&quot;;
+        options.Audience  = configuration[&quot;Authentication:Audience&quot;];
+        options.TokenValidationParameters.ValidIssuers =
+        [
+            &quot;https://accounts.google.com&quot;,
+            &quot;accounts.google.com&quot;,
+        ];
+    });
+</code></pre>
+<h2 id="claim-mapping">Claim mapping</h2>
+<p>Each provider exposes a small surface of mapping options. The full default tables (claim names, attribute keys, fall-back rules) live in <a href="../api_reference/trellis-api-asp.html#entraactoroptions"><code>trellis-api-asp.md</code></a>; this section covers the everyday overrides.</p>
+<h3 id="synthesizing-app-permissions-during-token-validation">Synthesizing app permissions during token validation</h3>
+<p>When the IdP only issues identity, add permission claims in <code>OnTokenValidated</code>. <code>ClaimsActorProvider</code> aggregates every <code>Claim</code> whose <code>Type</code> matches <code>PermissionsClaim</code> via <code>FindAll</code>, so multiple <code>Claim</code> instances of the same type are flattened automatically.</p>
+<pre><code class="lang-csharp">using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];
+        options.Audience  = auth[&quot;Audience&quot;];
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =&gt;
+            {
+                if (context.Principal?.Identity is not ClaimsIdentity identity)
+                    return Task.CompletedTask;
+
+                identity.AddClaim(new Claim(&quot;permissions&quot;, &quot;todos:read&quot;));
+
+                var email = identity.FindFirst(&quot;email&quot;)?.Value;
+                if (!string.IsNullOrWhiteSpace(email)
+                    &amp;&amp; email.EndsWith(&quot;@yourcompany.com&quot;, StringComparison.OrdinalIgnoreCase))
+                {
+                    identity.AddClaim(new Claim(&quot;permissions&quot;, &quot;todos:create&quot;));
+                }
+
+                return Task.CompletedTask;
+            },
+        };
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim     = &quot;sub&quot;;
+    options.PermissionsClaim = &quot;permissions&quot;;
+});
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>ClaimsActorProvider</code> only reads two claim types and never writes to <code>Actor.Attributes</code> or <code>Actor.ForbiddenPermissions</code>. Anything richer — ABAC attributes, deny lists, or computed permissions — belongs on <code>EntraActorProvider</code> (via <code>MapAttributes</code> / <code>MapForbiddenPermissions</code>) or a subclass. The full ABAC story is in <a href="integration-asp-authorization.html#customizing-claim-mapping">ASP.NET Core Authorization → Customizing claim mapping</a>.</p>
+</div>
+<h3 id="customizing-the-entra-mapping">Customizing the Entra mapping</h3>
+<p><code>EntraActorOptions</code> has three independent delegates and one identifier knob.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Override to...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IdClaimType</code></td>
+<td>long <code>objectidentifier</code> URI (falls back to short <code>&quot;oid&quot;</code>)</td>
+<td>Use <code>sub</code>, an employee ID, or a custom claim.</td>
+</tr>
+<tr>
+<td><code>MapPermissions</code></td>
+<td>union of <code>roles</code> and <code>ClaimTypes.Role</code></td>
+<td>Flatten Entra app roles into fine-grained permissions; merge DB-sourced grants.</td>
+</tr>
+<tr>
+<td><code>MapForbiddenPermissions</code></td>
+<td>empty <code>HashSet&lt;string&gt;</code></td>
+<td>Project a deny-list claim.</td>
+</tr>
+<tr>
+<td><code>MapAttributes</code></td>
+<td><code>tid</code>, <code>preferred_username</code>, <code>azp</code>, <code>azpacr</code>, <code>acrs</code> from claims; <code>ip_address</code> from connection; <code>mfa</code> from any <code>amr == &quot;mfa&quot;</code></td>
+<td>Add tenant-scoped or request-scoped attributes.</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Any exception thrown from <code>MapPermissions</code>, <code>MapForbiddenPermissions</code>, or <code>MapAttributes</code> is rewrapped by <code>EntraActorProvider</code> as <code>InvalidOperationException(&quot;EntraActorOptions.&lt;delegate&gt; threw an exception while mapping the authenticated user's claims.&quot;)</code>. The provider never silently defaults.</p>
+</div>
+<h2 id="scope-and-permission-extraction">Scope and permission extraction</h2>
+<p>Two common shapes for &quot;what is this token allowed to do&quot;:</p>
+<p><strong>App roles (Entra application permissions).</strong> Each role is a separate claim of type <code>roles</code>. The default <code>MapPermissions</code> already collects them.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+services.AddEntraActorProvider(options =&gt;
+{
+    var rolePermissionMap = new Dictionary&lt;string, string[]&gt;(StringComparer.Ordinal)
+    {
+        [&quot;Catalog.Admin&quot;]  = [&quot;products:read&quot;, &quot;products:write&quot;, &quot;products:delete&quot;],
+        [&quot;Catalog.Reader&quot;] = [&quot;products:read&quot;],
+    };
+
+    options.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;roles&quot;, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c =&gt; rolePermissionMap.TryGetValue(c.Value, out var perms) ? perms : Array.Empty&lt;string&gt;())
+        .ToHashSet(StringComparer.Ordinal);
+});
+</code></pre>
+<p><strong>Delegated scopes.</strong> Entra (and many other OAuth servers) emit a single <code>scp</code> claim whose value is a space-separated string. Split it before flattening into permissions.</p>
+<pre><code class="lang-csharp">services.AddEntraActorProvider(options =&gt;
+{
+    options.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;scp&quot;, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c =&gt; c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        .ToHashSet(StringComparer.Ordinal);
+});
+</code></pre>
+<p>Trellis does not enforce a permission naming convention — pick one (<code>products:read</code> or <code>Products.Read</code>) and stay consistent. Scoped permissions use <code>Actor.PermissionScopeSeparator</code> (<code>':'</code>); <code>actor.HasPermission(&quot;products:read&quot;, tenantId)</code> checks for the joined string <code>products:read:&lt;tenantId&gt;</code>. See <a href="../api_reference/trellis-api-authorization.html#actor"><code>trellis-api-authorization.md → Actor</code></a>.</p>
+<h2 id="multi-tenant-entra">Multi-tenant Entra</h2>
+<p>A multi-tenant Entra app accepts tokens from any tenant the app is consented in. <code>Authority</code> becomes <code>https://login.microsoftonline.com/common/v2.0</code> (or <code>/organizations/v2.0</code>), the token's <code>iss</code> is per-tenant, and your API decides which tenants are allowed.</p>
+<pre><code class="lang-csharp">using System;
+using System.Linq;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Trellis.Asp.Authorization;
+
+var allowedTenants = configuration.GetSection(&quot;Authentication:AllowedTenants&quot;).Get&lt;string[]&gt;()
+    ?? Array.Empty&lt;string&gt;();
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = &quot;https://login.microsoftonline.com/common/v2.0&quot;;
+        options.Audience  = configuration[&quot;Authentication:Audience&quot;];
+
+        options.TokenValidationParameters.ValidateIssuer = false;
+        options.TokenValidationParameters.IssuerValidator = (issuer, _, _) =&gt;
+            issuer.StartsWith(&quot;https://login.microsoftonline.com/&quot;, StringComparison.Ordinal)
+                ? issuer
+                : throw new SecurityTokenInvalidIssuerException($&quot;Untrusted issuer '{issuer}'.&quot;);
+    });
+
+services.AddEntraActorProvider();
+</code></pre>
+<p>Then enforce the tenant allow-list inside handlers using the <code>tid</code> attribute the default <code>MapAttributes</code> already populates:</p>
+<pre><code class="lang-csharp">using System.Linq;
+using Trellis;
+using Trellis.Authorization;
+
+var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
+
+if (tenantId is null || !allowedTenants.Contains(tenantId, StringComparer.Ordinal))
+    return Result.Fail(new Error.Forbidden(&quot;tenant.not-allowed&quot;) { Detail = $&quot;Tenant '{tenantId}' is not provisioned.&quot; });
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Tenant-scoped permissions ride on the same <code>Actor.HasPermission(name, scope)</code> helper: <code>actor.HasPermission(&quot;documents:read&quot;, tenantId)</code> checks <code>documents:read:&lt;tenantId&gt;</code>.</p>
+</div>
+<h2 id="development-defaults">Development defaults</h2>
+<p><code>AddDevelopmentActorProvider</code> reads an <code>X-Test-Actor</code> JSON header (case-insensitive property names) and falls back to a configurable default actor when the header is missing. It throws <code>InvalidOperationException</code> whenever <code>IHostEnvironment.IsDevelopment()</code> is <code>false</code> — including in Production with no header — which is the fail-closed safety net.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Trellis.Asp.Authorization;
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDevelopmentActorProvider(options =&gt;
+    {
+        options.DefaultActorId         = &quot;developer@local&quot;;
+        options.DefaultPermissions     = new HashSet&lt;string&gt; { &quot;todos:read&quot;, &quot;todos:create&quot; };
+        options.ThrowOnMalformedHeader = false;
+    });
+}
+else
+{
+    builder.Services.AddEntraActorProvider();
+}
+</code></pre>
+<p>Send a header from any HTTP client to impersonate a specific actor:</p>
+<pre><code class="lang-powershell">$actor = '{&quot;Id&quot;:&quot;local-user&quot;,&quot;Permissions&quot;:[&quot;todos:read&quot;,&quot;todos:create&quot;],&quot;ForbiddenPermissions&quot;:[],&quot;Attributes&quot;:{&quot;tid&quot;:&quot;local-tenant&quot;,&quot;mfa&quot;:&quot;false&quot;}}'
+Invoke-RestMethod https://localhost:5001/me -Headers @{ &quot;X-Test-Actor&quot; = $actor }
+</code></pre>
+<p>For test clients, <code>WebApplicationFactoryExtensions.CreateClientWithActor(...)</code> writes the same header (see <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a>).</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Use the <strong>same SSO provider</strong> in staging and production — only <code>Authority</code> and <code>Audience</code> should differ between environments. A staging path that swaps <code>EntraActorProvider</code> for <code>ClaimsActorProvider</code> (or vice versa) will hide token-format and claim-mapping bugs until they hit real users.</p>
+</div>
+<h2 id="composition">Composition</h2>
+<p>SSO sits on top of three Trellis seams: actor resolution, mediator authorization, and result pipelines.</p>
+<ul>
+<li><strong>Actor resolution.</strong> Every <code>IActorProvider</code> is scoped, so handlers, behaviors, and endpoints see the same <code>Actor</code> for the duration of a request. <code>AddCachingActorProvider&lt;T&gt;()</code> decorates any inner provider — Entra, Claims, or your subclass — without changing handler code.</li>
+<li><strong>Mediator pipeline.</strong> Once an <code>IActorProvider</code> is registered, <code>AuthorizationBehavior&lt;TMessage, TResponse&gt;</code> enforces <code>IAuthorize.RequiredPermissions</code> and <code>IAuthorizeResource&lt;T&gt;.Authorize(actor, resource)</code> and short-circuits the pipeline with a typed <code>Error.Forbidden</code>. Commands return <code>Result&lt;Unit&gt;</code>; ASP integration maps <code>Error.Forbidden</code> to RFC 7807 <code>403</code>.</li>
+<li><strong>Result pipelines.</strong> Inside handlers, <code>Actor</code> predicates return <code>bool</code>, so <code>Result.Ensure(actor.HasPermission(...), new Error.Forbidden(...))</code> plugs straight into <code>Bind</code> / <code>Map</code> chains.</li>
+</ul>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Mediator;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record DeleteDocumentCommand(string DocumentId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions { get; } = [&quot;documents:delete&quot;];
+}
+</code></pre>
+<p>The full mediator + resource-loader wiring (and the <code>AddResourceAuthorization&lt;TResource, TId, TLoader&gt;</code> helper) is documented in <a href="integration-asp-authorization.html#mediator-integration">ASP.NET Core Authorization → Mediator integration</a>.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Never authorize on <code>preferred_username</code>.</strong> It is a display claim and can change. Use <code>oid</code> (Entra) or <code>sub</code> (everyone else).</li>
+<li><strong>Use <code>ActorAttributes</code> constants.</strong> <code>actor.GetAttribute(ActorAttributes.TenantId)</code> survives renames; <code>actor.GetAttribute(&quot;tid&quot;)</code> does not.</li>
+<li><strong>Keep one mapping site.</strong> Flatten roles to permissions inside <code>MapPermissions</code> once, not in every handler.</li>
+<li><strong>Pick one naming convention for permissions.</strong> <code>todos:read</code> and <code>Todos.Read</code> are different strings — <code>Actor.Permissions</code> is a <code>FrozenSet&lt;string&gt;</code> with ordinal comparison.</li>
+<li><strong>Wrap expensive providers</strong> with <code>AddCachingActorProvider&lt;T&gt;()</code> so DB-backed permission lookups run once per request.</li>
+<li><strong>Keep <code>AddDevelopmentActorProvider</code> behind <code>IsDevelopment()</code>.</strong> The provider also fails closed at runtime, but the registration discipline avoids accidental dependency on <code>X-Test-Actor</code> from staging integration tests.</li>
+<li><strong>Match the audience exactly.</strong> The number-one cause of &quot;token validates somewhere else but not here&quot; is <code>Audience</code> not matching the token's <code>aud</code> claim.</li>
+<li><strong>Let mapper exceptions bubble.</strong> A buggy <code>MapPermissions</code> becomes <code>InvalidOperationException(&quot;EntraActorOptions.MapPermissions threw ...&quot;)</code>; surfacing it during development reveals bad role tables faster than a silent fallback.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>ASP DI surface (actor providers, options, response mapping): <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+<li>Domain primitives (<code>Actor</code>, <code>IActorProvider</code>, <code>IAuthorize</code>, <code>IAuthorizeResource&lt;T&gt;</code>, <code>ActorAttributes</code>): <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a></li>
+<li><code>Result</code>, <code>Error.Forbidden</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Deeper authorization patterns (claim mapping, ABAC, mediator integration, resource loaders): <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a></li>
+<li>End-to-end token-validation tests against real Entra: <a href="integration-entra-testing.html">Testing with Entra ID Tokens</a></li>
+<li>Test-client <code>X-Test-Actor</code> helper: <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-sso.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ToHttpResponse — Unified Response Verb | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ToHttpResponse — Unified Response Verb | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/asp-tohttpresponse.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="tohttpresponse--unified-response-verb">ToHttpResponse — Unified Response Verb</h1>
+
+<p><code>ToHttpResponse(...)</code> is the single Trellis verb for translating <code>Result</code>, <code>Result&lt;T&gt;</code>, <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>, and <code>Result&lt;Page&lt;T&gt;&gt;</code> into ASP.NET Core responses, returning <code>Microsoft.AspNetCore.Http.IResult</code> for both Minimal API and MVC hosts.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Map <code>Result&lt;T&gt;</code> to <code>200 OK</code> (or mapped Problem Details on failure)</td>
+<td><code>result.ToHttpResponse()</code> / <code>await ...ToHttpResponseAsync()</code></td>
+<td><a href="#quick-start">Quick start</a></td>
+</tr>
+<tr>
+<td>Send no body on success</td>
+<td>Return <code>Result&lt;Unit&gt;</code> (<code>Result.Ok()</code>) — emits <code>204 No Content</code></td>
+<td><a href="#basic-mapping">Basic mapping</a></td>
+</tr>
+<tr>
+<td>Project the response body separately from the domain value</td>
+<td><code>result.ToHttpResponse(body: domain =&gt; dto, configure: opts =&gt; ...)</code></td>
+<td><a href="#body-projection">Body projection</a></td>
+</tr>
+<tr>
+<td>Map <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> to RFC 9110 write semantics</td>
+<td><code>result.ToHttpResponse(opts =&gt; opts.CreatedAtRoute(...))</code></td>
+<td><a href="#created-responses">Created responses</a>, <a href="#writeoutcomet-variants">WriteOutcome variants</a></td>
+</tr>
+<tr>
+<td>Wrap as MVC <code>ActionResult&lt;T&gt;</code></td>
+<td>Chain <code>.AsActionResult&lt;T&gt;()</code> / <code>.AsActionResultAsync&lt;T&gt;()</code></td>
+<td><a href="#mvc-adapter">MVC adapter</a></td>
+</tr>
+<tr>
+<td>Add ETag / <code>Last-Modified</code> and honor conditional <code>GET</code>/<code>HEAD</code></td>
+<td><code>opts.WithETag(...).WithLastModified(...).EvaluatePreconditions()</code></td>
+<td><a href="#etag-and-conditional-requests">ETag and conditional requests</a></td>
+</tr>
+<tr>
+<td>Honor <code>Prefer: return=minimal</code> / <code>return=representation</code></td>
+<td><code>opts.HonorPrefer()</code></td>
+<td><a href="#prefer-header">Prefer header</a></td>
+</tr>
+<tr>
+<td>Return <code>206 Partial Content</code> for byte ranges</td>
+<td><code>opts.WithRange(from, to, total)</code> / <code>opts.WithRange(selector)</code></td>
+<td><a href="#range-responses">Range responses</a></td>
+</tr>
+<tr>
+<td>Return paginated JSON with RFC 8288 <code>Link</code> header</td>
+<td><code>result.ToHttpResponse(nextUrlBuilder, body)</code> on <code>Result&lt;Page&lt;T&gt;&gt;</code></td>
+<td><a href="#pagination">Pagination</a></td>
+</tr>
+<tr>
+<td>Override error → status mapping for one endpoint</td>
+<td><code>opts.WithErrorMapping&lt;TError&gt;(status)</code> / <code>opts.WithErrorMapping(err =&gt; ...)</code></td>
+<td><a href="#per-call-error-mapping">Per-call error mapping</a></td>
+</tr>
+<tr>
+<td>Render a standalone <code>Error</code> (no <code>Result</code> pipeline)</td>
+<td><code>error.ToHttpResponse(...)</code></td>
+<td><a href="#standalone-error">Standalone error</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You are writing endpoint code and need the exact overload, parameter order, or builder method for <code>ToHttpResponse</code>.</li>
+<li>You want to confirm what each <code>HttpResponseOptionsBuilder&lt;T&gt;</code> method does without scanning the API reference.</li>
+<li>You need to know which HTTP status / headers a given <code>Result</code> shape produces.</li>
+<li>You are migrating from a v1 ASP integration that used the legacy result-mapping helpers — see <a href="migration.html#aspnet-core-trellisasp">migration.md</a>.</li>
+</ul>
+<p>For broader ASP.NET integration topics (Problem Details rendering, scalar validation, route constraints, actor providers, controller examples), see <a href="integration-aspnet.html"><code>integration-aspnet.md</code></a>.</p>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Receiver</th>
+<th>Overload (simplified)</th>
+<th>Success status</th>
+<th>Failure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Error</code></td>
+<td><code>error.ToHttpResponse(configure?)</code></td>
+<td>n/a</td>
+<td>Problem Details</td>
+</tr>
+<tr>
+<td><code>Result&lt;T&gt;</code></td>
+<td><code>result.ToHttpResponse(configure?)</code></td>
+<td><code>200</code> (or <code>201</code> if <code>Created*</code> configured); <code>204</code> for <code>Result&lt;Unit&gt;</code></td>
+<td>Problem Details</td>
+</tr>
+<tr>
+<td><code>Result&lt;T&gt;</code></td>
+<td><code>result.ToHttpResponse(body, configure?)</code></td>
+<td>Same as above; body is <code>body(domain)</code></td>
+<td>Problem Details</td>
+</tr>
+<tr>
+<td><code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code></td>
+<td><code>result.ToHttpResponse(configure?)</code></td>
+<td>Variant-driven (<code>Created → 201</code>, <code>Updated → 200/204</code>, <code>UpdatedNoContent → 204</code>, <code>Accepted → 202</code>, <code>AcceptedNoContent → 202</code>)</td>
+<td>Problem Details</td>
+</tr>
+<tr>
+<td><code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code></td>
+<td><code>result.ToHttpResponse(body, configure?)</code></td>
+<td>Same; projected body</td>
+<td>Problem Details</td>
+</tr>
+<tr>
+<td><code>Result&lt;Page&lt;T&gt;&gt;</code></td>
+<td><code>result.ToHttpResponse(nextUrlBuilder, body, configure?)</code></td>
+<td><code>200</code> with <code>PagedResponse&lt;TBody&gt;</code> envelope + RFC 8288 <code>Link</code></td>
+<td>Problem Details</td>
+</tr>
+</tbody>
+</table>
+<p>Each overload also exposes <code>Task&lt;...&gt;</code> and <code>ValueTask&lt;...&gt;</code> async variants named <code>ToHttpResponseAsync</code> with identical signatures. The <code>configure</code> delegate runs against <code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code> (or the non-generic <code>HttpResponseOptionsBuilder</code> for the <code>Error</code> overload).</p>
+<p>Full signatures: <a href="../api_reference/trellis-api-asp.html">trellis-api-asp.md</a>.</p>
+<h3 id="httpresponseoptionsbuildertdomain--chainable-surface"><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code> — chainable surface</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WithETag(Func&lt;T, string&gt;)</code> / <code>WithETag(Func&lt;T, EntityTagValue&gt;)</code></td>
+<td>Emits <code>ETag</code>; the string overload wraps as <code>EntityTagValue.Strong</code>.</td>
+</tr>
+<tr>
+<td><code>WithLastModified(Func&lt;T, DateTimeOffset&gt;)</code></td>
+<td>Emits <code>Last-Modified</code> in RFC 1123 format.</td>
+</tr>
+<tr>
+<td><code>Vary(params string[])</code></td>
+<td>Appends to <code>Vary</code> (preserves existing values; case-insensitive dedupe).</td>
+</tr>
+<tr>
+<td><code>WithContentLanguage(params string[])</code> / <code>WithContentLocation(Func&lt;T, string&gt;)</code> / <code>WithAcceptRanges(string)</code></td>
+<td>Sets the matching response header.</td>
+</tr>
+<tr>
+<td><code>Created(string literal)</code> / <code>Created(Func&lt;T, string&gt;)</code></td>
+<td><code>201 Created</code> with literal or value-derived <code>Location</code>.</td>
+</tr>
+<tr>
+<td><code>CreatedAtRoute(name, Func&lt;T, RouteValueDictionary&gt;)</code></td>
+<td><code>201 Created</code> via <code>LinkGenerator.GetUriByName</code>. AOT-safe.</td>
+</tr>
+<tr>
+<td><code>CreatedAtAction(action, Func&lt;T, RouteValueDictionary&gt;, controller?)</code></td>
+<td>MVC <code>CreatedAtAction</code> equivalent. <strong>Not trim/AOT-safe</strong> — <code>RequiresUnreferencedCode</code> / <code>RequiresDynamicCode</code>.</td>
+</tr>
+<tr>
+<td><code>EvaluatePreconditions()</code></td>
+<td>On <code>GET</code>/<code>HEAD</code>, evaluates <code>If-Match</code>, <code>If-Unmodified-Since</code>, <code>If-None-Match</code>, <code>If-Modified-Since</code> against the configured ETag/<code>Last-Modified</code>. <strong>Not on by default.</strong></td>
+</tr>
+<tr>
+<td><code>HonorPrefer()</code></td>
+<td>Honors RFC 7240 <code>Prefer: return=minimal</code> / <code>return=representation</code>. Always emits <code>Vary: Prefer</code>; emits <code>Preference-Applied</code> only when honored. <strong>Not on by default.</strong></td>
+</tr>
+<tr>
+<td><code>WithRange(Func&lt;T, ContentRangeHeaderValue&gt;)</code></td>
+<td><code>206 Partial Content</code> with selector-driven <code>Content-Range</code> (or <code>200</code> if range covers the whole resource).</td>
+</tr>
+<tr>
+<td><code>WithRange(long from, long to, long totalLength)</code></td>
+<td>Static range variant; clamps <code>to</code> to <code>totalLength - 1</code>.</td>
+</tr>
+<tr>
+<td><code>WithErrorMapping(Func&lt;Error, int&gt;)</code></td>
+<td>Per-call error → status mapper. Highest precedence.</td>
+</tr>
+<tr>
+<td><code>WithErrorMapping&lt;TError&gt;(int status)</code></td>
+<td>Per-call override for a single error type.</td>
+</tr>
+</tbody>
+</table>
+<p>The non-generic <code>HttpResponseOptionsBuilder</code> (for <code>error.ToHttpResponse(...)</code>) only exposes <code>Vary</code>, <code>HonorPrefer</code>, and the two <code>WithErrorMapping</code> methods.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The options builder has no <code>body</code> method. To project the response body, use the <code>body</code> <strong>parameter</strong> of the <code>ToHttpResponse&lt;TDomain, TBody&gt;</code> overload. Selectors in the options builder always run against the <code>TDomain</code> value, not the projected body.</p>
+</div>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Asp
+</code></pre>
+<p>Register defaults in <code>Program.cs</code>:</p>
+<pre><code class="lang-csharp">builder.Services.AddTrellisAsp();
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>A read endpoint, in both API styles. Same <code>Result</code> pipeline, same verb.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Trellis;
+using Trellis.Asp;
+
+public sealed record TodoDto(Guid Id, string Title);
+
+// Minimal API
+app.MapGet(&quot;/todos/{id:guid}&quot;, async (Guid id, ITodoService svc, CancellationToken ct) =&gt;
+    await svc.GetAsync(id, ct).ToHttpResponseAsync());
+
+// MVC controller
+[ApiController]
+[Route(&quot;todos&quot;)]
+public sealed class TodosController(ITodoService svc) : ControllerBase
+{
+    [HttpGet(&quot;{id:guid}&quot;)]
+    public Task&lt;ActionResult&lt;TodoDto&gt;&gt; Get(Guid id, CancellationToken ct) =&gt;
+        svc.GetAsync(id, ct)
+           .ToHttpResponseAsync()
+           .AsActionResultAsync&lt;TodoDto&gt;();
+}
+</code></pre>
+<p><code>ToHttpResponseAsync</code> returns <code>Task&lt;IResult&gt;</code>; <code>AsActionResultAsync&lt;T&gt;</code> adapts it to <code>ActionResult&lt;T&gt;</code> for MVC signatures.</p>
+<h2 id="basic-mapping">Basic mapping</h2>
+<table>
+<thead>
+<tr>
+<th>Receiver shape</th>
+<th>Success status</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Result&lt;T&gt;</code> (no <code>Created*</code>)</td>
+<td><code>200 OK</code></td>
+<td><code>T</code> (or <code>body(domain)</code> if projecting)</td>
+</tr>
+<tr>
+<td><code>Result&lt;T&gt;</code> (with <code>Created*</code>)</td>
+<td><code>201 Created</code> + <code>Location</code></td>
+<td><code>T</code></td>
+</tr>
+<tr>
+<td><code>Result&lt;Unit&gt;</code></td>
+<td><code>204 No Content</code></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code></td>
+<td>Variant-driven (see <a href="#writeoutcomet-variants">WriteOutcome variants</a>)</td>
+<td>Variant-driven</td>
+</tr>
+<tr>
+<td><code>Result&lt;Page&lt;T&gt;&gt;</code> (paginated overload)</td>
+<td><code>200 OK</code> + <code>Link</code></td>
+<td><code>PagedResponse&lt;TBody&gt;</code></td>
+</tr>
+<tr>
+<td>Any <code>Fail(error)</code></td>
+<td>Mapped via <code>TrellisAspOptions</code> (or per-call override)</td>
+<td><code>application/problem+json</code></td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>Result&lt;Unit&gt;</code> for no-payload commands:</p>
+<pre><code class="lang-csharp">app.MapDelete(&quot;/todos/{id:guid}&quot;, async (Guid id, ITodoService svc, CancellationToken ct) =&gt;
+    await svc.DeleteAsync(id, ct).ToHttpResponseAsync()); // 204 on Ok, Problem Details on Fail
+</code></pre>
+<h2 id="body-projection">Body projection</h2>
+<p>Pass <code>body</code> as the <strong>second positional argument</strong> to project a DTO without losing access to the domain value for header selectors.</p>
+<pre><code class="lang-csharp">public sealed record TodoView(Guid Id, string Title, string ETag);
+
+app.MapGet(&quot;/todos/{id:guid}&quot;, async (Guid id, ITodoService svc, CancellationToken ct) =&gt;
+    await svc.GetAsync(id, ct).ToHttpResponseAsync(
+        body: t =&gt; new TodoView(t.Id, t.Title, $&quot;&quot;{t.Version}&quot;&quot;),
+        configure: opts =&gt; opts.WithETag(t =&gt; $&quot;&quot;{t.Version}&quot;&quot;)));
+</code></pre>
+<p>Selectors (<code>WithETag</code>, <code>WithLastModified</code>, <code>Created(Func&lt;T, string&gt;)</code>, <code>WithRange(selector)</code>, etc.) always receive the <strong>domain</strong> value, not the projected body.</p>
+<h2 id="etag-and-conditional-requests">ETag and conditional requests</h2>
+<p><code>EvaluatePreconditions()</code> opts in to RFC 9110 evaluation on safe methods (<code>GET</code>, <code>HEAD</code>). Pair it with <code>WithETag</code> and/or <code>WithLastModified</code>:</p>
+<pre><code class="lang-csharp">app.MapGet(&quot;/todos/{id:guid}&quot;, async (Guid id, ITodoService svc, CancellationToken ct) =&gt;
+    await svc.GetAsync(id, ct).ToHttpResponseAsync(opts =&gt; opts
+        .WithETag(t =&gt; $&quot;&quot;{t.Version}&quot;&quot;)
+        .WithLastModified(t =&gt; t.UpdatedAt)
+        .EvaluatePreconditions()));
+</code></pre>
+<p>Evaluation order (per <code>ConditionalRequestEvaluator</code>): <code>If-Match</code> → <code>If-Unmodified-Since</code> → <code>If-None-Match</code> → <code>If-Modified-Since</code>. Failed <code>If-Match</code> / <code>If-Unmodified-Since</code> → <code>412 Precondition Failed</code>; failed <code>If-None-Match</code> / <code>If-Modified-Since</code> on <code>GET</code>/<code>HEAD</code> → <code>304 Not Modified</code>. On unsafe methods, evaluate the precondition <strong>before</strong> the mutation (see <a href="integration-aspnet.html#conditional-requests"><code>integration-aspnet.md</code></a>).</p>
+<h2 id="prefer-header">Prefer header</h2>
+<p><code>HonorPrefer()</code> is meaningful on <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> updates: <code>Prefer: return=minimal</code> short-circuits <code>Updated → 204 No Content</code>; <code>return=representation</code> returns <code>200 OK</code> with the body. <code>Vary: Prefer</code> is always emitted when honored; <code>Preference-Applied</code> is emitted only when the preference was honored.</p>
+<pre><code class="lang-csharp">app.MapPut(&quot;/todos/{id:guid}&quot;, async (Guid id, UpdateTodo cmd, ITodoService svc, CancellationToken ct) =&gt;
+    await svc.UpdateAsync(id, cmd, ct).ToHttpResponseAsync(opts =&gt; opts
+        .WithETag(t =&gt; $&quot;&quot;{t.Version}&quot;&quot;)
+        .HonorPrefer()));
+</code></pre>
+<h2 id="created-responses">Created responses</h2>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>opts.Created(&quot;/orders/123&quot;)</code></td>
+<td><code>201 Created</code>, literal <code>Location</code>.</td>
+</tr>
+<tr>
+<td><code>opts.Created(o =&gt; $&quot;/orders/{o.Id}&quot;)</code></td>
+<td><code>201 Created</code>, value-derived <code>Location</code>.</td>
+</tr>
+<tr>
+<td><code>opts.CreatedAtRoute(&quot;Orders_GetById&quot;, o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id })</code></td>
+<td><code>201 Created</code>, link via <code>LinkGenerator.GetUriByName</code>. AOT-safe.</td>
+</tr>
+<tr>
+<td><code>opts.CreatedAtAction(&quot;GetById&quot;, o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id })</code></td>
+<td><code>201 Created</code>, MVC link. <strong>Not trim/AOT-safe.</strong></td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">app.MapPost(&quot;/orders&quot;, async (CreateOrder cmd, IOrderService svc, CancellationToken ct) =&gt;
+    await svc.CreateAsync(cmd, ct).ToHttpResponseAsync(opts =&gt; opts
+        .CreatedAtRoute(&quot;Orders_GetById&quot;, o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id })))
+   .WithName(&quot;Orders_Create&quot;);
+</code></pre>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>Under query-string API versioning, the <code>RouteValueDictionary</code> MUST include <code>[&quot;api-version&quot;] = ApiVersion</code>; otherwise the emitted <code>Location</code> omits the version segment and <code>404</code>s on dereference.</p>
+</div>
+<h3 id="writeoutcomet-variants"><code>WriteOutcome&lt;T&gt;</code> variants</h3>
+<p>When the receiver is <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>, the outcome variant drives status and headers — <code>Created*</code> builder methods are <strong>not</strong> required (they are required for <code>Result&lt;T&gt;</code> create endpoints). See <a href="integration-aspnet.html#writeoutcomet"><code>integration-aspnet.md → WriteOutcome&lt;T&gt;</code></a> for the full mapping table and command examples.</p>
+<h2 id="range-responses">Range responses</h2>
+<table>
+<thead>
+<tr>
+<th>Overload</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WithRange(Func&lt;T, ContentRangeHeaderValue&gt;)</code></td>
+<td>Returns <code>206</code> with selector-derived <code>Content-Range</code>. Returns <code>200</code> if the range covers the whole representation.</td>
+</tr>
+<tr>
+<td><code>WithRange(long from, long to, long totalLength)</code></td>
+<td>Static variant. Clamps <code>to</code> to <code>totalLength - 1</code>.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">app.MapGet(&quot;/blobs/{id:guid}&quot;, async (Guid id, IBlobService svc, CancellationToken ct) =&gt;
+    await svc.GetAsync(id, ct).ToHttpResponseAsync(opts =&gt; opts
+        .WithAcceptRanges(&quot;bytes&quot;)
+        .WithRange(b =&gt; new System.Net.Http.Headers.ContentRangeHeaderValue(0, b.Length - 1, b.Length))));
+</code></pre>
+<h2 id="pagination">Pagination</h2>
+<p><code>Result&lt;Page&lt;T&gt;&gt;</code> has a dedicated overload requiring <code>nextUrlBuilder</code> and a per-item <code>body</code> projector. The pagination signature is <strong>not</strong> the same as the <code>Result&lt;T&gt;</code> overload:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nextUrlBuilder</code></td>
+<td><code>Func&lt;Cursor, int, string&gt;</code></td>
+<td>Receives the cursor and the applied page limit; returns an absolute URL. Used for both <code>next</code> and <code>prev</code> links in the RFC 8288 <code>Link</code> header.</td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td><code>Func&lt;T, TBody&gt;</code></td>
+<td>Per-<strong>item</strong> projector (not per-page). Each <code>Page&lt;T&gt;</code> item is mapped to <code>TBody</code> for the envelope.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">app.MapGet(&quot;/todos&quot;, async (string? cursor, int? limit, ITodoService svc, HttpRequest req, CancellationToken ct) =&gt;
+    await svc.ListAsync(cursor, limit, ct).ToHttpResponseAsync(
+        nextUrlBuilder: (c, n) =&gt; $&quot;{req.Scheme}://{req.Host}{req.Path}?cursor={c}&amp;limit={n}&quot;,
+        body: t =&gt; new TodoDto(t.Id, t.Title)));
+</code></pre>
+<h2 id="per-call-error-mapping">Per-call error mapping</h2>
+<p>Override the global <code>TrellisAspOptions</code> defaults for a single endpoint. Per-call overrides have <strong>higher precedence</strong> than the global registration.</p>
+<pre><code class="lang-csharp">// Global default at composition root:
+builder.Services.AddTrellisAsp(opts =&gt; opts.MapError&lt;Error.Conflict&gt;(StatusCodes.Status409Conflict));
+
+// Per-call override for one endpoint:
+app.MapGet(&quot;/legacy/{id:guid}&quot;, async (Guid id, ITodoService svc, CancellationToken ct) =&gt;
+    await svc.GetAsync(id, ct).ToHttpResponseAsync(opts =&gt; opts
+        .WithErrorMapping&lt;Error.NotFound&gt;(StatusCodes.Status410Gone)));
+</code></pre>
+<p>For Problem Details payload rules and the full default mapping table, see <a href="integration-aspnet.html#error-mapping"><code>integration-aspnet.md → Error mapping</code></a> and <a href="integration-aspnet.html#problem-details-output"><code>integration-aspnet.md → Problem Details output</code></a>.</p>
+<h2 id="standalone-error">Standalone error</h2>
+<p>For diagnostic / fault-demo endpoints that produce an <code>Error</code> without a <code>Result</code> pipeline:</p>
+<pre><code class="lang-csharp">app.MapGet(&quot;/diagnostics/throttle&quot;,
+    () =&gt; new Error.TooManyRequests(&quot;rate-limit-policy&quot;) { Detail = &quot;10 req/min&quot; }
+        .ToHttpResponse(opts =&gt; opts.WithErrorMapping&lt;Error.TooManyRequests&gt;(StatusCodes.Status429TooManyRequests)));
+</code></pre>
+<p>The non-generic <code>HttpResponseOptionsBuilder</code> exposes <code>Vary</code>, <code>HonorPrefer</code>, and the two <code>WithErrorMapping</code> overloads only.</p>
+<h2 id="mvc-adapter">MVC adapter</h2>
+<p><code>AsActionResult&lt;T&gt;()</code> / <code>AsActionResultAsync&lt;T&gt;()</code> (in <code>ActionResultAdapterExtensions</code>) wrap the <code>IResult</code> so it satisfies <code>ActionResult&lt;T&gt;</code> signatures. The MVC pipeline still executes the same <code>IResult</code> via <code>IConvertToActionResult</code>.</p>
+<pre><code class="lang-csharp">[HttpPost]
+public Task&lt;ActionResult&lt;TodoDto&gt;&gt; Create(CreateTodo cmd, CancellationToken ct) =&gt;
+    _svc.CreateAsync(cmd, ct)
+        .ToHttpResponseAsync(opts =&gt; opts.CreatedAtRoute(
+            &quot;Todos_GetById&quot;,
+            t =&gt; new RouteValueDictionary { [&quot;id&quot;] = t.Id }))
+        .AsActionResultAsync&lt;TodoDto&gt;();
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>ToHttpResponse</code> writes via the Minimal API <code>Results.*</code> infrastructure, <strong>bypassing MVC output formatters</strong>. If an endpoint depends on a custom MVC formatter (e.g. XML), return an MVC <code>ObjectResult</code> directly for that endpoint and use <code>ToHttpResponse(...).AsActionResult&lt;T&gt;()</code> for the rest.</p>
+</div>
+<h2 id="composition">Composition</h2>
+<p><code>ToHttpResponseAsync</code> accepts both <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code> receivers, so it composes naturally at the end of a <code>Bind</code>/<code>Map</code>/<code>Ensure</code> chain.</p>
+<pre><code class="lang-csharp">app.MapPut(&quot;/todos/{id:guid}/title&quot;, async (Guid id, RenameTodo cmd, ITodoService svc, CancellationToken ct) =&gt;
+    await svc.GetAsync(id, ct)
+             .EnsureAsync(t =&gt; t.OwnerId == cmd.OwnerId,
+                          new Error.Forbidden(&quot;todos.rename&quot;))
+             .BindAsync((t, token) =&gt; svc.RenameAsync(t.Id, cmd.NewTitle, token), ct)
+             .ToHttpResponseAsync(opts =&gt; opts
+                 .WithETag(t =&gt; $&quot;&quot;{t.Version}&quot;&quot;)
+                 .HonorPrefer()));
+</code></pre>
+<p>Test the produced <code>IResult</code> directly without spinning up the host:</p>
+<pre><code class="lang-csharp">var http = (await result).ToHttpResponse(opts =&gt; opts.WithETag(t =&gt; $&quot;&quot;{t.Version}&quot;&quot;));
+await http.ExecuteAsync(httpContext);
+// Assert on httpContext.Response.StatusCode and headers.
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Pick the right receiver shape.</strong> Reads → <code>Result&lt;T&gt;</code>. Commands with a no-body success → <code>Result&lt;Unit&gt;</code> (auto <code>204</code>). Writes that need RFC 9110 status semantics (<code>201</code>/<code>202</code>/<code>204</code> with <code>Location</code>/<code>Retry-After</code>) → <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>. Lists → <code>Result&lt;Page&lt;T&gt;&gt;</code> with the paginated overload.</li>
+<li><strong>Use <code>CreatedAtRoute</code> for AOT.</strong> <code>CreatedAtAction</code> carries <code>RequiresUnreferencedCode</code> / <code>RequiresDynamicCode</code>. Pass <code>RouteValueDictionary</code> (not anonymous types) to stay AOT-safe.</li>
+<li><strong>Opt in to preconditions and <code>Prefer</code>.</strong> Both <code>EvaluatePreconditions()</code> and <code>HonorPrefer()</code> are off by default — call them where you need the behavior.</li>
+<li><strong>Selectors run on the domain value.</strong> When projecting via <code>body</code>, all <code>With*</code> selectors still receive the domain <code>T</code>. Use this to compute strong ETags from version fields the DTO does not expose.</li>
+<li><strong>Per-call mappings beat globals.</strong> <code>opts.WithErrorMapping&lt;TError&gt;(status)</code> overrides the <code>TrellisAspOptions</code> registration for that one call.</li>
+<li><strong>Don't pre-compute the <code>IResult</code>.</strong> Build it inside the endpoint handler so the configured <code>LinkGenerator</code> resolves at execute time with the live <code>HttpContext.RequestServices</code>.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-asp.html">trellis-api-asp.md</a></li>
+<li><code>Result&lt;T&gt;</code>, <code>WriteOutcome&lt;T&gt;</code>, <code>Page&lt;T&gt;</code>, <code>Cursor</code>, <code>Error</code> semantics: <a href="../api_reference/trellis-api-core.html">trellis-api-core.md</a></li>
+<li>Broader ASP.NET integration (Problem Details rendering, scalar validation, route constraints, actor providers, MVC patterns): <a href="integration-aspnet.html">integration-aspnet.md</a></li>
+<li>HTTP client side (<code>HttpResponseMessage</code> → <code>Result&lt;T&gt;</code>): <a href="integration-http.html">integration-http.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/asp-tohttpresponse.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

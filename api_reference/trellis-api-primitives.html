@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis API Primitives | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis API Primitives | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-primitives.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis-api-primitives">Trellis API Primitives</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Primitives</code><br>
+<strong>Namespaces:</strong> <code>Trellis</code>, <code>Trellis.Primitives</code><br>
+<strong>Purpose:</strong> the 13 built-in concrete value objects (<code>Age</code>, <code>CountryCode</code>, <code>CurrencyCode</code>, <code>EmailAddress</code>, <code>Hostname</code>, <code>IpAddress</code>, <code>LanguageCode</code>, <code>MonetaryAmount</code>, <code>Money</code>, <code>Percentage</code>, <code>PhoneNumber</code>, <code>Slug</code>, <code>Url</code>) plus VO-runtime infrastructure (<code>ParsableJsonConverter&lt;T&gt;</code>, <code>CompositeValueObjectJsonConverter&lt;T&gt;</code>, <code>PrimitiveValueObjectTrace</code>, <code>PrimitiveValueObjectTraceProviderBuilderExtensions</code>).</p>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<blockquote>
+<p><strong>Package scope.</strong> The <code>Required*&lt;TSelf&gt;</code> base classes (<code>RequiredString</code>, <code>RequiredEnum</code>, <code>RequiredInt</code>, <code>RequiredLong</code>, <code>RequiredDecimal</code>, <code>RequiredGuid</code>, <code>RequiredBool</code>, <code>RequiredDateTime</code>), validation attributes (<code>StringLengthAttribute</code>, <code>RangeAttribute</code>, <code>EnumValueAttribute</code>), <code>StringExtensions</code> (<code>NormalizeFieldName</code>, <code>ToCamelCase</code>, <code>ParseScalarValue</code>, <code>TryParseScalarValue</code>), and <code>RequiredEnumJsonConverter&lt;TRequiredEnum&gt;</code> live in <code>Trellis.Core</code>. The base contracts (<code>IScalarValue&lt;TSelf, TPrimitive&gt;</code>, <code>IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</code>) and base classes (<code>ValueObject</code>, <code>ScalarValueObject&lt;TSelf, T&gt;</code>) also live in <code>Trellis.Core</code>. <code>Trellis.Primitives</code> ships the concrete VOs that build on those bases plus the JSON/tracing infrastructure listed below. See <a href="trellis-api-core.html#primitive-value-object-base-classes">trellis-api-core.md</a> for the base-type reference.</p>
+<p>The incremental generator that emits the <code>TryCreate</code>/<code>Create</code>/<code>Parse</code>/<code>TryParse</code>/<code>JsonConverter</code> partial bodies for <code>Required*&lt;TSelf&gt;</code> derivations (<code>Trellis.Core.Generator</code>) is bundled inside <code>Trellis.Core.nupkg</code> under <code>analyzers/dotnet/cs/</code>. <code>Trellis.Primitives</code> no longer references its own generator package — installing <code>Trellis.Core</code> (or transitively, <code>Trellis.Primitives</code> which depends on it) attaches the analyzer automatically.</p>
+</blockquote>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You need one of the ready-made concrete value objects such as <code>EmailAddress</code>, <code>PhoneNumber</code>, <code>Money</code>, <code>CurrencyCode</code>, <code>Url</code>, or <code>Slug</code>.</li>
+<li>You need JSON/tracing infrastructure for primitives shipped by <code>Trellis.Primitives</code>.</li>
+<li>You are deciding whether to use a built-in primitive or define a custom <code>Required*&lt;TSelf&gt;</code> value object from <code>Trellis.Core</code>.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Validate an email string</td>
+<td><code>EmailAddress.TryCreate(...)</code></td>
+<td><a href="#emailaddress"><code>EmailAddress</code></a></td>
+</tr>
+<tr>
+<td>Validate optional phone input</td>
+<td><code>PhoneNumber.TryCreate(...)</code> and wrap absence with <code>Maybe&lt;PhoneNumber&gt;</code> at the domain seam</td>
+<td><a href="#phonenumber"><code>PhoneNumber</code></a>, <a href="trellis-api-core.html#public-readonly-struct-maybet-where-t--notnull">Core <code>Maybe&lt;T&gt;</code></a></td>
+</tr>
+<tr>
+<td>Represent money</td>
+<td><code>Money</code> / <code>MonetaryAmount</code> / <code>CurrencyCode</code></td>
+<td><a href="#money"><code>Money</code></a>, <a href="#monetaryamount"><code>MonetaryAmount</code></a>, <a href="#currencycode"><code>CurrencyCode</code></a></td>
+</tr>
+<tr>
+<td>Bind/serialize built-in scalar primitives</td>
+<td>Use generated converters from the primitive/base contracts; ASP validation is in <code>Trellis.Asp</code></td>
+<td><a href="#parsablejsonconvertert"><code>ParsableJsonConverter&lt;T&gt;</code></a>, <a href="trellis-api-asp.html#namespace-trellisaspvalidation">ASP validation</a></td>
+</tr>
+<tr>
+<td>Define a custom SKU/order-id primitive</td>
+<td>Use <code>partial class Sku : RequiredString&lt;Sku&gt;</code> or <code>partial class OrderId : RequiredGuid&lt;OrderId&gt;</code> from <code>Trellis.Core</code></td>
+<td><a href="trellis-api-core.html#primitive-value-object-base-classes">Core primitive base classes</a></td>
+</tr>
+<tr>
+<td>Add length/range constraints to custom primitives</td>
+<td>Use Trellis <code>[StringLength]</code> / <code>[Range]</code> attributes from <code>namespace Trellis</code>, not DataAnnotations</td>
+<td><a href="trellis-api-core.html#primitive-value-object-base-classes">Core attributes</a>, <a href="trellis-api-analyzers.html#diagnostics">TRLS017</a></td>
+</tr>
+<tr>
+<td>Add JSON for composite value objects</td>
+<td><code>CompositeValueObjectJsonConverter&lt;T&gt;</code></td>
+<td><a href="#compositevalueobjectjsonconvertert"><code>CompositeValueObjectJsonConverter&lt;T&gt;</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li>This file documents concrete primitives. Custom primitive base classes and Trellis validation attributes live in <a href="trellis-api-core.html#primitive-value-object-base-classes">trellis-api-core.md</a>.</li>
+<li>Use Trellis attributes when defining generated primitives; similarly named DataAnnotations attributes compile but are ignored by the Trellis generator.</li>
+<li>Keep primitive parsing out of handlers. Convert transport primitives to value objects at the DTO/controller/application seam, then pass shaped commands inward.</li>
+</ul>
+<h3 id="trellis-validation-attributes-vs-systemcomponentmodeldataannotations">Trellis validation attributes vs <code>System.ComponentModel.DataAnnotations</code></h3>
+<p>The Trellis validation attributes are <strong>class-targeted</strong> with <strong>different shapes</strong> than the same-named DataAnnotations types. Decorate the <code>partial class</code> definition of a <code>Required*&lt;TSelf&gt;</code>-derived value object, not a property. <code>[StringLength]</code> supports both <code>MaximumLength</code> (positional ctor argument) and <code>MinimumLength</code> (property initializer); the missing piece relative to DataAnnotations is <code>[RegularExpression]</code> — pattern checks go in <code>static partial void ValidateAdditional(string value, string fieldName, ref string? error)</code>.</p>
+<p><strong>Class-targeted (apply to the <code>partial class</code> of a <code>Required*&lt;TSelf&gt;</code>-derived value object):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Target</th>
+<th>Constructor(s)</th>
+<th>Use it for</th>
+<th>DataAnnotations equivalent that does <strong>not</strong> work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trellis.StringLengthAttribute</code></td>
+<td><code>class</code> (on the <code>partial class X : RequiredString&lt;X&gt;</code>)</td>
+<td><code>StringLengthAttribute(int maximumLength)</code> (use <code>MinimumLength = N</code> initializer for the lower bound; <code>maximumLength</code> must be <code>&gt;= 1</code>)</td>
+<td>Length constraint on a <code>RequiredString&lt;TSelf&gt;</code> value object. Generated <code>TryCreate</code> enforces <code>MinimumLength &lt;= length &lt;= MaximumLength</code> after the null/empty/whitespace check.</td>
+<td><code>[System.ComponentModel.DataAnnotations.StringLength(...)]</code> on the class fails with <code>CS0592</code> (DataAnnotations targets <code>Property | Field | Parameter</code>, not <code>Class</code>); on a member it compiles but is ignored by the Trellis generator. <code>TRLS017</code> is the analyzer guardrail for the class-placement case if <code>AttributeUsage</code> ever expands.</td>
+</tr>
+<tr>
+<td><code>Trellis.RangeAttribute</code></td>
+<td><code>class</code> (on the <code>partial class X : RequiredInt&lt;X&gt;</code> / <code>RequiredLong&lt;X&gt;</code> / <code>RequiredDecimal&lt;X&gt;</code>)</td>
+<td><code>(int min, int max)</code>, <code>(long min, long max)</code>, <code>(double min, double max)</code></td>
+<td>Numeric range constraint. The constructor selected determines which generator template fires.</td>
+<td><code>[Range(typeof(decimal), &quot;0.01&quot;, &quot;999999.99&quot;)]</code> — use <code>(double, double)</code> instead.</td>
+</tr>
+<tr>
+<td><strong>Pattern / regex</strong></td>
+<td>n/a</td>
+<td>n/a</td>
+<td>Override <code>static partial void ValidateAdditional(string value, string fieldName, ref string? error)</code> and run a <code>Regex.IsMatch(...)</code>. There is no <code>[RegularExpression]</code> attribute analog.</td>
+<td><code>[RegularExpression(@&quot;^[A-Z]{3}\d{4}$&quot;)]</code> — silently does nothing on a <code>Required*&lt;TSelf&gt;</code> class.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Field-targeted (apply to <code>public static readonly</code> members of a <code>RequiredEnum&lt;TSelf&gt;</code>-derived value object):</strong></p>
+<p><code>Trellis.EnumValueAttribute(string value)</code> overrides the external symbolic name for a single enum member. Apply it to a <code>public static readonly TSelf</code> field whose canonical name should differ from the C# field identifier (e.g., when serializing <code>Status.InProgress</code> as <code>&quot;in-progress&quot;</code>). Without the attribute, <code>RequiredEnum&lt;TSelf&gt;</code> falls back to the field name. <strong>This is the only Trellis primitive attribute that targets <code>AttributeTargets.Field</code> and takes a <code>string</code> argument</strong> — do not include it in the class-targeted table above.</p>
+<p>A property-targeted form like <code>[StringLength(20, MinimumLength = 3)] public string Value { get; }</code> produces <code>CS0592: Attribute is not valid on this declaration type</code> only if <code>[StringLength]</code> resolves to <code>Trellis.StringLengthAttribute</code>, which targets <code>AttributeTargets.Class</code> only. The DataAnnotations attribute of the same name targets properties/fields/parameters and compiles in those positions, but the Trellis source generator only inspects attributes on the partial class declaration, so a DataAnnotations attribute on a member of a <code>Required*&lt;TSelf&gt;</code>-derived class is silently ignored. <code>TRLS017</code> covers the converse case — a DataAnnotations <code>[StringLength]</code>/<code>[Range]</code> applied to the class itself.</p>
+<h2 id="types">Types</h2>
+<blockquote>
+<p>Base contracts (<code>IScalarValue&lt;TSelf, TPrimitive&gt;</code>, <code>IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</code>), base classes (<code>ValueObject</code>, <code>ScalarValueObject&lt;TSelf, T&gt;</code>), validation attributes (<code>RangeAttribute</code>, <code>StringLengthAttribute</code>, <code>EnumValueAttribute</code>), <code>StringExtensions</code>, the <code>Required*&lt;TSelf&gt;</code> base classes, and <code>RequiredEnumJsonConverter&lt;TRequiredEnum&gt;</code> are all documented in <a href="trellis-api-core.html">trellis-api-core.md</a>. They live in <code>Trellis.Core</code> and are used by every concrete VO listed below. The inherited <code>static TSelf Create(TPrimitive value)</code> factory documented on <code>ScalarValueObject&lt;TSelf, T&gt;</code> is <strong>not</strong> repeated on each concrete VO below.</p>
+</blockquote>
+<h3 id="primitivevalueobjecttrace"><code>PrimitiveValueObjectTrace</code></h3>
+<pre><code class="lang-csharp">public static class PrimitiveValueObjectTrace
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ActivitySource</code></td>
+<td><code>ActivitySource</code></td>
+<td>Shared OpenTelemetry source used by primitive creation/parsing paths.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>—</td>
+<td>No additional public methods.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="primitivevalueobjecttraceproviderbuilderextensions"><code>PrimitiveValueObjectTraceProviderBuilderExtensions</code></h3>
+<pre><code class="lang-csharp">public static class PrimitiveValueObjectTraceProviderBuilderExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>—</td>
+<td>Static extension container.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)</code></td>
+<td><code>TracerProviderBuilder</code></td>
+<td>Registers the Trellis primitive activity source with OpenTelemetry.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="parsablejsonconvertert"><code>ParsableJsonConverter&lt;T&gt;</code></h3>
+<pre><code class="lang-csharp">public class ParsableJsonConverter&lt;T&gt; : JsonConverter&lt;T&gt; where T : IParsable&lt;T&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>—</td>
+<td>Converter type; no public properties.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)</code></td>
+<td><code>T?</code></td>
+<td>Accepts JSON <code>string</code>, <code>number</code>, <code>true</code>, <code>false</code>, and <code>null</code>; converts to string and calls <code>T.Parse(raw, default)</code>. <code>null</code> throws because Trellis scalar types are non-nullable.</td>
+</tr>
+<tr>
+<td><code>public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)</code></td>
+<td><code>void</code></td>
+<td>Writes JSON numbers for numeric scalar types discovered via <code>ScalarValueObject&lt;,&gt;</code>; otherwise writes JSON strings.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="age"><code>Age</code></h3>
+<pre><code class="lang-csharp">public class Age : ScalarValueObject&lt;Age, int&gt;, IScalarValue&lt;Age, int&gt;, IFormattableScalarValue&lt;Age, int&gt;, IParsable&lt;Age&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>int</code></td>
+<td>Age in years.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Age&gt; TryCreate(int value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Age&gt;</code></td>
+<td>Validates <code>0 &lt;= value &lt;= 150</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Age&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Age&gt;</code></td>
+<td>Invariant string parsing.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Age&gt; TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)</code></td>
+<td><code>Result&lt;Age&gt;</code></td>
+<td>Culture-aware string parsing.</td>
+</tr>
+<tr>
+<td><code>public static Age Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>Age</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Age result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="countrycode"><code>CountryCode</code></h3>
+<pre><code class="lang-csharp">public class CountryCode : ScalarValueObject&lt;CountryCode, string&gt;, IScalarValue&lt;CountryCode, string&gt;, IParsable&lt;CountryCode&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>ISO 3166-1 alpha-2 code, stored uppercase.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;CountryCode&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;CountryCode&gt;</code></td>
+<td>Requires exactly two letters.</td>
+</tr>
+<tr>
+<td><code>public static CountryCode Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>CountryCode</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out CountryCode result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="currencycode"><code>CurrencyCode</code></h3>
+<pre><code class="lang-csharp">public class CurrencyCode : ScalarValueObject&lt;CurrencyCode, string&gt;, IScalarValue&lt;CurrencyCode, string&gt;, IParsable&lt;CurrencyCode&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>ISO 4217 code, stored uppercase.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;CurrencyCode&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;CurrencyCode&gt;</code></td>
+<td>Requires exactly three letters.</td>
+</tr>
+<tr>
+<td><code>public static CurrencyCode Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>CurrencyCode</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out CurrencyCode result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="emailaddress"><code>EmailAddress</code></h3>
+<pre><code class="lang-csharp">public partial class EmailAddress : ScalarValueObject&lt;EmailAddress, string&gt;, IScalarValue&lt;EmailAddress, string&gt;, IParsable&lt;EmailAddress&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>Trimmed email string.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;EmailAddress&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;EmailAddress&gt;</code></td>
+<td>Regex-based email validation.</td>
+</tr>
+<tr>
+<td><code>public static EmailAddress Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>EmailAddress</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out EmailAddress result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hostname"><code>Hostname</code></h3>
+<pre><code class="lang-csharp">public partial class Hostname : ScalarValueObject&lt;Hostname, string&gt;, IScalarValue&lt;Hostname, string&gt;, IParsable&lt;Hostname&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>RFC 1123 hostname.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Hostname&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Hostname&gt;</code></td>
+<td>RFC 1123 hostname validation.</td>
+</tr>
+<tr>
+<td><code>public static Hostname Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>Hostname</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Hostname result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ipaddress"><code>IpAddress</code></h3>
+<pre><code class="lang-csharp">public class IpAddress : ScalarValueObject&lt;IpAddress, string&gt;, IScalarValue&lt;IpAddress, string&gt;, IParsable&lt;IpAddress&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>Original trimmed IPv4/IPv6 text.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;IpAddress&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;IpAddress&gt;</code></td>
+<td>Uses <code>IPAddress.TryParse</code>.</td>
+</tr>
+<tr>
+<td><code>public IPAddress ToIPAddress()</code></td>
+<td><code>IPAddress</code></td>
+<td>Returns cached parsed address.</td>
+</tr>
+<tr>
+<td><code>public static IpAddress Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>IpAddress</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out IpAddress result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="languagecode"><code>LanguageCode</code></h3>
+<pre><code class="lang-csharp">public class LanguageCode : ScalarValueObject&lt;LanguageCode, string&gt;, IScalarValue&lt;LanguageCode, string&gt;, IParsable&lt;LanguageCode&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>ISO 639-1 alpha-2 code, stored lowercase.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;LanguageCode&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;LanguageCode&gt;</code></td>
+<td>Requires exactly two letters.</td>
+</tr>
+<tr>
+<td><code>public static LanguageCode Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>LanguageCode</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out LanguageCode result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="monetaryamount"><code>MonetaryAmount</code></h3>
+<pre><code class="lang-csharp">public class MonetaryAmount : ScalarValueObject&lt;MonetaryAmount, decimal&gt;, IScalarValue&lt;MonetaryAmount, decimal&gt;, IFormattableScalarValue&lt;MonetaryAmount, decimal&gt;, IParsable&lt;MonetaryAmount&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>decimal</code></td>
+<td>Rounded non-negative amount without currency.</td>
+</tr>
+<tr>
+<td><code>Zero</code></td>
+<td><code>MonetaryAmount</code></td>
+<td>Cached <code>0m</code> instance.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(decimal value, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Rejects negatives; rounds to two decimal places using <code>MidpointRounding.AwayFromZero</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(decimal? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Rejects <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Invariant string parsing.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Culture-aware string parsing.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Add(MonetaryAmount other)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Adds two amounts.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Subtract(MonetaryAmount other)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Subtracts and fails if result would become invalid.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Multiply(int quantity)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Rejects negative quantity.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Multiply(decimal multiplier)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Rejects negative multiplier.</td>
+</tr>
+<tr>
+<td><code>public static MonetaryAmount Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>MonetaryAmount</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out MonetaryAmount result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+<tr>
+<td><code>public static explicit operator MonetaryAmount(decimal value)</code></td>
+<td><code>MonetaryAmount</code></td>
+<td>Explicit cast using <code>Create(decimal)</code>.</td>
+</tr>
+<tr>
+<td><code>public override string ToString()</code></td>
+<td><code>string</code></td>
+<td>Invariant decimal string.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; Sum(IEnumerable&lt;MonetaryAmount&gt; values)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Returns <code>Zero</code> for empty collections.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compositevalueobjectjsonconvertert"><code>CompositeValueObjectJsonConverter&lt;T&gt;</code></h3>
+<pre><code class="lang-csharp">public sealed class CompositeValueObjectJsonConverter&lt;T&gt; : JsonConverter&lt;T&gt;
+    where T : ValueObject
+</code></pre>
+<p>Convention-based JSON converter for composite value objects. Each public read-only instance property
+becomes a JSON field (camelCase of the property name). The &quot;primitive type&quot; for each field is the
+underlying primitive of an <code>IScalarValue&lt;TSelf, TPrimitive&gt;</code> property, or the property's own type when it
+is already a primitive. The target type must expose a public static
+<code>Result&lt;T&gt; TryCreate(p1, ..., pN[, string? fieldName])</code> whose parameters are the primitive types in the
+order the properties are declared.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)</code></td>
+<td><code>T?</code></td>
+<td>Reads a JSON object, populates parameters by JSON property name (case-insensitive), invokes <code>TryCreate</code>, and throws <code>TrellisJsonValidationException</code> with the error display message on failure. Throws <code>TrellisJsonValidationException</code> for missing required properties.</td>
+</tr>
+<tr>
+<td><code>public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)</code></td>
+<td><code>void</code></td>
+<td>Writes one JSON property per public instance property in declaration order, using the underlying primitive value for <code>IScalarValue&lt;,&gt;</code> properties.</td>
+</tr>
+</tbody>
+</table>
+<p>Apply via <code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;MyVo&gt;))]</code> on the value object type.
+Reflection is performed once per generic instantiation and cached. <strong>Not Native AOT compatible</strong> — for AOT
+scenarios, hand-write a <code>JsonConverter&lt;T&gt;</code>.</p>
+<blockquote>
+<p><strong>Pattern reference.</strong> For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO (<code>ShippingAddress</code>-style), see <a href="trellis-api-cookbook.html#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Cookbook Recipe 13</a>. Without this <code>[JsonConverter]</code> attribute on a request DTO's composite <code>[OwnedEntity]</code> property, model binding falls back to default construction and <strong>silently bypasses <code>TryCreate</code></strong> — the inner-field validation never runs and an invalid payload propagates into the domain layer.</p>
+</blockquote>
+<h3 id="money"><code>Money</code></h3>
+<pre><code class="lang-csharp">public class Money : ValueObject
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Amount</code></td>
+<td><code>decimal</code></td>
+<td>Currency-aware rounded amount.</td>
+</tr>
+<tr>
+<td><code>Currency</code></td>
+<td><code>CurrencyCode</code></td>
+<td>ISO 4217 currency code.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Money&gt; TryCreate(decimal amount, string currencyCode, string? fieldName = null)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Rejects negative amounts and invalid currency codes.</td>
+</tr>
+<tr>
+<td><code>public static Money Create(decimal amount, string currencyCode)</code></td>
+<td><code>Money</code></td>
+<td>Throwing factory.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Add(Money other)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Requires matching currencies.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Subtract(Money other)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Requires matching currencies and non-negative result.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Multiply(decimal multiplier)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Rejects negative multiplier.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Multiply(int quantity)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Rejects negative quantity.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Divide(decimal divisor)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Divisor must be positive.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Divide(int divisor)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Divisor must be positive.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money[]&gt; Allocate(params int[] ratios)</code></td>
+<td><code>Result&lt;Money[]&gt;</code></td>
+<td>Ratio-based split with remainder distribution.</td>
+</tr>
+<tr>
+<td><code>public bool IsGreaterThan(Money other)</code></td>
+<td><code>bool</code></td>
+<td>False when currencies differ.</td>
+</tr>
+<tr>
+<td><code>public bool IsGreaterThanOrEqual(Money other)</code></td>
+<td><code>bool</code></td>
+<td>False when currencies differ.</td>
+</tr>
+<tr>
+<td><code>public bool IsLessThan(Money other)</code></td>
+<td><code>bool</code></td>
+<td>False when currencies differ.</td>
+</tr>
+<tr>
+<td><code>public bool IsLessThanOrEqual(Money other)</code></td>
+<td><code>bool</code></td>
+<td>False when currencies differ.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Money&gt; Zero(string currencyCode = &quot;USD&quot;)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Currency-aware zero instance.</td>
+</tr>
+<tr>
+<td><code>public override string ToString()</code></td>
+<td><code>string</code></td>
+<td>Invariant amount plus currency code.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Money&gt; Sum(IEnumerable&lt;Money&gt; values)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Fails for empty or mixed-currency collections.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="percentage"><code>Percentage</code></h3>
+<pre><code class="lang-csharp">public class Percentage : ScalarValueObject&lt;Percentage, decimal&gt;, IScalarValue&lt;Percentage, decimal&gt;, IFormattableScalarValue&lt;Percentage, decimal&gt;, IParsable&lt;Percentage&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>decimal</code></td>
+<td>Percentage value in the range <code>0</code> to <code>100</code>.</td>
+</tr>
+<tr>
+<td><code>Zero</code></td>
+<td><code>Percentage</code></td>
+<td>Cached <code>0%</code> instance.</td>
+</tr>
+<tr>
+<td><code>Full</code></td>
+<td><code>Percentage</code></td>
+<td>Cached <code>100%</code> instance.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(decimal value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Rejects values outside <code>0..100</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(decimal? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Rejects <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Invariant string parsing; trims an optional trailing <code>%</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Culture-aware string parsing; trims an optional trailing <code>%</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; FromFraction(decimal fraction, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Converts <code>0..1</code> fractions into <code>0..100</code> percentages.</td>
+</tr>
+<tr>
+<td><code>public decimal AsFraction()</code></td>
+<td><code>decimal</code></td>
+<td>Converts <code>Value</code> to a <code>0..1</code> fraction.</td>
+</tr>
+<tr>
+<td><code>public decimal Of(decimal amount)</code></td>
+<td><code>decimal</code></td>
+<td>Calculates this percentage of <code>amount</code>.</td>
+</tr>
+<tr>
+<td><code>public static Percentage Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>Percentage</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Percentage result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+<tr>
+<td><code>public static explicit operator Percentage(decimal value)</code></td>
+<td><code>Percentage</code></td>
+<td>Explicit cast using <code>Create(decimal)</code>.</td>
+</tr>
+<tr>
+<td><code>public override string ToString()</code></td>
+<td><code>string</code></td>
+<td>Appends <code>%</code> to <code>Value</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="phonenumber"><code>PhoneNumber</code></h3>
+<pre><code class="lang-csharp">public partial class PhoneNumber : ScalarValueObject&lt;PhoneNumber, string&gt;, IScalarValue&lt;PhoneNumber, string&gt;, IParsable&lt;PhoneNumber&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>Normalized E.164 phone number.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;PhoneNumber&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;PhoneNumber&gt;</code></td>
+<td>Removes spaces, dashes, and parentheses, then validates E.164.</td>
+</tr>
+<tr>
+<td><code>public static PhoneNumber Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>PhoneNumber</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out PhoneNumber result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+<tr>
+<td><code>public string GetCountryCode()</code></td>
+<td><code>string</code></td>
+<td>Extracts the E.164 country calling code.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="slug"><code>Slug</code></h3>
+<pre><code class="lang-csharp">public partial class Slug : ScalarValueObject&lt;Slug, string&gt;, IScalarValue&lt;Slug, string&gt;, IParsable&lt;Slug&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>Lowercase slug.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Slug&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Slug&gt;</code></td>
+<td>Validates lowercase letters, digits, and single hyphen separators.</td>
+</tr>
+<tr>
+<td><code>public static Slug Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>Slug</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Slug result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="url"><code>Url</code></h3>
+<pre><code class="lang-csharp">public class Url : ScalarValueObject&lt;Url, string&gt;, IScalarValue&lt;Url, string&gt;, IParsable&lt;Url&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>Absolute URI string.</td>
+</tr>
+<tr>
+<td><code>Scheme</code></td>
+<td><code>string</code></td>
+<td>URI scheme.</td>
+</tr>
+<tr>
+<td><code>Host</code></td>
+<td><code>string</code></td>
+<td>URI host.</td>
+</tr>
+<tr>
+<td><code>Port</code></td>
+<td><code>int</code></td>
+<td>URI port.</td>
+</tr>
+<tr>
+<td><code>Path</code></td>
+<td><code>string</code></td>
+<td>Absolute path.</td>
+</tr>
+<tr>
+<td><code>Query</code></td>
+<td><code>string</code></td>
+<td>Query string, including leading <code>?</code>.</td>
+</tr>
+<tr>
+<td><code>IsSecure</code></td>
+<td><code>bool</code></td>
+<td>True for HTTPS URLs.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Url&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Url&gt;</code></td>
+<td>Requires an absolute HTTP or HTTPS URI.</td>
+</tr>
+<tr>
+<td><code>public Uri ToUri()</code></td>
+<td><code>Uri</code></td>
+<td>Returns cached <code>Uri</code>.</td>
+</tr>
+<tr>
+<td><code>public static Url Parse(string? s, IFormatProvider? provider)</code></td>
+<td><code>Url</code></td>
+<td>Throws <code>FormatException</code> on failure.</td>
+</tr>
+<tr>
+<td><code>public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Url result)</code></td>
+<td><code>bool</code></td>
+<td>Safe parse helper.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="base-class-hierarchy">Base class hierarchy</h2>
+<p>The base classes (<code>ValueObject</code>, <code>ScalarValueObject&lt;TSelf, T&gt;</code>, <code>RequiredString&lt;TSelf&gt;</code>, etc.) live in <code>Trellis.Core</code> — see <a href="trellis-api-core.html#primitive-value-object-base-classes">trellis-api-core.md</a> for the full hierarchy. The concrete primitives in this package layer on top:</p>
+<ul>
+<li>Built-in scalars:
+<ul>
+<li><code>Age</code>, <code>CountryCode</code>, <code>CurrencyCode</code>, <code>EmailAddress</code>, <code>Hostname</code>, <code>IpAddress</code>, <code>LanguageCode</code>, <code>MonetaryAmount</code>, <code>Percentage</code>, <code>PhoneNumber</code>, <code>Slug</code>, <code>Url</code> -&gt; <code>ScalarValueObject&lt;TSelf, T&gt;</code> -&gt; <code>ValueObject</code></li>
+</ul>
+</li>
+<li>Structured built-in:
+<ul>
+<li><code>Money</code> -&gt; <code>ValueObject</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="built-in-primitives-table">Built-in primitives table</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Namespace</th>
+<th>Category</th>
+<th>Underlying/wire shape</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Age</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON number or numeric string input; JSON number output</td>
+<td><code>int</code>, range <code>0..150</code>.</td>
+</tr>
+<tr>
+<td><code>CountryCode</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>Uppercase ISO 3166-1 alpha-2.</td>
+</tr>
+<tr>
+<td><code>CurrencyCode</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>Uppercase ISO 4217.</td>
+</tr>
+<tr>
+<td><code>EmailAddress</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>Trimmed validated email.</td>
+</tr>
+<tr>
+<td><code>Hostname</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>RFC 1123 hostname.</td>
+</tr>
+<tr>
+<td><code>IpAddress</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>IPv4 or IPv6 text.</td>
+</tr>
+<tr>
+<td><code>LanguageCode</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>Lowercase ISO 639-1 alpha-2.</td>
+</tr>
+<tr>
+<td><code>MonetaryAmount</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON number or numeric string input; JSON number output</td>
+<td>Non-negative single-currency amount with 2-decimal rounding.</td>
+</tr>
+<tr>
+<td><code>Money</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Structured</td>
+<td>JSON object <code>{ &quot;amount&quot;: number, &quot;currency&quot;: string }</code></td>
+<td>Multi-currency value object; not scalar.</td>
+</tr>
+<tr>
+<td><code>Percentage</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON number or numeric string input; JSON number output</td>
+<td><code>decimal</code> in <code>0..100</code>; <code>ToString()</code> adds <code>%</code>.</td>
+</tr>
+<tr>
+<td><code>PhoneNumber</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>Normalized E.164 string.</td>
+</tr>
+<tr>
+<td><code>Slug</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>Lowercase letters, digits, single hyphens.</td>
+</tr>
+<tr>
+<td><code>Url</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Scalar</td>
+<td>JSON string</td>
+<td>Absolute HTTP/HTTPS URI.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="code-examples">Code examples</h2>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+namespace Demo;
+
+public static class Example
+{
+    public static void Run()
+    {
+        var email = EmailAddress.Create(&quot;ada@example.com&quot;);
+        var country = CountryCode.Create(&quot;US&quot;);
+        var phone = PhoneNumber.Create(&quot;+14155551234&quot;);
+
+        var percentage = Percentage.FromFraction(0.15m).TryGetValue(out var p) ? p : Percentage.Zero;
+        var amount = MonetaryAmount.Create(12.34m);
+        var taxAmount = percentage.Of(amount);
+
+        var total = Money.Create(12.34m, &quot;USD&quot;);
+        var shipping = Money.Create(2.00m, &quot;USD&quot;);
+        var grandTotal = total.Add(shipping).TryGetValue(out var gt) ? gt : total;
+
+        _ = (email, country, phone, taxAmount, grandTotal);
+    }
+}
+</code></pre>
+<p>For examples of building <strong>your own</strong> primitives by deriving from <code>RequiredString&lt;TSelf&gt;</code>, <code>RequiredGuid&lt;TSelf&gt;</code>, <code>RequiredEnum&lt;TSelf&gt;</code>, etc., see <a href="trellis-api-core.html#primitive-value-object-base-classes">trellis-api-core.md</a>.</p>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a> — <code>Required*&lt;TSelf&gt;</code> base classes, validation attributes (<code>StringLengthAttribute</code>, <code>RangeAttribute</code>, <code>EnumValueAttribute</code>), <code>StringExtensions</code>, and the <code>IScalarValue&lt;TSelf, TPrimitive&gt;</code> / <code>IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</code> contracts.</li>
+<li><a href="trellis-api-efcore.html">trellis-api-efcore.md</a> — EF Core mapping conventions for <code>ValueObject</code>, <code>ScalarValueObject&lt;TSelf, T&gt;</code>, and the built-in primitives in this package.</li>
+<li><a href="trellis-value-object-taxonomy.html">trellis-value-object-taxonomy.md</a> — how the built-in primitives fit into the broader VO taxonomy.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-primitives.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

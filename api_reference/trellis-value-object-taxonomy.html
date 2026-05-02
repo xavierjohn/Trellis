@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis Value Object Taxonomy | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis Value Object Taxonomy | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-value-object-taxonomy.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis-value-object-taxonomy">Trellis Value Object Taxonomy</h1>
+
+<p><strong>Packages:</strong> <code>Trellis.Core</code> (DDD primitives <code>Aggregate&lt;T&gt;</code>, <code>Entity&lt;T&gt;</code>, <code>ValueObject</code>, <code>Specification&lt;T&gt;</code>, <code>IDomainEvent</code>, plus VO base classes <code>RequiredString&lt;TSelf&gt;</code>, <code>RequiredGuid&lt;TSelf&gt;</code>, <code>RequiredInt&lt;TSelf&gt;</code>, <code>RequiredDecimal&lt;TSelf&gt;</code>, <code>RequiredEnum&lt;TSelf&gt;</code>); <code>Trellis.Primitives</code> (concrete VOs only — <code>EmailAddress</code>, <code>Money</code>, etc.) | <strong>Namespaces:</strong> <code>Trellis</code>, <code>Trellis.Primitives</code> | <strong>Purpose:</strong> canonical category map for Trellis value-like types: scalar, symbolic, structured, and optionality wrappers.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<p>Use this table to pick the right base class before reading the per-type signatures below.</p>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical base / type</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wrap a single primitive (string, Guid, int, decimal, enum) into a typed value object</td>
+<td><code>RequiredString&lt;TSelf&gt;</code>, <code>RequiredGuid&lt;TSelf&gt;</code>, <code>RequiredInt&lt;TSelf&gt;</code>, <code>RequiredDecimal&lt;TSelf&gt;</code>, <code>RequiredEnum&lt;TSelf&gt;</code> (one base per primitive)</td>
+<td><a href="#requiredstringtself"><code>RequiredString&lt;TSelf&gt;</code></a>, <a href="#requiredguidtself"><code>RequiredGuid&lt;TSelf&gt;</code></a>, <a href="#requiredinttself"><code>RequiredInt&lt;TSelf&gt;</code></a>, <a href="#requireddecimaltself"><code>RequiredDecimal&lt;TSelf&gt;</code></a>, <a href="#requiredenumtself"><code>RequiredEnum&lt;TSelf&gt;</code></a></td>
+</tr>
+<tr>
+<td>Define a custom-validated scalar with no source-generated infrastructure</td>
+<td><code>ScalarValueObject&lt;TSelf, T&gt;</code> + <code>IScalarValue&lt;TSelf, T&gt;</code></td>
+<td><a href="#scalarvalueobjecttself-t"><code>ScalarValueObject&lt;TSelf, T&gt;</code></a></td>
+</tr>
+<tr>
+<td>Compose multiple value-typed fields into a structural value object</td>
+<td><code>ValueObject</code> (override <code>GetEqualityComponents</code>)</td>
+<td><a href="#valueobject"><code>ValueObject</code></a></td>
+</tr>
+<tr>
+<td>Wrap an entity with identity (mutable through methods)</td>
+<td><code>Entity&lt;TId&gt;</code></td>
+<td>See <a href="trellis-api-core.html#domain-driven-design">trellis-api-core.md → Domain-Driven Design</a></td>
+</tr>
+<tr>
+<td>Wrap a consistency boundary with domain events</td>
+<td><code>Aggregate&lt;TId&gt;</code></td>
+<td>See <a href="trellis-api-core.html#domain-driven-design">trellis-api-core.md → Domain-Driven Design</a></td>
+</tr>
+<tr>
+<td>Express expected absence of a value</td>
+<td><code>Maybe&lt;T&gt;</code></td>
+<td>See <a href="trellis-api-core.html#public-readonly-struct-maybet-where-t--notnull">trellis-api-core.md → Maybe</a></td>
+</tr>
+<tr>
+<td>Move a query predicate out of a repository</td>
+<td><code>Specification&lt;T&gt;</code></td>
+<td>See <a href="trellis-api-core.html#domain-driven-design">trellis-api-core.md → Domain-Driven Design</a></td>
+</tr>
+<tr>
+<td>Pick a built-in concrete value object instead of writing your own</td>
+<td><code>EmailAddress</code>, <code>Money</code>, <code>CountryCode</code>, <code>Url</code>, etc.</td>
+<td>See <a href="trellis-api-primitives.html">trellis-api-primitives.md</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="types">Types</h2>
+<h3 id="valueobject"><code>ValueObject</code></h3>
+<pre><code class="lang-csharp">public abstract class ValueObject : IComparable&lt;ValueObject&gt;, IComparable, IEquatable&lt;ValueObject&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>—</td>
+<td>Base type for all structural equality objects.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public override bool Equals(object? obj)</code></td>
+<td><code>bool</code></td>
+<td>Structural equality.</td>
+</tr>
+<tr>
+<td><code>public bool Equals(ValueObject? other)</code></td>
+<td><code>bool</code></td>
+<td>Strongly typed structural equality.</td>
+</tr>
+<tr>
+<td><code>public override int GetHashCode()</code></td>
+<td><code>int</code></td>
+<td>Cached structural hash.</td>
+</tr>
+<tr>
+<td><code>public virtual int CompareTo(ValueObject? other)</code></td>
+<td><code>int</code></td>
+<td>Ordered comparison by equality components.</td>
+</tr>
+<tr>
+<td><code>public static bool operator ==(ValueObject? a, ValueObject? b)</code></td>
+<td><code>bool</code></td>
+<td>Equality operator.</td>
+</tr>
+<tr>
+<td><code>public static bool operator !=(ValueObject? a, ValueObject? b)</code></td>
+<td><code>bool</code></td>
+<td>Inequality operator.</td>
+</tr>
+<tr>
+<td><code>public static bool operator &lt;(ValueObject? left, ValueObject? right)</code></td>
+<td><code>bool</code></td>
+<td>Ordering operator.</td>
+</tr>
+<tr>
+<td><code>public static bool operator &lt;=(ValueObject? left, ValueObject? right)</code></td>
+<td><code>bool</code></td>
+<td>Ordering operator.</td>
+</tr>
+<tr>
+<td><code>public static bool operator &gt;(ValueObject? left, ValueObject? right)</code></td>
+<td><code>bool</code></td>
+<td>Ordering operator.</td>
+</tr>
+<tr>
+<td><code>public static bool operator &gt;=(ValueObject? left, ValueObject? right)</code></td>
+<td><code>bool</code></td>
+<td>Ordering operator.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scalarvalueobjecttself-t"><code>ScalarValueObject&lt;TSelf, T&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class ScalarValueObject&lt;TSelf, T&gt; : ValueObject, IConvertible, IFormattable
+    where TSelf : ScalarValueObject&lt;TSelf, T&gt;, IScalarValue&lt;TSelf, T&gt;
+    where T : IComparable
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>T</code></td>
+<td>Canonical scalar identity.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public override string ToString()</code></td>
+<td><code>string</code></td>
+<td>Primitive string form.</td>
+</tr>
+<tr>
+<td><code>public static implicit operator T(ScalarValueObject&lt;TSelf, T&gt; valueObject)</code></td>
+<td><code>T</code></td>
+<td>Implicit unwrap.</td>
+</tr>
+<tr>
+<td><code>public static TSelf Create(T value)</code></td>
+<td><code>TSelf</code></td>
+<td>Throwing scalar factory.</td>
+</tr>
+<tr>
+<td><code>public string ToString(string? format, IFormatProvider? formatProvider)</code></td>
+<td><code>string</code></td>
+<td>Formattable support.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iscalarvaluetself-tprimitive"><code>IScalarValue&lt;TSelf, TPrimitive&gt;</code></h3>
+<pre><code class="lang-csharp">public interface IScalarValue&lt;TSelf, TPrimitive&gt;
+    where TSelf : IScalarValue&lt;TSelf, TPrimitive&gt;
+    where TPrimitive : IComparable
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>TPrimitive</code></td>
+<td>Required canonical scalar property.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>static abstract Result&lt;TSelf&gt; TryCreate(TPrimitive value, string? fieldName = null)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td>Primitive creation path.</td>
+</tr>
+<tr>
+<td><code>static abstract Result&lt;TSelf&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td>String creation path.</td>
+</tr>
+<tr>
+<td><code>static virtual TSelf Create(TPrimitive value)</code></td>
+<td><code>TSelf</code></td>
+<td>Throwing convenience factory.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iformattablescalarvaluetself-tprimitive"><code>IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</code></h3>
+<pre><code class="lang-csharp">public interface IFormattableScalarValue&lt;TSelf, TPrimitive&gt; : IScalarValue&lt;TSelf, TPrimitive&gt;
+    where TSelf : IFormattableScalarValue&lt;TSelf, TPrimitive&gt;
+    where TPrimitive : IComparable
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>TPrimitive</code></td>
+<td>Inherited canonical scalar value.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>static abstract Result&lt;TSelf&gt; TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td>Culture-aware string creation path used by numeric/date scalar types.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requiredstringtself"><code>RequiredString&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredString&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, string&gt;
+    where TSelf : RequiredString&lt;TSelf&gt;, IScalarValue&lt;TSelf, string&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>Canonical scalar identity for required text.</td>
+</tr>
+<tr>
+<td><code>Length</code></td>
+<td><code>int</code></td>
+<td>String convenience member.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public bool StartsWith(string value)</code></td>
+<td><code>bool</code></td>
+<td>Query helper.</td>
+</tr>
+<tr>
+<td><code>public bool Contains(string value)</code></td>
+<td><code>bool</code></td>
+<td>Query helper.</td>
+</tr>
+<tr>
+<td><code>public bool EndsWith(string value)</code></td>
+<td><code>bool</code></td>
+<td>Query helper.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requiredguidtself"><code>RequiredGuid&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredGuid&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, Guid&gt;
+    where TSelf : RequiredGuid&lt;TSelf&gt;, IScalarValue&lt;TSelf, Guid&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>Guid</code></td>
+<td>Canonical scalar identity for non-empty GUIDs.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static TSelf Create(Guid value)</code></td>
+<td><code>TSelf</code></td>
+<td>Inherited throwing scalar factory.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requiredinttself"><code>RequiredInt&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredInt&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, int&gt;
+    where TSelf : RequiredInt&lt;TSelf&gt;, IScalarValue&lt;TSelf, int&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>int</code></td>
+<td>Canonical scalar identity for required integers.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static TSelf Create(int value)</code></td>
+<td><code>TSelf</code></td>
+<td>Inherited throwing scalar factory.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requireddecimaltself"><code>RequiredDecimal&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredDecimal&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, decimal&gt;
+    where TSelf : RequiredDecimal&lt;TSelf&gt;, IScalarValue&lt;TSelf, decimal&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>decimal</code></td>
+<td>Canonical scalar identity for required decimals.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static TSelf Create(decimal value)</code></td>
+<td><code>TSelf</code></td>
+<td>Inherited throwing scalar factory.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requiredlongtself"><code>RequiredLong&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredLong&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, long&gt;
+    where TSelf : RequiredLong&lt;TSelf&gt;, IScalarValue&lt;TSelf, long&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>long</code></td>
+<td>Canonical scalar identity for required longs.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static TSelf Create(long value)</code></td>
+<td><code>TSelf</code></td>
+<td>Inherited throwing scalar factory.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requiredbooltself"><code>RequiredBool&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredBool&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, bool&gt;
+    where TSelf : RequiredBool&lt;TSelf&gt;, IScalarValue&lt;TSelf, bool&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>bool</code></td>
+<td>Canonical scalar identity for required booleans.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static TSelf Create(bool value)</code></td>
+<td><code>TSelf</code></td>
+<td>Inherited throwing scalar factory.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requireddatetimetself"><code>RequiredDateTime&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredDateTime&lt;TSelf&gt; : ScalarValueObject&lt;TSelf, DateTime&gt;
+    where TSelf : RequiredDateTime&lt;TSelf&gt;, IScalarValue&lt;TSelf, DateTime&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>DateTime</code></td>
+<td>Canonical scalar identity for non-default dates.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public override string ToString()</code></td>
+<td><code>string</code></td>
+<td>Invariant ISO 8601 round-trip string.</td>
+</tr>
+<tr>
+<td><code>public static TSelf Create(DateTime value)</code></td>
+<td><code>TSelf</code></td>
+<td>Inherited throwing scalar factory.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="requiredenumtself"><code>RequiredEnum&lt;TSelf&gt;</code></h3>
+<pre><code class="lang-csharp">public abstract class RequiredEnum&lt;[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf&gt;
+    : IEquatable&lt;RequiredEnum&lt;TSelf&gt;&gt;
+    where TSelf : RequiredEnum&lt;TSelf&gt;, IScalarValue&lt;TSelf, string&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>string</code></td>
+<td>Canonical symbolic identity.</td>
+</tr>
+<tr>
+<td><code>Ordinal</code></td>
+<td><code>int</code></td>
+<td>Non-semantic declaration-order metadata.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IReadOnlyCollection&lt;TSelf&gt; GetAll()</code></td>
+<td><code>IReadOnlyCollection&lt;TSelf&gt;</code></td>
+<td>Returns all declared symbolic members.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;TSelf&gt; TryFromName(string? name, string? fieldName = null)</code></td>
+<td><code>Result&lt;TSelf&gt;</code></td>
+<td>Canonical symbolic lookup.</td>
+</tr>
+<tr>
+<td><code>public bool Is(params TSelf[] values)</code></td>
+<td><code>bool</code></td>
+<td>Membership check.</td>
+</tr>
+<tr>
+<td><code>public bool IsNot(params TSelf[] values)</code></td>
+<td><code>bool</code></td>
+<td>Negated membership check.</td>
+</tr>
+<tr>
+<td><code>public override string ToString()</code></td>
+<td><code>string</code></td>
+<td>Returns <code>Value</code>.</td>
+</tr>
+<tr>
+<td><code>public override int GetHashCode()</code></td>
+<td><code>int</code></td>
+<td>Case-insensitive symbolic hash.</td>
+</tr>
+<tr>
+<td><code>public override bool Equals(object? obj)</code></td>
+<td><code>bool</code></td>
+<td>Case-insensitive symbolic equality.</td>
+</tr>
+<tr>
+<td><code>public bool Equals(RequiredEnum&lt;TSelf&gt;? other)</code></td>
+<td><code>bool</code></td>
+<td>Case-insensitive symbolic equality.</td>
+</tr>
+<tr>
+<td><code>public static bool operator ==(RequiredEnum&lt;TSelf&gt;? left, RequiredEnum&lt;TSelf&gt;? right)</code></td>
+<td><code>bool</code></td>
+<td>Equality operator.</td>
+</tr>
+<tr>
+<td><code>public static bool operator !=(RequiredEnum&lt;TSelf&gt;? left, RequiredEnum&lt;TSelf&gt;? right)</code></td>
+<td><code>bool</code></td>
+<td>Inequality operator.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="monetaryamount"><code>MonetaryAmount</code></h3>
+<pre><code class="lang-csharp">public class MonetaryAmount : ScalarValueObject&lt;MonetaryAmount, decimal&gt;, IScalarValue&lt;MonetaryAmount, decimal&gt;, IFormattableScalarValue&lt;MonetaryAmount, decimal&gt;, IParsable&lt;MonetaryAmount&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>decimal</code></td>
+<td>Canonical scalar identity for single-currency systems.</td>
+</tr>
+<tr>
+<td><code>Zero</code></td>
+<td><code>MonetaryAmount</code></td>
+<td>Cached zero instance.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(decimal value, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Non-negative scalar creation path.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(decimal? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Nullable scalar creation path.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Invariant string creation path.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Culture-aware string creation path.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Add(MonetaryAmount other)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Scalar arithmetic.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Subtract(MonetaryAmount other)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Scalar arithmetic.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Multiply(int quantity)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Scalar arithmetic.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;MonetaryAmount&gt; Multiply(decimal multiplier)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Scalar arithmetic.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;MonetaryAmount&gt; Sum(IEnumerable&lt;MonetaryAmount&gt; values)</code></td>
+<td><code>Result&lt;MonetaryAmount&gt;</code></td>
+<td>Scalar accumulation.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="percentage"><code>Percentage</code></h3>
+<pre><code class="lang-csharp">public class Percentage : ScalarValueObject&lt;Percentage, decimal&gt;, IScalarValue&lt;Percentage, decimal&gt;, IFormattableScalarValue&lt;Percentage, decimal&gt;, IParsable&lt;Percentage&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>decimal</code></td>
+<td>Canonical scalar identity for percentages.</td>
+</tr>
+<tr>
+<td><code>Zero</code></td>
+<td><code>Percentage</code></td>
+<td>Cached <code>0%</code>.</td>
+</tr>
+<tr>
+<td><code>Full</code></td>
+<td><code>Percentage</code></td>
+<td>Cached <code>100%</code>.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(decimal value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Numeric creation path.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(decimal? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Nullable numeric creation path.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(string? value, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Invariant string creation path.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Culture-aware string creation path.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Percentage&gt; FromFraction(decimal fraction, string? fieldName = null)</code></td>
+<td><code>Result&lt;Percentage&gt;</code></td>
+<td>Derived scalar factory.</td>
+</tr>
+<tr>
+<td><code>public decimal AsFraction()</code></td>
+<td><code>decimal</code></td>
+<td>Converts to fraction.</td>
+</tr>
+<tr>
+<td><code>public decimal Of(decimal amount)</code></td>
+<td><code>decimal</code></td>
+<td>Applies percentage to an amount.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="money"><code>Money</code></h3>
+<pre><code class="lang-csharp">public class Money : ValueObject
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Amount</code></td>
+<td><code>decimal</code></td>
+<td>One structured component.</td>
+</tr>
+<tr>
+<td><code>Currency</code></td>
+<td><code>CurrencyCode</code></td>
+<td>Second structured component.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;Money&gt; TryCreate(decimal amount, string currencyCode, string? fieldName = null)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured factory.</td>
+</tr>
+<tr>
+<td><code>public static Money Create(decimal amount, string currencyCode)</code></td>
+<td><code>Money</code></td>
+<td>Throwing structured factory.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Add(Money other)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured arithmetic with currency match enforcement.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Subtract(Money other)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured arithmetic with currency match enforcement.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Multiply(decimal multiplier)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured arithmetic.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Multiply(int quantity)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured arithmetic.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Divide(decimal divisor)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured arithmetic.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money&gt; Divide(int divisor)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured arithmetic.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;Money[]&gt; Allocate(params int[] ratios)</code></td>
+<td><code>Result&lt;Money[]&gt;</code></td>
+<td>Structured split operation.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Money&gt; Zero(string currencyCode = &quot;USD&quot;)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured zero factory.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;Money&gt; Sum(IEnumerable&lt;Money&gt; values)</code></td>
+<td><code>Result&lt;Money&gt;</code></td>
+<td>Structured accumulation.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="base-class-hierarchy">Base class hierarchy</h2>
+<ul>
+<li><strong>Scalar value objects</strong>
+<ul>
+<li><code>ValueObject</code> -&gt; <code>ScalarValueObject&lt;TSelf, T&gt;</code> -&gt; concrete scalars</li>
+<li>Required scalar bases:
+<ul>
+<li><code>RequiredString&lt;TSelf&gt;</code></li>
+<li><code>RequiredGuid&lt;TSelf&gt;</code></li>
+<li><code>RequiredInt&lt;TSelf&gt;</code></li>
+<li><code>RequiredDecimal&lt;TSelf&gt;</code></li>
+<li><code>RequiredLong&lt;TSelf&gt;</code></li>
+<li><code>RequiredBool&lt;TSelf&gt;</code></li>
+<li><code>RequiredDateTime&lt;TSelf&gt;</code></li>
+</ul>
+</li>
+<li>Built-in scalar concretes:
+<ul>
+<li><code>Age</code></li>
+<li><code>CountryCode</code></li>
+<li><code>CurrencyCode</code></li>
+<li><code>EmailAddress</code></li>
+<li><code>Hostname</code></li>
+<li><code>IpAddress</code></li>
+<li><code>LanguageCode</code></li>
+<li><code>MonetaryAmount</code></li>
+<li><code>Percentage</code></li>
+<li><code>PhoneNumber</code></li>
+<li><code>Slug</code></li>
+<li><code>Url</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Symbolic value objects</strong>
+<ul>
+<li><code>RequiredEnum&lt;TSelf&gt;</code> is separate from <code>ScalarValueObject&lt;TSelf, T&gt;</code> but still uses <code>Value</code> as its canonical public identity.</li>
+</ul>
+</li>
+<li><strong>Structured value objects</strong>
+<ul>
+<li><code>Money</code> -&gt; <code>ValueObject</code></li>
+</ul>
+</li>
+<li><strong>Optionality wrappers</strong>
+<ul>
+<li><code>Maybe&lt;T&gt;</code> belongs to <code>Trellis.Core</code>; it wraps presence/absence and is not a value object category peer to scalar/symbolic/structured types.</li>
+</ul>
+</li>
+</ul>
+<h2 id="source-generated-members">Source-generated members</h2>
+<p>The primitive generator adds category-specific members to partial types:</p>
+<ul>
+<li><code>RequiredGuid&lt;TSelf&gt;</code>: <code>NewUniqueV4()</code>, <code>NewUniqueV7()</code>, <code>TryCreate(Guid value, string? fieldName = null)</code>, <code>TryCreate(Guid? requiredGuidOrNothing, string? fieldName = null)</code>, <code>TryCreate(string? stringOrNull, string? fieldName = null)</code>, <code>Create(string stringValue)</code>, <code>Parse</code>, <code>TryParse</code>, explicit cast, and <code>ValidateAdditional(Guid value, string fieldName, ref string? errorMessage)</code>.</li>
+<li><code>RequiredString&lt;TSelf&gt;</code>: <code>TryCreate(string? value, string? fieldName = null)</code>, <code>Create(string? value, string? fieldName = null)</code>, <code>Parse</code>, <code>TryParse</code>, explicit cast, and <code>ValidateAdditional(string value, string fieldName, ref string? errorMessage)</code>.</li>
+<li><code>RequiredInt&lt;TSelf&gt;</code>, <code>RequiredDecimal&lt;TSelf&gt;</code>, <code>RequiredLong&lt;TSelf&gt;</code>, and <code>RequiredDateTime&lt;TSelf&gt;</code>: the invariant <code>TryCreate(string? stringOrNull, string? fieldName = null)</code> overload plus the culture-aware <code>TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)</code> overload, <code>Create(string stringValue)</code>, <code>Parse</code>, <code>TryParse</code>, explicit cast, and <code>ValidateAdditional(...)</code>.</li>
+<li><code>RequiredBool&lt;TSelf&gt;</code>: primitive/string factories, <code>Parse</code>, <code>TryParse</code>, explicit cast, and <code>ValidateAdditional(bool value, string fieldName, ref string? errorMessage)</code>.</li>
+<li><code>RequiredEnum&lt;TSelf&gt;</code>: <code>TryCreate(string value)</code>, <code>TryCreate(string? value, string? fieldName = null)</code>, <code>Parse</code>, <code>TryParse</code>, and <code>Create(string value)</code>. Generated enum creation uses <code>TryFromName</code> only.</li>
+</ul>
+<h2 id="built-in-primitives-table">Built-in primitives table</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Category</th>
+<th>Canonical identity</th>
+<th>Wire/storage shape</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Age</code></td>
+<td>Scalar</td>
+<td><code>Value : int</code></td>
+<td>JSON number</td>
+<td>Numeric scalar.</td>
+</tr>
+<tr>
+<td><code>CountryCode</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>ISO alpha-2.</td>
+</tr>
+<tr>
+<td><code>CurrencyCode</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>ISO alpha-3.</td>
+</tr>
+<tr>
+<td><code>EmailAddress</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>Domain string scalar.</td>
+</tr>
+<tr>
+<td><code>Hostname</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>Domain string scalar.</td>
+</tr>
+<tr>
+<td><code>IpAddress</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>Domain string scalar.</td>
+</tr>
+<tr>
+<td><code>LanguageCode</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>ISO alpha-2.</td>
+</tr>
+<tr>
+<td><code>MonetaryAmount</code></td>
+<td>Scalar</td>
+<td><code>Value : decimal</code></td>
+<td>JSON number</td>
+<td>Single-currency amount; no currency component.</td>
+</tr>
+<tr>
+<td><code>Percentage</code></td>
+<td>Scalar</td>
+<td><code>Value : decimal</code></td>
+<td>JSON number</td>
+<td>Supports fraction helpers and <code>%</code> parsing.</td>
+</tr>
+<tr>
+<td><code>PhoneNumber</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>Normalized E.164.</td>
+</tr>
+<tr>
+<td><code>Slug</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>URL-safe slug.</td>
+</tr>
+<tr>
+<td><code>Url</code></td>
+<td>Scalar</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>Absolute HTTP/HTTPS URL.</td>
+</tr>
+<tr>
+<td><code>RequiredEnum&lt;TSelf&gt;</code> derivatives</td>
+<td>Symbolic</td>
+<td><code>Value : string</code></td>
+<td>JSON string</td>
+<td>Finite symbolic set with behavior.</td>
+</tr>
+<tr>
+<td><code>Money</code></td>
+<td>Structured</td>
+<td><code>Amount</code> + <code>Currency</code></td>
+<td>JSON object</td>
+<td>Use for multi-currency scenarios.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="money-vs-monetaryamount"><code>Money</code> vs <code>MonetaryAmount</code></h3>
+<ul>
+<li>Use <code>MonetaryAmount</code> when the bounded context has a single external currency policy and the semantic identity is only the numeric amount.</li>
+<li>Use <code>Money</code> when currency is part of the semantic identity and must travel with the value.</li>
+<li><code>MonetaryAmount</code> is a scalar value object.</li>
+<li><code>Money</code> is a structured value object.</li>
+</ul>
+<h2 id="code-examples">Code examples</h2>
+<pre><code class="lang-csharp">using System.Globalization;
+using Trellis;
+using Trellis.Primitives;
+
+namespace Demo;
+
+public partial class OrderId : RequiredGuid&lt;OrderId&gt; { }
+
+public partial class OrderStatus : RequiredEnum&lt;OrderStatus&gt;
+{
+    public static readonly OrderStatus Draft = new();
+
+    [EnumValue(&quot;awaiting-payment&quot;)]
+    public static readonly OrderStatus AwaitingPayment = new();
+}
+
+public static class Example
+{
+    public static void Run()
+    {
+        // Scalar
+        var orderId = OrderId.NewUniqueV4();
+        var amount = MonetaryAmount.TryCreate(&quot;12.34&quot;, CultureInfo.InvariantCulture).Value;
+
+        // Symbolic
+        var status = OrderStatus.TryFromName(&quot;awaiting-payment&quot;).Value;
+        var isOpen = status.Is(OrderStatus.Draft, OrderStatus.AwaitingPayment);
+
+        // Structured
+        var subtotal = Money.Create(12.34m, &quot;USD&quot;);
+        var shipping = Money.Create(2.00m, &quot;USD&quot;);
+        var total = subtotal.Add(shipping).Value;
+
+        _ = (orderId, amount, isOpen, total);
+    }
+}
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-primitives.html">trellis-api-primitives.md</a></li>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a></li>
+<li><a href="trellis-api-efcore.html">trellis-api-efcore.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-value-object-taxonomy.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Mediator — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Mediator — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-mediator.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellismediator--api-reference">Trellis.Mediator — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Mediator</code>
+<strong>Namespace:</strong> <code>Trellis.Mediator</code>
+<strong>Purpose:</strong> Provides Trellis result-aware Mediator pipeline behaviors plus DI helpers for validation, authorization, tracing, logging, and optional resource authorization.</p>
+<p>See also: <a href="trellis-api-cookbook.html">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are wiring Trellis result-aware behaviors into the <code>Mediator</code> pipeline.</li>
+<li>You need exact command/query interfaces, validation behavior, static authorization, resource authorization, tracing/logging, or EF unit-of-work behavior.</li>
+<li>You need to know which DI helper registers a behavior versus which helper registers resource loaders.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Add the standard Trellis mediator behaviors</td>
+<td><code>services.AddTrellisBehaviors()</code></td>
+<td><a href="#servicecollectionextensions"><code>ServiceCollectionExtensions</code></a></td>
+</tr>
+<tr>
+<td>Add validation to a message</td>
+<td>Implement <code>IValidate</code> and register <code>IMessageValidator&lt;TMessage&gt;</code> or FluentValidation adapter</td>
+<td><a href="#validationbehaviortmessage-tresponse"><code>ValidationBehavior&lt;TMessage,TResponse&gt;</code></a></td>
+</tr>
+<tr>
+<td>Add static permission authorization</td>
+<td>Message implements <code>IAuthorize</code>; register <code>AddTrellisBehaviors()</code></td>
+<td><a href="#authorizationbehaviortmessage-tresponse"><code>AuthorizationBehavior&lt;TMessage,TResponse&gt;</code></a></td>
+</tr>
+<tr>
+<td>Add resource authorization with assembly scanning</td>
+<td><code>services.AddResourceAuthorization(typeof(SomeType).Assembly)</code></td>
+<td><a href="#servicecollectionextensions"><code>ServiceCollectionExtensions</code></a></td>
+</tr>
+<tr>
+<td>Add resource authorization explicitly</td>
+<td><code>services.AddResourceAuthorization&lt;TMessage,TResource,TResponse&gt;()</code> plus loader registration</td>
+<td><a href="#resourceauthorizationbehaviortmessage-tresource-tresponse"><code>ResourceAuthorizationBehavior&lt;TMessage,TResource,TResponse&gt;</code></a></td>
+</tr>
+<tr>
+<td>Bridge <code>IIdentifyResource&lt;TResource,TId&gt;</code> to a shared loader</td>
+<td><code>services.AddSharedResourceLoader&lt;TMessage,TResource,TId&gt;()</code></td>
+<td><a href="#servicecollectionextensions"><code>ServiceCollectionExtensions</code></a></td>
+</tr>
+<tr>
+<td>Register EF unit-of-work behavior</td>
+<td><code>services.AddTrellisUnitOfWork&lt;TContext&gt;()</code></td>
+<td><a href="#canonical-pipeline-order"><code>Canonical pipeline order</code></a></td>
+</tr>
+<tr>
+<td>Keep commits inside the pipeline</td>
+<td>Repositories stage changes; <code>TransactionalCommandBehavior</code> commits on success</td>
+<td><a href="#behavioral-notes"><code>Behavioral notes</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li>Explicit <code>AddResourceAuthorization&lt;TMessage,TResource,TResponse&gt;()</code> inserts the behavior only; it does not automatically register the shared-loader bridge.</li>
+<li><code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> should be registered after other behavior registrations so the transaction behavior is innermost.</li>
+<li>Handlers should return Trellis <code>Result</code> / <code>Result&lt;T&gt;</code> failures, not throw for expected business outcomes.</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="authorizationbehaviortmessage-tresponse">AuthorizationBehavior&lt;TMessage, TResponse&gt;</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class AuthorizationBehavior&lt;TMessage, TResponse&gt;(IActorProvider actorProvider) : IPipelineBehavior&lt;TMessage, TResponse&gt; where TMessage : IAuthorize, global::Mediator.IMessage where TResponse : IResult, IFailureFactory&lt;TResponse&gt;
+</code></pre>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public AuthorizationBehavior(IActorProvider actorProvider)</code></td>
+<td>Builds the static-permission behavior.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>—</code></td>
+<td><code>—</code></td>
+<td>None.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public async ValueTask&lt;TResponse&gt; Handle(TMessage message, MessageHandlerDelegate&lt;TMessage, TResponse&gt; next, CancellationToken cancellationToken)</code></td>
+<td><code>ValueTask&lt;TResponse&gt;</code></td>
+<td>Resolves the current actor, checks <code>RequiredPermissions</code> with <code>HasAllPermissions</code>, and returns <code>TResponse.CreateFailure(new Error.Forbidden(&quot;authorization.insufficient.permissions&quot;) { Detail = &quot;Insufficient permissions.&quot; })</code> when authorization fails. Throws <code>InvalidOperationException</code> when no actor can be resolved.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="exceptionbehaviortmessage-tresponse">ExceptionBehavior&lt;TMessage, TResponse&gt;</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed partial class ExceptionBehavior&lt;TMessage, TResponse&gt; : IPipelineBehavior&lt;TMessage, TResponse&gt; where TMessage : global::Mediator.IMessage where TResponse : IResult, IFailureFactory&lt;TResponse&gt;
+</code></pre>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public ExceptionBehavior(ILogger&lt;ExceptionBehavior&lt;TMessage, TResponse&gt;&gt; logger)</code></td>
+<td>Builds the exception-to-failure behavior.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>—</code></td>
+<td><code>—</code></td>
+<td>None.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public async ValueTask&lt;TResponse&gt; Handle(TMessage message, MessageHandlerDelegate&lt;TMessage, TResponse&gt; next, CancellationToken cancellationToken)</code></td>
+<td><code>ValueTask&lt;TResponse&gt;</code></td>
+<td>Catches unhandled exceptions except <code>OperationCanceledException</code>, logs them, and returns <code>TResponse.CreateFailure(new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = &quot;An unexpected error occurred while processing the request.&quot; })</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ivalidate">IValidate</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IValidate
+</code></pre>
+<p><strong>Constructors</strong></p>
+<p>No public constructors.</p>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>—</code></td>
+<td><code>—</code></td>
+<td>None.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IResult Validate()</code></td>
+<td><code>IResult</code></td>
+<td>Returns success to continue or any failure result to short-circuit the pipeline.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="loggingbehaviortmessage-tresponse">LoggingBehavior&lt;TMessage, TResponse&gt;</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed partial class LoggingBehavior&lt;TMessage, TResponse&gt; : IPipelineBehavior&lt;TMessage, TResponse&gt; where TMessage : global::Mediator.IMessage where TResponse : IResult
+</code></pre>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public LoggingBehavior(ILogger&lt;LoggingBehavior&lt;TMessage, TResponse&gt;&gt; logger, TrellisMediatorTelemetryOptions? options = null)</code></td>
+<td>Builds the logging behavior. <code>options</code> is resolved from DI; when <code>null</code> (i.e. not registered) the safe-by-default options are used and <code>Error.Detail</code> is redacted.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>—</code></td>
+<td><code>—</code></td>
+<td>None.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public async ValueTask&lt;TResponse&gt; Handle(TMessage message, MessageHandlerDelegate&lt;TMessage, TResponse&gt; next, CancellationToken cancellationToken)</code></td>
+<td><code>ValueTask&lt;TResponse&gt;</code></td>
+<td>Logs start (Information), end with elapsed milliseconds (Information on success, Warning on failure). On failure emits <code>error.Code</code> only by default; the free-text <code>Error.Detail</code> is included only when <code>TrellisMediatorTelemetryOptions.IncludeErrorDetail</code> is <code>true</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resourceauthorizationbehaviortmessage-tresource-tresponse">ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;(IActorProvider actorProvider, IServiceProvider serviceProvider) : IPipelineBehavior&lt;TMessage, TResponse&gt; where TMessage : IAuthorizeResource&lt;TResource&gt;, global::Mediator.IMessage where TResponse : IResult, IFailureFactory&lt;TResponse&gt;
+</code></pre>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public ResourceAuthorizationBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider)</code></td>
+<td>Builds the resource-loading authorization behavior.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>—</code></td>
+<td><code>—</code></td>
+<td>None.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public async ValueTask&lt;TResponse&gt; Handle(TMessage message, MessageHandlerDelegate&lt;TMessage, TResponse&gt; next, CancellationToken cancellationToken)</code></td>
+<td><code>ValueTask&lt;TResponse&gt;</code></td>
+<td>Resolves the actor from <code>IActorProvider</code> first (throws <code>InvalidOperationException</code> when null — fail fast before doing any I/O). Then resolves <code>IResourceLoader&lt;TMessage, TResource&gt;</code> from the current scope, returns loader failures directly, and finally calls <code>message.Authorize(actor, loadResult.Unwrap())</code> before invoking the handler. This behavior is only active when registered explicitly or via <code>AddResourceAuthorization(...)</code>; it is not included in <code>AddTrellisBehaviors()</code> or <code>PipelineBehaviors</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="servicecollectionextensions">ServiceCollectionExtensions</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ServiceCollectionExtensions
+</code></pre>
+<p><strong>Constructors</strong></p>
+<p>No public constructors.</p>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PipelineBehaviors</code></td>
+<td><code>IReadOnlyList&lt;Type&gt;</code></td>
+<td>Ordered pipeline behavior types (outermost → innermost): <code>ExceptionBehavior&lt;,&gt;</code>, <code>TracingBehavior&lt;,&gt;</code>, <code>LoggingBehavior&lt;,&gt;</code>, <code>AuthorizationBehavior&lt;,&gt;</code>, <code>ValidationBehavior&lt;,&gt;</code>. Resource authorization and the EFCore <code>TransactionalCommandBehavior</code> are opt-in and not part of this list.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers the five open generic behaviors listed in <code>PipelineBehaviors</code> and a default <code>TrellisMediatorTelemetryOptions</code> singleton (Detail redacted). <strong>Idempotent</strong> — uses <code>TryAddEnumerable</code>/<code>TryAddSingleton</code> so repeat calls (e.g. from plug-in extensions like <code>AddTrellisFluentValidation</code>, <code>AddTrellisAsp</code>) do not duplicate registrations.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services, Action&lt;TrellisMediatorTelemetryOptions&gt; configure)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Same as the parameterless overload, but applies <code>configure</code> to the registered <code>TrellisMediatorTelemetryOptions</code> singleton. Replaces any prior options registration so this call wins regardless of ordering.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;(this IServiceCollection services) where TMessage : IAuthorizeResource&lt;TResource&gt;, global::Mediator.IMessage where TResponse : IResult, IFailureFactory&lt;TResponse&gt;</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers <code>ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</code> and inserts it immediately before <code>ValidationBehavior&lt;,&gt;</code> when validation is already registered.</td>
+</tr>
+<tr>
+<td><code>[RequiresUnreferencedCode(&quot;Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.&quot;)] [RequiresDynamicCode(&quot;Constructs closed generic types at runtime. Use explicit registration for AOT scenarios.&quot;)] public static IServiceCollection AddResourceAuthorization(this IServiceCollection services, params Assembly[] assemblies)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Scans assemblies for <code>IAuthorizeResource&lt;TResource&gt;</code> implementations, resolves <code>TResponse</code> from <code>ICommand&lt;T&gt;</code>, <code>IQuery&lt;T&gt;</code>, or <code>IRequest&lt;T&gt;</code>, registers closed <code>ResourceAuthorizationBehavior&lt;,,&gt;</code> instances, registers discovered <code>IResourceLoader&lt;,&gt;</code> implementations, registers discovered <code>SharedResourceLoaderById&lt;,&gt;</code> implementations, and bridges <code>IIdentifyResource&lt;TResource, TId&gt;</code> messages to shared loaders when no explicit loader is registered.</td>
+</tr>
+<tr>
+<td><code>[RequiresUnreferencedCode(&quot;Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.&quot;)] public static IServiceCollection AddResourceLoaders(this IServiceCollection services, Assembly assembly)</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers discovered <code>IResourceLoader&lt;,&gt;</code> implementations with <code>TryAddScoped</code>.</td>
+</tr>
+<tr>
+<td><code>public static IServiceCollection AddSharedResourceLoader&lt;TMessage, TResource, TId&gt;(this IServiceCollection services) where TMessage : IAuthorizeResource&lt;TResource&gt;, IIdentifyResource&lt;TResource, TId&gt;</code></td>
+<td><code>IServiceCollection</code></td>
+<td>Registers <code>SharedResourceLoaderAdapter&lt;TMessage, TResource, TId&gt;</code> as <code>IResourceLoader&lt;TMessage, TResource&gt;</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tracingbehaviortmessage-tresponse">TracingBehavior&lt;TMessage, TResponse&gt;</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class TracingBehavior&lt;TMessage, TResponse&gt; : IPipelineBehavior&lt;TMessage, TResponse&gt; where TMessage : global::Mediator.IMessage where TResponse : IResult
+</code></pre>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public TracingBehavior(TrellisMediatorTelemetryOptions? options = null)</code></td>
+<td>Builds the tracing behavior. <code>options</code> is resolved from DI; when <code>null</code> (i.e. not registered) the safe-by-default options are used and <code>Error.Detail</code> is redacted from <code>Activity.StatusDescription</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fields</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ActivitySourceName</code></td>
+<td><code>string</code></td>
+<td>Public constant activity source name. Value: <code>&quot;Trellis.Mediator&quot;</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>—</code></td>
+<td><code>—</code></td>
+<td>None.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public async ValueTask&lt;TResponse&gt; Handle(TMessage message, MessageHandlerDelegate&lt;TMessage, TResponse&gt; next, CancellationToken cancellationToken)</code></td>
+<td><code>ValueTask&lt;TResponse&gt;</code></td>
+<td>Starts an activity named after <code>TMessage</code>. On failure tags the activity with <code>error.code</code> (the stable <code>Error.Code</code>) and <code>error.type</code> (the stable error class name); sets <code>ActivityStatusCode.Error</code>. The <code>StatusDescription</code> is left empty by default — the free-text <code>Error.Detail</code> is included only when <code>TrellisMediatorTelemetryOptions.IncludeErrorDetail</code> is <code>true</code>. On success sets <code>ActivityStatusCode.Ok</code>. Rethrows thrown exceptions after marking the activity as error and tagging <code>error.type</code>; the exception message is <strong>not</strong> copied into telemetry.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="trellismediatortelemetryoptions">TrellisMediatorTelemetryOptions</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class TrellisMediatorTelemetryOptions
+</code></pre>
+<p>Operator-tunable redaction settings consumed by <code>LoggingBehavior</code> and <code>TracingBehavior</code>. Resolved from DI; when not registered the behaviors fall back to a default-constructed instance (Detail redacted).</p>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IncludeErrorDetail</code></td>
+<td><code>bool</code></td>
+<td>When <code>true</code>, the logging and tracing behaviors include <code>Error.Detail</code> in their emitted message and activity status description. Defaults to <code>false</code> (Detail is redacted; only the stable <code>Error.Code</code> and type name are emitted).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="imessagevalidator">IMessageValidator<tmessage></tmessage></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IMessageValidator&lt;in TMessage&gt;
+    where TMessage : global::Mediator.IMessage
+</code></pre>
+<p>Extensibility hook for the unified validation stage. Implementations are resolved from DI as <code>IEnumerable&lt;IMessageValidator&lt;TMessage&gt;&gt;</code> by <code>ValidationBehavior&lt;TMessage, TResponse&gt;</code>; every registered validator runs before the handler. External packages (e.g., <code>Trellis.FluentValidation</code>) plug additional validation sources into the pipeline through this interface without taking a dependency on a specific validation library or message-side interface from <code>Trellis.Mediator</code>.</p>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ValueTask&lt;IResult&gt; ValidateAsync(TMessage message, CancellationToken cancellationToken)</code></td>
+<td><code>ValueTask&lt;IResult&gt;</code></td>
+<td>Returns <code>Result.Ok()</code> on success, or <code>Result.Fail(new Error.UnprocessableContent(...))</code> with field/rule violations on failure. <code>Error.UnprocessableContent</code> failures from every validator (and <code>IValidate.Validate()</code> if implemented) are aggregated into a single response failure by <code>ValidationBehavior</code>. Returning a non-<code>Error.UnprocessableContent</code> failure (e.g., <code>Error.Conflict</code>, <code>Error.Forbidden</code>) is allowed but short-circuits the stage immediately and is propagated as-is.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validationbehaviortmessage-tresponse">ValidationBehavior&lt;TMessage, TResponse&gt;</h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ValidationBehavior&lt;TMessage, TResponse&gt;(IEnumerable&lt;IMessageValidator&lt;TMessage&gt;&gt; validators) : IPipelineBehavior&lt;TMessage, TResponse&gt; where TMessage : global::Mediator.IMessage where TResponse : IResult, IFailureFactory&lt;TResponse&gt;
+</code></pre>
+<p>Unified validation stage. Runs <code>IValidate.Validate()</code> (when the message implements <code>IValidate</code>) and every <code>IMessageValidator&lt;TMessage&gt;</code> registered in DI for the message, then aggregates <code>Error.UnprocessableContent</code> failures into a single response. The behavior is registered for <strong>all</strong> messages — when the message does not implement <code>IValidate</code> and no validators are registered it is a no-op pass-through.</p>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public ValidationBehavior(IEnumerable&lt;IMessageValidator&lt;TMessage&gt;&gt; validators)</code></td>
+<td>Receives every <code>IMessageValidator&lt;TMessage&gt;</code> registered in DI. The collection is iterated once per request.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>—</code></td>
+<td><code>—</code></td>
+<td>None.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public async ValueTask&lt;TResponse&gt; Handle(TMessage message, MessageHandlerDelegate&lt;TMessage, TResponse&gt; next, CancellationToken cancellationToken)</code></td>
+<td><code>ValueTask&lt;TResponse&gt;</code></td>
+<td>Aggregation rules: (1) Multiple <code>Error.UnprocessableContent</code> failures from <code>IValidate</code> and validators are merged into a single <code>Error.UnprocessableContent</code> whose <code>Fields</code> and <code>Rules</code> collect every reported violation. (2) An <code>Error.UnprocessableContent</code> with empty <code>Fields</code> AND empty <code>Rules</code> still short-circuits the handler — original failure semantics are preserved. (3) A non-<code>Error.UnprocessableContent</code> failure returned by any source short-circuits the stage immediately and is propagated as-is.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="extension-methods">Extension methods</h2>
+<h3 id="trellismediatorservicecollectionextensions">Trellis.Mediator.ServiceCollectionExtensions</h3>
+<pre><code class="lang-csharp">public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)
+public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services, Action&lt;TrellisMediatorTelemetryOptions&gt; configure)
+public static IServiceCollection AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;(this IServiceCollection services) where TMessage : IAuthorizeResource&lt;TResource&gt;, global::Mediator.IMessage where TResponse : IResult, IFailureFactory&lt;TResponse&gt;
+[RequiresUnreferencedCode(&quot;Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs closed generic types at runtime. Use explicit registration for AOT scenarios.&quot;)]
+public static IServiceCollection AddResourceAuthorization(this IServiceCollection services, params Assembly[] assemblies)
+[RequiresUnreferencedCode(&quot;Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.&quot;)]
+public static IServiceCollection AddResourceLoaders(this IServiceCollection services, Assembly assembly)
+public static IServiceCollection AddSharedResourceLoader&lt;TMessage, TResource, TId&gt;(this IServiceCollection services) where TMessage : IAuthorizeResource&lt;TResource&gt;, IIdentifyResource&lt;TResource, TId&gt;
+</code></pre>
+<h2 id="interfaces">Interfaces</h2>
+<pre><code class="lang-csharp">public interface IValidate
+public interface IMessageValidator&lt;in TMessage&gt; where TMessage : global::Mediator.IMessage
+</code></pre>
+<h2 id="behavioral-notes">Behavioral notes</h2>
+<h3 id="canonical-pipeline-order">Canonical pipeline order</h3>
+<p>The Trellis pipeline executes outermost → innermost in this order. The first five are registered by <code>AddTrellisBehaviors()</code>; the last two are opt-in.</p>
+<ol>
+<li><strong><code>ExceptionBehavior&lt;,&gt;</code></strong> — catches unhandled exceptions (except <code>OperationCanceledException</code>), logs them, and converts them to a typed <code>TResponse.CreateFailure(new Error.InternalServerError(...))</code>. Sits outermost so every other layer is wrapped.</li>
+<li><strong><code>TracingBehavior&lt;,&gt;</code></strong> — opens an OpenTelemetry <code>Activity</code> per message under the <code>&quot;Trellis.Mediator&quot;</code> activity source. On failure tags <code>error.code</code> / <code>error.type</code> and sets <code>ActivityStatusCode.Error</code>. <code>Error.Detail</code> is redacted from <code>StatusDescription</code> unless <code>TrellisMediatorTelemetryOptions.IncludeErrorDetail</code> is <code>true</code>.</li>
+<li><strong><code>LoggingBehavior&lt;,&gt;</code></strong> — structured logging with start/end and elapsed-ms entries; emits the stable <code>Error.Code</code> on failure. Inherits the same correlation context propagated by the surrounding <code>Activity</code>. <code>Error.Detail</code> is redacted unless <code>IncludeErrorDetail</code> is <code>true</code>.</li>
+<li><strong><code>AuthorizationBehavior&lt;,&gt;</code></strong> — runs for <code>IAuthorize</code> messages; resolves the actor and rejects with <code>new Error.Forbidden(&quot;authorization.insufficient.permissions&quot;)</code> when <code>RequiredPermissions</code> are not satisfied. No I/O.</li>
+<li><strong><code>ResourceAuthorizationBehavior&lt;,,&gt;</code></strong> <em>(opt-in via <code>AddResourceAuthorization(...)</code>)</em> — runs for <code>IAuthorizeResource&lt;TResource&gt;</code> messages. Inserted <strong>immediately before <code>ValidationBehavior&lt;,&gt;</code></strong> so a 403 short-circuits before a 422 is computed. Resolves the actor first (fail-fast, no I/O when null), then loads the resource via <code>IResourceLoader&lt;TMessage, TResource&gt;</code> and calls <code>message.Authorize(actor, resource)</code>.</li>
+<li><strong><code>ValidationBehavior&lt;,&gt;</code></strong> — unified validation stage. Runs <code>IValidate.Validate()</code> if implemented, then every <code>IMessageValidator&lt;TMessage&gt;</code> resolved from DI; aggregates all <code>Error.UnprocessableContent</code> failures into a single response. External validation sources (e.g., the <code>Trellis.FluentValidation</code> adapter) participate here without occupying their own pipeline slot.</li>
+<li><strong><code>TransactionalCommandBehavior&lt;,&gt;</code></strong> <em>(opt-in, lives in <code>Trellis.EntityFrameworkCore</code>, not registered by <code>AddTrellisBehaviors()</code>)</em> — wraps the handler for <code>ICommand&lt;TResponse&gt;</code> messages and calls <code>IUnitOfWork.CommitAsync</code> on success. Register via <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> from the EFCore package <strong>after</strong> <code>AddTrellisBehaviors()</code> so it lands innermost (closest to the handler) and commit failures remain visible to outer logging/tracing. Queries are skipped.</li>
+</ol>
+<h2 id="code-examples">Code examples</h2>
+<h3 id="registering-behaviors-and-shared-resource-authorization">Registering behaviors and shared resource authorization</h3>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Mediator;
+
+var services = new ServiceCollection();
+
+services.AddScoped&lt;IActorProvider, StaticActorProvider&gt;();
+services.AddScoped&lt;SharedResourceLoaderById&lt;Order, OrderId&gt;, OrderResourceLoader&gt;();
+services.AddTrellisBehaviors();
+services.AddResourceAuthorization&lt;GetOrderQuery, Order, Result&lt;Order&gt;&gt;();
+services.AddSharedResourceLoader&lt;GetOrderQuery, Order, OrderId&gt;();
+
+var behaviorOrder = Trellis.Mediator.ServiceCollectionExtensions.PipelineBehaviors;
+Console.WriteLine(string.Join(&quot;, &quot;, behaviorOrder.Select(type =&gt; type.Name)));
+
+public sealed partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+public sealed partial class ActorId : RequiredString&lt;ActorId&gt;;
+
+public sealed record Order(OrderId Id, ActorId OwnerId);
+
+public sealed record GetOrderQuery(OrderId Id)
+    : IQuery&lt;Result&lt;Order&gt;&gt;, IAuthorize, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, OrderId&gt;, IValidate
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;orders:read&quot;];
+
+    public OrderId GetResourceId() =&gt; Id;
+
+    public IResult Validate() =&gt; Result.Ok();
+
+    public IResult Authorize(Actor actor, Order resource) =&gt;
+        resource.OwnerId.Value == actor.Id
+            ? Result.Ok()
+            : Result.Fail(new Error.Forbidden(&quot;orders.read&quot;) { Detail = &quot;Only the owner can view the order.&quot; });
+}
+
+public sealed class OrderResourceLoader : SharedResourceLoaderById&lt;Order, OrderId&gt;
+{
+    public override Task&lt;Result&lt;Order&gt;&gt; GetByIdAsync(OrderId id, CancellationToken cancellationToken) =&gt;
+        Task.FromResult(ActorId.TryCreate(&quot;user-1&quot;).Map(ownerId =&gt; new Order(id, ownerId)));
+}
+
+// Escape hatch: prefer IIdentifyResource&lt;TResource, TId&gt; + SharedResourceLoaderById&lt;TResource, TId&gt; in generated services.
+// services.AddScoped&lt;IResourceLoader&lt;GetOrderQuery, Order&gt;, GetOrderResourceLoader&gt;();
+
+public sealed class StaticActorProvider : IActorProvider
+{
+    public Task&lt;Actor&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default) =&gt;
+        Task.FromResult(Actor.Create(&quot;user-1&quot;, new HashSet&lt;string&gt; { &quot;orders:read&quot; }));
+}
+</code></pre>
+<h3 id="assembly-scanning-registration">Assembly scanning registration</h3>
+<pre><code class="lang-csharp">using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Mediator;
+
+var services = new ServiceCollection();
+Assembly[] assemblies = [typeof(SomeMessageInApplicationAssembly).Assembly];
+
+services.AddTrellisBehaviors();
+services.AddResourceAuthorization(assemblies);
+
+public sealed class SomeMessageInApplicationAssembly { }
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-authorization.html">trellis-api-authorization.md</a></li>
+<li><a href="trellis-api-core.html">trellis-api-core.md</a></li>
+<li><a href="trellis-api-asp.html">trellis-api-asp.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-mediator.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

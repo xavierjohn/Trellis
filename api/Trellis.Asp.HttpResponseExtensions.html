@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class HttpResponseExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class HttpResponseExtensions | Trellis ">
+      
+      <meta name="description" content="The single Trellis verb for converting  /  /  values to ASP.NET Core HTTP responses. Works in both Minimal API endpoints and MVC controllers (.NET 7+ executes  natively in MVC). For typed ActionResult&amp;lt;T&amp;gt; signatures, chain .">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_HttpResponseExtensions.md&amp;value=---%0Auid%3A%20Trellis.Asp.HttpResponseExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.HttpResponseExtensions">
+
+
+
+  <h1 id="Trellis_Asp_HttpResponseExtensions" data-uid="Trellis.Asp.HttpResponseExtensions" class="text-break">
+Class HttpResponseExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>The single Trellis verb for converting <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> /
+<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome&lt;T&gt;</a> / <a class="xref" href="Trellis.Page-1.html">Page&lt;T&gt;</a> values to ASP.NET Core HTTP responses. Works
+in both Minimal API endpoints and MVC controllers (.NET 7+ executes
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a> natively in MVC). For typed
+<code>ActionResult&lt;T&gt;</code> signatures, chain
+<a class="xref" href="Trellis.Asp.ActionResultAdapterExtensions.html#Trellis_Asp_ActionResultAdapterExtensions_AsActionResult__1_Microsoft_AspNetCore_Http_IResult_">AsActionResult&lt;T&gt;(IResult)</a>.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class HttpResponseExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">HttpResponseExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Asp_HttpResponseExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Configure protocol semantics via the optional fluent <a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder&lt;TDomain&gt;</a>:
+<code>WithETag</code>, <code>WithLastModified</code>, <code>Vary</code>, <code>CreatedAtRoute</code>,
+<code>EvaluatePreconditions</code>, <code>HonorPrefer</code>, etc. All selectors run against the domain value;
+the response body may be projected separately via the <code>body</code> overload.
+</p>
+<p>
+<b>No-payload success:</b> <code>Result&lt;Unit&gt;</code> is rendered as <code>204 No Content</code>
+(with <code>HonorPrefer</code>/<code>Vary</code>/ETag headers still applied).
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse_Trellis_Error_System_Action_Trellis_Asp_HttpResponseOptionsBuilder__" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse(Trellis.Error,System.Action{Trellis.Asp.HttpResponseOptionsBuilder})">
+  ToHttpResponse(Error, Action&lt;HttpResponseOptionsBuilder&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps a standalone <a class="xref" href="Trellis.Error.html">Error</a> to a Problem Details HTTP response.
+Useful for endpoints that produce a deterministic error without a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>
+pipeline (e.g. diagnostic / fault demonstration endpoints).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IResult ToHttpResponse(this Error error, Action&lt;HttpResponseOptionsBuilder&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder.html">HttpResponseOptionsBuilder</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__1_System_Threading_Tasks_Task_Trellis_Result_Trellis_WriteOutcome___0____System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``1(System.Threading.Tasks.Task{Trellis.Result{Trellis.WriteOutcome{``0}}},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;T&gt;(Task&lt;Result&lt;WriteOutcome&lt;T&gt;&gt;&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L148"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> overload.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;IResult&gt; ToHttpResponseAsync&lt;T&gt;(this Task&lt;Result&lt;WriteOutcome&lt;T&gt;&gt;&gt; resultTask, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__1_System_Threading_Tasks_Task_Trellis_Result___0___System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``1(System.Threading.Tasks.Task{Trellis.Result{``0}},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;T&gt;(Task&lt;Result&lt;T&gt;&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> overload.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;IResult&gt; ToHttpResponseAsync&lt;T&gt;(this Task&lt;Result&lt;T&gt;&gt; resultTask, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__1_System_Threading_Tasks_ValueTask_Trellis_Result_Trellis_WriteOutcome___0____System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``1(System.Threading.Tasks.ValueTask{Trellis.Result{Trellis.WriteOutcome{``0}}},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;T&gt;(ValueTask&lt;Result&lt;WriteOutcome&lt;T&gt;&gt;&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L154"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> overload.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;IResult&gt; ToHttpResponseAsync&lt;T&gt;(this ValueTask&lt;Result&lt;WriteOutcome&lt;T&gt;&gt;&gt; resultTask, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__1_System_Threading_Tasks_ValueTask_Trellis_Result___0___System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``1(System.Threading.Tasks.ValueTask{Trellis.Result{``0}},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;T&gt;(ValueTask&lt;Result&lt;T&gt;&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> overload.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;IResult&gt; ToHttpResponseAsync&lt;T&gt;(this ValueTask&lt;Result&lt;T&gt;&gt; resultTask, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__2_System_Threading_Tasks_Task_Trellis_Result_Trellis_Page___0____System_Func_Trellis_Cursor_System_Int32_System_String__System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder_Trellis_Page___0____" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``2(System.Threading.Tasks.Task{Trellis.Result{Trellis.Page{``0}}},System.Func{Trellis.Cursor,System.Int32,System.String},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{Trellis.Page{``0}}})">
+  ToHttpResponseAsync&lt;T, TBody&gt;(Task&lt;Result&lt;Page&lt;T&gt;&gt;&gt;, Func&lt;Cursor, int, string&gt;, Func&lt;T, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;Page&lt;T&gt;&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> overload.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;IResult&gt; ToHttpResponseAsync&lt;T, TBody&gt;(this Task&lt;Result&lt;Page&lt;T&gt;&gt;&gt; resultTask, Func&lt;Cursor, int, string&gt; nextUrlBuilder, Func&lt;T, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;Page&lt;T&gt;&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Page-1.html">Page</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>nextUrlBuilder</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="Trellis.Cursor.html">Cursor</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;<a class="xref" href="Trellis.Page-1.html">Page</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__2_System_Threading_Tasks_Task_Trellis_Result_Trellis_WriteOutcome___0____System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``2(System.Threading.Tasks.Task{Trellis.Result{Trellis.WriteOutcome{``0}}},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;TDomain, TBody&gt;(Task&lt;Result&lt;WriteOutcome&lt;TDomain&gt;&gt;&gt;, Func&lt;TDomain, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L160"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> overload with body projection.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;IResult&gt; ToHttpResponseAsync&lt;TDomain, TBody&gt;(this Task&lt;Result&lt;WriteOutcome&lt;TDomain&gt;&gt;&gt; resultTask, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome</a>&lt;TDomain&gt;&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDomain</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__2_System_Threading_Tasks_Task_Trellis_Result___0___System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``2(System.Threading.Tasks.Task{Trellis.Result{``0}},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;TDomain, TBody&gt;(Task&lt;Result&lt;TDomain&gt;&gt;, Func&lt;TDomain, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L99"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> overload with body projection.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;IResult&gt; ToHttpResponseAsync&lt;TDomain, TBody&gt;(this Task&lt;Result&lt;TDomain&gt;&gt; resultTask, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDomain</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__2_System_Threading_Tasks_ValueTask_Trellis_Result_Trellis_Page___0____System_Func_Trellis_Cursor_System_Int32_System_String__System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder_Trellis_Page___0____" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``2(System.Threading.Tasks.ValueTask{Trellis.Result{Trellis.Page{``0}}},System.Func{Trellis.Cursor,System.Int32,System.String},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{Trellis.Page{``0}}})">
+  ToHttpResponseAsync&lt;T, TBody&gt;(ValueTask&lt;Result&lt;Page&lt;T&gt;&gt;&gt;, Func&lt;Cursor, int, string&gt;, Func&lt;T, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;Page&lt;T&gt;&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L219"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> overload.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;IResult&gt; ToHttpResponseAsync&lt;T, TBody&gt;(this ValueTask&lt;Result&lt;Page&lt;T&gt;&gt;&gt; resultTask, Func&lt;Cursor, int, string&gt; nextUrlBuilder, Func&lt;T, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;Page&lt;T&gt;&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Page-1.html">Page</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>nextUrlBuilder</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="Trellis.Cursor.html">Cursor</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;<a class="xref" href="Trellis.Page-1.html">Page</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__2_System_Threading_Tasks_ValueTask_Trellis_Result_Trellis_WriteOutcome___0____System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``2(System.Threading.Tasks.ValueTask{Trellis.Result{Trellis.WriteOutcome{``0}}},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;TDomain, TBody&gt;(ValueTask&lt;Result&lt;WriteOutcome&lt;TDomain&gt;&gt;&gt;, Func&lt;TDomain, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> overload with body projection.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;IResult&gt; ToHttpResponseAsync&lt;TDomain, TBody&gt;(this ValueTask&lt;Result&lt;WriteOutcome&lt;TDomain&gt;&gt;&gt; resultTask, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome</a>&lt;TDomain&gt;&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDomain</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponseAsync__2_System_Threading_Tasks_ValueTask_Trellis_Result___0___System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponseAsync``2(System.Threading.Tasks.ValueTask{Trellis.Result{``0}},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponseAsync&lt;TDomain, TBody&gt;(ValueTask&lt;Result&lt;TDomain&gt;&gt;, Func&lt;TDomain, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Async <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> overload with body projection.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;IResult&gt; ToHttpResponseAsync&lt;TDomain, TBody&gt;(this ValueTask&lt;Result&lt;TDomain&gt;&gt; resultTask, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDomain</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse__1_Trellis_Result_Trellis_WriteOutcome___0___System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse``1(Trellis.Result{Trellis.WriteOutcome{``0}},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponse&lt;T&gt;(Result&lt;WriteOutcome&lt;T&gt;&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L122"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> of <a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome&lt;T&gt;</a> to an HTTP response with
+status driven by the outcome variant per RFC 9110:
+Created -&gt; 201 + Location, Updated -&gt; 200 (or 204 with <code>Prefer: return=minimal</code>),
+UpdatedNoContent -&gt; 204, Accepted -&gt; 202.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IResult ToHttpResponse&lt;T&gt;(this Result&lt;WriteOutcome&lt;T&gt;&gt; result, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse__1_Trellis_Result___0__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse``1(Trellis.Result{``0},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponse&lt;T&gt;(Result&lt;T&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> to a 200 OK (success, body = <code class="typeparamref">T</code>) or
+Problem Details (failure). When configured via
+<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_Created_System_String_">Created(string)</a> or
+<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_CreatedAtRoute_System_String_System_Func__0_Microsoft_AspNetCore_Routing_RouteValueDictionary__">CreatedAtRoute(string, Func&lt;TDomain, RouteValueDictionary&gt;)</a>, returns 201 Created with a
+Location header.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IResult ToHttpResponse&lt;T&gt;(this Result&lt;T&gt; result, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse__2_Trellis_Result_Trellis_Page___0___System_Func_Trellis_Cursor_System_Int32_System_String__System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder_Trellis_Page___0____" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse``2(Trellis.Result{Trellis.Page{``0}},System.Func{Trellis.Cursor,System.Int32,System.String},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{Trellis.Page{``0}}})">
+  ToHttpResponse&lt;T, TBody&gt;(Result&lt;Page&lt;T&gt;&gt;, Func&lt;Cursor, int, string&gt;, Func&lt;T, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;Page&lt;T&gt;&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L183"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> of <a class="xref" href="Trellis.Page-1.html">Page&lt;T&gt;</a> to an HTTP response with the
+paginated envelope and an RFC 8288 <code>Link</code> header. Delegates to the existing paginated
+helper (which carries the RFC 8288 logic) and feeds the failure path through the unified
+error mapping.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IResult ToHttpResponse&lt;T, TBody&gt;(this Result&lt;Page&lt;T&gt;&gt; result, Func&lt;Cursor, int, string&gt; nextUrlBuilder, Func&lt;T, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;Page&lt;T&gt;&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Page-1.html">Page</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>nextUrlBuilder</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="Trellis.Cursor.html">Cursor</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;<a class="xref" href="Trellis.Page-1.html">Page</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse__2_Trellis_Result_Trellis_WriteOutcome___0___System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse``2(Trellis.Result{Trellis.WriteOutcome{``0}},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponse&lt;TDomain, TBody&gt;(Result&lt;WriteOutcome&lt;TDomain&gt;&gt;, Func&lt;TDomain, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L135"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> of <a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome&lt;T&gt;</a> with body projection.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IResult ToHttpResponse&lt;TDomain, TBody&gt;(this Result&lt;WriteOutcome&lt;TDomain&gt;&gt; result, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDomain</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse_" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseExtensions_ToHttpResponse__2_Trellis_Result___0__System_Func___0___1__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___" data-uid="Trellis.Asp.HttpResponseExtensions.ToHttpResponse``2(Trellis.Result{``0},System.Func{``0,``1},System.Action{Trellis.Asp.HttpResponseOptionsBuilder{``0}})">
+  ToHttpResponse&lt;TDomain, TBody&gt;(Result&lt;TDomain&gt;, Func&lt;TDomain, TBody&gt;, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> to an HTTP response, projecting the body via
+<code class="paramref">body</code>. Selectors in the options builder still run against the domain value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IResult ToHttpResponse&lt;TDomain, TBody&gt;(this Result&lt;TDomain&gt; result, Func&lt;TDomain, TBody&gt; body, Action&lt;HttpResponseOptionsBuilder&lt;TDomain&gt;&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+    <dt><code>body</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, TBody&gt;</dt>
+    <dd></dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.iresult">IResult</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDomain</code></dt>
+    <dd></dd>
+    <dt><code>TBody</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseExtensions.cs/#L30" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

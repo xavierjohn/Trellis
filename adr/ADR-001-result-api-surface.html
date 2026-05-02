@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ADR-001: Result API Surface — Value / Error Accessors | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ADR-001: Result API Surface — Value / Error Accessors | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-001-result-api-surface.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="adr-001-result-api-surface--value--error-accessors">ADR-001: Result API Surface — <code>Value</code> / <code>Error</code> Accessors</h1>
+
+<p><strong>Status:</strong> Accepted
+<strong>Date:</strong> 2026-04
+<strong>Supersedes:</strong> the prior internal-accessor + <code>TryGetError</code>/<code>TryGetValue</code> design.</p>
+<hr>
+<h2 id="decision">Decision</h2>
+<p>The public surface of <code>Result</code> and <code>Result&lt;T&gt;</code> exposes:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Signature</th>
+<th>Behavior on success</th>
+<th>Behavior on failure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Error</code></td>
+<td><code>public Error?</code></td>
+<td>returns <code>null</code></td>
+<td>returns the error</td>
+</tr>
+<tr>
+<td><code>Value</code> (<code>Result&lt;T&gt;</code> only)</td>
+<td><code>public T</code></td>
+<td>returns the value</td>
+<td><strong>throws</strong> <code>InvalidOperationException</code></td>
+</tr>
+<tr>
+<td><code>IsSuccess</code></td>
+<td><code>public bool</code></td>
+<td><code>true</code></td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>IsFailure</code></td>
+<td><code>public bool</code></td>
+<td><code>false</code></td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>TryGetValue(out T)</code></td>
+<td><code>public bool</code></td>
+<td>sets value, returns <code>true</code></td>
+<td>sets default, returns <code>false</code></td>
+</tr>
+<tr>
+<td><code>TryGetError(out Error?)</code></td>
+<td><code>public bool</code></td>
+<td>sets <code>null</code>, returns <code>false</code></td>
+<td>sets the error, returns <code>true</code></td>
+</tr>
+<tr>
+<td><code>Deconstruct(...)</code></td>
+<td>tuple</td>
+<td>populates value</td>
+<td>populates error</td>
+</tr>
+</tbody>
+</table>
+<p><code>Error</code> is the canonical pattern-match target:</p>
+<pre><code class="lang-csharp">if (result.Error is { } error)
+    return error switch
+    {
+        Error.NotFound nf =&gt; HandleNotFound(nf),
+        Error.UnprocessableContent uc =&gt; HandleValidation(uc),
+        _ =&gt; HandleGeneric(error),
+    };
+return Use(result.Value);
+</code></pre>
+<hr>
+<h2 id="why-it-looks-the-way-it-does">Why it looks the way it does</h2>
+<p>The asymmetry between <code>Error?</code> (nullable, never throws) and <code>Value</code> (throws on failure) is <strong>intentional</strong>. It is forced by the C# type system <strong>for the primary property accessor</strong> — <code>Value</code> cannot be made safely nullable when <code>T</code> is a struct. It is not strictly forced across the <em>whole</em> API surface (see &quot;Known footguns&quot; below — <code>TryGetValue</code>, <code>Deconstruct</code>, and <code>GetValueOrDefault</code> all expose silent-default paths by design, for callers who opt in). The decision is therefore: pick the safest default for the most-discoverable accessor and let the opt-in helpers preserve their conventional bool-gated semantics.</p>
+<p>The remainder of this document records every variation that was tried, why it was rejected, and what evidence supported the rejection. New contributors who want to &quot;fix&quot; the asymmetry should read this document first; the tradeoffs are deeper than they look.</p>
+<hr>
+<h2 id="variations-explored">Variations explored</h2>
+<h3 id="v1-original-value-and-error-both-public-both-throw-on-wrong-state-access">V1 (original): <code>Value</code> and <code>Error</code> both public, both throw on wrong-state access</h3>
+<pre><code class="lang-csharp">public T Value =&gt; IsSuccess ? _value! : throw new InvalidOperationException(...);
+public Error Error =&gt; IsFailure ? _error! : throw new InvalidOperationException(...);
+</code></pre>
+<p>This is the original CSharpFunctionalExtensions design, and what Trellis inherited.</p>
+<p><strong>Pros</strong></p>
+<ul>
+<li>Symmetric.</li>
+<li>Throws loudly on misuse.</li>
+</ul>
+<p><strong>Cons</strong></p>
+<ul>
+<li>Pattern-matching is awkward: you must guard with <code>IsFailure</code> <em>before</em> reading <code>Error</code>, then read it again inside the switch — no concise binding form.</li>
+<li>The throw is purely a defensive guard; nullable reference types (NRT) would cover the same bug class for <code>Error</code>.</li>
+<li>Encourages defensive <code>IsFailure ? Error.Code : &quot;OK&quot;</code> ternaries everywhere instead of expressive pattern matches.</li>
+</ul>
+<p><strong>Verdict:</strong> Replaced.</p>
+<hr>
+<h3 id="v2-value-and-error-made-internal-external-callers-use-trygetvalue--trygeterror--deconstruct">V2: <code>Value</code> and <code>Error</code> made <code>internal</code>; external callers use <code>TryGetValue</code> / <code>TryGetError</code> / <code>Deconstruct</code></h3>
+<pre><code class="lang-csharp">internal T Value =&gt; IsSuccess ? _value! : throw ...;
+internal Error Error =&gt; IsFailure ? _error! : throw ...;
+public bool TryGetValue(out T value) { ... }
+public bool TryGetError(out Error error) { ... }
+public void Deconstruct(out bool, out T?, out Error?) { ... }
+</code></pre>
+<p>The motivation was &quot;make illegal states unrepresentable&quot; — force callers through <code>TryGet</code>/<code>Deconstruct</code> so they can never accidentally read the wrong side.</p>
+<p><strong>Pros</strong></p>
+<ul>
+<li>Single safe API at the boundary.</li>
+<li>Matches Rust/F# discipline of &quot;you can't get the value without first proving you have one&quot;.</li>
+</ul>
+<p><strong>Cons</strong> (discovered after adoption)</p>
+<ul>
+<li><code>TryGetError(out var e); ... e switch { ... }</code> is verbose for what should be a one-line pattern match.</li>
+<li>C# <em>already</em> has nullable reference types, which encode the same constraint at compile time without forcing <code>out</code> parameters. The discipline was double-counted.</li>
+<li>Combinator extensions inside the assembly had to use the <code>internal</code> getter (with the throwing semantics still in place); two parallel APIs for one concept.</li>
+<li>The Rust/F# precedent doesn't transfer cleanly: those languages don't have nullable reference types, so they <em>must</em> use the discriminated-union/<code>match</code> pattern. C# does have NRT and switch expressions, so the cost/benefit is different.</li>
+<li>Migration cost when V2 was adopted was high (~100 source files churned) for a property of the language we already had for free.</li>
+</ul>
+<p><strong>Verdict:</strong> Reverted. The internal-only access pattern was over-engineering motivated by F# envy. NRT plus a single clear discriminator does the same work in idiomatic C#.</p>
+<hr>
+<h3 id="v3-considered-rejected-both-nullable-error-is-the-sole-discriminator">V3 (considered, rejected): both nullable, <code>Error?</code> is the sole discriminator</h3>
+<pre><code class="lang-csharp">public Error? Error =&gt; _error;     // null ⇔ success
+public T?     Value =&gt; _value;     // default(T) on failure
+</code></pre>
+<p>Rule: <em>&quot;check <code>Error</code> first; then read <code>Value</code>.&quot;</em> No throws anywhere.</p>
+<p><strong>Pros</strong></p>
+<ul>
+<li>Symmetric.</li>
+<li>No throws.</li>
+<li>Clean for reference types.</li>
+</ul>
+<p><strong>Cons (the deal-breaker)</strong></p>
+<ul>
+<li>For value-type <code>T</code> (e.g. <code>Result&lt;int&gt;</code>, <code>Result&lt;Guid&gt;</code>, <code>Result&lt;DateTimeOffset&gt;</code>), <code>default(T)</code> is <code>0</code> / <code>Guid.Empty</code> / <code>default</code> — <strong>indistinguishable from a real successful value of zero/empty/default</strong>.</li>
+<li>A caller who forgets to check <code>Error</code> first reads <code>0</code> from a failed <code>Result&lt;int&gt;</code> and quietly propagates a fake value through the system. No exception, no warning, no NRT diagnostic.</li>
+<li>NRT analysis cannot help: struct fields don't carry nullability, and <code>T?</code> for unconstrained generic <code>T</code> is just an annotation, not <code>Nullable&lt;T&gt;</code>.</li>
+</ul>
+<p><strong>Verdict:</strong> Rejected. The silent-default failure mode is a real bug class with no compile-time defense.</p>
+<hr>
+<h3 id="v4-considered-rejected-both-nullable-issuccess--isfailure-are-the-sole-discriminators">V4 (considered, rejected): both nullable, <code>IsSuccess</code> / <code>IsFailure</code> are the sole discriminators</h3>
+<p>Same as V3 but with the rule reframed to &quot;always check <code>IsFailure</code> first, like <code>Task&lt;T&gt;</code>&quot;.</p>
+<pre><code class="lang-csharp">public bool   IsFailure =&gt; _error is not null;
+public bool   IsSuccess =&gt; _error is null;
+public Error? Error =&gt; _error;     // valid to read; meaningful when IsFailure
+public T?     Value =&gt; _value;     // valid to read; meaningful when IsSuccess
+</code></pre>
+<p>This is the <code>Task&lt;T&gt;</code> model: <code>Task.Result</code>, <code>Task.Exception</code>, <code>Task.IsFaulted</code>. Read either accessor at any time; the bool flags tell you which is meaningful.</p>
+<p><strong>Pros</strong></p>
+<ul>
+<li>Symmetric.</li>
+<li>No throws.</li>
+<li>Matches BCL precedent.</li>
+</ul>
+<p><strong>Cons</strong></p>
+<ul>
+<li>Same value-type silent-default problem as V3.</li>
+<li>The <code>Task&lt;T&gt;</code> analogy is misleading: <code>Task.Exception</code> is always a reference type (<code>Exception</code>) with a clean <code>null</code> representation. Our <code>Value</code> can be a struct, where <code>null</code> is unrepresentable and <code>default(T)</code> is ambiguous.</li>
+</ul>
+<p><strong>Verdict:</strong> Rejected for the same reason as V3. The BCL analogy holds for <code>Error</code> (a reference type) but breaks for <code>Value</code> (which may be a struct).</p>
+<hr>
+<h3 id="v5-considered-rejected-discriminated-union-via-inheritance">V5 (considered, rejected): discriminated union via inheritance</h3>
+<pre><code class="lang-csharp">public abstract record Result&lt;T&gt;
+{
+    private Result() { }
+    public sealed record Success(T Value) : Result&lt;T&gt;;
+    public sealed record Failure(Error Error) : Result&lt;T&gt;;
+}
+
+// Usage:
+return result switch {
+    Result&lt;T&gt;.Success s =&gt; Use(s.Value),
+    Result&lt;T&gt;.Failure f =&gt; Handle(f.Error),
+};
+</code></pre>
+<p><code>Value</code> only exists on <code>Success</code>; <code>Error</code> only exists on <code>Failure</code>. The compiler enforces correctness by case.</p>
+<p><strong>Pros</strong></p>
+<ul>
+<li>Bullet-proof: you cannot read the wrong side, by construction.</li>
+<li>Pattern matching is exhaustive at the language level.</li>
+<li>No throws, no nullable confusion.</li>
+<li>Mirrors Rust/F# directly.</li>
+</ul>
+<p><strong>Cons (the deal-breaker)</strong></p>
+<ul>
+<li>Every <code>Result&lt;T&gt;</code> becomes a <strong>heap allocation</strong>. The reason is structural to the C# type system as of C# 13:
+<ul>
+<li>C# does not support struct inheritance. You cannot write <code>abstract record struct Result&lt;T&gt;</code> and derive <code>Success</code>/<code>Failure</code> from it. <code>record struct</code> exists, but it is sealed-by-construction — it cannot be <code>abstract</code> and cannot serve as a base type.</li>
+<li>Therefore <code>abstract record Result&lt;T&gt;</code> (and any inheritance-based discriminated union) is necessarily a <strong>class</strong>. Every <code>new Result&lt;T&gt;.Success(value)</code> and <code>new Result&lt;T&gt;.Failure(err)</code> is a reference-type allocation on the GC heap.</li>
+<li>The current <code>readonly struct Result&lt;T&gt;</code> is stack-allocated when local, and inlined into containing types when stored as a field — zero GC pressure on the hot path.</li>
+</ul>
+</li>
+<li>Hot-path code (Mediator pipelines, validation loops, batch workflows, generated <code>Combine</code> overloads) constructs tens of thousands of <code>Result</code> instances per request. Converting that to per-instance heap allocations is a measurable throughput regression, and the cost compounds when the result flows through <code>Task&lt;Result&lt;T&gt;&gt;</code> and async state machines (each await would now keep the boxed result rooted).</li>
+<li>Existing call sites all use struct semantics (default-able, copy-by-value, no null check on the result itself). Migrating is a much bigger change than the rest of the V6 transition.</li>
+</ul>
+<p><strong>Verdict:</strong> Rejected on performance grounds. The allocation cost is non-negotiable for the framework's primary throughput path. Worth revisiting if and when C# adds <strong>true sum types over value types</strong> (discriminated unions / closed hierarchies of structs — proposal in flight as of 2026) that allow heap-free exhaustive matching.</p>
+<hr>
+<h3 id="v6-accepted-asymmetric--error-nullable-value-throws-on-failure">V6 (Accepted): asymmetric — <code>Error?</code> nullable, <code>Value</code> throws on failure</h3>
+<pre><code class="lang-csharp">public Error? Error =&gt; _error;          // null on success, never throws
+public T      Value =&gt; IsSuccess
+                          ? _value!
+                          : throw new InvalidOperationException(
+                              &quot;Cannot access Value on a failed result. Check IsFailure or Error first.&quot;);
+</code></pre>
+<p><strong>Why it works</strong></p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Why this design handles it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pattern match on error</td>
+<td><code>result.Error is { } e</code> binds in one expression.</td>
+</tr>
+<tr>
+<td>Silent default on <code>Value</code> for struct <code>T</code></td>
+<td>Throw makes the misuse loud. No silent corruption.</td>
+</tr>
+<tr>
+<td>NRT support</td>
+<td><code>Error?</code> is annotated; flow analysis catches careless dereference.</td>
+</tr>
+<tr>
+<td><code>Value</code> for reference-type <code>T</code> returning null</td>
+<td>The throw applies whether <code>T</code> is reference or value — uniform behavior.</td>
+</tr>
+<tr>
+<td>Allocation</td>
+<td>Both types remain <code>readonly struct</code>.</td>
+</tr>
+<tr>
+<td>Migration cost from V2</td>
+<td>Minimal: just unseal <code>Error</code> and add the throw to <code>Value</code>. Existing <code>TryGetValue</code> keeps working as a convenience for callers that prefer the pattern.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The asymmetry is intentional and reflects the asymmetric semantics of the two cases:</strong></p>
+<ul>
+<li>&quot;What error happened?&quot; on a success has a meaningful answer: <em>none</em>. We return <code>null</code>.</li>
+<li>&quot;Give me the value&quot; on a failure has no meaningful answer. We throw.</li>
+</ul>
+<p>Compare <code>Task&lt;T&gt;</code>: <code>Task.Exception</code> is null on success (analogous to our <code>Error?</code>); <code>Task.Result</code> blocks-or-throws on a faulted task (analogous to our throwing <code>Value</code>).</p>
+<p>The <code>Task&lt;T&gt;</code> analogy is partial — it works for <code>Error</code> because <code>Exception</code> is always a reference type — but the underlying <em>principle</em> (asymmetric semantics → asymmetric API) holds for both.</p>
+<hr>
+<h2 id="known-footguns-and-how-to-mitigate-them">Known footguns (and how to mitigate them)</h2>
+<p>V6 keeps <code>Value</code>'s throw as the only structural protection. Several adjacent APIs deliberately do <strong>not</strong> throw, and contributors must understand the tradeoffs:</p>
+<h3 id="1-deconstruct-returns-defaultt-on-failure">1. <code>Deconstruct</code> returns <code>default(T)</code> on failure</h3>
+<pre><code class="lang-csharp">var (isSuccess, value, error) = failedResultInt;   // value == 0, no throw
+</code></pre>
+<p>This is the same silent-default hazard that disqualified V3/V4 <em>as the primary accessor</em>. We accept it on <code>Deconstruct</code> because:</p>
+<ul>
+<li>The deconstruction triplet form (<code>isSuccess</code>, <code>value</code>, <code>error</code>) self-documents that the value is conditional on the bool.</li>
+<li>Idiomatic deconstruction usage is <code>var (ok, v, e) = result; if (!ok) return e!; Use(v);</code> — the bool gate is right there.</li>
+<li>The alternative (throwing inside <code>Deconstruct</code>) would make pattern-match destructuring crash on routine error-checking code.</li>
+</ul>
+<p><strong>Guidance:</strong> Always read the <code>isSuccess</code> (or <code>error</code>) component first. Treat <code>value</code> as meaningful only when <code>isSuccess</code> is true. The Trellis analyzers should ideally flag deconstructions where <code>value</code> is read without a preceding check on the bool — this is a candidate analyzer for a future PR.</p>
+<h3 id="2-trygetvalueout-t-returns-defaultt-on-failure">2. <code>TryGetValue(out T)</code> returns <code>default(T)</code> on failure</h3>
+<p>This is conventional <code>Try*</code> semantics. Annotate with <code>[MaybeNullWhen(false)] out T value</code> for callers using NRT.</p>
+<h3 id="3-nrt-flow-analysis-on-error-requires-membernotnullwhen">3. NRT flow analysis on <code>Error</code> requires <code>MemberNotNullWhen</code></h3>
+<p>A naive caller writes:</p>
+<pre><code class="lang-csharp">if (result.IsFailure)
+    return result.Error.Code;   // CS8602: dereference of possibly null reference
+</code></pre>
+<p>Without flow attributes, <code>IsFailure == true</code> does not narrow <code>Error?</code> to non-null. The fix is on the <em>type</em>, not the caller:</p>
+<pre><code class="lang-csharp">[MemberNotNullWhen(true,  nameof(Error))]
+public bool IsFailure =&gt; _error is not null;
+
+[MemberNotNullWhen(false, nameof(Error))]
+public bool IsSuccess =&gt; _error is null;
+</code></pre>
+<p>With these annotations, the natural form <code>if (result.IsFailure) { use result.Error.Foo; }</code> flows non-null and compiles cleanly. These attributes are <strong>part of the V6 contract</strong> — without them, the public <code>Error?</code> property is harder to use than the old <code>TryGetError</code>.</p>
+<h3 id="4-property-patterns-over-value-are-not-safe-guards">4. Property patterns over <code>Value</code> are not safe guards</h3>
+<pre><code class="lang-csharp">// UNSAFE: throws if result is failure
+var x = result switch
+{
+    { Value: var v } =&gt; Use(v),
+    _                =&gt; null,
+};
+</code></pre>
+<p>The compiler will happily accept this pattern, but evaluating <code>Value</code> on a failed result throws. Always pattern-match against <code>Error</code> (which is null-safe) and only touch <code>Value</code> from a branch where success is already proven:</p>
+<pre><code class="lang-csharp">return result.Error is { } err
+    ? Handle(err)
+    : Use(result.Value);
+</code></pre>
+<p>This guidance belongs in the developer-facing docs and (eventually) in an analyzer rule.</p>
+<hr>
+<h2 id="empirical-evidence">Empirical evidence</h2>
+<p>Before adopting V6, we ran the following experiment against
+<code>CSharpFunctionalExtensions</code> (a comparable library that ships the V1 design):</p>
+<blockquote>
+<p>Strip the throw guards from <code>Result.Error</code>, <code>Result&lt;T&gt;.Error</code>, <code>Result&lt;T&gt;.Value</code>, <code>Result&lt;T,E&gt;.Error</code>, <code>Result&lt;T,E&gt;.Value</code>, and <code>UnitResult&lt;E&gt;.Error</code>. Run the test suite.</p>
+</blockquote>
+<p><strong>Result:</strong> 4220 of 4226 tests passed. The 6 failures were all <em>specification tests</em> of the throw itself:</p>
+<ul>
+<li><code>SucceededResultTests.Cannot_access_Error_non_generic_version</code></li>
+<li><code>SucceededResultTests.Cannot_access_Error_generic_version</code></li>
+<li><code>SucceededResultTests.Cannot_access_Error_generic_error_version</code></li>
+<li><code>SucceededResultTests.Cannot_access_Error_UnitResult_version</code></li>
+<li><code>FailedResultTests.Cannot_access_Value_property</code></li>
+<li><code>FailedResultTests.Cannot_access_Value_property_with_a_generic_error</code></li>
+</ul>
+<p><strong>No behavioral test relied on the throw.</strong> Every other usage path correctly checked <code>IsFailure</code>/<code>IsSuccess</code> before accessing the property and was unaffected by the change.</p>
+<p>This confirmed:</p>
+<ol>
+<li>The throw on <code>Error</code> adds no real safety in practice (NRT already covers it). → drop it.</li>
+<li>The throw on <code>Value</code> adds no measurable obstruction either, but the <em>type-system reasoning</em> (silent default for struct <code>T</code>) shows the protection it provides cannot be replaced by NRT. → keep it.</li>
+</ol>
+<p><strong>Caveat on the strength of this evidence.</strong> This experiment proves that <em>no behavioral test in CFE depended on the throws</em>. It does <strong>not</strong> by itself prove the API is ergonomically optimal — those tests were written by people accustomed to the throwing API and may have unconsciously avoided patterns the throws prevented. The experiment is best read as supporting evidence for &quot;the throw is not load-bearing&quot;, not as a decisive proof of design correctness. The design-correctness argument rests on the type-system reasoning above (silent default for struct <code>T</code>).</p>
+<hr>
+<h2 id="consequences">Consequences</h2>
+<h3 id="public-api">Public API</h3>
+<ul>
+<li><strong>Public:</strong> <code>Error?</code> (nullable, never throws), <code>Value</code> (throws on failure for <code>Result&lt;T&gt;</code>), <code>IsSuccess</code>, <code>IsFailure</code>, <code>TryGetValue(out T)</code>, <code>TryGetError(out Error?)</code>, <code>Deconstruct(...)</code>.</li>
+<li><strong>Two complementary error-consumption styles, both first-class:</strong>
+<ul>
+<li>Pattern-match on the property: <code>if (result.Error is { } err) { ... }</code> — concise, idiomatic for switch expressions and one-line guards.</li>
+<li><code>Try*</code> style: <code>if (result.TryGetError(out var err)) { ... }</code> — bool-gated, gives a non-null local without NRT acrobatics, idiomatic in imperative branches.</li>
+</ul>
+</li>
+</ul>
+<h3 id="migration">Migration</h3>
+<ul>
+<li>External call sites that previously couldn't reach <code>Value</code> / <code>Error</code> directly can now do so; pattern matches on <code>result.Error</code> become idiomatic.</li>
+<li>Internal combinator extensions inside <code>Trellis.Core</code> continue to work unchanged (the property name and shape match the previous <code>internal</code> accessors, just with the Error guard removed).</li>
+</ul>
+<h3 id="documentation-and-tooling--required-follow-up">Documentation and tooling — required follow-up</h3>
+<p>When V6 is adopted, several artifacts still describe earlier worlds and must be updated in the same change or a tightly-coupled follow-up:</p>
+<ul>
+<li><code>docs/docfx_project/api_reference/trellis-api-core.md</code> — if it still documents <code>TryGetError</code> or &quot;Error throws on success&quot;, rewrite to the V6 surface.</li>
+<li><code>Trellis.Analyzers/src/DiagnosticDescriptors.cs</code> — if it still states <code>Result.Error</code> may throw, update wording. Consider new analyzer rules for the footguns listed above (deconstruction without bool check; property pattern over <code>Value</code>).</li>
+<li><code>copilot-instructions.md</code> — examples that use <code>TryGetError</code> patterns must migrate to <code>if (result.Error is { } e)</code>.</li>
+<li>Active redesign-plan documents — align any sections that assumed the V2 internal-only model.</li>
+<li><code>Trellis.Testing</code> assertions — verify that error-assertion helpers consume <code>Error?</code> cleanly.</li>
+</ul>
+<p>Examples in all docs should use the <code>if (result.Error is { } error) ...</code> form for boundary code, and pattern-match exhaustively over the closed <code>Error</code> ADT.</p>
+<hr>
+<h2 id="variants-considered-but-not-separately-enumerated">Variants considered but not separately enumerated</h2>
+<h3 id="v6--retain-trygeterror">V6 + retain <code>TryGetError</code></h3>
+<p>The accepted V6 design includes <code>TryGetError(out Error?)</code> alongside the public <code>Error?</code> property. The two are deliberately complementary, not redundant:</p>
+<ul>
+<li><code>Error?</code> is the natural fit for switch expressions and one-line pattern guards (<code>if (result.Error is { } e)</code>).</li>
+<li><code>TryGetError</code> is the natural fit for imperative branches that want a non-null local binding without relying on NRT flow analysis.</li>
+</ul>
+<p>An earlier draft of this ADR proposed deleting <code>TryGetError</code> for narrative purity (&quot;there is one canonical way to consume errors&quot;). That was reconsidered: the deletion forced caller churn (every existing <code>TryGetError(out var e)</code> site had to migrate) without any safety or expressiveness benefit, since neither pattern excludes the other. Keeping both is cheap (3 lines per type) and respects the two idiomatic C# styles.</p>
+<hr>
+<h2 id="future-revisits">Future revisits</h2>
+<p>Re-open this ADR only if:</p>
+<ol>
+<li>Profiling shows the <code>throw</code> on <code>Value</code> mis-access is being hit in production hot paths (would indicate a discipline problem, not an API problem).</li>
+<li>C# adds true sum types / discriminated unions over value types (in flight as of 2026) that allow heap-free exhaustive matching. At that point, V5 becomes the obvious successor.</li>
+<li>The <code>Error</code> type becomes a value type for some reason — at which point the <code>Error?</code> story breaks down and the entire decision needs to be re-litigated.</li>
+<li>Field evidence shows the &quot;Known footguns&quot; section (deconstruction, <code>Value</code> property patterns) is causing real bugs at meaningful frequency; that would justify shipping analyzers or revising the surface further.</li>
+</ol>
+<p>Otherwise, the asymmetric design stands.</p>
+<h2 id="addendum--errorconflictresource-nullability">Addendum — Error.Conflict.Resource nullability</h2>
+<p>The <code>Conflict</code> case originally required a non-null <code>ResourceRef</code>. During the v3-alpha cascade we relaxed it to <code>ResourceRef?</code>:</p>
+<pre><code class="lang-csharp">public sealed record Conflict(ResourceRef? Resource, string ReasonCode) : Error;
+</code></pre>
+<p>Rationale:</p>
+<ul>
+<li>RFC 9110 § 15.5.10 implies the target resource via the request URI; the response body is not required to identify it.</li>
+<li>Real-world 409 cases lack a specific addressable resource: stateless workflow engines, state-machine guards (e.g. <code>Trellis.StateMachine.StateMachineExtensions.FireResult</code>), library code with no aggregate context, multi-resource transactions.</li>
+<li>Forcing a placeholder <code>new ResourceRef(&quot;StateMachine&quot;, null)</code> would lie about meaning. <code>ResourceRef</code> is meant to identify; nullable is the honest type.</li>
+<li><code>NotFound</code>/<code>Gone</code> keep their non-null <code>Resource</code> — they are definitionally about a specific resource. Same applies to <code>PreconditionFailed</code> (the precondition is evaluated against a specific resource).</li>
+</ul>
+<p>Migration impact: zero for callers that already supply a <code>ResourceRef</code>; new flexibility for library/extension authors.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-001-result-api-surface.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

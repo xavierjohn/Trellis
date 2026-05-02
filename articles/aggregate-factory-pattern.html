@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Aggregate Factory Pattern | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Aggregate Factory Pattern | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/aggregate-factory-pattern.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="aggregate-factory-pattern">Aggregate Factory Pattern</h1>
+
+<p>A convention for giving <code>Aggregate&lt;TId&gt;</code> two safe creation paths — <code>TryCreate</code> for new instances and <code>TryCreateExisting</code> for reconstitution — so identity, invariants, and creation events live in one place.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create a brand-new aggregate (generate ID, raise creation event)</td>
+<td><code>static Result&lt;TAgg&gt; TryCreate(...)</code></td>
+<td><a href="#defining-the-factory">Defining the factory</a></td>
+</tr>
+<tr>
+<td>Reconstitute an aggregate with a known ID (importer, fixture, manual hydration)</td>
+<td><code>static Result&lt;TAgg&gt; TryCreateExisting(TId id, ...)</code></td>
+<td><a href="#reconstitution-path">Reconstitution path</a></td>
+</tr>
+<tr>
+<td>Throw on invalid input (seeders, known-good test data)</td>
+<td><code>static TAgg Create(...)</code> / <code>CreateExisting(id, ...)</code></td>
+<td><a href="#throwing-helpers">Throwing helpers</a></td>
+</tr>
+<tr>
+<td>Run the same invariants on both paths</td>
+<td>private <code>static Result&lt;Unit&gt; Validate(...)</code></td>
+<td><a href="#centralizing-validation">Centralizing validation</a></td>
+</tr>
+<tr>
+<td>Type the constructor parameters</td>
+<td>derive each input from <code>Required*&lt;TSelf&gt;</code></td>
+<td><a href="#composing-primitives">Composing primitives</a></td>
+</tr>
+<tr>
+<td>Raise creation events exactly once</td>
+<td><code>DomainEvents.Add(...)</code> inside <code>TryCreate</code> only</td>
+<td><a href="#domain-events-and-reconstitution">Domain events and reconstitution</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>Your aggregate must support both new construction <em>and</em> reconstitution from existing data (importers, manual rehydration, fixtures, migrations).</li>
+<li>You want one place that enforces invariants, regardless of which path the caller took.</li>
+<li>Tests need deterministic IDs while production generates them.</li>
+<li>Creation events must fire exactly once per aggregate lifetime.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p>This is a <strong>convention</strong>, not API. <code>Aggregate&lt;TId&gt;</code> itself only requires <code>protected Aggregate(TId id)</code> and exposes <code>DomainEvents</code>, <code>UncommittedEvents()</code>, <code>AcceptChanges()</code>, and <code>ETag</code> — see <a href="../api_reference/trellis-api-core.html#aggregatetid"><code>Aggregate&lt;TId&gt;</code> reference</a>. The pattern adds the four static methods below.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature shape</th>
+<th>ID source</th>
+<th>Validation</th>
+<th>Raises creation event?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TryCreate</code></td>
+<td><code>static Result&lt;T&gt; TryCreate(...primitives)</code></td>
+<td>Generated (e.g. <code>TId.NewUniqueV7()</code>)</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>TryCreateExisting</code></td>
+<td><code>static Result&lt;T&gt; TryCreateExisting(TId id, ...primitives)</code></td>
+<td>Caller-supplied</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>Create</code></td>
+<td><code>static T Create(...primitives)</code></td>
+<td>Generated</td>
+<td>Yes (throws on failure)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>CreateExisting</code></td>
+<td><code>static T CreateExisting(TId id, ...primitives)</code></td>
+<td>Caller-supplied</td>
+<td>Yes (throws on failure)</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>Underlying types: <a href="../api_reference/trellis-api-core.html#domain-driven-design"><code>Aggregate&lt;TId&gt;</code>, <code>IAggregate</code>, <code>IDomainEvent</code></a>; <a href="../api_reference/trellis-api-core.html#primitive-value-object-base-classes"><code>Required*&lt;TSelf&gt;</code> primitive bases</a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>A minimal <code>Product</code> aggregate exposing all four factory paths.</p>
+<pre><code class="lang-csharp">using System;
+using Trellis;
+
+namespace Catalog;
+
+[StringLength(200)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }
+
+[StringLength(64)]
+public partial class Sku : RequiredString&lt;Sku&gt; { }
+
+public partial class ProductId : RequiredGuid&lt;ProductId&gt; { }
+
+public sealed record ProductCreated(ProductId ProductId, DateTimeOffset OccurredAt) : IDomainEvent;
+
+public sealed class Product : Aggregate&lt;ProductId&gt;
+{
+    public ProductName Name { get; private set; }
+    public Sku Sku { get; private set; }
+    public bool IsActive { get; private set; }
+
+    private Product(ProductId id, ProductName name, Sku sku) : base(id)
+    {
+        Name = name;
+        Sku = sku;
+        IsActive = true;
+    }
+
+    private Product() : base(null!)
+    {
+        Name = null!;
+        Sku = null!;
+    }
+
+    public static Result&lt;Product&gt; TryCreate(ProductName name, Sku sku)
+    {
+        var product = new Product(ProductId.NewUniqueV7(), name, sku);
+        product.DomainEvents.Add(new ProductCreated(product.Id, DateTimeOffset.UtcNow));
+        return Result.Ok(product);
+    }
+
+    public static Result&lt;Product&gt; TryCreateExisting(ProductId id, ProductName name, Sku sku) =&gt;
+        Result.Ok(new Product(id, name, sku));
+
+    public static Product Create(ProductName name, Sku sku)
+    {
+        var result = TryCreate(name, sku);
+        if (!result.TryGetValue(out var product))
+            throw new InvalidOperationException(result.Error!.Detail);
+        return product;
+    }
+
+    public static Product CreateExisting(ProductId id, ProductName name, Sku sku)
+    {
+        var result = TryCreateExisting(id, name, sku);
+        if (!result.TryGetValue(out var product))
+            throw new InvalidOperationException(result.Error!.Detail);
+        return product;
+    }
+}
+</code></pre>
+<h2 id="defining-the-factory">Defining the factory</h2>
+<p>Two pillars:</p>
+<ol>
+<li><strong>Identity is generated</strong> inside <code>TryCreate</code> — the caller never supplies an ID.</li>
+<li><strong>Validation runs first</strong>; the constructor stays trivial (assignment-only).</li>
+</ol>
+<p>Use <code>Result.Ok(aggregate)</code> on success and <code>Result.Fail&lt;TAgg&gt;(error)</code> on failure. There is no implicit <code>Error → Result&lt;T&gt;</code> conversion in the current API — always go through the static factory.</p>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Convention</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Constructor visibility</td>
+<td><code>private</code></td>
+<td>Forces all callers through the factory.</td>
+</tr>
+<tr>
+<td>ID parameter</td>
+<td>First positional</td>
+<td>Matches <code>Aggregate&lt;TId&gt;</code>'s base constructor.</td>
+</tr>
+<tr>
+<td>Field assignment</td>
+<td>Inside the constructor only</td>
+<td>Keeps factories side-effect-free until the <code>Result.Ok</code> line.</td>
+</tr>
+<tr>
+<td>Domain events</td>
+<td>Added on the <em>new</em> path only</td>
+<td>Reconstitution must not republish creation events.</td>
+</tr>
+<tr>
+<td>Strong-typed inputs</td>
+<td><code>RequiredString&lt;TSelf&gt;</code>, <code>RequiredGuid&lt;TSelf&gt;</code>, ...</td>
+<td>Each primitive validates itself at construction time — see <a href="../api_reference/trellis-api-core.html#primitive-value-object-base-classes"><code>Required*</code> bases</a>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="reconstitution-path">Reconstitution path</h3>
+<p><code>TryCreateExisting(TId id, ...)</code> exists for any caller that already knows the ID:</p>
+<ul>
+<li>importing data from an external system,</li>
+<li>manual rehydration (no EF Core),</li>
+<li>tests that need a deterministic ID,</li>
+<li>migrations that must preserve the existing primary key.</li>
+</ul>
+<p>It runs the <em>same</em> validation as <code>TryCreate</code>, but it never raises a creation event — the aggregate already exists.</p>
+<pre><code class="lang-csharp">var knownId = ProductId.Create(Guid.Parse(&quot;8e945d6d-e4f4-4dd6-bb50-3ab19f9d9fd1&quot;));
+var name = ProductName.Create(&quot;Trellis Mug&quot;);
+var sku = Sku.Create(&quot;MUG-001&quot;);
+
+var fresh = Product.TryCreate(name, sku);                    // new ID, ProductCreated raised
+var rebuilt = Product.TryCreateExisting(knownId, name, sku); // ID preserved, no event
+</code></pre>
+<h3 id="throwing-helpers">Throwing helpers</h3>
+<p><code>Create</code> / <code>CreateExisting</code> are thin wrappers around the <code>Try*</code> variants. Use them only for known-good data — fixtures, seeders, inline test setup. Production code paths should consume <code>Result&lt;TAgg&gt;</code> directly so the failure stays observable.</p>
+<pre><code class="lang-csharp">public static Product Create(ProductName name, Sku sku)
+{
+    var result = TryCreate(name, sku);
+    if (!result.TryGetValue(out var product))
+        throw new InvalidOperationException(result.Error!.Detail);
+    return product;
+}
+</code></pre>
+<h2 id="centralizing-validation">Centralizing validation</h2>
+<p>Both creation paths must enforce the same rules. Extract them into a private static method that returns <code>Result&lt;Unit&gt;</code> (returned by the parameterless <code>Result.Ok()</code> / <code>Result.Fail(error)</code> overloads), and call it before constructing the aggregate.</p>
+<pre><code class="lang-csharp">public static Result&lt;Product&gt; TryCreate(ProductName name, Sku sku)
+{
+    var validation = Validate(name, sku);
+    if (validation.IsFailure)
+        return Result.Fail&lt;Product&gt;(validation.Error!);
+
+    var product = new Product(ProductId.NewUniqueV7(), name, sku);
+    product.DomainEvents.Add(new ProductCreated(product.Id, DateTimeOffset.UtcNow));
+    return Result.Ok(product);
+}
+
+public static Result&lt;Product&gt; TryCreateExisting(ProductId id, ProductName name, Sku sku)
+{
+    var validation = Validate(name, sku);
+    if (validation.IsFailure)
+        return Result.Fail&lt;Product&gt;(validation.Error!);
+
+    return Result.Ok(new Product(id, name, sku));
+}
+
+private static Result&lt;Unit&gt; Validate(ProductName name, Sku sku)
+{
+    if (sku.Value.StartsWith(&quot;LEGACY-&quot;, StringComparison.OrdinalIgnoreCase))
+        return Result.Fail(new Error.UnprocessableContent(EquatableArray.Create(
+            new FieldViolation(InputPointer.ForProperty(nameof(sku)), &quot;validation.error&quot;)
+            {
+                Detail = &quot;SKU cannot start with LEGACY.&quot;,
+            })));
+
+    return Result.Ok();
+}
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Per-field invariants (length, range, non-empty) belong on the value-object primitive itself via <code>[StringLength]</code>, <code>[Range]</code>, etc. The aggregate <code>Validate</code> method is for <em>cross-field</em> rules that no single primitive can enforce.</p>
+</div>
+<h2 id="composing-primitives">Composing primitives</h2>
+<p>Strong-typed inputs eliminate most aggregate-level validation. By the time <code>TryCreate</code> runs, every primitive has already passed its own invariants.</p>
+<pre><code class="lang-csharp">[StringLength(200)]
+public partial class ProductName : RequiredString&lt;ProductName&gt; { }   // empty/whitespace + length
+
+[StringLength(64)]
+public partial class Sku : RequiredString&lt;Sku&gt; { }                   // empty/whitespace + length
+
+public partial class ProductId : RequiredGuid&lt;ProductId&gt; { }         // Guid.Empty rejection
+</code></pre>
+<p>The source generator emits <code>TryCreate</code> / <code>Create</code> / <code>Parse</code> / <code>JsonConverter</code> for each primitive — full surface in the <a href="../api_reference/trellis-api-core.html#source-generated-members"><code>Required*</code> source-generated members table</a>. Callers convert raw input once at the boundary:</p>
+<pre><code class="lang-csharp">var nameResult = ProductName.TryCreate(input.Name, fieldName: nameof(input.Name));
+var skuResult  = Sku.TryCreate(input.Sku, fieldName: nameof(input.Sku));
+</code></pre>
+<h2 id="domain-events-and-reconstitution">Domain events and reconstitution</h2>
+<p>A common mistake is raising &quot;created&quot; events while reconstituting existing data. The rule:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th><code>DomainEvents.Add(new XxxCreated(...))</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TryCreate</code></td>
+<td>Yes — the aggregate is new</td>
+</tr>
+<tr>
+<td><code>TryCreateExisting</code></td>
+<td>No — the aggregate already exists</td>
+</tr>
+<tr>
+<td><code>Create</code> / <code>CreateExisting</code></td>
+<td>Inherits from the underlying <code>Try*</code> it wraps</td>
+</tr>
+</tbody>
+</table>
+<p>That keeps <code>UncommittedEvents()</code> (see <a href="../api_reference/trellis-api-core.html#aggregatetid"><code>Aggregate&lt;TId&gt;</code></a>) meaningful: the only events present are the ones that actually happened in this unit of work.</p>
+<h2 id="where-ef-core-fits">Where EF Core fits</h2>
+<p>When EF Core materializes an aggregate, it uses the parameterless constructor and sets properties during rehydration — the same constructor that lets <code>private Product() : base(null!) { ... }</code> exist for infrastructure use only.</p>
+<table>
+<thead>
+<tr>
+<th>Constructor</th>
+<th>Purpose</th>
+<th>Visibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>private Product(ProductId id, ProductName name, Sku sku)</code></td>
+<td>Real construction; called by <code>TryCreate</code> and <code>TryCreateExisting</code></td>
+<td><code>private</code></td>
+</tr>
+<tr>
+<td><code>private Product()</code></td>
+<td>EF Core materialization stub</td>
+<td><code>private</code></td>
+</tr>
+</tbody>
+</table>
+<p>Domain code stays on the factory methods; only the EF Core proxy ever touches the parameterless overload. <code>TryCreateExisting</code> is for <em>non-EF-Core</em> reconstitution (importers, JSON hydration, migrations).</p>
+<h2 id="composition">Composition</h2>
+<p>Aggregate factories return <code>Result&lt;TAgg&gt;</code>, which composes with the rest of Trellis (<code>Bind</code>, <code>Map</code>, <code>Ensure</code>, etc.). A typical write-side flow validates input primitives, calls <code>TryCreate</code>, then hands the aggregate to the persistence layer — application command handlers stay on <code>Result&lt;Unit&gt;</code>.</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+
+public sealed record CreateProductCommand(string Name, string Sku);
+
+public sealed class CreateProductHandler(IProductRepository repo)
+{
+    public Task&lt;Result&lt;Unit&gt;&gt; HandleAsync(CreateProductCommand cmd, CancellationToken ct) =&gt;
+        Result.Combine(
+                ProductName.TryCreate(cmd.Name, fieldName: nameof(cmd.Name)),
+                Sku.TryCreate(cmd.Sku, fieldName: nameof(cmd.Sku)))
+            .Bind(parts =&gt; Product.TryCreate(parts.Item1, parts.Item2))
+            .BindAsync((product, token) =&gt; repo.AddAsync(product, token), ct)
+            .AsUnitAsync();
+}
+
+public interface IProductRepository
+{
+    Task&lt;Result&lt;Product&gt;&gt; AddAsync(Product product, CancellationToken ct);
+}
+</code></pre>
+<p><code>Result.Combine</code> aggregates per-field failures; <code>BindAsync</code> runs the persistence step only on success; <code>AsUnitAsync</code> projects the success payload to <code>Unit</code> for the command contract.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Don't touch <code>ETag</code> from a factory.</strong> It is owned by persistence infrastructure (see <a href="../api_reference/trellis-api-core.html#aggregatetid"><code>Aggregate&lt;TId&gt;</code> reference</a>).</li>
+<li><strong>Don't call <code>AcceptChanges()</code> from a factory.</strong> That belongs after persistence and event publication, in the repository or unit-of-work boundary.</li>
+<li><strong>Don't fetch from repositories in a factory.</strong> Lookups belong in handlers; the factory takes already-resolved primitives and returns a fresh aggregate.</li>
+<li><strong>Pick <code>TryCreate</code> vs <code>Create</code> by audience.</strong> Public API surfaces, command handlers, and parsers want <code>Result&lt;TAgg&gt;</code>. Test fixtures and inline seed data want <code>Create</code>.</li>
+<li><strong>One <code>Validate</code> method, two callers.</strong> If you need a third creation path, add another wrapper around the same <code>Validate</code> — never duplicate the rules.</li>
+<li><strong>Use <code>RequireETagAsync</code> / <code>OptionalETagAsync</code> at the read-modify-write boundary</strong>, not in the factory — see <a href="../api_reference/trellis-api-core.html#aggregateetagextensions"><code>AggregateETagExtensions</code></a>.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-core.html#domain-driven-design"><code>trellis-api-core.md</code> → Domain-Driven Design</a></li>
+<li>Primitive value-object bases (<code>Required*&lt;TSelf&gt;</code>): <a href="../api_reference/trellis-api-core.html#primitive-value-object-base-classes"><code>trellis-api-core.md</code> → Primitive value object base classes</a></li>
+<li>Built-in primitives (<code>EmailAddress</code>, <code>Money</code>, ...): <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a></li>
+<li>ETag-based optimistic concurrency on aggregates: <a href="../api_reference/trellis-api-core.html#aggregateetagextensions"><code>trellis-api-core.md</code> → AggregateETagExtensions</a></li>
+<li>EF Core conventions for aggregates and entities: <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/aggregate-factory-pattern.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

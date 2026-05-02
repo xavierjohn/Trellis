@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class MaybeLinqExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class MaybeLinqExtensions | Trellis ">
+      
+      <meta name="description" content="Provides LINQ query expression support for Maybe types, enabling C# query syntax for optional value composition.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_MaybeLinqExtensions.md&amp;value=---%0Auid%3A%20Trellis.MaybeLinqExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.MaybeLinqExtensions">
+
+
+
+  <h1 id="Trellis_MaybeLinqExtensions" data-uid="Trellis.MaybeLinqExtensions" class="text-break">
+Class MaybeLinqExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Extensions/Linq.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides LINQ query expression support for Maybe types, enabling C# query syntax for optional value composition.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class MaybeLinqExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">MaybeLinqExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_MaybeLinqExtensions_examples">Examples</h2>
+  <pre><code class="lang-csharp">// Composing multiple optional values with LINQ query syntax
+Maybe&lt;FullName&gt; fullName =
+    from first in firstName
+    from last in lastName
+    select new FullName(first, last);
+
+// Chaining optional lookups
+Maybe&lt;Email&gt; managerEmail =
+    from user in users.FindById(userId)
+    from manager in users.FindById(user.ManagerId)
+    from email in manager.Email
+    select email;</code></pre>
+
+
+  <h2 id="Trellis_MaybeLinqExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+These extension methods allow you to use LINQ query syntax (from, select) with Maybe types,
+making functional composition of optional values more readable.
+</p>
+<p>
+The mapping is:
+- Select maps to <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_Map__1_System_Func__0___0__">Map&lt;TResult&gt;(Func&lt;T, TResult&gt;)</a>
+- SelectMany enables monadic composition (flatMap) for chaining optional lookups
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_MaybeLinqExtensions_SelectMany_" data-uid="Trellis.MaybeLinqExtensions.SelectMany*"></a>
+
+  <h3 id="Trellis_MaybeLinqExtensions_SelectMany__3_Trellis_Maybe___0__System_Func___0_Trellis_Maybe___1___System_Func___0___1___2__" data-uid="Trellis.MaybeLinqExtensions.SelectMany``3(Trellis.Maybe{``0},System.Func{``0,Trellis.Maybe{``1}},System.Func{``0,``1,``2})">
+  SelectMany&lt;TSource, TCollection, TResult&gt;(Maybe&lt;TSource&gt;, Func&lt;TSource, Maybe&lt;TCollection&gt;&gt;, Func&lt;TSource, TCollection, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Extensions/Linq.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Projects each value of a Maybe to a new Maybe and flattens the result (LINQ SelectMany operation).
+Enables composition of multiple Maybe-returning operations in LINQ query syntax.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Maybe&lt;TResult&gt; SelectMany&lt;TSource, TCollection, TResult&gt;(this Maybe&lt;TSource&gt; source, Func&lt;TSource, Maybe&lt;TCollection&gt;&gt; collectionSelector, Func&lt;TSource, TCollection, TResult&gt; resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TSource&gt;</dt>
+    <dd><p>The source Maybe.</p>
+</dd>
+    <dt><code>collectionSelector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TSource, <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TCollection&gt;&gt;</dt>
+    <dd><p>A function that returns a Maybe based on the source value.</p>
+</dd>
+    <dt><code>resultSelector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;TSource, TCollection, TResult&gt;</dt>
+    <dd><p>A function to create the final result from the source and collection values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TResult&gt;</dt>
+    <dd><p>A new Maybe with the final projected value, or None if any step produces None.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TSource</code></dt>
+    <dd><p>The type of the source value.</p>
+</dd>
+    <dt><code>TCollection</code></dt>
+    <dd><p>The type of the intermediate collection value.</p>
+</dd>
+    <dt><code>TResult</code></dt>
+    <dd><p>The type of the final result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_MaybeLinqExtensions_SelectMany__3_Trellis_Maybe___0__System_Func___0_Trellis_Maybe___1___System_Func___0___1___2___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This is the key method that enables LINQ query syntax with multiple 'from' clauses.
+It performs monadic bind (flatMap) followed by a projection.</p>
+</div>
+
+
+
+
+  <a id="Trellis_MaybeLinqExtensions_Select_" data-uid="Trellis.MaybeLinqExtensions.Select*"></a>
+
+  <h3 id="Trellis_MaybeLinqExtensions_Select__2_Trellis_Maybe___0__System_Func___0___1__" data-uid="Trellis.MaybeLinqExtensions.Select``2(Trellis.Maybe{``0},System.Func{``0,``1})">
+  Select&lt;TIn, TOut&gt;(Maybe&lt;TIn&gt;, Func&lt;TIn, TOut&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Extensions/Linq.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Projects the value of a Maybe using a selector function (LINQ Select operation).
+Maps to <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_Map__1_System_Func__0___0__">Map&lt;TResult&gt;(Func&lt;T, TResult&gt;)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Maybe&lt;TOut&gt; Select&lt;TIn, TOut&gt;(this Maybe&lt;TIn&gt; maybe, Func&lt;TIn, TOut&gt; selector) where TIn : notnull where TOut : notnull</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maybe</code> <a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TIn&gt;</dt>
+    <dd><p>The Maybe to project.</p>
+</dd>
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, TOut&gt;</dt>
+    <dd><p>The projection function to apply to the value.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe</a>&lt;TOut&gt;</dt>
+    <dd><p>A new Maybe with the projected value, or None if the input has no value.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>The type of the input value.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>The type of the output value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Maybe/Extensions/Linq.cs/#L35" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

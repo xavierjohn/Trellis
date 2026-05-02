@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Result | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Result | Trellis ">
+      
+      <meta name="description" content="Static factory and helper methods for constructing  values.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Result.md&amp;value=---%0Auid%3A%20Trellis.Result%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Result">
+
+
+
+  <h1 id="Trellis_Result" data-uid="Trellis.Result" class="text-break">
+Class Result  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L24"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Static factory and helper methods for constructing <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> values.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class Result</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">Result</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Result_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+No-payload outcomes are represented as <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>. Call <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok">Ok()</a> /
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Fail_Trellis_Error_">Fail(Error)</a> / <a class="xref" href="Trellis.Result.html#Trellis_Result_Ensure_System_Boolean_Trellis_Error_">Ensure(bool, Error)</a> / <a class="xref" href="Trellis.Result.html#Trellis_Result_Try_System_Action_System_Func_System_Exception_Trellis_Error__">Try(Action, Func&lt;Exception, Error&gt;?)</a>
+for no-payload outcomes; call <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a> / <a class="xref" href="Trellis.Result.html#Trellis_Result_Fail__1_Trellis_Error_">Fail&lt;TValue&gt;(Error)</a> /
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Try__1_System_Func___0__System_Func_System_Exception_Trellis_Error__">Try&lt;T&gt;(Func&lt;T&gt;, Func&lt;Exception, Error&gt;?)</a> for value-bearing outcomes.
+</p>
+<p>
+<code>default(Result&lt;Unit&gt;)</code> represents a <em>failure</em> carrying a sentinel
+<a class="xref" href="Trellis.Error.Unexpected.html">Error.Unexpected</a> with <code>ReasonCode = "default_initialized"</code> — uninitialized state
+is a typed failure, never a silent success. Always construct via <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok">Ok()</a>; analyzer <code>TRLS019</code>
+flags explicit <code>default(Result&lt;Unit&gt;)</code> at call sites.
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__2_Trellis_Result___0__Trellis_Result___1__" data-uid="Trellis.Result.Combine``2(Trellis.Result{``0},Trellis.Result{``1})">
+  Combine&lt;T1, T2&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L75"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines two independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2)&gt; Combine&lt;T1, T2&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>First result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>Second result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd><p>A success result with a 2-element tuple if both succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__2_Trellis_Result___0__Trellis_Result___1___examples">Examples</h4>
+  <pre><code class="lang-csharp">var emailResult = EmailAddress.TryCreate(dto.Email);
+var nameResult = FirstName.TryCreate(dto.Name);
+
+var result = Result.Combine(emailResult, nameResult)
+    .Bind((email, name) =&gt; User.Create(email, name));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Ensure_" data-uid="Trellis.Result.Ensure*"></a>
+
+  <h3 id="Trellis_Result_Ensure_System_Boolean_Trellis_Error_" data-uid="Trellis.Result.Ensure(System.Boolean,Trellis.Error)">
+  Ensure(bool, Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a successful no-payload result if <code class="paramref">flag</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>;
+otherwise a failure with the specified <code class="paramref">error</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ensure(bool flag, Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>flag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>The condition to assert. <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> yields success; <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a> yields failure.</p>
+</dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd><p>The error to wrap when <code class="paramref">flag</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>. Always evaluated by the caller.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd><p><a class="xref" href="Trellis.Result.html#Trellis_Result_Ok">Ok()</a> when <code class="paramref">flag</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>; otherwise <a class="xref" href="Trellis.Result.html#Trellis_Result_Fail_Trellis_Error_">Fail(Error)</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Ensure_System_Boolean_Trellis_Error__examples">Examples</h4>
+  <p>Authorization guard inside <code>IAuthorizeResource&lt;TResource&gt;.Authorize</code>:</p>
+<pre><code class="lang-csharp">public IResult Authorize(Actor actor, Order resource) =&gt;
+    Result.Ensure(
+        resource.OwnerId == actor.UserId,
+        new Error.Forbidden("order_not_owned"));</code></pre>
+
+  <p>Domain invariant guard inside an aggregate method (replaces a hand-written <code>if</code>/<code>return</code>):</p>
+<pre><code class="lang-csharp">public Result&lt;Unit&gt; Cancel(DateTimeOffset now) =&gt;
+    Result.Ensure(Status == OrderStatus.Pending,
+        new Error.Conflict(null, "order_not_cancellable") { Detail = "Only pending orders can be cancelled." })
+    .Tap(() =&gt; { Status = OrderStatus.Cancelled; CancelledAt = now; });</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_Ensure_System_Boolean_Trellis_Error__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<strong>Canonical guard primitive.</strong> Prefer <code>Result.Ensure(condition, error)</code> over
+hand-written <code>if (!condition) return Result.Fail(error);</code> blocks or ad-hoc ternaries — Ensure
+reads as a single declarative line, participates in <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.activity">Activity</a> tracing, and is the
+preferred form for guard clauses in current guidance.
+</p>
+<p>
+For an asynchronous predicate use <a class="xref" href="Trellis.Result.html#Trellis_Result_EnsureAsync_System_Func_System_Threading_Tasks_Task_System_Boolean___Trellis_Error_">EnsureAsync(Func&lt;Task&lt;bool&gt;&gt;, Error)</a>. For a value-threaded
+guard that preserves an existing <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> on success, use the
+<code>Result&lt;TValue&gt;.Ensure(predicate, error)</code> extension overloads on <a class="xref" href="Trellis.EnsureExtensions.html">EnsureExtensions</a>.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_Ensure_" data-uid="Trellis.Result.Ensure*"></a>
+
+  <h3 id="Trellis_Result_Ensure_System_Func_System_Boolean__Trellis_Error_" data-uid="Trellis.Result.Ensure(System.Func{System.Boolean},Trellis.Error)">
+  Ensure(Func&lt;bool&gt;, Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L130"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a successful no-payload result if the predicate is true; otherwise a failure with the specified error.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ensure(Func&lt;bool&gt; predicate, Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_EnsureAsync_" data-uid="Trellis.Result.EnsureAsync*"></a>
+
+  <h3 id="Trellis_Result_EnsureAsync_System_Func_System_Threading_Tasks_Task_System_Boolean___Trellis_Error_" data-uid="Trellis.Result.EnsureAsync(System.Func{System.Threading.Tasks.Task{System.Boolean}},Trellis.Error)">
+  EnsureAsync(Func&lt;Task&lt;bool&gt;&gt;, Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L142"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously evaluates the predicate and returns success if true; otherwise a failure with the specified error.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;Unit&gt;&gt; EnsureAsync(Func&lt;Task&lt;bool&gt;&gt; predicate, Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_Fail_" data-uid="Trellis.Result.Fail*"></a>
+
+  <h3 id="Trellis_Result_Fail_Trellis_Error_" data-uid="Trellis.Result.Fail(Trellis.Error)">
+  Fail(Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a failed no-payload result (<code>Result&lt;Unit&gt;</code>) with the specified <code class="paramref">error</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Fail(Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_Fail_" data-uid="Trellis.Result.Fail*"></a>
+
+  <h3 id="Trellis_Result_Fail__1_Trellis_Error_" data-uid="Trellis.Result.Fail``1(Trellis.Error)">
+  Fail&lt;TValue&gt;(Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a failed result with the specified <code class="paramref">error</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TValue&gt; Fail&lt;TValue&gt;(Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_Ok_" data-uid="Trellis.Result.Ok*"></a>
+
+  <h3 id="Trellis_Result_Ok" data-uid="Trellis.Result.Ok">
+  Ok()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a successful no-payload result (<code>Result&lt;Unit&gt;</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ok()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Ok_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Goes through the constructor so that <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.activity.current">Current</a> receives the success status,
+matching the tracing behavior of <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>. Always prefer this factory over
+<code>default(Result&lt;Unit&gt;)</code>: <code>default</code> represents <em>failure</em> with the
+<a class="xref" href="Trellis.Error.Unexpected.html">Error.Unexpected</a> sentinel, not success.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_Ok_" data-uid="Trellis.Result.Ok*"></a>
+
+  <h3 id="Trellis_Result_Ok__1___0_" data-uid="Trellis.Result.Ok``1(``0)">
+  Ok&lt;TValue&gt;(TValue)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L29"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a successful result wrapping the provided <code class="paramref">value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TValue&gt; Ok&lt;TValue&gt;(TValue value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">TValue</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_Try_" data-uid="Trellis.Result.Try*"></a>
+
+  <h3 id="Trellis_Result_Try_System_Action_System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.Try(System.Action,System.Func{System.Exception,Trellis.Error})">
+  Try(Action, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L195"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the action and converts exceptions to a failed no-payload result using the optional mapper.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Try(Action work, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>work</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action">Action</a></dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_TryAsync_" data-uid="Trellis.Result.TryAsync*"></a>
+
+  <h3 id="Trellis_Result_TryAsync_System_Func_System_Threading_Tasks_Task__System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.TryAsync(System.Func{System.Threading.Tasks.Task},System.Func{System.Exception,Trellis.Error})">
+  TryAsync(Func&lt;Task&gt;, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L216"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the asynchronous action and converts exceptions to a failed no-payload result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;Unit&gt;&gt; TryAsync(Func&lt;Task&gt; work, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>work</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_TryAsync_" data-uid="Trellis.Result.TryAsync*"></a>
+
+  <h3 id="Trellis_Result_TryAsync__1_System_Func_System_Threading_Tasks_Task___0___System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.TryAsync``1(System.Func{System.Threading.Tasks.Task{``0}},System.Func{System.Exception,Trellis.Error})">
+  TryAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt;, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L176"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the asynchronous function and converts exceptions to a failed result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;T&gt;&gt; TryAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; func, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_Try_" data-uid="Trellis.Result.Try*"></a>
+
+  <h3 id="Trellis_Result_Try__1_System_Func___0__System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.Try``1(System.Func{``0},System.Func{System.Exception,Trellis.Error})">
+  Try&lt;T&gt;(Func&lt;T&gt;, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L157"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the function and converts exceptions to a failed result using the optional mapper (default Unexpected).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;T&gt; Try&lt;T&gt;(Func&lt;T&gt; func, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;T&gt;</dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L24" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

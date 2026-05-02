@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class HttpResponseOptionsBuilder&lt;TDomain&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class HttpResponseOptionsBuilder&lt;TDomain&gt; | Trellis ">
+      
+      <meta name="description" content="Fluent options builder for . Selectors run against the TDomain value (not the projected response body).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_HttpResponseOptionsBuilder_1.md&amp;value=---%0Auid%3A%20Trellis.Asp.HttpResponseOptionsBuilder%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1">
+
+
+
+  <h1 id="Trellis_Asp_HttpResponseOptionsBuilder_1" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1" class="text-break">
+Class HttpResponseOptionsBuilder&lt;TDomain&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L12"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Fluent options builder for <a class="xref" href="Trellis.Asp.HttpResponseExtensions.html#Trellis_Asp_HttpResponseExtensions_ToHttpResponse__1_Trellis_Result___0__System_Action_Trellis_Asp_HttpResponseOptionsBuilder___0___">ToHttpResponse&lt;T&gt;(Result&lt;T&gt;, Action&lt;HttpResponseOptionsBuilder&lt;T&gt;&gt;?)</a>.
+Selectors run against the <code class="typeparamref">TDomain</code> value (not the projected response body).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class HttpResponseOptionsBuilder&lt;TDomain&gt;</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDomain</code></dt>
+    <dd><p>The domain value type from <code>Result&lt;TDomain&gt;</code>.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">HttpResponseOptionsBuilder&lt;TDomain&gt;</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_Created_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.Created*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_Created_System_Func__0_System_String__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.Created(System.Func{`0,System.String})">
+  Created(Func&lt;TDomain, string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L109"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns 201 Created with a Location header derived from the domain value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; Created(Func&lt;TDomain, string&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_Created_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.Created*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_Created_System_String_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.Created(System.String)">
+  Created(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L100"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns 201 Created with a literal Location header (e.g. <code>/orders/123</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; Created(string locationLiteral)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>locationLiteral</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_CreatedAtAction_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.CreatedAtAction*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_CreatedAtAction_System_String_System_Func__0_Microsoft_AspNetCore_Routing_RouteValueDictionary__System_String_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.CreatedAtAction(System.String,System.Func{`0,Microsoft.AspNetCore.Routing.RouteValueDictionary},System.String)">
+  CreatedAtAction(string, Func&lt;TDomain, RouteValueDictionary&gt;, string?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L144"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns 201 Created with a Location header generated via <code>LinkGenerator.GetUriByAction</code>
+(resolved from <code>HttpContext.RequestServices</code> at execute time). Equivalent to MVC's <code>CreatedAtAction</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;CreatedAtAction relies on MVC&#39;s ControllerLinkGeneratorExtensions which is not trim-safe. Use CreatedAtRoute with a named route for AOT/trim scenarios.&quot;)]
+[RequiresDynamicCode(&quot;CreatedAtAction relies on MVC&#39;s ControllerLinkGeneratorExtensions which is not AOT-safe. Use CreatedAtRoute with a named route for AOT scenarios.&quot;)]
+public HttpResponseOptionsBuilder&lt;TDomain&gt; CreatedAtAction(string actionName, Func&lt;TDomain, RouteValueDictionary&gt; routeValues, string? controllerName = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>actionName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The action method name.</p>
+</dd>
+    <dt><code>routeValues</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.routing.routevaluedictionary">RouteValueDictionary</a>&gt;</dt>
+    <dd><p>A function that returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.routing.routevaluedictionary">RouteValueDictionary</a> for the new resource. Pass a <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.routing.routevaluedictionary">RouteValueDictionary</a> rather than an anonymous type to remain AOT-compatible.</p>
+</dd>
+    <dt><code>controllerName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional controller name (defaults to the current controller).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_HttpResponseOptionsBuilder_1_CreatedAtAction_System_String_System_Func__0_Microsoft_AspNetCore_Routing_RouteValueDictionary__System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This method is not trim-safe / AOT-safe because MVC's <code>ControllerLinkGeneratorExtensions</code>
+is not annotated. Use <a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_CreatedAtRoute_System_String_System_Func__0_Microsoft_AspNetCore_Routing_RouteValueDictionary__">CreatedAtRoute(string, Func&lt;TDomain, RouteValueDictionary&gt;)</a> with a named route instead for AOT scenarios.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_CreatedAtRoute_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.CreatedAtRoute*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_CreatedAtRoute_System_String_System_Func__0_Microsoft_AspNetCore_Routing_RouteValueDictionary__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.CreatedAtRoute(System.String,System.Func{`0,Microsoft.AspNetCore.Routing.RouteValueDictionary})">
+  CreatedAtRoute(string, Func&lt;TDomain, RouteValueDictionary&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns 201 Created with a Location header generated via <code>LinkGenerator.GetUriByName</code>
+(resolved from <code>HttpContext.RequestServices</code> at execute time).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; CreatedAtRoute(string routeName, Func&lt;TDomain, RouteValueDictionary&gt; routeValues)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>routeName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The route name.</p>
+</dd>
+    <dt><code>routeValues</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.routing.routevaluedictionary">RouteValueDictionary</a>&gt;</dt>
+    <dd><p>A function that returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.routing.routevaluedictionary">RouteValueDictionary</a> for the new resource. Pass a <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.routing.routevaluedictionary">RouteValueDictionary</a> rather than an anonymous type to remain AOT-compatible.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_EvaluatePreconditions_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.EvaluatePreconditions*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_EvaluatePreconditions" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.EvaluatePreconditions">
+  EvaluatePreconditions()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Honors RFC 9110 conditional request headers (<code>If-Match</code>, <code>If-Unmodified-Since</code>,
+<code>If-None-Match</code>, <code>If-Modified-Since</code>) on the response side. Only meaningful for
+safe methods (GET/HEAD); on unsafe methods the precondition must be evaluated <em>before</em> the mutation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; EvaluatePreconditions()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_HonorPrefer_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.HonorPrefer*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_HonorPrefer" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.HonorPrefer">
+  HonorPrefer()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L172"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Honors RFC 7240 <code>Prefer: return=minimal/representation</code>. Always emits <code>Vary: Prefer</code>
+(appended; existing values preserved) and emits <code>Preference-Applied</code> only when honored.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; HonorPrefer()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_Vary_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.Vary*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_Vary_System_String___" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.Vary(System.String[])">
+  Vary(params string[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends the named headers to the response <code>Vary</code> header (existing values preserved).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; Vary(params string[] headers)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>headers</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithAcceptRanges_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithAcceptRanges*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithAcceptRanges_System_String_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithAcceptRanges(System.String)">
+  WithAcceptRanges(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the <code>Accept-Ranges</code> response header (e.g. &quot;bytes&quot; or &quot;none&quot;).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithAcceptRanges(string acceptRanges)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>acceptRanges</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithContentLanguage_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithContentLanguage*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithContentLanguage_System_String___" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithContentLanguage(System.String[])">
+  WithContentLanguage(params string[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds languages to the response <code>Content-Language</code> header.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithContentLanguage(params string[] languages)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>languages</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithContentLocation_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithContentLocation*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithContentLocation_System_Func__0_System_String__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithContentLocation(System.Func{`0,System.String})">
+  WithContentLocation(Func&lt;TDomain, string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the <code>Content-Location</code> header from the domain value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithContentLocation(Func&lt;TDomain, string&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithETag_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithETag*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithETag_System_Func__0_System_String__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithETag(System.Func{`0,System.String})">
+  WithETag(Func&lt;TDomain, string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets a strong ETag derived from the domain value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithETag(Func&lt;TDomain, string&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithETag_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithETag*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithETag_System_Func__0_Trellis_EntityTagValue__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithETag(System.Func{`0,Trellis.EntityTagValue})">
+  WithETag(Func&lt;TDomain, EntityTagValue&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets an ETag (strong or weak) derived from the domain value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithETag(Func&lt;TDomain, EntityTagValue&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithErrorMapping_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithErrorMapping*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithErrorMapping_System_Func_Trellis_Error_System_Int32__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithErrorMapping(System.Func{Trellis.Error,System.Int32})">
+  WithErrorMapping(Func&lt;Error, int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L196"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Per-call override mapper for failure responses. Highest precedence.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithErrorMapping(Func&lt;Error, int&gt; mapper)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>mapper</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="Trellis.Error.html">Error</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithErrorMapping_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithErrorMapping*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithErrorMapping__1_System_Int32_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithErrorMapping``1(System.Int32)">
+  WithErrorMapping&lt;TError&gt;(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L203"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Per-call override for a single error type. Higher precedence than the global <a class="xref" href="Trellis.Asp.TrellisAspOptions.html">TrellisAspOptions</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithErrorMapping&lt;TError&gt;(int statusCode) where TError : Error</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>statusCode</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TError</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithLastModified_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithLastModified*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithLastModified_System_Func__0_System_DateTimeOffset__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithLastModified(System.Func{`0,System.DateTimeOffset})">
+  WithLastModified(Func&lt;TDomain, DateTimeOffset&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the <code>Last-Modified</code> header from the domain value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithLastModified(Func&lt;TDomain, DateTimeOffset&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithRange_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithRange*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithRange_System_Func__0_System_Net_Http_Headers_ContentRangeHeaderValue__" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithRange(System.Func{`0,System.Net.Http.Headers.ContentRangeHeaderValue})">
+  WithRange(Func&lt;TDomain, ContentRangeHeaderValue&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L179"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns 206 Partial Content with <code>Content-Range</code> header for partial ranges.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithRange(Func&lt;TDomain, ContentRangeHeaderValue&gt; selector)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>selector</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TDomain, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.contentrangeheadervalue">ContentRangeHeaderValue</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithRange_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithRange*"></a>
+
+  <h3 id="Trellis_Asp_HttpResponseOptionsBuilder_1_WithRange_System_Int64_System_Int64_System_Int64_" data-uid="Trellis.Asp.HttpResponseOptionsBuilder`1.WithRange(System.Int64,System.Int64,System.Int64)">
+  WithRange(long, long, long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L188"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns 206 Partial Content for the given byte range, or 200 OK if it covers the whole resource.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public HttpResponseOptionsBuilder&lt;TDomain&gt; WithRange(long from, long to, long totalLength)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>from</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>to</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>totalLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html">HttpResponseOptionsBuilder</a>&lt;TDomain&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/HttpResponseOptionsBuilder.cs/#L12" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

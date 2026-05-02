@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Error Handling | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Error Handling | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/error-handling.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="error-handling">Error Handling</h1>
+
+<p><code>Error</code> is a closed discriminated union of typed records that lets you return failures as values and pattern-match them at the boundary, without falling back to exceptions for normal control flow.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Return a typed failure from a function</td>
+<td><code>Result.Fail&lt;T&gt;(new Error.X(payload) { Detail = &quot;...&quot; })</code></td>
+<td><a href="#creating-errors">Creating errors</a></td>
+</tr>
+<tr>
+<td>Build a single-violation 422 from a property name</td>
+<td><code>Error.UnprocessableContent.ForField(&quot;email&quot;, &quot;required&quot;, &quot;...&quot;)</code></td>
+<td><a href="#validation-failures">Validation failures</a></td>
+</tr>
+<tr>
+<td>Build a single-violation 422 from an object-level rule</td>
+<td><code>Error.UnprocessableContent.ForRule(&quot;passwords_must_match&quot;, &quot;...&quot;)</code></td>
+<td><a href="#validation-failures">Validation failures</a></td>
+</tr>
+<tr>
+<td>Aggregate per-field and cross-field violations</td>
+<td><code>new Error.UnprocessableContent(Fields: ..., Rules: ...)</code></td>
+<td><a href="#validation-failures">Validation failures</a></td>
+</tr>
+<tr>
+<td>Branch on the closed catalog at a boundary</td>
+<td><code>result.Match(value =&gt; ..., error =&gt; error switch { Error.NotFound nf =&gt; ..., ... })</code></td>
+<td><a href="#pattern-matching">Pattern matching</a></td>
+</tr>
+<tr>
+<td>Log without changing the result</td>
+<td><code>result.TapOnFailure(error =&gt; logger.LogWarning(...))</code></td>
+<td><a href="#propagating-errors">Propagating errors</a></td>
+</tr>
+<tr>
+<td>Translate one failure case into another</td>
+<td><code>result.MapOnFailure(error =&gt; error switch { ... })</code></td>
+<td><a href="#propagating-errors">Propagating errors</a></td>
+</tr>
+<tr>
+<td>Capture a thrown exception as a typed error</td>
+<td><code>Result.Try(() =&gt; ..., ex =&gt; new Error.X(...))</code></td>
+<td><a href="#capturing-exceptions">Capturing exceptions</a></td>
+</tr>
+<tr>
+<td>Merge multiple failures into one</td>
+<td><code>Result.Combine(r1, r2, r3)</code> or <code>left.Combine(right)</code> on <code>Error</code></td>
+<td><a href="#composition">Composition</a></td>
+</tr>
+<tr>
+<td>Map an <code>Error</code> to an HTTP / Problem Details response</td>
+<td><code>result.ToHttpResponse(...)</code> (in <code>Trellis.Asp</code>)</td>
+<td><a href="#boundary-mapping">Boundary mapping</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You want expected failures (validation, not found, conflict, forbidden) to be values your callers can branch on, not exceptions.</li>
+<li>You need compile-time exhaustiveness across every failure case at a boundary.</li>
+<li>You are aggregating multiple validation failures and want to keep them all instead of throwing the first one away.</li>
+<li>You need a stable wire vocabulary (<code>Kind</code>, <code>Code</code>, payload) that survives refactors and renders consistently as Problem Details.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Error</code> is an <code>abstract record</code> with <strong>20 nested <code>sealed record</code> cases</strong>. The base type has a <code>private</code> constructor, so the catalog is closed and <code>switch</code> over an <code>Error</code> reference is exhaustive at the language level.</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Cases</th>
+<th>Wire status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4xx client</td>
+<td><code>BadRequest</code>, <code>Unauthorized</code>, <code>Forbidden</code>, <code>NotFound</code>, <code>MethodNotAllowed</code>, <code>NotAcceptable</code>, <code>Conflict</code>, <code>Gone</code>, <code>PreconditionFailed</code>, <code>ContentTooLarge</code>, <code>UnsupportedMediaType</code>, <code>RangeNotSatisfiable</code>, <code>UnprocessableContent</code>, <code>PreconditionRequired</code>, <code>TooManyRequests</code></td>
+<td><code>400</code> – <code>429</code></td>
+</tr>
+<tr>
+<td>5xx server</td>
+<td><code>InternalServerError</code>, <code>Unexpected</code>, <code>NotImplemented</code>, <code>ServiceUnavailable</code></td>
+<td><code>500</code> – <code>503</code></td>
+</tr>
+<tr>
+<td>Composition</td>
+<td><code>Aggregate</code></td>
+<td><code>207</code> / <code>extensions.errors</code></td>
+</tr>
+</tbody>
+</table>
+<p>Every case carries a strongly-typed payload, an init-only <code>Detail</code> property, and a structured (never <code>Exception</code>) <code>Cause</code> chain. Full per-case constructor signatures, payload notes, and the supporting types (<code>ResourceRef</code>, <code>InputPointer</code>, <code>FieldViolation</code>, <code>RuleViolation</code>, <code>AuthChallenge</code>, <code>RetryAfterValue</code>, <code>PreconditionKind</code>, <code>EquatableArray&lt;T&gt;</code>) live in <a href="../api_reference/trellis-api-core.html#public-abstract-record-error"><code>trellis-api-core.md</code> → <code>Error</code></a>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>Error.Unexpected</code> and <code>Error.InternalServerError</code> both map to HTTP 500 but are distinct cases. <code>InternalServerError(faultId)</code> carries an opaque per-incident id correlating with telemetry; <code>Unexpected(reasonCode)</code> identifies the <em>kind</em> of &quot;shouldn't happen&quot; condition (default-initialized <code>Result</code>, exhausted match arms, internal invariant violations) and does not attach a <code>faultId</code> extension at the ASP boundary.</p>
+</div>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>Return a typed failure, then pattern-match at the boundary.</p>
+<pre><code class="lang-csharp">using Trellis;
+
+public sealed record User(string Id, string Email);
+
+public static class UserService
+{
+    public static Result&lt;User&gt; GetUser(string id) =&gt;
+        id == &quot;42&quot;
+            ? Result.Ok(new User(&quot;42&quot;, &quot;ada@example.com&quot;))
+            : Result.Fail&lt;User&gt;(new Error.NotFound(ResourceRef.For&lt;User&gt;(id)) { Detail = $&quot;User {id} not found&quot; });
+}
+
+var message = UserService.GetUser(&quot;42&quot;).Match(
+    onSuccess: user  =&gt; $&quot;200 OK: {user.Email}&quot;,
+    onFailure: error =&gt; error switch
+    {
+        Error.NotFound nf  =&gt; $&quot;404 Not Found: {nf.Detail}&quot;,
+        Error.Forbidden f  =&gt; $&quot;403 Forbidden: {f.PolicyId}&quot;,
+        _                  =&gt; $&quot;500 Internal: {error.Kind}&quot;,
+    });
+</code></pre>
+<h2 id="creating-errors">Creating errors</h2>
+<p>There are no static factory methods on the base <code>Error</code> type. Every call site names the case it produces:</p>
+<pre><code class="lang-csharp">new Error.NotFound(ResourceRef.For&lt;Order&gt;(&quot;42&quot;)) { Detail = &quot;Order 42 not found&quot; }
+</code></pre>
+<p><code>Detail</code> is an init-only property on the base record; set it via object-initializer when you want to override the boundary renderer's default human-readable text. <code>Kind</code> (the stable IANA-aligned slug) and <code>Code</code> (the per-instance machine code, defaulting to <code>Kind</code>) are read-only.</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resource not found</td>
+<td><code>new Error.NotFound(ResourceRef.For&lt;Order&gt;(id)) { Detail = $&quot;Order {id} not found&quot; }</code></td>
+</tr>
+<tr>
+<td>State conflict</td>
+<td><code>new Error.Conflict(ResourceRef.For&lt;User&gt;(userId), &quot;duplicate.key&quot;) { Detail = &quot;Email is already in use&quot; }</code></td>
+</tr>
+<tr>
+<td>Domain rule conflict (no resource)</td>
+<td><code>new Error.Conflict(null, &quot;cancel_after_ship&quot;) { Detail = &quot;Cannot cancel after shipment&quot; }</code></td>
+</tr>
+<tr>
+<td>Authentication missing</td>
+<td><code>new Error.Unauthorized() { Detail = &quot;Authentication token is missing&quot; }</code></td>
+</tr>
+<tr>
+<td>Authenticated but not allowed</td>
+<td><code>new Error.Forbidden(&quot;orders.write&quot;) { Detail = &quot;Administrator role required&quot; }</code></td>
+</tr>
+<tr>
+<td>Soft-deleted resource</td>
+<td><code>new Error.Gone(ResourceRef.For&lt;Document&gt;(id))</code></td>
+</tr>
+<tr>
+<td>Wrong content type</td>
+<td><code>new Error.UnsupportedMediaType(EquatableArray.Create(&quot;application/json&quot;))</code></td>
+</tr>
+<tr>
+<td>Body too large</td>
+<td><code>new Error.ContentTooLarge(MaxBytes: 10 * 1024 * 1024)</code></td>
+</tr>
+<tr>
+<td>Method not supported</td>
+<td><code>new Error.MethodNotAllowed(EquatableArray.Create(&quot;GET&quot;, &quot;POST&quot;))</code></td>
+</tr>
+<tr>
+<td>Rate limited</td>
+<td><code>new Error.TooManyRequests(RetryAfterValue.FromSeconds(30))</code></td>
+</tr>
+<tr>
+<td>Dependency unavailable</td>
+<td><code>new Error.ServiceUnavailable(RetryAfterValue.FromSeconds(120)) { Detail = &quot;Payment gateway offline&quot; }</code></td>
+</tr>
+<tr>
+<td>Unhandled fault (correlates to logs)</td>
+<td><code>new Error.InternalServerError(faultId) { Detail = ex.Message }</code></td>
+</tr>
+<tr>
+<td>Internal invariant violated</td>
+<td><code>new Error.Unexpected(&quot;default_initialized&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Reach for <code>new Error.Conflict(resource) { ReasonCode = &quot;domain.violation&quot; }</code> when the input is structurally valid but a business rule blocks it. <code>Error.UnprocessableContent</code> is for input the caller can fix.</p>
+</div>
+<h3 id="validation-failures">Validation failures</h3>
+<p><code>Error.UnprocessableContent</code> carries <code>EquatableArray&lt;FieldViolation&gt; Fields</code> and <code>EquatableArray&lt;RuleViolation&gt; Rules</code>. For single-violation cases prefer the static factories on the case itself; the boundary renderer surfaces a single field-violation's <code>Detail</code> as the response detail directly.</p>
+<table>
+<thead>
+<tr>
+<th>Factory</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Error.UnprocessableContent.ForField(propertyName, reasonCode, detail?)</code></td>
+<td>Single property failure named by simple property (escaped via <code>InputPointer.ForProperty</code>).</td>
+</tr>
+<tr>
+<td><code>Error.UnprocessableContent.ForField(InputPointer field, reasonCode, detail?)</code></td>
+<td>Single field failure where you already have a pointer (nested / array / <code>InputPointer.Root</code>).</td>
+</tr>
+<tr>
+<td><code>Error.UnprocessableContent.ForRule(reasonCode, detail?)</code></td>
+<td>Single object-level invariant with no field pointer.</td>
+</tr>
+<tr>
+<td><code>new Error.UnprocessableContent(EquatableArray&lt;FieldViolation&gt; Fields, EquatableArray&lt;RuleViolation&gt; Rules = default)</code></td>
+<td>Aggregate multiple per-field and/or cross-field violations.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using System.Collections.Immutable;
+using Trellis;
+
+var single = Error.UnprocessableContent.ForField(&quot;email&quot;, &quot;required&quot;, &quot;Email is required&quot;);
+
+var multiField = new Error.UnprocessableContent(EquatableArray.Create(
+    new FieldViolation(InputPointer.ForProperty(&quot;email&quot;),    &quot;required&quot;) { Detail = &quot;Email is required&quot; },
+    new FieldViolation(InputPointer.ForProperty(&quot;password&quot;), &quot;min_length&quot;,
+        ImmutableDictionary&lt;string, string&gt;.Empty.Add(&quot;min&quot;, &quot;8&quot;)) { Detail = &quot;Password must be at least 8 characters&quot; },
+    new FieldViolation(InputPointer.ForProperty(&quot;age&quot;),      &quot;min&quot;,
+        ImmutableDictionary&lt;string, string&gt;.Empty.Add(&quot;min&quot;, &quot;18&quot;)) { Detail = &quot;Must be 18 or older&quot; }));
+
+var crossField = new Error.UnprocessableContent(
+    Fields: EquatableArray&lt;FieldViolation&gt;.Empty,
+    Rules:  EquatableArray.Create(new RuleViolation(
+        &quot;passwords_must_match&quot;,
+        Fields: EquatableArray.Create(
+            InputPointer.ForProperty(&quot;password&quot;),
+            InputPointer.ForProperty(&quot;passwordConfirmation&quot;)))
+        { Detail = &quot;Passwords must match&quot; }));
+</code></pre>
+<h2 id="pattern-matching">Pattern matching</h2>
+<p>Use <code>Match</code> to fold a <code>Result&lt;T&gt;</code> into a value, or read <code>result.Error</code> (which is <code>Error?</code> and never throws) to perform side effects. The C# compiler verifies exhaustiveness against the closed catalog — adding a new case to <code>Error</code> lights up every <code>switch</code> that does not handle it.</p>
+<pre><code class="lang-csharp">var message = LoadUser(&quot;42&quot;).Match(
+    onSuccess: user  =&gt; $&quot;Found {user.Email}&quot;,
+    onFailure: error =&gt; error switch
+    {
+        Error.UnprocessableContent uc =&gt; $&quot;Bad input: {uc.GetDisplayMessage()}&quot;,
+        Error.NotFound nf             =&gt; $&quot;Missing {nf.Resource.Type} {nf.Resource.Id}&quot;,
+        Error.Forbidden f             =&gt; $&quot;Not allowed by {f.PolicyId}&quot;,
+        _                             =&gt; $&quot;Fallback: {error.Kind}&quot;,
+    });
+</code></pre>
+<p><code>Match</code> has async overloads for <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code> (<code>MatchAsync</code>) and tuple overloads for arities 2–9. Full signatures: <a href="../api_reference/trellis-api-core.html#match-family--matchextensions-matchextensionsasync-matchtupleextensions-matchtupleextensionsasync"><code>trellis-api-core.md</code> → Match family</a>.</p>
+<h3 id="kind-vs-code"><code>Kind</code> vs <code>Code</code></h3>
+<ul>
+<li><code>Kind</code> is the <strong>stable, low-cardinality slug</strong> used for the OTel <code>error.type</code> attribute (e.g. <code>&quot;not-found&quot;</code>, <code>&quot;unprocessable-content&quot;</code>, <code>&quot;conflict&quot;</code>). Cases override this; payload is irrelevant.</li>
+<li><code>Code</code> defaults to <code>Kind</code> and is overridden when the payload carries a per-instance reason — <code>Conflict</code>/<code>Forbidden</code>/<code>BadRequest</code> return their <code>ReasonCode</code>/<code>PolicyId</code>/<code>ReasonCode</code>, <code>InternalServerError</code> returns its <code>FaultId</code>, <code>Unexpected</code> returns its <code>ReasonCode</code>, <code>NotImplemented</code> returns its <code>Feature</code>, and <code>PreconditionRequired</code> returns its <code>Condition</code>.</li>
+</ul>
+<p>Boundary renderers read <code>Kind</code> for the Problem Details <code>type</code> URI and <code>Code</code> for the per-instance machine identifier.</p>
+<h2 id="propagating-errors">Propagating errors</h2>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TapOnFailure(action)</code></td>
+<td>Side effect (log/metric) on failure; result passes through unchanged.</td>
+</tr>
+<tr>
+<td><code>MapOnFailure(error =&gt; newError)</code></td>
+<td>Translate one failure case into another (e.g. when crossing layers).</td>
+</tr>
+<tr>
+<td><code>RecoverOnFailure(error =&gt; Result&lt;T&gt;)</code></td>
+<td>Replace a failure with a fallback <code>Result</code> (success or different failure).</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">var result = LoadFromCrm(id)
+    .TapOnFailure(error =&gt; logger.LogWarning(&quot;CRM call failed: {Kind} {Code}&quot;, error.Kind, error.Code))
+    .MapOnFailure(error =&gt; error switch
+    {
+        Error.InternalServerError =&gt; new Error.ServiceUnavailable(RetryAfterValue.FromSeconds(60))
+            { Detail = &quot;Customer service is temporarily unavailable&quot; },
+        _ =&gt; error,
+    });
+
+static Result&lt;string&gt; GetFromCache()    =&gt; Result.Fail&lt;string&gt;(new Error.NotFound(ResourceRef.For&lt;string&gt;(&quot;user:42&quot;)));
+static Result&lt;string&gt; GetFromDatabase() =&gt; Result.Ok(&quot;Ada Lovelace&quot;);
+
+var withFallback = GetFromCache().RecoverOnFailure(_ =&gt; GetFromDatabase());
+</code></pre>
+<p>All three operators have <code>Async</code> variants on <code>Task&lt;Result&lt;T&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;T&gt;&gt;</code>. See <a href="../api_reference/trellis-api-core.html#result-pipeline-extension-families"><code>trellis-api-core.md</code> → Tap, Map, Recover families</a>.</p>
+<h2 id="capturing-exceptions">Capturing exceptions</h2>
+<p>Expected failures should be regular <code>Error</code> values. For code that genuinely throws, <code>Result.Try</code> and <code>Result.TryAsync</code> bridge the gap. Without a custom map, the default mapping wraps the exception as <code>Error.InternalServerError</code> with a generated <code>FaultId</code>.</p>
+<pre><code class="lang-csharp">using System.IO;
+using Trellis;
+
+static Result&lt;string&gt; LoadText(string path) =&gt;
+    Result.Try(() =&gt; File.ReadAllText(path));
+
+static Task&lt;Result&lt;string&gt;&gt; LoadTextAsync(string path) =&gt;
+    Result.TryAsync(() =&gt; File.ReadAllTextAsync(path));
+
+static Result&lt;string&gt; LoadConfig(string path) =&gt;
+    Result.Try(
+        () =&gt; File.ReadAllText(path),
+        exception =&gt; exception switch
+        {
+            FileNotFoundException       =&gt; new Error.NotFound(ResourceRef.For&lt;FileInfo&gt;(path)) { Detail = $&quot;{path} was not found&quot; },
+            UnauthorizedAccessException =&gt; new Error.Forbidden(&quot;file.read&quot;) { Detail = &quot;Access denied&quot; },
+            _                           =&gt; new Error.InternalServerError(Guid.NewGuid().ToString(&quot;N&quot;)) { Detail = exception.Message },
+        });
+</code></pre>
+<p><code>Result.Try</code> and <code>Result.TryAsync</code> also have parameterless-work overloads that return <code>Result&lt;Unit&gt;</code> for void/<code>Task</code> work — useful for command handlers, which return <code>Result&lt;Unit&gt;</code>.</p>
+<h2 id="composition">Composition</h2>
+<p><code>Combine</code> merges multiple <code>Result&lt;T&gt;</code> failures into one. Two distinct shapes:</p>
+<table>
+<thead>
+<tr>
+<th>Input failures</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>All <code>Error.UnprocessableContent</code></td>
+<td>One merged <code>Error.UnprocessableContent</code> with concatenated <code>Fields</code> and <code>Rules</code>.</td>
+</tr>
+<tr>
+<td>Heterogeneous (mixed cases)</td>
+<td>One <code>Error.Aggregate</code> wrapping the children. Nested aggregates are flattened at construction.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">var emailErr    = Result.Fail(Error.UnprocessableContent.ForField(&quot;email&quot;,    &quot;required&quot;));
+var passwordErr = Result.Fail(Error.UnprocessableContent.ForField(&quot;password&quot;, &quot;required&quot;));
+var ageErr      = Result.Fail(Error.UnprocessableContent.ForField(&quot;age&quot;,      &quot;required&quot;));
+
+var combined = Result.Combine(emailErr, passwordErr, ageErr);
+// combined.Error is one Error.UnprocessableContent with three Fields entries.
+</code></pre>
+<p><code>Error.Combine(left, right)</code> (extension on <code>Error?</code>) does the same merging at the error level; passing a <code>null</code> left returns <code>right</code>.</p>
+<pre><code class="lang-csharp">Error? acc = null;
+acc = acc.Combine(new Error.NotFound(ResourceRef.For&lt;Order&gt;(&quot;1&quot;)));
+acc = acc.Combine(new Error.Forbidden(&quot;orders.write&quot;));
+// acc is Error.Aggregate { Errors = [NotFound, Forbidden] }
+</code></pre>
+<p><code>Error.Aggregate</code> exposes three constructor overloads (<code>EquatableArray&lt;Error&gt;</code>, <code>IEnumerable&lt;Error&gt;</code>, <code>params Error[]</code>); all three throw <code>ArgumentException</code> if no errors are supplied, and all flatten nested aggregates.</p>
+<h2 id="boundary-mapping">Boundary mapping</h2>
+<p>Map an <code>Error</code> to an HTTP / Problem Details response with <code>result.ToHttpResponse(...)</code> from <code>Trellis.Asp</code>. The boundary uses <code>Kind</code> for the Problem Details <code>type</code> URI, <code>Code</code> for the per-instance code, and renders the typed payload (e.g. <code>Allow</code>, <code>Retry-After</code>, <code>WWW-Authenticate</code>, <code>Content-Range</code>) as the appropriate header or <code>extensions</code> field. For <code>Result&lt;Unit&gt;</code> the success branch emits <code>204 No Content</code>.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Asp;
+
+public static IResult Get(string id, IUserService users) =&gt;
+    users.GetUser(id).ToHttpResponse();
+</code></pre>
+<p>Full mapping rules and per-case behaviour live in:</p>
+<ul>
+<li>API reference: <a href="../api_reference/trellis-api-asp.html#httpresponseextensions"><code>trellis-api-asp.md</code> → <code>HttpResponseExtensions</code></a></li>
+<li>Article: <a href="asp-tohttpresponse.html#per-call-error-mapping"><code>asp-tohttpresponse.md</code> → Per-call error mapping</a></li>
+</ul>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Pick the case the caller can act on.</strong> <code>UnprocessableContent</code> when the request data can be fixed; <code>Conflict</code> when state or a business rule blocks an otherwise-valid request; <code>NotFound</code> when the resource does not exist; <code>PreconditionFailed</code> for optimistic-concurrency mismatches; <code>Gone</code> for soft-deleted resources.</li>
+<li><strong><code>InternalServerError(faultId)</code> is for true surprises.</strong> Never use it for business logic — use <code>Unexpected(reasonCode)</code> for &quot;shouldn't happen&quot; invariant violations and a typed 4xx case for everything else.</li>
+<li><strong>Set <code>Detail</code> only when it adds information.</strong> Boundary renderers compute a usable default from <code>Kind</code>/<code>Code</code> and the typed payload; override <code>Detail</code> only when you have something more specific to say.</li>
+<li><strong>Prefer <code>Match</code> (or a property pattern on <code>result.Error</code>) at boundaries.</strong> Inside pipelines, prefer <code>Bind</code>/<code>Map</code>/<code>Ensure</code> over inspecting <code>Error</code> directly.</li>
+<li><strong>Use <code>TapOnFailure</code> for logging and metrics.</strong> It does not mutate the result.</li>
+<li><strong>Use <code>MapOnFailure</code> when crossing layers.</strong> Translating a low-level <code>InternalServerError</code> from a dependency into a domain-meaningful <code>ServiceUnavailable</code> is a typical use.</li>
+<li><strong>Use <code>Combine</code> to preserve every failure.</strong> This is the difference between &quot;first error wins&quot; and &quot;tell the caller everything that's wrong.&quot;</li>
+<li><strong>Equality.</strong> Two errors compare equal when <code>Kind</code>, payload, and <code>Detail</code> match. <code>Cause</code> is excluded from equality so the same surface failure raised from different code paths still compares equal.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface (full per-case table, supporting types, <code>Result.Try</code>/<code>TryAsync</code>, Combine family, Match/Tap/Map/Recover families): <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>HTTP response mapping for <code>Result&lt;T&gt;</code> and standalone <code>Error</code>: <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a>, <a href="asp-tohttpresponse.html"><code>asp-tohttpresponse.md</code></a></li>
+<li>FluentValidation → <code>Error.UnprocessableContent</code> adapter: <a href="integration-fluentvalidation.html"><code>integration-fluentvalidation.md</code></a></li>
+<li>HTTP client failure mapping (turning upstream statuses into typed <code>Error</code> cases): <a href="integration-http.html"><code>integration-http.md</code></a></li>
+<li>Mediator pipeline behaviours that operate on <code>Result</code>/<code>Error</code>: <a href="integration-mediator.html"><code>integration-mediator.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/error-handling.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

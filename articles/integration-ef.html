@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Entity Framework Core Integration | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Entity Framework Core Integration | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-ef.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="entity-framework-core-integration">Entity Framework Core Integration</h1>
+
+<p><code>Trellis.EntityFrameworkCore</code> maps Trellis value objects, <code>Maybe&lt;T&gt;</code>, owned composites, and aggregate ETags into EF Core, and turns <code>SaveChangesAsync</code> exceptions into <code>Result&lt;T&gt;</code> failures so repositories stay on the railway.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wire EF conventions for Trellis types (compile-time, AOT-friendly)</td>
+<td><code>configurationBuilder.ApplyTrellisConventionsFor&lt;TContext&gt;()</code></td>
+<td><a href="#conventions-and-interceptors">Conventions and interceptors</a></td>
+</tr>
+<tr>
+<td>Wire EF conventions via runtime assembly scan</td>
+<td><code>configurationBuilder.ApplyTrellisConventions(typeof(TContext).Assembly)</code></td>
+<td><a href="#conventions-and-interceptors">Conventions and interceptors</a></td>
+</tr>
+<tr>
+<td>Register <code>Maybe&lt;T&gt;</code> query rewriting, ETag, and timestamp interceptors</td>
+<td><code>optionsBuilder.AddTrellisInterceptors()</code></td>
+<td><a href="#conventions-and-interceptors">Conventions and interceptors</a></td>
+</tr>
+<tr>
+<td>Mark a composite value object as EF-owned</td>
+<td><code>[OwnedEntity]</code> on a <code>partial</code> class inheriting <code>ValueObject</code></td>
+<td><a href="#owned-composites">Owned composites</a></td>
+</tr>
+<tr>
+<td>Query for an optional row</td>
+<td><code>FirstOrDefaultMaybeAsync(predicate, ct)</code></td>
+<td><a href="#querying">Querying</a></td>
+</tr>
+<tr>
+<td>Query for a required row, fail with a typed error</td>
+<td><code>FirstOrDefaultResultAsync(predicate, error, ct)</code></td>
+<td><a href="#querying">Querying</a></td>
+</tr>
+<tr>
+<td>Filter / order an <code>IQueryable&lt;T&gt;</code> by a <code>Maybe&lt;TInner&gt;</code> property</td>
+<td><code>WhereHasValue</code> / <code>WhereEquals</code> / <code>OrderByMaybe</code> (and friends)</td>
+<td><a href="#querying-maybe-properties">Querying Maybe properties</a></td>
+</tr>
+<tr>
+<td>Save and surface DB failures as <code>Error</code> (no UoW)</td>
+<td><code>db.SaveChangesResultAsync(ct)</code> / <code>db.SaveChangesResultUnitAsync(ct)</code></td>
+<td><a href="#saving">Saving</a></td>
+</tr>
+<tr>
+<td>Stage aggregate changes; let the pipeline commit</td>
+<td><code>RepositoryBase&lt;TAggregate, TId&gt;</code> + <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code></td>
+<td><a href="#repositories-and-unit-of-work">Repositories and unit of work</a></td>
+</tr>
+<tr>
+<td>Commit staged changes outside the pipeline</td>
+<td><code>IUnitOfWork.CommitAsync(ct)</code></td>
+<td><a href="#repositories-and-unit-of-work">Repositories and unit of work</a></td>
+</tr>
+<tr>
+<td>Update a <code>Maybe&lt;T&gt;</code> scalar via <code>ExecuteUpdate</code></td>
+<td><code>SetMaybeValue(...)</code> / <code>SetMaybeNone(...)</code></td>
+<td><a href="#bulk-updates-over-maybe">Bulk updates over Maybe</a></td>
+</tr>
+<tr>
+<td>Index a <code>Maybe&lt;T&gt;</code> property without TRLS016</td>
+<td><code>entityTypeBuilder.HasTrellisIndex(x =&gt; x.M)</code></td>
+<td><a href="#indexing-maybe-properties">Indexing Maybe properties</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You persist Trellis aggregates with EF Core and want value-object mapping, ETag concurrency, and timestamp interceptors wired by convention.</li>
+<li>You want repository methods that return <code>Maybe&lt;T&gt;</code> / <code>Result&lt;T&gt;</code> instead of <code>null</code> and exceptions.</li>
+<li>You need a deterministic commit boundary — repositories stage, the mediator pipeline commits.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.EntityFrameworkCore</code> exposes one configuration entry point, one interceptor entry point, a query/save extension surface, an aggregate repository base, and a unit-of-work abstraction.</p>
+<table>
+<thead>
+<tr>
+<th>Type / member</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ModelConfigurationBuilderExtensions.ApplyTrellisConventions(params Assembly[])</code></td>
+<td>Conventions</td>
+<td>Runtime scan; registers scalar converters, <code>Maybe&lt;T&gt;</code> / composite / <code>Money</code> / ETag / transient conventions.</td>
+</tr>
+<tr>
+<td><code>GeneratedTrellisConventions.ApplyTrellisConventionsFor&lt;TContext&gt;()</code></td>
+<td>Conventions (source-generated)</td>
+<td>Compile-time discovery alternative; no reflection.</td>
+</tr>
+<tr>
+<td><code>DbContextOptionsBuilderExtensions.AddTrellisInterceptors([TimeProvider])</code></td>
+<td>Interceptors</td>
+<td>Singleton <code>MaybeQueryInterceptor</code>, <code>ScalarValueQueryInterceptor</code>, <code>AggregateETagInterceptor</code>, <code>EntityTimestampInterceptor</code>.</td>
+</tr>
+<tr>
+<td><code>OwnedEntityAttribute</code></td>
+<td>Attribute</td>
+<td>Marks a <code>partial ValueObject</code> as EF-owned; generator emits the private parameterless constructor.</td>
+</tr>
+<tr>
+<td><code>QueryableExtensions.FirstOrDefaultMaybeAsync&lt;T&gt;</code> / <code>SingleOrDefaultMaybeAsync&lt;T&gt;</code></td>
+<td>Query</td>
+<td>Returns <code>Task&lt;Maybe&lt;T&gt;&gt;</code>; absence → <code>Maybe&lt;T&gt;.None</code>.</td>
+</tr>
+<tr>
+<td><code>QueryableExtensions.FirstOrDefaultResultAsync&lt;T&gt;</code></td>
+<td>Query</td>
+<td>Returns <code>Task&lt;Result&lt;T&gt;&gt;</code>; absence → <strong>the exact <code>Error</code> you supplied</strong> (does not invent one).</td>
+</tr>
+<tr>
+<td><code>QueryableExtensions.Where(Specification&lt;T&gt;)</code></td>
+<td>Query</td>
+<td>Applies a Trellis specification expression.</td>
+</tr>
+<tr>
+<td><code>MaybeQueryableExtensions.WhereHasValue</code> / <code>WhereNone</code> / <code>WhereEquals</code> / <code>WhereLessThan</code> / <code>WhereLessThanOrEqual</code> / <code>WhereGreaterThan</code> / <code>WhereGreaterThanOrEqual</code> / <code>OrderByMaybe</code> / <code>OrderByMaybeDescending</code> / <code>ThenByMaybe</code> / <code>ThenByMaybeDescending</code></td>
+<td>Query</td>
+<td>Translate <code>Maybe&lt;TInner&gt;</code> predicates and ordering to the mapped storage member.</td>
+</tr>
+<tr>
+<td><code>MaybeUpdateExtensions.SetMaybeValue&lt;T&gt;</code> / <code>SetMaybeNone&lt;T&gt;</code></td>
+<td>Bulk update</td>
+<td><code>ExecuteUpdate</code> setters for scalar <code>Maybe&lt;T&gt;</code> properties.</td>
+</tr>
+<tr>
+<td><code>MaybeEntityTypeBuilderExtensions.HasTrellisIndex&lt;T&gt;</code></td>
+<td>Model builder</td>
+<td>Indexes a <code>Maybe&lt;T&gt;</code> property by resolving to its storage member (avoids TRLS016).</td>
+</tr>
+<tr>
+<td><code>DbContextExtensions.SaveChangesResultAsync(...)</code></td>
+<td>Save</td>
+<td><code>Task&lt;Result&lt;int&gt;&gt;</code>. Maps <code>DbUpdateConcurrencyException</code> / duplicate-key / FK violations to <code>Error.Conflict</code>.</td>
+</tr>
+<tr>
+<td><code>DbContextExtensions.SaveChangesResultUnitAsync(...)</code></td>
+<td>Save</td>
+<td><code>Task&lt;Result&lt;Unit&gt;&gt;</code> overload when row count is not needed.</td>
+</tr>
+<tr>
+<td><code>RepositoryBase&lt;TAggregate, TId&gt;</code></td>
+<td>Aggregate repo base</td>
+<td><code>FindByIdAsync</code> (Maybe), <code>QueryAsync(spec)</code>, <code>ExistsAsync</code>, <code>CountAsync</code>, <code>Add</code>, <code>Remove</code>, <code>RemoveByIdAsync</code> (<code>Task&lt;Result&lt;Unit&gt;&gt;</code>). Staging only — never calls <code>SaveChanges</code>.</td>
+</tr>
+<tr>
+<td><code>IUnitOfWork.CommitAsync(ct)</code></td>
+<td>Commit boundary</td>
+<td><code>Task&lt;Result&lt;Unit&gt;&gt;</code>. Implemented by <code>EfUnitOfWork&lt;TContext&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</code></td>
+<td>Pipeline behavior</td>
+<td>Auto-commits after a successful <code>ICommand&lt;TResponse&gt;</code> handler; only fires for commands.</td>
+</tr>
+<tr>
+<td><code>UnitOfWorkServiceCollectionExtensions.AddTrellisUnitOfWork&lt;TContext&gt;()</code> / <code>AddTrellisUnitOfWorkWithoutBehavior&lt;TContext&gt;()</code></td>
+<td>DI</td>
+<td>Registers <code>EfUnitOfWork&lt;TContext&gt;</code> (scoped) and inserts the commit behavior innermost.</td>
+</tr>
+<tr>
+<td><code>DbExceptionClassifier.IsDuplicateKey</code> / <code>IsForeignKeyViolation</code> / <code>ExtractConstraintDetail</code></td>
+<td>Diagnostics</td>
+<td>Cross-provider DB exception classification used by the save helpers.</td>
+</tr>
+<tr>
+<td><code>MaybeModelExtensions.GetMaybePropertyMappings()</code> / <code>ToMaybeMappingDebugString()</code></td>
+<td>Diagnostics</td>
+<td>Inspect resolved <code>Maybe&lt;T&gt;</code> storage members.</td>
+</tr>
+<tr>
+<td><code>TrellisPersistenceMappingException</code></td>
+<td>Exception</td>
+<td>Thrown when a persisted scalar value object value fails materialization.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.EntityFrameworkCore
+</code></pre>
+<p>The package bundles <code>Trellis.EntityFrameworkCore.Generator.dll</code> under <code>analyzers/dotnet/cs/</code>. Installing the package is enough to attach the <code>[OwnedEntity]</code> and <code>ApplyTrellisConventionsFor&lt;TContext&gt;</code> source generators — there is no separate generator NuGet package.</p>
+<h2 id="quick-start">Quick start</h2>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+namespace MyApp.Data;
+
+public sealed class CustomerId : RequiredGuid&lt;CustomerId&gt;;
+public sealed class CustomerName : RequiredString&lt;CustomerName&gt;;
+
+public sealed class Customer : Aggregate&lt;CustomerId&gt;
+{
+    public CustomerName Name { get; private set; } = null!;
+    public EmailAddress Email { get; private set; } = null!;
+
+    private Customer() : base(CustomerId.NewUniqueV7()) { }
+
+    public static Customer Create(CustomerName name, EmailAddress email) =&gt;
+        new() { Name = name, Email = email };
+}
+
+public sealed class AppDbContext(DbContextOptions&lt;AppDbContext&gt; options) : DbContext(options)
+{
+    public DbSet&lt;Customer&gt; Customers =&gt; Set&lt;Customer&gt;();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =&gt;
+        configurationBuilder.ApplyTrellisConventionsFor&lt;AppDbContext&gt;();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity&lt;Customer&gt;(builder =&gt;
+        {
+            builder.HasKey(x =&gt; x.Id);
+            builder.Property(x =&gt; x.Name).HasMaxLength(100);
+            builder.Property(x =&gt; x.Email).HasMaxLength(254);
+        });
+    }
+}
+
+// Composition root
+services.AddDbContext&lt;AppDbContext&gt;(options =&gt;
+    options.UseSqlServer(connectionString)
+        .AddTrellisInterceptors());
+
+services.AddTrellisBehaviors();
+services.AddTrellisUnitOfWork&lt;AppDbContext&gt;();
+</code></pre>
+<p><code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code> configures the model. <code>AddTrellisInterceptors()</code> configures runtime save/query behavior. <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> registers <code>IUnitOfWork</code> and the auto-commit pipeline behavior. You usually want all three.</p>
+<h2 id="conventions-and-interceptors">Conventions and interceptors</h2>
+<p>Two configuration entry points and one interceptor registration cover model setup.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code></td>
+<td>Default. Source-generated, compile-time discovery. Walks reachable types from <code>TContext.DbSet&lt;T&gt;</code> properties. No reflection, no <code>MakeGenericType</code>.</td>
+</tr>
+<tr>
+<td><code>ApplyTrellisConventions(params Assembly[])</code></td>
+<td>Fallback when the <code>DbContext</code> is not in the current compilation, or when you need to pass extra assemblies for composite value object discovery. Always includes <code>Trellis.Primitives</code>.</td>
+</tr>
+<tr>
+<td><code>AddTrellisInterceptors([TimeProvider])</code></td>
+<td>Always. Registers the four singleton interceptors. The <code>TimeProvider</code> overload constructs a fresh <code>EntityTimestampInterceptor(timeProvider)</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Both convention paths register the same set: scalar converters, <code>MaybeConvention</code>, <code>CompositeValueObjectConvention</code>, <code>MoneyConvention</code>, <code>AggregateETagConvention</code>, <code>AggregateTransientPropertyConvention</code>, <code>ValueObjectMappingGuardConvention</code>.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code> only discovers <code>DbContext</code> types defined in the current compilation. Calling it for a context excluded from generation throws <code>InvalidOperationException</code>. Use the reflection-based overload in that case.</p>
+</div>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>ApplyTrellisConventions(...)</code> only discovers composite value objects in the assemblies you pass in (plus <code>Trellis.Primitives</code>). If a composite type lives in another assembly, include it.</p>
+</div>
+<h2 id="owned-composites">Owned composites</h2>
+<p>Composite value objects use <strong>owned-type</strong> mapping, not scalar conversion. Mark them with <code>[OwnedEntity]</code> so the generator emits the private parameterless constructor EF Core needs for materialization.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.EntityFrameworkCore;
+
+namespace MyApp.Domain;
+
+[OwnedEntity]
+public partial class Address : ValueObject
+{
+    public string Street { get; private set; }
+    public string City   { get; private set; }
+    public string State  { get; private set; }
+
+    public Address(string street, string city, string state)
+    {
+        Street = street;
+        City   = city;
+        State  = state;
+    }
+
+    protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    {
+        yield return Street;
+        yield return City;
+        yield return State;
+    }
+}
+</code></pre>
+<p>Rules enforced by analyzers and conventions:</p>
+<ul>
+<li>The class must be <code>partial</code> and inherit <code>ValueObject</code>.</li>
+<li>Use <code>{ get; private set; }</code> — <code>{ get; init; }</code> is flagged by <code>TRLS022</code> (round-trip not guaranteed).</li>
+<li>A <code>Maybe&lt;T&gt;</code> over an owned composite stays inline when EF Core can model it safely; when the owned value contains nested owned types or non-nullable value-type members, Trellis switches to a separate owned table to avoid invalid nullable inline mapping.</li>
+</ul>
+<h2 id="querying">Querying</h2>
+<p>Choose the return type by what absence means.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FirstOrDefaultMaybeAsync(predicate, ct)</code></td>
+<td><code>Task&lt;Maybe&lt;T&gt;&gt;</code></td>
+<td>Absence is data; the caller decides what it means.</td>
+</tr>
+<tr>
+<td><code>SingleOrDefaultMaybeAsync(predicate, ct)</code></td>
+<td><code>Task&lt;Maybe&lt;T&gt;&gt;</code></td>
+<td>Same, but throws if more than one matches.</td>
+</tr>
+<tr>
+<td><code>FirstOrDefaultResultAsync(predicate, notFoundError, ct)</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code></td>
+<td>The repository owns the failure; pass the exact <code>Error</code> to return.</td>
+</tr>
+<tr>
+<td><code>Where(Specification&lt;T&gt;)</code></td>
+<td><code>IQueryable&lt;T&gt;</code></td>
+<td>Compose a reusable Trellis specification into a query.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+
+public sealed class CustomerRepository(AppDbContext db)
+{
+    public Task&lt;Maybe&lt;Customer&gt;&gt; GetByEmailAsync(EmailAddress email, CancellationToken ct) =&gt;
+        db.Customers.FirstOrDefaultMaybeAsync(x =&gt; x.Email == email, ct);
+
+    public Task&lt;Result&lt;Customer&gt;&gt; GetRequiredAsync(CustomerId id, CancellationToken ct) =&gt;
+        db.Customers.FirstOrDefaultResultAsync(
+            x =&gt; x.Id == id,
+            new Error.NotFound(ResourceRef.For&lt;Customer&gt;(id)) { Detail = $&quot;Customer {id} was not found.&quot; },
+            ct);
+}
+</code></pre>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p><code>FirstOrDefaultResultAsync(...)</code> returns <strong>the exact <code>Error</code> you pass in</strong>. It does not synthesize an <code>Error.NotFound</code>.</p>
+</div>
+<h3 id="querying-maybe-properties">Querying Maybe properties</h3>
+<p>Prefer the <code>MaybeQueryableExtensions</code> helpers over raw <code>GetValueOrDefault(...)</code> expressions — they translate to the mapped storage member directly and side-step <code>TRLS013</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>SQL semantics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WhereHasValue(x =&gt; x.M)</code></td>
+<td><code>WHERE storage IS NOT NULL</code></td>
+</tr>
+<tr>
+<td><code>WhereNone(x =&gt; x.M)</code></td>
+<td><code>WHERE storage IS NULL</code></td>
+</tr>
+<tr>
+<td><code>WhereEquals(x =&gt; x.M, value)</code></td>
+<td><code>WHERE storage = value</code></td>
+</tr>
+<tr>
+<td><code>WhereLessThan</code> / <code>WhereLessThanOrEqual</code> / <code>WhereGreaterThan</code> / <code>WhereGreaterThanOrEqual</code></td>
+<td>Comparison against <code>value</code> (requires <code>IComparable&lt;TInner&gt;</code>).</td>
+</tr>
+<tr>
+<td><code>OrderByMaybe</code> / <code>OrderByMaybeDescending</code> / <code>ThenByMaybe</code> / <code>ThenByMaybeDescending</code></td>
+<td>Order by the mapped storage member.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Trellis.EntityFrameworkCore;
+
+var dueSoon = await db.Tasks
+    .WhereHasValue(t =&gt; t.DueDate)
+    .WhereLessThanOrEqual(t =&gt; t.DueDate, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)))
+    .OrderByMaybe(t =&gt; t.DueDate)
+    .ToListAsync(ct);
+</code></pre>
+<p>For projections that unwrap <code>Maybe&lt;T&gt;</code>, filter with <code>WhereHasValue</code> (or <code>.Where(x =&gt; x.M.HasValue)</code> — <code>TRLS013</code> recognises that exact prior shape) <strong>before</strong> the projection.</p>
+<p>The <code>MaybeQueryInterceptor</code> (registered by <code>AddTrellisInterceptors()</code>) also rewrites natural patterns inside <code>Where</code> / <code>Select</code> / <code>Specification.ToExpression()</code>: <code>o.X.HasValue</code>, <code>o.X.HasNoValue</code>, <code>o.X.Value</code>, <code>o.X.GetValueOrDefault(d)</code>, <code>o.X == Maybe&lt;T&gt;.None</code>. The helpers above are still preferred when they exist.</p>
+<h3 id="indexing-maybe-properties">Indexing Maybe properties</h3>
+<p>EF Core's <code>HasIndex(x =&gt; x.M)</code> cannot resolve a <code>Maybe&lt;T&gt;</code> selector to its storage member, so it triggers <code>TRLS016</code>. Use the Trellis helper:</p>
+<pre><code class="lang-csharp">modelBuilder.Entity&lt;Order&gt;().HasTrellisIndex(x =&gt; x.PromisedDate);
+modelBuilder.Entity&lt;Order&gt;().HasTrellisIndex(x =&gt; new { x.CustomerId, x.PromisedDate });
+</code></pre>
+<h2 id="saving">Saving</h2>
+<p>Two save helpers, distinguished only by the success payload.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Returns</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SaveChangesResultAsync(ct)</code> and <code>SaveChangesResultAsync(acceptAllChangesOnSuccess, ct)</code></td>
+<td><code>Task&lt;Result&lt;int&gt;&gt;</code></td>
+<td>You need the affected row count.</td>
+</tr>
+<tr>
+<td><code>SaveChangesResultUnitAsync(ct)</code> and <code>SaveChangesResultUnitAsync(acceptAllChangesOnSuccess, ct)</code></td>
+<td><code>Task&lt;Result&lt;Unit&gt;&gt;</code></td>
+<td>Success/failure is enough.</td>
+</tr>
+</tbody>
+</table>
+<p>Failure mapping (identical for both):</p>
+<table>
+<thead>
+<tr>
+<th>EF Core failure</th>
+<th>Trellis result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DbUpdateConcurrencyException</code></td>
+<td><code>new Error.Conflict(null, &quot;concurrency.modified&quot;)</code></td>
+</tr>
+<tr>
+<td>Duplicate-key <code>DbUpdateException</code></td>
+<td><code>new Error.Conflict(null, &quot;duplicate.key&quot;)</code></td>
+</tr>
+<tr>
+<td>Foreign-key <code>DbUpdateException</code></td>
+<td><code>new Error.Conflict(null, &quot;referential.integrity&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Connection failures, timeouts, and <code>OperationCanceledException</code> are <strong>not</strong> caught — they propagate.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+
+public sealed class CustomerRepository(AppDbContext db)
+{
+    public async Task&lt;Result&lt;Unit&gt;&gt; AddAsync(Customer customer, CancellationToken ct)
+    {
+        db.Customers.Add(customer);
+        return await db.SaveChangesResultUnitAsync(ct);
+    }
+}
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Analyzer <code>TRLS015</code> flags direct <code>SaveChangesAsync</code> calls in non-UoW contexts; use the result-returning helpers instead. In a UoW context (see below), repositories should not call save helpers at all — let the pipeline commit.</p>
+</div>
+<h3 id="bulk-updates-over-maybe">Bulk updates over Maybe</h3>
+<p>For <code>ExecuteUpdate</code> over scalar <code>Maybe&lt;T&gt;</code> properties, use the dedicated setters; they map to the storage member directly. Composite owned <code>Maybe&lt;T&gt;</code> is not supported and will throw.</p>
+<pre><code class="lang-csharp">using Trellis.EntityFrameworkCore;
+
+await db.Tasks
+    .Where(t =&gt; t.Status == &quot;open&quot;)
+    .ExecuteUpdateAsync(s =&gt; s
+        .SetMaybeValue(t =&gt; t.SnoozedUntil, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
+        .SetMaybeNone(t =&gt; t.AssignedTo),
+        ct);
+</code></pre>
+<h2 id="repositories-and-unit-of-work">Repositories and unit of work</h2>
+<p>The preferred pattern for command-driven applications: repositories stage changes, the mediator pipeline commits.</p>
+<p><code>RepositoryBase&lt;TAggregate, TId&gt;</code> provides:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Returns</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FindByIdAsync(id, ct)</code></td>
+<td><code>Task&lt;Maybe&lt;TAggregate&gt;&gt;</code></td>
+<td>Tracked. Override <code>BuildFindByIdQuery()</code> to add <code>.Include(...)</code>.</td>
+</tr>
+<tr>
+<td><code>QueryAsync(spec, ct)</code></td>
+<td><code>Task&lt;IReadOnlyList&lt;TAggregate&gt;&gt;</code></td>
+<td>No-tracking by default via <code>BuildQueryBase()</code>.</td>
+</tr>
+<tr>
+<td><code>ExistsAsync(id, ct)</code> / <code>ExistsAsync(spec, ct)</code></td>
+<td><code>Task&lt;bool&gt;</code></td>
+<td>Lightweight existence check; respects <code>BuildQueryBase()</code> filters.</td>
+</tr>
+<tr>
+<td><code>CountAsync(spec, ct)</code></td>
+<td><code>Task&lt;int&gt;</code></td>
+<td>Counts matches.</td>
+</tr>
+<tr>
+<td><code>Add(aggregate)</code></td>
+<td><code>void</code></td>
+<td>Stages insert. No-op if already tracked.</td>
+</tr>
+<tr>
+<td><code>Remove(aggregate)</code></td>
+<td><code>void</code></td>
+<td>Stages delete.</td>
+</tr>
+<tr>
+<td><code>RemoveByIdAsync(id, ct)</code></td>
+<td><code>Task&lt;Result&lt;Unit&gt;&gt;</code></td>
+<td><code>DbSet.FindAsync</code> → stage delete; missing row → <code>Error.NotFound</code>. Respects EF 8 global query filters.</td>
+</tr>
+</tbody>
+</table>
+<p><code>RepositoryBase</code> <strong>never</strong> calls <code>SaveChanges</code>. Commit is owned by <code>IUnitOfWork.CommitAsync(ct)</code>, which returns <code>Task&lt;Result&lt;Unit&gt;&gt;</code> and is implemented by <code>EfUnitOfWork&lt;TContext&gt;</code> over <code>SaveChangesResultUnitAsync</code>.</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+
+public sealed class OrderRepository(AppDbContext db) : RepositoryBase&lt;Order, OrderId&gt;(db)
+{
+    protected override IQueryable&lt;Order&gt; BuildFindByIdQuery() =&gt;
+        DbSet.Include(o =&gt; o.LineItems);
+}
+
+public sealed class ShipOrderHandler(OrderRepository orders) : ICommandHandler&lt;ShipOrderCommand, Result&lt;Order&gt;&gt;
+{
+    public async ValueTask&lt;Result&lt;Order&gt;&gt; Handle(ShipOrderCommand cmd, CancellationToken ct) =&gt;
+        (await orders.FindByIdAsync(cmd.OrderId, ct))
+            .ToResult(new Error.NotFound(ResourceRef.For&lt;Order&gt;(cmd.OrderId)) { Detail = &quot;Order not found.&quot; })
+            .Bind(order =&gt; order.Ship());
+    // No SaveChanges call. TransactionalCommandBehavior commits on success.
+}
+</code></pre>
+<p>DI registration:</p>
+<pre><code class="lang-csharp">services.AddDbContext&lt;AppDbContext&gt;(options =&gt;
+    options.UseSqlServer(connectionString)
+        .AddTrellisInterceptors());
+
+services.AddTrellisBehaviors();           // outer behaviors first
+services.AddTrellisUnitOfWork&lt;AppDbContext&gt;(); // commit behavior goes innermost
+</code></pre>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>Call <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> <strong>after</strong> <code>AddTrellisBehaviors()</code>. The transactional behavior is inserted after the last <code>IPipelineBehavior&lt;,&gt;</code> registration so it runs innermost — closest to the handler — keeping commit failures visible to logging, tracing, and exception behaviors.</p>
+</div>
+<p><code>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</code> only fires for <code>ICommand&lt;TResponse&gt;</code> (queries are skipped at the type-constraint level). On handler success it calls <code>unitOfWork.CommitAsync(ct)</code>; if commit fails, it returns <code>TResponse.CreateFailure(error)</code>. EF Core's implicit transaction around <code>SaveChanges</code> makes the staged changes commit atomically.</p>
+<p>For background jobs or non-mediator code, inject <code>IUnitOfWork</code> directly and call <code>CommitAsync</code>. Use <code>AddTrellisUnitOfWorkWithoutBehavior&lt;TContext&gt;()</code> to skip the pipeline behavior registration.</p>
+<h2 id="optimistic-concurrency">Optimistic concurrency</h2>
+<p>Once <code>ApplyTrellisConventions*</code> and <code>AddTrellisInterceptors()</code> are wired:</p>
+<ul>
+<li>the aggregate <code>ETag</code> is configured as a concurrency token,</li>
+<li>a new <code>ETag</code> is generated on <strong>Added</strong> and <strong>Modified</strong> aggregates,</li>
+<li>aggregate roots are also promoted when loaded dependents change, so concurrency works at the aggregate boundary.</li>
+</ul>
+<p>A losing writer surfaces as <code>DbUpdateConcurrencyException</code> → <code>new Error.Conflict(null, &quot;concurrency.modified&quot;)</code> from <code>SaveChangesResult*Async</code> (and therefore from <code>IUnitOfWork.CommitAsync</code> / the transactional pipeline behavior). You do <strong>not</strong> configure <code>AggregateETagConvention</code> or <code>AggregateETagInterceptor</code> directly — they are internal types reached through the supported public entry points.</p>
+<h2 id="composition">Composition</h2>
+<p>Once the read returns <code>Maybe&lt;T&gt;</code> or <code>Result&lt;T&gt;</code>, it composes with the rest of Trellis:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.EntityFrameworkCore;
+
+public sealed class ShipOrderHandler(OrderRepository orders) : ICommandHandler&lt;ShipOrderCommand, Result&lt;Order&gt;&gt;
+{
+    public async ValueTask&lt;Result&lt;Order&gt;&gt; Handle(ShipOrderCommand cmd, CancellationToken ct) =&gt;
+        (await orders.FindByIdAsync(cmd.OrderId, ct))
+            .ToResult(new Error.NotFound(ResourceRef.For&lt;Order&gt;(cmd.OrderId)) { Detail = &quot;Order not found.&quot; })
+            .Ensure(order =&gt; !order.IsCancelled,
+                new Error.Conflict(ResourceRef.For&lt;Order&gt;(cmd.OrderId), &quot;order.cancelled&quot;))
+            .Bind(order =&gt; order.Ship());
+    // TransactionalCommandBehavior commits on Ok.
+}
+</code></pre>
+<p>For non-pipeline scenarios, the equivalent is <code>await uow.CommitAsync(ct)</code> after the domain <code>Bind</code> chain returns <code>Ok</code>.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Pick the return type by intent.</strong> <code>Maybe&lt;T&gt;</code> when absence is data; <code>Result&lt;T&gt;</code> when the repository owns the failure; <code>Result&lt;Unit&gt;</code> for commands; <code>bool</code> for existence checks.</li>
+<li><strong>Stage in repositories, commit in the pipeline.</strong> Do not call <code>SaveChangesResult*Async</code> from inside a repository when <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> is registered — that double-commits or hides commit failures from outer behaviors.</li>
+<li><strong>Prefer <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code>.</strong> Compile-time discovery, no reflection, no <code>MakeGenericType</code>. Fall back to the assembly-scan overload only when the <code>DbContext</code> lives in another compilation.</li>
+<li><strong>Use the <code>Maybe</code> query helpers, not raw <code>GetValueOrDefault(...)</code> expressions.</strong> They translate to the mapped storage member directly and avoid <code>TRLS013</code> / <code>TRLS016</code>.</li>
+<li><strong><code>[OwnedEntity]</code> classes are <code>partial</code> with <code>{ get; private set; }</code>.</strong> <code>{ get; init; }</code> is flagged by <code>TRLS022</code>.</li>
+<li><strong>Pass <code>CancellationToken</code> everywhere.</strong> Every helper, repository method, and <code>CommitAsync</code> accepts one.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a></li>
+<li><code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, <code>Error</code>, <code>Aggregate&lt;TId&gt;</code>, <code>Specification&lt;T&gt;</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Recipes (specifications with <code>Maybe&lt;T&gt;</code>, repository patterns, UoW): <a href="../api_reference/trellis-api-cookbook.html"><code>trellis-api-cookbook.md</code></a></li>
+<li>Mediator pipeline behaviors and registration order: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a></li>
+<li>Analyzer rules referenced here (<code>TRLS013</code>, <code>TRLS015</code>, <code>TRLS016</code>, <code>TRLS022</code>): <a href="../api_reference/trellis-api-analyzers.html"><code>trellis-api-analyzers.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-ef.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

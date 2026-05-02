@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ResultAssertions&lt;TValue&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ResultAssertions&lt;TValue&gt; | Trellis ">
+      
+      <meta name="description" content="Contains assertion methods for Result types.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Testing_ResultAssertions_1.md&amp;value=---%0Auid%3A%20Trellis.Testing.ResultAssertions%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing.ResultAssertions`1">
+
+
+
+  <h1 id="Trellis_Testing_ResultAssertions_1" data-uid="Trellis.Testing.ResultAssertions`1" class="text-break">
+Class ResultAssertions&lt;TValue&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Testing.html">Testing</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Testing.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Contains assertion methods for Result types.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ResultAssertions&lt;TValue&gt; : ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd></dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;, <a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</div>
+      <div><span class="xref">ResultAssertions&lt;TValue&gt;</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.BeNull(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.NotBeNull(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.BeSameAs(Result&lt;TValue&gt;, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.NotBeSameAs(Result&lt;TValue&gt;, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.BeOfType&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.BeOfType(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.NotBeOfType&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.NotBeOfType(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.BeAssignableTo&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.BeAssignableTo(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.NotBeAssignableTo&lt;T&gt;(string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.NotBeAssignableTo(Type, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.Match(Expression&lt;Func&lt;Result&lt;TValue&gt;, bool&gt;&gt;, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.Match&lt;T&gt;(Expression&lt;Func&lt;T, bool&gt;&gt;, string, params object[])</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.Subject</a>
+    </div>
+    <div>
+      <a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/Primitives/ReferenceTypeAssertions.cs">ReferenceTypeAssertions&lt;Result&lt;TValue&gt;, ResultAssertions&lt;TValue&gt;&gt;.Identifier</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Testing_ResultAssertions_1__ctor_" data-uid="Trellis.Testing.ResultAssertions`1.#ctor*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1__ctor_Trellis_Result__0__" data-uid="Trellis.Testing.ResultAssertions`1.#ctor(Trellis.Result{`0})">
+  ResultAssertions(Result&lt;TValue&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions&lt;TValue&gt;</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ResultAssertions(Result&lt;TValue&gt; result)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_Identifier_" data-uid="Trellis.Testing.ResultAssertions`1.Identifier*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_Identifier" data-uid="Trellis.Testing.ResultAssertions`1.Identifier">
+  Identifier
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the type of the subject the assertion applies on.
+It should be a user-friendly name as it is included in the failure message.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override string Identifier { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_Be_" data-uid="Trellis.Testing.ResultAssertions`1.Be*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_Be_Trellis_Result__0__System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.Be(Trellis.Result{`0},System.String,System.Object[])">
+  Be(Result&lt;TValue&gt;, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L264"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the result is equal to the expected result (using <a class="xref" href="Trellis.Result-1.html#Trellis_Result_1_Equals_Trellis_Result__0__">Equals(Result&lt;TValue&gt;)</a>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; Be(Result&lt;TValue&gt; expected, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expected</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd></dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_BeFailure_" data-uid="Trellis.Testing.ResultAssertions`1.BeFailure*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_BeFailure_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.BeFailure(System.String,System.Object[])">
+  BeFailure(string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the result is a failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, Error&gt; BeFailure(string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndWhichConstraint.cs">AndWhichConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_BeFailureOfType_" data-uid="Trellis.Testing.ResultAssertions`1.BeFailureOfType*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_BeFailureOfType__1_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.BeFailureOfType``1(System.String,System.Object[])">
+  BeFailureOfType&lt;TError&gt;(string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the result is a failure with a specific error type.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TError&gt; BeFailureOfType&lt;TError&gt;(string because = &quot;&quot;, params object[] becauseArgs) where TError : Error</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndWhichConstraint.cs">AndWhichConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;, TError&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TError</code></dt>
+    <dd><p>The expected error type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_BeSuccess_" data-uid="Trellis.Testing.ResultAssertions`1.BeSuccess*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_BeSuccess_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.BeSuccess(System.String,System.Object[])">
+  BeSuccess(string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the result is a success.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndWhichConstraint&lt;ResultAssertions&lt;TValue&gt;, TValue&gt; BeSuccess(string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase as is supported by <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string.format#system-string-format(system-string-system-object())">Format(string, params object[])</a> explaining why the assertion
+is needed. If the phrase does not start with the word <i>because</i>, it is prepended automatically.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndWhichConstraint.cs">AndWhichConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;, TValue&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_HaveErrorCode_" data-uid="Trellis.Testing.ResultAssertions`1.HaveErrorCode*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_HaveErrorCode_System_String_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.HaveErrorCode(System.String,System.String,System.Object[])">
+  HaveErrorCode(string, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L202"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the failure has a specific error code.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveErrorCode(string expectedCode, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expectedCode</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The expected error code.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_HaveErrorDetail_" data-uid="Trellis.Testing.ResultAssertions`1.HaveErrorDetail*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_HaveErrorDetail_System_String_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.HaveErrorDetail(System.String,System.String,System.Object[])">
+  HaveErrorDetail(string, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L225"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the failure has a specific error detail.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveErrorDetail(string expectedDetail, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expectedDetail</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The expected error detail.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_HaveErrorDetailContaining_" data-uid="Trellis.Testing.ResultAssertions`1.HaveErrorDetailContaining*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_HaveErrorDetailContaining_System_String_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.HaveErrorDetailContaining(System.String,System.String,System.Object[])">
+  HaveErrorDetailContaining(string, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L248"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the failure error detail contains the specified substring.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveErrorDetailContaining(string substring, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>substring</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The substring to search for.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_HaveValue_" data-uid="Trellis.Testing.ResultAssertions`1.HaveValue*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_HaveValue__0_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.HaveValue(`0,System.String,System.Object[])">
+  HaveValue(TValue, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L129"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the success value equals the expected value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveValue(TValue expectedValue, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expectedValue</code> <span class="xref">TValue</span></dt>
+    <dd><p>The expected value.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_HaveValueEquivalentTo_" data-uid="Trellis.Testing.ResultAssertions`1.HaveValueEquivalentTo*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_HaveValueEquivalentTo__0_System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.HaveValueEquivalentTo(`0,System.String,System.Object[])">
+  HaveValueEquivalentTo(TValue, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L179"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the success value is equivalent to the expected value using structural comparison.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveValueEquivalentTo(TValue expectedValue, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expectedValue</code> <span class="xref">TValue</span></dt>
+    <dd><p>The expected value.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_HaveValueMatching_" data-uid="Trellis.Testing.ResultAssertions`1.HaveValueMatching*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_HaveValueMatching_System_Func__0_System_Boolean__System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.HaveValueMatching(System.Func{`0,System.Boolean},System.String,System.Object[])">
+  HaveValueMatching(Func&lt;TValue, bool&gt;, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L152"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the success value satisfies a predicate.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; HaveValueMatching(Func&lt;TValue, bool&gt; predicate, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TValue, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p>The predicate the value should satisfy.</p>
+</dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A formatted phrase explaining why the assertion is needed.</p>
+</dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>Zero or more objects to format using the placeholders in <code class="paramref">because</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_ResultAssertions_1_NotBe_" data-uid="Trellis.Testing.ResultAssertions`1.NotBe*"></a>
+
+  <h3 id="Trellis_Testing_ResultAssertions_1_NotBe_Trellis_Result__0__System_String_System_Object___" data-uid="Trellis.Testing.ResultAssertions`1.NotBe(Trellis.Result{`0},System.String,System.Object[])">
+  NotBe(Result&lt;TValue&gt;, string, params object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L280"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that the result is not equal to the unexpected result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public AndConstraint&lt;ResultAssertions&lt;TValue&gt;&gt; NotBe(Result&lt;TValue&gt; unexpected, string because = &quot;&quot;, params object[] becauseArgs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>unexpected</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd></dd>
+    <dt><code>because</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+    <dt><code>becauseArgs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://github.com/fluentassertions/fluentassertions/blob/main/Src/FluentAssertions/AndConstraint.cs">AndConstraint</a>&lt;<a class="xref" href="Trellis.Testing.ResultAssertions-1.html">ResultAssertions</a>&lt;TValue&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing/src/Assertions/ResultAssertions.cs/#L21" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
