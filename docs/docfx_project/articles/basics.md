@@ -1,6 +1,32 @@
-﻿# Basics
+﻿---
+title: Basics
+package: Trellis (multiple)
+topics: [result, railway-oriented-programming, value-objects, ddd, error-handling, async, beginner]
+related_api_reference: [trellis-api-core.md, trellis-api-primitives.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# Basics
 
 This article teaches the handful of Trellis concepts you will use most often: **value objects**, **`Result<T>`**, and the core operators that turn a multi-step workflow into readable code.
+
+## Patterns Index
+
+| Goal | Use | See |
+|---|---|---|
+| Replace primitive parameters with typed value objects | `RequiredString<T>` / `RequiredGuid<T>` partial classes | [Why avoid primitive obsession?](#why-avoid-primitive-obsession) |
+| Validate several independent fields and keep all failures | `Combine` | [`Combine`](#combine-validate-independent-inputs-together) |
+| Call the next result-producing step | `Bind` | [`Bind`](#bind-call-the-next-result-producing-step) |
+| Transform a success value with a non-failing function | `Map` | [`Map`](#map-transform-a-successful-value) |
+| Add a single business rule | `Ensure` | [`Ensure`](#ensure-add-a-business-rule) |
+| Collect several rule violations together | `EnsureAll` | [`EnsureAll`](#ensureall-collect-several-business-rule-failures-at-once) |
+| Run a side effect on the success path | `Tap` | [`Tap`](#tap-run-a-side-effect-without-changing-the-result) |
+| Provide a fallback when an error matches a predicate | `RecoverOnFailure` | [`RecoverOnFailure`](#recoveronfailure-provide-a-fallback-path) |
+| Finish the pipeline and produce a plain value | `Match` | [`Match`](#match-finish-the-pipeline) |
+| Chain over async I/O without losing readability | `BindAsync` / `TapAsync` / `MatchAsync` | [Working with async operations](#working-with-async-operations) |
+| Run independent async work in parallel and combine | `Result.ParallelAsync(...).WhenAllAsync()` | [Parallel async work](#parallel-async-work) |
+
+Full operator signatures and overloads: [`trellis-api-core.md`](../api_reference/trellis-api-core.md). Built-in value-object base classes: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md).
 
 ## Table of Contents
 

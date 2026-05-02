@@ -1,4 +1,12 @@
-﻿# Trellis.Testing.AspNetCore &mdash; API Reference
+﻿---
+package: Trellis.Testing.AspNetCore
+namespaces: [Trellis.Testing.AspNetCore, Trellis.Testing.AspNetCore.Http]
+types: [WebApplicationFactory<TEntryPoint>, TestClient, FakeTimeProvider, EntraTokenAcquirer, HttpFileReplayer]
+version: v3
+last_verified: 2026-05-01
+audience: [llm]
+---
+# Trellis.Testing.AspNetCore &mdash; API Reference
 
 **Package:** `Trellis.Testing.AspNetCore`  
 **Namespaces:** `Trellis.Testing.AspNetCore`, `Trellis.Testing.AspNetCore.Http`  

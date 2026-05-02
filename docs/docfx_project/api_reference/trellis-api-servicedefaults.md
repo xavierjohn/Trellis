@@ -1,4 +1,12 @@
-﻿# Trellis.ServiceDefaults API Reference
+﻿---
+package: Trellis.ServiceDefaults
+namespaces: [Trellis.ServiceDefaults]
+types: [AddTrellisServiceDefaults, WebApplicationBuilderExtensions]
+version: v3
+last_verified: 2026-05-01
+audience: [llm]
+---
+# Trellis.ServiceDefaults API Reference
 
 **Package:** `Trellis.ServiceDefaults`  
 **Namespace:** `Trellis.ServiceDefaults`  

@@ -1,4 +1,13 @@
-﻿# Trellis Cross-Package Cookbook
+﻿---
+package: Trellis (cross-package recipes)
+namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator]
+types: [recipes]
+related_docs: [trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
+version: v3
+last_verified: 2026-05-01
+audience: [llm]
+---
+# Trellis Cross-Package Cookbook
 
 - **Audience:** AI coding agents (and humans) writing Trellis code from documentation alone.
 - **Purpose:** End-to-end recipes that cross package boundaries — DDD, Mediator, FluentValidation, EF Core, ASP.NET Core, Authorization, State Machine, Testing, Analyzers — using the *exact* public surface listed in the per-package API references.

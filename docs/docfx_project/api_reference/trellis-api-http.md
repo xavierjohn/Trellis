@@ -1,4 +1,12 @@
-﻿# Trellis.Http &mdash; API Reference
+﻿---
+package: Trellis.Http
+namespaces: [Trellis.Http]
+types: [HttpResponseMessageExtensions, HttpClientResultExtensions]
+version: v3
+last_verified: 2026-05-01
+audience: [llm]
+---
+# Trellis.Http &mdash; API Reference
 
 **Package:** `Trellis.Http`
 **Namespace:** `Trellis.Http`

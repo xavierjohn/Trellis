@@ -1,4 +1,12 @@
-﻿# Trellis.Testing — API Reference
+﻿---
+package: Trellis.Testing
+namespaces: [Trellis.Testing]
+types: ["FakeRepository<,>", InMemoryUnitOfWork, ResultAssertions]
+version: v3
+last_verified: 2026-05-01
+audience: [llm]
+---
+# Trellis.Testing — API Reference
 
 - **Package:** `Trellis.Testing`
 - **Namespace:** `Trellis.Testing`

@@ -1,6 +1,12 @@
-﻿# Clean Architecture with Trellis
-
-**Level:** Intermediate | **Packages:** `Trellis.Core`, `Trellis.Primitives`
+﻿---
+title: Clean Architecture with Trellis
+package: Trellis (multiple)
+topics: [clean-architecture, ddd, aggregates, application-layer, value-objects, result]
+related_api_reference: [trellis-api-core.md, trellis-api-primitives.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# Clean Architecture with Trellis
 
 If your API starts as “just a few endpoints,” it is easy for validation, orchestration, persistence, and business rules to end up tangled together.
 
@@ -437,3 +443,5 @@ You do **not** need one pattern for the whole system. A codebase can keep simple
 - [Primitive Value Objects](primitives.md)
 - [Specifications](specifications.md)
 - [RequiredEnum](required-enum.md)
+- API surface for `Result<T>`, `Aggregate<TId>`, `IDomainEvent`, `Error.UnprocessableContent`, `Error.Conflict`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- Value-object base classes (`RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `EmailAddress`): [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)

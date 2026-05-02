@@ -92,5 +92,5 @@
     href: performance.md
   - name: Benchmarks Data
     href: BENCHMARKS.md
-  - name: Migration from FunctionalDDD
+  - name: Migrating from v1 to v2
     href: migration.md

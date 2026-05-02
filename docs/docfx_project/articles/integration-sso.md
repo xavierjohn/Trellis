@@ -1,718 +1,512 @@
-# Setting Up Single Sign-On (SSO)
+﻿---
+title: Single Sign-On Integration
+package: Trellis.Asp
+topics: [sso, entra, openid, jwt, claims, actor, multi-tenant]
+related_api_reference: [trellis-api-asp.md, trellis-api-authorization.md, trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# Single Sign-On Integration
 
-**Level:** Intermediate | **Time:** 30-45 min | **Prerequisites:** [ASP.NET Core Authorization](integration-asp-authorization.md), [Testing with Entra ID Tokens](integration-entra-testing.md)
+`Trellis.Asp.Authorization` (shipped inside the `Trellis.Asp` package) turns an authenticated `JwtBearer` principal from any OIDC issuer (Entra ID, Auth0, Okta, Google, Keycloak) into a frozen `Actor` so handlers and endpoints stop parsing JWTs.
 
-By the end of this guide, your API will authenticate users via SSO and map their identity to Trellis's `Actor` model.
+## Patterns Index
 
-This guide starts from the Trellis ASP template:
+| Goal | Use | See |
+|---|---|---|
+| Validate Entra ID v2.0 tokens and project them onto an `Actor` | `AddJwtBearer` + `AddEntraActorProvider(options?)` | [Entra ID provider](#entra-id-provider) |
+| Validate any flat-claim OIDC token (Auth0, Okta, Google) | `AddJwtBearer` + `AddClaimsActorProvider(options?)` | [Generic OIDC provider](#generic-oidc-provider) |
+| Project nested JSON claims (Keycloak `realm_access.roles`) | Subclass `ClaimsActorProvider` + `AddCachingActorProvider<T>()` | [Nested-claim providers](#nested-claim-providers) |
+| Use `roles` for app permissions (Entra app roles) | Default `EntraActorOptions.MapPermissions` | [Claim mapping](#claim-mapping) |
+| Use delegated scopes (`scp`) for permissions | Override `EntraActorOptions.MapPermissions` | [Scope and permission extraction](#scope-and-permission-extraction) |
+| Accept multi-tenant Entra tokens and pin allowed tenants | `JwtBearerOptions.TokenValidationParameters` + read `ActorAttributes.TenantId` | [Multi-tenant Entra](#multi-tenant-entra) |
+| Use a fake actor in Development without a real IdP | `AddDevelopmentActorProvider(options?)` + `X-Test-Actor` header | [Development defaults](#development-defaults) |
+| Combine SSO with Trellis authorization rules | `IAuthorize` / `IAuthorizeResource<T>` via Mediator | [Composition](#composition) |
 
-```bash
-dotnet new trellis-asp
-```
+## Use this guide when
 
-It is written for startup teams and indie developers who want a practical path to:
+- You front a Trellis service with `JwtBearer` and need a single, predictable `Actor` shape regardless of which OIDC provider issued the token.
+- You want one configuration story for Entra (app roles), Auth0/Okta (delegated scopes), Google (sign-in only), and Keycloak (nested role claims).
+- You need a Development-only seam (`X-Test-Actor`) that fail-closes outside `IsDevelopment()`.
+- You need to host a multi-tenant Entra app and pin which tenants may call your API.
 
-1. sign users in with a major identity provider
-2. validate tokens in the API
-3. translate claims into a Trellis `Actor`
-4. protect endpoints with `[Authorize]` and Trellis authorization
+## Surface at a glance
 
-## What You'll Build
+`Trellis.Asp.Authorization` (namespace inside the `Trellis.Asp` package) exposes one set of DI extensions and four `IActorProvider` implementations.
 
-You will wire an external identity provider into the Trellis ASP template so your API can:
+| API | Kind | Purpose |
+|---|---|---|
+| `AddEntraActorProvider(this IServiceCollection, Action<EntraActorOptions>?)` | DI extension | Scoped `IActorProvider` → `EntraActorProvider` (Entra v2.0 claim shape). |
+| `AddClaimsActorProvider(this IServiceCollection, Action<ClaimsActorOptions>?)` | DI extension | Scoped `IActorProvider` → `ClaimsActorProvider` (configurable flat-claim mapping). |
+| `AddDevelopmentActorProvider(this IServiceCollection, Action<DevelopmentActorOptions>?)` | DI extension | Scoped `IActorProvider` → `DevelopmentActorProvider`; reads `X-Test-Actor` JSON header; throws outside `IsDevelopment()`. |
+| `AddCachingActorProvider<T>(this IServiceCollection)` where `T : class, IActorProvider` | DI extension | Wraps `T` in `CachingActorProvider` so a single resolution task is shared per request. |
+| `EntraActorOptions` | Options | `IdClaimType`, `MapPermissions`, `MapForbiddenPermissions`, `MapAttributes`. |
+| `ClaimsActorOptions` | Options | `ActorIdClaim` (default `"sub"`), `PermissionsClaim` (default `"permissions"`). Verbatim claim-type match. |
+| `DevelopmentActorOptions` | Options | `DefaultActorId`, `DefaultPermissions`, `ThrowOnMalformedHeader`. |
+| `ActorAttributes` (in `Trellis.Authorization`) | Constants | Well-known attribute keys: `TenantId`, `PreferredUsername`, `AuthorizedParty`, `AuthorizedPartyAcr`, `AuthContextClassReference`, `IpAddress`, `MfaAuthenticated`. |
 
-1. accept a bearer token
-2. validate that token
-3. create an `Actor` from the authenticated user
-4. authorize requests using Trellis permissions and attributes
+Full signatures: [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md).
 
-```mermaid
-flowchart LR
-    Browser[Browser or mobile app]
-    Idp[Entra ID / Google / OIDC provider]
-    Token[JWT or ID token]
-    Api[ASP.NET Core API]
-    Provider[EntraActorProvider or ClaimsActorProvider]
-    Actor[Actor]
-    Authz[Authorize attribute / IAuthorize]
-
-    Browser --> Idp
-    Idp --> Token
-    Token --> Api
-    Api --> Provider
-    Provider --> Actor
-    Actor --> Authz
-```
-
-Trellis authorization revolves around `Actor`, which contains:
-
-- `Id`
-- `Permissions`
-- `ForbiddenPermissions`
-- `Attributes`
-
-Scoped permissions use `Actor.PermissionScopeSeparator`, which is `':'`. A scoped permission looks like `todos:read:tenant-123` only if **you** choose that naming scheme; Trellis itself only guarantees the separator character.
-
-> [!TIP]
-> Read [ASP.NET Core Authorization](integration-asp-authorization.md) first if you want the full mental model behind `Actor`, `IActorProvider`, and `IAuthorize`.
-
-## Prerequisites
-
-Before you start, make sure you have:
-
-1. **.NET installed** and the Trellis template available:
-   ```bash
-   dotnet new trellis-asp
-   ```
-2. **A running template project**:
-   ```bash
-   dotnet run --project .\Api\src\Api.csproj
-   ```
-3. **An identity provider account**:
-   - Microsoft Entra admin access for Part 1
-   - Google Cloud Console access for Part 2
-   - Okta/Auth0/Keycloak or another OIDC issuer for Part 3
-4. **A frontend or API client** that can obtain tokens
-   - browser SPA
-   - Postman
-   - curl plus a token copied from your frontend
-5. **A clear local callback URL** for your frontend, such as:
-   - `http://localhost:3000/auth/callback`
-   - `http://localhost:5173/auth/callback`
-
-> [!WARNING]
-> The Trellis ASP template ships with `DevelopmentActorProvider` for Development only. It throws outside Development. Keep it for fast local testing, but do not expect real SSO to work until you run the app in a non-Development environment.
-
-## Part 1: Microsoft Entra ID (Azure AD)
-
-This is the simplest production path because Trellis already includes `AddEntraActorProvider()`, and `EntraActorProvider` understands common Entra claims out of the box.
-
-### Step 1: Register Your App in Azure Portal
-
-1. Open **Azure Portal**.
-2. Go to **Microsoft Entra ID** -> **App registrations** -> **New registration**.
-3. Name the app something like `TodoSample.Api`.
-4. Choose the account type that matches your product:
-   - **Single tenant** for internal company apps
-   - **Multitenant** for SaaS apps used by many organizations
-5. Click **Register**.
-6. Copy these values:
-   - **Directory (tenant) ID**
-   - **Application (client) ID**
-7. If you have a browser frontend, add its redirect URI under **Authentication**.
-8. If you want Trellis permissions from Entra roles, create **App roles** such as:
-   - `todos:read`
-   - `todos:create`
-   - `todos:update`
-   - `todos:delete`
-9. Assign those roles to users or groups through **Enterprise applications** -> your app -> **Users and groups**.
-
-**Screenshot target:** You should be looking at **Entra ID -> App registrations -> Your app -> Overview**, then **Authentication**, then **App roles**.
-
-> [!WARNING]
-> If you forget the frontend redirect URI, sign-in succeeds at Entra but the browser never gets back to your app.
-
-### Step 2: Configure `appsettings.json`
-
-In `Api\src\appsettings.json`, add an `Authentication` section:
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*",
-  "Authentication": {
-    "Authority": "https://login.microsoftonline.com/<tenant-id>/v2.0",
-    "Audience": "<api-client-id>"
-  }
-}
-```
-
-Replace:
-
-1. `<tenant-id>` with the Entra tenant ID
-2. `<api-client-id>` with the app registration client ID
-
-For local secrets, user secrets are fine:
+## Installation
 
 ```bash
-dotnet user-secrets --project .\Api\src\Api.csproj set "Authentication:Authority" "https://login.microsoftonline.com/<tenant-id>/v2.0"
-dotnet user-secrets --project .\Api\src\Api.csproj set "Authentication:Audience" "<api-client-id>"
+dotnet add package Trellis.Asp
 ```
 
-### Step 3: Wire Up Authentication in `Program.cs`
+The actor providers ship in `Trellis.Asp` under namespace `Trellis.Asp.Authorization`. Domain primitives (`Actor`, `IActorProvider`, `ActorAttributes`) come from `Trellis.Authorization`. The legacy `Trellis.Asp.Authorization` package was absorbed into `Trellis.Asp`.
 
-The Trellis ASP template already has authorization, but it does not enable real authentication yet. Make these two changes.
+## Quick start
 
-#### 3.1 Update `Api\src\Program.cs`
-
-Change the `AddPresentation(...)` call so `DependencyInjection.cs` can read configuration:
+Validate Entra v2.0 tokens with the standard ASP.NET Core `JwtBearer` middleware, register `EntraActorProvider`, and read the resolved `Actor` from a protected endpoint.
 
 ```csharp
-builder.Services
-    .AddPresentation(builder.Configuration, builder.Environment)
-    .AddApplication()
-    .AddAntiCorruptionLayer(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=todos.db");
-```
-
-Then add authentication middleware before authorization:
-
-```csharp
-app.UseHttpsRedirection();
-
-if (!app.Environment.IsDevelopment())
-    app.UseAuthentication();
-
-app.UseAuthorization();
-```
-
-#### 3.2 Update `Api\src\DependencyInjection.cs`
-
-Replace the current development/production actor-provider block with this:
-
-```csharp
-namespace TodoSample.Api;
-
-using System.Collections.Generic;
-using Asp.Versioning.Conventions;
+using System.Linq;
+using System.Threading;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using Scalar.AspNetCore;
-using ServiceLevelIndicators;
-using TodoSample.Api.Middleware;
-using Trellis.Asp;
 using Trellis.Asp.Authorization;
-
-internal static class DependencyInjection
-{
-    public static IServiceCollection AddPresentation(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
-        services.ConfigureOpenTelemetry();
-        services.ConfigureServiceLevelIndicators();
-        services.AddProblemDetails();
-        services.AddControllers().AddScalarValueValidation();
-        services.AddApiVersioning()
-                .AddMvc(options => options.Conventions.Add(new VersionByNamespaceConvention()))
-                .AddApiExplorer()
-                .AddOpenApi(options => options.Document.AddScalarTransformers());
-        services.AddScoped<ErrorHandlingMiddleware>();
-        services.AddHealthChecks();
-
-        services.AddAuthorization(options =>
-        {
-            if (!environment.IsDevelopment())
-            {
-                options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                    .RequireAuthenticatedUser()
-                    .Build();
-            }
-        });
-
-        if (environment.IsDevelopment())
-        {
-            services.AddDevelopmentActorProvider(options =>
-            {
-                options.DefaultActorId = "development";
-                options.DefaultPermissions = new HashSet<string>
-                {
-                    "todos:read",
-                    "todos:create",
-                    "todos:update"
-                };
-            });
-        }
-        else
-        {
-            var auth = configuration.GetSection("Authentication");
-
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.Authority = auth["Authority"];
-                    options.Audience = auth["Audience"];
-                });
-
-            services.AddEntraActorProvider();
-        }
-
-        return services;
-    }
-
-    private static IServiceCollection ConfigureOpenTelemetry(this IServiceCollection services)
-    {
-        static void configureResource(ResourceBuilder r) => r.AddService(
-            serviceName: "TodoSampleService",
-            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown");
-
-        services.AddOpenTelemetry()
-            .ConfigureResource(configureResource)
-            .WithMetrics(builder =>
-            {
-                builder.AddAspNetCoreInstrumentation();
-                builder.AddServiceLevelIndicatorInstrumentation();
-                builder.AddMeter(
-                    "Microsoft.AspNetCore.Hosting",
-                    "Microsoft.AspNetCore.Server.Kestrel",
-                    "System.Net.Http");
-                builder.AddOtlpExporter();
-            })
-            .WithTracing(builder =>
-            {
-                builder.AddAspNetCoreInstrumentation();
-                builder.AddPrimitiveValueObjectInstrumentation();
-                builder.AddOtlpExporter();
-            });
-
-        return services;
-    }
-
-    private static IServiceCollection ConfigureServiceLevelIndicators(this IServiceCollection services)
-    {
-        services.AddServiceLevelIndicator(options =>
-        {
-            options.LocationId = ServiceLevelIndicator.CreateLocationId("public", "westus3");
-        })
-        .AddMvc()
-        .AddApiVersion();
-
-        return services;
-    }
-}
-```
-
-### Step 4: Map Entra Claims to Trellis `Actor`
-
-The happy-path setup is simple because `EntraActorProvider` already maps the most useful claims.
-
-| `Actor` field | Default Entra mapping |
-| --- | --- |
-| `Id` | `oid` / object identifier |
-| `Permissions` | `roles` and `ClaimTypes.Role` |
-| `ForbiddenPermissions` | empty set |
-| `Attributes["tid"]` | tenant ID |
-| `Attributes["preferred_username"]` | preferred username |
-| `Attributes["azp"]` | authorized party |
-| `Attributes["azpacr"]` | client auth method |
-| `Attributes["acrs"]` | auth context class reference |
-| `Attributes["ip_address"]` | current request IP |
-| `Attributes["mfa"]` | derived from `amr == "mfa"` |
-
-That means this works without extra mapping code:
-
-```csharp
-builder.Services.AddEntraActorProvider();
-```
-
-If you want to customize permissions later, do it in one place:
-
-```csharp
-builder.Services.AddEntraActorProvider(options =>
-{
-    options.MapPermissions = claims => claims
-        .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase)
-                 || string.Equals(c.Type, System.Security.Claims.ClaimTypes.Role, StringComparison.OrdinalIgnoreCase))
-        .Select(c => c.Value)
-        .ToHashSet(StringComparer.Ordinal);
-});
-```
-
-> [!TIP]
-> Use Entra app roles for coarse-grained permissions first. It is the quickest way to get Trellis permission checks working.
-
-### Step 5: Protect Your Endpoints
-
-Add a simple controller so you can see the mapped actor:
-
-```csharp
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Trellis.Authorization;
 
-namespace TodoSample.Api.Controllers;
+var builder = WebApplication.CreateBuilder(args);
+var auth = builder.Configuration.GetSection("Authentication");
 
-[ApiController]
-[Route("api/[controller]")]
-public sealed class MeController(IActorProvider actorProvider) : ControllerBase
-{
-    [Authorize]
-    [HttpGet]
-    public async Task<IResult> Get(CancellationToken cancellationToken)
-    {
-        var actor = await actorProvider.GetCurrentActorAsync(cancellationToken);
-
-        return Results.Ok(new
-        {
-            actor.Id,
-            Permissions = actor.Permissions.OrderBy(p => p).ToArray(),
-            TenantId = actor.GetAttribute(ActorAttributes.TenantId),
-            Mfa = actor.GetAttribute(ActorAttributes.MfaAuthenticated)
-        });
-    }
-}
-```
-
-Then use Trellis permissions in application code:
-
-```csharp
-if (!actor.HasPermission("todos:read"))
-    return Result.Fail(new Error.Forbidden("policy.id") { Detail = "Missing todos:read permission." });
-```
-
-For tenant-scoped permissions, keep using `':'` as the separator:
-
-```csharp
-if (!actor.HasPermission("todos:read", tenantId))
-    return Result.Fail(new Error.Forbidden("policy.id") { Detail = "Missing tenant-scoped permission." });
-```
-
-### Step 6: Test It
-
-#### Fast local testing with `DevelopmentActorProvider`
-
-1. Run the app normally:
-   ```bash
-   dotnet run --project .\Api\src\Api.csproj
-   ```
-2. Send an `X-Test-Actor` header:
-
-```powershell
-$actor = '{"Id":"local-user","Permissions":["todos:read","todos:create"],"ForbiddenPermissions":[],"Attributes":{"tid":"local-tenant","mfa":"false"}}'
-Invoke-RestMethod https://localhost:5001/api/me -Headers @{ "X-Test-Actor" = $actor }
-```
-
-#### Real Entra token testing on your machine
-
-Run the app in a non-Development environment so the Entra path executes:
-
-```powershell
-$env:ASPNETCORE_ENVIRONMENT = "Staging"
-dotnet run --project .\Api\src\Api.csproj
-```
-
-Then call the API with a real bearer token:
-
-```powershell
-Invoke-RestMethod https://localhost:5001/api/me -Headers @{ Authorization = "Bearer <access-token>" }
-```
-
-If you want automated tests against real Entra tokens, use the patterns in [Testing with Entra ID Tokens](integration-entra-testing.md).
-
-> [!WARNING]
-> If the token validates but `actor.Permissions` is empty, the usual cause is that Entra app roles were created but never assigned to the user or group.
-
-## Part 2: Google OAuth (OpenID Connect)
-
-Google is usually the fastest consumer-facing option. The main difference from Entra is that Google gives you identity first, while your app usually decides permissions.
-
-### Step 1: Create OAuth Credentials in Google Cloud Console
-
-1. Open **Google Cloud Console**.
-2. Go to **APIs & Services** -> **OAuth consent screen** and configure your app name.
-3. Go to **Credentials** -> **Create Credentials** -> **OAuth client ID**.
-4. Choose **Web application**.
-5. Add your frontend origins and redirect URIs, for example:
-   - `http://localhost:5173`
-   - `http://localhost:5173/auth/callback`
-6. Copy the **Client ID**.
-
-**Screenshot target:** You should be looking at **Google Cloud Console -> APIs & Services -> Credentials** with an OAuth 2.0 client ID visible.
-
-> [!WARNING]
-> Google redirect URI matching is exact. A missing trailing path segment such as `/auth/callback` will break sign-in.
-
-### Step 2: Configure `appsettings.json`
-
-Use Google as the token issuer:
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*",
-  "Authentication": {
-    "Authority": "https://accounts.google.com",
-    "Audience": "<google-client-id>",
-    "ActorIdClaim": "sub",
-    "PermissionsClaim": "permissions"
-  }
-}
-```
-
-### Step 3: Wire Up Google Authentication
-
-For Google, use `ClaimsActorProvider`. It is the generic Trellis provider for JWT/OIDC claims.
-
-Replace the non-development branch in `Api\src\DependencyInjection.cs` with this version:
-
-```csharp
-var auth = configuration.GetSection("Authentication");
-
-services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = auth["Authority"];
-        options.Audience = auth["Audience"];
-        options.TokenValidationParameters.ValidIssuers =
-        [
-            "https://accounts.google.com",
-            "accounts.google.com"
-        ];
+        options.Audience  = auth["Audience"];
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddEntraActorProvider();
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/me", [Authorize] async (IActorProvider actorProvider, CancellationToken ct) =>
+{
+    var actor = await actorProvider.GetCurrentActorAsync(ct);
+    return Results.Ok(new
+    {
+        actor.Id,
+        Permissions = actor.Permissions.OrderBy(p => p).ToArray(),
+        TenantId = actor.GetAttribute(ActorAttributes.TenantId),
+        Mfa      = actor.GetAttribute(ActorAttributes.MfaAuthenticated),
+    });
+});
+
+app.Run();
+```
+
+Matching `appsettings.json`:
+
+```json
+{
+  "Authentication": {
+    "Authority": "https://login.microsoftonline.com/<tenant-id>/v2.0",
+    "Audience":  "<api-client-id>"
+  }
+}
+```
+
+> [!NOTE]
+> The actor provider extracts an `Actor` from `HttpContext.User`. It does not validate tokens — keep `AddJwtBearer` (or any other authentication scheme) in front of it.
+
+## Provider configuration
+
+Pick one provider per environment. The choice is driven by token shape, not by sign-in protocol.
+
+| Provider | Use when |
+|---|---|
+| `EntraActorProvider` | Issuer is Microsoft Entra ID v2.0 and you want `oid` / `roles` / `tid` / `amr` mapped out of the box. |
+| `ClaimsActorProvider` | Token has a flat actor-id claim and a flat permissions claim (Auth0 `permissions`, Okta `scp`, custom OIDC). |
+| Subclass of `ClaimsActorProvider` | Token has nested or computed claims (Keycloak `realm_access.roles`, claims merged from a database). |
+| `DevelopmentActorProvider` | Local development or integration tests — `IsDevelopment()` only. |
+
+### Entra ID provider
+
+Use `AddEntraActorProvider` for Microsoft Entra ID (Azure AD) v2.0 tokens. The default mapping recognizes the standard Entra claim set without extra configuration.
+
+```csharp
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+var auth = configuration.GetSection("Authentication");
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = auth["Authority"];   // https://login.microsoftonline.com/<tenant-id>/v2.0
+        options.Audience  = auth["Audience"];    // api client id (no api:// prefix for v2.0 audiences)
+    });
+
+services.AddEntraActorProvider();
+```
+
+`EntraActorProvider` derives from `ClaimsActorProvider` and overrides `GetCurrentActorAsync` to apply the Entra-specific delegates. When `IdClaimType` is the default long objectidentifier URI it falls back to the short `"oid"` claim before failing. See `EntraActorOptions` defaults in [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md#entraactoroptions).
+
+### Generic OIDC provider
+
+For any provider whose token exposes the actor id and permissions as flat claim types — Auth0, Okta, Google, or a custom IdP — register `ClaimsActorProvider` and name the two claim types.
+
+```csharp
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+var auth = configuration.GetSection("Authentication");
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = auth["Authority"];   // e.g. https://your-tenant.auth0.com/
+        options.Audience  = auth["Audience"];    // your API audience
     });
 
 services.AddClaimsActorProvider(options =>
 {
-    options.ActorIdClaim = auth["ActorIdClaim"] ?? "sub";
+    options.ActorIdClaim     = auth["ActorIdClaim"]     ?? "sub";
     options.PermissionsClaim = auth["PermissionsClaim"] ?? "permissions";
 });
 ```
 
-Use the same `Program.cs` changes from Part 1:
+| Provider | Typical `ActorIdClaim` | Typical `PermissionsClaim` |
+|---|---|---|
+| Auth0 (RBAC) | `sub` | `permissions` |
+| Okta (custom claim) | `sub` | `permissions` (or `scp` — see [Scope and permission extraction](#scope-and-permission-extraction)) |
+| Google sign-in | `sub` | none — token only proves identity; load app permissions from your own store |
+
+If the token only proves identity (Google is the canonical case), `Actor.Permissions` will be empty. That is a valid starting point: gate endpoints with `[Authorize]` for "signed in" and load fine-grained permissions from your database via a custom `IActorProvider` (see [Composition](#composition)).
+
+### Nested-claim providers
+
+`ClaimsActorOptions` matches `Claim.Type` verbatim — no JSON-path traversal. When a token contains a nested object (e.g. Keycloak's `{ "realm_access": { "roles": [...] } }`), the JWT handler stores the value as a raw JSON string under claim type `"realm_access"`. Subclass `ClaimsActorProvider` to project it.
 
 ```csharp
-builder.Services
-    .AddPresentation(builder.Configuration, builder.Environment)
-    .AddApplication()
-    .AddAntiCorruptionLayer(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=todos.db");
+using System;
+using System.Collections.Frozen;
+using System.Linq;
+using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+internal sealed record RealmAccess([property: JsonPropertyName("roles")] string[] Roles);
+
+[JsonSerializable(typeof(RealmAccess))]
+internal partial class KeycloakJsonContext : JsonSerializerContext { }
+
+public sealed class KeycloakActorProvider(
+    IHttpContextAccessor accessor,
+    IOptions<ClaimsActorOptions> options) : ClaimsActorProvider(accessor, options)
+{
+    public override Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var identity = HttpContextAccessor.HttpContext?.User.Identities
+            .FirstOrDefault(i => i.IsAuthenticated) as ClaimsIdentity
+            ?? throw new InvalidOperationException("No authenticated user.");
+
+        var sub = identity.FindFirst(Options.ActorIdClaim)?.Value
+            ?? throw new InvalidOperationException($"Claim '{Options.ActorIdClaim}' missing.");
+
+        var raw = identity.FindFirst("realm_access")?.Value;
+        var roles = raw is null
+            ? FrozenSet<string>.Empty
+            : (JsonSerializer.Deserialize(raw, KeycloakJsonContext.Default.RealmAccess)?.Roles
+                ?? Array.Empty<string>()).ToFrozenSet();
+
+        return Task.FromResult(Actor.Create(sub, roles));
+    }
+}
+
+services.AddCachingActorProvider<KeycloakActorProvider>();
 ```
 
+`AddCachingActorProvider<T>` registers `T` as scoped and wraps it with `CachingActorProvider`, so the JSON parse runs once per request even if multiple handlers ask for the actor.
+
+## JWT validation options
+
+Trellis does not own JWT validation — that lives in `Microsoft.AspNetCore.Authentication.JwtBearer`. The fields `JwtBearerHandler` validates flow into Trellis as follows:
+
+| `JwtBearerOptions` setting | Effect on Trellis |
+|---|---|
+| `Authority` | Determines OIDC discovery / signing keys. If validation fails, `HttpContext.User` is unauthenticated and any actor provider throws `InvalidOperationException("No authenticated user.")`. |
+| `Audience` (or `TokenValidationParameters.ValidAudiences`) | Must match the token `aud`. Mismatched audiences never reach the actor provider — the request is rejected with `401`. |
+| `TokenValidationParameters.ValidIssuers` | Required when `Authority` does not match the literal `iss` claim (Google emits both `https://accounts.google.com` and `accounts.google.com`). |
+| `TokenValidationParameters.ValidateIssuer = false` | Multi-tenant Entra requires this; tenant pinning then lives in `MapAttributes` or a custom validator. See [Multi-tenant Entra](#multi-tenant-entra). |
+| `Events.OnTokenValidated` | The hook for synthesizing extra `Claim` instances before Trellis sees them — useful when your IdP issues identity but your app issues permissions. |
+
 ```csharp
-app.UseHttpsRedirection();
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
 
-if (!app.Environment.IsDevelopment())
-    app.UseAuthentication();
-
-app.UseAuthorization();
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "https://accounts.google.com";
+        options.Audience  = configuration["Authentication:Audience"];
+        options.TokenValidationParameters.ValidIssuers =
+        [
+            "https://accounts.google.com",
+            "accounts.google.com",
+        ];
+    });
 ```
 
-### Step 4: Map Google Claims to Trellis `Actor`
+## Claim mapping
 
-With this setup:
+Each provider exposes a small surface of mapping options. The full default tables (claim names, attribute keys, fall-back rules) live in [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md#entraactoroptions); this section covers the everyday overrides.
 
-1. `Actor.Id` comes from Google `sub`
-2. `Actor.Permissions` comes from whatever claim you choose as `PermissionsClaim`
-3. if your Google token does not contain permission claims, `Actor.Permissions` is just empty
+### Synthesizing app permissions during token validation
 
-That is still a valid starting point. Many startup apps begin with:
-
-1. `[Authorize]` for "signed-in users only"
-2. application-level permissions loaded later from their own database
-
-If you want to add app permissions during token validation, create flat `permissions` claims:
+When the IdP only issues identity, add permission claims in `OnTokenValidated`. `ClaimsActorProvider` aggregates every `Claim` whose `Type` matches `PermissionsClaim` via `FindAll`, so multiple `Claim` instances of the same type are flattened automatically.
 
 ```csharp
-services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = auth["Authority"];
-        options.Audience = auth["Audience"];
+        options.Audience  = auth["Audience"];
         options.Events = new JwtBearerEvents
         {
             OnTokenValidated = context =>
             {
-                if (context.Principal?.Identity is not System.Security.Claims.ClaimsIdentity identity)
+                if (context.Principal?.Identity is not ClaimsIdentity identity)
                     return Task.CompletedTask;
 
-                identity.AddClaim(new System.Security.Claims.Claim("permissions", "todos:read"));
+                identity.AddClaim(new Claim("permissions", "todos:read"));
 
                 var email = identity.FindFirst("email")?.Value;
-                if (!string.IsNullOrWhiteSpace(email) &&
-                    email.EndsWith("@yourcompany.com", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(email)
+                    && email.EndsWith("@yourcompany.com", StringComparison.OrdinalIgnoreCase))
                 {
-                    identity.AddClaim(new System.Security.Claims.Claim("permissions", "todos:create"));
+                    identity.AddClaim(new Claim("permissions", "todos:create"));
                 }
 
                 return Task.CompletedTask;
-            }
+            },
         };
-    });
-```
-
-> [!NOTE]
-> `ClaimsActorProvider` only maps a flat actor ID claim and a flat permissions claim. If you also need `Actor.Attributes` or forbidden permissions from Google claims, create a custom `IActorProvider` and optionally wrap it with `AddCachingActorProvider<T>()`.
-
-### Step 5: Test It
-
-1. Keep local day-to-day development on `DevelopmentActorProvider`.
-2. Run the app in `Staging` to exercise Google token validation:
-
-```powershell
-$env:ASPNETCORE_ENVIRONMENT = "Staging"
-dotnet run --project .\Api\src\Api.csproj
-```
-
-3. Sign in through your frontend.
-4. Send the returned token to your API:
-
-```powershell
-Invoke-RestMethod https://localhost:5001/api/me -Headers @{ Authorization = "Bearer <google-token>" }
-```
-
-If `/api/me` returns an `Id`, your SSO path is working.
-
-## Part 3: Generic OIDC Provider
-
-### The Pattern (works with Okta, Auth0, Keycloak, etc.)
-
-The Trellis pattern for any OIDC provider is:
-
-1. validate the token with ASP.NET Core authentication
-2. map a stable user claim to `Actor.Id`
-3. map a flat permissions or roles claim to `Actor.Permissions`
-4. optionally switch to a custom provider if you need database-backed permissions or attributes
-
-Use this `appsettings.json` shape:
-
-```json
-{
-  "Authentication": {
-    "Authority": "https://your-provider.example.com",
-    "Audience": "your-api-audience",
-    "ActorIdClaim": "sub",
-    "PermissionsClaim": "permissions"
-  }
-}
-```
-
-Then use this registration:
-
-```csharp
-var auth = configuration.GetSection("Authentication");
-
-services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = auth["Authority"];
-        options.Audience = auth["Audience"];
     });
 
 services.AddClaimsActorProvider(options =>
 {
-    options.ActorIdClaim = auth["ActorIdClaim"] ?? "sub";
-    options.PermissionsClaim = auth["PermissionsClaim"] ?? "permissions";
+    options.ActorIdClaim     = "sub";
+    options.PermissionsClaim = "permissions";
 });
 ```
 
-Provider-specific tips:
+> [!NOTE]
+> `ClaimsActorProvider` only reads two claim types and never writes to `Actor.Attributes` or `Actor.ForbiddenPermissions`. Anything richer — ABAC attributes, deny lists, or computed permissions — belongs on `EntraActorProvider` (via `MapAttributes` / `MapForbiddenPermissions`) or a subclass. The full ABAC story is in [ASP.NET Core Authorization → Customizing claim mapping](integration-asp-authorization.md#customizing-claim-mapping).
 
-1. **Okta** often uses `scp` or custom permissions claims.
-2. **Auth0** often uses `permissions`.
-3. **Keycloak** often uses `roles`, but nested role payloads may need normalization first.
+### Customizing the Entra mapping
 
-If your provider emits permissions in a flat claim, you are done.
+`EntraActorOptions` has three independent delegates and one identifier knob.
 
-If your provider only proves identity and you load permissions from your own database, use a custom provider and cache it per request:
-
-```csharp
-services.AddCachingActorProvider<DatabaseActorProvider>();
-```
-
-That pattern is useful when:
-
-1. the token contains `sub` but no app permissions
-2. you need tenant-specific permissions from your own data store
-3. you want custom `Actor.Attributes`
+| Member | Default | Override to... |
+|---|---|---|
+| `IdClaimType` | long `objectidentifier` URI (falls back to short `"oid"`) | Use `sub`, an employee ID, or a custom claim. |
+| `MapPermissions` | union of `roles` and `ClaimTypes.Role` | Flatten Entra app roles into fine-grained permissions; merge DB-sourced grants. |
+| `MapForbiddenPermissions` | empty `HashSet<string>` | Project a deny-list claim. |
+| `MapAttributes` | `tid`, `preferred_username`, `azp`, `azpacr`, `acrs` from claims; `ip_address` from connection; `mfa` from any `amr == "mfa"` | Add tenant-scoped or request-scoped attributes. |
 
 > [!WARNING]
-> `ClaimsActorProvider` does not understand nested JSON claims like Keycloak `realm_access.roles`. Flatten them into regular claims during token validation or use a custom provider.
+> Any exception thrown from `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` is rewrapped by `EntraActorProvider` as `InvalidOperationException("EntraActorOptions.<delegate> threw an exception while mapping the authenticated user's claims.")`. The provider never silently defaults.
 
-## Development vs Deployed Environments
+## Scope and permission extraction
 
-Use `DevelopmentActorProvider` locally so you can iterate without a real identity provider. In every deployed environment (staging, production, etc.) use the **same SSO provider** — just point at different tenants or client IDs via configuration.
+Two common shapes for "what is this token allowed to do":
 
-> [!WARNING]
-> Do **not** use a different auth provider in staging than in production. Auth bugs are subtle — if staging uses Google and production uses Entra, you will miss token-format and claim-mapping issues until they hit real users.
-
-### Environment-specific configuration
-
-The only thing that changes between staging and production is the config values, not the provider type.
-
-#### `Api\src\appsettings.Staging.json`
-
-```json
-{
-  "Authentication": {
-    "Authority": "https://login.microsoftonline.com/<staging-tenant-id>/v2.0",
-    "Audience": "<staging-api-client-id>"
-  }
-}
-```
-
-#### `Api\src\appsettings.Production.json`
-
-```json
-{
-  "Authentication": {
-    "Authority": "https://login.microsoftonline.com/<prod-tenant-id>/v2.0",
-    "Audience": "<prod-api-client-id>"
-  }
-}
-```
-
-### Registration pattern
+**App roles (Entra application permissions).** Each role is a separate claim of type `roles`. The default `MapPermissions` already collects them.
 
 ```csharp
-if (environment.IsDevelopment())
-{
-    services.AddDevelopmentActorProvider();
-}
-else
-{
-    var auth = configuration.GetSection("Authentication");
-    services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
-        {
-            options.Authority = auth["Authority"];
-            options.Audience = auth["Audience"];
-        });
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
 
-    services.AddEntraActorProvider(); // Same provider everywhere
-}
+services.AddEntraActorProvider(options =>
+{
+    var rolePermissionMap = new Dictionary<string, string[]>(StringComparer.Ordinal)
+    {
+        ["Catalog.Admin"]  = ["products:read", "products:write", "products:delete"],
+        ["Catalog.Reader"] = ["products:read"],
+    };
+
+    options.MapPermissions = claims => claims
+        .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c => rolePermissionMap.TryGetValue(c.Value, out var perms) ? perms : Array.Empty<string>())
+        .ToHashSet(StringComparer.Ordinal);
+});
+```
+
+**Delegated scopes.** Entra (and many other OAuth servers) emit a single `scp` claim whose value is a space-separated string. Split it before flattening into permissions.
+
+```csharp
+services.AddEntraActorProvider(options =>
+{
+    options.MapPermissions = claims => claims
+        .Where(c => string.Equals(c.Type, "scp", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c => c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        .ToHashSet(StringComparer.Ordinal);
+});
+```
+
+Trellis does not enforce a permission naming convention — pick one (`products:read` or `Products.Read`) and stay consistent. Scoped permissions use `Actor.PermissionScopeSeparator` (`':'`); `actor.HasPermission("products:read", tenantId)` checks for the joined string `products:read:<tenantId>`. See [`trellis-api-authorization.md → Actor`](../api_reference/trellis-api-authorization.md#actor).
+
+## Multi-tenant Entra
+
+A multi-tenant Entra app accepts tokens from any tenant the app is consented in. `Authority` becomes `https://login.microsoftonline.com/common/v2.0` (or `/organizations/v2.0`), the token's `iss` is per-tenant, and your API decides which tenants are allowed.
+
+```csharp
+using System;
+using System.Linq;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Trellis.Asp.Authorization;
+
+var allowedTenants = configuration.GetSection("Authentication:AllowedTenants").Get<string[]>()
+    ?? Array.Empty<string>();
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "https://login.microsoftonline.com/common/v2.0";
+        options.Audience  = configuration["Authentication:Audience"];
+
+        options.TokenValidationParameters.ValidateIssuer = false;
+        options.TokenValidationParameters.IssuerValidator = (issuer, _, _) =>
+            issuer.StartsWith("https://login.microsoftonline.com/", StringComparison.Ordinal)
+                ? issuer
+                : throw new SecurityTokenInvalidIssuerException($"Untrusted issuer '{issuer}'.");
+    });
+
+services.AddEntraActorProvider();
+```
+
+Then enforce the tenant allow-list inside handlers using the `tid` attribute the default `MapAttributes` already populates:
+
+```csharp
+using System.Linq;
+using Trellis;
+using Trellis.Authorization;
+
+var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
+
+if (tenantId is null || !allowedTenants.Contains(tenantId, StringComparer.Ordinal))
+    return Result.Fail(new Error.Forbidden("tenant.not-allowed") { Detail = $"Tenant '{tenantId}' is not provisioned." });
 ```
 
 > [!TIP]
-> If you use separate Azure AD tenants for staging and production, create an app registration in each tenant with the same redirect URIs and permission scopes. This gives you full isolation while keeping the auth code path identical.
+> Tenant-scoped permissions ride on the same `Actor.HasPermission(name, scope)` helper: `actor.HasPermission("documents:read", tenantId)` checks `documents:read:<tenantId>`.
 
-## Common Pitfalls
+## Development defaults
+
+`AddDevelopmentActorProvider` reads an `X-Test-Actor` JSON header (case-insensitive property names) and falls back to a configurable default actor when the header is missing. It throws `InvalidOperationException` whenever `IHostEnvironment.IsDevelopment()` is `false` — including in Production with no header — which is the fail-closed safety net.
+
+```csharp
+using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Trellis.Asp.Authorization;
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDevelopmentActorProvider(options =>
+    {
+        options.DefaultActorId         = "developer@local";
+        options.DefaultPermissions     = new HashSet<string> { "todos:read", "todos:create" };
+        options.ThrowOnMalformedHeader = false;
+    });
+}
+else
+{
+    builder.Services.AddEntraActorProvider();
+}
+```
+
+Send a header from any HTTP client to impersonate a specific actor:
+
+```powershell
+$actor = '{"Id":"local-user","Permissions":["todos:read","todos:create"],"ForbiddenPermissions":[],"Attributes":{"tid":"local-tenant","mfa":"false"}}'
+Invoke-RestMethod https://localhost:5001/me -Headers @{ "X-Test-Actor" = $actor }
+```
+
+For test clients, `WebApplicationFactoryExtensions.CreateClientWithActor(...)` writes the same header (see [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md)).
 
 > [!WARNING]
-> **Redirect URI mismatch** is the number-one setup error. The URI in your identity provider must exactly match your frontend callback URI.
+> Use the **same SSO provider** in staging and production — only `Authority` and `Audience` should differ between environments. A staging path that swaps `EntraActorProvider` for `ClaimsActorProvider` (or vice versa) will hide token-format and claim-mapping bugs until they hit real users.
 
-> [!WARNING]
-> **Audience mismatch** means the token was issued for the wrong app. Make sure `Authentication:Audience` matches the token's `aud` claim.
+## Composition
 
-> [!WARNING]
-> **CORS failures look like auth failures.** If your browser app runs on `http://localhost:5173` and your API runs somewhere else, configure CORS before blaming OIDC.
+SSO sits on top of three Trellis seams: actor resolution, mediator authorization, and result pipelines.
 
-> [!WARNING]
-> **DevelopmentActorProvider is Development-only.** If `ASPNETCORE_ENVIRONMENT` is not `Development`, Trellis will not allow the `X-Test-Actor` shortcut.
+- **Actor resolution.** Every `IActorProvider` is scoped, so handlers, behaviors, and endpoints see the same `Actor` for the duration of a request. `AddCachingActorProvider<T>()` decorates any inner provider — Entra, Claims, or your subclass — without changing handler code.
+- **Mediator pipeline.** Once an `IActorProvider` is registered, `AuthorizationBehavior<TMessage, TResponse>` enforces `IAuthorize.RequiredPermissions` and `IAuthorizeResource<T>.Authorize(actor, resource)` and short-circuits the pipeline with a typed `Error.Forbidden`. Commands return `Result<Unit>`; ASP integration maps `Error.Forbidden` to RFC 7807 `403`.
+- **Result pipelines.** Inside handlers, `Actor` predicates return `bool`, so `Result.Ensure(actor.HasPermission(...), new Error.Forbidden(...))` plugs straight into `Bind` / `Map` chains.
 
-> [!WARNING]
-> **Permissions are case-sensitive.** `todos:read` and `Todos.Read` are different strings. Pick one naming convention and stay consistent.
+```csharp
+using System.Collections.Generic;
+using Mediator;
+using Trellis;
+using Trellis.Authorization;
 
-> [!WARNING]
-> **Do not use `preferred_username` or email as your stable actor ID** when the provider gives you a better immutable identifier like `oid` or `sub`.
+public sealed record DeleteDocumentCommand(string DocumentId)
+    : ICommand<Result<Unit>>, IAuthorize
+{
+    public IReadOnlyList<string> RequiredPermissions { get; } = ["documents:delete"];
+}
+```
 
-## Next Steps
+The full mediator + resource-loader wiring (and the `AddResourceAuthorization<TResource, TId, TLoader>` helper) is documented in [ASP.NET Core Authorization → Mediator integration](integration-asp-authorization.md#mediator-integration).
 
-Now that sign-in works:
+## Practical guidance
 
-1. read [ASP.NET Core Authorization](integration-asp-authorization.md) for deeper `Actor`, `IAuthorize`, and resource-authorization patterns
-2. read [Testing with Entra ID Tokens](integration-entra-testing.md) if you want end-to-end token validation tests
-3. move coarse permissions into provider roles first, then add database-backed permissions only when you actually need them
-4. add tenant or business attributes to `Actor.Attributes` when your authorization rules go beyond simple role checks
+- **Never authorize on `preferred_username`.** It is a display claim and can change. Use `oid` (Entra) or `sub` (everyone else).
+- **Use `ActorAttributes` constants.** `actor.GetAttribute(ActorAttributes.TenantId)` survives renames; `actor.GetAttribute("tid")` does not.
+- **Keep one mapping site.** Flatten roles to permissions inside `MapPermissions` once, not in every handler.
+- **Pick one naming convention for permissions.** `todos:read` and `Todos.Read` are different strings — `Actor.Permissions` is a `FrozenSet<string>` with ordinal comparison.
+- **Wrap expensive providers** with `AddCachingActorProvider<T>()` so DB-backed permission lookups run once per request.
+- **Keep `AddDevelopmentActorProvider` behind `IsDevelopment()`.** The provider also fails closed at runtime, but the registration discipline avoids accidental dependency on `X-Test-Actor` from staging integration tests.
+- **Match the audience exactly.** The number-one cause of "token validates somewhere else but not here" is `Audience` not matching the token's `aud` claim.
+- **Let mapper exceptions bubble.** A buggy `MapPermissions` becomes `InvalidOperationException("EntraActorOptions.MapPermissions threw ...")`; surfacing it during development reveals bad role tables faster than a silent fallback.
+
+## Cross-references
+
+- ASP DI surface (actor providers, options, response mapping): [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md)
+- Domain primitives (`Actor`, `IActorProvider`, `IAuthorize`, `IAuthorizeResource<T>`, `ActorAttributes`): [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md)
+- `Result`, `Error.Forbidden`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- Deeper authorization patterns (claim mapping, ABAC, mediator integration, resource loaders): [ASP.NET Core Authorization](integration-asp-authorization.md)
+- End-to-end token-validation tests against real Entra: [Testing with Entra ID Tokens](integration-entra-testing.md)
+- Test-client `X-Test-Actor` helper: [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md)

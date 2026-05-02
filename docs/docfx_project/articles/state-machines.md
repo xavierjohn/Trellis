@@ -1,54 +1,44 @@
-﻿# State Machines
+﻿---
+title: State Machines
+package: Trellis.StateMachine
+topics: [state-machine, transition, guard, result, aggregate, ddd, stateless, lazy]
+related_api_reference: [trellis-api-statemachine.md, trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# State Machines
 
-State machines matter when the order of operations is part of the business rule.
+`Trellis.StateMachine` wraps the [Stateless](https://github.com/dotnet-state-machine/stateless) library so invalid transitions become typed `Result<TState>` failures instead of `InvalidOperationException`s — keeping workflow logic inside the same railway as the rest of your domain code.
 
-If an order must go `Draft -> Submitted -> Approved -> Shipped`, you do not want that logic scattered across `if` statements and exception handling. You want one explicit model of the workflow.
+## Patterns Index
 
-Trellis integrates with [Stateless](https://github.com/dotnet-state-machine/stateless) so invalid transitions can participate in result-based flows instead of blowing up ordinary pipelines.
+| Goal | Use | See |
+|---|---|---|
+| Fire a Stateless trigger and get a `Result<TState>` | `stateMachine.FireResult(trigger)` | [Quick start](#quick-start) |
+| Treat invalid transitions as 422 rule violations | Default `FireResult` behavior — match on reason code `state.machine.invalid.transition` | [What `FireResult` guarantees](#what-fireresult-guarantees) |
+| Defer machine construction until entity state is populated (ORM materialization) | `LazyStateMachine<TState, TTrigger>` | [Lazy construction for aggregates](#lazy-construction-for-aggregates) |
+| Compose a transition with domain side effects and events | `FireResult(...).Tap(...).Map(...)` | [Composition](#composition) |
+| Block transitions on dynamic conditions | Stateless `PermitIf` / `IgnoreIf` (honored by `CanFire`) | [Guards](#guards) |
 
-## Why use Trellis here?
+## Use this guide when
 
-Plain Stateless throws `InvalidOperationException` when a trigger is not valid in the current state.
+- The order of operations is part of the business rule (orders, approvals, publishing, fulfillment).
+- You want invalid transitions to flow through the same `Result<T>` pipeline as validation errors and HTTP failures.
+- An ORM (e.g., EF Core) materializes your aggregate before populating its state property, and an eagerly-constructed Stateless machine would read the wrong initial state.
+- You need invalid-transition detection that survives Stateless library upgrades (no exception-message parsing).
 
-That is fine for exception-based code, but awkward in a result-based application flow.
+## Surface at a glance
 
-```csharp
-using System;
-using Stateless;
+`Trellis.StateMachine` exposes one static class and one sealed wrapper. The `StateMachine<TState, TTrigger>` type itself comes from the upstream `Stateless` namespace and remains visible in user code.
 
-public enum OrderState { Draft, Submitted, Approved, Shipped, Cancelled }
-public enum OrderTrigger { Submit, Approve, Ship, Cancel }
+| Type | Kind | Purpose |
+|---|---|---|
+| `StateMachineExtensions` | `static class` | Adds `FireResult<TState, TTrigger>(this StateMachine<TState, TTrigger>, TTrigger)` returning `Result<TState>`. |
+| `LazyStateMachine<TState, TTrigger>` | `sealed class` | Defers machine creation and configuration until first access via `Machine` or `FireResult`. |
 
-var machine = new StateMachine<OrderState, OrderTrigger>(OrderState.Draft);
-machine.Configure(OrderState.Draft)
-    .Permit(OrderTrigger.Submit, OrderState.Submitted);
+Both generics carry `where TState : notnull` and `where TTrigger : notnull` constraints.
 
-try
-{
-    machine.Fire(OrderTrigger.Ship);
-}
-catch (InvalidOperationException ex)
-{
-    Console.WriteLine(ex.Message);
-}
-```
-
-With Trellis, the same invalid transition can stay inside the railway:
-
-```csharp
-using Stateless;
-using Trellis;
-using Trellis.StateMachine;
-
-public enum OrderState { Draft, Submitted, Approved, Shipped, Cancelled }
-public enum OrderTrigger { Submit, Approve, Ship, Cancel }
-
-var machine = new StateMachine<OrderState, OrderTrigger>(OrderState.Draft);
-machine.Configure(OrderState.Draft)
-    .Permit(OrderTrigger.Submit, OrderState.Submitted);
-
-Result<OrderState> result = machine.FireResult(OrderTrigger.Ship);
-```
+Full signatures: [`trellis-api-statemachine.md`](../api_reference/trellis-api-statemachine.md).
 
 ## Installation
 
@@ -56,7 +46,9 @@ Result<OrderState> result = machine.FireResult(OrderTrigger.Ship);
 dotnet add package Trellis.StateMachine
 ```
 
-## A simple working example
+## Quick start
+
+Configure a Stateless machine, then call `FireResult` instead of `Fire`. Invalid transitions become a typed `Result` failure.
 
 ```csharp
 using Stateless;
@@ -78,163 +70,172 @@ machine.Configure(OrderState.Submitted)
     .Permit(OrderTrigger.Cancel, OrderState.Cancelled);
 
 machine.Configure(OrderState.Approved)
-    .Permit(OrderTrigger.Ship, OrderState.Shipped)
-    .Permit(OrderTrigger.Cancel, OrderState.Cancelled);
+    .Permit(OrderTrigger.Ship, OrderState.Shipped);
 
-Result<OrderState> submit = machine.FireResult(OrderTrigger.Submit);
-Result<OrderState> approve = machine.FireResult(OrderTrigger.Approve);
-Result<OrderState> invalidCancel = machine.FireResult(OrderTrigger.Cancel);
+Result<OrderState> submit  = machine.FireResult(OrderTrigger.Submit);  // Ok(Submitted)
+Result<OrderState> approve = machine.FireResult(OrderTrigger.Approve); // Ok(Approved)
+Result<OrderState> invalid = machine.FireResult(OrderTrigger.Submit);  // Fail (UnprocessableContent)
 ```
 
-## Visualizing the workflow
+## What `FireResult` guarantees
 
-```mermaid
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> Submitted: Submit
-    Draft --> Cancelled: Cancel
-    Submitted --> Approved: Approve
-    Submitted --> Cancelled: Cancel
-    Approved --> Shipped: Ship
-    Approved --> Cancelled: Cancel
-```
+`FireResult` is intentionally narrow — see [`trellis-api-statemachine.md`](../api_reference/trellis-api-statemachine.md#statemachineextensions) for the exact signature and translation rules.
 
-## What `FireResult` actually guarantees
+| Outcome | Result |
+|---|---|
+| `CanFire(trigger)` is `true` | Calls `Fire(trigger)`, returns `Result.Ok(stateMachine.State)`. |
+| `CanFire(trigger)` is `false`, default unhandled-trigger handler throws | Returns `Error.UnprocessableContent` (HTTP 422) carrying a `RuleViolation` with reason code `state.machine.invalid.transition`. |
+| `CanFire(trigger)` is `false`, custom `OnUnhandledTrigger` swallows the trigger | Returns `Result.Ok(stateMachine.State)` — state unchanged. |
+| User entry/exit/transition/guard/accessor/mutator code throws | Exception propagates untouched. |
 
-`FireResult` is intentionally narrow and predictable.
-
-### On success
-
-- it pre-checks the trigger with `CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards)
-- it fires the trigger once
-- it returns `Result<TState>` containing the new state
-
-### On failure
-
-- if `CanFire(trigger)` returns false, it returns `Error.UnprocessableContent` (HTTP 422) carrying a single `RuleViolation` with reason code `state.machine.invalid.transition` and a Trellis-owned `Detail` string — no Stateless exception is involved. Invalid transitions are semantic rule violations, not concurrent-modification conflicts.
-- the failure shape is therefore independent of the Stateless library version and its exception message text
-
-### What it does **not** do
-
-- it does **not** make Stateless thread-safe — Stateless is single-threaded by contract; callers must externally synchronize concurrent calls
-- it does **not** swallow arbitrary exceptions from your own entry, exit, guard, accessor, mutator, or configuration code — those propagate to the caller
-- it does **not** depend on the textual content of any Stateless exception, so library upgrades that reword internal messages will not break it
+Invalid-transition detection uses `CanFire` (which honors `PermitIf` / `IgnoreIf` guards) — there is no Stateless message-string parsing, so the failure shape is independent of Stateless's exception text.
 
 > [!NOTE]
-> Because `FireResult` evaluates the guard once via `CanFire` and again via `Fire`, transition guards must be **idempotent and side-effect-free** — which is already a Stateless requirement. The guard is evaluated at most twice per `FireResult` call.
+> Because `FireResult` evaluates the guard once via `CanFire` and (when permitted) again via `Fire`, transition guards must be **idempotent and side-effect-free** — already a Stateless requirement. Guards run at most twice per call.
 
 > [!WARNING]
-> `FireResult<TState, TTrigger>` has `where TState : notnull` and `where TTrigger : notnull` constraints. `LazyStateMachine<TState, TTrigger>` has the same constraints.
+> Neither `FireResult` nor `LazyStateMachine` makes Stateless thread-safe. Stateless is single-threaded by contract; concurrent callers on the same machine instance must synchronize externally.
 
-## Composing transitions with Trellis pipelines
+## Guards
 
-The main benefit is not just avoiding exceptions. It is that state changes now compose naturally with other result-based work.
+Guards are plain Stateless `PermitIf` / `IgnoreIf` predicates. `FireResult` honors them through `CanFire`, so a guard that returns `false` produces the same `Error.UnprocessableContent` as a missing transition.
 
 ```csharp
 using Stateless;
 using Trellis;
 using Trellis.StateMachine;
 
-public sealed class OrderWorkflow
+public enum InvoiceState { Draft, Approved }
+public enum InvoiceTrigger { Approve }
+
+bool hasLineItems = false;
+
+var state = InvoiceState.Draft;
+var machine = new StateMachine<InvoiceState, InvoiceTrigger>(() => state, s => state = s);
+
+machine.Configure(InvoiceState.Draft)
+    .PermitIf(InvoiceTrigger.Approve, InvoiceState.Approved, () => hasLineItems);
+
+Result<InvoiceState> blocked = machine.FireResult(InvoiceTrigger.Approve); // Fail (guard false)
+hasLineItems = true;
+Result<InvoiceState> ok = machine.FireResult(InvoiceTrigger.Approve);      // Ok(Approved)
+```
+
+Because guards may run twice per `FireResult` call, do not mutate state inside them — read flags or value-object snapshots only.
+
+## Lazy construction for aggregates
+
+ORMs typically construct an entity instance, then populate its properties. A state machine wired up in the constructor with `() => Status` will read whatever the property holds at construction time, not the materialized value. `LazyStateMachine<TState, TTrigger>` defers the accessor call, the mutator wiring, and the `configure` callback until first use.
+
+```csharp
+using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+public enum DocumentStatus { Draft, Published, Archived }
+public enum DocumentTrigger { Publish, Archive }
+
+public sealed class Document
 {
-    private OrderState _state = OrderState.Draft;
-    private readonly StateMachine<OrderState, OrderTrigger> _machine;
+    private readonly LazyStateMachine<DocumentStatus, DocumentTrigger> _machine;
 
-    public List<string> Events { get; } = [];
+    public DocumentStatus Status { get; private set; } = DocumentStatus.Draft;
 
-    public OrderWorkflow()
+    public Document()
     {
-        _machine = new StateMachine<OrderState, OrderTrigger>(() => _state, s => _state = s);
-
-        _machine.Configure(OrderState.Draft)
-            .Permit(OrderTrigger.Submit, OrderState.Submitted);
-
-        _machine.Configure(OrderState.Submitted)
-            .Permit(OrderTrigger.Approve, OrderState.Approved);
+        _machine = new LazyStateMachine<DocumentStatus, DocumentTrigger>(
+            () => Status,
+            s => Status = s,
+            Configure);
     }
 
-    public Result<OrderWorkflow> Submit() =>
+    public Result<DocumentStatus> Publish() => _machine.FireResult(DocumentTrigger.Publish);
+    public Result<DocumentStatus> Archive() => _machine.FireResult(DocumentTrigger.Archive);
+
+    private static void Configure(StateMachine<DocumentStatus, DocumentTrigger> machine)
+    {
+        machine.Configure(DocumentStatus.Draft)
+            .Permit(DocumentTrigger.Publish, DocumentStatus.Published);
+
+        machine.Configure(DocumentStatus.Published)
+            .Permit(DocumentTrigger.Archive, DocumentStatus.Archived);
+    }
+}
+```
+
+Key facts:
+
+| Aspect | Value |
+|---|---|
+| Class modifier | `sealed` |
+| Thread-safety | Not thread-safe; `_machine ??= CreateMachine()` has no locking. |
+| Configuration timing | Once, on first access to `Machine` (or first `FireResult`). |
+| Direct Stateless access | Available via the `Machine` property when you need raw Stateless APIs. |
+| Constructor null checks | Throws `ArgumentNullException` for any `null` delegate. |
+
+## Composition
+
+The point of returning `Result<TState>` is that a transition composes with the rest of Trellis (`Tap`, `Map`, `Bind`, `Ensure`) — domain mutations, events, and validation chain off the same railway.
+
+```csharp
+using Stateless;
+using Trellis;
+using Trellis.StateMachine;
+
+public enum OrderStatus { Draft, Submitted, Approved }
+public enum OrderTrigger { Submit, Approve }
+
+public sealed class Order
+{
+    private readonly LazyStateMachine<OrderStatus, OrderTrigger> _machine;
+    private readonly List<string> _events = [];
+
+    public OrderStatus Status { get; private set; } = OrderStatus.Draft;
+    public IReadOnlyList<string> Events => _events;
+
+    public Order()
+    {
+        _machine = new LazyStateMachine<OrderStatus, OrderTrigger>(
+            () => Status,
+            s => Status = s,
+            machine =>
+            {
+                machine.Configure(OrderStatus.Draft)
+                    .Permit(OrderTrigger.Submit, OrderStatus.Submitted);
+                machine.Configure(OrderStatus.Submitted)
+                    .Permit(OrderTrigger.Approve, OrderStatus.Approved);
+            });
+    }
+
+    public Result<Order> Submit() =>
         _machine.FireResult(OrderTrigger.Submit)
-            .Tap(_ => Events.Add("OrderSubmitted"))
+            .Tap(_ => _events.Add("OrderSubmitted"))
+            .Map(_ => this);
+
+    public Result<Order> Approve() =>
+        _machine.FireResult(OrderTrigger.Approve)
+            .Tap(_ => _events.Add("OrderApproved"))
             .Map(_ => this);
 }
 ```
 
-That is the Trellis-friendly pattern:
+The pattern is consistent: `FireResult(...)` for the transition, `Tap(...)` for domain side effects (events, audit), `Map(_ => this)` to return the richer aggregate.
 
-1. transition with `FireResult(...)`
-2. do side effects with `Tap(...)`
-3. return the richer domain object with `Map(_ => this)` when needed
+Keep business mutations **after** `FireResult` succeeds. Do not place domain side effects inside Stateless `OnEntry`/`OnExit` callbacks — those are for transition mechanics only.
 
-## `LazyStateMachine<TState, TTrigger>`: for ORM materialization scenarios
+## Practical guidance
 
-A common problem with ORMs is timing.
+- **Use `FireResult`, not `Fire`.** The whole reason to take this dependency is to keep invalid transitions inside the result pipeline.
+- **Distinguish state-machine 422s.** All `FireResult` failures share the reason code `state.machine.invalid.transition` — match on it when callers need to react specifically to workflow rejections.
+- **422, not 409.** Invalid transitions are semantic rule violations, not concurrent-modification conflicts; retrying will not help. That is why the failure is `Error.UnprocessableContent`.
+- **One state machine per aggregate instance.** They are not thread-safe; do not share across requests or threads.
+- **Keep guards pure.** They run via `CanFire` and again via `Fire`, so any side effect would execute twice on the success path.
+- **Use `LazyStateMachine` for ORM-materialized aggregates.** It removes the manual `_machine ??= Configure()` boilerplate and ensures the accessor reads the populated value.
+- **Reach for state machines when the workflow is the rule.** Orders, approvals, publishing, onboarding — yes. Cosmetic UI flags or trivial CRUD lifecycles — no.
 
-The object is constructed first, and only then are its properties populated. If your state machine reads the state too early, it can start from the wrong value.
+## Cross-references
 
-`LazyStateMachine<TState, TTrigger>` solves that by deferring machine creation until first use.
-
-```csharp
-using Stateless;
-using Trellis;
-using Trellis.StateMachine;
-
-public enum DocumentState { Draft, Published }
-public enum DocumentTrigger { Publish }
-
-public sealed class DocumentWorkflow
-{
-    private readonly LazyStateMachine<DocumentState, DocumentTrigger> _machine;
-
-    public DocumentState State { get; private set; } = DocumentState.Draft;
-
-    public DocumentWorkflow()
-    {
-        _machine = new LazyStateMachine<DocumentState, DocumentTrigger>(
-            () => State,
-            state => State = state,
-            machine => machine.Configure(DocumentState.Draft)
-                .Permit(DocumentTrigger.Publish, DocumentState.Published));
-    }
-
-    public Result<DocumentState> Publish() =>
-        _machine.FireResult(DocumentTrigger.Publish);
-}
-```
-
-## Important `LazyStateMachine` facts
-
-- it is **sealed**
-- it is **not thread-safe**
-- initialization uses lazy creation with no locking
-- configuration runs once, on first use
-- the underlying machine is available through `.Machine` when you need direct Stateless access
-
-> [!WARNING]
-> Do not share one `LazyStateMachine` instance across concurrent callers without external synchronization.
-
-## When to use a state machine at all
-
-Use one when the workflow is part of the domain, not just UI flow.
-
-Good candidates:
-
-- orders
-- approvals
-- fulfillment
-- publishing
-- onboarding workflows
-- long-running business processes with explicit transitions
-
-Probably overkill:
-
-- one-off CRUD entities with no meaningful lifecycle
-- state that is purely cosmetic or presentation-specific
-
-## Bottom line
-
-Use state machines when the workflow itself is business logic.
-
-Use `FireResult(...)` when you want that workflow to stay inside Trellis pipelines.
-
-Use `LazyStateMachine<TState, TTrigger>` when object materialization timing would otherwise make machine setup fragile.
+- API surface: [`trellis-api-statemachine.md`](../api_reference/trellis-api-statemachine.md)
+- `Result<T>`, `Error.UnprocessableContent`, `RuleViolation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- Cookbook recipe (CanFire + Fire pattern with `FireResult`): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult)
+- Upstream library: [Stateless on GitHub](https://github.com/dotnet-state-machine/stateless)

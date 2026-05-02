@@ -1,4 +1,12 @@
-﻿# Debugging Trellis Pipelines
+﻿---
+title: Debugging Trellis Pipelines
+package: Trellis (multiple)
+topics: [debugging, tap, tryget, opentelemetry, logging, result]
+related_api_reference: [trellis-api-core.md, trellis-api-primitives.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# Debugging Trellis Pipelines
 
 Trellis pipelines are easy to read when they work — and sometimes harder to inspect when they do not.
 
@@ -300,3 +308,8 @@ Debugging Trellis is different from debugging exception-heavy code, but it is us
 - let error values tell you what happened
 
 When you do that, most pipeline bugs become straightforward to locate.
+
+## Cross-references
+
+- `Result<T>` accessors (`TryGetValue`, `TryGetError`, `Match`), `Tap` / `TapOnFailure`, `ResultDebugSettings`, `AddResultsInstrumentation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- `AddPrimitiveValueObjectInstrumentation`: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)

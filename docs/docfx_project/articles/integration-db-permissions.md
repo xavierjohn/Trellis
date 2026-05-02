@@ -1,62 +1,120 @@
+﻿---
+title: Database-Backed Permissions
+package: Trellis.EntityFrameworkCore
+topics: [efcore, permissions, authorization, actor-provider, claims, abac, tenant, hybrid-auth]
+related_api_reference: [trellis-api-efcore.md, trellis-api-authorization.md, trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
 # Database-Backed Permissions
 
-When JWT app roles are too coarse, too static, or too limited, you need authorization data you can manage in your own system. This pattern keeps **authentication** in your identity provider and moves **permissions** into your application database.
+Implement `IActorProvider` over EF Core so authentication stays in your identity provider while permissions live in the application database, manageable without redeploying.
 
-The good news: you can do that with the existing `IActorProvider` abstraction. You do not need a special Trellis permissions package.
+## Patterns Index
 
-## Table of Contents
+| Goal | Use | See |
+|---|---|---|
+| Map `ClaimsPrincipal` to a Trellis `Actor` from DB-loaded permissions | Custom `IActorProvider` returning `Actor.Create(id, permissions)` | [Database-backed actor provider](#database-backed-actor-provider) |
+| Load a flat permission set for an external user id | EF Core repository projecting `User → Roles → Permissions` to `IReadOnlySet<string>` | [Permission repository](#permission-repository) |
+| Avoid duplicate permission lookups inside one HTTP request | `services.AddCachingActorProvider<T>()` | [DI wiring](#di-wiring) |
+| Use stub actors in Development | `services.AddDevelopmentActorProvider()` | [DI wiring](#di-wiring) |
+| Carry tenant / MFA context alongside permissions | Full `Actor` ctor with `attributes` keyed by `ActorAttributes.*` | [Carrying ABAC attributes](#carrying-abac-attributes) |
+| Enforce a static permission on a command | `IAuthorize.RequiredPermissions` | [Composition](#composition) |
+| Enforce ownership on a loaded resource | `IAuthorizeResource<TResource>` + `Result.Ensure(..., new Error.Forbidden(...))` | [Composition](#composition) |
 
-- [When this pattern helps](#when-this-pattern-helps)
-- [Architecture](#architecture)
-- [A minimal domain model](#a-minimal-domain-model)
-- [Loading permissions from EF Core](#loading-permissions-from-ef-core)
-- [Turning claims into an `Actor`](#turning-claims-into-an-actor)
-- [Dependency injection setup](#dependency-injection-setup)
-- [Seeding and testing](#seeding-and-testing)
+## Use this guide when
 
-## When this pattern helps
+- App roles in the JWT are too coarse, too static, or unavailable to the team that manages authorization.
+- You need permission changes to take effect without a token refresh or auth-config redeploy.
+- You want a single `Actor` shape (permissions + ABAC attributes) feeding both static and resource-based authorization.
 
-Choose database-backed permissions when you need authorization rules that change faster than your identity provider configuration.
+## Surface at a glance
 
-| Approach | Identity source | Permission source | Best fit |
-| --- | --- | --- | --- |
-| JWT roles only | token claims | token claims | small, mostly static systems |
-| Hybrid | token claims | application database | most business applications |
-| Database only | custom auth | application database | non-OIDC or fully custom auth stacks |
+This guide composes existing Trellis surfaces — there is no DB-permissions package. The pieces:
 
-The hybrid model is usually the sweet spot:
+| Type / member | Package | Purpose |
+|---|---|---|
+| `IActorProvider.GetCurrentActorAsync(ct)` | `Trellis.Authorization` | Contract you implement to resolve the current `Actor`. |
+| `Actor.Create(string id, IReadOnlySet<string> permissions)` | `Trellis.Authorization` | Builds an actor with empty `ForbiddenPermissions` and empty `Attributes`. |
+| `new Actor(id, permissions, forbiddenPermissions, attributes)` | `Trellis.Authorization` | Full ctor for ABAC / explicit deny. |
+| `ActorAttributes.TenantId` / `MfaAuthenticated` / etc. | `Trellis.Authorization` | Well-known attribute keys. |
+| `IAuthorize.RequiredPermissions` | `Trellis.Authorization` | Static permission requirement on a command/query. |
+| `IAuthorizeResource<TResource>.Authorize(actor, resource)` | `Trellis.Authorization` | Resource-based authorization gate. |
+| `services.AddCachingActorProvider<T>()` | `Trellis.Asp.Authorization` | Wraps your provider with request-scoped caching. |
+| `services.AddDevelopmentActorProvider()` | `Trellis.Asp.Authorization` | Test-only provider driven by the `X-Test-Actor` header. |
+| `RepositoryBase<TAggregate, TId>` + `db.SaveChangesResultUnitAsync(ct)` | `Trellis.EntityFrameworkCore` | Persist permission changes on the railway. |
 
-- the identity provider proves **who** the user is
-- your database decides **what** the user can do
-- admins can change permissions without redeploying auth config
+Full signatures: [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md), [`trellis-api-efcore.md`](../api_reference/trellis-api-efcore.md).
 
-## Architecture
+## Installation
 
-```mermaid
-flowchart LR
-    A[JWT or OIDC token] -->|authenticates| B[ASP.NET Core authentication]
-    B -->|ClaimsPrincipal| C[DatabaseActorProvider]
-    C -->|lookup by oid or sub| D[(Application database)]
-    D -->|permissions| C
-    C -->|Actor| E[Trellis authorization pipeline]
+```bash
+dotnet add package Trellis.EntityFrameworkCore
+dotnet add package Trellis.Asp
 ```
 
-In other words:
+`Trellis.Asp` brings `Trellis.Authorization` transitively along with `AddCachingActorProvider<T>` / `AddDevelopmentActorProvider`. EF Core conventions and `SaveChangesResult*Async` come from `Trellis.EntityFrameworkCore`.
 
-- authentication stays outside your app
-- authorization becomes application data
+## Quick start
 
-## A minimal domain model
+The minimal hybrid setup: identity provider authenticates, EF Core supplies permissions, `CachingActorProvider` deduplicates per request.
 
-Start simple. You only need users, roles, permissions, and two many-to-many relationships.
+```csharp
+using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Authorization;
+using Trellis.Asp.Authorization;
 
-```mermaid
-erDiagram
-    AppUser ||--o{ UserRole : has
-    Role ||--o{ UserRole : "assigned to"
-    Role ||--o{ RolePermission : has
-    Permission ||--o{ RolePermission : "granted by"
+public interface IPermissionRepository
+{
+    Task<IReadOnlySet<string>> GetPermissionsForUserAsync(string externalUserId, CancellationToken ct);
+}
+
+public sealed class DatabaseActorProvider(
+    IHttpContextAccessor accessor,
+    IPermissionRepository repo) : IActorProvider
+{
+    public async Task<Actor> GetCurrentActorAsync(CancellationToken ct = default)
+    {
+        var principal = accessor.HttpContext?.User
+            ?? throw new InvalidOperationException("No HttpContext is available.");
+
+        if (principal.Identity?.IsAuthenticated != true)
+            throw new InvalidOperationException("The current request is not authenticated.");
+
+        var externalId = principal.FindFirstValue("oid")
+            ?? principal.FindFirstValue("sub")
+            ?? throw new InvalidOperationException("No 'oid' or 'sub' claim was found.");
+
+        var permissions = await repo.GetPermissionsForUserAsync(externalId, ct).ConfigureAwait(false);
+        return Actor.Create(externalId, permissions);
+    }
+}
+
+// Composition root — wire from Program.cs (or any DI extension method).
+public static class CompositionRoot
+{
+    public static void AddDatabasePermissions(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddHttpContextAccessor();
+
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options => configuration.Bind("AzureAd", options));
+
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddCachingActorProvider<DatabaseActorProvider>();
+    }
+}
 ```
+
+## Permission domain model
+
+Keep the model boring: users, roles, permissions, and two many-to-many joins. The integration only needs to project to `IReadOnlySet<string>`.
 
 ```csharp
 namespace MyService.Domain;
@@ -73,7 +131,6 @@ public sealed class Role
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
     public ICollection<AppUser> Users { get; } = [];
     public ICollection<Permission> Permissions { get; } = [];
 }
@@ -82,64 +139,23 @@ public sealed class Permission
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
     public ICollection<Role> Roles { get; } = [];
 }
 
 public static class Permissions
 {
-    public const string OrdersCreate = "orders:create";
-    public const string OrdersApprove = "orders:approve";
-    public const string OrdersRead = "orders:read";
-    public const string OrdersReadAll = "orders:read-all";
+    public const string OrdersCreate   = "orders:create";
+    public const string OrdersRead     = "orders:read";
+    public const string OrdersReadAll  = "orders:read-all";
+    public const string OrdersCancel   = "orders:cancel";
+    public const string OrdersCancelAny = "orders:cancel-any";
 }
 ```
 
-> [!TIP]
-> If your domain already uses Trellis value objects for IDs or names, keep using them. The authorization pattern here does not depend on primitive-only entities.
-
-## Loading permissions from EF Core
-
-The repository has one job: translate an authenticated external identity into a flat permission set.
+A minimal mapping with unique indexes on `ExternalId`, `Role.Name`, and `Permission.Name`:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
-
-namespace MyService.Application;
-
-public interface IPermissionRepository
-{
-    Task<IReadOnlySet<string>> GetPermissionsForUserAsync(
-        string externalUserId,
-        CancellationToken cancellationToken);
-}
-
-public sealed class PermissionRepository(AppDbContext db) : IPermissionRepository
-{
-    public async Task<IReadOnlySet<string>> GetPermissionsForUserAsync(
-        string externalUserId,
-        CancellationToken cancellationToken)
-    {
-        var permissions = await db.Users
-            .Where(user => user.ExternalId == externalUserId)
-            .SelectMany(user => user.Roles)
-            .SelectMany(role => role.Permissions)
-            .Select(permission => permission.Name)
-            .Distinct()
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        return permissions.ToHashSet(StringComparer.Ordinal);
-    }
-}
-```
-
-A minimal EF Core mapping is enough:
-
-```csharp
-using Microsoft.EntityFrameworkCore;
-
-namespace MyService.Infrastructure;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
@@ -149,79 +165,123 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<AppUser>(builder =>
+        modelBuilder.Entity<AppUser>(b =>
         {
-            builder.HasKey(x => x.Id);
-            builder.HasIndex(x => x.ExternalId).IsUnique();
-            builder.HasMany(x => x.Roles)
-                .WithMany(x => x.Users)
-                .UsingEntity("UserRoles");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.ExternalId).IsUnique();
+            b.HasMany(x => x.Roles).WithMany(x => x.Users).UsingEntity("UserRoles");
         });
 
-        modelBuilder.Entity<Role>(builder =>
+        modelBuilder.Entity<Role>(b =>
         {
-            builder.HasKey(x => x.Id);
-            builder.HasIndex(x => x.Name).IsUnique();
-            builder.HasMany(x => x.Permissions)
-                .WithMany(x => x.Roles)
-                .UsingEntity("RolePermissions");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Name).IsUnique();
+            b.HasMany(x => x.Permissions).WithMany(x => x.Roles).UsingEntity("RolePermissions");
         });
 
-        modelBuilder.Entity<Permission>(builder =>
+        modelBuilder.Entity<Permission>(b =>
         {
-            builder.HasKey(x => x.Id);
-            builder.HasIndex(x => x.Name).IsUnique();
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Name).IsUnique();
         });
     }
 }
 ```
 
-## Turning claims into an `Actor`
+> [!TIP]
+> Centralise permission strings in one `Permissions` class. The same constants feed `IAuthorize.RequiredPermissions`, seed data, admin UI, and tests.
 
-This is the core integration point. The provider reads the authenticated user ID from claims, loads permissions from the database, and returns an `Actor`.
+## Permission repository
+
+The repository has one job: translate an authenticated external identity into a flat permission set. Use ordinal comparison so it matches `Actor`'s lookup semantics.
 
 ```csharp
+using Microsoft.EntityFrameworkCore;
+
+public sealed class PermissionRepository(AppDbContext db) : IPermissionRepository
+{
+    public async Task<IReadOnlySet<string>> GetPermissionsForUserAsync(
+        string externalUserId, CancellationToken ct)
+    {
+        var permissions = await db.Users
+            .Where(u => u.ExternalId == externalUserId)
+            .SelectMany(u => u.Roles)
+            .SelectMany(r => r.Permissions)
+            .Select(p => p.Name)
+            .Distinct()
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        return permissions.ToHashSet(StringComparer.Ordinal);
+    }
+}
+```
+
+The result type is exactly the `IReadOnlySet<string>` that `Actor.Create(id, permissions)` accepts — no adapter needed.
+
+## Database-backed actor provider
+
+The provider in [Quick start](#quick-start) is the canonical shape. It does three things:
+
+| Step | Why |
+|---|---|
+| Read `HttpContext.User` from `IHttpContextAccessor` | `IActorProvider` is request-scoped; the principal is already populated by the auth middleware. |
+| Extract `oid` (then fall back to `sub`) | Matches the `EntraActorProvider` precedence; both Entra v1.0 and v2.0 tokens resolve. |
+| Call the repository, then `Actor.Create(...)` | `Actor.Create` snapshots permissions into a `FrozenSet<string>` for O(1) lookups. |
+
+Throwing `InvalidOperationException` on missing context / unauthenticated requests follows the contract documented for `IActorProvider.GetCurrentActorAsync` ([`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md#iactorprovider)).
+
+## Carrying ABAC attributes
+
+When the actor needs more than permissions — tenant id, MFA flag, IP address — use the full `Actor` constructor and the well-known keys on `ActorAttributes`.
+
+```csharp
+using System.Collections.Generic;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 using Trellis.Authorization;
 
-namespace MyService.Api;
-
-public sealed class DatabaseActorProvider(
-    IHttpContextAccessor httpContextAccessor,
-    IPermissionRepository permissionRepository) : IActorProvider
+public sealed class TenantAwareActorProvider(
+    IHttpContextAccessor accessor,
+    IPermissionRepository repo) : IActorProvider
 {
-    public async Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    public async Task<Actor> GetCurrentActorAsync(CancellationToken ct = default)
     {
-        var httpContext = httpContextAccessor.HttpContext
+        var ctx = accessor.HttpContext
             ?? throw new InvalidOperationException("No HttpContext is available.");
-
-        var principal = httpContext.User;
-        if (principal.Identity?.IsAuthenticated != true)
-            throw new InvalidOperationException("The current request is not authenticated.");
+        var principal = ctx.User;
 
         var externalId = principal.FindFirstValue("oid")
             ?? principal.FindFirstValue("sub")
             ?? throw new InvalidOperationException("No 'oid' or 'sub' claim was found.");
 
-        var permissions = await permissionRepository
-            .GetPermissionsForUserAsync(externalId, cancellationToken)
+        var permissions = await repo
+            .GetPermissionsForUserAsync(externalId, ct)
             .ConfigureAwait(false);
 
-        return Actor.Create(externalId, permissions);
+        var attributes = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (principal.FindFirstValue("tid") is { } tid)
+            attributes[ActorAttributes.TenantId] = tid;
+        if (ctx.Connection.RemoteIpAddress is { } ip)
+            attributes[ActorAttributes.IpAddress] = ip.ToString();
+
+        return new Actor(
+            id: externalId,
+            permissions: permissions,
+            forbiddenPermissions: new HashSet<string>(StringComparer.Ordinal),
+            attributes: attributes);
     }
 }
 ```
 
-Why this works well:
+Downstream code reads attributes via `actor.GetAttribute(ActorAttributes.TenantId)` and uses them inside `IAuthorizeResource<TResource>` guards or as EF query-filter parameters.
 
-- `IActorProvider` is already asynchronous
-- `Actor.Create(string id, IReadOnlySet<string> permissions)` matches the repository result shape
-- the rest of Trellis authorization continues to work exactly the same way
+## DI wiring
 
-## Dependency injection setup
-
-Use your normal JWT/OIDC authentication, then wrap your DB-backed provider with `AddCachingActorProvider<T>()`.
+| Environment | Registration | Behavior |
+|---|---|---|
+| Production | `services.AddCachingActorProvider<DatabaseActorProvider>()` | Registers the concrete provider as scoped, then wraps it with `CachingActorProvider` so duplicate lookups inside one request reuse the same `Actor`. |
+| Development | `services.AddDevelopmentActorProvider()` | Resolves an `Actor` from the `X-Test-Actor` header; throws outside the Development environment. |
+| Test (in-memory) | `WebApplicationFactoryExtensions.CreateClientWithActor(actor)` | Sends the `X-Test-Actor` header consumed by `DevelopmentActorProvider`. |
 
 ```csharp
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -242,69 +302,72 @@ else
 ```
 
 > [!NOTE]
-> `AddCachingActorProvider<T>()` gives you **request-scoped caching**, not a shared app-wide cache. Multiple resolutions during one HTTP request reuse the same in-flight actor lookup. A later request performs a fresh lookup.
+> `AddCachingActorProvider<T>()` caches per request, not app-wide. Permission changes take effect on the next request — no manual invalidation required.
 
-That usually means:
+## Composition
 
-- no extra invalidation logic is required
-- permission changes take effect on the next request
-- expensive duplicate lookups inside one request are avoided
-
-## Seeding and testing
-
-### Seed roles and permissions
-
-You can seed data at startup, in a migration, or through an admin workflow. The important part is that permission names stay stable.
+A DB-backed `Actor` plugs into both authorization shapes the mediator behavior knows about. Static checks on the command, resource checks on the loaded aggregate. Commands return `Result<Unit>`.
 
 ```csharp
-using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Primitives;
 
-public static class PermissionSeeder
+public sealed partial class OrderId : RequiredGuid<OrderId>;
+public sealed partial class ActorId : RequiredString<ActorId>;
+
+public sealed record Order(OrderId Id, ActorId OwnerId);
+
+public sealed record CancelOrderCommand(OrderId OrderId)
+    : ICommand<Result<Unit>>,
+      IAuthorize,
+      IAuthorizeResource<Order>,
+      IIdentifyResource<Order, OrderId>
 {
-    public static async Task SeedAsync(AppDbContext db, CancellationToken cancellationToken = default)
-    {
-        if (await db.Roles.AnyAsync(cancellationToken))
-            return;
+    public IReadOnlyList<string> RequiredPermissions { get; } = [Permissions.OrdersCancel];
 
-        var create = new Permission
-        {
-            Id = Guid.NewGuid(),
-            Name = Permissions.OrdersCreate,
-            Description = "Create orders"
-        };
+    public OrderId GetResourceId() => OrderId;
 
-        var read = new Permission
-        {
-            Id = Guid.NewGuid(),
-            Name = Permissions.OrdersRead,
-            Description = "Read orders"
-        };
-
-        var salesRep = new Role
-        {
-            Id = Guid.NewGuid(),
-            Name = "SalesRep",
-            Description = "Can create and read orders"
-        };
-
-        salesRep.Permissions.Add(create);
-        salesRep.Permissions.Add(read);
-
-        db.Permissions.AddRange(create, read);
-        db.Roles.Add(salesRep);
-
-        await db.SaveChangesAsync(cancellationToken);
-    }
+    public IResult Authorize(Actor actor, Order order) =>
+        Result.Ensure(
+            order.OwnerId.Value == actor.Id || actor.HasPermission(Permissions.OrdersCancelAny),
+            new Error.Forbidden("orders.cancel")
+                { Detail = "Only the owner can cancel this order." });
 }
 ```
 
-### Testing story
+Pipeline ordering (from [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md#behavioral-notes)):
 
-One of the nice parts of this pattern is that your test strategy barely changes:
+1. `AuthorizationBehavior` resolves the actor via your `IActorProvider`.
+2. Static `IAuthorize.RequiredPermissions` are checked with `actor.HasAllPermissions(...)`.
+3. The resource is loaded (per-command `IResourceLoader<TMessage, TResource>` or shared `SharedResourceLoaderById<TResource, TId>`).
+4. `IAuthorizeResource<TResource>.Authorize(actor, resource)` runs.
+5. The handler executes; on success `TransactionalCommandBehavior` commits via `IUnitOfWork`, mapping DB exceptions to typed `Error.Conflict` through `db.SaveChangesResultUnitAsync(ct)`.
 
-- **unit/application tests** can still use `TestActorProvider`
-- **API tests** can still use `DevelopmentActorProvider` and `CreateClientWithActor(...)`
-- **end-to-end tests** can use real tokens plus seeded permission data
+EF query filters compose with the same `Actor` when a tenant attribute is in scope:
 
-> [!TIP]
-> Keep the permission names in one shared `Permissions` class. It reduces drift between authorization policies, test setup, seed data, and admin UI code.
+```csharp
+modelBuilder.Entity<Order>().HasQueryFilter(o =>
+    o.TenantId == tenantAccessor.CurrentTenantId);
+```
+
+The accessor reads `actor.GetAttribute(ActorAttributes.TenantId)` once per request — `CachingActorProvider` ensures a single DB lookup.
+
+## Practical guidance
+
+- **Permission strings are ordinal.** Match the casing used in seed data, `IAuthorize.RequiredPermissions`, and `actor.HasPermission(...)` exactly. `Actor` uses `StringComparison.Ordinal` everywhere.
+- **Stage in the repository, commit in the pipeline.** Persist permission edits via `RepositoryBase<TAggregate, TId>`; `TransactionalCommandBehavior` calls `IUnitOfWork.CommitAsync(ct)`. Do not call `SaveChangesAsync` directly from a handler when `AddTrellisUnitOfWork<TContext>()` is registered.
+- **Use `SaveChangesResultUnitAsync(ct)` for one-off admin scripts.** Outside the mediator pipeline, this overload returns `Result<Unit>` and maps duplicate-key / FK / concurrency exceptions to `Error.Conflict`.
+- **Rely on request-scoped caching.** `AddCachingActorProvider<T>()` removes the need to memoise permissions yourself; emit a fresh request to pick up changes.
+- **Mirror Entra precedence.** Read `oid` first, then fall back to `sub` — same order as `EntraActorProvider` so DB-backed code coexists with claims-based deployments.
+- **Keep deny-list usage rare.** Add explicit denies to `Actor.ForbiddenPermissions` only when the domain genuinely needs an override; `Actor.HasPermission` already enforces deny-overrides-allow.
+
+## Cross-references
+
+- API surface (authorization primitives): [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md)
+- API surface (EF Core repository / save helpers / UoW): [`trellis-api-efcore.md`](../api_reference/trellis-api-efcore.md)
+- `Result<T>`, `Error.Forbidden`, `Error.NotFound`, `Specification<T>`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- Built-in `IActorProvider` implementations and DI helpers: [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md#namespace-trellisaspauthorization)
+- Mediator authorization + transactional behaviors and registration order: [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md)
+- Test-time actor injection (`CreateClientWithActor`): [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md)
+- EF Core integration overview (conventions, interceptors, `SaveChangesResult*`): [`integration-ef.md`](integration-ef.md)

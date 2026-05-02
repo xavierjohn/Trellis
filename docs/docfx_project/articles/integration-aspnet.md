@@ -1,31 +1,129 @@
-﻿# ASP.NET Core Integration
+﻿---
+title: ASP.NET Core Integration
+package: Trellis.Asp
+topics: [asp, minimal-api, controllers, http-result, problem-details, etag, prefer, pagination]
+related_api_reference: [trellis-api-asp.md, trellis-api-core.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# ASP.NET Core Integration
 
-**Level:** Intermediate | **Time:** 25-35 min | **Prerequisites:** [Basics](basics.md)
+`Trellis.Asp` maps `Result`, `Result<T>`, `Result<WriteOutcome<T>>`, and `Result<Page<T>>` to ASP.NET Core HTTP responses (status codes, Problem Details, ETags, `Prefer`, ranges, paginated envelopes) using the single verb `ToHttpResponse(...)`.
 
-When your application already returns `Result<T>`, the next problem is predictable HTTP behavior: correct status codes, useful Problem Details responses, clean controller code, and support for web concerns like ETags, `Prefer`, and pagination. `Trellis.Asp` solves that boundary.
+## Patterns Index
 
-> [!TIP]
-> Register `AddTrellisAsp()` even though Trellis has fallback defaults. It makes your HTTP mappings explicit and gives you one obvious place to customize them later.
+| Goal | Use | See |
+|---|---|---|
+| Map `Result<T>` to a Minimal API response | `result.ToHttpResponse(...)` / `ToHttpResponseAsync(...)` | [Quick start](#quick-start) |
+| Project the response body separately from the domain value | `result.ToHttpResponse(body: domain => dto, configure: opts => ...)` | [Body projection](#body-projection) |
+| Return `ActionResult<T>` from an MVC controller | `.AsActionResult<T>()` / `.AsActionResultAsync<T>()` | [MVC controllers](#mvc-controllers) |
+| Map `Result<Unit>` (no payload) | Return `Result.Ok()` — `ToHttpResponse` emits `204 No Content` | [Result&lt;Unit&gt; → 204](#resultunit--204-no-content) |
+| Override an error → status mapping for one endpoint | `opts.WithErrorMapping<TError>(status)` / `opts.WithErrorMapping(err => ...)` | [Error mapping](#error-mapping) |
+| Override mappings globally | `AddTrellisAsp(opts => opts.MapError<TError>(status))` | [Error mapping](#error-mapping) |
+| Conditional `GET`/`HEAD` (`If-None-Match`, `If-Modified-Since`) | `opts.WithETag(...).EvaluatePreconditions()` | [Conditional requests](#conditional-requests) |
+| Honor `Prefer: return=minimal` / `return=representation` | `opts.HonorPrefer()` on a `WriteOutcome` response | [Prefer header](#prefer-header) |
+| Emit `201 Created` with a `Location` header | `opts.CreatedAtRoute(name, values)` (AOT-safe) / `Created(...)` / `CreatedAtAction(...)` | [Created responses](#created-responses) |
+| Return paginated JSON + RFC 8288 `Link` header | `Result<Page<T>>.ToHttpResponse(nextUrlBuilder, body)` | [Pagination](#pagination) |
+| Return `206 Partial Content` for byte / item ranges | `opts.WithRange(from, to, total)` / `opts.WithRange(selector)` | [Range responses](#range-responses) |
+| Validate scalar value objects (route, query, JSON body) | `AddScalarValueValidation` + `UseScalarValueValidation` + `WithScalarValueValidation` | [Scalar value validation](#scalar-value-validation) |
+| Bind value objects in route segments | `AddTrellisRouteConstraint<T>("Name")` then `"/x/{id:Name}"` | [Route constraints](#route-constraints) |
+| Hydrate the current `Actor` from JWT claims | `AddClaimsActorProvider` / `AddEntraActorProvider` / `AddDevelopmentActorProvider` | [Actor providers](#actor-providers) |
 
-## What this package gives you
+## Use this guide when
 
-`Trellis.Asp` is the ASP.NET Core adapter layer for Trellis.
+- Your application returns `Result<T>` and you need predictable HTTP status, Problem Details, and conditional-request behavior at the boundary.
+- You are wiring Minimal API endpoints or MVC controllers and want one verb (`ToHttpResponse`) instead of a `switch`-per-endpoint.
+- You need ETag, `If-Match` / `If-None-Match`, `Prefer`, or `Range` semantics that match RFC 9110 / 7240 / 8288 without hand-rolling header parsing.
+- You bind scalar value objects (`IScalarValue<TSelf, TPrimitive>`) from routes, queries, or JSON bodies and want validation collected as `Error.UnprocessableContent`.
+- You hydrate the current `Actor` from JWT/OIDC claims for downstream authorization checks.
 
-It gives you:
+## Surface at a glance
 
-- `ToHttpResponse(...)` for mapping `Result<T>` to HTTP responses in Minimal APIs and MVC
-- `AsActionResult<T>()` for typed MVC `ActionResult<T>` signatures
-- default error-type-to-status-code mappings
-- Problem Details responses for failures
-- automatic `204 No Content` for successful `Result<Unit>` (returned from `Result.Ok()`)
-- scalar value validation for MVC and Minimal APIs
-- representation metadata support for headers like `ETag` and `Last-Modified`
-- `Prefer`-aware update helpers
-- partial-content helpers for paginated responses
+| Type | Purpose |
+|---|---|
+| `HttpResponseExtensions` | `ToHttpResponse` / `ToHttpResponseAsync` for `Error`, `Result<T>`, `Result<WriteOutcome<T>>`, `Result<Page<T>>` (with optional body projector). |
+| `HttpResponseOptionsBuilder<TDomain>` | Fluent options for the generic overloads (`WithETag`, `WithLastModified`, `Vary`, `Created`/`CreatedAtRoute`/`CreatedAtAction`, `EvaluatePreconditions`, `HonorPrefer`, `WithRange`, `WithErrorMapping`, …). |
+| `HttpResponseOptionsBuilder` | Non-generic builder for the `Error` overload (`Vary`, `HonorPrefer`, `WithErrorMapping`). |
+| `ActionResultAdapterExtensions` | `AsActionResult<T>` / `AsActionResultAsync<T>` to wrap an `IResult` for MVC. |
+| `TrellisAspOptions` | DI-registered error-type → status-code map; configure via `AddTrellisAsp(opts => opts.MapError<TError>(status))`. |
+| `ETagHelper` | `ParseIfMatch` / `ParseIfNoneMatch` returning `EntityTagValue[]?`; `IfMatchSatisfied` / `IfNoneMatchMatches` comparison helpers. |
+| `IfNoneMatchExtensions` | `EnforceIfNoneMatchPrecondition(EntityTagValue[]?)` — converts a successful result into `Error.PreconditionFailed` when `If-None-Match: *` is sent and the resource exists. |
+| `PreferHeader` | `Parse(HttpRequest)` → `ReturnRepresentation`, `ReturnMinimal`, `RespondAsync`, `Wait`, `HandlingStrict`, `HandlingLenient`, `HasPreferences`. |
+| `RangeRequestEvaluator` / `RangeOutcome` | RFC 9110 §14 `Range` evaluation (`bytes` only) returning `FullRepresentation` / `PartialContent` / `NotSatisfiable`. |
+| `PartialContentHttpResult` / `PartialContentResult` | `IResult` and MVC `ObjectResult` companions that emit `206 Partial Content`. |
+| `PagedResponse<TResponse>` / `PageLink` | JSON envelope and `Link` header entries returned by the `Result<Page<T>>` overload. |
+| `Trellis.Asp.Authorization.*` | `AddClaimsActorProvider` / `AddEntraActorProvider` / `AddDevelopmentActorProvider` / `AddCachingActorProvider<T>`. |
+| `Trellis.Asp.ModelBinding.*` | `ScalarValueModelBinder<,>` / `MaybeModelBinder<,>` / `ScalarValueModelBinderProvider`. |
+| `Trellis.Asp.Routing.*` | `TrellisValueObjectRouteConstraint<T>` + `AddTrellisRouteConstraint<T>` / `AddTrellisRouteConstraints`. |
+| `Trellis.Asp.Validation.*` | `ValidatingJsonConverter<,>`, `MaybeScalarValueJsonConverter<,>`, `ScalarValueValidationFilter` (MVC), `ScalarValueValidationEndpointFilter` (Minimal API), `ScalarValueValidationMiddleware`, `ValidationErrorsContext`. |
 
-## Quick start: MVC controllers
+Full signatures: [trellis-api-asp.md](../api_reference/trellis-api-asp.md).
 
-If you are using controllers, this is the smallest complete setup:
+## Installation
+
+```bash
+dotnet add package Trellis.Asp
+```
+
+`Trellis.Asp` bundles the AOT-friendly `Trellis.AspSourceGenerator.dll` (attached automatically) and contains the actor providers formerly published as `Trellis.Asp.Authorization`.
+
+## Quick start
+
+A composition root that wires Trellis.Asp once, then a Minimal API endpoint that returns `Result<T>`:
+
+```csharp
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddTrellisAsp();
+
+var app = builder.Build();
+app.UseScalarValueValidation();
+
+app.MapGet("/users/{id}", async (string id, IUserService users, CancellationToken ct) =>
+        (await users.GetByIdAsync(id, ct))
+            .ToHttpResponse(user => new UserResponse(user.Id, user.Email)))
+    .WithName("Users_GetById")
+    .WithScalarValueValidation();
+
+app.Run();
+
+public sealed record User(string Id, string Email);
+public sealed record UserResponse(string Id, string Email);
+
+public interface IUserService
+{
+    Task<Result<User>> GetByIdAsync(string id, CancellationToken ct);
+}
+```
+
+Behavior:
+
+- Success → `200 OK` with the projected `UserResponse` body.
+- `Error.NotFound` → `404 Not Found` Problem Details.
+- `Error.UnprocessableContent` → `422 Unprocessable Content` validation Problem Details.
+- Any other failure → status from `TrellisAspOptions` (default `500`).
+
+## `Result<Unit>` → 204 No Content
+
+Side-effecting commands return `Result<Unit>` from `Result.Ok()` / `Result.Fail(error)`. `Trellis.Asp` maps a successful `Result<Unit>` to `204 No Content` automatically — no body, no projector required.
+
+```csharp
+app.MapDelete("/users/{id}", async (string id, IUserService users, CancellationToken ct) =>
+    (await users.DeleteAsync(id, ct)).ToHttpResponse());
+
+public interface IUserService
+{
+    Task<Result<Unit>> DeleteAsync(string id, CancellationToken ct);
+}
+```
+
+## MVC controllers
+
+For MVC, convert with `ToHttpResponse` / `ToHttpResponseAsync`, then adapt with `AsActionResult<T>` / `AsActionResultAsync<T>` so the action signature stays `Task<ActionResult<T>>` for OpenAPI / `[ProducesResponseType<T>]`.
 
 ```csharp
 using Microsoft.AspNetCore.Mvc;
@@ -34,11 +132,9 @@ using Trellis;
 using Trellis.Asp;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Services
     .AddControllers()
     .AddScalarValueValidation();
-
 builder.Services.AddTrellisAsp();
 
 var app = builder.Build();
@@ -46,152 +142,118 @@ app.UseScalarValueValidation();
 app.MapControllers();
 app.Run();
 
-public interface IUserService
-{
-    Task<Result<User>> GetByIdAsync(string id, CancellationToken cancellationToken);
-    Task<Result<User>> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken);
-}
-
-public sealed record User(string Id, string Email);
-public sealed record CreateUserRequest(string Email);
-public sealed record UserResponse(string Id, string Email)
-{
-    public static UserResponse From(User user) => new(user.Id, user.Email);
-}
-
 [ApiController]
 [Route("users")]
 public sealed class UsersController(IUserService users) : ControllerBase
 {
     [HttpGet("{id}", Name = nameof(GetById))]
-    public async Task<ActionResult<UserResponse>> GetById(string id, CancellationToken ct)
-    {
-        Result<User> result = await users.GetByIdAsync(id, ct);
-        return result
-            .ToHttpResponse(UserResponse.From)
-            .AsActionResult<UserResponse>();
-    }
+    [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<ActionResult<UserResponse>> GetById(string id, CancellationToken ct) =>
+        users.GetByIdAsync(id, ct)
+            .ToHttpResponseAsync(user => new UserResponse(user.Id, user.Email))
+            .AsActionResultAsync<UserResponse>();
 
     [HttpPost]
-    public async Task<ActionResult<UserResponse>> Create(CreateUserRequest request, CancellationToken ct)
-    {
-        Result<User> result = await users.CreateAsync(request, ct);
-        return result
-            .ToHttpResponse(
-                UserResponse.From,
-                opts => opts.CreatedAtRoute(
+    [ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public Task<ActionResult<UserResponse>> Create(CreateUserRequest request, CancellationToken ct) =>
+        users.CreateAsync(request, ct)
+            .ToHttpResponseAsync(
+                body: user => new UserResponse(user.Id, user.Email),
+                configure: opts => opts.CreatedAtRoute(
                     nameof(GetById),
-                    user => new RouteValueDictionary(new { id = user.Id })))
-            .AsActionResult<UserResponse>();
-    }
-}
-```
-
-Why this works well:
-
-- your service layer stays focused on domain results
-- your controller only handles HTTP concerns
-- success and failure paths stay visible
-
-## Quick start: Minimal APIs
-
-If you prefer Minimal APIs, use the Minimal API helpers instead:
-
-```csharp
-using Microsoft.AspNetCore.Routing;
-using Trellis;
-using Trellis.Asp;
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddTrellisAsp();
-builder.Services.AddScalarValueValidationForMinimalApi();
-
-var app = builder.Build();
-app.UseScalarValueValidation();
-
-app.MapGet("/users/{id}", async (
-    string id,
-    IUserService users,
-    CancellationToken ct) =>
-    await users.GetByIdAsync(id, ct)
-        .ToHttpResponseAsync(UserResponse.From))
-    .WithName("GetUser");
-
-app.MapPost("/users", async (
-    CreateUserRequest request,
-    IUserService users,
-    CancellationToken ct) =>
-    await users.CreateAsync(request, ct)
-        .ToHttpResponseAsync(
-            UserResponse.From,
-            opts => opts.CreatedAtRoute(
-                "GetUser",
-                user => new RouteValueDictionary(new { id = user.Id }))));
-
-app.Run();
-
-public interface IUserService
-{
-    Task<Result<User>> GetByIdAsync(string id, CancellationToken cancellationToken);
-    Task<Result<User>> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken);
+                    user => new RouteValueDictionary { ["id"] = user.Id }))
+            .AsActionResultAsync<UserResponse>();
 }
 
 public sealed record User(string Id, string Email);
 public sealed record CreateUserRequest(string Email);
-public sealed record UserResponse(string Id, string Email)
+public sealed record UserResponse(string Id, string Email);
+
+public interface IUserService
 {
-    public static UserResponse From(User user) => new(user.Id, user.Email);
+    Task<Result<User>> GetByIdAsync(string id, CancellationToken ct);
+    Task<Result<User>> CreateAsync(CreateUserRequest request, CancellationToken ct);
 }
 ```
 
-## `AddTrellisAsp()` overloads
+> [!NOTE]
+> `AsActionResult<T>` only exists for the generic `ActionResult<T>` shape. For value-less responses, return `IResult` directly from a Minimal API endpoint or use `IActionResult` in MVC.
 
-There are two registration styles:
+## Body projection
+
+Every generic `ToHttpResponse` overload accepts an optional `body: Func<TDomain, TBody>` projector. The selectors in the options builder (`WithETag`, `WithLastModified`, `Created(selector)`, `CreatedAtRoute(values)`, `WithContentLocation`, `WithRange(selector)`) **always run against the domain value**, not the projected body. This keeps response DTOs free of representation concerns:
 
 ```csharp
-builder.Services.AddTrellisAsp();
+return result.ToHttpResponse(
+    body: product => new ProductResponse(product.Id.Value, product.Name.Value, product.Price.Value),
+    configure: opts => opts
+        .WithETag(product => product.ETag)
+        .CreatedAtRoute("Products_GetById", product => new RouteValueDictionary { ["id"] = product.Id.Value }));
+```
 
-builder.Services.AddTrellisAsp(options =>
+There is **no** `WithBody(...)` builder method. Pass the projector as the second positional argument to `ToHttpResponse` instead.
+
+## Error mapping
+
+Defaults are sourced from `TrellisAspOptions`:
+
+| `Error` type | Default status |
+|---|---|
+| `Error.BadRequest` | `400` |
+| `Error.Unauthorized` | `401` |
+| `Error.Forbidden` | `403` |
+| `Error.NotFound` | `404` |
+| `Error.MethodNotAllowed` | `405` |
+| `Error.NotAcceptable` | `406` |
+| `Error.Conflict` | `409` |
+| `Error.Gone` | `410` |
+| `Error.PreconditionFailed` | `412` |
+| `Error.ContentTooLarge` | `413` |
+| `Error.UnsupportedMediaType` | `415` |
+| `Error.RangeNotSatisfiable` | `416` |
+| `Error.UnprocessableContent` | `422` |
+| `Error.PreconditionRequired` | `428` |
+| `Error.TooManyRequests` | `429` |
+| `Error.InternalServerError` / `Error.Unexpected` | `500` |
+| `Error.NotImplemented` | `501` |
+| `Error.ServiceUnavailable` | `503` |
+
+Override globally:
+
+```csharp
+builder.Services.AddTrellisAsp(opts =>
 {
-    options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+    opts.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
 });
 ```
 
-Use the parameterless overload when the defaults already match your API. Use the configured overload when you want to override specific mappings.
+Override per call (highest precedence first):
 
-## Default error mapping
+```csharp
+return result.ToHttpResponse(
+    body: order => new OrderResponse(order.Id),
+    configure: opts => opts
+        .WithErrorMapping<Error.Conflict>(StatusCodes.Status409Conflict)
+        .WithErrorMapping(err => err is Error.NotFound ? StatusCodes.Status410Gone : default));
+```
 
-One of the biggest wins of `Trellis.Asp` is that you do not need a custom `switch` statement in every endpoint.
-
-| Trellis error type | Default HTTP status |
-| --- | --- |
-| `Error.UnprocessableContent` | `422 Unprocessable Content` |
-| `Error.BadRequest` | `400 Bad Request` |
-| `Error.Unauthorized` | `401 Unauthorized` |
-| `Error.Forbidden` | `403 Forbidden` |
-| `Error.NotFound` | `404 Not Found` |
-| `Error.MethodNotAllowed` | `405 Method Not Allowed` |
-| `Error.NotAcceptable` | `406 Not Acceptable` |
-| `Error.Conflict` | `409 Conflict` |
-| `Error.Gone` | `410 Gone` |
-| `Error.PreconditionFailed` | `412 Precondition Failed` |
-| `Error.ContentTooLarge` | `413 Content Too Large` |
-| `Error.UnsupportedMediaType` | `415 Unsupported Media Type` |
-| `Error.RangeNotSatisfiable` | `416 Range Not Satisfiable` |
-| `Error.PreconditionRequired` | `428 Precondition Required` |
-| `Error.TooManyRequests` | `429 Too Many Requests` |
-| `Error.InternalServerError` | `500 Internal Server Error` |
-| `Error.Unexpected` | `500 Internal Server Error` |
-| `Error.NotImplemented` | `501 Not Implemented` |
-| `Error.ServiceUnavailable` | `503 Service Unavailable` |
-
-> [!NOTE]
-> Trellis error codes default to the error kind, such as `unprocessable-content` or `not-found`. Some payload-bearing cases expose a per-instance reason code instead.
+Resolution order: `WithErrorMapping(Func<Error,int>)` → `WithErrorMapping<TError>(int)` → `TrellisAspOptions.MapError<TError>(int)` → `500`.
 
 ## Problem Details output
 
-Failures are returned as Problem Details responses, so clients get a standard shape instead of ad hoc JSON.
+Failures are emitted as `application/problem+json`. Companion headers are added automatically:
+
+| Error | Companion header |
+|---|---|
+| `Error.MethodNotAllowed` | `Allow` |
+| `Error.TooManyRequests` / `Error.ServiceUnavailable` | `Retry-After` (when configured) |
+| `Error.RangeNotSatisfiable` | `Content-Range: {Unit} */{CompleteLength}` |
+
+Extensions always carry `code` and `kind`. `Error.InternalServerError` adds `faultId`. Rule violations land under `rules`. **For any `5xx`, `Detail` is replaced with `"An internal error occurred."`** so internal diagnostics never leak.
+
+`Error.UnprocessableContent` is routed to `Results.ValidationProblem(...)`:
 
 ```http
 HTTP/1.1 422 Unprocessable Content
@@ -208,59 +270,182 @@ Content-Type: application/problem+json
 }
 ```
 
-## Scalar value validation
+The `errors` dictionary keys are each `FieldViolation.Field.Path` with the leading `/` trimmed; the values are `Detail ?? ReasonCode`.
 
-This solves a common pain point: value objects are great in your domain, but raw ASP.NET Core model binding does not know how to validate them the way Trellis does.
+## Created responses
 
-### MVC setup
+Three options for `201 Created`. Pick by your AOT requirement and the link source.
 
-For controllers, use the MVC-specific registration:
+| Builder | Location source | AOT-safe |
+|---|---|---|
+| `Created(string locationLiteral)` | Caller-supplied literal | Yes |
+| `Created(Func<TDomain, string> selector)` | Selector over the domain value | Yes |
+| `CreatedAtRoute(string routeName, Func<TDomain, RouteValueDictionary> routeValues)` | `LinkGenerator.GetUriByName` (resolved at execute time) | Yes |
+| `CreatedAtAction(string actionName, Func<TDomain, RouteValueDictionary> routeValues, string? controllerName = null)` | `LinkGenerator.GetUriByAction` | **No** — `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` |
 
 ```csharp
-builder.Services
-    .AddControllers()
-    .AddScalarValueValidation();
-
-var app = builder.Build();
-app.UseScalarValueValidation();
-app.MapControllers();
+app.MapPost("/products", async (CreateProduct cmd, IProductWriter writer, CancellationToken ct) =>
+        (await writer.CreateAsync(cmd, ct)).ToHttpResponse(
+            body: product => new ProductResponse(product.Id.Value, product.Name.Value),
+            configure: opts => opts.CreatedAtRoute(
+                "Products_GetById",
+                product => new RouteValueDictionary { ["id"] = product.Id.Value })))
+    .WithName("Products_Create");
 ```
 
-That registration adds:
+> [!WARNING]
+> Under query-string API versioning, `CreatedAtRoute` route values **must** include `["api-version"] = ApiVersion`. Otherwise the emitted `Location` header omits the version and 404s on dereference (the response itself looks correct).
 
-- JSON converter support for scalar values
-- model binders for route/query/form values
-- a validation filter that returns proper validation responses
+### `WriteOutcome<T>`
 
-### Minimal API setup
+When commands return `Result<WriteOutcome<T>>`, the response is RFC 9110-shaped from the variant:
 
-For Minimal APIs, register JSON support, middleware, and the endpoint filter:
+| `WriteOutcome<T>` | Status |
+|---|---|
+| `Created(value)` | `201 Created` (plus `Location` from `Created`/`CreatedAtRoute`/`CreatedAtAction`) |
+| `Updated(value)` | `200 OK` (or `204 No Content` with `Prefer: return=minimal` and `HonorPrefer()`) |
+| `UpdatedNoContent` | `204 No Content` |
+| `Accepted(value)` | `202 Accepted` (with `Retry-After` when configured) |
+| `AcceptedNoContent` | `202 Accepted` |
 
 ```csharp
-using Trellis.Primitives;
+app.MapPut("/orders/{id:guid}", async (
+        Guid id,
+        UpdateOrderRequest request,
+        IOrderService orders,
+        CancellationToken ct) =>
+    (await orders.UpdateAsync(id, request, ct)).ToHttpResponse(
+        body: order => new OrderResponse(order.Id, order.Total),
+        configure: opts => opts
+            .WithETag(order => order.ETag)
+            .HonorPrefer()));
+```
+
+## Conditional requests
+
+`EvaluatePreconditions()` runs only on `GET` / `HEAD` and only when at least one selector (`WithETag` / `WithLastModified`) is configured. Evaluation order (RFC 9110): `If-Match` → `If-Unmodified-Since` → `If-None-Match` → `If-Modified-Since`. Failed `If-Match` / `If-Unmodified-Since` → `412`; failed `If-None-Match` / `If-Modified-Since` on `GET`/`HEAD` → `304`.
+
+```csharp
+app.MapGet("/products/{id:guid}", async (Guid id, IProductReader reader, CancellationToken ct) =>
+    (await reader.GetAsync(id, ct)).ToHttpResponse(
+        body: product => new ProductResponse(product.Id, product.Name, product.Price, product.ETag),
+        configure: opts => opts
+            .WithETag(product => product.ETag)
+            .WithLastModified(product => product.UpdatedAt)
+            .EvaluatePreconditions()));
+```
+
+For unsafe methods (`PUT`, `POST`), evaluate preconditions **before** the mutation. Use the typed parsers from `ETagHelper`:
+
+```csharp
 using Trellis.Asp;
 
-var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddScalarValueValidationForMinimalApi();
-
-var app = builder.Build();
-app.UseScalarValueValidation();
-
-app.MapPost("/customers", (CreateCustomerRequest request) => Results.Ok(request))
-    .WithScalarValueValidation();
-
-app.Run();
-
-public sealed record CreateCustomerRequest(EmailAddress Email, FirstName Name);
+EntityTagValue[]? ifMatch = ETagHelper.ParseIfMatch(httpContext.Request);
+EntityTagValue[]? ifNoneMatch = ETagHelper.ParseIfNoneMatch(httpContext.Request);
 ```
 
-### Important distinction
+`ParseIfMatch` returns `null` (header absent), `[]` (present but empty / weak-only — strong-only enforcement), the wildcard, or the parsed strong tags. `ParseIfNoneMatch` returns `null`, `[]`, the wildcard, or the parsed strong/weak tags.
 
-`AddScalarValueValidation()` also exists on `IServiceCollection`, but that convenience overload only configures shared JSON support. It does **not** replace `AddControllers().AddScalarValueValidation()` for MVC apps.
+The aggregate-side concurrency helpers `OptionalETag(...)` / `RequireETag(...)` consume `EntityTagValue[]?`. They live in `Trellis.Core` — see [`trellis-api-core.md`](../api_reference/trellis-api-core.md).
 
-## Optional value objects with `Maybe<T>`
+For "create only if absent" flows (`PUT` / `POST` with `If-None-Match: *`), use `EnforceIfNoneMatchPrecondition`:
 
-`Maybe<T>` is useful when “missing” is valid but “present and invalid” should still fail the request.
+```csharp
+using Trellis.Asp;
+
+var guarded = result.EnforceIfNoneMatchPrecondition(
+    ETagHelper.ParseIfNoneMatch(httpContext.Request));
+```
+
+When the header contains `*` and the result is currently a success, it is replaced with `Error.PreconditionFailed` (`PreconditionKind.IfNoneMatch`). No-op otherwise.
+
+## Prefer header
+
+`HonorPrefer()` honors RFC 7240 `Prefer: return=minimal` / `return=representation` on a `WriteOutcome` response. It always emits `Vary: Prefer`; `Preference-Applied` is emitted only when Trellis honored a preference.
+
+| Sent header | Effect on `WriteOutcome.Updated` |
+|---|---|
+| `Prefer: return=minimal` | `204 No Content` + `Preference-Applied: return=minimal` |
+| `Prefer: return=representation` | `200 OK` with body + `Preference-Applied: return=representation` |
+| (none) | `200 OK` with body (no `Preference-Applied`) |
+
+For raw access to the parsed header:
+
+```csharp
+using Trellis.Asp;
+
+var prefer = PreferHeader.Parse(httpContext.Request);
+if (prefer.ReturnMinimal) { /* … */ }
+```
+
+> [!NOTE]
+> `PreferHeader.HasPreferences` is `true` only when at least one **recognized** standard preference (`return`, `respond-async`, `wait`, `handling`) was parsed. Unknown tokens do not set it.
+
+## Pagination
+
+The `Result<Page<T>>` overload always emits a `PagedResponse<TBody>` JSON envelope. The RFC 8288 `Link` header is added only when `Page.Next` and/or `Page.Previous` cursors are present.
+
+```csharp
+app.MapGet("/products", async (
+        string? cursor,
+        int? limit,
+        IProductReader reader,
+        HttpContext ctx,
+        CancellationToken ct) =>
+    (await reader.ListAsync(cursor, limit ?? 50, ct)).ToHttpResponse(
+        nextUrlBuilder: (next, applied) =>
+            $"{ctx.Request.Scheme}://{ctx.Request.Host}/products?cursor={next.Token}&limit={applied}",
+        body: product => new ProductResponse(product.Id, product.Name)));
+
+public sealed record ProductResponse(string Id, string Name);
+
+public interface IProductReader
+{
+    Task<Result<Page<Product>>> ListAsync(string? cursor, int limit, CancellationToken ct);
+}
+```
+
+Failure on the page result short-circuits through the standard error pipeline (Problem Details, default mapping).
+
+## Range responses
+
+`WithRange(from, to, totalLength)` emits `200 OK` when the configured range covers the whole representation; otherwise `206 Partial Content` with `Content-Range`. The static-range overload clamps `to` to `totalLength - 1`.
+
+```csharp
+app.MapGet("/products", async (IProductReader reader, int? page, int? pageSize, CancellationToken ct) =>
+{
+    var size = Math.Clamp(pageSize ?? 25, 1, 100);
+    var number = Math.Max(page ?? 0, 0);
+    var from = number * size;
+
+    var (items, total) = await reader.ListWithCountAsync(from, size, ct);
+    if (items.Length == 0) return Result.Ok(items).ToHttpResponse();
+
+    var to = from + items.Length - 1;
+    return Result.Ok(items).ToHttpResponse(opts => opts.WithRange(from, to, total));
+});
+```
+
+For byte ranges with full RFC 9110 semantics, evaluate `Range` yourself with `RangeRequestEvaluator.Evaluate(request, completeLength)` and switch on `RangeOutcome`. `RangeRequestEvaluator` returns `FullRepresentation` for non-`GET`, missing `Range`, non-`bytes` units, multi-range, malformed, or empty ranges; only well-formed satisfiable single byte ranges produce `PartialContent`.
+
+## Scalar value validation
+
+`Trellis.Asp` validates value objects implementing `IScalarValue<TSelf, TPrimitive>` at every binding site (route, query, JSON body) and surfaces the result as `Error.UnprocessableContent`.
+
+| Host | Required wiring |
+|---|---|
+| MVC controllers | `services.AddControllers().AddScalarValueValidation();` + `app.UseScalarValueValidation();` |
+| Minimal API | `services.AddScalarValueValidationForMinimalApi();` + `app.UseScalarValueValidation();` + `.WithScalarValueValidation()` per endpoint |
+| Either | `services.AddTrellisAsp();` (registers `TrellisAspOptions` and chains `AddScalarValueValidation()` for **both** MVC and Minimal API JSON pipelines) |
+
+> [!IMPORTANT]
+> The `IServiceCollection`-receiver `AddScalarValueValidation()` only configures shared JSON support. For MVC apps you still need `AddControllers().AddScalarValueValidation()` so the `ScalarValueValidationFilter` and `ScalarValueModelBinderProvider` are registered.
+
+`Maybe<T>` rules:
+
+- Omitted or JSON `null` → `Maybe<T>.None`.
+- Valid value → `Maybe.From(value)`.
+- Invalid value (fails `TValue.TryCreate`) → validation error collected in `ValidationErrorsContext`; the request short-circuits with a validation Problem Details before the handler runs.
 
 ```csharp
 using Trellis;
@@ -272,207 +457,111 @@ public sealed record UpdateCustomerRequest(
     Maybe<Url> Website);
 ```
 
-With scalar value validation enabled:
+> [!WARNING]
+> `AddTrellisAsp` / `AddScalarValueValidation` only wire **scalar** VO converters. **Composite** value objects (multi-field `[OwnedEntity]` types like `ShippingAddress`, `Money`) need an explicit `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the type; otherwise model binding silently bypasses `TryCreate` and an invalid payload reaches the domain layer.
 
-- omitted or `null` optional values become `Maybe<T>.None`
-- valid values become `Maybe.From(value)`
-- invalid values produce a validation error instead of silently becoming `null`
+## Route constraints
 
-## Conditional requests: ETags and concurrency
-
-This solves the “lost update” problem and lets clients cache responses safely.
-
-### GET with representation metadata
-
-Use representation metadata to emit response headers such as `ETag`.
+Bind value objects (any `IParsable<T>`) directly from a route segment.
 
 ```csharp
-using Trellis;
 using Trellis.Asp;
 
-app.MapGet("/products/{id:guid}", (Guid id, ProductDbContext db) =>
-    db.Products
-        .FirstOrDefaultResultAsync(
-            p => p.Id == ProductId.Create(id),
-            new Error.NotFound(new ResourceRef("Resource", id.ToString())) { Detail = "Product not found." })
+// AOT-safe — explicit registration per type
+services.AddTrellisRouteConstraint<ProductId>("ProductId");
+
+// Reflection-based — scans the calling assembly + Trellis.Core for IScalarValue<,> + IParsable<>
+services.AddTrellisRouteConstraints();
+
+app.MapGet("/products/{id:ProductId}", (ProductId id) => Results.Ok(id));
+```
+
+`AddTrellisRouteConstraints` is reflection-based and **not Native AOT compatible**; `AddTrellisRouteConstraint<T>` is AOT-safe.
+
+## Actor providers
+
+`Trellis.Asp.Authorization` hydrates the current `Actor` from JWT/OIDC claims. The `Actor` and `IActorProvider` types themselves live in `Trellis.Authorization`.
+
+```csharp
+using Trellis.Asp.Authorization;
+
+services.AddClaimsActorProvider(opts =>
+{
+    opts.ActorIdClaim = "sub";
+    opts.PermissionsClaim = "permissions";
+});
+
+services.AddEntraActorProvider(opts =>
+{
+    opts.MapPermissions = claims => claims
+        .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
+        .Select(c => c.Value)
+        .ToHashSet();
+});
+
+if (env.IsDevelopment())
+{
+    services.AddDevelopmentActorProvider(opts =>
+    {
+        opts.DefaultActorId = "development";
+        opts.DefaultPermissions = new HashSet<string> { "orders:read", "orders:create" };
+    });
+}
+
+// Wraps the previously registered IActorProvider with per-request caching:
+services.AddCachingActorProvider<EntraActorProvider>();
+```
+
+`DevelopmentActorProvider` throws `InvalidOperationException` outside the Development environment regardless of header presence; in Development it reads the `X-Test-Actor` header (JSON: `{ "Id", "Permissions", "ForbiddenPermissions", "Attributes" }`, case-insensitive). See [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md) for `WebApplicationFactory.CreateClientWithActor`.
+
+## Composition
+
+Once the application returns `Result<T>` / `Result<WriteOutcome<T>>`, every cross-cutting concern composes through the same `ToHttpResponse` call — there is no per-endpoint `switch` to keep in sync with the error catalog.
+
+```csharp
+app.MapPut("/products/{id:guid}", async (
+        Guid id,
+        UpdateProductRequest request,
+        IProductService products,
+        HttpContext httpContext,
+        CancellationToken ct) =>
+{
+    var ifMatch = ETagHelper.ParseIfMatch(httpContext.Request);
+    var ifNoneMatch = ETagHelper.ParseIfNoneMatch(httpContext.Request);
+
+    return await products.UpdateAsync(id, request, ifMatch, ct)
+        .EnforceIfNoneMatchPreconditionAsync(ifNoneMatch)
         .ToHttpResponseAsync(
-            ProductResponse.From,
-            opts => opts
+            body: product => new ProductResponse(product.Id, product.Name, product.Price, product.ETag),
+            configure: opts => opts
                 .WithETag(product => product.ETag)
-                .EvaluatePreconditions()));
-
-public sealed record ProductResponse(Guid Id, string Name, decimal Price, string ETag)
-{
-    public static ProductResponse From(Product product) =>
-        new(product.Id.Value, product.Name.Value, product.Price.Value, product.ETag);
-}
-```
-
-If the client sends a matching `If-None-Match`, the response is automatically shortened to `304 Not Modified`.
-
-### PUT with `If-Match`
-
-`ETagHelper.ParseIfMatch(request)` returns `EntityTagValue[]?`, and that typed value flows directly into Trellis concurrency helpers.
-
-```csharp
-using Trellis;
-using Trellis.Asp;
-using Trellis.Primitives;
-
-app.MapPut("/products/{id:guid}", (Guid id, UpdateProductRequest request, ProductDbContext db, HttpContext httpContext) =>
-    db.Products
-        .FirstOrDefaultResultAsync(
-            p => p.Id == ProductId.Create(id),
-            new Error.NotFound(new ResourceRef("Resource", id.ToString())) { Detail = "Product not found." })
-        .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
-        .BindAsync(product => product.UpdatePrice(request.Price))
-        .CheckAsync(_ => db.SaveChangesResultUnitAsync())
-        .MapAsync(product => (WriteOutcome<Product>)new WriteOutcome<Product>.Updated(product))
-        .ToHttpResponseAsync(
-            ProductResponse.From,
-            opts => opts
-                .WithETag(product => product.ETag)
-                .HonorPrefer()));
-
-public sealed record UpdateProductRequest(MonetaryAmount Price);
-public sealed record ProductResponse(Guid Id, string Name, decimal Price, string ETag)
-{
-    public static ProductResponse From(Product product) =>
-        new(product.Id.Value, product.Name.Value, product.Price.Value, product.ETag);
-}
-```
-
-Use:
-
-- `OptionalETag(...)` when `If-Match` is optional
-- `RequireETag(...)` when missing `If-Match` should fail with `428 Precondition Required`
-
-### Create-if-absent with `If-None-Match`
-
-For “only create if this resource does not already exist” flows, use `ParseIfNoneMatch(...)` and `EnforceIfNoneMatchPrecondition(...)`.
-
-```csharp
-var ifNoneMatch = ETagHelper.ParseIfNoneMatch(httpContext.Request); // EntityTagValue[]?
-var guarded = result.EnforceIfNoneMatchPrecondition(ifNoneMatch);
-```
-
-> [!NOTE]
-> `EnforceIfNoneMatchPrecondition(...)` takes `EntityTagValue[]?`, not `string[]`.
-
-## `Prefer` header support
-
-Sometimes a client wants the updated representation back. Sometimes it only wants confirmation that the write succeeded. Trellis supports both without forcing you to hand-roll header parsing.
-
-```csharp
-using Trellis;
-using Trellis.Asp;
-
-app.MapPut("/orders/{id:guid}", async (
-    Guid id,
-    UpdateOrderRequest request,
-    IOrderService orders,
-    CancellationToken ct) =>
-    await orders.UpdateAsync(id, request, ct)
-        .MapAsync(order => (WriteOutcome<Order>)new WriteOutcome<Order>.Updated(order))
-        .ToHttpResponseAsync(
-            OrderResponse.From,
-            opts => opts
-                .WithETag(order => order.ETag)
-                .HonorPrefer()));
-```
-
-Behavior:
-
-- `Prefer: return=minimal` → `204 No Content`
-- `Prefer: return=representation` → `200 OK` with a body
-- `Preference-Applied` is emitted when Trellis honors the preference
-
-If you need raw access to the parsed header:
-
-```csharp
-var prefer = PreferHeader.Parse(httpContext.Request);
-
-if (prefer.ReturnMinimal)
-{
-    // client asked for a minimal response
-}
-```
-
-> [!NOTE]
-> `PreferHeader.HasPreferences` means “at least one recognized standard preference was parsed.” Unknown tokens do not set it.
-
-## Pagination and partial content
-
-For paged item collections, Trellis can return `206 Partial Content` with a `Content-Range` header.
-
-```csharp
-app.MapGet("/products", async (ProductDbContext db, int? page, int? pageSize) =>
-{
-    var size = Math.Clamp(pageSize ?? 25, 1, 100);
-    var number = Math.Max(page ?? 0, 0);
-    var from = number * size;
-
-    var total = await db.Products.CountAsync();
-    var items = await db.Products
-        .OrderBy(p => p.Name)
-        .Skip(from)
-        .Take(size)
-        .Select(ProductResponse.From)
-        .ToArrayAsync();
-
-    if (items.Length == 0)
-        return Results.Ok(items);
-
-    var to = from + items.Length - 1;
-    return Result.Ok(items).ToHttpResponse(opts => opts.WithRange(from, to, total));
+                .HonorPrefer()
+                .WithErrorMapping<Error.Conflict>(StatusCodes.Status409Conflict));
 });
 ```
 
-> [!NOTE]
-> `RangeRequestEvaluator` is the lower-level RFC 9110 byte-range helper. It intentionally returns `FullRepresentation` for many cases: non-`GET` requests, missing `Range`, unsupported units, empty ranges, multiple ranges, and malformed single ranges.
+When you genuinely need a custom payload shape (non-Problem-Details body, endpoint-specific JSON, extra cookies), reach for `MatchAsync` from `Trellis.Core` instead of `ToHttpResponse`. Treat that as the exception, not the rule.
 
-## When to customize the response yourself
+## Practical guidance
 
-The built-in mappers are the default choice. Reach for custom matching only when the endpoint genuinely needs a custom payload shape.
+- **Convert at the API boundary only.** Keep `Result<T>` flowing through your application layer; convert to `IResult` / `ActionResult<T>` exactly once, at the endpoint.
+- **`AddTrellisAsp()` is the one-call setup.** It registers `TrellisAspOptions` and configures both the MVC and Minimal API JSON pipelines for scalar-value / `Maybe<T>` deserialization. You still need `UseScalarValueValidation()` middleware and (for Minimal APIs) `WithScalarValueValidation()` per endpoint.
+- **Document failure status codes.** Add `[ProducesResponseType<ProblemDetails>(...)]` for every spec-listed failure status (`422`, `409`, `403`, `404`, …). The `IEndpointMetadataProvider` on Trellis result types already declares the union of statuses the writer can emit (`200`, `201`, `206`, `304`, `400`, `404`, `412`, `500`); layer your spec-specific metadata on top.
+- **`Result<Unit>` for side-effect commands**. A successful `Result<Unit>` produces `204 No Content` with no body.
+- **Use typed ETag parsers.** `ETagHelper.ParseIfMatch` / `ParseIfNoneMatch` return `EntityTagValue[]?`, which feeds `OptionalETag` / `RequireETag` (Core) and `EnforceIfNoneMatchPrecondition` (Asp) directly.
+- **Versioned `Location` headers.** Under query-string API versioning, every `CreatedAtRoute` call must include `["api-version"] = ApiVersion` in the route values, otherwise the `Location` 404s on dereference and tests still pass.
+- **Avoid controller-level `[Consumes("application/json")]`.** Trigger-style POSTs without bodies (e.g., `POST /orders/{id}/submission`) return `415` for any request without a `Content-Type`. Apply `[Consumes]` per body-bearing action.
+- **Prefer `CreatedAtRoute` over `CreatedAtAction`** for trim/AOT scenarios; `CreatedAtAction` is annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]`.
+- **Prove `422` mapping in integration tests.** Exception middleware does not map Trellis `Result` failures — assert at least one business-validation failure surfaces as `422` Problem Details end-to-end.
 
-```csharp
-app.MapPost("/orders", async (
-    CreateOrderRequest request,
-    IOrderService orders,
-    CancellationToken ct) =>
-    await orders.CreateAsync(request, ct).MatchAsync(
-        onSuccess: order => Results.Created($"/orders/{order.Id}", order),
-        onFailure: error => error switch
-        {
-            Error.UnprocessableContent uc => Results.UnprocessableEntity(new
-            {
-                message = "Validation failed",
-                errors = uc.Fields.Items
-                    .GroupBy(v => v.Field.Path)
-                    .ToDictionary(g => g.Key, g => g.Select(v => v.Detail ?? v.ReasonCode).ToArray())
-            }),
-            Error.Conflict c              => Results.Conflict(new { message = c.Detail }),
-            _                              => Results.StatusCode(StatusCodes.Status500InternalServerError)
-        },
-        cancellationToken: ct));
-```
+## Cross-references
 
-Use this approach when you need:
-
-- a non-Problem-Details error body
-- endpoint-specific payload shapes
-- extra headers or cookies beyond the standard helpers
-
-## Best practices
-
-1. **Convert at the API boundary only.** Keep `Result<T>` in your application layer.
-2. **Use MVC-specific or Minimal-API-specific validation setup.** Do not rely on the shared convenience overload alone for MVC.
-3. **Use `Result<Unit>` for side-effect operations.** Trellis maps successful `Result<Unit>` to `204 No Content`.
-4. **Prefer typed ETag helpers.** `ParseIfMatch(...)` and `ParseIfNoneMatch(...)` return `EntityTagValue[]?`, which matches the concurrency APIs.
-5. **Use representation metadata instead of hand-writing headers** when you want `ETag`, `Last-Modified`, `Vary`, or related response metadata.
-
-## Next steps
-
-- Add [FluentValidation Integration](integration-fluentvalidation.md) for richer business validation
-- Add [ASP.NET Core Authorization](integration-asp-authorization.md) when claims need to become an `Actor`
-- Add [Entity Framework Core Integration](integration-ef.md) if your handlers persist aggregates or read models
+- API surface: [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md)
+- `Result`, `Result<T>`, `Error`, `WriteOutcome<T>`, `Page<T>`, `EntityTagValue`, `OptionalETag` / `RequireETag`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- `Actor`, `IActorProvider`, `IAuthorize`: [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md)
+- `IScalarValue<TSelf, TPrimitive>`, `Maybe<T>`, ready-to-use value objects: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
+- Integration-test helpers (`CreateClientWithActor` for `X-Test-Actor`): [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md)
+- Composite value object end-to-end pattern (Recipe 13): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership)
+- HTTP client side (consuming results): [`integration-http.md`](integration-http.md)
+- FluentValidation pipeline: [`integration-fluentvalidation.md`](integration-fluentvalidation.md)
+- EF Core integration (`FirstOrDefaultResultAsync`, `SaveChangesResultUnitAsync`): [`integration-ef.md`](integration-ef.md)

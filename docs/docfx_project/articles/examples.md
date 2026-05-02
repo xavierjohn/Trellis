@@ -1,8 +1,31 @@
-﻿# Examples
+﻿---
+title: Examples
+package: Trellis (multiple)
+topics: [examples, patterns, validation, async, http, fluentvalidation, recovery, parallel]
+related_api_reference: [trellis-api-core.md, trellis-api-asp.md, trellis-api-primitives.md, trellis-api-fluentvalidation.md]
+last_verified: 2026-05-01
+audience: [developer]
+---
+# Examples
 
 This article is a pattern library for real application code. Each section starts with the problem, then shows a working Trellis approach you can adapt.
 
 If you want the big-picture tutorial first, read [Introduction](intro.md) and [Basics](basics.md) before coming back here.
+
+## Patterns Index
+
+| Goal | Use | See |
+|---|---|---|
+| Validate a request, enforce a duplicate-check, and run side effects on success | `Combine` + `Bind` + `Ensure` + `Tap` | [Example 1](#example-1-validate-a-registration-request-without-losing-readability) |
+| Map a `Result<T>` to an MVC `ActionResult<T>` without a switch | `ToHttpResponse().AsActionResult<T>()` | [Example 2](#example-2-return-the-right-http-response-from-mvc-without-a-giant-switch-statement) |
+| Map a `Result<T>` to a Minimal API response | `ToHttpResponse()` | [Example 3](#example-3-do-the-same-thing-in-minimal-apis) |
+| Run several independent async queries and combine into one result | `Result.ParallelAsync(...).WhenAllAsync().MapAsync(...)` | [Example 4](#example-4-fetch-independent-dashboard-data-in-parallel) |
+| Reuse a FluentValidation validator as a `Result<T>` | `validator.ValidateToResult(input)` | [Example 5](#example-5-reuse-fluentvalidation-instead-of-duplicating-rules) |
+| Fall back to another source on a recoverable failure | `RecoverOnFailure(predicate, func)` | [Example 6](#example-6-recover-from-a-failure-when-a-fallback-is-acceptable) |
+| Chain async I/O, business rules, mutation, and notification | `ToResultAsync` + `EnsureAsync` + `TapAsync` + `BindAsync` + `MatchAsync` | [Example 7](#example-7-handle-async-side-effects-and-notifications-cleanly) |
+| Branch HTTP behavior on the concrete `Error` case | `result.Match(_, e => e switch { Error.X => ..., ... })` | [Example 8](#example-8-branch-on-specific-error-types-when-the-caller-cares) |
+
+Full signatures and overloads: [`trellis-api-core.md`](../api_reference/trellis-api-core.md), [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md), [`trellis-api-fluentvalidation.md`](../api_reference/trellis-api-fluentvalidation.md).
 
 ## Real-world sample projects
 

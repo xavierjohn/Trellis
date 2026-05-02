@@ -1,4 +1,12 @@
-﻿# Trellis.Asp — API Reference
+﻿---
+package: Trellis.Asp
+namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
+types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, ClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider]
+version: v3
+last_verified: 2026-05-01
+audience: [llm]
+---
+# Trellis.Asp — API Reference
 
 **Package:** `Trellis.Asp` (bundles the AOT-friendly `Trellis.AspSourceGenerator.dll` at `analyzers/dotnet/cs/` — installing `Trellis.Asp` attaches the generator automatically — and contains the ASP.NET actor providers formerly published as `Trellis.Asp.Authorization`).
 **Namespaces:** `Trellis.Asp`, `Trellis.Asp.Authorization`, `Trellis.Asp.ModelBinding`, `Trellis.Asp.Routing`, `Trellis.Asp.Validation`

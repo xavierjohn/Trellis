@@ -1,4 +1,12 @@
-﻿# Trellis.Authorization — API Reference
+﻿---
+package: Trellis.Authorization
+namespaces: [Trellis.Authorization]
+types: [IActorProvider, ActorContext, Actor, Permission, AuthorizeAttribute, IAuthorizationRequirement, IResourceAuthorizationHandler]
+version: v3
+last_verified: 2026-05-01
+audience: [llm]
+---
+# Trellis.Authorization — API Reference
 
 **Package:** `Trellis.Authorization`
 **Namespace:** `Trellis.Authorization`
