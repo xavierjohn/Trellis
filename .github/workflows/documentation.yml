@@ -125,7 +125,14 @@ jobs:
         echo "Documentation build successful"
 
     - name: Deploy to GitHub Pages
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      # Manual-only publish to gh-pages, restricted to main:
+      #
+      # * The doc build above runs on every PR/push to main as the quality gate
+      #   (warnings-as-errors catches link/xref/bookmark drift).
+      # * Deployment happens ONLY when the workflow is dispatched manually
+      #   AND the dispatch ref is main — so a manual run on a topic branch
+      #   never publishes that branch's _site to gh-pages.
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
