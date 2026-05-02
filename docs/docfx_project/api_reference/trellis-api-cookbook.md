@@ -70,6 +70,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Map `Maybe<T>` or composite value objects with EF Core | [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects), [Recipe 13](#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership), [Recipe 15](#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap) |
 | Add optional request/response fields | [Recipe 14](#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport) |
 | Read optional HTTP resources where 404 means absent | [Recipe 19](#recipe-19--http-client-result-safety-and-optional-reads) |
+| Choose between fail-fast and accumulating-error collection ops | [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) |
 | Return synchronous `Result` chains from `Task`/`ValueTask` APIs | [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), then `AsTask()` / `AsValueTask()` in [trellis-api-core.md](trellis-api-core.md) |
 | Create HTTP-oriented resource errors | Use `ResourceRef.For<TResource>(id)` from [trellis-api-core.md](trellis-api-core.md) |
 | Add a state transition | [Recipe 9](#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
@@ -1493,13 +1494,68 @@ client.GetAsync($"/orders/{id}", ct)
 
 ---
 
+## Recipe 20 — Fail-fast vs accumulating: `Sequence`/`Traverse` vs `SequenceAll`/`TraverseAll`
+
+**Problem.** A single pipeline contains two distinct collection-level concerns:
+
+1. **Form-style validation** of a batch payload — every invalid row should be reported in one response, not just the first.
+2. **A fan-out fetch** — once one upstream fetch fails, finishing the rest is wasted I/O; the first failure should win.
+
+Trellis ships both shapes on the same surface so you can pick the semantics per call site.
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+
+public sealed record CreateContactRow(string Email, string Name);
+
+// 1) Accumulating: every row's failure surfaces in the response.
+public Result<IReadOnlyList<EmailAddress>> ValidateAddresses(IEnumerable<CreateContactRow> rows) =>
+    rows.TraverseAll(row => EmailAddress.TryCreate(row.Email));
+//        ↑ TraverseAll runs the selector for every row.
+//          - All succeed   → Ok(list)
+//          - One bad email → that single Error.UnprocessableContent (no Aggregate wrap)
+//          - Many bad      → one merged Error.UnprocessableContent whose
+//                            Fields/Rules concatenate every per-item violation
+//          - Mixed kinds   → flat Error.Aggregate of every distinct error
+
+// 2) Fail-fast: stop on the first upstream miss.
+public Task<Result<IReadOnlyList<Order>>> LoadOrders(IEnumerable<OrderId> ids, CancellationToken ct) =>
+    ids.TraverseAsync((id, c) => repo.LoadAsync(id, c), ct);
+//        ↑ TraverseAsync short-circuits on the first failure — no
+//          subsequent repository calls are issued.
+```
+
+**What it shows.**
+
+- `TraverseAll` / `SequenceAll` exist precisely to solve "show me every error". They use the same `Error.Combine` extension as `EnsureAll`, so two `UnprocessableContent` failures merge and unrelated failures flatten into `Error.Aggregate`.
+- `Traverse` / `Sequence` exist precisely to solve "stop wasting work on the first failure". They never produce `Error.Aggregate`.
+- The accumulating variants only ship sync + `Task` overloads to match the existing `Traverse` / `Sequence` surface. There is no `ValueTask` sibling; if those ever land for `Traverse` / `Sequence`, they land for `*All` at the same time.
+- Already have an `IEnumerable<Result<T>>` (e.g. from a `Select` over a `TryCreate`)? Pick `.Sequence()` (fail-fast) or `.SequenceAll()` (accumulating); they're the identity-selector forms of `Traverse` / `TraverseAll`.
+
+**Anti-pattern → fix.**
+
+```csharp
+// ❌ Manual loop with early return: loses every error after the first.
+foreach (var row in rows)
+{
+    var r = EmailAddress.TryCreate(row.Email);
+    if (r.IsFailure) return r.Map(_ => default(IReadOnlyList<EmailAddress>)!);
+    parsed.Add(r.Unwrap());
+}
+// ✅ Explicit choice between fail-fast and accumulating semantics:
+return rows.TraverseAll(row => EmailAddress.TryCreate(row.Email));
+```
+
+---
+
 ## Cross-cutting tips
 
 - **Run analyzers in CI.** `Trellis.Analyzers` ships in the framework and runs as part of every `dotnet build`. Treat warnings as errors for `TRLS00x` once your codebase is clean.
 - **Do not mix sync chain methods with async lambdas.** `result.Map(async v => …)` triggers `TRLS009`; use `MapAsync`. The fix provider can apply this rewrite automatically.
 - **Construct errors via the closed ADT.** `new Error.NotFound(ResourceRef.For<Order>(id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
-- **Aggregate per-item Results with `Traverse` / `Sequence`.** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure; there is no aggregate-error carrier. For per-field validation aggregation, use the `Validate` builder which returns a single `Error.UnprocessableContent` carrying every field violation.
+- **Aggregate per-item Results with `Traverse` / `Sequence` (fail-fast) or `TraverseAll` / `SequenceAll` (accumulating).** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure. When you need to surface every failure (form-style validation), use `TraverseAll` / `SequenceAll`: they run through every item and fold failures via `Error.Combine` — two `UnprocessableContent` errors merge their fields/rules, heterogeneous errors flatten into `Error.Aggregate`. See [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequence--traverse-vs-sequenceall--traverseall) for when to choose which.
 - **Use `Error.UnprocessableContent.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.UnprocessableContent.ForField("email", "invalid_format", "must contain @")` over `new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "invalid_format") { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>` or use the `Validate` builder.
 - **`InputPointer.Root` for whole-body violations.** Use `InputPointer.ForProperty(name)` for field-level violations and `InputPointer.Root` when the rule is object-level.
 - **Only the `Trellis` namespace is auto-imported.** The template's implicit usings include `Trellis` (which exposes `Result`, `Result<T>`, `Error`, `Maybe<T>`, `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredDateTime<T>`, etc.). Every other Trellis namespace requires an explicit `using` per file — e.g. `using Trellis.Primitives;` for `Money` / `EmailAddress` / `PhoneNumber` / `MonetaryAmount` / `CurrencyCode` / `CountryCode` / etc., `using Trellis.StateMachine;` for `StateMachine<TState, TTrigger>`, `using Trellis.Authorization;` for permission types. This is intentional: implicit usings cannot be added at the template level without breaking services that don't reference the package.
