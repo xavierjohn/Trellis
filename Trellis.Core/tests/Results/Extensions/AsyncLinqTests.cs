@@ -72,6 +72,42 @@ public class AsyncLinqTests : TestBase
     }
 
     [Fact]
+    public async Task SelectMany_TaskSync_FirstFailure_ShortCircuitsCollectionSelector()
+    {
+        var collectionSelectorInvoked = false;
+
+        var combined = await (
+            from a in FailTaskAsync()
+            from b in InvocationCounting()
+            select a + b);
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        collectionSelectorInvoked.Should().BeFalse();
+
+        Result<int> InvocationCounting()
+        {
+            collectionSelectorInvoked = true;
+            return OkSync(3);
+        }
+    }
+
+    [Fact]
+    public async Task SelectMany_TaskSync_SecondFailure_DoesNotInvokeResultSelector()
+    {
+        var resultSelectorInvoked = false;
+
+        var combined = await (
+            from a in OkTaskAsync(2)
+            from b in FailSync()
+            select Combine(a, b));
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        resultSelectorInvoked.Should().BeFalse();
+
+        int Combine(int a, int b) { resultSelectorInvoked = true; return a + b; }
+    }
+
+    [Fact]
     public async Task SelectMany_SyncTask_AllSuccess_ReturnsCombinedValue()
     {
         var combined = await (
@@ -80,6 +116,42 @@ public class AsyncLinqTests : TestBase
             select a + b);
 
         combined.Should().BeSuccess().Which.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task SelectMany_SyncTask_FirstFailure_ShortCircuitsCollectionSelector()
+    {
+        var collectionSelectorInvoked = false;
+
+        var combined = await (
+            from a in FailSync()
+            from b in InvocationCounting()
+            select a + b);
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        collectionSelectorInvoked.Should().BeFalse();
+
+        Task<Result<int>> InvocationCounting()
+        {
+            collectionSelectorInvoked = true;
+            return OkTaskAsync(3);
+        }
+    }
+
+    [Fact]
+    public async Task SelectMany_SyncTask_SecondFailure_DoesNotInvokeResultSelector()
+    {
+        var resultSelectorInvoked = false;
+
+        var combined = await (
+            from a in OkSync(2)
+            from b in FailTaskAsync()
+            select Combine(a, b));
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        resultSelectorInvoked.Should().BeFalse();
+
+        int Combine(int a, int b) { resultSelectorInvoked = true; return a + b; }
     }
 
     [Fact]
@@ -129,6 +201,42 @@ public class AsyncLinqTests : TestBase
     }
 
     [Fact]
+    public async Task SelectMany_ValueTaskValueTask_FirstFailure_ShortCircuitsCollectionSelector()
+    {
+        var collectionSelectorInvoked = false;
+
+        var combined = await (
+            from a in FailValueTaskAsync()
+            from b in InvocationCounting()
+            select a + b);
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        collectionSelectorInvoked.Should().BeFalse();
+
+        ValueTask<Result<int>> InvocationCounting()
+        {
+            collectionSelectorInvoked = true;
+            return OkValueTaskAsync(3);
+        }
+    }
+
+    [Fact]
+    public async Task SelectMany_ValueTaskValueTask_SecondFailure_DoesNotInvokeResultSelector()
+    {
+        var resultSelectorInvoked = false;
+
+        var combined = await (
+            from a in OkValueTaskAsync(2)
+            from b in FailValueTaskAsync()
+            select Combine(a, b));
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        resultSelectorInvoked.Should().BeFalse();
+
+        int Combine(int a, int b) { resultSelectorInvoked = true; return a + b; }
+    }
+
+    [Fact]
     public async Task SelectMany_ValueTaskSync_AllSuccess_ReturnsCombinedValue()
     {
         var combined = await (
@@ -140,6 +248,42 @@ public class AsyncLinqTests : TestBase
     }
 
     [Fact]
+    public async Task SelectMany_ValueTaskSync_FirstFailure_ShortCircuitsCollectionSelector()
+    {
+        var collectionSelectorInvoked = false;
+
+        var combined = await (
+            from a in FailValueTaskAsync()
+            from b in InvocationCounting()
+            select a + b);
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        collectionSelectorInvoked.Should().BeFalse();
+
+        Result<int> InvocationCounting()
+        {
+            collectionSelectorInvoked = true;
+            return OkSync(3);
+        }
+    }
+
+    [Fact]
+    public async Task SelectMany_ValueTaskSync_SecondFailure_DoesNotInvokeResultSelector()
+    {
+        var resultSelectorInvoked = false;
+
+        var combined = await (
+            from a in OkValueTaskAsync(2)
+            from b in FailSync()
+            select Combine(a, b));
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        resultSelectorInvoked.Should().BeFalse();
+
+        int Combine(int a, int b) { resultSelectorInvoked = true; return a + b; }
+    }
+
+    [Fact]
     public async Task SelectMany_SyncValueTask_AllSuccess_ReturnsCombinedValue()
     {
         var combined = await (
@@ -148,6 +292,42 @@ public class AsyncLinqTests : TestBase
             select a + b);
 
         combined.Should().BeSuccess().Which.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task SelectMany_SyncValueTask_FirstFailure_ShortCircuitsCollectionSelector()
+    {
+        var collectionSelectorInvoked = false;
+
+        var combined = await (
+            from a in FailSync()
+            from b in InvocationCounting()
+            select a + b);
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        collectionSelectorInvoked.Should().BeFalse();
+
+        ValueTask<Result<int>> InvocationCounting()
+        {
+            collectionSelectorInvoked = true;
+            return OkValueTaskAsync(3);
+        }
+    }
+
+    [Fact]
+    public async Task SelectMany_SyncValueTask_SecondFailure_DoesNotInvokeResultSelector()
+    {
+        var resultSelectorInvoked = false;
+
+        var combined = await (
+            from a in OkSync(2)
+            from b in FailValueTaskAsync()
+            select Combine(a, b));
+
+        combined.Should().BeFailure().Which.Should().Be(Error1);
+        resultSelectorInvoked.Should().BeFalse();
+
+        int Combine(int a, int b) { resultSelectorInvoked = true; return a + b; }
     }
 
     [Fact]
