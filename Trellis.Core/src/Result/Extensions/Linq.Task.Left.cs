@@ -20,7 +20,7 @@ public static class ResultLinqExtensionsTaskLeftAsync
     /// <param name="collectionSelector">A synchronous function returning the intermediate result.</param>
     /// <param name="resultSelector">A synchronous function combining the source and intermediate values.</param>
     /// <returns>A task producing the combined result, or the first failure encountered.</returns>
-    public static async Task<Result<TResult>> SelectMany<TSource, TCollection, TResult>(
+    public static Task<Result<TResult>> SelectMany<TSource, TCollection, TResult>(
         this Task<Result<TSource>> source,
         Func<TSource, Result<TCollection>> collectionSelector,
         Func<TSource, TCollection, TResult> resultSelector)
@@ -29,14 +29,6 @@ public static class ResultLinqExtensionsTaskLeftAsync
         ArgumentNullException.ThrowIfNull(collectionSelector);
         ArgumentNullException.ThrowIfNull(resultSelector);
 
-        var s = await source.ConfigureAwait(false);
-        if (!s.TryGetValue(out var sValue))
-            return Result.Fail<TResult>(s.Error);
-
-        var c = collectionSelector(sValue);
-        if (!c.TryGetValue(out var cValue))
-            return Result.Fail<TResult>(c.Error);
-
-        return Result.Ok(resultSelector(sValue, cValue));
+        return source.BindAsync(s => collectionSelector(s).Map(c => resultSelector(s, c)));
     }
 }

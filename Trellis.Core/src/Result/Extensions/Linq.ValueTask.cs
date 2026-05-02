@@ -43,7 +43,7 @@ public static class ResultLinqExtensionsValueTaskAsync
     /// <param name="collectionSelector">An async function returning the intermediate result.</param>
     /// <param name="resultSelector">A synchronous function combining the source and intermediate values.</param>
     /// <returns>A value task producing the combined result, or the first failure encountered.</returns>
-    public static async ValueTask<Result<TResult>> SelectMany<TSource, TCollection, TResult>(
+    public static ValueTask<Result<TResult>> SelectMany<TSource, TCollection, TResult>(
         this ValueTask<Result<TSource>> source,
         Func<TSource, ValueTask<Result<TCollection>>> collectionSelector,
         Func<TSource, TCollection, TResult> resultSelector)
@@ -51,15 +51,7 @@ public static class ResultLinqExtensionsValueTaskAsync
         ArgumentNullException.ThrowIfNull(collectionSelector);
         ArgumentNullException.ThrowIfNull(resultSelector);
 
-        var s = await source.ConfigureAwait(false);
-        if (!s.TryGetValue(out var sValue))
-            return Result.Fail<TResult>(s.Error);
-
-        var c = await collectionSelector(sValue).ConfigureAwait(false);
-        if (!c.TryGetValue(out var cValue))
-            return Result.Fail<TResult>(c.Error);
-
-        return Result.Ok(resultSelector(sValue, cValue));
+        return source.BindAsync(s => collectionSelector(s).MapAsync(c => resultSelector(s, c)));
     }
 
     /// <summary>
