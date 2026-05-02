@@ -120,7 +120,7 @@ public sealed class User : Aggregate<UserId>
         LastName lastName)
     {
         var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
-        user.DomainEvents.Add(new UserRegistered(user.Id, DateTime.UtcNow));
+        user.DomainEvents.Add(new UserRegistered(user.Id, DateTimeOffset.UtcNow));
         return Result.Ok(user);
     }
 }
@@ -278,7 +278,7 @@ public sealed class User : Aggregate<UserId>
         LastName lastName)
     {
         var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
-        user.DomainEvents.Add(new UserRegistered(user.Id, DateTime.UtcNow));
+        user.DomainEvents.Add(new UserRegistered(user.Id, DateTimeOffset.UtcNow));
         return Result.Ok(user);
     }
 

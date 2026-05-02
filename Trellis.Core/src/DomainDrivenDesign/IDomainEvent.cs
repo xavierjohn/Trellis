@@ -98,6 +98,14 @@ public interface IDomainEvent
     /// integration buses, and audit projections retain their authored instant without timezone-loss bugs.
     /// </para>
     /// <para>
+    /// <strong>Caveat:</strong> C# implicitly converts <see cref="DateTime"/> to <see cref="DateTimeOffset"/>,
+    /// so a caller that passes <c>DateTime.Now</c> (Local) or <c>new DateTime(...)</c> (Unspecified, treated as Local)
+    /// will silently produce an event timestamped with the machine's local offset rather than UTC. The contract
+    /// does not block this at the type level. Always author events from <see cref="TimeProvider.GetUtcNow"/> or
+    /// <see cref="DateTimeOffset.UtcNow"/> to avoid local-time stamping on non-UTC machines. A static analyzer to
+    /// flag <see cref="DateTime"/> sources flowing into <c>OccurredAt</c> may follow in a future release.
+    /// </para>
+    /// <para>
     /// Use <c>OccurredAt</c> as the single timestamp for your events - avoid adding redundant fields like 
     /// <c>CreatedAt</c>, <c>SubmittedAt</c>, etc. that duplicate this information:
     /// <code>
