@@ -308,6 +308,34 @@ Maybe<string> fullName =
     select $"{f} {l}";
 ```
 
+### Async LINQ over `Task<Maybe<T>>` and `ValueTask<Maybe<T>>`
+
+`Task<Maybe<T>>` and `ValueTask<Maybe<T>>` participate in query syntax directly — no need to `await` each step into a sync block. Common shape: repository finders that return `Task<Maybe<T>>` chained without ceremony.
+
+```csharp
+using Trellis;
+
+// All-async chain — every step returns Task<Maybe<T>>.
+Task<Maybe<string>> managerEmail = (
+    from user    in repo.FindAsync(userId, ct)        // Task<Maybe<User>>
+    from manager in repo.FindAsync(user.ManagerId, ct) // Task<Maybe<Manager>>
+    select manager.Email);
+
+// Mixed sync and async — sync source, async continuation.
+var summary =
+    from u in cache.LookupUser(id)         // Maybe<User>
+    from o in repo.FetchOrderAsync(u, ct)   // Task<Maybe<Order>>
+    select new Summary(u, o);
+
+// And the reverse — async source, sync filter.
+var active =
+    from u in repo.LoadUserAsync(id, ct)    // Task<Maybe<User>>
+    where u.IsActive
+    select u;
+```
+
+`None` short-circuits the chain — subsequent selectors are not invoked. Exceptions thrown inside async selectors propagate through `await`.
+
 ## Result-to-Maybe Conversion
 
 Sometimes the only question is “did I get a value?” — not “why did it fail?” That is what `ToMaybe()` is for.

@@ -825,6 +825,31 @@ Non-generic factory companion that allows type inference at the call site.
 | `public static Maybe<TOut> Select<TIn, TOut>(this Maybe<TIn> maybe, Func<TIn, TOut> selector) where TIn : notnull where TOut : notnull` |
 | `public static Maybe<TResult> SelectMany<TSource, TCollection, TResult>(this Maybe<TSource> source, Func<TSource, Maybe<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull` |
 
+### `MaybeLinqExtensionsTaskAsync` / `MaybeLinqExtensionsTaskLeftAsync` / `MaybeLinqExtensionsTaskRightAsync`
+
+LINQ query syntax over `Task<Maybe<T>>`. Closes the syntactic gap so `from x in FindAsync()` compiles when `FindAsync()` returns `Task<Maybe<T>>`. Mirrors the Result LINQ async surface.
+
+| Signature |
+| --- |
+| `public static Task<Maybe<TOut>> Select<TIn, TOut>(this Task<Maybe<TIn>> maybeTask, Func<TIn, TOut> selector) where TIn : notnull where TOut : notnull` |
+| `public static Task<Maybe<TResult>> SelectMany<TSource, TCollection, TResult>(this Task<Maybe<TSource>> source, Func<TSource, Task<Maybe<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull` |
+| `public static Task<Maybe<TResult>> SelectMany<TSource, TCollection, TResult>(this Task<Maybe<TSource>> source, Func<TSource, Maybe<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull` |
+| `public static Task<Maybe<TResult>> SelectMany<TSource, TCollection, TResult>(this Maybe<TSource> source, Func<TSource, Task<Maybe<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull` |
+| `public static Task<Maybe<TSource>> Where<TSource>(this Task<Maybe<TSource>> source, Func<TSource, bool> predicate) where TSource : notnull` |
+
+### `MaybeLinqExtensionsValueTaskAsync` / `MaybeLinqExtensionsValueTaskLeftAsync` / `MaybeLinqExtensionsValueTaskRightAsync`
+
+Same shape as the Task overloads, with `ValueTask<Maybe<T>>` receivers/continuations for zero-allocation scenarios.
+
+### `MaybeTaskAdapterExtensions`
+
+| Signature |
+| --- |
+| `public static Task<Maybe<T>> AsTask<T>(this Maybe<T> maybe) where T : notnull` |
+| `public static ValueTask<Maybe<T>> AsValueTask<T>(this Maybe<T> maybe) where T : notnull` |
+
+Wraps a synchronous `Maybe<T>` in a completed `Task` / `ValueTask` for participation in async pipelines and disambiguation of overloads at call sites.
+
 ### `MaybeCollectionExtensions`
 
 | Signature |
