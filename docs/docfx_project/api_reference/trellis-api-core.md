@@ -839,7 +839,15 @@ LINQ query syntax over `Task<Maybe<T>>`. Closes the syntactic gap so `from x in 
 
 ### `MaybeLinqExtensionsValueTaskAsync` / `MaybeLinqExtensionsValueTaskLeftAsync` / `MaybeLinqExtensionsValueTaskRightAsync`
 
-Same shape as the Task overloads, with `ValueTask<Maybe<T>>` receivers/continuations for zero-allocation scenarios.
+LINQ query syntax over `ValueTask<Maybe<T>>` for zero-allocation scenarios. Same shape as the Task overloads.
+
+| Signature |
+| --- |
+| `public static ValueTask<Maybe<TOut>> Select<TIn, TOut>(this ValueTask<Maybe<TIn>> maybeTask, Func<TIn, TOut> selector) where TIn : notnull where TOut : notnull` |
+| `public static ValueTask<Maybe<TResult>> SelectMany<TSource, TCollection, TResult>(this ValueTask<Maybe<TSource>> source, Func<TSource, ValueTask<Maybe<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull` |
+| `public static ValueTask<Maybe<TResult>> SelectMany<TSource, TCollection, TResult>(this ValueTask<Maybe<TSource>> source, Func<TSource, Maybe<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull` |
+| `public static ValueTask<Maybe<TResult>> SelectMany<TSource, TCollection, TResult>(this Maybe<TSource> source, Func<TSource, ValueTask<Maybe<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector) where TSource : notnull where TCollection : notnull where TResult : notnull` |
+| `public static ValueTask<Maybe<TSource>> Where<TSource>(this ValueTask<Maybe<TSource>> source, Func<TSource, bool> predicate) where TSource : notnull` |
 
 ### `MaybeTaskAdapterExtensions`
 

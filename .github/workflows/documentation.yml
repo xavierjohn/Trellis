@@ -125,12 +125,14 @@ jobs:
         echo "Documentation build successful"
 
     - name: Deploy to GitHub Pages
-      # Manual-only publish: the doc build above runs on every PR/push as a quality
-      # gate (warnings-as-errors catches link/xref/bookmark drift), but deployment
-      # to gh-pages happens ONLY when the workflow is dispatched manually. This
-      # avoids redeploying on every PR merge and lets the maintainer choose when
-      # the live docs roll forward.
-      if: github.event_name == 'workflow_dispatch'
+      # Manual-only publish to gh-pages, restricted to main:
+      #
+      # * The doc build above runs on every PR/push to main as the quality gate
+      #   (warnings-as-errors catches link/xref/bookmark drift).
+      # * Deployment happens ONLY when the workflow is dispatched manually
+      #   AND the dispatch ref is main — so a manual run on a topic branch
+      #   never publishes that branch's _site to gh-pages.
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}

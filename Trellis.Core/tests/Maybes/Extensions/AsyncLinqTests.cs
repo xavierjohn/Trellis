@@ -356,6 +356,17 @@ public class AsyncLinqTests : TestBase
         result.HasNoValue.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task AsValueTask_None_RoundTrips()
+    {
+        var none = Maybe<int>.None;
+        var valueTask = none.AsValueTask();
+
+        var result = await valueTask;
+
+        result.HasNoValue.Should().BeTrue();
+    }
+
     #endregion
 }
 #pragma warning restore CA2012

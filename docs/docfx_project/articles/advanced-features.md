@@ -316,22 +316,22 @@ Maybe<string> fullName =
 using Trellis;
 
 // All-async chain — every step returns Task<Maybe<T>>.
-Task<Maybe<string>> managerEmail = (
+Maybe<string> managerEmail = await (
     from user    in repo.FindAsync(userId, ct)        // Task<Maybe<User>>
     from manager in repo.FindAsync(user.ManagerId, ct) // Task<Maybe<Manager>>
     select manager.Email);
 
 // Mixed sync and async — sync source, async continuation.
-var summary =
+Maybe<Summary> summary = await (
     from u in cache.LookupUser(id)         // Maybe<User>
     from o in repo.FetchOrderAsync(u, ct)   // Task<Maybe<Order>>
-    select new Summary(u, o);
+    select new Summary(u, o));
 
 // And the reverse — async source, sync filter.
-var active =
+Maybe<User> active = await (
     from u in repo.LoadUserAsync(id, ct)    // Task<Maybe<User>>
     where u.IsActive
-    select u;
+    select u);
 ```
 
 `None` short-circuits the chain — subsequent selectors are not invoked. Exceptions thrown inside async selectors propagate through `await`.
