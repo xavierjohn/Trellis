@@ -1199,7 +1199,7 @@ Result<IReadOnlyList<Order>> orders =
     operations.SequenceAll();   // Result<NotFound> + Result<Conflict> → Error.Aggregate
 ```
 
-`TraverseAll` / `SequenceAll` only ship sync + `Task` overloads to match the existing `Traverse` / `Sequence` surface. There is no `ValueTask` variant; if `Traverse` / `Sequence` ever gain `ValueTask` siblings, the `*All` variants follow at the same time.
+`TraverseAll` matches `Traverse`'s full async surface: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `SequenceAll` is sync-only because the existing `Sequence` is sync-only; if `Sequence` ever gains async siblings, `SequenceAll` follows at the same time.
 
 #### When / WhenAll — `WhenExtensions`, `WhenExtensionsAsync`, `WhenAllExtensionsAsync`
 

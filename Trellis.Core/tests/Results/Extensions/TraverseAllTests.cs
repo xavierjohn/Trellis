@@ -182,11 +182,10 @@ public class TraverseAllTests : TestBase
         var items = new[] { 1, 2, 3, 4, 5 };
         var visited = new List<int>();
 
-        var result = await items.TraverseAllAsync(async x =>
+        var result = await items.TraverseAllAsync((int x) =>
         {
-            await Task.Yield();
             visited.Add(x);
-            return x == 1 ? Result.Fail<int>(Error1) : Result.Ok(x);
+            return (x == 1 ? Result.Fail<int>(Error1) : Result.Ok(x)).AsTask();
         });
 
         result.Should().BeFailure();
@@ -210,6 +209,287 @@ public class TraverseAllTests : TestBase
         Func<int, Task<Result<int>>>? selector = null;
 
         var act = async () => await items.TraverseAllAsync(selector!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    #endregion
+
+    #region TraverseAllAsync (Task with CancellationToken)
+
+    [Fact]
+    public async Task TraverseAllAsync_TaskCt_AllSuccess_ReturnsOkWithAllValuesInOrder()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync((int x, CancellationToken _) => Result.Ok(x * 10).AsTask(), TestContext.Current.CancellationToken);
+
+        result.Should().BeSuccess();
+        result.Unwrap().Should().Equal([10, 20, 30]);
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_TaskCt_MultipleFailures_ReturnsCombinedError()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync(
+            (int x, CancellationToken _) => (x % 2 == 0 ? Result.Ok(x) : Result.Fail<int>(Error1)).AsTask(),
+            TestContext.Current.CancellationToken);
+
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType<Error.Aggregate>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_TaskCt_CancelledMidway_ThrowsOperationCanceled()
+    {
+        using var cts = new CancellationTokenSource();
+        var items = new[] { 1, 2, 3 };
+
+        var act = async () => await items.TraverseAllAsync((int x, CancellationToken ct) =>
+        {
+            if (x == 2) cts.Cancel();
+            ct.ThrowIfCancellationRequested();
+            return Result.Ok(x).AsTask();
+        }, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_TaskCt_NullSource_Throws()
+    {
+        IEnumerable<int>? source = null;
+
+        var act = async () => await source!.TraverseAllAsync((int x, CancellationToken _) => Result.Ok(x).AsTask(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_TaskCt_NullSelector_Throws()
+    {
+        var items = new[] { 1, 2, 3 };
+        Func<int, CancellationToken, Task<Result<int>>>? selector = null;
+
+        var act = async () => await items.TraverseAllAsync(selector!, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    #endregion
+
+    #region TraverseAllAsync (ValueTask)
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTask_AllSuccess_ReturnsOkWithAllValuesInOrder()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync((int x) => Result.Ok(x + 100).AsValueTask());
+
+        result.Should().BeSuccess();
+        result.Unwrap().Should().Equal([101, 102, 103]);
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTask_MultipleFailures_ReturnsCombinedError()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync((int x) =>
+            (x == 2 ? Result.Ok(x) : Result.Fail<int>(Error1)).AsValueTask());
+
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType<Error.Aggregate>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTask_NullSource_Throws()
+    {
+        IEnumerable<int>? source = null;
+
+        var act = async () => await source!.TraverseAllAsync((int x) => Result.Ok(x).AsValueTask());
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTask_NullSelector_Throws()
+    {
+        var items = new[] { 1, 2, 3 };
+        Func<int, ValueTask<Result<int>>>? selector = null;
+
+        var act = async () => await items.TraverseAllAsync(selector!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    #endregion
+
+    #region TraverseAllAsync (ValueTask with CancellationToken)
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTaskCt_AllSuccess_ReturnsOkWithAllValuesInOrder()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync((int x, CancellationToken _) => Result.Ok(x - 1).AsValueTask(), TestContext.Current.CancellationToken);
+
+        result.Should().BeSuccess();
+        result.Unwrap().Should().Equal([0, 1, 2]);
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTaskCt_MultipleFailures_ReturnsCombinedError()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync(
+            (int x, CancellationToken _) => (x % 2 == 1 ? Result.Fail<int>(Error1) : Result.Ok(x)).AsValueTask(),
+            TestContext.Current.CancellationToken);
+
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType<Error.Aggregate>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTaskCt_CancelledMidway_ThrowsOperationCanceled()
+    {
+        using var cts = new CancellationTokenSource();
+        var items = new[] { 1, 2, 3 };
+
+        var act = async () => await items.TraverseAllAsync((int x, CancellationToken ct) =>
+        {
+            if (x == 2) cts.Cancel();
+            ct.ThrowIfCancellationRequested();
+            return Result.Ok(x).AsValueTask();
+        }, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTaskCt_NullSource_Throws()
+    {
+        IEnumerable<int>? source = null;
+
+        var act = async () => await source!.TraverseAllAsync((int x, CancellationToken _) => Result.Ok(x).AsValueTask(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_ValueTaskCt_NullSelector_Throws()
+    {
+        var items = new[] { 1, 2, 3 };
+        Func<int, CancellationToken, ValueTask<Result<int>>>? selector = null;
+
+        var act = async () => await items.TraverseAllAsync(selector!, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    #endregion
+
+    #region TraverseAllAsync (Result<Unit> Task with CancellationToken)
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_AllSuccess_ReturnsOkUnit()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync((int x, CancellationToken _) => Result.Ok().AsTask(), TestContext.Current.CancellationToken);
+
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_Empty_ReturnsOkUnit()
+    {
+        var items = Array.Empty<int>();
+
+        var result = await items.TraverseAllAsync((int x, CancellationToken _) => Result.Fail(Error1).AsTask(), TestContext.Current.CancellationToken);
+
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_SingleFailure_ReturnsThatErrorWithoutAggregateWrap()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync(
+            (int x, CancellationToken _) => (x == 2 ? Result.Fail(Error1) : Result.Ok()).AsTask(),
+            TestContext.Current.CancellationToken);
+
+        result.Should().BeFailure();
+        result.Error.Should().BeSameAs(Error1);
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_MultipleFailures_ReturnsCombinedError()
+    {
+        var items = new[] { 1, 2, 3 };
+
+        var result = await items.TraverseAllAsync(
+            (int x, CancellationToken _) => (x % 2 == 1 ? Result.Fail(Error1) : Result.Ok()).AsTask(),
+            TestContext.Current.CancellationToken);
+
+        result.Should().BeFailure();
+        result.Error.Should().BeOfType<Error.Aggregate>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_DoesNotShortCircuit_VisitsEveryItem()
+    {
+        var items = new[] { 1, 2, 3, 4 };
+        var visited = 0;
+
+        var result = await items.TraverseAllAsync((int x, CancellationToken _) =>
+        {
+            visited++;
+            return (x % 2 == 0 ? Result.Fail(Error1) : Result.Ok()).AsTask();
+        }, TestContext.Current.CancellationToken);
+
+        visited.Should().Be(4);
+        result.Should().BeFailure();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_CancelledMidway_ThrowsOperationCanceled()
+    {
+        using var cts = new CancellationTokenSource();
+        var items = new[] { 1, 2, 3 };
+
+        var act = async () => await items.TraverseAllAsync((int x, CancellationToken ct) =>
+        {
+            if (x == 2) cts.Cancel();
+            ct.ThrowIfCancellationRequested();
+            return Result.Ok().AsTask();
+        }, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_NullSource_Throws()
+    {
+        IEnumerable<int>? source = null;
+
+        var act = async () => await source!.TraverseAllAsync((int x, CancellationToken _) => Result.Ok().AsTask(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task TraverseAllAsync_UnitTaskCt_NullSelector_Throws()
+    {
+        var items = new[] { 1, 2, 3 };
+        Func<int, CancellationToken, Task<Result<Unit>>>? selector = null;
+
+        var act = async () => await items.TraverseAllAsync(selector!, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }

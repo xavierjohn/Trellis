@@ -1530,7 +1530,7 @@ public Task<Result<IReadOnlyList<Order>>> LoadOrders(IEnumerable<OrderId> ids, C
 
 - `TraverseAll` / `SequenceAll` exist precisely to solve "show me every error". They use the same `Error.Combine` extension as `EnsureAll`, so two `UnprocessableContent` failures merge and unrelated failures flatten into `Error.Aggregate`.
 - `Traverse` / `Sequence` exist precisely to solve "stop wasting work on the first failure". They never produce `Error.Aggregate`.
-- The accumulating variants only ship sync + `Task` overloads to match the existing `Traverse` / `Sequence` surface. There is no `ValueTask` sibling; if those ever land for `Traverse` / `Sequence`, they land for `*All` at the same time.
+- `TraverseAll` ships the same async surface as `Traverse`: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `SequenceAll` is sync-only because `Sequence` is sync-only; if async siblings ever land for `Sequence`, they land for `SequenceAll` at the same time.
 - Already have an `IEnumerable<Result<T>>` (e.g. from a `Select` over a `TryCreate`)? Pick `.Sequence()` (fail-fast) or `.SequenceAll()` (accumulating); they're the identity-selector forms of `Traverse` / `TraverseAll`.
 
 **Anti-pattern → fix.**
