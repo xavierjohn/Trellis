@@ -45,7 +45,7 @@ public class AggregateJsonSerializationTests
 
 #region Test Aggregate and Events
 
-internal record JsonTestEvent(string AggregateId, DateTime OccurredAt) : IDomainEvent;
+internal record JsonTestEvent(string AggregateId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 internal class JsonTestAggregate : Aggregate<string>
 {
@@ -58,7 +58,7 @@ internal class JsonTestAggregate : Aggregate<string>
     public void DoSomething()
     {
         Name = $"{Name}_modified";
-        DomainEvents.Add(new JsonTestEvent(Id, DateTime.UtcNow));
+        DomainEvents.Add(new JsonTestEvent(Id, DateTimeOffset.UtcNow));
     }
 }
 

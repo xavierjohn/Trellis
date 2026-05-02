@@ -119,7 +119,7 @@ public class BankAccount : Aggregate<AccountId>
             customerId,
             accountType,
             initialDeposit,
-            timeProvider.GetUtcNow().UtcDateTime));
+            timeProvider.GetUtcNow()));
 
         return Result.Ok(account);
     }
@@ -137,8 +137,8 @@ public class BankAccount : Aggregate<AccountId>
             .Tap(newBalance =>
             {
                 Balance = newBalance;
-                var now = _timeProvider.GetUtcNow().UtcDateTime;
-                _transactions.Add(Transaction.CreateDeposit(TransactionId.NewUniqueV4(), amount, Balance, description, now));
+                var now = _timeProvider.GetUtcNow();
+                _transactions.Add(Transaction.CreateDeposit(TransactionId.NewUniqueV4(), amount, Balance, description, now.UtcDateTime));
                 DomainEvents.Add(new MoneyDeposited(Id, amount, Balance, description, now));
             })
             .Map(_ => this);
@@ -162,8 +162,8 @@ public class BankAccount : Aggregate<AccountId>
             .Tap(newBalance =>
             {
                 Balance = newBalance;
-                var now = _timeProvider.GetUtcNow().UtcDateTime;
-                _transactions.Add(Transaction.CreateWithdrawal(TransactionId.NewUniqueV4(), amount, Balance, description, now));
+                var now = _timeProvider.GetUtcNow();
+                _transactions.Add(Transaction.CreateWithdrawal(TransactionId.NewUniqueV4(), amount, Balance, description, now.UtcDateTime));
                 DomainEvents.Add(new MoneyWithdrawn(Id, amount, Balance, description, now));
             })
             .Map(_ => this);
@@ -192,9 +192,9 @@ public class BankAccount : Aggregate<AccountId>
             .Tap(newBalance =>
             {
                 Balance = newBalance;
-                var now = _timeProvider.GetUtcNow().UtcDateTime;
+                var now = _timeProvider.GetUtcNow();
                 var description = $"Interest at {annualRate:P2} APR";
-                _transactions.Add(Transaction.CreateInterest(TransactionId.NewUniqueV4(), interestAmount, Balance, description, now));
+                _transactions.Add(Transaction.CreateInterest(TransactionId.NewUniqueV4(), interestAmount, Balance, description, now.UtcDateTime));
                 DomainEvents.Add(new InterestPaid(Id, interestAmount, Balance, annualRate, now));
             })
             .Map(_ => this);
@@ -226,7 +226,7 @@ public class BankAccount : Aggregate<AccountId>
 
         return Withdraw(amount, $"{description} to {toAccount.Id}")
             .Bind(_ => toAccount.Deposit(amount, $"{description} from {Id}"))
-            .Tap(_ => DomainEvents.Add(new TransferCompleted(Id, toAccount.Id, amount, description, _timeProvider.GetUtcNow().UtcDateTime)))
+            .Tap(_ => DomainEvents.Add(new TransferCompleted(Id, toAccount.Id, amount, description, _timeProvider.GetUtcNow())))
             .Map(_ => (this, toAccount));
     }
 
@@ -239,13 +239,13 @@ public class BankAccount : Aggregate<AccountId>
         }
 
         return _lifecycle.FireResult(AccountTrigger.Freeze)
-            .Tap(_ => DomainEvents.Add(new AccountFrozen(Id, reason, _timeProvider.GetUtcNow().UtcDateTime)))
+            .Tap(_ => DomainEvents.Add(new AccountFrozen(Id, reason, _timeProvider.GetUtcNow())))
             .Map(_ => this);
     }
 
     public Result<BankAccount> Unfreeze() =>
         _lifecycle.FireResult(AccountTrigger.Unfreeze)
-            .Tap(_ => DomainEvents.Add(new AccountUnfrozen(Id, _timeProvider.GetUtcNow().UtcDateTime)))
+            .Tap(_ => DomainEvents.Add(new AccountUnfrozen(Id, _timeProvider.GetUtcNow())))
             .Map(_ => this);
 
     public Result<BankAccount> Close()
@@ -257,7 +257,7 @@ public class BankAccount : Aggregate<AccountId>
         }
 
         return _lifecycle.FireResult(AccountTrigger.Close)
-            .Tap(_ => DomainEvents.Add(new AccountClosed(Id, _timeProvider.GetUtcNow().UtcDateTime)))
+            .Tap(_ => DomainEvents.Add(new AccountClosed(Id, _timeProvider.GetUtcNow())))
             .Map(_ => this);
     }
 

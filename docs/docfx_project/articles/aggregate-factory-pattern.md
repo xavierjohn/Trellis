@@ -65,7 +65,7 @@ public partial class Sku : RequiredString<Sku> { }
 
 public partial class ProductId : RequiredGuid<ProductId> { }
 
-public sealed record ProductCreated(ProductId ProductId, DateTime OccurredAt) : IDomainEvent;
+public sealed record ProductCreated(ProductId ProductId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 public sealed class Product : Aggregate<ProductId>
 {

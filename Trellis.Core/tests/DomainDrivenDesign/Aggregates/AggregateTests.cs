@@ -356,7 +356,7 @@ public class AggregateTests
 
 #region Test Aggregate and Events
 
-internal record TestEvent(string AggregateId, DateTime OccurredAt) : IDomainEvent;
+internal record TestEvent(string AggregateId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 internal class TestAggregate : Aggregate<string>
 {
@@ -369,7 +369,7 @@ internal class TestAggregate : Aggregate<string>
     public void DoSomething()
     {
         Name = $"{Name}_modified";
-        DomainEvents.Add(new TestEvent(Id, DateTime.UtcNow));
+        DomainEvents.Add(new TestEvent(Id, DateTimeOffset.UtcNow));
     }
 
     /// <summary>Test-only helper to simulate a persisted ETag.</summary>
