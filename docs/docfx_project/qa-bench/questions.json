@@ -1,0 +1,285 @@
+{
+  "version": "1.0",
+  "description": "Doc-quality Q&A bench for Trellis framework. Each question has a single verifiable ground-truth fact derived from Trellis.*/src/**.cs at the noted source_ref. Used to A/B doc structure changes (e.g., splitting oversized api_reference docs).",
+  "scoring": "all_of: every keyword (case-insensitive substring) must appear in answer. any_of: at least one keyword from each inner array must appear. none_of: no keyword may appear. Answer is PASS iff all three constraints satisfied.",
+  "questions": [
+    {
+      "id": "core-error-cases-count",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "medium",
+      "question": "List every concrete subtype of Trellis Error in the v3 closed-ADT. Reply with a comma-separated list of the simple type names only.",
+      "verifier": {
+        "all_of": ["BadRequest", "Unauthorized", "Forbidden", "NotFound", "MethodNotAllowed", "NotAcceptable", "Conflict", "Gone", "PreconditionFailed", "ContentTooLarge", "UnsupportedMediaType", "RangeNotSatisfiable", "UnprocessableContent", "PreconditionRequired", "TooManyRequests", "InternalServerError", "Unexpected", "NotImplemented", "ServiceUnavailable", "Aggregate"],
+        "none_of": ["Validation(", "Domain(", "Failure("]
+      },
+      "source_ref": "Trellis.Core/src/Errors/Error.cs (20 sealed records)"
+    },
+    {
+      "id": "core-page-items-type",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "easy",
+      "question": "What is the declared property type of `Page<T>.Items`? Reply with just the type name.",
+      "verifier": {
+        "all_of": ["IReadOnlyList<T>"],
+        "none_of": ["IEnumerable<T>", "T[]"]
+      },
+      "source_ref": "Trellis.Core/src/Pagination/Page.cs:57"
+    },
+    {
+      "id": "core-result-kind",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "easy",
+      "question": "Is `Result<TValue>` declared as a class, record, or struct in Trellis v3? Reply with one word.",
+      "verifier": {
+        "all_of": ["struct"],
+        "none_of": ["class", "record"]
+      },
+      "source_ref": "Trellis.Core/src/Result/Result{TValue}.cs:48 (readonly struct)"
+    },
+    {
+      "id": "core-unit-namespace",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "medium",
+      "question": "What is the full namespace of the `Unit` type in Trellis v3? Reply with the namespace only (no type name).",
+      "verifier": {
+        "all_of": ["Trellis"],
+        "none_of": ["Trellis.Core", "Trellis.Results", "Trellis.Result", "Trellis.Primitives"]
+      },
+      "source_ref": "Trellis.Core/src/Trellis/Unit.cs (single-segment namespace 'Trellis')"
+    },
+    {
+      "id": "core-command-return-type",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "easy",
+      "question": "In Trellis v3, what type should a fire-and-forget command (no business payload) return from its handler? Reply with just the type signature.",
+      "verifier": {
+        "all_of": ["Result<Unit>"],
+        "none_of": ["Result.Success()", "Result.Failure(", "Result.Ok();"]
+      },
+      "source_ref": "ADR-005: bare 'Result' removed; commands return Result<Unit>"
+    },
+    {
+      "id": "core-error-conflict-construction",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "medium",
+      "question": "Show the v3 idiomatic C# expression to construct an Error.Conflict for a resource `order` with reason code 'order.already-shipped'. Use the canonical v3 syntax (constructor + object initializer if needed).",
+      "verifier": {
+        "all_of": ["new Error.Conflict", "order", "order.already-shipped"],
+        "none_of": ["Error.Conflict(order, \"order.already-shipped\")", "Error.Validation", "Error.Domain"]
+      },
+      "source_ref": "Error.cs:236; v3 canonical = new Error.Conflict(resource) { ReasonCode = ... }"
+    },
+    {
+      "id": "core-error-page-construction",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "easy",
+      "question": "How do you construct an empty `Page<int>` in Trellis v3? Show the C# expression.",
+      "verifier": {
+        "any_of": [["Page.Empty<int>", "new Page<int>(Array.Empty<int>"]],
+        "none_of": ["Page.Create"]
+      },
+      "source_ref": "Trellis.Core/src/Pagination/Page.cs (Page.Empty<T>() static factory)"
+    },
+    {
+      "id": "core-traverse-overloads",
+      "category": "core",
+      "target_doc": "trellis-api-core.md",
+      "difficulty": "hard",
+      "question": "How many overloads of `Result.TraverseAsync<...>(...)` exist in TraverseExtensions (count every TraverseAsync overload, including any Unit-returning specialization)? Reply with just the count as a digit.",
+      "verifier": {
+        "all_of": ["5"],
+        "none_of": ["4 overloads", "is 4", "are 4", "total of 4", "exactly 4"]
+      },
+      "source_ref": "Trellis.Core/src/Result/Extensions/Traverse.cs (5 TraverseAsync overloads at L75, L111, L148, L184, L215 incl. Unit specialization)"
+    },
+    {
+      "id": "cookbook-savechanges-return",
+      "category": "cookbook",
+      "target_doc": "trellis-api-cookbook.md",
+      "difficulty": "easy",
+      "question": "What is the return type of `DbContext.SaveChangesResultAsync(...)`? Reply with the full type signature.",
+      "verifier": {
+        "all_of": ["Task<Result<int>>"],
+        "none_of": ["Task<int>", "Task<Result>", "ValueTask"]
+      },
+      "source_ref": "Trellis.EntityFrameworkCore/src/DbContextExtensions.cs:20,54"
+    },
+    {
+      "id": "cookbook-actor-provider",
+      "category": "cookbook",
+      "target_doc": "trellis-api-cookbook.md",
+      "difficulty": "medium",
+      "question": "Which Trellis interface should an application implement to supply the current actor (user identity) to the mediator pipeline? Reply with the interface name only.",
+      "verifier": {
+        "all_of": ["IActorProvider"],
+        "none_of": ["IUserProvider", "IIdentityProvider", "ICurrentUser"]
+      },
+      "source_ref": "Trellis.Mediator/src/AuthorizationBehavior.cs:13 (constructor takes IActorProvider)"
+    },
+    {
+      "id": "cookbook-validation-error",
+      "category": "cookbook",
+      "target_doc": "trellis-api-cookbook.md",
+      "difficulty": "medium",
+      "question": "How do you create a single-field validation error for a field named 'email' with reason 'must.be.email' in Trellis v3? Show only the C# expression.",
+      "verifier": {
+        "all_of": ["UnprocessableContent", "email", "must.be.email"],
+        "any_of": [["ForField", "FieldViolation"]],
+        "none_of": ["Error.Validation(", "Validation.For(", "ValidationError("]
+      },
+      "source_ref": "Error.cs:293 + UnprocessableContent.ForField factory"
+    },
+    {
+      "id": "cookbook-fluentvalidation-package",
+      "category": "cookbook",
+      "target_doc": "trellis-api-cookbook.md",
+      "difficulty": "easy",
+      "question": "Which Trellis NuGet package provides FluentValidation integration? Reply with the package name only.",
+      "verifier": {
+        "all_of": ["Trellis.FluentValidation"],
+        "none_of": ["Trellis.Validation", "Trellis.Core.FluentValidation"]
+      },
+      "source_ref": "Trellis.FluentValidation package directory"
+    },
+    {
+      "id": "asp-tohttpresponse-name",
+      "category": "asp",
+      "target_doc": "trellis-api-asp.md",
+      "difficulty": "easy",
+      "question": "Which extension method on `Result<T>` produces a Minimal API `Microsoft.AspNetCore.Http.IResult`? Reply with the method name only (no parens).",
+      "verifier": {
+        "all_of": ["ToHttpResponse"],
+        "none_of": ["ToActionResult", "ToHttpResult", "AsActionResult"]
+      },
+      "source_ref": "Trellis.Asp/src/Response/HttpResponseExtensions.cs:39"
+    },
+    {
+      "id": "asp-actionresult-vs-httpresponse",
+      "category": "asp",
+      "target_doc": "trellis-api-asp.md",
+      "difficulty": "medium",
+      "question": "Complete this sentence using exactly the format shown, naming the controller style each method targets: 'AsActionResult is for ___ controllers; ToHttpResponse is for ___ APIs.' (Fill the two blanks with one word each.)",
+      "verifier": {
+        "all_of": ["AsActionResult is for MVC", "ToHttpResponse is for Minimal"],
+        "none_of": ["AsActionResult is for Minimal", "ToHttpResponse is for MVC"]
+      },
+      "source_ref": "ActionResultAdapter.cs (AsActionResult => ActionResult<T> for MVC controllers); HttpResponseExtensions.cs (ToHttpResponse => IResult for Minimal API)"
+    },
+    {
+      "id": "asp-trellishttpresult-visibility",
+      "category": "asp",
+      "target_doc": "trellis-api-asp.md",
+      "difficulty": "hard",
+      "question": "Is the `TrellisHttpResult<TDomain, TBody>` class public or internal? Reply with one word.",
+      "verifier": {
+        "all_of": ["internal"],
+        "none_of": ["public"]
+      },
+      "source_ref": "Trellis.Asp/src/Response/TrellisHttpResult.cs:18 (internal sealed class)"
+    },
+    {
+      "id": "asp-resource-authorization-tparams",
+      "category": "asp",
+      "target_doc": "trellis-api-asp.md",
+      "difficulty": "hard",
+      "question": "Show the type-parameter list for `services.AddResourceAuthorization<...>()`. Reply with EXACTLY the angle-bracket fragment as it would appear in C# source, including spaces and commas (e.g., `<TFoo, TBar, TBaz>`). The order matters.",
+      "verifier": {
+        "all_of": ["<TMessage, TResource, TResponse>"],
+        "none_of": ["<TResource, TMessage", "<TResponse, ", "<TResource, TResponse"]
+      },
+      "source_ref": "Trellis.Mediator/src/ServiceCollectionExtensions.cs:171 — AddResourceAuthorization<TMessage, TResource, TResponse>"
+    },
+    {
+      "id": "efcore-repositorybase",
+      "category": "efcore",
+      "target_doc": "trellis-api-efcore.md",
+      "difficulty": "easy",
+      "question": "What is the abstract base class to inherit when authoring a Trellis EF Core repository? Reply with just the type name including its type parameters.",
+      "verifier": {
+        "all_of": ["RepositoryBase", "TAggregate", "TId"],
+        "none_of": []
+      },
+      "source_ref": "Trellis.EntityFrameworkCore/src/RepositoryBase.cs:42"
+    },
+    {
+      "id": "efcore-uow-interface",
+      "category": "efcore",
+      "target_doc": "trellis-api-efcore.md",
+      "difficulty": "easy",
+      "question": "Which Trellis interface represents the Unit-of-Work for EF Core? Reply with just the interface name.",
+      "verifier": {
+        "all_of": ["IUnitOfWork"],
+        "none_of": ["IUnitOfWorkAsync", "ITransaction"]
+      },
+      "source_ref": "Trellis.EntityFrameworkCore/src/IUnitOfWork.cs:13"
+    },
+    {
+      "id": "efcore-package-name",
+      "category": "efcore",
+      "target_doc": "trellis-api-efcore.md",
+      "difficulty": "easy",
+      "question": "What is the NuGet package name for Trellis EF Core integration? Reply with the package id only.",
+      "verifier": {
+        "all_of": ["Trellis.EntityFrameworkCore"],
+        "none_of": ["Trellis.EFCore ", "Trellis.EF "]
+      },
+      "source_ref": "Package directory name"
+    },
+    {
+      "id": "control-mediator-pipeline-behaviors",
+      "category": "control",
+      "target_doc": "trellis-api-mediator.md",
+      "difficulty": "medium",
+      "question": "List the names of every pipeline behavior class defined in Trellis.Mediator (include both default-registered behaviors AND any opt-in behaviors). Reply with comma-separated class names.",
+      "verifier": {
+        "all_of": ["AuthorizationBehavior", "ValidationBehavior", "LoggingBehavior", "TracingBehavior", "ExceptionBehavior", "ResourceAuthorizationBehavior"],
+        "none_of": []
+      },
+      "source_ref": "Trellis.Mediator/src/*Behavior.cs (6 *Behavior.cs files)"
+    },
+    {
+      "id": "control-statemachine-type",
+      "category": "control",
+      "target_doc": "trellis-api-statemachine.md",
+      "difficulty": "easy",
+      "question": "What is the main public class in Trellis.StateMachine? Reply with the type name including its type parameters.",
+      "verifier": {
+        "all_of": ["LazyStateMachine", "TState", "TTrigger"],
+        "none_of": []
+      },
+      "source_ref": "Trellis.StateMachine/src/LazyStateMachine.cs:52"
+    },
+    {
+      "id": "control-http-toresult-async",
+      "category": "control",
+      "target_doc": "trellis-api-http.md",
+      "difficulty": "medium",
+      "question": "What is the return type of `HttpResponseExtensions.ToResultAsync(this Task<HttpResponseMessage>, ...)` in Trellis.Http? Reply with just the type signature.",
+      "verifier": {
+        "all_of": ["Task<Result<HttpResponseMessage>>"],
+        "none_of": ["Task<HttpResponseMessage>", "ValueTask", "Task<Result>"]
+      },
+      "source_ref": "Trellis.Http/src/HttpResponseExtensions.cs:72,201"
+    },
+    {
+      "id": "control-authorization-interfaces",
+      "category": "control",
+      "target_doc": "trellis-api-authorization.md",
+      "difficulty": "medium",
+      "question": "Name the marker interface a message implements to opt into per-resource authorization, AND any one of the two collaborator interfaces the application can implement to supply the resource (either the per-command loader interface or the shared-loader identifier interface). Reply with the interface names including type parameters.",
+      "verifier": {
+        "all_of": ["IAuthorizeResource", "TResource"],
+        "any_of": [["IResourceLoader", "IIdentifyResource"]],
+        "none_of": []
+      },
+      "source_ref": "Trellis.Authorization: IAuthorizeResource<TResource> + IResourceLoader<TMessage, TResource> (escape hatch) OR IIdentifyResource<TResource, TId> (preferred + shared loader)"
+    }
+  ]
+}
