@@ -264,6 +264,34 @@ var result =
 > [!NOTE]
 > In a Result LINQ expression, `where` uses Trellis' generic “filtered out” failure. If you need a domain-specific message, prefer `Ensure(...)`.
 
+### Async LINQ over `Task<Result<T>>` and `ValueTask<Result<T>>`
+
+`Task<Result<T>>` and `ValueTask<Result<T>>` participate in query syntax directly — no need to `await` each step into a sync block.
+
+```csharp
+using Trellis;
+
+// All-async chain — every step returns Task<Result<T>>.
+var orderDto = await (
+    from user  in GetUserAsync(id)         // Task<Result<User>>
+    from order in GetOrderAsync(user)      // Task<Result<Order>>
+    select new OrderDto(user, order));
+
+// Mixed sync and async — sync source, async continuation.
+var summary = await (
+    from u in LoadCachedUser(id)           // Result<User>
+    from o in FetchOrderAsync(u)           // Task<Result<Order>>
+    select new Summary(u, o));
+
+// And the reverse — async source, sync validation step.
+var validated = await (
+    from u in LoadUserAsync(id)            // Task<Result<User>>
+    from p in ValidatePermissions(u)       // Result<Permissions>
+    select new Authorized(u, p));
+```
+
+Failures short-circuit with the same semantics as sync `Bind` — the next selector is not invoked. Exceptions thrown inside async selectors propagate through `await` (matching `BindAsync` / `MapAsync`); they are not converted to `Result.Fail`. To honor cancellation, capture a `CancellationToken` from the surrounding method's closure and call `ct.ThrowIfCancellationRequested()` inside the selector.
+
 ### Maybe LINQ
 
 `Maybe<T>` supports LINQ too, which makes optional flows much easier to read.

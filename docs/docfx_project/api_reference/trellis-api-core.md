@@ -848,7 +848,7 @@ The result API contains a large generated extension surface. Exact public famili
 | `DiscardExtensions`, `DiscardTaskExtensions`, `DiscardValueTaskExtensions` | Drops the `Result<T>` value entirely (returns `void`/`Task`/`ValueTask`) for intentional fire-and-forget pipelines |
 | `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync` | Predicate-based validation on successful values; includes collection-wide validation |
 | `GetValueOrDefaultExtensions` | Non-throwing value fallback helpers |
-| `ResultLinqExtensions` | LINQ query syntax support via `Select`/`SelectMany`/`Where` |
+| `ResultLinqExtensions`, `ResultLinqExtensionsTaskAsync`, `ResultLinqExtensionsTaskLeftAsync`, `ResultLinqExtensionsTaskRightAsync`, `ResultLinqExtensionsValueTaskAsync`, `ResultLinqExtensionsValueTaskLeftAsync`, `ResultLinqExtensionsValueTaskRightAsync` | LINQ query syntax support via `Select`/`SelectMany`/`Where` for `Result<T>`, `Task<Result<T>>` and `ValueTask<Result<T>>` (mixed sync/async sources and continuations) |
 | `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions` | Success-path mapping, conditional mapping, and failure remapping; tuple overloads generated for arities 2-9 |
 | `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync` | Terminal branching for normal and tuple results. (The previous `MatchErrorExtensions` API was removed — use `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., ... })` against the closed catalog.) |
 | `NullableExtensions`, `NullableExtensionsAsync` | Converts nullable reference/value types to `Result<T>` |
@@ -1107,6 +1107,50 @@ return await LoadAsync(id)
     .BindAsync(ChargeAsync)
     .DebugDetailedAsync("after-charge");
 ```
+
+#### LINQ query-syntax family — `ResultLinqExtensions`, `ResultLinqExtensionsTaskAsync`, `ResultLinqExtensionsTaskLeftAsync`, `ResultLinqExtensionsTaskRightAsync`, `ResultLinqExtensionsValueTaskAsync`, `ResultLinqExtensionsValueTaskLeftAsync`, `ResultLinqExtensionsValueTaskRightAsync`
+
+LINQ query expression support for `Result<T>`, `Task<Result<T>>`, and `ValueTask<Result<T>>`. The async overloads let `from ... in ...` clauses chain async result-producing operations directly — without `await`-ing each step into a sync block. Failures short-circuit subsequent steps with the same semantics as `Bind` / `Map` / `Ensure`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<TOut> Select<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> selector)` | `Result<TOut>` | Sync `Select` — projects a successful value (delegates to `Map`). |
+| `public static Result<TResult> SelectMany<TSource, TCollection, TResult>(this Result<TSource> source, Func<TSource, Result<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)` | `Result<TResult>` | Sync `SelectMany` — enables multi-`from` chains. |
+| `public static Result<TSource> Where<TSource>(this Result<TSource> source, Func<TSource, bool> predicate)` | `Result<TSource>` | Sync `Where` — converts to a generic "filtered out" failure when the predicate is false. Prefer `Ensure` for meaningful errors. |
+| `public static Task<Result<TOut>> Select<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, TOut> selector)` | `Task<Result<TOut>>` | `Select` over an async receiver. |
+| `public static Task<Result<TResult>> SelectMany<TSource, TCollection, TResult>(this Task<Result<TSource>> source, Func<TSource, Task<Result<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)` | `Task<Result<TResult>>` | `SelectMany` — async source, async continuation. |
+| `public static Task<Result<TResult>> SelectMany<TSource, TCollection, TResult>(this Task<Result<TSource>> source, Func<TSource, Result<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)` | `Task<Result<TResult>>` | `SelectMany` — async source, sync continuation (`.Left`). |
+| `public static Task<Result<TResult>> SelectMany<TSource, TCollection, TResult>(this Result<TSource> source, Func<TSource, Task<Result<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)` | `Task<Result<TResult>>` | `SelectMany` — sync source, async continuation (`.Right`). |
+| `public static Task<Result<TSource>> Where<TSource>(this Task<Result<TSource>> source, Func<TSource, bool> predicate)` | `Task<Result<TSource>>` | `Where` over an async receiver. |
+| `public static ValueTask<Result<TOut>> Select<TIn, TOut>(this ValueTask<Result<TIn>> resultTask, Func<TIn, TOut> selector)` | `ValueTask<Result<TOut>>` | `Select` over a `ValueTask` receiver. |
+| `public static ValueTask<Result<TResult>> SelectMany<TSource, TCollection, TResult>(this ValueTask<Result<TSource>> source, Func<TSource, ValueTask<Result<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)` | `ValueTask<Result<TResult>>` | `SelectMany` — `ValueTask` source and continuation. |
+| `public static ValueTask<Result<TResult>> SelectMany<TSource, TCollection, TResult>(this ValueTask<Result<TSource>> source, Func<TSource, Result<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)` | `ValueTask<Result<TResult>>` | `SelectMany` — `ValueTask` source, sync continuation (`.Left`). |
+| `public static ValueTask<Result<TResult>> SelectMany<TSource, TCollection, TResult>(this Result<TSource> source, Func<TSource, ValueTask<Result<TCollection>>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)` | `ValueTask<Result<TResult>>` | `SelectMany` — sync source, `ValueTask` continuation (`.Right`). |
+| `public static ValueTask<Result<TSource>> Where<TSource>(this ValueTask<Result<TSource>> source, Func<TSource, bool> predicate)` | `ValueTask<Result<TSource>>` | `Where` over a `ValueTask` receiver. |
+
+```csharp
+// All-async LINQ — Task<Result<T>> participates in query syntax directly.
+var orderDto = await (
+    from user  in GetUserAsync(id)         // Task<Result<User>>
+    from order in GetOrderAsync(user)      // Task<Result<Order>>
+    select new OrderDto(user, order));
+
+// Mixed sync/async — sync source flows into an async continuation (.Right).
+var summary = await (
+    from u in LoadCachedUser(id)           // Result<User>
+    from o in FetchOrderAsync(u)           // Task<Result<Order>>
+    select new Summary(u, o));
+
+// And the reverse — async source with a sync validation step (.Left).
+var validated = await (
+    from u in LoadUserAsync(id)            // Task<Result<User>>
+    from p in ValidatePermissions(u)       // Result<Permissions>
+    select new Authorized(u, p));
+```
+
+> **CancellationToken pattern.** Closure-capture a `CancellationToken` from the surrounding method and call `ct.ThrowIfCancellationRequested()` inside any async selector that needs to honor cancellation; the query expression itself does not introduce a token parameter.
+>
+> **Exceptions.** Exceptions thrown inside selectors propagate through the `await` (matching `BindAsync` / `MapAsync` semantics). They are not converted to `Result.Fail`.
 
 #### Traverse — `TraverseExtensions`
 
