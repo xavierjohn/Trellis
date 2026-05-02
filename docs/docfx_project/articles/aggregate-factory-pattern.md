@@ -65,7 +65,7 @@ public partial class Sku : RequiredString<Sku> { }
 
 public partial class ProductId : RequiredGuid<ProductId> { }
 
-public sealed record ProductCreated(ProductId ProductId, DateTime OccurredAt) : IDomainEvent;
+public sealed record ProductCreated(ProductId ProductId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 public sealed class Product : Aggregate<ProductId>
 {
@@ -89,7 +89,7 @@ public sealed class Product : Aggregate<ProductId>
     public static Result<Product> TryCreate(ProductName name, Sku sku)
     {
         var product = new Product(ProductId.NewUniqueV7(), name, sku);
-        product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
+        product.DomainEvents.Add(new ProductCreated(product.Id, DateTimeOffset.UtcNow));
         return Result.Ok(product);
     }
 
@@ -177,7 +177,7 @@ public static Result<Product> TryCreate(ProductName name, Sku sku)
         return Result.Fail<Product>(validation.Error!);
 
     var product = new Product(ProductId.NewUniqueV7(), name, sku);
-    product.DomainEvents.Add(new ProductCreated(product.Id, DateTime.UtcNow));
+    product.DomainEvents.Add(new ProductCreated(product.Id, DateTimeOffset.UtcNow));
     return Result.Ok(product);
 }
 

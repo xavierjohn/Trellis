@@ -35,17 +35,23 @@
 /// </remarks>
 /// <example>
 /// <code>
-/// // Define domain events as immutable records with OccurredAt as the timestamp
-/// public record OrderCreated(OrderId OrderId, CustomerId CustomerId, DateTime OccurredAt) : IDomainEvent;
-/// public record OrderSubmitted(OrderId OrderId, Money Total, DateTime OccurredAt) : IDomainEvent;
+/// // Define domain events as immutable records with OccurredAt as the timestamp.
+/// // OccurredAt is DateTimeOffset so the authored instant is preserved unambiguously
+/// // through serialization (e.g., outbox tables, integration buses, audit projections).
+/// public record OrderCreated(OrderId OrderId, CustomerId CustomerId, DateTimeOffset OccurredAt) : IDomainEvent;
+/// public record OrderSubmitted(OrderId OrderId, Money Total, DateTimeOffset OccurredAt) : IDomainEvent;
 /// 
-/// // Raise events from an aggregate
+/// // Raise events from an aggregate. Use TimeProvider.GetUtcNow() (typically injected)
+/// // so tests can pin time deterministically with a fake clock.
 /// public class Order : Aggregate&lt;OrderId&gt;
 /// {
-///     private Order(OrderId id, CustomerId customerId) : base(id)
+///     private readonly TimeProvider _clock;
+/// 
+///     private Order(OrderId id, CustomerId customerId, TimeProvider clock) : base(id)
 ///     {
+///         _clock = clock;
 ///         CustomerId = customerId;
-///         DomainEvents.Add(new OrderCreated(id, customerId, DateTime.UtcNow));
+///         DomainEvents.Add(new OrderCreated(id, customerId, _clock.GetUtcNow()));
 ///     }
 ///     
 ///     public Result&lt;Order&gt; Submit()
@@ -55,8 +61,7 @@
 ///             .Tap(_ =>
 ///             {
 ///                 Status = OrderStatus.Submitted;
-///                 SubmittedAt = DateTime.UtcNow;
-///                 DomainEvents.Add(new OrderSubmitted(Id, Total, DateTime.UtcNow));
+///                 DomainEvents.Add(new OrderSubmitted(Id, Total, _clock.GetUtcNow()));
 ///             });
 ///     }
 /// }
@@ -76,27 +81,41 @@
 public interface IDomainEvent
 {
     /// <summary>
-    /// Gets the UTC timestamp when this domain event occurred.
+    /// Gets the timestamp when this domain event occurred.
     /// </summary>
     /// <value>
-    /// The date and time in UTC when the event was raised.
+    /// The instant in time when the event was raised, as a <see cref="DateTimeOffset"/> with explicit UTC offset.
     /// </value>
     /// <remarks>
     /// <para>
     /// This timestamp represents when the business action occurred, not when the event was persisted or published.
-    /// Always use UTC to ensure consistency across distributed systems and time zones.
+    /// Author events using <see cref="TimeProvider.GetUtcNow"/> (typically injected) so the canonical UTC offset
+    /// (<c>+00:00</c>) is recorded and tests can pin time deterministically with a fake clock.
+    /// </para>
+    /// <para>
+    /// <see cref="DateTimeOffset"/> is preferred over <see cref="DateTime"/> because the offset is an explicit
+    /// part of the value and round-trips unambiguously through serialization. Events stored in outbox tables,
+    /// integration buses, and audit projections retain their authored instant without timezone-loss bugs.
+    /// </para>
+    /// <para>
+    /// <strong>Caveat:</strong> C# implicitly converts <see cref="DateTime"/> to <see cref="DateTimeOffset"/>,
+    /// so a caller that passes <c>DateTime.Now</c> (Local) or <c>new DateTime(...)</c> (Unspecified, treated as Local)
+    /// will silently produce an event timestamped with the machine's local offset rather than UTC. The contract
+    /// does not block this at the type level. Always author events from <see cref="TimeProvider.GetUtcNow"/> or
+    /// <see cref="DateTimeOffset.UtcNow"/> to avoid local-time stamping on non-UTC machines. A static analyzer to
+    /// flag <see cref="DateTime"/> sources flowing into <c>OccurredAt</c> may follow in a future release.
     /// </para>
     /// <para>
     /// Use <c>OccurredAt</c> as the single timestamp for your events - avoid adding redundant fields like 
     /// <c>CreatedAt</c>, <c>SubmittedAt</c>, etc. that duplicate this information:
     /// <code>
     /// // Good - OccurredAt captures when the event happened
-    /// public record OrderSubmitted(OrderId OrderId, Money Total, DateTime OccurredAt) : IDomainEvent;
+    /// public record OrderSubmitted(OrderId OrderId, Money Total, DateTimeOffset OccurredAt) : IDomainEvent;
     /// 
     /// // Avoid - redundant SubmittedAt duplicates OccurredAt
-    /// public record OrderSubmitted(OrderId OrderId, Money Total, DateTime SubmittedAt, DateTime OccurredAt) : IDomainEvent;
+    /// public record OrderSubmitted(OrderId OrderId, Money Total, DateTimeOffset SubmittedAt, DateTimeOffset OccurredAt) : IDomainEvent;
     /// </code>
     /// </para>
     /// </remarks>
-    DateTime OccurredAt { get; }
+    DateTimeOffset OccurredAt { get; }
 }

@@ -10,45 +10,45 @@ public record AccountOpened(
     CustomerId CustomerId,
     AccountType AccountType,
     Money InitialBalance,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;
 
 public record MoneyDeposited(
     AccountId AccountId,
     Money Amount,
     Money NewBalance,
     string Description,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;
 
 public record MoneyWithdrawn(
     AccountId AccountId,
     Money Amount,
     Money NewBalance,
     string Description,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;
 
 public record TransferCompleted(
     AccountId FromAccountId,
     AccountId ToAccountId,
     Money Amount,
     string Description,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;
 
 public record AccountFrozen(
     AccountId AccountId,
     string Reason,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;
 
 public record AccountUnfrozen(
     AccountId AccountId,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;
 
 public record AccountClosed(
     AccountId AccountId,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;
 
 public record InterestPaid(
     AccountId AccountId,
     Money InterestAmount,
     Money NewBalance,
     decimal AnnualRate,
-    DateTime OccurredAt) : IDomainEvent;
+    DateTimeOffset OccurredAt) : IDomainEvent;

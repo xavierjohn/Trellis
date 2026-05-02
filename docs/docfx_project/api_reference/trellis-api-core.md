@@ -1458,7 +1458,7 @@ public interface IDomainEvent
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `OccurredAt` | `DateTime` | UTC timestamp for when the domain event occurred. |
+| `OccurredAt` | `DateTimeOffset` | Timestamp (with explicit UTC offset) for when the domain event occurred. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -2031,7 +2031,7 @@ public sealed class OrderId : ScalarValueObject<OrderId, Guid>, IScalarValue<Ord
             : Result.Fail<OrderId>(Error.UnprocessableContent.ForField(fieldName ?? "orderId", "must_be_guid", "Order ID must be a GUID."));
 }
 
-public sealed record OrderPlaced(OrderId OrderId, DateTime OccurredAt) : IDomainEvent;
+public sealed record OrderPlaced(OrderId OrderId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 public sealed class Order : Aggregate<OrderId>
 {
@@ -2042,7 +2042,7 @@ public sealed class Order : Aggregate<OrderId>
     public static Result<Order> Create(string description)
     {
         var order = new Order(OrderId.Create(Guid.NewGuid()), description);
-        order.DomainEvents.Add(new OrderPlaced(order.Id, DateTime.UtcNow));
+        order.DomainEvents.Add(new OrderPlaced(order.Id, DateTimeOffset.UtcNow));
         return Result.Ok(order);
     }
 }

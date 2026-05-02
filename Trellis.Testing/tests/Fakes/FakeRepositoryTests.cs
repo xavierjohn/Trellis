@@ -4,9 +4,9 @@ public class FakeRepositoryTests
 {
     #region Test Aggregate
 
-    private record TestEvent(string AggregateId, DateTime OccurredAt) : IDomainEvent
+    private record TestEvent(string AggregateId, DateTimeOffset OccurredAt) : IDomainEvent
     {
-        public TestEvent(string aggregateId) : this(aggregateId, DateTime.UtcNow) { }
+        public TestEvent(string aggregateId) : this(aggregateId, DateTimeOffset.UtcNow) { }
     }
 
     private class TestAggregate : Aggregate<string>

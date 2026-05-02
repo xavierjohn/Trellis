@@ -1325,26 +1325,26 @@ Without `AddTrellisUnitOfWork<TContext>()`, `repo.Add(order)` stages the entity 
 
 ```csharp
 // ❌ Wrong — CS0535 'OrderSubmitted does not implement IDomainEvent.OccurredAt'
-public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTime SubmittedAt) : IDomainEvent;
+public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTimeOffset SubmittedAt) : IDomainEvent;
 ```
 
 The compile error is unambiguous, but the obvious "fix" — adding `OccurredAt` *alongside* `SubmittedAt` — is the wrong shape:
 
 ```csharp
 // ❌ Wrong — duplicate timestamps. SubmittedAt and OccurredAt always carry the same value.
-public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTime SubmittedAt, DateTime OccurredAt) : IDomainEvent;
+public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTimeOffset SubmittedAt, DateTimeOffset OccurredAt) : IDomainEvent;
 ```
 
 **Fix.** `OccurredAt` is the canonical, only timestamp on every domain event. The semantic meaning ("when the order was submitted") is carried by the *event type name* (`OrderSubmitted`), not by a parallel timestamp field. Drop the semantic alias:
 
 ```csharp
 // ✅ Correct — OccurredAt is the timestamp; the event name carries the semantic.
-public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTime OccurredAt) : IDomainEvent;
-public sealed record OrderApproved(OrderId OrderId, ActorId ApprovedBy, DateTime OccurredAt) : IDomainEvent;
-public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, DateTime OccurredAt) : IDomainEvent;
+public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTimeOffset OccurredAt) : IDomainEvent;
+public sealed record OrderApproved(OrderId OrderId, ActorId ApprovedBy, DateTimeOffset OccurredAt) : IDomainEvent;
+public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, DateTimeOffset OccurredAt) : IDomainEvent;
 ```
 
-**Raising the event.** Always pass `DateTime.UtcNow` (or an injected `TimeProvider.GetUtcNow().UtcDateTime` for testability). The aggregate's domain method, not the event constructor, is where time enters the system:
+**Raising the event.** Always pass `TimeProvider.GetUtcNow()` (the .NET 8 testable-clock primitive returns `DateTimeOffset` directly — no conversion needed). The aggregate's domain method, not the event constructor, is where time enters the system:
 
 ```csharp
 public Result<Order> Submit(TimeProvider clock)
@@ -1354,7 +1354,7 @@ public Result<Order> Submit(TimeProvider clock)
         .Tap(_ =>
         {
             Status = OrderStatus.Submitted;
-            DomainEvents.Add(new OrderSubmitted(Id, Total, clock.GetUtcNow().UtcDateTime));
+            DomainEvents.Add(new OrderSubmitted(Id, Total, clock.GetUtcNow()));
         });
 }
 ```
@@ -1362,11 +1362,11 @@ public Result<Order> Submit(TimeProvider clock)
 **On the aggregate.** If your aggregate also exposes a public `SubmittedAt` property (e.g., to drive UI sort order or read-model projections), source it from the event timestamp at write time — don't track it independently:
 
 ```csharp
-public DateTime? SubmittedAt { get; private set; }
+public DateTimeOffset? SubmittedAt { get; private set; }
 
 public Result<Order> Submit(TimeProvider clock)
 {
-    var occurredAt = clock.GetUtcNow().UtcDateTime;
+    var occurredAt = clock.GetUtcNow();
     // ... ensure rules ...
     Status = OrderStatus.Submitted;
     SubmittedAt = occurredAt;
@@ -1375,7 +1375,9 @@ public Result<Order> Submit(TimeProvider clock)
 }
 ```
 
-**Why a single timestamp.** Domain events flow into outbox tables, integration buses, audit projections, and event-sourced read models. Every consumer assumes `OccurredAt` is *the* occurrence time. Adding `SubmittedAt`/`ApprovedAt`/`ShippedAt` to individual events forces every consumer to know which field to project per event type — and the two fields can drift if the aggregate's setter and the event constructor are passed different `DateTime.UtcNow` calls.
+**Why a single timestamp.** Domain events flow into outbox tables, integration buses, audit projections, and event-sourced read models. Every consumer assumes `OccurredAt` is *the* occurrence time. Adding `SubmittedAt`/`ApprovedAt`/`ShippedAt` to individual events forces every consumer to know which field to project per event type — and the two fields can drift if the aggregate's setter and the event constructor are passed different `clock.GetUtcNow()` calls.
+
+**Why `DateTimeOffset`.** `OccurredAt` is `DateTimeOffset` (not `DateTime`) so the explicit offset is a part of the value and round-trips unambiguously through serialization. `TimeProvider.GetUtcNow()` returns `DateTimeOffset` directly — events stored in outbox tables, integration buses, and audit projections retain their authored instant without timezone-loss bugs.
 
 **See also.** The XML doc on `IDomainEvent.OccurredAt` (in `Trellis.Core`) calls this out explicitly. If your IDE shows the doc on hover, the rule is right there before you hit the compile error.
 

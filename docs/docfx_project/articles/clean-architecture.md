@@ -91,7 +91,7 @@ public partial class LastName : RequiredString<LastName> { }
 
 public sealed record RegisterUserRequest(string Email, string FirstName, string LastName);
 
-public sealed record UserRegistered(UserId UserId, DateTime OccurredAt) : IDomainEvent;
+public sealed record UserRegistered(UserId UserId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 public sealed class User : Aggregate<UserId>
 {
@@ -120,7 +120,7 @@ public sealed class User : Aggregate<UserId>
         LastName lastName)
     {
         var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
-        user.DomainEvents.Add(new UserRegistered(user.Id, DateTime.UtcNow));
+        user.DomainEvents.Add(new UserRegistered(user.Id, DateTimeOffset.UtcNow));
         return Result.Ok(user);
     }
 }
@@ -247,7 +247,7 @@ public sealed record RegisterUserCommand(
                 new RegisterUserCommand(validEmail, validFirstName, validLastName));
 }
 
-public sealed record UserRegistered(UserId UserId, DateTime OccurredAt) : IDomainEvent;
+public sealed record UserRegistered(UserId UserId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 public sealed class User : Aggregate<UserId>
 {
@@ -278,7 +278,7 @@ public sealed class User : Aggregate<UserId>
         LastName lastName)
     {
         var user = new User(UserId.NewUniqueV7(), email, firstName, lastName);
-        user.DomainEvents.Add(new UserRegistered(user.Id, DateTime.UtcNow));
+        user.DomainEvents.Add(new UserRegistered(user.Id, DateTimeOffset.UtcNow));
         return Result.Ok(user);
     }
 
