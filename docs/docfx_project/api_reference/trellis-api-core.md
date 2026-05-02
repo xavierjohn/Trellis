@@ -855,7 +855,7 @@ The result API contains a large generated extension surface. Exact public famili
 | `RecoverExtensions`, `RecoverExtensionsAsync`, `RecoverOnFailureExtensions`, `RecoverOnFailureExtensionsAsync` | Converts failures into fallback success values or results |
 | `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync` | Side effects on success or failure; tuple overloads generated for arities 2-9 |
 | `ToMaybeExtensions`, `ToMaybeExtensionsAsync` | Converts `Result<T>` to `Maybe<T>` |
-| `TraverseExtensions` | Traverses collections through result-producing functions |
+| `TraverseExtensions`, `SequenceAllExtensions`, `TraverseAllExtensions` | Traverses collections through result-producing functions; `*All` variants accumulate failures via `Error.Combine` instead of short-circuiting |
 | `WhenExtensions`, `WhenExtensionsAsync`, `WhenAllExtensionsAsync` | Conditional execution and async fan-in utilities |
 
 Representative exact signatures:
@@ -1175,6 +1175,35 @@ Task<Result<IReadOnlyList<Order>>> orders =
 Result<IReadOnlyList<Money>> subtotals =
     lineItems.Select(item => item.ComputeSubtotal()).Sequence();
 ```
+
+#### TraverseAll / SequenceAll — `TraverseAllExtensions`, `SequenceAllExtensions`
+
+Accumulating-error counterparts to `Traverse` / `Sequence`. Run the selector over every item (no short-circuit) and fold failures via the existing `Error.Combine` extension. A single failure returns unchanged (no `Error.Aggregate` wrap); multiple `UnprocessableContent` failures merge their fields/rules; heterogeneous failures flatten into `Error.Aggregate`. Use these when you need to surface every failure (form-style validation) rather than the first.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<IReadOnlyList<TOut>> TraverseAll<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Result<TOut>> selector)` | `Result<IReadOnlyList<TOut>>` | Accumulating sync traversal; folds every failure via `Error.Combine`. |
+| `public static Task<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Task<Result<TOut>>> selector)` | `Task<Result<IReadOnlyList<TOut>>>` | Accumulating async traversal; selectors are awaited sequentially. |
+| `public static Task<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<IReadOnlyList<TOut>>>` | Accumulating async traversal with cancellation; mirrors `TraverseAsync` shape. |
+| `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, ValueTask<Result<TOut>>> selector)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | Accumulating `ValueTask` traversal for zero-allocation scenarios. |
+| `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, ValueTask<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | Accumulating `ValueTask` traversal with cancellation. |
+| `public static Task<Result<Unit>> TraverseAllAsync<TIn>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<Unit>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Accumulating `Result<Unit>` traversal with cancellation; void-flavoured pipelines. |
+| `public static Result<IReadOnlyList<T>> SequenceAll<T>(this IEnumerable<Result<T>> source)` | `Result<IReadOnlyList<T>>` | Identity-selector accumulating sequence; visits every item, folds failures. |
+| `public static Result<Unit> SequenceAll(this IEnumerable<Result<Unit>> source)` | `Result<Unit>` | Accumulating `Sequence` over `Result<Unit>` for void-flavoured pipelines. |
+
+```csharp
+// Form-style validation: collect every field error in one pass.
+Result<IReadOnlyList<EmailAddress>> emails =
+    raw.TraverseAll(EmailAddress.TryCreate);
+//   ↳ on multiple invalid entries, returns one Error.UnprocessableContent
+//     whose Fields/Rules concatenate every per-item violation.
+
+// Heterogeneous failures flatten into Error.Aggregate:
+Result<IReadOnlyList<Order>> orders =
+    operations.SequenceAll();   // Result<NotFound> + Result<Conflict> → Error.Aggregate
+```
+
+`TraverseAll` matches `Traverse`'s full async surface: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `SequenceAll` is sync-only because the existing `Sequence` is sync-only; if `Sequence` ever gains async siblings, `SequenceAll` follows at the same time.
 
 #### When / WhenAll — `WhenExtensions`, `WhenExtensionsAsync`, `WhenAllExtensionsAsync`
 
