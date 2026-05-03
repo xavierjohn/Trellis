@@ -16,9 +16,9 @@ using Microsoft.Extensions.Logging;
 /// aggregate types do not trigger dispatch.
 /// </para>
 /// <para>
-/// Dispatch only runs when the command response is a successful <c>Result&lt;TAggregate&gt;</c>
-/// where <c>TAggregate</c> implements <see cref="IAggregate"/>. Other shapes
-/// (<c>Result&lt;Unit&gt;</c>, <c>Result&lt;TDto&gt;</c>, <c>Result&lt;(A,B)&gt;</c>) are
+/// Dispatch only runs when the command response is a successful <c>IResult&lt;TAggregate&gt;</c>
+/// (typically <c>Result&lt;TAggregate&gt;</c>) where <c>TAggregate</c> implements <see cref="IAggregate"/>.
+/// Other shapes (<c>Result&lt;Unit&gt;</c>, <c>Result&lt;TDto&gt;</c>, <c>Result&lt;(A,B)&gt;</c>) are
 /// passed through untouched in v1; manual dispatch remains the option for those flows.
 /// </para>
 /// <para>
