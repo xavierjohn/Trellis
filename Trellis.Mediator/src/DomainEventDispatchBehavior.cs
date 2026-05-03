@@ -67,10 +67,10 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     /// <inheritdoc />
     [UnconditionalSuppressMessage(
         "Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "Reflection on Result<T>.Value is the documented behavior of the default dispatch behavior; AOT consumers must register custom IPipelineBehavior implementations.")]
+        Justification = "Reflection on IResult<T>.TryGetValue is the documented behavior of the default dispatch behavior; AOT consumers must register custom IPipelineBehavior implementations.")]
     [UnconditionalSuppressMessage(
         "AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling",
-        Justification = "Reflection on Result<T>.Value is the documented behavior of the default dispatch behavior; AOT consumers must register custom IPipelineBehavior implementations.")]
+        Justification = "Reflection on IResult<T>.TryGetValue is the documented behavior of the default dispatch behavior; AOT consumers must register custom IPipelineBehavior implementations.")]
     public async ValueTask<TResponse> Handle(
         TMessage message,
         MessageHandlerDelegate<TMessage, TResponse> next,
@@ -120,22 +120,22 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     [LoggerMessage(Level = LogLevel.Error, Message = "Domain event dispatch exceeded {MaxWaves} waves for {AggregateType}; abandoning {Remaining} event(s). Domain event handlers must not raise events on the same aggregate.")]
     private static partial void LogDispatchCapExceeded(ILogger logger, int maxWaves, string aggregateType, int remaining);
 
-    [RequiresUnreferencedCode("Reflects on Result<T>.Value to extract the aggregate. Use explicit handler registration for AOT.")]
-    [RequiresDynamicCode("Reflects on Result<T>.Value to extract the aggregate.")]
+    [RequiresUnreferencedCode("Reflects on IResult<T>.TryGetValue to extract the aggregate. Use explicit handler registration for AOT.")]
+    [RequiresDynamicCode("Reflects on IResult<T>.TryGetValue to extract the aggregate.")]
     private static IAggregate? ExtractAggregate(TResponse response)
     {
         var extractor = s_aggregateExtractor.GetOrAdd(response.GetType(), BuildExtractor);
         return extractor(response);
     }
 
-    [RequiresUnreferencedCode("Reflects on Result<T>.Value via the runtime response type.")]
-    [RequiresDynamicCode("Reflects on Result<T>.Value via the runtime response type.")]
+    [RequiresUnreferencedCode("Reflects on IResult<T>.TryGetValue via the runtime response type.")]
+    [RequiresDynamicCode("Reflects on IResult<T>.TryGetValue via the runtime response type.")]
     private static Func<TResponse, IAggregate?> BuildExtractor(Type responseType)
     {
-        // Result<T> exposes Value (not throwing on success — but to stay safe we route
-        // through TryGetValue which never throws and returns false if the result is a failure.
-        // We've already verified IsSuccess at the call site so Value would be safe, but
-        // TryGetValue keeps us decoupled from the public/non-public state of Value.
+        // Result<T> deliberately removed the v1 `Value` property in favor of the non-throwing
+        // TryGetValue accessor on IResult<T>. We extract the aggregate by reflecting on
+        // IResult<T>.TryGetValue(out T) so we stay decoupled from any future internal layout
+        // changes and never throw if the result is a failure.
         if (!responseType.IsGenericType)
             return static _ => null;
 

@@ -294,7 +294,7 @@ public interface IDomainEventHandler<in TEvent>
 
 Handles a domain event raised by an `IAggregate`. Implementations are resolved via DI by [`DomainEventDispatchBehavior`](#domaineventdispatchbehavior) after a successful command and invoked once per matching event.
 
-Dispatch matches the runtime type of the event **exactly**; base-type and interface-type handlers are not resolved automatically. Handlers must be **idempotent** and treat their work as a best-effort side effect — exceptions thrown by a handler are logged at error level and swallowed so that other handlers, other events, and the originating command still complete. Handlers must not mutate the same aggregate or raise additional events on it; the dispatcher will surface accidental re-entry by capping waves.
+Dispatch matches the runtime type of the event **exactly**; base-type and interface-type handlers are not resolved automatically. Handlers must be **idempotent** and treat their work as a best-effort side effect — exceptions thrown by a handler are logged at error level and swallowed so that other handlers, other events, and the originating command still complete. Handlers should treat themselves as side-effect-only: although the dispatcher drains handler-raised events on the same aggregate across subsequent waves (capped at 8), those re-entered events are dispatched *without being persisted* — the originating command's transaction has already committed. The drain-in-waves loop exists to avoid silently dropping events from accidental re-entry, not as a supported pattern for cascading domain mutations; persist-and-emit chains belong inside command handlers, not domain-event handlers.
 
 **Methods**
 

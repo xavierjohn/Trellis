@@ -23,10 +23,13 @@ namespace Trellis.Mediator;
 /// inside the command handler instead.
 /// </para>
 /// <para>
-/// Handlers are also expected <b>not</b> to mutate the aggregate or raise additional
-/// events on it. The dispatcher drains events in waves to surface accidental
-/// re-entry, but the supported v1 contract is single-pass dispatch with no nested
-/// event raising.
+/// Handlers should treat themselves as side-effect-only. Although the dispatcher
+/// drains handler-raised events on the same aggregate across subsequent waves
+/// (capped at 8), those re-entered events are dispatched <b>without being persisted</b> —
+/// the originating command's transaction has already committed. The drain-in-waves
+/// loop exists to avoid silently dropping events from accidental re-entry, not as
+/// a supported pattern for cascading domain mutations; persist-and-emit chains
+/// belong inside command handlers, not domain-event handlers.
 /// </para>
 /// </remarks>
 /// <example>
