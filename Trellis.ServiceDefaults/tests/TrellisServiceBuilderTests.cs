@@ -195,4 +195,64 @@ public class TrellisServiceBuilderTests
         public Task<Result<ProtectedOrder>> LoadAsync(UpdateProtectedOrderCommand message, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Ok(new ProtectedOrder(message.ResourceId, "owner-1")));
     }
+
+    public sealed record SampleEvent(DateTimeOffset OccurredAt) : IDomainEvent;
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Naming", "CA1711:Identifiers should not have incorrect suffix",
+        Justification = "Domain event handler is a DDD term of art and is unrelated to System.EventHandler.")]
+    public sealed class SampleEventHandler : IDomainEventHandler<SampleEvent>
+    {
+        public ValueTask HandleAsync(SampleEvent domainEvent, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    }
+
+    [Fact]
+    public void UseDomainEvents_WithoutAssemblies_RegistersDispatchBehaviorAndPublisher()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options.UseDomainEvents());
+
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IDomainEventPublisher));
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>) &&
+            d.ImplementationType == typeof(DomainEventDispatchBehavior<,>));
+    }
+
+    [Fact]
+    public void UseDomainEvents_WithAssembly_RegistersDiscoveredHandlers()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options.UseDomainEvents(typeof(SampleEventHandler).Assembly));
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IDomainEventHandler<SampleEvent>) &&
+            d.ImplementationType == typeof(SampleEventHandler));
+    }
+
+    [Fact]
+    public void UseDomainEvents_WithUnitOfWork_PlacesDispatchBeforeTransactional()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseDomainEvents()
+            .UseEntityFrameworkUnitOfWork<TestDbContext>());
+
+        var pipeline = services
+            .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
+            .Select(d => d.ImplementationType)
+            .ToList();
+
+        var dispatchIndex = pipeline.IndexOf(typeof(DomainEventDispatchBehavior<,>));
+        var txIndex = pipeline.IndexOf(typeof(TransactionalCommandBehavior<,>));
+
+        dispatchIndex.Should().BeGreaterOrEqualTo(0);
+        txIndex.Should().BeGreaterOrEqualTo(0);
+        dispatchIndex.Should().BeLessThan(txIndex,
+            "domain events must dispatch after the transaction commits");
+        pipeline.Should().EndWith(typeof(TransactionalCommandBehavior<,>));
+    }
 }
