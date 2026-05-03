@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Pagination;
 
 using System;
+using System.Collections.Immutable;
 
 /// <summary>
 /// Unit tests for the <see cref="Page{T}"/> pagination envelope.
@@ -63,6 +64,17 @@ public class PageTests
         var page = new Page<int>(items, null, null, RequestedLimit: 10, AppliedLimit: 10);
 
         items.Add(3);
+
+        page.Items.Should().Equal([1, 2]);
+        page.DeliveredCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void Constructor_accepts_immutable_array_without_changing_semantics()
+    {
+        var items = ImmutableArray.Create(1, 2);
+
+        var page = new Page<int>(items, null, null, RequestedLimit: 10, AppliedLimit: 10);
 
         page.Items.Should().Equal([1, 2]);
         page.DeliveredCount.Should().Be(2);

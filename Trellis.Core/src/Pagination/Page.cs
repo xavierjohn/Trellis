@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 /// <summary>
 /// A single page of items from a paginated collection together with the cursors needed to
@@ -48,7 +49,9 @@ public readonly record struct Page<T>
         if (AppliedLimit > RequestedLimit)
             throw new ArgumentOutOfRangeException(nameof(AppliedLimit), "AppliedLimit cannot exceed RequestedLimit.");
 
-        _items = EquatableArray.From(Items);
+        _items = Items is ImmutableArray<T> immutableItems
+            ? new EquatableArray<T>(immutableItems)
+            : EquatableArray.From(Items);
         this.Next = Next;
         this.Previous = Previous;
         this.RequestedLimit = RequestedLimit;

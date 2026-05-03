@@ -1914,11 +1914,12 @@ Core-owned JSON converter emitted by the `Required*<TSelf>` source generator for
 public static class PrimitiveValueObjectTrace
 ```
 
-Core-owned trace source used by generated `Required*<TSelf>` value objects and concrete primitives. The activity source name remains `"Trellis.Primitives"` for telemetry compatibility; register it with `AddPrimitiveValueObjectInstrumentation()` from `Trellis.Primitives` when using the primitives package, or call `TracerProviderBuilder.AddSource("Trellis.Primitives")` directly for Core-only generated primitives.
+Core-owned trace source used by generated `Required*<TSelf>` value objects and concrete primitives. The activity source name remains `"Trellis.Primitives"` for telemetry compatibility and is exposed as `PrimitiveValueObjectTrace.ActivitySourceName`; register it with `AddPrimitiveValueObjectInstrumentation()` from `Trellis.Primitives` when using the primitives package, or call `TracerProviderBuilder.AddSource(PrimitiveValueObjectTrace.ActivitySourceName)` directly for Core-only generated primitives.
 
 | Name | Type | Description |
 | --- | --- | --- |
 | `ActivitySource` | `ActivitySource` | Activity source used by generated primitive creation/parsing/validation operations. |
+| `ActivitySourceName` | `string` | Public activity source name for Core-only OpenTelemetry wiring. |
 
 ### Source-generated members
 

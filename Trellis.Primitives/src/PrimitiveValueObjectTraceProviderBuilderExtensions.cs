@@ -122,5 +122,5 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     /// <seealso cref="PrimitiveValueObjectTrace"/>
     /// <seealso cref="TracerProviderBuilder"/>
     public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)
-        => builder.AddSource("Trellis.Primitives");
+        => builder.AddSource(PrimitiveValueObjectTrace.ActivitySourceName);
 }

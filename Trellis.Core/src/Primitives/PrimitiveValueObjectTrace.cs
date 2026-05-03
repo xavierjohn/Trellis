@@ -16,7 +16,7 @@ public static class PrimitiveValueObjectTrace
     /// <summary>
     /// Gets the activity source name used by generated and built-in primitive value objects.
     /// </summary>
-    internal static readonly string ActivitySourceName = "Trellis.Primitives";
+    public static string ActivitySourceName => "Trellis.Primitives";
 
     /// <summary>
     /// Gets the version used for primitive value object trace metadata.

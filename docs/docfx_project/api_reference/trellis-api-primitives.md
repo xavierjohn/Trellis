@@ -80,7 +80,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)` | `TracerProviderBuilder` | Registers the Trellis primitive activity source with OpenTelemetry. |
+| `public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)` | `TracerProviderBuilder` | Registers the Core-owned Trellis primitive activity source (`PrimitiveValueObjectTrace.ActivitySourceName`) with OpenTelemetry. |
 
 ### `Age`
 
