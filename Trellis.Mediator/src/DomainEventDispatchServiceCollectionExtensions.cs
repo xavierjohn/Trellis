@@ -23,7 +23,8 @@ public static class DomainEventDispatchServiceCollectionExtensions
     /// <see cref="AddDomainEventDispatch(IServiceCollection, Assembly[])"/>.
     /// </para>
     /// <para>
-    /// The behavior is inserted so it lands inside the always-on Trellis behaviors
+    /// The behavior is inserted as the innermost of the always-on Trellis behaviors,
+    /// running after <c>ValidationBehavior</c>
     /// (Exception → Tracing → Logging → Authorization → Validation → DomainEventDispatch).
     /// If <c>TransactionalCommandBehavior</c> (from <c>Trellis.EntityFrameworkCore</c>) is
     /// already registered, this method temporarily yanks it, ensures the always-on Trellis

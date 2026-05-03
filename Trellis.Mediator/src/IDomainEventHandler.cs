@@ -17,10 +17,13 @@ namespace Trellis.Mediator;
 /// </para>
 /// <para>
 /// Handlers must be idempotent and treat their work as a best-effort side effect:
-/// exceptions thrown by a handler are logged at error level and swallowed so that
-/// other handlers, other events, and the originating command still complete. If a
-/// side effect must block command completion (e.g., write a saga step), do that work
-/// inside the command handler instead.
+/// non-cancellation exceptions thrown by a handler are logged at error level and
+/// swallowed so that other handlers, other events, and the originating command
+/// still complete. <see cref="OperationCanceledException"/> matching the request's
+/// cancellation token is the one exception that propagates — handlers that observe
+/// cancellation should throw it; the dispatcher will let it abort the remaining work.
+/// If a side effect must block command completion, do that work inside the command
+/// handler instead.
 /// </para>
 /// <para>
 /// Handlers should treat themselves as side-effect-only. Although the dispatcher

@@ -13,8 +13,11 @@ namespace Trellis.Mediator;
 /// that want to fan out an event the same way the pipeline would.
 /// </para>
 /// <para>
-/// Implementations are expected to be best-effort: handler exceptions are logged and
-/// swallowed so that one handler's failure does not block the others.
+/// Implementations are expected to be best-effort: non-cancellation handler
+/// exceptions are logged and swallowed so that one handler's failure does not block
+/// the others. <see cref="OperationCanceledException"/> matching the supplied
+/// cancellation token is the one exception that propagates so the originating
+/// request can abort cleanly.
 /// </para>
 /// </remarks>
 public interface IDomainEventPublisher

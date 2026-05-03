@@ -14,9 +14,12 @@ using Microsoft.Extensions.Logging;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Handler exceptions are logged at <see cref="LogLevel.Error"/> and swallowed; the
-/// publisher continues with the next handler so a single misbehaving handler does not
-/// block other side effects.
+/// Non-cancellation handler exceptions are logged at <see cref="LogLevel.Error"/>
+/// and swallowed; the publisher continues with the next handler so a single
+/// misbehaving handler does not block other side effects.
+/// <see cref="OperationCanceledException"/> matching the supplied cancellation
+/// token is the one exception that propagates so the originating request can
+/// abort cleanly.
 /// </para>
 /// <para>
 /// Event-to-handler matching uses <c>domainEvent.GetType()</c> exactly. Handlers registered

@@ -139,8 +139,9 @@ public sealed class TrellisServiceBuilder
     /// Passing no assemblies registers the behavior + default <see cref="IDomainEventPublisher"/>
     /// without scanning; pair with explicit
     /// <c>services.AddDomainEventHandler&lt;TEvent, THandler&gt;()</c> calls (AOT-friendly).
-    /// The dispatch behavior lands inside <c>ValidationBehavior</c> and outside
-    /// <c>TransactionalCommandBehavior</c> so events fire after the transaction commits.
+    /// The dispatch behavior runs after <c>ValidationBehavior</c> and before
+    /// <c>TransactionalCommandBehavior</c> in the pipeline, so events fire after the
+    /// transaction commits.
     /// </remarks>
     public TrellisServiceBuilder UseDomainEvents(params Assembly[] assemblies)
     {
