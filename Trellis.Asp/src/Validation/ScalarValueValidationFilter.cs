@@ -179,8 +179,6 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         return IsNullableReferenceParameter(parameter);
     }
 
-    private static readonly NullabilityInfoContext s_nullabilityInfoContext = new();
-
     private static bool IsNullableReferenceParameter(ParameterDescriptor parameter)
     {
         if (parameter is not ControllerParameterDescriptor controllerParameter)
@@ -189,7 +187,11 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         if (controllerParameter.ParameterType.IsValueType)
             return Nullable.GetUnderlyingType(controllerParameter.ParameterType) is not null;
 
-        var nullability = s_nullabilityInfoContext.Create(controllerParameter.ParameterInfo);
+        // NullabilityInfoContext is documented as not thread-safe, so we instantiate per call
+        // rather than caching a shared static instance that could be accessed concurrently
+        // by parallel requests. See: https://learn.microsoft.com/dotnet/api/system.reflection.nullabilityinfocontext
+        var nullabilityContext = new NullabilityInfoContext();
+        var nullability = nullabilityContext.Create(controllerParameter.ParameterInfo);
         return nullability.ReadState == NullabilityState.Nullable;
     }
 

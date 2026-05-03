@@ -87,7 +87,10 @@ public static class HttpResponseExtensions
     public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<T>(
         this Task<Result<T>> resultTask,
         Action<HttpResponseOptionsBuilder<T>>? configure = null)
-        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(configure);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).ToHttpResponse(configure);
+    }
 
     /// <summary>Async <see cref="ValueTask"/> overload.</summary>
     public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<T>(
@@ -100,7 +103,10 @@ public static class HttpResponseExtensions
         this Task<Result<TDomain>> resultTask,
         Func<TDomain, TBody> body,
         Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)
-        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(body, configure);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).ToHttpResponse(body, configure);
+    }
 
     /// <summary>Async <see cref="ValueTask"/> overload with body projection.</summary>
     public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<TDomain, TBody>(
@@ -148,7 +154,10 @@ public static class HttpResponseExtensions
     public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<T>(
         this Task<Result<WriteOutcome<T>>> resultTask,
         Action<HttpResponseOptionsBuilder<T>>? configure = null)
-        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(configure);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).ToHttpResponse(configure);
+    }
 
     /// <summary>Async <see cref="ValueTask"/> overload.</summary>
     public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<T>(
@@ -161,7 +170,10 @@ public static class HttpResponseExtensions
         this Task<Result<WriteOutcome<TDomain>>> resultTask,
         Func<TDomain, TBody> body,
         Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)
-        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(body, configure);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).ToHttpResponse(body, configure);
+    }
 
     /// <summary>Async <see cref="ValueTask"/> overload with body projection.</summary>
     public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<TDomain, TBody>(
@@ -213,7 +225,10 @@ public static class HttpResponseExtensions
         Func<Cursor, int, string> nextUrlBuilder,
         Func<T, TBody> body,
         Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)
-        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(nextUrlBuilder, body, configure);
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).ToHttpResponse(nextUrlBuilder, body, configure);
+    }
 
     /// <summary>Async <see cref="ValueTask"/> overload.</summary>
     public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<T, TBody>(
@@ -244,24 +259,6 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
         return ResponseFailureWriter.WriteAsync(httpContext, _error, statusCode);
     }
 
-    private int ResolveStatusCode(HttpContext httpContext, Error error)
-    {
-        if (_options.ErrorMapper is not null)
-            return _options.ErrorMapper(error);
-
-        if (_options.ErrorOverrides is { Count: > 0 })
-        {
-            var t = error.GetType();
-            while (t is not null && t != typeof(object))
-            {
-                if (_options.ErrorOverrides.TryGetValue(t, out var sc))
-                    return sc;
-
-                t = t.BaseType;
-            }
-        }
-
-        var ambient = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
-        return ambient.GetStatusCode(error);
-    }
+    private int ResolveStatusCode(HttpContext httpContext, Error error) =>
+        ErrorStatusCodeResolver.Resolve(httpContext, error, _options.ErrorMapper, _options.ErrorOverrides);
 }

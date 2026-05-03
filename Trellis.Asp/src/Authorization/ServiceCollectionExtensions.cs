@@ -107,9 +107,10 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
     /// <para>
-    /// <b>Security:</b> The provider throws <see cref="InvalidOperationException"/> if the
-    /// <c>X-Test-Actor</c> header is present in a Production environment.
-    /// Use <see cref="AddEntraActorProvider"/> for production deployments.
+    /// <b>Security:</b> The provider throws <see cref="InvalidOperationException"/> unconditionally
+    /// when resolved outside of the Development environment, regardless of whether an
+    /// <c>X-Test-Actor</c> header is present on the request. Use <see cref="AddEntraActorProvider"/>
+    /// for production deployments.
     /// </para>
     /// </remarks>
     /// <example>

@@ -50,7 +50,9 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
 
         ApplyBuilderMetadata(response, outcome);
 
-        var prefer = PreferHeader.Parse(httpContext.Request);
+        // RFC 7240 Prefer is opt-in: only inspect/honor the request header and emit
+        // Preference-Applied when the caller explicitly enabled HonorPrefer.
+        var prefer = _options.HonorPrefer ? PreferHeader.Parse(httpContext.Request) : null;
 
         switch (outcome)
         {
@@ -65,16 +67,17 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
                 if (replaced.Metadata is not null)
                     ApplyMetadataHeaders(response, replaced.Metadata);
 
-                if (prefer.ReturnMinimal)
+                if (prefer is not null)
                 {
-                    TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, "Prefer");
-                    response.Headers["Preference-Applied"] = "return=minimal";
-                    return Results.NoContent().ExecuteAsync(httpContext);
-                }
+                    if (prefer.ReturnMinimal)
+                    {
+                        response.Headers["Preference-Applied"] = "return=minimal";
+                        return Results.NoContent().ExecuteAsync(httpContext);
+                    }
 
-                TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, "Prefer");
-                if (prefer.ReturnRepresentation)
-                    response.Headers["Preference-Applied"] = "return=representation";
+                    if (prefer.ReturnRepresentation)
+                        response.Headers["Preference-Applied"] = "return=representation";
+                }
 
                 if (_body is not null)
                     return Results.Ok(_body(replaced.Value)).ExecuteAsync(httpContext);

@@ -122,4 +122,49 @@ public sealed class ResponseFailureWriterTests
         ctx.Response.StatusCode.Should().Be(429);
         ctx.Response.Headers.ContainsKey("Retry-After").Should().BeFalse();
     }
+
+    [Fact]
+    public async Task ValidationProblem_with_5xx_status_scrubs_detail()
+    {
+        // Regression for m-13: when a custom WithErrorMapping promotes UnprocessableContent
+        // to a 5xx status, the validation-branch detail must be scrubbed identically to
+        // the plain Problem branch. Previously the validation branch leaked unprocessable.Detail.
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+            new FieldViolation(new InputPointer("/email"), "format", null, "must be email"));
+        var error = new Error.UnprocessableContent(fields)
+        {
+            Detail = "Sensitive internal context that must not leak.",
+        };
+        var r = Result.Fail<T>(error);
+
+        await r.ToHttpResponse(t => t, o => o.WithErrorMapping<Error.UnprocessableContent>(500))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(500);
+        ctx.Response.Body.Position = 0;
+        var body = await new StreamReader(ctx.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("An internal error occurred.");
+        body.Should().NotContain("Sensitive internal context");
+    }
+
+    [Fact]
+    public async Task ValidationProblem_with_4xx_status_keeps_detail()
+    {
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+            new FieldViolation(new InputPointer("/email"), "format", null, "must be email"));
+        var error = new Error.UnprocessableContent(fields)
+        {
+            Detail = "One or more validation errors occurred.",
+        };
+        var r = Result.Fail<T>(error);
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(422);
+        ctx.Response.Body.Position = 0;
+        var body = await new StreamReader(ctx.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("One or more validation errors occurred.");
+    }
 }

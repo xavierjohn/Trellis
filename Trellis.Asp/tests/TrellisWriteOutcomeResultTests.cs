@@ -109,11 +109,58 @@ public sealed class TrellisWriteOutcomeResultTests
         ctx.Request.Headers["Prefer"] = "return=representation";
         var outcome = new WriteOutcome<Item>.Updated(new Item(1, "n", "v", default));
 
-        await Result.Ok<WriteOutcome<Item>>(outcome).ToHttpResponse(i => new ItemBody(i.Id))
+        await Result.Ok<WriteOutcome<Item>>(outcome)
+            .ToHttpResponse(i => new ItemBody(i.Id), o => o.HonorPrefer())
             .ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(200);
         ctx.Response.Headers["Preference-Applied"].ToString().Should().Be("return=representation");
+    }
+
+    [Fact]
+    public async Task Updated_with_HonorPrefer_and_return_minimal_returns_204_with_PreferenceApplied()
+    {
+        var ctx = NewContext();
+        ctx.Request.Headers["Prefer"] = "return=minimal";
+        var outcome = new WriteOutcome<Item>.Updated(new Item(1, "n", "v", default));
+
+        await Result.Ok<WriteOutcome<Item>>(outcome)
+            .ToHttpResponse((Action<HttpResponseOptionsBuilder<Item>>)(o => o.HonorPrefer()))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(204);
+        ctx.Response.Headers["Preference-Applied"].ToString().Should().Be("return=minimal");
+    }
+
+    [Fact]
+    public async Task Updated_without_HonorPrefer_ignores_return_minimal_request_header()
+    {
+        // Regression for M-3: Prefer is opt-in. When HonorPrefer is not enabled the response
+        // body must remain the full representation (200) and no Preference-Applied/Vary: Prefer
+        // headers should be emitted, even if the client sent Prefer: return=minimal.
+        var ctx = NewContext();
+        ctx.Request.Headers["Prefer"] = "return=minimal";
+        var outcome = new WriteOutcome<Item>.Updated(new Item(1, "n", "v", default));
+
+        await Result.Ok<WriteOutcome<Item>>(outcome).ToHttpResponse().ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(200);
+        ctx.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
+        ctx.Response.Headers.Vary.ToString().Should().NotContain("Prefer");
+    }
+
+    [Fact]
+    public async Task Updated_without_HonorPrefer_ignores_return_representation_request_header()
+    {
+        var ctx = NewContext();
+        ctx.Request.Headers["Prefer"] = "return=representation";
+        var outcome = new WriteOutcome<Item>.Updated(new Item(1, "n", "v", default));
+
+        await Result.Ok<WriteOutcome<Item>>(outcome).ToHttpResponse().ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(200);
+        ctx.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
+        ctx.Response.Headers.Vary.ToString().Should().NotContain("Prefer");
     }
 
     [Fact]

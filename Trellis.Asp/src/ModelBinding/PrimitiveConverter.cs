@@ -18,11 +18,18 @@ internal static class PrimitiveConverter
     public static Result<TPrimitive> ConvertToPrimitive<TPrimitive>(string? value)
         where TPrimitive : IComparable
     {
-        if (string.IsNullOrEmpty(value))
-            return Result.Fail<TPrimitive>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value is required." });
-
         var targetType = typeof(TPrimitive);
         var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+        // For string-typed primitives, defer the empty-vs-required decision to the
+        // value object's TryCreate. Some scalar value objects legitimately accept
+        // empty strings; rejecting empty here prevents the binder from ever reaching
+        // the type's own validation rules.
+        if (value is null)
+            return Result.Fail<TPrimitive>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value is required." });
+
+        if (value.Length == 0 && underlyingType != typeof(string))
+            return Result.Fail<TPrimitive>(new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty) { Detail = "Value is required." });
 
         try
         {

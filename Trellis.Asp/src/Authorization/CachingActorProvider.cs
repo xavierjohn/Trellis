@@ -13,6 +13,12 @@ using Trellis.Authorization;
 /// the same scope will share the same in-flight task. Register as scoped via
 /// <see cref="ServiceCollectionExtensions.AddCachingActorProvider{T}"/>.
 /// </para>
+/// <para>
+/// <b>Failure caching.</b> If the inner provider throws or its task faults, the failure is
+/// cached for the remainder of the request scope; subsequent calls re-throw the same exception
+/// rather than retrying the inner provider. This avoids repeating expensive lookups (e.g.
+/// database round-trips) that have already failed within the current request.
+/// </para>
 /// </remarks>
 public sealed class CachingActorProvider : IActorProvider
 {

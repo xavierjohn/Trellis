@@ -478,6 +478,39 @@ public class ScalarValueValidationFilterTests
         context.Result.Should().BeNull("optional nullable parameter with empty query input should not trigger validation");
     }
 
+    [Fact]
+    public void OnActionExecuting_NullableReferenceParameter_AccessedInParallel_DoesNotThrow()
+    {
+        // Regression test for M-1: NullabilityInfoContext is not thread-safe per .NET docs.
+        // Previously the filter held a static shared instance, which could throw or corrupt
+        // state under concurrent request load. The filter must instantiate per call.
+        var filter = new ScalarValueValidationFilter();
+        var paramDescriptor = CreateControllerParameterDescriptor(nameof(OptionalNullableScalarValueParam), "state");
+
+        const int iterations = 200;
+        var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+        System.Threading.Tasks.Parallel.For(0, iterations, _ =>
+        {
+            try
+            {
+                var context = CreateActionExecutingContextWithParams(
+                    parameters: [paramDescriptor],
+                    arguments: new Dictionary<string, object?> { ["state"] = null },
+                    routeValues: new RouteValueDictionary(),
+                    queryString: "?state=");
+
+                filter.OnActionExecuting(context);
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
+        });
+
+        exceptions.Should().BeEmpty("concurrent invocations must not race on NullabilityInfoContext");
+    }
+
     #endregion
 
     private static void OptionalNullableScalarValueParam(TestOrderCode? state) { }
