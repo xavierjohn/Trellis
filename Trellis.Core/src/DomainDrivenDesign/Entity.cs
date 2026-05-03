@@ -28,7 +28,7 @@
 /// Identity best practices:
 /// <list type="bullet">
 /// <item>Use strongly-typed IDs (e.g., CustomerId, OrderId) instead of primitives</item>
-/// <item>Generate IDs at creation time, typically using NewUnique() or from external source</item>
+/// <item>Generate IDs at creation time, typically using generated <c>NewUniqueV7()</c>/<c>NewUniqueV4()</c> helpers or from an external source</item>
 /// <item>Make ID immutable using init-only setter</item>
 /// <item>Never expose ID setters or allow ID changes after creation</item>
 /// </list>
@@ -129,7 +129,7 @@ public abstract class Entity<TId> : IEntity
     /// <param name="id">The unique identifier for this entity. Must not be null or default.</param>
     /// <remarks>
     /// This constructor should be called by derived classes to set the entity's identity.
-    /// The ID should typically be generated using a NewUnique() method or provided from an external source.
+    /// The ID should typically be generated using a <c>NewUniqueV7()</c>/<c>NewUniqueV4()</c> helper or provided from an external source.
     /// </remarks>
     protected Entity(TId id) => Id = id;
 

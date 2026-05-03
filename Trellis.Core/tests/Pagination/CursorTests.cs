@@ -27,12 +27,17 @@ public class CursorTests
     }
 
     [Fact]
-    public void Default_struct_has_null_token_and_is_distinct_from_constructed_cursor()
+    public void Default_struct_throws_invalid_operation_when_token_accessed()
     {
+        // default(Cursor) bypasses ctor validation; reading Token surfaces the
+        // violation loudly instead of returning a misleading null/empty string.
         var defaulted = default(Cursor);
         var constructed = new Cursor("x");
 
-        defaulted.Token.Should().BeNull();
+        var act = () => defaulted.Token;
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*default-constructed*");
+
         defaulted.Should().NotBe(constructed);
     }
 

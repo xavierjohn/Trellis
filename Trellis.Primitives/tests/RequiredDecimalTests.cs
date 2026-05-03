@@ -8,6 +8,11 @@ public partial class UnitPrice : RequiredDecimal<UnitPrice>
 {
 }
 
+[Range(0.01, 99.99)]
+public partial class RangedUnitPrice : RequiredDecimal<RangedUnitPrice>
+{
+}
+
 internal partial class InternalUnitPrice : RequiredDecimal<InternalUnitPrice>
 {
 }
@@ -175,6 +180,26 @@ public class RequiredDecimalTests
 
         // Assert
         act.Should().Throw<FormatException>();
+    }
+
+    [Fact]
+    public void TryCreate_with_range_from_string_uses_invariant_culture()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+
+            var result = RangedUnitPrice.TryCreate("19.99");
+
+            result.IsSuccess.Should().BeTrue();
+            result.Unwrap().Value.Should().Be(19.99m);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
     }
 
     [Fact]

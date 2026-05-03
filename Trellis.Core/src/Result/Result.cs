@@ -152,10 +152,13 @@ public static partial class Result
     // ----- Try / TryAsync ---------------------------------------------------------------------
 
     /// <summary>
-    /// Executes the function and converts exceptions to a failed result using the optional mapper (default Unexpected).
+    /// Executes the function and converts exceptions to a failed result using the optional mapper
+    /// (default <see cref="Error.InternalServerError"/> with a per-incident fault ID).
     /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="func"/> is null.</exception>
     public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)
     {
+        ArgumentNullException.ThrowIfNull(func);
         try
         {
             return Ok(func());
@@ -173,8 +176,10 @@ public static partial class Result
     /// <summary>
     /// Executes the asynchronous function and converts exceptions to a failed result.
     /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="func"/> is null.</exception>
     public static async Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)
     {
+        ArgumentNullException.ThrowIfNull(func);
         try
         {
             return Ok(await func().ConfigureAwait(false));

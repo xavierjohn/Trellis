@@ -53,9 +53,11 @@ public static class NullableExtensions
     /// <param name="nullable">The nullable value to convert.</param>
     /// <param name="errorFactory">A function that produces the error if the value is null.</param>
     /// <returns>A success Result containing the value if not null; otherwise a failure Result with an error from the factory.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorFactory"/> is null.</exception>
     public static Result<T> ToResult<T>(this T? nullable, Func<Error> errorFactory)
         where T : struct
     {
+        ArgumentNullException.ThrowIfNull(errorFactory);
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (!nullable.HasValue)
             return Result.Fail<T>(errorFactory());
@@ -87,9 +89,11 @@ public static class NullableExtensions
     /// <param name="obj">The potentially null object to convert.</param>
     /// <param name="errorFactory">A function that produces the error if the object is null.</param>
     /// <returns>A success Result containing the object if not null; otherwise a failure Result with an error from the factory.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="errorFactory"/> is null.</exception>
     public static Result<T> ToResult<T>(this T? obj, Func<Error> errorFactory)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(errorFactory);
         using var activity = RopTrace.ActivitySource.StartActivity();
         if (obj == null)
             return Result.Fail<T>(errorFactory());

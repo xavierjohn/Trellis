@@ -96,7 +96,7 @@
 ///     
 ///     public static Result&lt;Customer&gt; Create(EmailAddress email) =>
 ///         email.ToResult()
-///             .Map(e => new Customer(CustomerId.NewUnique(), e));
+///             .Map(e => new Customer(CustomerId.NewUniqueV7(), e));
 /// }
 /// </code>
 /// </example>
@@ -204,7 +204,8 @@ public abstract class RequiredGuid<TSelf> : ScalarValueObject<TSelf, Guid>
     /// <para>
     /// Direct instantiation should be avoided. Instead, use the generated factory methods:
     /// <list type="bullet">
-    /// <item><c>NewUnique()</c> - Generate a new unique GUID</item>
+    /// <item><c>NewUniqueV4()</c> - Generate a new random version 4 GUID</item>
+    /// <item><c>NewUniqueV7()</c> - Generate a new time-ordered version 7 GUID</item>
     /// <item><c>TryCreate(Guid?, string?)</c> - Create from GUID with validation</item>
     /// <item><c>TryCreate(string?, string?)</c> - Create from string with validation</item>
     /// </list>

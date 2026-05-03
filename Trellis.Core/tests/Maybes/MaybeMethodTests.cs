@@ -327,4 +327,59 @@ public class MaybeMethodTests
     }
 
     #endregion
+
+    #region Map / Match null-argument guards (regression — ensure ArgumentNullException is raised rather than NRE)
+
+    [Fact]
+    public void Map_WithNullSelector_ThrowsArgumentNullException()
+    {
+        var sut = Maybe.From("x");
+        var act = () => sut.Map<int>(null!);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
+    }
+
+    [Fact]
+    public void Map_WithNullSelector_ThrowsEvenWhenNone()
+    {
+        // Validation runs before the value-set check so the failure mode is consistent.
+        var sut = Maybe<string>.None;
+        var act = () => sut.Map<int>(null!);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
+    }
+
+    [Fact]
+    public void Match_WithNullSome_ThrowsArgumentNullException()
+    {
+        var sut = Maybe.From("x");
+        var act = () => sut.Match<int>(null!, () => 0);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("some");
+    }
+
+    [Fact]
+    public void Match_WithNullNone_ThrowsArgumentNullException()
+    {
+        var sut = Maybe.From("x");
+        var act = () => sut.Match<int>(s => s.Length, null!);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("none");
+    }
+
+    [Fact]
+    public void Match_WithNullSome_ThrowsEvenWhenNone()
+    {
+        // Both delegates are required regardless of HasValue so missing-delegate failures
+        // surface immediately, not when the matching branch happens to fire.
+        var sut = Maybe<string>.None;
+        var act = () => sut.Match<int>(null!, () => 0);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("some");
+    }
+
+    [Fact]
+    public void Match_WithNullNone_ThrowsEvenWhenSome()
+    {
+        var sut = Maybe.From("x");
+        var act = () => sut.Match<int>(s => s.Length, null!);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("none");
+    }
+
+    #endregion
 }

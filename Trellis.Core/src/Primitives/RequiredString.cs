@@ -97,7 +97,7 @@
 ///     public static Result&lt;Person&gt; Create(string firstName, string lastName) =>
 ///         FirstName.TryCreate(firstName)
 ///             .Combine(LastName.TryCreate(lastName))
-///             .Map((first, last) => new Person(PersonId.NewUnique(), first, last));
+///             .Map((first, last) => new Person(PersonId.NewUniqueV7(), first, last));
 ///     
 ///     private Person(PersonId id, FirstName firstName, LastName lastName) 
 ///         : base(id)

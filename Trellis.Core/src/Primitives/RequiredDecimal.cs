@@ -61,8 +61,8 @@
 /// 
 /// // Create from existing decimal with validation
 /// var result1 = UnitPrice.TryCreate(19.99m);
-/// // Returns: Success(UnitPrice) if value != 0
-/// // Returns: Failure(Error.UnprocessableContent) if value == 0
+/// // Returns: Success(UnitPrice) unless [Range] or ValidateAdditional rejects the value
+/// // Nullable overloads return Failure(Error.UnprocessableContent) when the value is null
 /// 
 /// // Create from string with validation
 /// var result2 = UnitPrice.TryCreate("19.99");

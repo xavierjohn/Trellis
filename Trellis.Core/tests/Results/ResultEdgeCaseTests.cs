@@ -378,14 +378,23 @@ public class ResultEdgeCaseTests
     #region Try/TryAsync Exception Handling Edge Cases
 
     [Fact]
-    public void Try_WithNullFunction_ShouldReturnFailureResult()
+    public void Try_WithNullFunction_ShouldThrowArgumentNullException()
     {
-        // Act - Try() catches all exceptions including NullReferenceException and returns Failure
-        var result = Result.Try<int>(null!);
+        // Try<T>(Func<T>) consistently rejects null with ArgumentNullException, matching the
+        // no-payload overload Try(Action). Programming errors fail loudly; runtime exceptions
+        // from a non-null delegate are still mapped to Failure(InternalServerError).
+        var act = () => Result.Try<int>(null!);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().BeOfType<Error.InternalServerError>();
+        act.Should().Throw<ArgumentNullException>().WithParameterName("func");
+    }
+
+    [Fact]
+    public async Task TryAsync_WithNullFunction_ShouldThrowArgumentNullException()
+    {
+        // Mirror of Try_WithNullFunction_ShouldThrowArgumentNullException for the async overload.
+        var act = async () => await Result.TryAsync<int>(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("func");
     }
 
     [Fact]

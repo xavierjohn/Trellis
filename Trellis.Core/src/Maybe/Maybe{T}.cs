@@ -193,9 +193,12 @@ public readonly struct Maybe<T> :
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
     /// <param name="selector">The function to apply to the value.</param>
     /// <returns>A Maybe containing the transformed value, or None if this instance has no value.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="selector"/> is null.</exception>
     public Maybe<TResult> Map<TResult>(Func<T, TResult> selector)
         where TResult : notnull
     {
+        ArgumentNullException.ThrowIfNull(selector);
+
         if (_isValueSet)
             return new Maybe<TResult>(selector(_value!));
 
@@ -210,8 +213,13 @@ public readonly struct Maybe<T> :
     /// <param name="some">The function to call when a value is present.</param>
     /// <param name="none">The function to call when no value is present.</param>
     /// <returns>The result of the matched function.</returns>
-    public TResult Match<TResult>(Func<T, TResult> some, Func<TResult> none) =>
-        _isValueSet ? some(_value!) : none();
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="some"/> or <paramref name="none"/> is null.</exception>
+    public TResult Match<TResult>(Func<T, TResult> some, Func<TResult> none)
+    {
+        ArgumentNullException.ThrowIfNull(some);
+        ArgumentNullException.ThrowIfNull(none);
+        return _isValueSet ? some(_value!) : none();
+    }
 
     /// <summary>
     /// Projects the value inside a <see cref="Maybe{T}"/> into a new <see cref="Maybe{TResult}"/> using the specified function.

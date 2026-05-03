@@ -66,7 +66,7 @@ using System.Text.Json.Serialization;
 ///     
 ///     public static Result<Order> Create(CustomerId customerId) =>
 ///         customerId.ToResult(Error.UnprocessableContent.ForField("customerId", "invalid", "Customer ID required"))
-///             .Map(id => new Order(OrderId.NewUnique(), id));
+///             .Map(id => new Order(OrderId.NewUniqueV7(), id));
 ///     
 ///     // All modifications go through methods that enforce invariants
 ///     public Result<Order> AddLine(ProductId productId, int quantity, Money unitPrice) =>
