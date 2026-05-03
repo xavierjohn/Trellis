@@ -19,6 +19,7 @@ public sealed class TrellisServiceBuilder
     private readonly IServiceCollection _services;
     private readonly List<Assembly> _fluentValidationAssemblies = [];
     private readonly List<Assembly> _resourceAuthorizationAssemblies = [];
+    private readonly List<Assembly> _domainEventAssemblies = [];
     private Action<TrellisAspOptions>? _configureAsp;
     private Action<TrellisMediatorTelemetryOptions>? _configureMediatorTelemetry;
     private Action<IServiceCollection>? _actorProviderRegistration;
@@ -27,6 +28,7 @@ public sealed class TrellisServiceBuilder
     private bool _useMediator;
     private bool _useFluentValidation;
     private bool _useResourceAuthorization;
+    private bool _useDomainEvents;
     private ActorProviderKind _actorProviderKind;
 
     internal TrellisServiceBuilder(IServiceCollection services) =>
@@ -129,6 +131,28 @@ public sealed class TrellisServiceBuilder
         return this;
     }
 
+    /// <summary>
+    /// Registers the domain-event dispatch behavior and (optionally) scans assemblies for
+    /// <see cref="IDomainEventHandler{TEvent}"/> implementations. Implies <see cref="UseMediator"/>.
+    /// </summary>
+    /// <remarks>
+    /// Passing no assemblies registers the behavior + default <see cref="IDomainEventPublisher"/>
+    /// without scanning; pair with explicit
+    /// <c>services.AddDomainEventHandler&lt;TEvent, THandler&gt;()</c> calls (AOT-friendly).
+    /// The dispatch behavior lands inside <c>ValidationBehavior</c> and outside
+    /// <c>TransactionalCommandBehavior</c> so events fire after the transaction commits.
+    /// </remarks>
+    public TrellisServiceBuilder UseDomainEvents(params Assembly[] assemblies)
+    {
+        ArgumentNullException.ThrowIfNull(assemblies);
+        if (assemblies.Length > 0)
+            AddAssemblies(_domainEventAssemblies, assemblies, nameof(assemblies));
+
+        _useDomainEvents = true;
+        _useMediator = true;
+        return this;
+    }
+
     internal void Apply()
     {
         if (_useAsp)
@@ -156,6 +180,11 @@ public sealed class TrellisServiceBuilder
             _services.AddTrellisFluentValidation();
         else if (_fluentValidationAssemblies.Count > 0)
             _services.AddTrellisFluentValidation([.. _fluentValidationAssemblies]);
+
+        if (_useDomainEvents && _domainEventAssemblies.Count == 0)
+            _services.AddDomainEventDispatch();
+        else if (_domainEventAssemblies.Count > 0)
+            _services.AddDomainEventDispatch([.. _domainEventAssemblies]);
 
         _unitOfWorkRegistration?.Invoke(_services);
     }

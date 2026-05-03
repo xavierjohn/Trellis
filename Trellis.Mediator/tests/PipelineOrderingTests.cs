@@ -56,6 +56,32 @@ public class PipelineOrderingTests
     }
 
     [Fact]
+    public void AddDomainEventDispatch_inserts_after_validation_and_before_resource_auth()
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisBehaviors();
+        services.AddResourceAuthorization<ResourceOwnerCommand, TestResource, Result<string>>();
+
+        services.AddDomainEventDispatch();
+
+        var behaviors = services
+            .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>)
+                || (d.ServiceType.IsGenericType
+                    && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
+            .ToList();
+
+        behaviors.Should().HaveCount(7);
+        behaviors[0].ImplementationType.Should().Be(typeof(ExceptionBehavior<,>));
+        behaviors[1].ImplementationType.Should().Be(typeof(TracingBehavior<,>));
+        behaviors[2].ImplementationType.Should().Be(typeof(LoggingBehavior<,>));
+        behaviors[3].ImplementationType.Should().Be(typeof(AuthorizationBehavior<,>));
+        behaviors[4].ImplementationType.Should().Be<
+            ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>>();
+        behaviors[5].ImplementationType.Should().Be(typeof(ValidationBehavior<,>));
+        behaviors[6].ImplementationType.Should().Be(typeof(DomainEventDispatchBehavior<,>));
+    }
+
+    [Fact]
     public void AddResourceAuthorization_inserts_closed_generic_immediately_before_validation()
     {
         var services = new ServiceCollection();

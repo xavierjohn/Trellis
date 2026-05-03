@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Trellis.Mediator — Domain event dispatch
+
+- **`IDomainEventHandler<TEvent>`** (new) — Implement this to handle a domain event. Dispatch matches the event's runtime type **exactly**; base-type and interface-type handlers are not auto-resolved. Handlers must be idempotent — exceptions thrown by a handler are logged at error level and swallowed so other handlers, other events, and the originating command still complete.
+- **`IDomainEventPublisher`** (new) — Used by the framework to fan out a single event. Inject only when publishing from non-pipeline contexts (background jobs, scheduled tasks). Default implementation (`MediatorDomainEventPublisher`, internal) resolves handlers via DI by runtime type.
+- **`DomainEventDispatchBehavior<TMessage, TResponse>`** (new) — Pipeline behavior constrained to `ICommand<TResponse>` (queries pass through). After a successful command whose response is `Result<TAggregate>` where `TAggregate : IAggregate`, drains `aggregate.UncommittedEvents()` in waves (`AcceptChanges()` before each wave so handler-raised events accumulate cleanly). Wave count is capped at 8; cap-exceeded paths are logged and the aggregate is defensively cleared. Other response shapes (`Result<Unit>`, `Result<TDto>`, `Result<(A,B)>`) pass through untouched in v1; manual dispatch remains the option for those flows.
+- **`DomainEventDispatchServiceCollectionExtensions.AddDomainEventDispatch()`** — Idempotent. Registers `DomainEventDispatchBehavior<,>` (open-generic, scoped) and the default `IDomainEventPublisher`. AOT-friendly (no scanning).
+- **`AddDomainEventHandler<TEvent, THandler>()`** — Explicit per-handler registration for AOT/trim scenarios. Idempotent.
+- **`AddDomainEventDispatch(params Assembly[] assemblies)`** — Assembly-scan overload (annotated `[RequiresUnreferencedCode]` + `[RequiresDynamicCode]`) that finds every concrete `IDomainEventHandler<TEvent>` and registers each as scoped.
+- **Pipeline placement** — Inserts after `ValidationBehavior` and before `TransactionalCommandBehavior` (when registered), so events fire after the transaction commits and handlers see committed state. ArclBackend-style flows with no transactional behavior dispatch immediately after the handler returns success.
+
+> **Failure model**: handlers run as **best-effort side effects**. Email failures, message-bus blips, and DI activation errors are all logged and swallowed; the originating command still succeeds. If a side effect must block command completion, do that work inside the command handler — not a domain-event handler.
+
+> **Migration**: applications that were dispatching events manually (e.g., `foreach (var evt in agg.UncommittedEvents()) await _publisher.PublishAsync(...); agg.AcceptChanges();`) can delete that boilerplate after wiring `AddDomainEventDispatch(...)`. Keep the manual code only for non-`Result<TAggregate>` shapes (multi-aggregate, `Result<Unit>` deletes, etc.) until a future release lifts those v1 limitations. Do **not** keep both — the framework dispatcher would re-publish events unless you also stop adding to `DomainEvents` in the manual path.
+
 #### Trellis.Mediator + Trellis.FluentValidation — Unified validation stage with composition
 
 - **`IMessageValidator<TMessage>`** (new, in `Trellis.Mediator`) — Extensibility seam that lets validator packages plug into the single `ValidationBehavior` stage instead of occupying their own pipeline slot. Multiple validators per message are supported; their `Error.UnprocessableContent` failures aggregate into one response.

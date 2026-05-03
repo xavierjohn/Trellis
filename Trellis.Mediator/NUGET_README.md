@@ -35,6 +35,7 @@ builder.Services.AddTrellisBehaviors();
 - Short-circuits failures before handlers do unnecessary work.
 - Unified `ValidationBehavior` composes `IValidate` + every `IMessageValidator<TMessage>` (e.g., the `Trellis.FluentValidation` adapter) and aggregates failures into one response.
 - Supports resource authorization with explicit or assembly-scanned registration.
+- **Domain event dispatch**: implement `IDomainEventHandler<TEvent>`, register with `AddDomainEventDispatch(...)`, and the framework fires events from `IAggregate.UncommittedEvents()` after a successful command. Handler exceptions are logged and swallowed so side effects never break the originating request.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html)

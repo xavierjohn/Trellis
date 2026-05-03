@@ -30,6 +30,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 | Add resource authorization | `.UseResourceAuthorization(...)` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator resource authorization](trellis-api-mediator.md) |
 | Register an actor provider | `.UseClaimsActorProvider()`, `.UseEntraActorProvider()`, or `.UseDevelopmentActorProvider()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [ASP actor providers](trellis-api-asp.md#namespace-trellisaspauthorization) |
 | Add EF unit-of-work behavior | `.UseEntityFrameworkUnitOfWork<TContext>()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator UoW](trellis-api-mediator.md) |
+| Dispatch domain events from successful commands | `.UseDomainEvents(typeof(MyHandler).Assembly)` or `.UseDomainEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator domain events](trellis-api-mediator.md) |
 
 ## Common traps
 
@@ -65,6 +66,7 @@ public sealed class TrellisServiceBuilder
 | `public TrellisServiceBuilder UseEntraActorProvider(Action<EntraActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `EntraActorProvider` as `IActorProvider`. |
 | `public TrellisServiceBuilder UseDevelopmentActorProvider(Action<DevelopmentActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `DevelopmentActorProvider` as `IActorProvider`. Use only in development/testing hosts. |
 | `public TrellisServiceBuilder UseEntityFrameworkUnitOfWork<TContext>() where TContext : DbContext` | `TrellisServiceBuilder` | Registers `EfUnitOfWork<TContext>` and `TransactionalCommandBehavior<,>` via `AddTrellisUnitOfWork<TContext>()`. Implies `UseMediator()` and is applied last. |
+| `public TrellisServiceBuilder UseDomainEvents(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers `DomainEventDispatchBehavior<,>` and the default `IDomainEventPublisher`. With assemblies, scans for `IDomainEventHandler<TEvent>` implementations and registers each as scoped. Implies `UseMediator()`. Applied between FluentValidation and `UseEntityFrameworkUnitOfWork<TContext>()` so events fire after the transaction commits. |
 
 ## Behavior
 
@@ -75,7 +77,8 @@ public sealed class TrellisServiceBuilder
 3. Mediator behaviors.
 4. Resource authorization.
 5. FluentValidation adapter/scanning when selected.
-6. EF Core Unit of Work.
+6. Domain event dispatch (registers `DomainEventDispatchBehavior<,>` and any scanned handlers).
+7. EF Core Unit of Work.
 
 That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors.
 
@@ -118,5 +121,14 @@ services.AddTrellis(options => options
     .UseMediator()
     .UseClaimsActorProvider()
     .UseResourceAuthorization(typeof(Program).Assembly)
+    .UseEntityFrameworkUnitOfWork<AppDbContext>());
+```
+
+```csharp
+// Domain event dispatch with assembly scanning. Handlers fire after the transaction
+// commits because UseDomainEvents is applied before UseEntityFrameworkUnitOfWork.
+services.AddTrellis(options => options
+    .UseMediator()
+    .UseDomainEvents(typeof(Program).Assembly)
     .UseEntityFrameworkUnitOfWork<AppDbContext>());
 ```
