@@ -724,7 +724,7 @@ OpenTelemetry helper for Trellis result instrumentation. Lives in `Trellis.Core\
 
 #### Performance characteristics
 
-The per-operation tracing is essentially free when no listener is registered (the production default — calling `AddResultsInstrumentation` is the only way to register the `"Trellis.Core"` source). Measured on .NET 10 / x64 with an ambient ASP.NET request activity present (benchmark in `Trellis.Benchmark/TracingOverheadBenchmarks.cs`):
+The per-operation tracing is essentially free when no listener is registered. `AddResultsInstrumentation` is the Trellis-provided helper for registering the `"Trellis.Core"` source with OpenTelemetry; consumers may also call `AddSource("Trellis.Core")` directly or attach an `ActivityListener`. Measured on .NET 10 / x64 with an ambient ASP.NET request activity present (benchmark in `Trellis.Benchmark/TracingOverheadBenchmarks.cs`):
 
 | Pipeline depth | No listener | Listener attached (`AllDataAndRecorded` sampling) |
 |---|---|---|

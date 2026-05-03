@@ -25,8 +25,10 @@ public static class ResultsTraceProviderBuilderExtensions
     /// </para>
     /// <para>
     /// <strong>Performance characteristics.</strong> Trellis is designed so the per-operation tracing
-    /// is essentially free when no listener is registered (the production default — calling
-    /// <c>AddResultsInstrumentation</c> is the only way to register the <c>"Trellis.Core"</c> source).
+    /// is essentially free when no listener is registered. <c>AddResultsInstrumentation</c> is the
+    /// Trellis-provided helper for registering the <c>"Trellis.Core"</c> source with OpenTelemetry;
+    /// consumers may also call <c>AddSource("Trellis.Core")</c> directly or attach an
+    /// <c>ActivityListener</c>.
     /// Measured on .NET 10 / x64 with an ambient ASP.NET request activity present:
     /// </para>
     /// <list type="bullet">
