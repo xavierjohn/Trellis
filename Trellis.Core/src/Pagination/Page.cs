@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 /// <summary>
 /// A single page of items from a paginated collection together with the cursors needed to
@@ -28,7 +29,7 @@ using System.Collections.Generic;
 /// </remarks>
 public readonly record struct Page<T>
 {
-    private readonly IReadOnlyList<T>? _items;
+    private readonly EquatableArray<T> _items;
 
     /// <summary>Constructs a validated page. Use <see cref="Page.Empty{T}(int, int)"/> for empty pages.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="Items"/> is <c>null</c>.</exception>
@@ -48,7 +49,9 @@ public readonly record struct Page<T>
         if (AppliedLimit > RequestedLimit)
             throw new ArgumentOutOfRangeException(nameof(AppliedLimit), "AppliedLimit cannot exceed RequestedLimit.");
 
-        _items = Items;
+        _items = Items is ImmutableArray<T> immutableItems
+            ? new EquatableArray<T>(immutableItems)
+            : EquatableArray.From(Items);
         this.Next = Next;
         this.Previous = Previous;
         this.RequestedLimit = RequestedLimit;
@@ -62,7 +65,7 @@ public readonly record struct Page<T>
     /// construct via the public constructor or <see cref="Page.Empty{T}(int, int)"/>; defaults
     /// are observable but not part of the supported design.
     /// </remarks>
-    public IReadOnlyList<T> Items => _items ?? Array.Empty<T>();
+    public IReadOnlyList<T> Items => _items.Items;
 
     /// <summary>Cursor for the next page, or null when this is the last page.</summary>
     public Cursor? Next { get; }

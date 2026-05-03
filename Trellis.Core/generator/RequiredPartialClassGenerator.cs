@@ -265,14 +265,13 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     {namespaceDeclaration}
     using System;
     using Trellis;
-    using Trellis.Primitives;
     using System.Diagnostics.CodeAnalysis;
     using System.Text.Json.Serialization;
 
     #nullable enable
             {nestedTypeOpen}
     [JsonConverter(typeof(ParsableJsonConverter<{g.ClassName}>))]
-    {g.Accessibility.ToCamelCase()} partial class {g.ClassName} : IScalarValue<{g.ClassName}, {classType}>{formattableInterface}, IParsable<{g.ClassName}>
+    {g.Accessibility} partial class {g.ClassName} : IScalarValue<{g.ClassName}, {classType}>{formattableInterface}, IParsable<{g.ClassName}>
     {{
         private {g.ClassName}({classType} value) : base(value)
         {{
@@ -334,14 +333,13 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     {NamespaceDeclaration(g)}
     using System;
     using Trellis;
-    using Trellis.Primitives;
     using System.Diagnostics.CodeAnalysis;
     using System.Text.Json.Serialization;
 
     #nullable enable
     {nestedTypeOpen}
     [JsonConverter(typeof(RequiredEnumJsonConverter<{g.ClassName}>))]
-    {g.Accessibility.ToCamelCase()} partial class {g.ClassName} : IScalarValue<{g.ClassName}, string>, IParsable<{g.ClassName}>
+    {g.Accessibility} partial class {g.ClassName} : IScalarValue<{g.ClassName}, string>, IParsable<{g.ClassName}>
     {{
         /// <summary>
         /// Creates a validated instance from a string by looking up the enum member by symbolic value.
@@ -1563,7 +1561,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 : classSymbol.ContainingNamespace.ToDisplayString();
             // Extract just the base class name without type parameters (e.g., "RequiredGuid" from "RequiredGuid<EmployeeId>")
             string @base = classSymbol.BaseType?.Name ?? "unknown";
-            string accessibility = classSymbol.DeclaredAccessibility.ToString();
+            string accessibility = AccessibilityToString(classSymbol.DeclaredAccessibility);
             var nestingParents = GetNestingParents(classSymbol);
             var typePath = BuildTypePath(@namespace, classSymbol);
 

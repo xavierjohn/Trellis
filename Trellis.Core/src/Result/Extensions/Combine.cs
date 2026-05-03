@@ -42,6 +42,7 @@ public static partial class CombineExtensionsAsync
     /// </summary>
     public static async Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Result<T2> t2)
     {
+        ArgumentNullException.ThrowIfNull(tt1);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await tt1.ConfigureAwait(false);
@@ -58,6 +59,7 @@ public static partial class CombineExtensionsAsync
     /// </summary>
     public static async Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Result<T1> t1, Task<Result<T2>> tt2)
     {
+        ArgumentNullException.ThrowIfNull(tt2);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t2 = await tt2.ConfigureAwait(false);
@@ -74,6 +76,8 @@ public static partial class CombineExtensionsAsync
     /// </summary>
     public static async Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Task<Result<T2>> tt2)
     {
+        ArgumentNullException.ThrowIfNull(tt1);
+        ArgumentNullException.ThrowIfNull(tt2);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await tt1.ConfigureAwait(false);

@@ -1,27 +1,27 @@
 ﻿---
 package: Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
-types: [Age, CountryCode, CurrencyCode, EmailAddress, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, ParsableJsonConverter<T>, CompositeValueObjectJsonConverter<T>]
+types: [Age, CountryCode, CurrencyCode, EmailAddress, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-03
 audience: [llm]
 ---
 # Trellis API Primitives
 
 **Package:** `Trellis.Primitives`  
 **Namespaces:** `Trellis`, `Trellis.Primitives`  
-**Purpose:** the 13 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`) plus VO-runtime infrastructure (`ParsableJsonConverter<T>`, `CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTrace`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
+**Purpose:** the 13 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
 
-> **Package scope.** The `Required*<TSelf>` base classes (`RequiredString`, `RequiredEnum`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredGuid`, `RequiredBool`, `RequiredDateTime`), validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), `StringExtensions` (`NormalizeFieldName`, `ToCamelCase`, `ParseScalarValue`, `TryParseScalarValue`), and `RequiredEnumJsonConverter<TRequiredEnum>` live in `Trellis.Core`. The base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`) and base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`) also live in `Trellis.Core`. `Trellis.Primitives` ships the concrete VOs that build on those bases plus the JSON/tracing infrastructure listed below. See [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the base-type reference.
+> **Package scope.** The `Required*<TSelf>` base classes (`RequiredString`, `RequiredEnum`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredGuid`, `RequiredBool`, `RequiredDateTime`), validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), `StringExtensions` (`NormalizeFieldName`, `ToCamelCase`, `ParseScalarValue`, `TryParseScalarValue`), `ParsableJsonConverter<T>`, `PrimitiveValueObjectTrace`, and `RequiredEnumJsonConverter<TRequiredEnum>` live in `Trellis.Core`. The base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`) and base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`) also live in `Trellis.Core`. `Trellis.Primitives` ships the concrete VOs that build on those bases plus the composite JSON converter and OpenTelemetry registration extension listed below. See [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the base-type reference.
 >
 > The incremental generator that emits the `TryCreate`/`Create`/`Parse`/`TryParse`/`JsonConverter` partial bodies for `Required*<TSelf>` derivations (`Trellis.Core.Generator`) is bundled inside `Trellis.Core.nupkg` under `analyzers/dotnet/cs/`. `Trellis.Primitives` no longer references its own generator package — installing `Trellis.Core` (or transitively, `Trellis.Primitives` which depends on it) attaches the analyzer automatically.
 
 ## Use this file when
 
 - You need one of the ready-made concrete value objects such as `EmailAddress`, `PhoneNumber`, `Money`, `CurrencyCode`, `Url`, or `Slug`.
-- You need JSON/tracing infrastructure for primitives shipped by `Trellis.Primitives`.
+- You need the composite value-object JSON converter or OpenTelemetry registration extension for primitives shipped by `Trellis.Primitives`.
 - You are deciding whether to use a built-in primitive or define a custom `Required*<TSelf>` value object from `Trellis.Core`.
 
 ## Patterns Index
@@ -31,7 +31,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | Validate an email string | `EmailAddress.TryCreate(...)` | [`EmailAddress`](#emailaddress) |
 | Validate optional phone input | `PhoneNumber.TryCreate(...)` and wrap absence with `Maybe<PhoneNumber>` at the domain seam | [`PhoneNumber`](#phonenumber), [Core `Maybe<T>`](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
 | Represent money | `Money` / `MonetaryAmount` / `CurrencyCode` | [`Money`](#money), [`MonetaryAmount`](#monetaryamount), [`CurrencyCode`](#currencycode) |
-| Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
+| Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](trellis-api-core.md#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
 | Define a custom SKU/order-id primitive | Use `partial class Sku : RequiredString<Sku>` or `partial class OrderId : RequiredGuid<OrderId>` from `Trellis.Core` | [Core primitive base classes](trellis-api-core.md#primitive-value-object-base-classes) |
 | Add length/range constraints to custom primitives | Use Trellis `[StringLength]` / `[Range]` attributes from `namespace Trellis`, not DataAnnotations | [Core attributes](trellis-api-core.md#primitive-value-object-base-classes), [TRLS017](trellis-api-analyzers.md#diagnostics) |
 | Add JSON for composite value objects | `CompositeValueObjectJsonConverter<T>` | [`CompositeValueObjectJsonConverter<T>`](#compositevalueobjectjsonconvertert) |
@@ -62,17 +62,7 @@ A property-targeted form like `[StringLength(20, MinimumLength = 3)] public stri
 
 ## Types
 
-> Base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`), base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`), validation attributes (`RangeAttribute`, `StringLengthAttribute`, `EnumValueAttribute`), `StringExtensions`, the `Required*<TSelf>` base classes, and `RequiredEnumJsonConverter<TRequiredEnum>` are all documented in [trellis-api-core.md](trellis-api-core.md). They live in `Trellis.Core` and are used by every concrete VO listed below. The inherited `static TSelf Create(TPrimitive value)` factory documented on `ScalarValueObject<TSelf, T>` is **not** repeated on each concrete VO below.
-
-### `PrimitiveValueObjectTrace`
-
-```csharp
-public static class PrimitiveValueObjectTrace
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `ActivitySource` | `ActivitySource` | Shared OpenTelemetry source used by primitive creation/parsing paths. |
+> Base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`), base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`), validation attributes (`RangeAttribute`, `StringLengthAttribute`, `EnumValueAttribute`), `StringExtensions`, the `Required*<TSelf>` base classes, `ParsableJsonConverter<T>`, `PrimitiveValueObjectTrace`, and `RequiredEnumJsonConverter<TRequiredEnum>` are all documented in [trellis-api-core.md](trellis-api-core.md). They live in `Trellis.Core` and are used by every concrete VO listed below. `Trellis.Primitives` type-forwards `ParsableJsonConverter<T>` and `PrimitiveValueObjectTrace` for binary compatibility, but new source guidance should treat Core as the owner. The inherited `static TSelf Create(TPrimitive value)` factory documented on `ScalarValueObject<TSelf, T>` is **not** repeated on each concrete VO below.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -90,22 +80,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)` | `TracerProviderBuilder` | Registers the Trellis primitive activity source with OpenTelemetry. |
-
-### `ParsableJsonConverter<T>`
-
-```csharp
-public class ParsableJsonConverter<T> : JsonConverter<T> where T : IParsable<T>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | Converter type; no public properties. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Accepts JSON `string`, `number`, `true`, `false`, and `null`; converts to string and calls `T.Parse(raw, default)`. `null` throws because Trellis scalar types are non-nullable. |
-| `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes JSON numbers for numeric scalar types discovered via `ScalarValueObject<,>`; otherwise writes JSON strings. |
+| `public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)` | `TracerProviderBuilder` | Registers the Core-owned Trellis primitive activity source (`PrimitiveValueObjectTrace.ActivitySourceName`) with OpenTelemetry. |
 
 ### `Age`
 

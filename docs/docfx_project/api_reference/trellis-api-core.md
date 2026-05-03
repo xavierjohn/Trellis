@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, Result<T>, Maybe<T>, Error, Unit, Page<T>, Cursor, EquatableArray<T>, ResourceRef, EntityTagValue, RetryAfterValue, PreconditionKind, InputPointer, FieldViolation, RuleViolation, AuthChallenge, Aggregate<TId>, Entity<TId>, IDomainEvent, "ScalarValueObject<TSelf,T>", Specification<T>, RepresentationMetadata]
+types: [Result, Result<T>, Maybe<T>, Error, Unit, Page<T>, Cursor, EquatableArray<T>, ResourceRef, EntityTagValue, RetryAfterValue, PreconditionKind, InputPointer, FieldViolation, RuleViolation, AuthChallenge, Aggregate<TId>, Entity<TId>, IDomainEvent, "ScalarValueObject<TSelf,T>", ParsableJsonConverter<T>, PrimitiveValueObjectTrace, Specification<T>, RepresentationMetadata]
 version: v3
 last_verified: 2026-05-03
 audience: [llm]
@@ -18,7 +18,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 
 ## Use this file when
 
-- You need exact signatures for `Result`, `Result<T>`, `Maybe<T>`, `Error`, `WriteOutcome<T>`, `Page<T>`, DDD primitives, specifications, or custom primitive base classes.
+- You need exact signatures for `Result`, `Result<T>`, `Maybe<T>`, `Error`, `WriteOutcome<T>`, `Page<T>`, DDD primitives, specifications, custom primitive base classes, or generated primitive JSON/tracing support.
 - You are composing domain/application flows and need the canonical ROP operation: `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `ParallelAsync`, `AsTask`, or `AsValueTask`.
 - You are defining aggregates, entities, domain events, specifications, or source-generated `Required*<TSelf>` value objects.
 
@@ -508,10 +508,10 @@ Twenty nested `sealed record` cases under `Error`. Each case constructor is `int
 | Type | Shape | Purpose |
 | --- | --- | --- |
 | `ResourceRef` | `readonly record struct (string Type, string? Id = null)` plus `ResourceRef.For(string type, object? id = null)` and `ResourceRef.For<TResource>(object? id = null)` | Aggregate identity. The `For(...)` helpers convert IDs with invariant formatting when possible and `For<TResource>` uses `typeof(TResource).Name` exactly. |
-| `InputPointer` | `readonly record struct (string Path)` | RFC 6901 JSON Pointer (e.g. `/email`). Construct via `InputPointer.ForProperty("email")`, or use the document-root sentinel `InputPointer.Root` (path `""`). `InputPointer.Root` is the canonical pointer for whole-body / object-level violations. |
+| `InputPointer` | `readonly record struct` with `InputPointer(string Path)` | RFC 6901 JSON Pointer (e.g. `/email`). The constructor accepts only `""` or paths beginning with `/` and rejects invalid `~` escapes. Construct simple property names via `InputPointer.ForProperty("email")`, or use the document-root sentinel `InputPointer.Root` (path `""`). `default(InputPointer)` is observed as root. |
 | `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Single per-field violation inside `UnprocessableContent.Fields`. `Detail` is the 4th positional parameter; supplies the boundary renderer's user-facing message when non-null. `Equals`/`GetHashCode` compare `Args` by content. |
 | `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `UnprocessableContent.Rules`. `Detail` is the 4th positional parameter. `Equals`/`GetHashCode` compare `Args` by content. |
-| `AuthChallenge` | `sealed record (string Scheme, ImmutableDictionary<string,string>? Params = null)` | Carried by `Unauthorized` to round-trip `WWW-Authenticate`. `Equals`/`GetHashCode` compare `Params` by content; parameter order is not significant. |
+| `AuthChallenge` | `sealed record (string Scheme, ImmutableDictionary<string,string>? Params = null)` | Carried by `Unauthorized` to round-trip `WWW-Authenticate`. `Equals`/`GetHashCode` compare the auth scheme and parameter keys case-insensitively, compare parameter values ordinally, and ignore parameter order. |
 | `RetryAfterValue` | sealed class, see below | `Retry-After` as delay seconds or absolute date. |
 | `PreconditionKind` | `enum { IfMatch, IfNoneMatch, IfModifiedSince, IfUnmodifiedSince }` | Typed precondition vocabulary. |
 | `EquatableArray<T>` | `readonly struct (ImmutableArray<T> Items)` | Wraps `ImmutableArray<T>` so records get sequence equality (built-in records compare arrays by reference). See dedicated section below. Construct with `EquatableArray.Create(...)`, `EquatableArray.From(items)`, `EquatableArray<T>.Empty`, or implicitly from an `ImmutableArray<T>`. |
@@ -823,6 +823,8 @@ Non-generic factory companion that allows type inference at the call site.
 | `public static Result<TValue> ToResult<TValue>(in this Maybe<TValue> maybe, Func<Error> ferror) where TValue : notnull` |
 | `public static Result<TValue> ToResult<TValue>(this TValue value)` |
 
+`ToResult(..., Func<Error> ferror)` validates `ferror` before inspecting the `Maybe<T>` state. A null factory throws `ArgumentNullException` even when the maybe currently has a value; async overloads validate the factory before awaiting the receiver.
+
 ### `MaybeExtensionsAsync`
 
 | Signature |
@@ -1111,7 +1113,7 @@ Aggregates results into tuples (success-track) or merges errors via `Error.Aggre
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Result<(T1, T2)> Combine<T1, T2>(this Result<T1> t1, Result<T2> t2)` | `Result<(T1, T2)>` | Tuple combine; failures fold via `Error.Aggregate`. When either operand is `Result<Unit>`, `Unit` becomes the next tuple element (use `_` in the destructuring lambda to ignore it). |
-| `public static Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Task<Result<T2>> tt2)` | `Task<Result<(T1, T2)>>` | `CombineExtensionsAsync` covers every Task/ValueTask × Task/ValueTask combination. |
+| `public static Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Task<Result<T2>> tt2)` | `Task<Result<(T1, T2)>>` | `CombineExtensionsAsync` covers every Task/ValueTask × Task/ValueTask combination. Task overloads validate null `Task` inputs before awaiting either side. |
 | `public static Error Combine(this Error? left, Error right)` | `Error` | On `CombineErrorExtensions`: combines two errors into an `Error.Aggregate`, flattening nested aggregates and treating `null` left as right. |
 
 ```csharp
@@ -1341,14 +1343,16 @@ public readonly record struct Page<T>
 
 | Member | Description |
 | --- | --- |
-| `Page(IReadOnlyList<T>, Cursor?, Cursor?, int, int)` | Validated constructor. Throws `ArgumentNullException` on null `Items`, `ArgumentOutOfRangeException` on a non-positive limit or `AppliedLimit > RequestedLimit`. |
-| `Items` | The items returned for this page. Never null when constructed via the public ctor. |
+| `Page(IReadOnlyList<T>, Cursor?, Cursor?, int, int)` | Validated constructor. Throws `ArgumentNullException` on null `Items`, `ArgumentOutOfRangeException` on a non-positive limit or `AppliedLimit > RequestedLimit`. Copies the input sequence so later caller-side list mutations cannot change the page. |
+| `Items` | The items returned for this page. Never null; `default(Page<T>)` observes an empty sequence. |
 | `Next` | Cursor for the next page, or `null` on the last page. |
 | `Previous` | Cursor for the previous page, or `null` on the first page (or when the source doesn't support reverse). |
 | `RequestedLimit` | The limit the client requested. |
 | `AppliedLimit` | The limit the server actually applied (after server-side cap). |
 | `DeliveredCount` | `Items.Count`, defensive against `default(Page<T>)` (returns 0 when `Items` is null). |
 | `WasCapped` | `true` when `AppliedLimit < RequestedLimit`. |
+
+`Page<T>` equality and hash code include item sequence contents (not the caller's list reference) plus cursors and limits.
 
 ### `public static class Page`
 
@@ -1889,6 +1893,33 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 | `public bool Equals(RequiredEnum<TSelf>? other)` | `bool` | Case-insensitive symbolic equality. |
 | `public static bool operator ==(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Equality operator. |
 | `public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Inequality operator. |
+
+### `ParsableJsonConverter<T>`
+
+```csharp
+public class ParsableJsonConverter<T> : JsonConverter<T>
+    where T : IParsable<T>
+```
+
+Core-owned JSON converter emitted by the `Required*<TSelf>` source generator for non-enum generated primitives. It accepts JSON strings, numbers, booleans, and null tokens; null throws because generated scalar value objects are non-nullable. Numeric scalar value objects write JSON numbers when their string representation parses invariantly as a decimal; all other values write JSON strings.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Converts supported JSON token types to invariant strings and calls `T.Parse(raw, default)`. |
+| `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes numeric scalar primitives as numbers when possible; otherwise writes `value.ToString()` as a JSON string. |
+
+### `PrimitiveValueObjectTrace`
+
+```csharp
+public static class PrimitiveValueObjectTrace
+```
+
+Core-owned trace source used by generated `Required*<TSelf>` value objects and concrete primitives. The activity source name remains `"Trellis.Primitives"` for telemetry compatibility and is exposed as `PrimitiveValueObjectTrace.ActivitySourceName`; register it with `AddPrimitiveValueObjectInstrumentation()` from `Trellis.Primitives` when using the primitives package, or call `TracerProviderBuilder.AddSource(PrimitiveValueObjectTrace.ActivitySourceName)` directly for Core-only generated primitives.
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `ActivitySource` | `ActivitySource` | Activity source used by generated primitive creation/parsing/validation operations. |
+| `ActivitySourceName` | `string` | Public activity source name for Core-only OpenTelemetry wiring. |
 
 ### Source-generated members
 

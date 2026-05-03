@@ -4,10 +4,6 @@
 /// A pointer into a structured input document, expressed as an RFC 6901 JSON Pointer.
 /// Used by validation errors to identify the location of an offending value.
 /// </summary>
-/// <param name="Path">
-/// The JSON Pointer path (e.g. <c>"/email"</c>, <c>"/items/0/quantity"</c>). The root
-/// of the input is <c>""</c>.
-/// </param>
 /// <example>
 /// <code>
 /// new InputPointer("/email")
@@ -15,8 +11,40 @@
 /// new InputPointer("")            // root
 /// </code>
 /// </example>
-public readonly record struct InputPointer(string Path)
+public readonly record struct InputPointer
 {
+    private readonly string? _path;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InputPointer"/> struct.
+    /// </summary>
+    /// <param name="Path">
+    /// The JSON Pointer path (e.g. <c>"/email"</c>, <c>"/items/0/quantity"</c>). The root
+    /// of the input is <c>""</c>.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="Path"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="Path"/> is not an RFC 6901 JSON Pointer.</exception>
+    public InputPointer(string Path)
+    {
+        ArgumentNullException.ThrowIfNull(Path);
+        Validate(Path);
+        _path = Path;
+    }
+
+    /// <summary>
+    /// Gets the JSON Pointer path. A default <see cref="InputPointer"/> is observed as the root pointer (<c>""</c>).
+    /// </summary>
+    public string Path
+    {
+        get => _path ?? string.Empty;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            Validate(value);
+            _path = value;
+        }
+    }
+
     /// <summary>
     /// A pointer to the root of the input document.
     /// </summary>
@@ -50,4 +78,29 @@ public readonly record struct InputPointer(string Path)
 
     /// <inheritdoc />
     public override string ToString() => Path;
+
+    /// <summary>
+    /// Deconstructs the pointer into its JSON Pointer path.
+    /// </summary>
+    /// <param name="Path">The JSON Pointer path.</param>
+    public void Deconstruct(out string Path) => Path = this.Path;
+
+    /// <inheritdoc />
+    public bool Equals(InputPointer other) => string.Equals(Path, other.Path, StringComparison.Ordinal);
+
+    /// <inheritdoc />
+    public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Path);
+
+    private static void Validate(string Path)
+    {
+        if (Path.Length > 0 && Path[0] != '/')
+            throw new ArgumentException("JSON Pointer paths must be empty or start with '/'.", nameof(Path));
+
+        for (var i = 0; i < Path.Length; i++)
+        {
+            if (Path[i] != '~') continue;
+            if (i == Path.Length - 1 || Path[i + 1] is not ('0' or '1'))
+                throw new ArgumentException("JSON Pointer escape sequences must be '~0' or '~1'.", nameof(Path));
+        }
+    }
 }

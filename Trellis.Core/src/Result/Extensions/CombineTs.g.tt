@@ -133,6 +133,7 @@ public static partial class CombineExtensionsAsync
     public static async Task<Result<(<# WriteTs(i); #>)>> CombineAsync<<# WriteTs(i); #>>(
       this Task<Result<(<# WriteTs(i - 1); #>)>> tt1, Result<<# Write("T" + i); #>> tc)
     {
+        ArgumentNullException.ThrowIfNull(tt1);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(CombineExtensions.Combine));
         Error? error = null;
         var t1 = await tt1.ConfigureAwait(false);

@@ -39,6 +39,7 @@ public static partial class MaybeExtensions
     public static Result<TValue> ToResult<TValue>(in this Maybe<TValue> maybe, Func<Error> ferror)
         where TValue : notnull
     {
+        ArgumentNullException.ThrowIfNull(ferror);
         if (maybe.HasNoValue)
             return Result.Fail<TValue>(ferror());
 
@@ -100,6 +101,7 @@ public static partial class MaybeExtensionsAsync
     public static async Task<Result<TValue>> ToResultAsync<TValue>(this Task<Maybe<TValue>> maybeTask, Func<Error> ferror)
         where TValue : notnull
     {
+        ArgumentNullException.ThrowIfNull(ferror);
         var maybe = await maybeTask.ConfigureAwait(false);
         return maybe.ToResult(ferror);
     }
@@ -115,6 +117,7 @@ public static partial class MaybeExtensionsAsync
     public static async ValueTask<Result<TValue>> ToResultAsync<TValue>(this ValueTask<Maybe<TValue>> maybeTask, Func<Error> ferror)
         where TValue : notnull
     {
+        ArgumentNullException.ThrowIfNull(ferror);
         Maybe<TValue> maybe = await maybeTask.ConfigureAwait(false);
         return maybe.ToResult(ferror);
     }

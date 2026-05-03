@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Pagination;
 
 using System;
+using System.Collections.Immutable;
 
 /// <summary>
 /// Unit tests for the <see cref="Page{T}"/> pagination envelope.
@@ -44,6 +45,39 @@ public class PageTests
         page.AppliedLimit.Should().Be(10);
         page.DeliveredCount.Should().Be(0);
         page.WasCapped.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Equality_uses_item_sequence_not_list_reference()
+    {
+        var first = new Page<int>([1, 2, 3], null, null, RequestedLimit: 10, AppliedLimit: 10);
+        var second = new Page<int>([1, 2, 3], null, null, RequestedLimit: 10, AppliedLimit: 10);
+
+        first.Should().Be(second);
+        first.GetHashCode().Should().Be(second.GetHashCode());
+    }
+
+    [Fact]
+    public void Constructor_defensively_copies_items()
+    {
+        var items = new List<int> { 1, 2 };
+        var page = new Page<int>(items, null, null, RequestedLimit: 10, AppliedLimit: 10);
+
+        items.Add(3);
+
+        page.Items.Should().Equal([1, 2]);
+        page.DeliveredCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void Constructor_accepts_immutable_array_without_changing_semantics()
+    {
+        var items = ImmutableArray.Create(1, 2);
+
+        var page = new Page<int>(items, null, null, RequestedLimit: 10, AppliedLimit: 10);
+
+        page.Items.Should().Equal([1, 2]);
+        page.DeliveredCount.Should().Be(2);
     }
 
     [Fact]

@@ -2,14 +2,14 @@
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Primitives.svg)](https://www.nuget.org/packages/Trellis.Primitives)
 
-Strongly typed value objects for .NET, with built-in primitives like `EmailAddress` and `Money` plus JSON/tracing infrastructure for primitive value objects.
+Strongly typed value objects for .NET, with built-in primitives like `EmailAddress` and `Money` plus composite JSON conversion and tracing registration for primitive value objects.
 
 ## Installation
 ```bash
 dotnet add package Trellis.Primitives
 ```
 
-The `Required*<TSelf>` and `ScalarValueObject<TSelf, TUnderlying>` base classes live in `Trellis.Core`. The source generator that powers them is bundled inside the `Trellis.Core` package (transitively referenced by `Trellis.Primitives`) — no extra package is required.
+The `Required*<TSelf>` and `ScalarValueObject<TSelf, TUnderlying>` base classes live in `Trellis.Core`. The source generator, generated primitive JSON converter, and primitive trace source are bundled inside the `Trellis.Core` package (transitively referenced by `Trellis.Primitives`) — no extra package is required.
 
 ## Quick Example
 ```csharp

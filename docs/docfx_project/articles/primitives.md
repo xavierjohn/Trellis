@@ -3,7 +3,7 @@ title: Primitive Value Objects
 package: Trellis.Primitives
 topics: [primitive-obsession, value-object, validation, json, ef-core, type-converter]
 related_api_reference: [trellis-api-primitives.md, trellis-api-core.md]
-last_verified: 2026-05-01
+last_verified: 2026-05-03
 audience: [developer]
 ---
 # Primitive Value Objects
@@ -34,7 +34,7 @@ audience: [developer]
 
 ## Surface at a glance
 
-`Trellis.Primitives` ships 13 ready-made concrete value objects plus the JSON / tracing infrastructure that backs them. The `Required*<TSelf>` base classes, validation attributes, and source generator that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
+`Trellis.Primitives` ships 13 ready-made concrete value objects plus the composite JSON converter and OpenTelemetry registration extension that backs them. The `Required*<TSelf>` base classes, validation attributes, source generator, scalar JSON converter, and primitive trace source that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
 
 | Area | Key APIs | Lives in |
 |---|---|---|
@@ -43,8 +43,10 @@ audience: [developer]
 | Custom-primitive bases | `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredLong<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredBool<TSelf>`, `RequiredDateTime<TSelf>`, `RequiredEnum<TSelf>` | `Trellis.Core` |
 | Validation attributes | `[Trellis.StringLength]`, `[Trellis.Range]`, `[Trellis.EnumValue]` | `Trellis.Core` |
 | Pattern / cross-field hook | `static partial void ValidateAdditional(value, fieldName, ref string? errorMessage)` | generator-emitted |
-| JSON converters | `ParsableJsonConverter<T>` (scalars), `CompositeValueObjectJsonConverter<T>` (composites), `RequiredEnumJsonConverter<TRequiredEnum>` | `Trellis.Primitives` / `Trellis.Core` |
-| Tracing | `PrimitiveValueObjectTrace.ActivitySource`, `AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder)` | `Trellis.Primitives` |
+| Scalar JSON converters | `ParsableJsonConverter<T>` (scalars), `RequiredEnumJsonConverter<TRequiredEnum>` | `Trellis.Core` |
+| Composite JSON converter | `CompositeValueObjectJsonConverter<T>` | `Trellis.Primitives` |
+| Tracing source | `PrimitiveValueObjectTrace.ActivitySource`, `PrimitiveValueObjectTrace.ActivitySourceName` | `Trellis.Core` |
+| Tracing registration | `AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder)` | `Trellis.Primitives` |
 
 Full signatures: [trellis-api-primitives.md](../api_reference/trellis-api-primitives.md).
 
@@ -262,13 +264,13 @@ var french    = MonetaryAmount.TryCreate("12,34", CultureInfo.GetCultureInfo("fr
 
 ### Scalar primitives — automatic
 
-Every `Required*<TSelf>` partial gets `[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]` from the generator. Each built-in scalar VO in `Trellis.Primitives` (`EmailAddress`, `Url`, `MonetaryAmount`, ...) follows the same pattern. There is **nothing to register** — the converter:
+Every non-enum `Required*<TSelf>` partial gets `[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]` from the Core generator. `RequiredEnum<TSelf>` partials get `[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]` instead. Each built-in scalar VO in `Trellis.Primitives` (`EmailAddress`, `Url`, `MonetaryAmount`, ...) follows the same Core-owned converter split. There is **nothing to register** — the non-enum converter:
 
 - Accepts JSON `string`, `number`, `true`, `false`; converts to text and calls `TSelf.Parse(...)`.
 - Writes JSON numbers for numeric scalars and JSON strings for everything else.
 - Throws on JSON `null` because Trellis scalars are non-nullable.
 
-`RequiredEnum<TSelf>` uses `RequiredEnumJsonConverter<TSelf>` (string in, string out via `TryFromName`).
+The enum converter is string in, string out via `TryFromName`.
 
 ### Composite value objects — opt in
 
