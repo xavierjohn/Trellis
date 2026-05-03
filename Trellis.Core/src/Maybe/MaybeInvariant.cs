@@ -240,6 +240,45 @@ public static class MaybeInvariant
             (third.HasValue, thirdFieldName));
     }
 
+    /// <summary>
+    /// Validates that at most one of the four values is present.
+    /// </summary>
+    /// <typeparam name="T1">Type of the first optional value.</typeparam>
+    /// <typeparam name="T2">Type of the second optional value.</typeparam>
+    /// <typeparam name="T3">Type of the third optional value.</typeparam>
+    /// <typeparam name="T4">Type of the fourth optional value.</typeparam>
+    /// <param name="first">The first optional value.</param>
+    /// <param name="second">The second optional value.</param>
+    /// <param name="third">The third optional value.</param>
+    /// <param name="fourth">The fourth optional value.</param>
+    /// <param name="firstFieldName">Field name for the first value.</param>
+    /// <param name="secondFieldName">Field name for the second value.</param>
+    /// <param name="thirdFieldName">Field name for the third value.</param>
+    /// <param name="fourthFieldName">Field name for the fourth value.</param>
+    /// <returns>
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if zero or one value is present;
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all present fields.
+    /// </returns>
+    public static Result<Unit> MutuallyExclusive<T1, T2, T3, T4>(
+        Maybe<T1> first, Maybe<T2> second, Maybe<T3> third, Maybe<T4> fourth,
+        string firstFieldName, string secondFieldName, string thirdFieldName, string fourthFieldName)
+        where T1 : notnull
+        where T2 : notnull
+        where T3 : notnull
+        where T4 : notnull
+    {
+        ArgumentNullException.ThrowIfNull(firstFieldName);
+        ArgumentNullException.ThrowIfNull(secondFieldName);
+        ArgumentNullException.ThrowIfNull(thirdFieldName);
+        ArgumentNullException.ThrowIfNull(fourthFieldName);
+
+        return MutuallyExclusiveCore(
+            (first.HasValue, firstFieldName),
+            (second.HasValue, secondFieldName),
+            (third.HasValue, thirdFieldName),
+            (fourth.HasValue, fourthFieldName));
+    }
+
     #endregion
 
     #region ExactlyOne
@@ -304,6 +343,45 @@ public static class MaybeInvariant
             (third.HasValue, thirdFieldName));
     }
 
+    /// <summary>
+    /// Validates that exactly one of the four values is present.
+    /// </summary>
+    /// <typeparam name="T1">Type of the first optional value.</typeparam>
+    /// <typeparam name="T2">Type of the second optional value.</typeparam>
+    /// <typeparam name="T3">Type of the third optional value.</typeparam>
+    /// <typeparam name="T4">Type of the fourth optional value.</typeparam>
+    /// <param name="first">The first optional value.</param>
+    /// <param name="second">The second optional value.</param>
+    /// <param name="third">The third optional value.</param>
+    /// <param name="fourth">The fourth optional value.</param>
+    /// <param name="firstFieldName">Field name for the first value.</param>
+    /// <param name="secondFieldName">Field name for the second value.</param>
+    /// <param name="thirdFieldName">Field name for the third value.</param>
+    /// <param name="fourthFieldName">Field name for the fourth value.</param>
+    /// <returns>
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if exactly one value is present;
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
+    /// </returns>
+    public static Result<Unit> ExactlyOne<T1, T2, T3, T4>(
+        Maybe<T1> first, Maybe<T2> second, Maybe<T3> third, Maybe<T4> fourth,
+        string firstFieldName, string secondFieldName, string thirdFieldName, string fourthFieldName)
+        where T1 : notnull
+        where T2 : notnull
+        where T3 : notnull
+        where T4 : notnull
+    {
+        ArgumentNullException.ThrowIfNull(firstFieldName);
+        ArgumentNullException.ThrowIfNull(secondFieldName);
+        ArgumentNullException.ThrowIfNull(thirdFieldName);
+        ArgumentNullException.ThrowIfNull(fourthFieldName);
+
+        return ExactlyOneCore(
+            (first.HasValue, firstFieldName),
+            (second.HasValue, secondFieldName),
+            (third.HasValue, thirdFieldName),
+            (fourth.HasValue, fourthFieldName));
+    }
+
     #endregion
 
     #region AtLeastOne
@@ -366,6 +444,45 @@ public static class MaybeInvariant
             (first.HasValue, firstFieldName),
             (second.HasValue, secondFieldName),
             (third.HasValue, thirdFieldName));
+    }
+
+    /// <summary>
+    /// Validates that at least one of the four values is present.
+    /// </summary>
+    /// <typeparam name="T1">Type of the first optional value.</typeparam>
+    /// <typeparam name="T2">Type of the second optional value.</typeparam>
+    /// <typeparam name="T3">Type of the third optional value.</typeparam>
+    /// <typeparam name="T4">Type of the fourth optional value.</typeparam>
+    /// <param name="first">The first optional value.</param>
+    /// <param name="second">The second optional value.</param>
+    /// <param name="third">The third optional value.</param>
+    /// <param name="fourth">The fourth optional value.</param>
+    /// <param name="firstFieldName">Field name for the first value.</param>
+    /// <param name="secondFieldName">Field name for the second value.</param>
+    /// <param name="thirdFieldName">Field name for the third value.</param>
+    /// <param name="fourthFieldName">Field name for the fourth value.</param>
+    /// <returns>
+    /// <see cref="Result{TValue}"/> with <see cref="Unit"/> success if at least one value is present;
+    /// otherwise a <see cref="Error.UnprocessableContent"/> listing all fields.
+    /// </returns>
+    public static Result<Unit> AtLeastOne<T1, T2, T3, T4>(
+        Maybe<T1> first, Maybe<T2> second, Maybe<T3> third, Maybe<T4> fourth,
+        string firstFieldName, string secondFieldName, string thirdFieldName, string fourthFieldName)
+        where T1 : notnull
+        where T2 : notnull
+        where T3 : notnull
+        where T4 : notnull
+    {
+        ArgumentNullException.ThrowIfNull(firstFieldName);
+        ArgumentNullException.ThrowIfNull(secondFieldName);
+        ArgumentNullException.ThrowIfNull(thirdFieldName);
+        ArgumentNullException.ThrowIfNull(fourthFieldName);
+
+        return AtLeastOneCore(
+            (first.HasValue, firstFieldName),
+            (second.HasValue, secondFieldName),
+            (third.HasValue, thirdFieldName),
+            (fourth.HasValue, fourthFieldName));
     }
 
     #endregion

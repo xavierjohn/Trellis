@@ -23,6 +23,14 @@ public static partial class MapExtensions
     /// <param name="result">The result to map.</param>
     /// <param name="func">The function to transform the value if the result is successful.</param>
     /// <returns>A new success result with the transformed value if success; otherwise the original failure.</returns>
+    /// <remarks>
+    /// <b>Selector contract.</b> <paramref name="func"/> must not return <see langword="null"/>.
+    /// Map wraps the returned value in <see cref="Result.Ok{T}(T)"/> unconditionally; a null
+    /// transformation result yields a "successful" <see cref="Result{TOut}"/> whose Value is null,
+    /// which subsequent stages will misinterpret. If the transformation can fail or produce no
+    /// value, project to <see cref="Maybe{T}"/> first or use <c>Bind</c> with an explicit
+    /// <see cref="Result{T}"/>-returning selector.
+    /// </remarks>
     public static Result<TOut> Map<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> func)
     {
         ArgumentNullException.ThrowIfNull(func);

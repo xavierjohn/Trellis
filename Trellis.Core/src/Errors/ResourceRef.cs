@@ -36,6 +36,12 @@ public readonly record struct ResourceRef(string Type, string? Id = null)
     /// <typeparam name="TResource">The resource type.</typeparam>
     /// <param name="id">Optional resource identifier.</param>
     /// <returns>A resource reference.</returns>
+    /// <remarks>
+    /// For closed generic resource types (e.g. <c>List&lt;User&gt;</c>) <see cref="System.Reflection.MemberInfo.Name">Type.Name</see>
+    /// produces the CLR mangled form <c>"List`1"</c>, which is rarely the desired user-visible
+    /// name. Prefer <see cref="For(string, object?)"/> with an explicit, stable resource name
+    /// when the resource is parameterized.
+    /// </remarks>
     public static ResourceRef For<TResource>(object? id = null) =>
         new(typeof(TResource).Name, FormatId(id));
 

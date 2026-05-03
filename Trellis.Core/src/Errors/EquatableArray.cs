@@ -15,6 +15,13 @@ using System.Collections.Immutable;
 /// A default-constructed <see cref="EquatableArray{T}"/> represents an empty (uninitialized)
 /// sequence; two default values compare equal.
 /// </para>
+/// <para>
+/// <b>Intentionally does not implement <see cref="System.Collections.Generic.IEnumerable{T}"/>.</b>
+/// LINQ and FluentAssertions interop is via the <see cref="Items"/> projection — e.g.
+/// <c>violations.Items.Should().HaveCount(2)</c>. This omission is deliberate so the type's
+/// equality semantics cannot be silently bypassed via sequence-style comparison helpers; see the
+/// "EquatableArray&lt;T&gt;" recipe in the API cookbook for rationale.
+/// </para>
 /// </remarks>
 /// <typeparam name="T">The element type.</typeparam>
 public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>

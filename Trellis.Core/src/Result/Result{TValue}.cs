@@ -25,7 +25,7 @@ using System.Diagnostics;
 /// <code>
 /// // Creating results
 /// Result&lt;User&gt; success = Result.Ok(user);
-/// Result&lt;User&gt; failure = new Error.NotFound(new ResourceRef("User", "42")) { Detail = "User not found" };
+/// Result&lt;User&gt; failure = Result.Fail&lt;User&gt;(new Error.NotFound(new ResourceRef("User", "42")) { Detail = "User not found" });
 /// 
 /// // Pattern matching with Deconstruct
 /// var (isSuccess, value, error) = result;

@@ -63,16 +63,20 @@ public static class AggregateETagExtensions
         if (result.IsFailure) return result;
 
         if (expectedETags.Length == 0)
-            return Result.Fail<T>(new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfMatch) { Detail = "If-Match header contains only weak ETags. Strong comparison is required." });
+            return Result.Fail<T>(new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfMatch) { Detail = "If-Match header is empty." });
 
-        // Wildcard check
-        if (expectedETags.Any(tag => tag.IsWildcard))
+        // Wildcard check (any wildcard satisfies If-Match)
+        if (Array.Exists(expectedETags, tag => tag.IsWildcard))
             return result;
 
-        // Strong comparison: both must be strong and opaque-tags match
+        // Strong comparison per RFC 9110 §13.1.1: weak tags don't satisfy If-Match.
+        var strongTags = Array.FindAll(expectedETags, tag => !tag.IsWeak);
+        if (strongTags.Length == 0)
+            return Result.Fail<T>(new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfMatch) { Detail = "If-Match contains only weak ETags. Strong comparison is required." });
+
         return result.Ensure(
-            aggregate => Array.Exists(expectedETags,
-                tag => !tag.IsWeak && string.Equals(aggregate.ETag, tag.OpaqueTag, StringComparison.Ordinal)),
-            new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfMatch) { Detail = "Resource has been modified. Please reload and retry." });
+            aggregate => Array.Exists(strongTags,
+                tag => string.Equals(aggregate.ETag, tag.OpaqueTag, StringComparison.Ordinal)),
+            _ => new Error.PreconditionFailed(new ResourceRef(typeof(T).Name, null), PreconditionKind.IfMatch) { Detail = "Resource has been modified. Please reload and retry." });
     }
 }
