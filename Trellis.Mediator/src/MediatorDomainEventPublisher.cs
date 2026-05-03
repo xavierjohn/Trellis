@@ -41,10 +41,10 @@ internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublish
     /// <inheritdoc />
     [UnconditionalSuppressMessage(
         "Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "Reflection over IDomainEventHandler<TEvent> is the documented default-implementation behavior; AOT consumers must implement IDomainEventPublisher themselves.")]
+        Justification = "Reflection over IDomainEventHandler<TEvent> for the runtime event type. The handler types are reached via DI-based registration (AddDomainEventHandler<TEvent, THandler>) which preserves them through trimming; consumers needing strict NativeAOT guarantees can supply a custom IDomainEventPublisher implementation.")]
     [UnconditionalSuppressMessage(
         "AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling",
-        Justification = "Reflection over IDomainEventHandler<TEvent> is the documented default-implementation behavior; AOT consumers must implement IDomainEventPublisher themselves.")]
+        Justification = "Reflection over IDomainEventHandler<TEvent> for the runtime event type. The handler types are reached via DI-based registration (AddDomainEventHandler<TEvent, THandler>) which preserves them through trimming; consumers needing strict NativeAOT guarantees can supply a custom IDomainEventPublisher implementation.")]
     public async ValueTask PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);

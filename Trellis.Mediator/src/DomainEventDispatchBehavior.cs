@@ -1,6 +1,5 @@
 namespace Trellis.Mediator;
 
-using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using global::Mediator;
@@ -46,7 +45,21 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     /// </summary>
     public const int MaxDispatchWaves = 8;
 
-    private static readonly ConcurrentDictionary<Type, Func<TResponse, IAggregate?>> s_aggregateExtractor = new();
+    /// <summary>
+    /// Per-closed-generic extractor. Computed once per <c>(TMessage, TResponse)</c> instantiation
+    /// using <c>typeof(TResponse)</c> so the hot path avoids <see cref="object.GetType"/> on
+    /// the value-type <c>Result&lt;T&gt;</c> (which would box) and avoids any per-request
+    /// dictionary lookup.
+    /// </summary>
+    private static readonly Func<TResponse, IAggregate?> s_extractor = CreateExtractor();
+
+    [UnconditionalSuppressMessage(
+        "Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
+        Justification = "Same justification as the Handle method — see the type-level remarks.")]
+    [UnconditionalSuppressMessage(
+        "AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling",
+        Justification = "Same justification as the Handle method — see the type-level remarks.")]
+    private static Func<TResponse, IAggregate?> CreateExtractor() => BuildExtractorOrNoop(typeof(TResponse));
 
     private readonly IDomainEventPublisher _publisher;
     private readonly ILogger<DomainEventDispatchBehavior<TMessage, TResponse>> _logger;
@@ -67,10 +80,10 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     /// <inheritdoc />
     [UnconditionalSuppressMessage(
         "Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "Reflection on IResult<T>.TryGetValue is the documented behavior of the default dispatch behavior; AOT consumers must register custom IPipelineBehavior implementations.")]
+        Justification = "Reflection on IResult<T>.TryGetValue against the closed generic response type. The consumer's Result<TAggregate> remains reachable through the static command handler signature, so trimming preserves it; consumers needing strict NativeAOT guarantees can supply a custom IPipelineBehavior implementation.")]
     [UnconditionalSuppressMessage(
         "AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling",
-        Justification = "Reflection on IResult<T>.TryGetValue is the documented behavior of the default dispatch behavior; AOT consumers must register custom IPipelineBehavior implementations.")]
+        Justification = "Reflection on IResult<T>.TryGetValue against the closed generic response type. The consumer's Result<TAggregate> remains reachable through the static command handler signature, so trimming preserves it; consumers needing strict NativeAOT guarantees can supply a custom IPipelineBehavior implementation.")]
     public async ValueTask<TResponse> Handle(
         TMessage message,
         MessageHandlerDelegate<TMessage, TResponse> next,
@@ -122,15 +135,17 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
 
     [RequiresUnreferencedCode("Reflects on IResult<T>.TryGetValue to extract the aggregate. Use explicit handler registration for AOT.")]
     [RequiresDynamicCode("Reflects on IResult<T>.TryGetValue to extract the aggregate.")]
-    private static IAggregate? ExtractAggregate(TResponse response)
-    {
-        var extractor = s_aggregateExtractor.GetOrAdd(response.GetType(), BuildExtractor);
-        return extractor(response);
-    }
+    [UnconditionalSuppressMessage(
+        "Trimming", "IL2026",
+        Justification = "Same justification as the Handle method — see the type-level remarks.")]
+    [UnconditionalSuppressMessage(
+        "AOT", "IL3050",
+        Justification = "Same justification as the Handle method — see the type-level remarks.")]
+    private static IAggregate? ExtractAggregate(TResponse response) => s_extractor(response);
 
     [RequiresUnreferencedCode("Reflects on IResult<T>.TryGetValue via the runtime response type.")]
     [RequiresDynamicCode("Reflects on IResult<T>.TryGetValue via the runtime response type.")]
-    private static Func<TResponse, IAggregate?> BuildExtractor(Type responseType)
+    private static Func<TResponse, IAggregate?> BuildExtractorOrNoop(Type responseType)
     {
         // Result<T> deliberately removed the v1 `Value` property in favor of the non-throwing
         // TryGetValue accessor on IResult<T>. We extract the aggregate by reflecting on
