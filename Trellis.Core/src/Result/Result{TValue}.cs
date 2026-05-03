@@ -80,7 +80,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
         if (isFailure)
         {
             if (error is null)
-                throw new ArgumentException("If 'isFailure' is true, 'error' must not be null.", nameof(error));
+                throw new ArgumentNullException(nameof(error), "If 'isFailure' is true, 'error' must not be null.");
         }
         else
         {
