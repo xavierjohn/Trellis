@@ -12,6 +12,25 @@ Before writing or changing code that uses Trellis APIs, read the relevant files 
 
 Start with `docs/docfx_project/api_reference/trellis-api-cookbook.md`. Use its task lookup table to find the right recipe, then read the package reference files for exact signatures, overloads, namespaces, and examples. Do not infer Trellis API behavior from these Copilot instructions.
 
+### Recommended context size
+
+The full set of API references is ~548 KB (~137K tokens). The cookbook alone is ~92 KB (~23K tokens). Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **0.9–1.3 MB**.
+
+| Tier | Context | When this is enough |
+|---|---|---|
+| **Minimum** | 200K | Narrow, single-file tasks. Forces a strict "load only the area-specific reference per task" discipline; cross-cutting work is error-prone at this tier. |
+| **Recommended** | 400–500K | Most consumer projects. Lets the cookbook + 5–6 area-specific references stay resident through a PR-sized session. |
+| **Comfortable** | 1M | Framework-internal work and greenfield projects with multiple integration points. Lets all 16 references stay resident from turn 1 without eviction. |
+
+### Mandatory loads at session start
+
+For any non-trivial Trellis work, load these **before** writing the first line of code or running the first sub-agent:
+
+1. `trellis-api-cookbook.md` — always. Its task lookup table is the entry point.
+2. `trellis-api-servicedefaults.md` — always. **Every** `services.AddXxx()` extension method in Trellis has a matching `TrellisServiceBuilder.UseXxx()` slot. Designing or modifying a registration helper without reading this file silently misses the builder slot.
+3. The area-specific reference for the package being modified (from the table below).
+4. The reference for **every package whose pipeline this work composes with**. Specifically: anything touching the Mediator pipeline must also load `trellis-api-efcore.md` (transactional behavior) and `trellis-api-authorization.md` (resource-authorization behavior); anything touching ASP must also load `trellis-api-mediator.md`.
+
 | When touching... | Read first |
 |---|---|
 | Result, Maybe, Error, ROP operations, aggregates, entities, specifications | `docs/docfx_project/api_reference/trellis-api-core.md` |
@@ -27,6 +46,23 @@ Start with `docs/docfx_project/api_reference/trellis-api-cookbook.md`. Use its t
 | Testing helpers | `docs/docfx_project/api_reference/trellis-api-testing-reference.md` |
 | ASP.NET Core integration-test helpers | `docs/docfx_project/api_reference/trellis-api-testing-aspnetcore.md` |
 | Analyzer rules and diagnostic IDs | `docs/docfx_project/api_reference/trellis-api-analyzers.md` |
+
+### Adding a new public registration API (`AddXxx` / `UseXxx`)
+
+When adding a new `services.AddTrellisXxx()` or `services.AddXxxDispatch()` style extension, the work is **not complete** until:
+
+1. The matching `TrellisServiceBuilder.UseXxx(...)` slot is added in `Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs`, with the call site placed correctly inside `Apply()` so canonical pipeline ordering is preserved.
+2. The new helper is order-independent vs the other `AddTrellis*` extensions. If pipeline placement matters (e.g., the new behavior must wrap or be wrapped by `TransactionalCommandBehavior`), the registration must detect existing relevant behaviors and insert/yank-restore correctly — not just `TryAddEnumerable` and hope.
+3. Both `trellis-api-mediator.md` (or the relevant area reference) **and** `trellis-api-servicedefaults.md` are updated. The two layers must stay in sync.
+4. A test asserts the canonical pipeline order with the new registration both **before** and **after** `AddTrellisUnitOfWork<TContext>()` is called.
+
+### Validating sub-agent findings
+
+Sub-agents (rubber-duck, code-review) are recommendation engines, not ground truth. Before adopting a finding:
+
+- Verify the claim against the relevant API reference, source code, or existing test. Most non-trivial findings are testable in 30 seconds.
+- Push back on claims that contradict verified docs/source or existing intentional design. Reference earlier PRs (e.g., via `git log -S 'token'`) when the claim implies undoing prior work.
+- Adopt findings that survive verification — and adopt them confidently, because verification means you understand the bug, not just the reviewer's claim about it.
 
 If an API reference contradicts these instructions, treat the API reference as authoritative for API usage.
 
