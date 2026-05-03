@@ -160,7 +160,9 @@ public class ModelBindingTests
     [Fact]
     public async Task ModelBinder_EmptyString_AddsConversionError()
     {
-        // Arrange
+        // After m-14: PrimitiveConverter no longer short-circuits empty strings for
+        // string-typed value objects. The error now flows from ProductCode.TryCreate,
+        // which is the right place for the empty-vs-required decision.
         var binder = new ScalarValueModelBinder<ProductCode, string>();
         var context = CreateBindingContext("productCode", "");
 
@@ -171,7 +173,7 @@ public class ModelBindingTests
         context.Result.IsModelSet.Should().BeFalse();
         context.ModelState.IsValid.Should().BeFalse();
         context.ModelState["productCode"]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be("Value is required.");
+            .Which.ErrorMessage.Should().Be("ProductCode is required.");
     }
 
     [Fact]

@@ -26,6 +26,20 @@ public class ScalarValueModelBinderPrimitiveTypesTests
                 : Result.Ok(new StringVO(value));
     }
 
+    /// <summary>
+    /// Permissive string-typed value object that accepts empty strings.
+    /// Used to verify m-14 fix: PrimitiveConverter must not short-circuit empty strings
+    /// for string-typed VOs and must let TryCreate decide.
+    /// </summary>
+    public sealed class OptionalRemarkVO : ScalarValueObject<OptionalRemarkVO, string>, IScalarValue<OptionalRemarkVO, string>
+    {
+        private OptionalRemarkVO(string value) : base(value) { }
+        public static Result<OptionalRemarkVO> TryCreate(string? value, string? fieldName = null) =>
+            value is null
+                ? Result.Fail<OptionalRemarkVO>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Required" })))
+                : Result.Ok(new OptionalRemarkVO(value));
+    }
+
     public sealed class GuidVO : ScalarValueObject<GuidVO, Guid>, IScalarValue<GuidVO, Guid>
     {
         private GuidVO(Guid value) : base(value) { }
@@ -257,6 +271,23 @@ public class ScalarValueModelBinderPrimitiveTypesTests
 
         context.Result.IsModelSet.Should().BeFalse();
         context.ModelState.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BindModelAsync_String_EmptyValue_PermissiveStringVO_BindsSuccessfully()
+    {
+        // Regression for m-14: PrimitiveConverter previously short-circuited any empty
+        // string with "Value is required.", preventing string-typed value objects whose
+        // TryCreate accepts empty (e.g., an optional remark) from ever seeing the value.
+        var binder = new ScalarValueModelBinder<OptionalRemarkVO, string>();
+        var context = CreateBindingContext<OptionalRemarkVO>("remark", "");
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.Should().BeTrue();
+        context.ModelState["remark"]!.Errors.Should().BeEmpty();
+        context.Result.Model.Should().BeOfType<OptionalRemarkVO>();
+        ((OptionalRemarkVO)context.Result.Model!).Value.Should().Be(string.Empty);
     }
 
     #endregion

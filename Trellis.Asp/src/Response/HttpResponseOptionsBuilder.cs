@@ -92,6 +92,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     /// <summary>Sets the <c>Accept-Ranges</c> response header (e.g. "bytes" or "none").</summary>
     public HttpResponseOptionsBuilder<TDomain> WithAcceptRanges(string acceptRanges)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(acceptRanges);
         _acceptRanges = acceptRanges;
         return this;
     }
@@ -195,6 +196,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     /// <summary>Per-call override mapper for failure responses. Highest precedence.</summary>
     public HttpResponseOptionsBuilder<TDomain> WithErrorMapping(Func<Error, int> mapper)
     {
+        ArgumentNullException.ThrowIfNull(mapper);
         _errorMapper = mapper;
         return this;
     }
@@ -289,6 +291,7 @@ public sealed class HttpResponseOptionsBuilder
     /// <summary>Per-call override mapper for failure responses.</summary>
     public HttpResponseOptionsBuilder WithErrorMapping(Func<Error, int> mapper)
     {
+        ArgumentNullException.ThrowIfNull(mapper);
         _errorMapper = mapper;
         return this;
     }

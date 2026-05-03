@@ -40,6 +40,7 @@ public sealed class PartialContentHttpResult : IResult
     /// </remarks>
     public PartialContentHttpResult(long rangeStart, long rangeEnd, long? totalLength, IResult inner)
     {
+        ArgumentNullException.ThrowIfNull(inner);
         _contentRangeHeaderValue = totalLength is null
             ? new ContentRangeHeaderValue(rangeStart, rangeEnd) { Unit = "items" }
             : new ContentRangeHeaderValue(rangeStart, rangeEnd, totalLength.Value) { Unit = "items" };
@@ -53,6 +54,8 @@ public sealed class PartialContentHttpResult : IResult
     /// <param name="inner">An <see cref="IResult"/> that writes the response body (e.g., <c>Results.Ok(value)</c>).</param>
     public PartialContentHttpResult(ContentRangeHeaderValue contentRangeHeaderValue, IResult inner)
     {
+        ArgumentNullException.ThrowIfNull(contentRangeHeaderValue);
+        ArgumentNullException.ThrowIfNull(inner);
         _contentRangeHeaderValue = contentRangeHeaderValue;
         _inner = inner;
     }

@@ -346,8 +346,9 @@ public static class ServiceCollectionExtensions
             if (!options.ModelMetadataDetailsProviders.Any(p => p is MaybeSuppressChildValidationMetadataProvider))
                 options.ModelMetadataDetailsProviders.Add(new MaybeSuppressChildValidationMetadataProvider());
 
-            if (!options.Filters.OfType<TypeFilterAttribute>()
-                    .Any(t => t.ImplementationType == typeof(ScalarValueValidationFilter)))
+            if (!options.Filters.Any(f =>
+                    (f as TypeFilterAttribute)?.ImplementationType == typeof(ScalarValueValidationFilter)
+                    || f is ScalarValueValidationFilter))
                 options.Filters.Add<ScalarValueValidationFilter>();
         });
         services.Configure<ApiBehaviorOptions>(options =>

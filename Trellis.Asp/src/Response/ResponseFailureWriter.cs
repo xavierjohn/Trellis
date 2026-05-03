@@ -26,9 +26,10 @@ internal static class ResponseFailureWriter
                 .GroupBy(fv => fv.Field.Path.TrimStart('/'))
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
 
+            var validationDetail = statusCode >= 500 ? "An internal error occurred." : unprocessable.Detail;
             inner = Microsoft.AspNetCore.Http.Results.ValidationProblem(
                 errors,
-                unprocessable.Detail,
+                validationDetail,
                 instance: null,
                 statusCode,
                 extensions: BuildExtensions(error, unprocessable.Rules));

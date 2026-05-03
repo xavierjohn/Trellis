@@ -86,11 +86,17 @@ public static class ValidationErrorsContext
         s_current.Value?.AddError(fieldName, errorMessage);
 
     /// <summary>
-    /// Adds all field violations from an existing <see cref="Error.UnprocessableContent"/> to the current scope.
+    /// Adds all field violations and rule violations from an existing <see cref="Error.UnprocessableContent"/> to the current scope.
     /// </summary>
-    /// <param name="unprocessableContent">The error whose field violations should be merged.</param>
+    /// <param name="unprocessableContent">The error whose violations should be merged.</param>
     /// <remarks>
-    /// If no scope is active, this method is a no-op.
+    /// <para>If no scope is active, this method is a no-op.</para>
+    /// <para>
+    /// The merge preserves each field violation's full structure — including its
+    /// <see cref="FieldViolation.ReasonCode"/>, <see cref="FieldViolation.Args"/>,
+    /// and <see cref="FieldViolation.Detail"/> — and also preserves any top-level
+    /// <see cref="Error.UnprocessableContent.Rules"/> entries.
+    /// </para>
     /// </remarks>
     internal static void AddError(Error.UnprocessableContent unprocessableContent) =>
         s_current.Value?.AddError(unprocessableContent);
@@ -99,7 +105,7 @@ public static class ValidationErrorsContext
     /// Gets the aggregated <see cref="Error.UnprocessableContent"/> from the current scope, or null if no errors were collected.
     /// </summary>
     /// <returns>
-    /// An <see cref="Error.UnprocessableContent"/> containing all collected field violations,
+    /// An <see cref="Error.UnprocessableContent"/> containing all collected field and rule violations,
     /// or <c>null</c> if no validation errors were recorded.
     /// </returns>
     public static Error.UnprocessableContent? GetUnprocessableContent() =>
@@ -131,7 +137,8 @@ public static class ValidationErrorsContext
     internal sealed class ErrorCollector
     {
         private readonly object _lock = new();
-        private readonly Dictionary<string, List<string>> _fieldErrors = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<FieldViolation>> _fieldErrors = new(StringComparer.Ordinal);
+        private readonly List<RuleViolation> _ruleErrors = [];
 
         public bool HasErrors
         {
@@ -139,7 +146,7 @@ public static class ValidationErrorsContext
             {
                 lock (_lock)
                 {
-                    return _fieldErrors.Count > 0;
+                    return _fieldErrors.Count > 0 || _ruleErrors.Count > 0;
                 }
             }
         }
@@ -162,9 +169,10 @@ public static class ValidationErrorsContext
                     _fieldErrors[fieldName] = errors;
                 }
 
-                if (!errors.Contains(errorMessage))
+                var violation = new FieldViolation(InputPointer.ForProperty(fieldName), "validation.error") { Detail = errorMessage };
+                if (!ContainsByDetail(errors, errorMessage))
                 {
-                    errors.Add(errorMessage);
+                    errors.Add(violation);
                 }
             }
         }
@@ -182,10 +190,17 @@ public static class ValidationErrorsContext
                         _fieldErrors[fieldName] = errors;
                     }
 
-                    var detail = fieldViolation.Detail ?? fieldViolation.ReasonCode;
-                    if (!errors.Contains(detail))
+                    if (!errors.Contains(fieldViolation))
                     {
-                        errors.Add(detail);
+                        errors.Add(fieldViolation);
+                    }
+                }
+
+                foreach (var ruleViolation in unprocessableContent.Rules)
+                {
+                    if (!_ruleErrors.Contains(ruleViolation))
+                    {
+                        _ruleErrors.Add(ruleViolation);
                     }
                 }
             }
@@ -195,19 +210,33 @@ public static class ValidationErrorsContext
         {
             lock (_lock)
             {
-                if (_fieldErrors.Count == 0)
+                if (_fieldErrors.Count == 0 && _ruleErrors.Count == 0)
                     return null;
 
-                var violations = _fieldErrors
-                    .SelectMany(kvp => kvp.Value.Select(detail =>
-                        new FieldViolation(InputPointer.ForProperty(kvp.Key), "validation.error") { Detail = detail }))
+                var fieldArray = _fieldErrors
+                    .SelectMany(kvp => kvp.Value)
                     .ToArray();
 
-                return new Error.UnprocessableContent(EquatableArray.Create(violations))
+                var ruleArray = _ruleErrors.ToArray();
+
+                return new Error.UnprocessableContent(
+                    EquatableArray.Create(fieldArray),
+                    EquatableArray.Create(ruleArray))
                 {
                     Detail = "One or more validation errors occurred.",
                 };
             }
+        }
+
+        private static bool ContainsByDetail(List<FieldViolation> existing, string detail)
+        {
+            foreach (var v in existing)
+            {
+                if (string.Equals(v.Detail, detail, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
     }
 }

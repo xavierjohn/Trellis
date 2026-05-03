@@ -58,8 +58,8 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             : null;
 
     TBody? IValueHttpResult<TBody>.Value =>
-        _result.TryGetValue(out var v) && _bodyProjector is not null
-            ? _bodyProjector(v)
+        _result.TryGetValue(out var v)
+            ? (_bodyProjector is not null ? _bodyProjector(v) : v is TBody t ? t : default)
             : default;
 
     public string? ContentType => s_isUnit ? null : "application/json";
@@ -141,26 +141,8 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         return Results.Ok(payload).ExecuteAsync(httpContext);
     }
 
-    internal static int ResolveErrorStatusCode(HttpContext httpContext, Error error, HttpResponseOptions<TDomain> options)
-    {
-        if (options.ErrorMapper is not null)
-            return options.ErrorMapper(error);
-
-        if (options.ErrorOverrides is { Count: > 0 })
-        {
-            var t = error.GetType();
-            while (t is not null && t != typeof(object))
-            {
-                if (options.ErrorOverrides.TryGetValue(t, out var sc))
-                    return sc;
-
-                t = t.BaseType;
-            }
-        }
-
-        var ambient = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
-        return ambient.GetStatusCode(error);
-    }
+    internal static int ResolveErrorStatusCode(HttpContext httpContext, Error error, HttpResponseOptions<TDomain> options) =>
+        ErrorStatusCodeResolver.Resolve(httpContext, error, options.ErrorMapper, options.ErrorOverrides);
 
     private RepresentationMetadata? BuildMetadataForEvaluation(TDomain domain)
     {

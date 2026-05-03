@@ -148,6 +148,7 @@ public class PartialContentResult : ObjectResult
     public PartialContentResult(ContentRangeHeaderValue contentRangeHeaderValue, object? value)
         : base(value)
     {
+        ArgumentNullException.ThrowIfNull(contentRangeHeaderValue);
         _contentRangeHeaderValue = contentRangeHeaderValue;
         StatusCode = StatusCodes.Status206PartialContent;
     }
