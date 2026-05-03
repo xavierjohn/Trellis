@@ -15,6 +15,9 @@
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Trellis.Primitives.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="T4.Build" PrivateAssets="all" />
   </ItemGroup>

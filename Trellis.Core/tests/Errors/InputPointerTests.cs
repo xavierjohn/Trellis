@@ -17,6 +17,40 @@ public class InputPointerTests
         InputPointer.ForProperty("").Should().Be(InputPointer.Root);
 
     [Fact]
+    public void Default_struct_represents_root()
+    {
+        var pointer = default(InputPointer);
+
+        pointer.Path.Should().Be("");
+        pointer.ToString().Should().Be("");
+        pointer.Should().Be(InputPointer.Root);
+    }
+
+    [Fact]
+    public void Object_initializer_validates_and_sets_path()
+    {
+        var pointer = new InputPointer { Path = "/email" };
+
+        pointer.Path.Should().Be("/email");
+    }
+
+    [Fact]
+    public void With_expression_validates_and_sets_path()
+    {
+        var pointer = new InputPointer("/email") with { Path = "/name" };
+
+        pointer.Path.Should().Be("/name");
+    }
+
+    [Fact]
+    public void Deconstruct_returns_path()
+    {
+        new InputPointer("/email").Deconstruct(out var path);
+
+        path.Should().Be("/email");
+    }
+
+    [Fact]
     public void ForProperty_with_null_returns_root() =>
         InputPointer.ForProperty(null!).Should().Be(InputPointer.Root);
 
@@ -43,4 +77,25 @@ public class InputPointerTests
         // '/' → '~1' would be re-escaped as '~01' on the second pass.
         // Input: "~/" should produce "/~0~1", NOT "/~01".
         InputPointer.ForProperty("~/").Path.Should().Be("/~0~1");
+
+    [Theory]
+    [InlineData("email")]
+    [InlineData("items/0/quantity")]
+    public void Constructor_rejects_non_pointer_paths(string path)
+    {
+        var act = () => new InputPointer(path);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("Path");
+    }
+
+    [Theory]
+    [InlineData("/bad~")]
+    [InlineData("/bad~2")]
+    [InlineData("/bad~~")]
+    public void Constructor_rejects_invalid_tilde_escapes(string path)
+    {
+        var act = () => new InputPointer(path);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("Path");
+    }
 }

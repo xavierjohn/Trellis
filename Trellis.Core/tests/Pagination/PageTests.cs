@@ -47,6 +47,28 @@ public class PageTests
     }
 
     [Fact]
+    public void Equality_uses_item_sequence_not_list_reference()
+    {
+        var first = new Page<int>([1, 2, 3], null, null, RequestedLimit: 10, AppliedLimit: 10);
+        var second = new Page<int>([1, 2, 3], null, null, RequestedLimit: 10, AppliedLimit: 10);
+
+        first.Should().Be(second);
+        first.GetHashCode().Should().Be(second.GetHashCode());
+    }
+
+    [Fact]
+    public void Constructor_defensively_copies_items()
+    {
+        var items = new List<int> { 1, 2 };
+        var page = new Page<int>(items, null, null, RequestedLimit: 10, AppliedLimit: 10);
+
+        items.Add(3);
+
+        page.Items.Should().Equal([1, 2]);
+        page.DeliveredCount.Should().Be(2);
+    }
+
+    [Fact]
     public void Default_struct_returns_zero_for_derived_properties()
     {
         Page<int> def = default;

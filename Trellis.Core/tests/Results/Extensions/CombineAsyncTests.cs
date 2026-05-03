@@ -9,6 +9,53 @@ using Trellis.Testing;
 /// </summary>
 public class CombineAsyncTests
 {
+    #region Task null guards
+
+    [Fact]
+    public async Task CombineAsync_Task_Left_NullTask_ThrowsArgumentNullException()
+    {
+        Task<Result<string>> task = null!;
+
+        var act = async () => await task.CombineAsync(Result.Ok("World"));
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt1");
+    }
+
+    [Fact]
+    public async Task CombineAsync_Task_Right_NullTask_ThrowsArgumentNullException()
+    {
+        Task<Result<string>> task = null!;
+
+        var act = async () => await Result.Ok("Hello").CombineAsync(task);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt2");
+    }
+
+    [Fact]
+    public async Task CombineAsync_Task_Both_NullRightTask_ThrowsBeforeAwaitingLeftTask()
+    {
+        var left = new TaskCompletionSource<Result<string>>();
+
+        var combined = left.Task.CombineAsync((Task<Result<string>>)null!);
+        var completed = await Task.WhenAny(combined, Task.Delay(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken));
+
+        completed.Should().Be(combined);
+        var act = async () => await combined;
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt2");
+    }
+
+    [Fact]
+    public async Task CombineAsync_Task_3Tuple_Left_NullTask_ThrowsArgumentNullException()
+    {
+        Task<Result<(string, string)>> task = null!;
+
+        var act = async () => await task.CombineAsync(Result.Ok("c"));
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt1");
+    }
+
+    #endregion
+
     #region 2-Tuple Task Left-Async (Task<Result<T1>> + Result<T2>)
 
     [Fact]

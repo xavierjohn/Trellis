@@ -162,6 +162,54 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
+    public void NestedValueObjectWithProtectedInternalAccessibility_GeneratesValidAccessibility()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Container
+            {
+                protected internal partial class Code : RequiredString<Code>
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the generated partial declaration must emit the C# keyword pair protected internal");
+    }
+
+    [Fact]
+    public void NestedValueObjectWithPrivateProtectedAccessibility_GeneratesValidAccessibility()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Container
+            {
+                private protected partial class Code : RequiredString<Code>
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the generated partial declaration must emit the C# keyword pair private protected");
+    }
+
+    [Fact]
     public void GlobalNamespaceValueObject_GeneratesWithoutInvalidNamespaceDeclaration()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -180,6 +228,27 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Should().BeEmpty("the generator must omit the namespace declaration for global-namespace value objects");
     }
 
+    [Fact]
+    public void CoreOnlyRequiredString_GeneratesWithoutTrellisPrimitivesReference()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Code : RequiredString<Code>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken, GetCoreOnlyMetadataReferences());
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("Trellis.Core ships the Required* bases and generator, so generated code must compile without Trellis.Primitives");
+    }
+
     private static MetadataReference[] GetMetadataReferences() =>
         AppDomain.CurrentDomain.GetAssemblies()
             .Where(static assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
@@ -188,13 +257,22 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Select(static location => MetadataReference.CreateFromFile(location))
             .ToArray();
 
-    private static Diagnostic[] RunGeneratorAndGetDiagnostics(string source, CancellationToken cancellationToken)
+    private static MetadataReference[] GetCoreOnlyMetadataReferences() =>
+        GetMetadataReferences()
+            .Where(static reference => reference.Display is null
+                || !reference.Display.EndsWith("Trellis.Primitives.dll", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+    private static Diagnostic[] RunGeneratorAndGetDiagnostics(
+        string source,
+        CancellationToken cancellationToken,
+        MetadataReference[]? references = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
         var compilation = CSharpCompilation.Create(
             assemblyName: "GeneratorNestingTests",
             syntaxTrees: [syntaxTree],
-            references: GetMetadataReferences(),
+            references: references ?? GetMetadataReferences(),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         var generator = new RequiredPartialClassGenerator();
