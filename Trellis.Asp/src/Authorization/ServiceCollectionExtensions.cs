@@ -2,6 +2,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Trellis.Authorization;
 
 /// <summary>
@@ -48,7 +49,10 @@ public static class ServiceCollectionExtensions
         else
             services.Configure<ClaimsActorOptions>(_ => { });
 
-        services.AddScoped<IActorProvider, ClaimsActorProvider>();
+        // Replace (not append): each AddXxxActorProvider helper claims the IActorProvider
+        // slot. Without Replace, calling two helpers leaves two descriptors and
+        // GetServices<IActorProvider>() returns both — order-dependent and surprising.
+        services.Replace(ServiceDescriptor.Scoped<IActorProvider, ClaimsActorProvider>());
 
         return services;
     }
@@ -87,7 +91,7 @@ public static class ServiceCollectionExtensions
         else
             services.Configure<EntraActorOptions>(_ => { });
 
-        services.AddScoped<IActorProvider, EntraActorProvider>();
+        services.Replace(ServiceDescriptor.Scoped<IActorProvider, EntraActorProvider>());
 
         return services;
     }
@@ -143,7 +147,7 @@ public static class ServiceCollectionExtensions
         else
             services.Configure<DevelopmentActorOptions>(_ => { });
 
-        services.AddScoped<IActorProvider, DevelopmentActorProvider>();
+        services.Replace(ServiceDescriptor.Scoped<IActorProvider, DevelopmentActorProvider>());
 
         return services;
     }
@@ -167,10 +171,10 @@ public static class ServiceCollectionExtensions
     {
         services.AddHttpContextAccessor();
         services.AddScoped<T>();
-        services.AddScoped<IActorProvider>(sp =>
+        services.Replace(ServiceDescriptor.Scoped<IActorProvider>(sp =>
             new CachingActorProvider(
                 sp.GetRequiredService<T>(),
-                sp.GetRequiredService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()));
+                sp.GetRequiredService<Microsoft.AspNetCore.Http.IHttpContextAccessor>())));
 
         return services;
     }

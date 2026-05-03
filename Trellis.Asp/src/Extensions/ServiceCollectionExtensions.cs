@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Trellis;
 using Trellis.Asp.ModelBinding;
 using Trellis.Asp.Validation;
@@ -494,9 +496,15 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action<TrellisAspOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        var options = new TrellisAspOptions();
-        configure(options);
-        services.AddSingleton(options);
+
+        // Compose configuration via IConfigureOptions<TrellisAspOptions>: multiple
+        // AddTrellisAsp(o => ...) calls (e.g. library + application) all run against
+        // the same options instance built lazily by OptionsFactory<TrellisAspOptions>.
+        // Resolution remains via GetService<TrellisAspOptions>() through a single
+        // TryAddSingleton that materializes from IOptions<TrellisAspOptions>.Value.
+        services.Configure(configure);
+        services.TryAddSingleton<TrellisAspOptions>(sp =>
+            sp.GetRequiredService<IOptions<TrellisAspOptions>>().Value);
 
         // auto-register VO binding / JSON converter infrastructure.
         // Idempotent: configures both MVC and Minimal API JSON pipelines for ScalarValue/Maybe support.

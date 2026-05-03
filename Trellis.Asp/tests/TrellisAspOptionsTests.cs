@@ -258,6 +258,60 @@ public class TrellisAspOptionsTests
     }
 
     [Fact]
+    public void AddTrellisAsp_called_twice_composes_configuration_delegates()
+    {
+        // Composition contract: when a library calls AddTrellisAsp(o => ...) and then the
+        // application also calls AddTrellisAsp(o => ...), BOTH MapError overrides must survive
+        // on the resolved instance. Last-wins (AddSingleton(options)) silently dropped the
+        // first call's mappings, surprising hosts that compose Trellis with their own libraries.
+        var services = new ServiceCollection();
+        services.AddTrellisAsp(o => o.MapError<Error.Conflict>(StatusCodes.Status400BadRequest));
+        services.AddTrellisAsp(o => o.MapError<Error.PreconditionFailed>(StatusCodes.Status418ImATeapot));
+
+        var sp = services.BuildServiceProvider();
+        var resolved = sp.GetRequiredService<TrellisAspOptions>();
+
+        resolved
+            .GetStatusCode(new Error.Conflict(null, "k") { Detail = "x" })
+            .Should().Be(StatusCodes.Status400BadRequest, "first AddTrellisAsp call's MapError must survive composition");
+        resolved
+            .GetStatusCode(new Error.PreconditionFailed(new ResourceRef("R", null), PreconditionKind.IfMatch) { Detail = "x" })
+            .Should().Be(StatusCodes.Status418ImATeapot, "second AddTrellisAsp call's MapError must survive composition");
+    }
+
+    [Fact]
+    public void AddTrellisAsp_called_twice_still_registers_only_one_TrellisAspOptions_descriptor()
+    {
+        // Even when AddTrellisAsp is called multiple times, exactly one descriptor of
+        // ServiceType = typeof(TrellisAspOptions) must exist so the resolved instance is
+        // unambiguous. Composition happens via IConfigureOptions<TrellisAspOptions>, which
+        // is a different ServiceType.
+        var services = new ServiceCollection();
+        services.AddTrellisAsp(o => o.MapError<Error.Conflict>(StatusCodes.Status400BadRequest));
+        services.AddTrellisAsp(o => o.MapError<Error.PreconditionFailed>(StatusCodes.Status418ImATeapot));
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(TrellisAspOptions));
+    }
+
+    [Fact]
+    public void AddTrellisAsp_called_twice_last_wins_for_same_TError_mapping()
+    {
+        // Composition is order-preserving. When two AddTrellisAsp calls map the SAME error
+        // type to different status codes, the later call wins (standard IConfigureOptions
+        // semantics — delegates run in registration order on the same instance).
+        var services = new ServiceCollection();
+        services.AddTrellisAsp(o => o.MapError<Error.Conflict>(StatusCodes.Status400BadRequest));
+        services.AddTrellisAsp(o => o.MapError<Error.Conflict>(StatusCodes.Status418ImATeapot));
+
+        var sp = services.BuildServiceProvider();
+        var resolved = sp.GetRequiredService<TrellisAspOptions>();
+
+        resolved
+            .GetStatusCode(new Error.Conflict(null, "k") { Detail = "x" })
+            .Should().Be(StatusCodes.Status418ImATeapot);
+    }
+
+    [Fact]
     public async Task ResultExecuteAsync_uses_TrellisAspOptions_resolved_from_request_services()
     {
         // ga-09 contract: error → status mapping flows through DI, not ambient static state.

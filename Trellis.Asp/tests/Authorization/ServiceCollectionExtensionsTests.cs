@@ -138,6 +138,76 @@ public class ServiceCollectionExtensionsTests
         descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 
+    [Fact]
+    public void AddClaimsActorProvider_after_AddEntraActorProvider_leaves_single_IActorProvider_descriptor()
+    {
+        // Composition contract: each AddXxxActorProvider helper REPLACES the IActorProvider
+        // registration rather than appending. Without this, two helpers leave two descriptors:
+        // GetRequiredService<IActorProvider>() silently returns the last-registered one but
+        // GetServices<IActorProvider>() exposes both, and the call ordering is invisible to
+        // consumers reading composition root code. Replace makes intent explicit.
+        var services = new ServiceCollection();
+        services.AddEntraActorProvider();
+        services.AddClaimsActorProvider();
+
+        var actorProviders = services
+            .Where(d => d.ServiceType == typeof(IActorProvider))
+            .ToList();
+        actorProviders.Should().HaveCount(1, "AddXxxActorProvider must Replace, not append");
+    }
+
+    [Fact]
+    public void AddEntraActorProvider_after_AddClaimsActorProvider_leaves_single_IActorProvider_descriptor()
+    {
+        var services = new ServiceCollection();
+        services.AddClaimsActorProvider();
+        services.AddEntraActorProvider();
+
+        services
+            .Where(d => d.ServiceType == typeof(IActorProvider))
+            .Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void AddDevelopmentActorProvider_after_AddEntraActorProvider_leaves_single_IActorProvider_descriptor()
+    {
+        var services = new ServiceCollection();
+        services.AddEntraActorProvider();
+        services.AddDevelopmentActorProvider();
+
+        services
+            .Where(d => d.ServiceType == typeof(IActorProvider))
+            .Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void AddCachingActorProvider_after_AddEntraActorProvider_leaves_single_IActorProvider_descriptor()
+    {
+        var services = new ServiceCollection();
+        services.AddEntraActorProvider();
+        services.AddCachingActorProvider<FakeActorProvider>();
+
+        services
+            .Where(d => d.ServiceType == typeof(IActorProvider))
+            .Should().HaveCount(1, "AddCachingActorProvider must also Replace the IActorProvider registration");
+    }
+
+    [Fact]
+    public void Last_AddXxxActorProvider_wins_after_replacement()
+    {
+        // After Replace, the resolved IActorProvider must be the LAST registered.
+        // (Same observable last-wins outcome, but achieved via explicit replacement
+        // instead of relying on resolution-order semantics over multiple descriptors.)
+        // Asserts via descriptor introspection to keep the test isolated from each
+        // provider's full constructor dependency graph (e.g. IHostEnvironment).
+        var services = new ServiceCollection();
+        services.AddEntraActorProvider();
+        services.AddClaimsActorProvider();
+
+        var descriptor = services.Single(d => d.ServiceType == typeof(IActorProvider));
+        descriptor.ImplementationType.Should().Be<ClaimsActorProvider>();
+    }
+
     private sealed class FakeActorProvider : IActorProvider
     {
         public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default) =>
