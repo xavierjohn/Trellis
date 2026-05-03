@@ -51,10 +51,11 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>
     public T this[int index] => Items[index];
 
     /// <summary>
-    /// An empty <see cref="EquatableArray{T}"/>.
+    /// An empty <see cref="EquatableArray{T}"/>. A single cached instance per closed generic
+    /// type, mirroring the <see cref="ImmutableArray{T}.Empty"/> field-singleton pattern.
     /// </summary>
 #pragma warning disable CA1000 // Do not declare static members on generic types — EquatableArray<T>.Empty mirrors ImmutableArray<T>.Empty.
-    public static EquatableArray<T> Empty => new(ImmutableArray<T>.Empty);
+    public static readonly EquatableArray<T> Empty = new(ImmutableArray<T>.Empty);
 
     /// <summary>
     /// Creates an <see cref="EquatableArray{T}"/> from the provided items.
