@@ -15,9 +15,13 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ "main" ]
+  # CodeQL is intentionally NOT run on every pull_request. Empirically the
+  # repository has produced zero CodeQL findings to date — the framework's
+  # security signal comes from Roslyn analyzers, the custom Trellis.Analyzers
+  # set (TRLS001-022), and the test suite. Per-PR CodeQL runs cost ~9 minutes
+  # of CI compute with no measured value for a library codebase. Drift
+  # detection is preserved by the push-to-main run and the weekly schedule
+  # below; ad-hoc runs remain available via workflow_dispatch.
   schedule:
     - cron: '43 23 * * 4'
 
