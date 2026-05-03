@@ -109,6 +109,32 @@ public class MediatorDomainEventPublisherTests
     }
 
     [Fact]
+    public async Task PublishAsync_HandlerImplementingMultipleEventInterfaces_IsInvokedForEach()
+    {
+        // A single concrete type registered as IDomainEventHandler<TestEventA> AND
+        // IDomainEventHandler<TestEventB> must be invoked for each event type it declares.
+        // This guards against a refactor of HandlerInvoker that resolves only the
+        // first matching interface.
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        var handler = new MultiEventHandler();
+        services.AddSingleton<IDomainEventHandler<TestEventA>>(handler);
+        services.AddSingleton<IDomainEventHandler<TestEventB>>(handler);
+
+        var provider = services.BuildServiceProvider();
+        var publisher = new MediatorDomainEventPublisher(
+            provider,
+            NullLogger<MediatorDomainEventPublisher>.Instance);
+
+        var eventA = new TestEventA("a", DateTimeOffset.UtcNow);
+        var eventB = new TestEventB(7, DateTimeOffset.UtcNow);
+        await publisher.PublishAsync(eventA, CancellationToken.None);
+        await publisher.PublishAsync(eventB, CancellationToken.None);
+
+        handler.Received.Should().Equal(new IDomainEvent[] { eventA, eventB });
+    }
+
+    [Fact]
     public async Task PublishAsync_SynchronousHandlerOCE_PropagatesAsCancellation()
     {
         // A non-async handler that synchronously throws OperationCanceledException

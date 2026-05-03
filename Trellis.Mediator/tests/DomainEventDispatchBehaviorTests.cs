@@ -78,6 +78,24 @@ public class DomainEventDispatchBehaviorTests
     }
 
     [Fact]
+    public async Task Handle_UnitResponse_IsNoOp()
+    {
+        var publisher = new RecordingPublisher();
+        var behavior = new DomainEventDispatchBehavior<UnitCommand, Result<Trellis.Unit>>(
+            publisher,
+            NullLogger<DomainEventDispatchBehavior<UnitCommand, Result<Trellis.Unit>>>.Instance);
+
+        var response = await behavior.Handle(
+            new UnitCommand(),
+            (_, _) => new ValueTask<Result<Trellis.Unit>>(Result.Ok()),
+            CancellationToken.None);
+
+        response.IsSuccess.Should().BeTrue();
+        publisher.Published.Should().BeEmpty(
+            "Result<Unit> commands have no aggregate to drain — dispatch is a documented no-op for this shape in v1");
+    }
+
+    [Fact]
     public async Task Handle_AggregateWithNoEvents_IsNoOp()
     {
         var aggregate = new TestAggregate(Id1);

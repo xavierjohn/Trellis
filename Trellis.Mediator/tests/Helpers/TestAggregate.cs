@@ -43,6 +43,12 @@ internal sealed record AggregateCommand(TestAggregate Aggregate)
 internal sealed record StringCommand(string Value) : ICommand<Result<string>>;
 
 /// <summary>
+/// Command whose response is <see cref="Result{Unit}"/>. Used to verify the
+/// dispatch behavior is a no-op for Unit responses (e.g., delete commands).
+/// </summary>
+internal sealed record UnitCommand : ICommand<Result<Trellis.Unit>>;
+
+/// <summary>
 /// Query (NOT a command) returning an aggregate. Used to verify the dispatch behavior
 /// does not run for queries even when they return aggregate shapes.
 /// </summary>
@@ -84,4 +90,26 @@ internal sealed class ThrowingHandlerA : IDomainEventHandler<TestEventA>
 {
     public ValueTask HandleAsync(TestEventA domainEvent, CancellationToken cancellationToken)
         => throw new InvalidOperationException("handler-failed-on-purpose");
+}
+
+/// <summary>
+/// Handler that implements <see cref="IDomainEventHandler{TEvent}"/> for both
+/// <see cref="TestEventA"/> and <see cref="TestEventB"/>. Verifies that a single
+/// concrete type registered for multiple event interfaces is invoked for each.
+/// </summary>
+internal sealed class MultiEventHandler : IDomainEventHandler<TestEventA>, IDomainEventHandler<TestEventB>
+{
+    public List<IDomainEvent> Received { get; } = [];
+
+    public ValueTask HandleAsync(TestEventA domainEvent, CancellationToken cancellationToken)
+    {
+        Received.Add(domainEvent);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(TestEventB domainEvent, CancellationToken cancellationToken)
+    {
+        Received.Add(domainEvent);
+        return ValueTask.CompletedTask;
+    }
 }

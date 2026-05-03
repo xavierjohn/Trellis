@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Failure model**: handlers run as **best-effort side effects**. Email failures, message-bus blips, and DI activation errors are all logged and swallowed; the originating command still succeeds. If a side effect must block command completion, do that work inside the command handler — not a domain-event handler.
 
-> **Migration**: applications that were dispatching events manually (e.g., `foreach (var evt in agg.UncommittedEvents()) await _publisher.PublishAsync(...); agg.AcceptChanges();`) can delete that boilerplate after wiring `AddDomainEventDispatch(...)`. Keep the manual code only for non-`Result<TAggregate>` shapes (multi-aggregate, `Result<Unit>` deletes, etc.) until a future release lifts those v1 limitations. Do **not** keep both — the framework dispatcher would re-publish events unless you also stop adding to `DomainEvents` in the manual path.
+> **Migration**: applications dispatching events manually (e.g., `foreach (var evt in agg.UncommittedEvents()) await _publisher.PublishAsync(...); agg.AcceptChanges();`) can delete that boilerplate after wiring `AddDomainEventDispatch(...)`. Keeping both is safe — once the manual code calls `AcceptChanges()` the aggregate is clean and the framework dispatcher is a no-op for the same request — but it leaves dead code and a parallel publisher path that complicates reasoning. Migrate fully or stay manual; don't run a hybrid in production.
 
 #### Trellis.Mediator + Trellis.FluentValidation — Unified validation stage with composition
 

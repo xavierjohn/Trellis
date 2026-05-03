@@ -25,10 +25,10 @@ using Microsoft.Extensions.Logging;
 /// Events are dispatched sequentially by index, so events raised by a handler on
 /// the same aggregate are picked up on the next wave. The wave count is capped to
 /// prevent runaway loops; if the cap is exceeded an error is logged and the remaining
-/// events are abandoned. <see cref="IChangeTracking.AcceptChanges"/> only runs once
-/// after the loop completes successfully — cancellation propagates above the
-/// <see cref="IChangeTracking.AcceptChanges"/> call so undispatched events stay on
-/// the aggregate.
+/// events are abandoned. <see cref="IChangeTracking.AcceptChanges"/> runs once after
+/// the loop returns (whether the dispatch fully drained or the cap was exceeded);
+/// cancellation propagates above the <see cref="IChangeTracking.AcceptChanges"/> call
+/// so undispatched events stay on the aggregate.
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The command type. Must implement <see cref="ICommand{TResponse}"/>.</typeparam>
@@ -130,7 +130,7 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
         return response;
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Domain event dispatch exceeded {MaxWaves} waves for {AggregateType}; abandoning {Remaining} event(s). Domain event handlers must not raise events on the same aggregate.")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Domain event dispatch exceeded {MaxWaves} waves for {AggregateType}; abandoning {Remaining} event(s). Domain event handlers should be side-effect-only and not raise additional events on the same aggregate.")]
     private static partial void LogDispatchCapExceeded(ILogger logger, int maxWaves, string aggregateType, int remaining);
 
     [RequiresUnreferencedCode("Reflects on IResult<T>.TryGetValue to extract the aggregate. Use explicit handler registration for AOT.")]
@@ -163,8 +163,13 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
         if (!iResultGeneric.IsAssignableFrom(responseType))
             return static _ => null;
 
-        var tryGetValue = iResultGeneric.GetMethod(nameof(IResult<int>.TryGetValue))
-            ?? throw new InvalidOperationException($"IResult<{valueType.FullName}> is missing TryGetValue.");
+        // IResult<TValue>.TryGetValue(out TValue value). Pin the overload by parameter
+        // signature so a future second TryGetValue overload on the interface would not
+        // cause this lookup to throw AmbiguousMatchException.
+        var tryGetValue = iResultGeneric.GetMethod(
+            nameof(IResult<int>.TryGetValue),
+            [valueType.MakeByRefType()])
+            ?? throw new InvalidOperationException($"IResult<{valueType.FullName}> is missing TryGetValue(out {valueType.Name}).");
 
         return response =>
         {
