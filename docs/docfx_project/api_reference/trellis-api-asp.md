@@ -49,6 +49,15 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 - `[Consumes("application/json")]` is **not** safe at the controller level when the controller has trigger-style POSTs without bodies (e.g., `POST /orders/{id}/submission`). ASP.NET Core returns `415 Unsupported Media Type` for any request without a `Content-Type` header. Apply `[Consumes]` per-action on body-bearing endpoints only, or scope it to a route convention.
 - Integration tests include at least one business-validation failure that asserts `422` Problem Details; do not rely on exception middleware to prove Result mapping.
 
+### Cross-package preflight for endpoint changes
+
+| If the endpoint change includes... | Also read | Why |
+|---|---|---|
+| Sending commands or queries through Mediator | [`trellis-api-mediator.md`](trellis-api-mediator.md) | ASP maps the response, but validation/authorization/logging/commit behavior belongs to the Mediator pipeline. |
+| EF-backed writes | [`trellis-api-efcore.md`](trellis-api-efcore.md), [`trellis-api-servicedefaults.md`](trellis-api-servicedefaults.md) | Handlers stage changes; `TransactionalCommandBehavior` commits only when registered in the correct order. |
+| Actor resolution or authorization failures | [`trellis-api-authorization.md`](trellis-api-authorization.md), [`trellis-api-mediator.md`](trellis-api-mediator.md) | ASP provides actor providers; authorization contracts and behaviors live outside the response mapper. |
+| Integration tests or `.http` examples | [`trellis-api-testing-aspnetcore.md`](trellis-api-testing-aspnetcore.md) | Failure-path status/header expectations should be executable, not only documented in OpenAPI. |
+
 ## Types
 
 ### Namespace `Trellis.Asp`

@@ -42,6 +42,17 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 - `AddTrellisUnitOfWork<TContext>()` should be registered after other behavior registrations so the transaction behavior is innermost.
 - Handlers should return Trellis `Result` / `Result<T>` failures, not throw for expected business outcomes.
 
+### Cross-package preflight for pipeline changes
+
+Mediator pipeline work is rarely isolated. Load these companion references before changing registrations, behavior ordering, or handler patterns:
+
+| If the change touches... | Also read | Why |
+|---|---|---|
+| EF-backed command commits or `AddTrellisUnitOfWork<TContext>()` | [`trellis-api-efcore.md`](trellis-api-efcore.md), [`trellis-api-servicedefaults.md`](trellis-api-servicedefaults.md) | The transaction behavior is registered by EF Core and applied last by the service-defaults builder. |
+| Resource authorization | [`trellis-api-authorization.md`](trellis-api-authorization.md), [`trellis-api-efcore.md`](trellis-api-efcore.md) when resources load from repositories | The interfaces live in Authorization; resource loading often composes with EF repository/result semantics. |
+| FluentValidation in the validation stage | [`trellis-api-fluentvalidation.md`](trellis-api-fluentvalidation.md) | FluentValidation contributes `IMessageValidator<TMessage>` instances to `ValidationBehavior`; it does not add another pipeline slot. |
+| ASP endpoints that send commands/queries | [`trellis-api-asp.md`](trellis-api-asp.md) | Endpoint response mapping and scalar validation happen at the ASP boundary; handlers should stay transport-free. |
+
 ## Types
 
 ### AuthorizationBehavior<TMessage, TResponse>
