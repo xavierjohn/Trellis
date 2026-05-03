@@ -264,13 +264,13 @@ var french    = MonetaryAmount.TryCreate("12,34", CultureInfo.GetCultureInfo("fr
 
 ### Scalar primitives — automatic
 
-Every `Required*<TSelf>` partial gets `[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]` from the Core generator. Each built-in scalar VO in `Trellis.Primitives` (`EmailAddress`, `Url`, `MonetaryAmount`, ...) follows the same Core-owned converter pattern. There is **nothing to register** — the converter:
+Every non-enum `Required*<TSelf>` partial gets `[JsonConverter(typeof(ParsableJsonConverter<TSelf>))]` from the Core generator. `RequiredEnum<TSelf>` partials get `[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]` instead. Each built-in scalar VO in `Trellis.Primitives` (`EmailAddress`, `Url`, `MonetaryAmount`, ...) follows the same Core-owned converter split. There is **nothing to register** — the non-enum converter:
 
 - Accepts JSON `string`, `number`, `true`, `false`; converts to text and calls `TSelf.Parse(...)`.
 - Writes JSON numbers for numeric scalars and JSON strings for everything else.
 - Throws on JSON `null` because Trellis scalars are non-nullable.
 
-`RequiredEnum<TSelf>` uses `RequiredEnumJsonConverter<TSelf>` (string in, string out via `TryFromName`).
+The enum converter is string in, string out via `TryFromName`.
 
 ### Composite value objects — opt in
 

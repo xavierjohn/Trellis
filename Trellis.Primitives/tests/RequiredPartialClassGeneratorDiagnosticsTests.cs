@@ -229,7 +229,7 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
-    public void CoreOnlyRequiredString_GeneratesWithoutTrellisPrimitivesReference()
+    public void CoreOnlyRequiredString_SourceGeneratorOutputDoesNotReferenceTrellisPrimitives()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -246,7 +246,7 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken, GetCoreOnlyMetadataReferences());
 
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-            .Should().BeEmpty("Trellis.Core ships the Required* bases and generator, so generated code must compile without Trellis.Primitives");
+            .Should().BeEmpty("the generated source must not introduce a Trellis.Primitives reference");
     }
 
     private static MetadataReference[] GetMetadataReferences() =>
