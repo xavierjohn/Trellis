@@ -56,7 +56,7 @@ For ordinary nullable primitives on a DTO or for plain nullable interop, prefer 
 | `Where(Func<T, bool>)` | method | Keep value only if predicate holds. |
 | `Tap(Action<T>)` | method | Side effect on present value. |
 | `Or(T)` / `Or(Func<T>)` / `Or(Maybe<T>)` / `Or(Func<Maybe<T>>)` | methods | Fallback (eager / deferred / maybe / deferred maybe). |
-| `Equals(Maybe<T>)` / `Equals(T?)` / `==` / `!=` (vs `T`, `object?`, `Maybe<T>`) | equality | Structural equality including raw values. |
+| `Equals(Maybe<T>)` / `Equals(T?)` / `Equals(object?)` / `==` / `!=` (vs `T`, `Maybe<T>`) | equality | Structural equality including raw values. Use `Equals(object?)` for boxed comparisons. |
 | `MaybeExtensions.AsMaybe<T>` / `AsNullable<T>` | extension methods | `T?` (struct or class) → `Maybe<T>` and back. |
 | `MaybeExtensions.ToResult<T>(Error)` / `ToResult(Func<Error>)` | extension methods | Bridge to `Result<T>`. |
 | `MaybeExtensionsAsync.ToResultAsync` / `MatchAsync` | extension methods | `Task`/`ValueTask` overloads of `ToResult` and `Match`. |
@@ -151,7 +151,7 @@ string lazy  = Maybe<string>.None.GetValueOrDefault(() => $"generated-{Guid.NewG
 
 | Operator | Signature | Behaviour |
 |---|---|---|
-| `Map` | `Maybe<T>.Map<TResult>(Func<T, TResult>)` | Project the inner value; `None` propagates. |
+| `Map` | `Maybe<T>.Map<TResult>(Func<T, TResult>)` | Project the inner value; `None` propagates. A selector that returns `null` collapses to `None` (Maybe never holds `null`). |
 | `Bind` | `Maybe<T>.Bind<TResult>(Func<T, Maybe<TResult>>)` | Flat-map for the next step that itself returns `Maybe<TResult>`. |
 | `Where` | `Maybe<T>.Where(Func<T, bool>)` | Drop the value to `None` when the predicate is `false`. |
 | `Tap` | `Maybe<T>.Tap(Action<T>)` | Run a side effect on the present value, return `this` unchanged. |
@@ -178,7 +178,7 @@ Maybe<string> name = Maybe<string>.None
 
 ## Equality
 
-`Maybe<T>` implements `IEquatable<Maybe<T>>` and `IEquatable<T>`, with `==` / `!=` overloads against `T`, `object?`, and `Maybe<T>`. Two `None` values are equal; two `Some` values are equal iff their inner values are.
+`Maybe<T>` implements `IEquatable<Maybe<T>>` and `IEquatable<T>`, with `==` / `!=` overloads against `T` and `Maybe<T>`. Two `None` values are equal; two `Some` values are equal iff their inner values are. `Maybe<T>.None.Equals((T?)null)` returns `true` — the absence of a value converges with the canonical `null` sentinel; if you need to distinguish the two at a boundary, use `HasValue` / `HasNoValue` rather than `==`. To compare against a boxed value use the `Equals(object?)` instance method (the `(Maybe<T>, object?)` operator overload was removed because it silently absorbed cross-type comparisons such as `Maybe<int> == "literal"`).
 
 ```csharp
 using Trellis;
@@ -272,9 +272,9 @@ Result<Maybe<string>> result = Maybe.Optional(input, NonEmpty);
 |---|---|---|
 | `AllOrNone` | All fields present, or all absent. | 2, 3, 4 |
 | `Requires` | If `source` is present, `required` must be too. | 2 |
-| `MutuallyExclusive` | At most one field present. | 2, 3 |
-| `ExactlyOne` | Exactly one field present. | 2, 3 |
-| `AtLeastOne` | At least one field present. | 2, 3 |
+| `MutuallyExclusive` | At most one field present. | 2, 3, 4 |
+| `ExactlyOne` | Exactly one field present. | 2, 3, 4 |
+| `AtLeastOne` | At least one field present. | 2, 3, 4 |
 
 ```csharp
 using Trellis;
