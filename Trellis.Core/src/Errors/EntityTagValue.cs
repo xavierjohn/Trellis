@@ -103,7 +103,7 @@ public sealed record EntityTagValue
     /// Parses an entity tag from its HTTP header representation.
     /// </summary>
     /// <param name="headerValue">
-    /// The header value to parse. Expected formats: <c>"tag"</c> for strong or <c>W/"tag"</c> for weak.
+    /// The header value to parse. Expected formats: <c>*</c> for wildcard, <c>"tag"</c> for strong, or <c>W/"tag"</c> for weak.
     /// </param>
     /// <returns>
     /// A <see cref="Result{TValue}"/> containing the parsed <see cref="EntityTagValue"/> on success,
@@ -119,6 +119,9 @@ public sealed record EntityTagValue
     {
         if (string.IsNullOrWhiteSpace(headerValue))
             return Result.Fail<EntityTagValue>(new Error.BadRequest("etag.parse.error") { Detail = "ETag header value cannot be null or empty." });
+
+        if (headerValue == "*")
+            return Result.Ok(Wildcard());
 
         if (headerValue.StartsWith("W/\"", StringComparison.Ordinal) && headerValue.EndsWith('"') && headerValue.Length >= 4)
         {

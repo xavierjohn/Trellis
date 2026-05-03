@@ -113,6 +113,73 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         generatedSources.Should().OnlyHaveUniqueItems();
     }
 
+    [Fact]
+    public void NestedValueObjectInStaticClass_PreservesContainingTypeModifiers()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public static partial class ValueObjects
+            {
+                public partial class Code : RequiredString<Code>
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the generated partial declaration must match the static containing type");
+    }
+
+    [Fact]
+    public void NestedValueObjectInSealedClass_PreservesContainingTypeModifiers()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public sealed partial class Container
+            {
+                public partial class Code : RequiredString<Code>
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the generated partial declaration must match the sealed containing type");
+    }
+
+    [Fact]
+    public void GlobalNamespaceValueObject_GeneratesWithoutInvalidNamespaceDeclaration()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            public partial class GlobalCode : RequiredString<GlobalCode>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the generator must omit the namespace declaration for global-namespace value objects");
+    }
+
     private static MetadataReference[] GetMetadataReferences() =>
         AppDomain.CurrentDomain.GetAssemblies()
             .Where(static assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
@@ -120,6 +187,29 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(static location => MetadataReference.CreateFromFile(location))
             .ToArray();
+
+    private static Diagnostic[] RunGeneratorAndGetDiagnostics(string source, CancellationToken cancellationToken)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "GeneratorNestingTests",
+            syntaxTrees: [syntaxTree],
+            references: GetMetadataReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = new RequiredPartialClassGenerator();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out var outputCompilation,
+            out var generatorDriverDiagnostics,
+            cancellationToken);
+
+        return generatorDriverDiagnostics
+            .Concat(outputCompilation.GetDiagnostics(cancellationToken))
+            .ToArray();
+    }
 
     [Fact]
     public void InvalidIntRange_Reports_TRLS033()

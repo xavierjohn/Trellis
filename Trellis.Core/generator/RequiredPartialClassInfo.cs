@@ -11,12 +11,13 @@ using System.Linq;
 /// <para>
 /// This class captures the essential information needed to generate the complementary partial class
 /// that provides the public API for value objects inheriting from <see cref="RequiredGuid"/>, <see cref="RequiredString"/>,
-/// <see cref="RequiredInt"/>, <see cref="RequiredDecimal"/>, or <see cref="RequiredEnum"/>.
+/// <see cref="RequiredInt"/>, <see cref="RequiredLong"/>, <see cref="RequiredDecimal"/>,
+/// <see cref="RequiredBool"/>, <see cref="RequiredDateTime"/>, or <see cref="RequiredEnum"/>.
 /// </para>
 /// <para>
 /// The generator uses this information to create:
 /// <list type="bullet">
-/// <item>Static factory methods (NewUnique for GUIDs, TryCreate for all types)</item>
+/// <item>Static factory methods (<c>NewUniqueV4()</c>/<c>NewUniqueV7()</c> for GUIDs, <c>TryCreate</c> for all types)</item>
 /// <item>Validation logic ensuring non-empty values</item>
 /// <item>IParsable implementation for parsing support</item>
 /// <item>JSON serialization attributes</item>
@@ -142,7 +143,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// </summary>
     /// <param name="nameSpace">The namespace of the partial class.</param>
     /// <param name="className">The name of the partial class.</param>
-    /// <param name="classBase">The base class (RequiredGuid or RequiredString).</param>
+    /// <param name="classBase">The supported Required* base class.</param>
     /// <param name="accessibility">The accessibility level (public, internal, etc.).</param>
     /// <param name="maxLength">Optional maximum string length from <c>[StringLength]</c> attribute.</param>
     /// <param name="minLength">Optional minimum string length from <c>[StringLength]</c> attribute.</param>

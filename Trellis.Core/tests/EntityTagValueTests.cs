@@ -68,6 +68,17 @@ public class EntityTagValueTests
         tag.IsWeak.Should().BeTrue();
     }
 
+    [Fact]
+    public void TryParse_wildcard_tag()
+    {
+        var result = EntityTagValue.TryParse("*");
+
+        var tag = result.Should().BeSuccess().Which;
+        tag.OpaqueTag.Should().Be("*");
+        tag.IsWeak.Should().BeFalse();
+        tag.IsWildcard.Should().BeTrue();
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

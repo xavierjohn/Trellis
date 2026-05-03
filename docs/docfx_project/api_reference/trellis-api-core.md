@@ -3,7 +3,7 @@ package: Trellis.Core
 namespaces: [Trellis]
 types: [Result, Result<T>, Maybe<T>, Error, Unit, Page<T>, Cursor, EquatableArray<T>, ResourceRef, EntityTagValue, RetryAfterValue, PreconditionKind, InputPointer, FieldViolation, RuleViolation, AuthChallenge, Aggregate<TId>, Entity<TId>, IDomainEvent, "ScalarValueObject<TSelf,T>", Specification<T>, RepresentationMetadata]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-03
 audience: [llm]
 ---
 # Trellis.Core API Reference
@@ -567,8 +567,8 @@ Represents strong, weak, or wildcard ETags.
 | --- | --- |
 | `public static EntityTagValue Strong(string opaqueTag)` | Strong ETag |
 | `public static EntityTagValue Weak(string opaqueTag)` | Weak ETag |
-| `public static EntityTagValue Wildcard()` | Wildcard ETag |
-| `public static Result<EntityTagValue> TryParse(string? headerValue)` | Parse from HTTP header |
+| `public static EntityTagValue Wildcard()` | Precondition wildcard token (`*`) |
+| `public static Result<EntityTagValue> TryParse(string? headerValue)` | Parse wildcard (`*`), strong (`"tag"`), or weak (`W/"tag"`) HTTP header values |
 | `public bool StrongEquals(EntityTagValue other)` | Strong comparison |
 | `public bool WeakEquals(EntityTagValue other)` | Weak comparison |
 | `public string ToHeaderValue()` | RFC header form |
@@ -1962,6 +1962,7 @@ static partial void ValidateAdditional(decimal value, string fieldName, ref stri
 ```
 
 - Built-in validation: `null` rejection for nullable inputs, optional `[Range(int, int)]` or `[Range(double, double)]`.
+- String parsing: the plain `TryCreate(string?, string?)` overload uses invariant culture; use the `IFormatProvider` overload for culture-aware decimal formats.
 
 #### `RequiredLong<TSelf>`
 
