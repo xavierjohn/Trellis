@@ -56,7 +56,7 @@ public class PipelineOrderingTests
     }
 
     [Fact]
-    public void AddDomainEventDispatch_inserts_after_validation_and_before_resource_auth()
+    public void AddDomainEventDispatch_appends_after_validation_when_resource_auth_is_already_present()
     {
         var services = new ServiceCollection();
         services.AddTrellisBehaviors();

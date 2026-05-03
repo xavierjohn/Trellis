@@ -329,7 +329,7 @@ public sealed class DomainEventDispatchBehavior<TMessage, TResponse>
 
 Pipeline behavior that dispatches domain events accumulated on the success-value aggregate after the command handler returns. Constrained to `ICommand<TResponse>` so queries returning aggregate types do not trigger dispatch. Dispatch only runs when the response is a successful `Result<TAggregate>` where `TAggregate` implements `IAggregate`; other response shapes (`Result<Unit>`, `Result<TDto>`, `Result<(A,B)>`) pass through untouched.
 
-When `TransactionalCommandBehavior` is also registered, dispatch fires after the transaction commits — handlers see committed state. Events are dispatched in waves: `IChangeTracking.AcceptChanges()` is called before each wave so any new events raised by handlers on the same aggregate accumulate cleanly and are picked up on the next wave. The wave count is capped (`MaxDispatchWaves = 8`); if the cap is exceeded the remaining events are abandoned and an error is logged.
+When `TransactionalCommandBehavior` is also registered, dispatch fires after the transaction commits — handlers see committed state. Events are dispatched in waves with index tracking: each wave snapshots `aggregate.UncommittedEvents()` and dispatches events at indices the previous wave didn't reach, so events raised by a handler on the same aggregate accumulate at the next index and are picked up on the next wave. `IChangeTracking.AcceptChanges()` is called **once at the end of the loop**, only on full success — cancellation propagates above this call so undispatched (and dispatched) events stay on the aggregate, and handlers must be idempotent because a retry will re-publish events that already fired. The wave count is capped (`MaxDispatchWaves = 8`); if the cap is exceeded the remaining events are abandoned, an error is logged, and `AcceptChanges()` is called defensively to keep the aggregate from staying dirty across requests.
 
 **Constants**
 
@@ -347,7 +347,7 @@ When `TransactionalCommandBehavior` is also registered, dispatch fires after the
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits `next`, returns immediately on failure or when the response is not an aggregate `Result<TAggregate>`. On success, drains `aggregate.UncommittedEvents()` in waves, calling `AcceptChanges()` before each wave's dispatch. Cancellation propagates and prevents `AcceptChanges()` from running. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits `next`, returns immediately on failure or when the response is not an aggregate `Result<TAggregate>`. On success, drains `aggregate.UncommittedEvents()` in waves with index tracking; calls `AcceptChanges()` **once at the end** of a fully successful loop. Cancellation propagates above the `AcceptChanges()` call so undispatched events remain on the aggregate. |
 
 ### DomainEventDispatchServiceCollectionExtensions
 **Declaration**
@@ -363,7 +363,7 @@ DI registration helpers for the dispatch behavior, default publisher, and per-ev
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IServiceCollection AddDomainEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers `DomainEventDispatchBehavior<,>` (open generic, scoped) and the default `IDomainEventPublisher` (`MediatorDomainEventPublisher`, scoped). Calls `AddTrellisBehaviors()` first so the always-on behaviors are present. **Idempotent**. AOT-friendly (no scanning). |
-| `public static IServiceCollection AddDomainEventHandler<TEvent, [DynamicallyAccessedMembers(PublicConstructors)] THandler>(this IServiceCollection services) where TEvent : IDomainEvent where THandler : class, IDomainEventHandler<TEvent>` | `IServiceCollection` | Registers a single `IDomainEventHandler<TEvent>` implementation as scoped, and ensures the dispatch behavior + publisher are wired. Use this for AOT/trim scenarios. **Idempotent**. |
+| `public static IServiceCollection AddDomainEventHandler<TEvent, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler>(this IServiceCollection services) where TEvent : IDomainEvent where THandler : class, IDomainEventHandler<TEvent>` | `IServiceCollection` | Registers a single `IDomainEventHandler<TEvent>` implementation as scoped, and ensures the dispatch behavior + publisher are wired. Use this for AOT/trim scenarios. **Idempotent**. |
 | `[RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use AddDomainEventHandler<TEvent, THandler> for AOT/trim scenarios.")] [RequiresDynamicCode("Constructs closed generic IDomainEventHandler<TEvent> at runtime.")] public static IServiceCollection AddDomainEventDispatch(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the assemblies for concrete `IDomainEventHandler<TEvent>` implementations and registers each as scoped. A type implementing handlers for multiple event types is registered once per interface. Also wires the dispatch behavior + publisher (idempotent). |
 
 
