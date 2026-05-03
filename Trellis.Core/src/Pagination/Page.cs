@@ -28,6 +28,8 @@ using System.Collections.Generic;
 /// </remarks>
 public readonly record struct Page<T>
 {
+    private readonly IReadOnlyList<T>? _items;
+
     /// <summary>Constructs a validated page. Use <see cref="Page.Empty{T}(int, int)"/> for empty pages.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="Items"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A limit is non-positive, or <paramref name="AppliedLimit"/> exceeds <paramref name="RequestedLimit"/>.</exception>
@@ -46,15 +48,21 @@ public readonly record struct Page<T>
         if (AppliedLimit > RequestedLimit)
             throw new ArgumentOutOfRangeException(nameof(AppliedLimit), "AppliedLimit cannot exceed RequestedLimit.");
 
-        this.Items = Items;
+        _items = Items;
         this.Next = Next;
         this.Previous = Previous;
         this.RequestedLimit = RequestedLimit;
         this.AppliedLimit = AppliedLimit;
     }
 
-    /// <summary>The items returned for this page (never null when constructed via the public ctor).</summary>
-    public IReadOnlyList<T> Items { get; }
+    /// <summary>The items returned for this page. Defensive against <c>default(Page&lt;T&gt;)</c>: returns an empty list when the backing storage is uninitialized.</summary>
+    /// <remarks>
+    /// Mirrors the <see cref="EquatableArray{T}.Items"/> pattern: a <c>default</c>-constructed
+    /// <see cref="Page{T}"/> is observably empty rather than throwing on enumeration. Always
+    /// construct via the public constructor or <see cref="Page.Empty{T}(int, int)"/>; defaults
+    /// are observable but not part of the supported design.
+    /// </remarks>
+    public IReadOnlyList<T> Items => _items ?? Array.Empty<T>();
 
     /// <summary>Cursor for the next page, or null when this is the last page.</summary>
     public Cursor? Next { get; }
@@ -69,8 +77,7 @@ public readonly record struct Page<T>
     public int AppliedLimit { get; }
 
     /// <summary>The number of items actually returned in this page.</summary>
-    /// <remarks>Defensive against <c>default(Page&lt;T&gt;)</c>: returns 0 when <see cref="Items"/> is null.</remarks>
-    public int DeliveredCount => Items?.Count ?? 0;
+    public int DeliveredCount => Items.Count;
 
     /// <summary>True when the server applied a smaller limit than the client requested.</summary>
     public bool WasCapped => AppliedLimit < RequestedLimit;

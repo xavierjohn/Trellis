@@ -85,4 +85,19 @@ public class PageTests
         var act = () => new Page<int>(Array.Empty<int>(), null, null, 5, 10);
         act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("AppliedLimit");
     }
+
+    [Fact]
+    public void Default_struct_returns_empty_items_and_zero_delivered_count()
+    {
+        // default(Page<T>) bypasses the public ctor; the defensive Items getter returns
+        // an empty list rather than null so consumers iterating directly don't NRE.
+        var defaulted = default(Page<int>);
+
+        defaulted.Items.Should().NotBeNull();
+        defaulted.Items.Should().BeEmpty();
+        defaulted.DeliveredCount.Should().Be(0);
+        defaulted.RequestedLimit.Should().Be(0);
+        defaulted.AppliedLimit.Should().Be(0);
+        defaulted.WasCapped.Should().BeFalse();
+    }
 }

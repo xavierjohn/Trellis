@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+#### Trellis.Core — null-check consistency, default-uninit defensiveness, tracing perf docs
+
+Self-review of `Trellis.Core` surfaced six findings; all addressed in this release.
+
+- **`Result.Try<T>(Func<T>)` and `Result.TryAsync<T>(Func<Task<T>>)`** now throw `ArgumentNullException` when `func` is null, matching the no-payload `Try(Action)` / `TryAsync(Func<Task>)` overloads. Previously the value-bearing variants caught the resulting `NullReferenceException` and returned `Result.Fail(InternalServerError)`, hiding the programming error. **Behavior change**: callers that relied on the swallowing behavior (test or otherwise) need to handle null up-front. The existing `Try_WithNullFunction_ShouldReturnFailureResult` test was updated to assert `ArgumentNullException`.
+- **`Maybe<T>.Map<TResult>(selector)` and `Maybe<T>.Match<TResult>(some, none)`** now throw `ArgumentNullException` when their delegate parameters are null. Previously the failure mode was path-dependent (NRE only when the matching branch fired, particularly bad for `Match` because either delegate could fail depending on `HasValue`). Sibling methods (`Bind`, `Where`, `Tap`, `Or(Func<>)`, etc.) already null-checked.
+- **`NullableExtensions.ToResult<T>(Func<Error>)`** struct and class overloads now throw `ArgumentNullException` when `errorFactory` is null. Async variants inherit the fix transitively.
+- **`Page<T>.Items`** now returns `Array.Empty<T>()` when accessed on a default-constructed `Page<T>` (previously returned null despite the non-nullable annotation). Mirrors the `EquatableArray<T>.Items` pattern. `DeliveredCount` simplified to `Items.Count` since the property is now always non-null.
+- **`Cursor.Token`** now throws `InvalidOperationException` with a diagnostic message when accessed on `default(Cursor)` (previously returned null despite the non-nullable annotation and the doc'd "no empty cursor" invariant). The xmldoc invariant — "There is no empty cursor — a constructed Cursor always carries a non-empty token" — is now enforced at the property accessor.
+
+#### Trellis.Core — tracing performance documentation
+
+Documented the actual performance characteristics of `AddResultsInstrumentation` and the per-extension `using var activity = ActivitySource.StartActivity(...)` pattern, backed by a new BenchmarkDotNet suite (`Trellis.Benchmark/TracingOverheadBenchmarks.cs`). Measured on .NET 10 / x64:
+
+- **No listener registered** (production default): ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The framework does not pay for tracing the consumer didn't ask for.
+- **`AddResultsInstrumentation` registered with full sampling**: ~200 ns + ~400 B per combinator. At 10k RPS × 10-step pipeline that's ~22 ms/sec CPU + 40 MB/sec GC pressure.
+
+The new docs make the granularity guidance explicit: per-Result-extension spans add limited signal beyond the outer pipeline-behavior or HTTP-request span; for high-throughput services, instrument at the pipeline-behavior altitude (`Trellis.Mediator.TracingBehavior`) and reserve `AddResultsInstrumentation` for development/debugging or low-rate paths. Updated `ResultsTraceProviderBuilderExtensions.cs` xmldoc and the corresponding section in `trellis-api-core.md`.
+
 ### Added
 
 #### Trellis.Mediator — Domain event dispatch

@@ -337,6 +337,58 @@ public class NullableExtensionTests
     }
 
     #endregion
+
+    #region Null errorFactory guards (regression — ensure ArgumentNullException is raised rather than NRE)
+
+    [Fact]
+    public void ToResult_struct_with_null_factory_throws_argument_null_exception()
+    {
+        DateTime? value = null;
+
+        var act = () => value.ToResult((Func<Error>)null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+    }
+
+    [Fact]
+    public void ToResult_struct_with_null_factory_throws_even_when_value_present()
+    {
+        // Validation runs before the HasValue check so the failure mode is consistent.
+        DateTime? value = DateTime.UnixEpoch;
+
+        var act = () => value.ToResult((Func<Error>)null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+    }
+
+    [Fact]
+    public void ToResult_class_with_null_factory_throws_argument_null_exception()
+    {
+        string? value = null;
+
+        var act = () => value.ToResult((Func<Error>)null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+    }
+
+    [Fact]
+    public async Task ToResultAsync_struct_with_null_factory_throws_argument_null_exception()
+    {
+        // Async overloads delegate to the sync ToResult, so the null check fires inside the awaited continuation.
+        var act = async () => await Task.FromResult<DateTime?>(null).ToResultAsync((Func<Error>)null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
+    }
+
+    [Fact]
+    public async Task ToResultAsync_class_with_null_factory_throws_argument_null_exception()
+    {
+        var act = async () => await Task.FromResult<string?>(null).ToResultAsync((Func<Error>)null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
+    }
+
+    #endregion
 }
 
 internal class MyClass

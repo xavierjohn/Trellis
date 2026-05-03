@@ -722,6 +722,31 @@ OpenTelemetry helper for Trellis result instrumentation. Lives in `Trellis.Core\
 | --- | --- |
 | `public static TracerProviderBuilder AddResultsInstrumentation(this TracerProviderBuilder builder)` | Registers the Trellis ROP `ActivitySource` (named `"Trellis.Core"`, exposed as `RopTrace.ActivitySourceName`) with the supplied OpenTelemetry tracer-provider builder. Returns the same builder for chaining. |
 
+#### Performance characteristics
+
+The per-operation tracing is essentially free when no listener is registered (the production default — calling `AddResultsInstrumentation` is the only way to register the `"Trellis.Core"` source). Measured on .NET 10 / x64 with an ambient ASP.NET request activity present (benchmark in `Trellis.Benchmark/TracingOverheadBenchmarks.cs`):
+
+| Pipeline depth | No listener | Listener attached (`AllDataAndRecorded` sampling) |
+|---|---|---|
+| 1-step `Bind` | ~20 ns, 0 B | ~228 ns, 400 B |
+| 5-step `Bind` chain | ~107 ns, 0 B | ~1,135 ns, 2,000 B |
+| 10-step `Bind` chain | ~242 ns, 0 B | ~2,266 ns, 4,000 B |
+| 10-step `Map` chain | ~115 ns, 0 B | ~2,227 ns, 4,000 B |
+| 10-step `Tap` chain | ~176 ns, 0 B | ~2,281 ns, 4,096 B |
+
+**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source, and the `Result<T>` constructor's `Activity.Current?.SetStatus(...)` updates the ambient activity in place without allocating (subsequent `SetTag` calls update the same dictionary entry; the steady-state allocation count is zero).
+
+**With `AddResultsInstrumentation` registered:** each combinator costs ~200 ns and allocates ~400 B (the Activity object + name + tags). At 10 000 RPS with a 10-step pipeline that's ~22 ms/sec of CPU and ~40 MB/sec of GC pressure — material at high throughput.
+
+#### Granularity guidance
+
+Per-Result-extension spans add limited signal beyond the outer pipeline span (`Trellis.Mediator.TracingBehavior`) or the ASP.NET request span. They appear as a deeply nested tree under the outer span with no business context — most observability backends collapse or charge per span.
+
+- **Production / high-throughput services**: instrument at the pipeline-behavior altitude (already covered by `Trellis.Mediator.TracingBehavior`) and the HTTP-boundary altitude (`AddAspNetCoreInstrumentation`); skip `AddResultsInstrumentation`.
+- **Development / debugging / low-rate paths**: register `AddResultsInstrumentation` to get step-by-step ROP visibility. The cost is intentional — you opted in.
+
+The cost is bounded by the consumer's choice; the framework does not gate it further. If `AddResultsInstrumentation` is registered, the spans appear; if not, they don't, and the cost is noise-floor.
+
 ---
 
 ### `public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>`
