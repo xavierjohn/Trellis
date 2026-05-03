@@ -332,25 +332,28 @@ public class MaybeEdgeCaseTests
     }
 
     [Fact]
-    public void OperatorEquality_WithObject_ShouldWork()
+    public void Equals_WithObject_ShouldWork()
     {
         // Arrange
         Maybe<string> maybe = "test";
         object? obj = "test";
 
         // Act & Assert
-        (maybe == obj).Should().BeTrue();
+        // Note: the operator==(Maybe<T>, object?) overload was removed because it permitted
+        // accidental cross-type comparisons (e.g. Maybe<int> == "literal") to silently compile.
+        // The Equals(object?) instance method preserves the intended semantics.
+        maybe.Equals(obj).Should().BeTrue();
     }
 
     [Fact]
-    public void OperatorInequality_WithObject_ShouldWork()
+    public void Equals_WithDifferentObject_ShouldReturnFalse()
     {
         // Arrange
         Maybe<string> maybe = "test";
         object? obj = "different";
 
         // Act & Assert
-        (maybe != obj).Should().BeTrue();
+        maybe.Equals(obj).Should().BeFalse();
     }
 
     #endregion

@@ -346,22 +346,6 @@ public readonly struct Maybe<T> :
     public static bool operator !=(Maybe<T> maybe, T value) => !maybe.Equals(value);
 
     /// <summary>
-    /// Determines whether a <see cref="Maybe{T}"/> equals another object.
-    /// </summary>
-    /// <param name="maybe">The Maybe instance to compare.</param>
-    /// <param name="other">The object to compare against.</param>
-    /// <returns>True if equal; otherwise false.</returns>
-    public static bool operator ==(Maybe<T> maybe, object? other) => maybe.Equals(other);
-
-    /// <summary>
-    /// Determines whether a <see cref="Maybe{T}"/> does not equal another object.
-    /// </summary>
-    /// <param name="maybe">The Maybe instance to compare.</param>
-    /// <param name="other">The object to compare against.</param>
-    /// <returns>True if not equal; otherwise false.</returns>
-    public static bool operator !=(Maybe<T> maybe, object? other) => !maybe.Equals(other);
-
-    /// <summary>
     /// Determines whether two <see cref="Maybe{T}"/> instances are equal.
     /// </summary>
     /// <param name="first">The first Maybe instance.</param>
