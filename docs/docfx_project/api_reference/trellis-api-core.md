@@ -326,9 +326,9 @@ Multi-field validation helpers for `Maybe<T>` values. Each method returns `Resul
 | --- | --- |
 | `public static Result<Unit> AllOrNone<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | All fields present or all absent. Arities 2, 3, 4. |
 | `public static Result<Unit> Requires<T1, T2>(Maybe<T1> source, Maybe<T2> required, string sourceFieldName, string requiredFieldName)` | If `source` is present, `required` must be too. Arity 2. |
-| `public static Result<Unit> MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At most one field may be present. Arities 2, 3. |
-| `public static Result<Unit> ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | Exactly one field must be present. Arities 2, 3. |
-| `public static Result<Unit> AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At least one field must be present. Arities 2, 3. |
+| `public static Result<Unit> MutuallyExclusive<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At most one field may be present. Arities 2, 3, 4. |
+| `public static Result<Unit> ExactlyOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | Exactly one field must be present. Arities 2, 3, 4. |
+| `public static Result<Unit> AtLeastOne<T1, T2>(Maybe<T1> first, Maybe<T2> second, string firstFieldName, string secondFieldName)` | At least one field must be present. Arities 2, 3, 4. |
 
 #### Usage
 
@@ -372,7 +372,7 @@ Optional value container for domain optionality.
 | `public T GetValueOrDefault(T defaultValue)` | Fallback extractor |
 | `public T GetValueOrDefault(Func<T> defaultFactory)` | Deferred fallback |
 | `public bool TryGetValue(out T value)` | Non-throwing extractor |
-| `public Maybe<TResult> Map<TResult>(Func<T, TResult> selector) where TResult : notnull` | Maps present value |
+| `public Maybe<TResult> Map<TResult>(Func<T, TResult> selector) where TResult : notnull` | Maps present value. A selector that returns `null` collapses to `None` (Maybe never holds `null`); the `notnull` constraint discourages this at compile time but cannot fully enforce it for nullable reference types. |
 | `public TResult Match<TResult>(Func<T, TResult> some, Func<TResult> none)` | Branches on presence |
 | `public Maybe<TResult> Bind<TResult>(Func<T, Maybe<TResult>> selector) where TResult : notnull` | Flat-map |
 | `public Maybe<T> Or(T fallback)` | Fallback value |
@@ -383,7 +383,7 @@ Optional value container for domain optionality.
 | `public Maybe<T> Tap(Action<T> action)` | Side effect on value |
 | `public override bool Equals(object? obj)` | Equality |
 | `public bool Equals(Maybe<T> other)` | Equality |
-| `public bool Equals(T? other)` | Equality against raw value |
+| `public bool Equals(T? other)` | Equality against raw value. `Maybe<T>.None.Equals((T?)null)` returns `true` — the absence of a value converges with the canonical `null` sentinel; use `HasValue` / `HasNoValue` if the distinction matters. |
 | `public override int GetHashCode()` | Hash code |
 | `public override string ToString()` | Debug string |
 
@@ -394,10 +394,10 @@ Optional value container for domain optionality.
 | `public static implicit operator Maybe<T>(T value)` | Implicit success-like wrap |
 | `public static bool operator ==(Maybe<T> maybe, T value)` | Equality |
 | `public static bool operator !=(Maybe<T> maybe, T value)` | Inequality |
-| `public static bool operator ==(Maybe<T> maybe, object? other)` | Equality |
-| `public static bool operator !=(Maybe<T> maybe, object? other)` | Inequality |
 | `public static bool operator ==(Maybe<T> first, Maybe<T> second)` | Equality |
 | `public static bool operator !=(Maybe<T> first, Maybe<T> second)` | Inequality |
+
+> **Removed.** The `(Maybe<T>, object?)` `==` / `!=` overloads were removed because they silently absorbed cross-type comparisons (e.g. `Maybe<int> count = 5; count == "five"` previously compiled and always returned `false`). For boxed comparisons use the `Equals(object?)` instance method: `maybe.Equals(boxedValue)`.
 
 #### Factory Methods
 
@@ -421,7 +421,7 @@ Contract for scalar value objects that validate and expose a primitive payload.
 | --- | --- |
 | `static abstract Result<TSelf> TryCreate(TPrimitive value, string? fieldName = null)` | Primitive-based validation entry point |
 | `static abstract Result<TSelf> TryCreate(string? value, string? fieldName = null)` | String-based validation entry point |
-| `static virtual TSelf Create(TPrimitive value)` | Throws on validation failure |
+| `static virtual TSelf Create(TPrimitive value)` | Throws on validation failure. **Generic-constraint dispatch**: invoked from generic code via `T.Create(value)` where `T : IScalarValue<T, P>`. Concrete-class call sites (e.g. `EmailAddress.Create("…")`) bind to `ScalarValueObject<TSelf, T>.Create(T)` instead — the static-virtual default does not participate in concrete-type lookup. |
 
 #### Factory Methods
 
@@ -507,7 +507,7 @@ Twenty nested `sealed record` cases under `Error`. Each case constructor is `int
 
 | Type | Shape | Purpose |
 | --- | --- | --- |
-| `ResourceRef` | `readonly record struct (string Type, string? Id = null)` plus `ResourceRef.For(string type, object? id = null)` and `ResourceRef.For<TResource>(object? id = null)` | Aggregate identity. The `For(...)` helpers convert IDs with invariant formatting when possible and `For<TResource>` uses `typeof(TResource).Name` exactly. |
+| `ResourceRef` | `readonly record struct (string Type, string? Id = null)` plus `ResourceRef.For(string type, object? id = null)` and `ResourceRef.For<TResource>(object? id = null)` | Aggregate identity. The `For(...)` helpers convert IDs with invariant formatting when possible and `For<TResource>` uses `typeof(TResource).Name` exactly. For closed generic resource types the CLR mangled name (e.g. `"List`1"`) is rarely the desired user-visible name — prefer `For(string, object?)` with an explicit name in that case. |
 | `InputPointer` | `readonly record struct` with `InputPointer(string Path)` | RFC 6901 JSON Pointer (e.g. `/email`). The constructor accepts only `""` or paths beginning with `/` and rejects invalid `~` escapes. Construct simple property names via `InputPointer.ForProperty("email")`, or use the document-root sentinel `InputPointer.Root` (path `""`). `default(InputPointer)` is observed as root. |
 | `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Single per-field violation inside `UnprocessableContent.Fields`. `Detail` is the 4th positional parameter; supplies the boundary renderer's user-facing message when non-null. `Equals`/`GetHashCode` compare `Args` by content. |
 | `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `UnprocessableContent.Rules`. `Detail` is the 4th positional parameter. `Equals`/`GetHashCode` compare `Args` by content. |
@@ -989,7 +989,7 @@ Pure transformation of the success value (or failure error). Use `Map` when the 
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<TOut> Map<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> func)` | `Result<TOut>` | Synchronous map on `Result<T>`. |
+| `public static Result<TOut> Map<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> func)` | `Result<TOut>` | Synchronous map on `Result<T>`. The selector contract requires a non-null return for reference types — `Map` does not null-check the result and downstream stages will see a `Result<TOut>` carrying a `null` value. Use `Bind` if a step can legitimately produce no value. |
 | `public static Task<Result<TOut>> MapAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> func)` | `Task<Result<TOut>>` | `MapExtensionsAsync` exposes all Task/ValueTask × sync-/async-lambda combinations (6 overloads). |
 | `public static Result<T> MapOnFailure<T>(this Result<T> result, Func<Error, Error> map)` | `Result<T>` | Replaces the failure `Error`. |
 | `public static Task<Result<T>> MapOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Error>> mapAsync)` | `Task<Result<T>>` | `MapOnFailureExtensions` exposes all sync/Task/ValueTask combinations of `MapOnFailure`/`MapOnFailureAsync`. |
@@ -1598,7 +1598,7 @@ where T : IComparable
 | `protected override IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Default scalar equality uses only `Value`. |
 | `public override string ToString()` | `string` | Returns `Value?.ToString() ?? string.Empty`. |
 | `public static implicit operator T(ScalarValueObject<TSelf, T> valueObject)` | `T` | Unwraps the scalar value object to its primitive value. |
-| `public static TSelf Create(T value)` | `TSelf` | Calls `TSelf.TryCreate(value)` and throws `InvalidOperationException` on failure. |
+| `public static TSelf Create(T value)` | `TSelf` | Calls `TSelf.TryCreate(value)` and throws `InvalidOperationException` on failure. This is the **concrete-type dispatch** entry point — invoked when the call site names a derived class (e.g. `EmailAddress.Create("…")`). The `IScalarValue<TSelf, TPrimitive>.Create(TPrimitive)` static-virtual member on the interface is the **generic-constraint dispatch** entry point used from generic code (`T.Create(value)` where `T : IScalarValue<T, P>`); the two methods coexist because C# does not route concrete-type calls through interface static-virtual defaults. |
 | `public TypeCode GetTypeCode()` | `TypeCode` | Returns `Type.GetTypeCode(typeof(T))`. |
 | `public bool ToBoolean(IFormatProvider? provider)` | `bool` | Converts `Value` with `Convert.ToBoolean`. |
 | `public byte ToByte(IFormatProvider? provider)` | `byte` | Converts `Value` with `Convert.ToByte`. |
@@ -1630,8 +1630,8 @@ public static class AggregateETagExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<T> OptionalETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate` | `Result<T>` | If `expectedETags` is `null`, returns the original result unchanged; otherwise enforces strong ETag matching. |
-| `public static Result<T> RequireETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate` | `Result<T>` | Requires an `If-Match` value and enforces strong ETag matching. |
+| `public static Result<T> OptionalETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate` | `Result<T>` | If `expectedETags` is `null`, returns the original result unchanged; otherwise enforces strong ETag matching. Failure modes: empty array → `"If-Match header is empty."`; only weak tags after filtering → `"If-Match contains only weak ETags. Strong comparison is required."`; no match → `"Resource has been modified. Please reload and retry."`. `EntityTagValue.Wildcard()` short-circuits to success. |
+| `public static Result<T> RequireETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate` | `Result<T>` | Requires an `If-Match` value and enforces strong ETag matching. Failure modes are the same as `OptionalETag<T>` plus: `null` array → `"If-Match header is required."`. |
 | `public static Task<Result<T>> OptionalETagAsync<T>(this Task<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate` | `Task<Result<T>>` | Async `Task` wrapper for `OptionalETag<T>`. |
 | `public static ValueTask<Result<T>> OptionalETagAsync<T>(this ValueTask<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate` | `ValueTask<Result<T>>` | Async `ValueTask` wrapper for `OptionalETag<T>`. |
 | `public static Task<Result<T>> RequireETagAsync<T>(this Task<Result<T>> resultTask, EntityTagValue[]? expectedETags) where T : IAggregate` | `Task<Result<T>>` | Async `Task` wrapper for `RequireETag<T>`. |
@@ -1916,6 +1916,8 @@ public static class PrimitiveValueObjectTrace
 
 Core-owned trace source used by generated `Required*<TSelf>` value objects and concrete primitives. The activity source name remains `"Trellis.Primitives"` for telemetry compatibility and is exposed as `PrimitiveValueObjectTrace.ActivitySourceName`; register it with `AddPrimitiveValueObjectInstrumentation()` from `Trellis.Primitives` when using the primitives package, or call `TracerProviderBuilder.AddSource(PrimitiveValueObjectTrace.ActivitySourceName)` directly for Core-only generated primitives.
 
+> **Versioning:** the OpenTelemetry activity source `Version` is stamped from the assembly that physically contains this type — `Trellis.Core` — even when consumers depend on `Trellis.Primitives`. The two packages ship lockstep from a single `version.json`, so the version reported in spans is the version of both packages.
+
 | Name | Type | Description |
 | --- | --- | --- |
 | `ActivitySource` | `ActivitySource` | Activity source used by generated primitive creation/parsing/validation operations. |
@@ -2119,8 +2121,10 @@ public static ValueTask<Result<T>> RequireETagAsync<T>(this ValueTask<Result<T>>
 Notes:
 
 - Matching is always strong RFC 9110 comparison.
-- `expectedETags is null` means “no `If-Match` header supplied”.
-- `expectedETags.Length == 0` fails with `Error.PreconditionFailed` because the header contained only weak ETags.
+- `expectedETags is null` means "no `If-Match` header supplied". `OptionalETag` returns success unchanged; `RequireETag` fails with `Error.PreconditionFailed` whose `Detail` is `"If-Match header is required."`.
+- `expectedETags.Length == 0` fails with `Error.PreconditionFailed` whose `Detail` is `"If-Match header is empty."`.
+- A non-empty array containing only weak tags fails with `Detail` = `"If-Match contains only weak ETags. Strong comparison is required."` (RFC 9110 forbids weak comparison for `If-Match`).
+- A non-empty array of strong tags with no match fails with `Detail` = `"Resource has been modified. Please reload and retry."`.
 - `EntityTagValue.Wildcard()` bypasses value comparison and succeeds immediately.
 
 ## Internal types

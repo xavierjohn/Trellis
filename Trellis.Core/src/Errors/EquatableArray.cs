@@ -15,6 +15,13 @@ using System.Collections.Immutable;
 /// A default-constructed <see cref="EquatableArray{T}"/> represents an empty (uninitialized)
 /// sequence; two default values compare equal.
 /// </para>
+/// <para>
+/// <b>Intentionally does not implement <see cref="System.Collections.Generic.IEnumerable{T}"/>.</b>
+/// LINQ and FluentAssertions interop is via the <see cref="Items"/> projection — e.g.
+/// <c>violations.Items.Should().HaveCount(2)</c>. This omission is deliberate so the type's
+/// equality semantics cannot be silently bypassed via sequence-style comparison helpers; see the
+/// "EquatableArray&lt;T&gt;" recipe in the API cookbook for rationale.
+/// </para>
 /// </remarks>
 /// <typeparam name="T">The element type.</typeparam>
 public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>
@@ -51,10 +58,11 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>
     public T this[int index] => Items[index];
 
     /// <summary>
-    /// An empty <see cref="EquatableArray{T}"/>.
+    /// An empty <see cref="EquatableArray{T}"/>. A single cached instance per closed generic
+    /// type, mirroring the <see cref="ImmutableArray{T}.Empty"/> field-singleton pattern.
     /// </summary>
 #pragma warning disable CA1000 // Do not declare static members on generic types — EquatableArray<T>.Empty mirrors ImmutableArray<T>.Empty.
-    public static EquatableArray<T> Empty => new(ImmutableArray<T>.Empty);
+    public static readonly EquatableArray<T> Empty = new(ImmutableArray<T>.Empty);
 
     /// <summary>
     /// Creates an <see cref="EquatableArray{T}"/> from the provided items.

@@ -92,6 +92,15 @@ public interface IScalarValue<TSelf, TPrimitive>
     /// The default implementation calls <see cref="TryCreate(TPrimitive, string?)"/> and throws if validation fails.
     /// You can override this if you need custom error handling behavior.
     /// </para>
+    /// <para>
+    /// <b>Why this and <c>ScalarValueObject&lt;TSelf, T&gt;.Create</c> coexist.</b> This static-virtual
+    /// is the entry point for <em>generic-constraint</em> dispatch — call sites of the form
+    /// <c>T.Create(value)</c> where <c>T : IScalarValue&lt;T, P&gt;</c>. Concrete-type call sites
+    /// such as <c>EmailAddress.Create("x")</c> bind to the regular static method on the
+    /// <see cref="ScalarValueObject{TSelf, T}"/> base class, because C# does not surface interface
+    /// static-virtual defaults through concrete-type dispatch. The two methods produce identical
+    /// results — they just exist for the two different call-site shapes.
+    /// </para>
     /// </remarks>
     /// <example>
     /// Use in tests or with known-valid values:

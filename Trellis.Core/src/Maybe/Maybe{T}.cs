@@ -193,6 +193,13 @@ public readonly struct Maybe<T> :
     /// <typeparam name="TResult">The type of the transformed value.</typeparam>
     /// <param name="selector">The function to apply to the value.</param>
     /// <returns>A Maybe containing the transformed value, or None if this instance has no value.</returns>
+    /// <remarks>
+    /// <b>Null-coalescing semantics.</b> If <paramref name="selector"/> is invoked and returns
+    /// <see langword="null"/>, the result is <see cref="Maybe{TResult}.None"/> rather than a
+    /// Some-wrapping-null. This is deliberate: <see cref="Maybe{T}"/> never holds <see langword="null"/>
+    /// — Some implies a non-null value. The <c>TResult : notnull</c> constraint discourages this at
+    /// compile time, but for nullable reference types it cannot be fully enforced.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="selector"/> is null.</exception>
     public Maybe<TResult> Map<TResult>(Func<T, TResult> selector)
         where TResult : notnull
@@ -339,22 +346,6 @@ public readonly struct Maybe<T> :
     public static bool operator !=(Maybe<T> maybe, T value) => !maybe.Equals(value);
 
     /// <summary>
-    /// Determines whether a <see cref="Maybe{T}"/> equals another object.
-    /// </summary>
-    /// <param name="maybe">The Maybe instance to compare.</param>
-    /// <param name="other">The object to compare against.</param>
-    /// <returns>True if equal; otherwise false.</returns>
-    public static bool operator ==(Maybe<T> maybe, object? other) => maybe.Equals(other);
-
-    /// <summary>
-    /// Determines whether a <see cref="Maybe{T}"/> does not equal another object.
-    /// </summary>
-    /// <param name="maybe">The Maybe instance to compare.</param>
-    /// <param name="other">The object to compare against.</param>
-    /// <returns>True if not equal; otherwise false.</returns>
-    public static bool operator !=(Maybe<T> maybe, object? other) => !maybe.Equals(other);
-
-    /// <summary>
     /// Determines whether two <see cref="Maybe{T}"/> instances are equal.
     /// </summary>
     /// <param name="first">The first Maybe instance.</param>
@@ -385,7 +376,21 @@ public readonly struct Maybe<T> :
             ? EqualityComparer<T>.Default.Equals(_value, other._value)
             : !_isValueSet && !other._isValueSet;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Determines whether this <see cref="Maybe{T}"/> equals the supplied value.
+    /// </summary>
+    /// <param name="other">The value to compare against the inner value, or <see langword="null"/>.</param>
+    /// <returns>
+    /// <see langword="true"/> when this Maybe holds a value that equals <paramref name="other"/>,
+    /// <em>or</em> when this Maybe is <see cref="None"/> and <paramref name="other"/> is
+    /// <see langword="null"/>; otherwise <see langword="false"/>.
+    /// </returns>
+    /// <remarks>
+    /// The "<see cref="None"/> equals <see langword="null"/>" branch is intentional: it converges
+    /// the absence of a value with the canonical "no reference" sentinel, mirroring
+    /// <c>default(T?)</c>. Callers that need to distinguish None from null at the boundary should
+    /// use <see cref="HasValue"/> / <see cref="HasNoValue"/> instead of <c>==</c>.
+    /// </remarks>
     public bool Equals(T? other) =>
         (_isValueSet && EqualityComparer<T>.Default.Equals(_value, other))
         || (!_isValueSet && other is null);

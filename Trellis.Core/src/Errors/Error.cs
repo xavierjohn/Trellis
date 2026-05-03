@@ -154,6 +154,25 @@ public abstract record Error
     /// into <c>InnerException</c>, and keeps test assertions ergonomic (callers assert on
     /// the surface error without reconstructing the entire causal chain).
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>How per-derived payload comparison works:</b> this override deliberately checks
+    /// only <c>EqualityContract</c> and <see cref="Detail"/>. Each derived <c>sealed record</c>
+    /// (e.g., <see cref="NotFound"/>, <see cref="BadRequest"/>) gets a compiler-generated
+    /// <c>Equals(Derived?)</c> of the form
+    /// <c>base.Equals(other) &amp;&amp; Field1 == other.Field1 &amp;&amp; ...</c>.
+    /// The <c>base.Equals(other)</c> call dispatches virtually to this override, contributing
+    /// the kind+detail check; the derived method then ANDs in its per-property comparison.
+    /// The net effect is element-wise equality across both base and derived fields, without
+    /// any per-derived override needed.
+    /// </para>
+    /// <para>
+    /// <see cref="GetHashCode"/> uses the same compose-with-derived pattern: the override
+    /// hashes <c>EqualityContract</c> and <see cref="Detail"/>, and each derived record's
+    /// auto-generated <c>GetHashCode</c> combines <c>base.GetHashCode()</c> with hashes of
+    /// its own properties.
+    /// </para>
+    /// </remarks>
     public virtual bool Equals(Error? other)
     {
         if (other is null) return false;

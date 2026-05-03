@@ -215,6 +215,15 @@ where T : IComparable
     /// <para>
     /// This is a default implementation that can be overridden if custom behavior is needed.
     /// </para>
+    /// <para>
+    /// <b>Why this and <see cref="IScalarValue{TSelf, TPrimitive}.Create(TPrimitive)"/> coexist.</b>
+    /// This regular static is the entry point for <em>concrete-type</em> dispatch — call sites of
+    /// the form <c>EmailAddress.Create("x")</c> resolve here through the inherited static. The
+    /// interface's <c>static virtual Create</c> covers the orthogonal case of <em>generic-constraint</em>
+    /// dispatch (<c>T.Create(value)</c> where <c>T : IScalarValue&lt;T, P&gt;</c>), which C# does
+    /// not route through concrete-type calls. The two produce identical results — they just exist
+    /// for the two different call-site shapes.
+    /// </para>
     /// </remarks>
     /// <example>
     /// Use in tests or with known-valid values:
