@@ -498,7 +498,7 @@ services.AddResourceAuthorization(assemblies);
 public sealed class SomeMessageInApplicationAssembly { }
 ```
 
-### Domain event dispatch — cricket-site email handler
+### Domain event dispatch — order confirmation email handler
 
 ```csharp
 using System;
@@ -512,44 +512,44 @@ using Trellis;
 using Trellis.Mediator;
 
 // 1. Domain side: an aggregate raises an event during a state-changing method.
-public sealed partial class MatchId : RequiredGuid<MatchId>;
+public sealed partial class OrderId : RequiredGuid<OrderId>;
 
-public sealed record MatchScheduled(MatchId MatchId, DateTimeOffset OccurredAt) : IDomainEvent;
+public sealed record OrderSubmitted(OrderId OrderId, DateTimeOffset OccurredAt) : IDomainEvent;
 
-public sealed class Match : Aggregate<MatchId>
+public sealed class Order : Aggregate<OrderId>
 {
-    public Match(MatchId id) : base(id) { }
+    public Order(OrderId id) : base(id) { }
 
-    public Result<Match> Schedule(TimeProvider clock)
+    public Result<Order> Submit(TimeProvider clock)
     {
-        DomainEvents.Add(new MatchScheduled(Id, clock.GetUtcNow()));
+        DomainEvents.Add(new OrderSubmitted(Id, clock.GetUtcNow()));
         return this;
     }
 }
 
-// 2. Command and handler return Result<Match>.
-public sealed record ScheduleMatchCommand(MatchId MatchId) : ICommand<Result<Match>>;
+// 2. Command and handler return Result<Order>.
+public sealed record SubmitOrderCommand(OrderId OrderId) : ICommand<Result<Order>>;
 
-public sealed class ScheduleMatchCommandHandler : ICommandHandler<ScheduleMatchCommand, Result<Match>>
+public sealed class SubmitOrderCommandHandler : ICommandHandler<SubmitOrderCommand, Result<Order>>
 {
     private readonly TimeProvider _clock;
-    public ScheduleMatchCommandHandler(TimeProvider clock) => _clock = clock;
+    public SubmitOrderCommandHandler(TimeProvider clock) => _clock = clock;
 
-    public ValueTask<Result<Match>> Handle(ScheduleMatchCommand command, CancellationToken cancellationToken)
-        => new(new Match(command.MatchId).Schedule(_clock));
+    public ValueTask<Result<Order>> Handle(SubmitOrderCommand command, CancellationToken cancellationToken)
+        => new(new Order(command.OrderId).Submit(_clock));
 }
 
 // 3. Email handler runs after the command succeeds. Side effects are best-effort:
-//    catch + log + return; never let an email failure roll back the user's match creation.
-public sealed class MatchScheduledEmailHandler : IDomainEventHandler<MatchScheduled>
+//    catch + log + return; never let an email failure roll back the user's order submission.
+public sealed class OrderConfirmationEmailHandler : IDomainEventHandler<OrderSubmitted>
 {
-    private readonly ILogger<MatchScheduledEmailHandler> _logger;
-    public MatchScheduledEmailHandler(ILogger<MatchScheduledEmailHandler> logger) => _logger = logger;
+    private readonly ILogger<OrderConfirmationEmailHandler> _logger;
+    public OrderConfirmationEmailHandler(ILogger<OrderConfirmationEmailHandler> logger) => _logger = logger;
 
-    public ValueTask HandleAsync(MatchScheduled domainEvent, CancellationToken cancellationToken)
+    public ValueTask HandleAsync(OrderSubmitted domainEvent, CancellationToken cancellationToken)
     {
         // await _email.SendAsync(...) etc.
-        _logger.LogInformation("Match {MatchId} scheduled at {OccurredAt}", domainEvent.MatchId, domainEvent.OccurredAt);
+        _logger.LogInformation("Order {OrderId} submitted at {OccurredAt}", domainEvent.OrderId, domainEvent.OccurredAt);
         return ValueTask.CompletedTask;
     }
 }
@@ -560,10 +560,10 @@ var services = new ServiceCollection();
 services.AddSingleton(TimeProvider.System);
 services.AddLogging();
 services.AddTrellisBehaviors();
-services.AddDomainEventDispatch(typeof(MatchScheduledEmailHandler).Assembly);
+services.AddDomainEventDispatch(typeof(OrderConfirmationEmailHandler).Assembly);
 // AOT alternative:
 //   services.AddDomainEventDispatch();
-//   services.AddDomainEventHandler<MatchScheduled, MatchScheduledEmailHandler>();
+//   services.AddDomainEventHandler<OrderSubmitted, OrderConfirmationEmailHandler>();
 ```
 
 ## Cross-references

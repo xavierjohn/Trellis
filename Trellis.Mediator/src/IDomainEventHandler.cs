@@ -31,15 +31,15 @@ namespace Trellis.Mediator;
 /// </remarks>
 /// <example>
 /// <code>
-/// public sealed class MatchCreatedEmailHandler : IDomainEventHandler&lt;MatchCreated&gt;
+/// public sealed class OrderConfirmationEmailHandler : IDomainEventHandler&lt;OrderSubmitted&gt;
 /// {
 ///     private readonly IEmailService _email;
 ///
-///     public MatchCreatedEmailHandler(IEmailService email) =&gt; _email = email;
+///     public OrderConfirmationEmailHandler(IEmailService email) =&gt; _email = email;
 ///
-///     public async ValueTask HandleAsync(MatchCreated domainEvent, CancellationToken cancellationToken)
+///     public async ValueTask HandleAsync(OrderSubmitted domainEvent, CancellationToken cancellationToken)
 ///     {
-///         await _email.SendMatchInviteAsync(domainEvent.MatchId, cancellationToken).ConfigureAwait(false);
+///         await _email.SendOrderConfirmationAsync(domainEvent.OrderId, cancellationToken).ConfigureAwait(false);
 ///     }
 /// }
 /// </code>
