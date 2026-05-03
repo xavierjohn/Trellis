@@ -13,9 +13,11 @@ public class CorePackageRequiredPrimitiveTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var tempRoot = Path.Combine(Path.GetTempPath(), $"trellis-core-package-{Guid.NewGuid():N}");
         var packageDirectory = Path.Combine(tempRoot, "packages");
+        var extractedDirectory = Path.Combine(tempRoot, "extracted");
         var consumerDirectory = Path.Combine(tempRoot, "consumer");
 
         Directory.CreateDirectory(packageDirectory);
+        Directory.CreateDirectory(extractedDirectory);
         Directory.CreateDirectory(consumerDirectory);
 
         try
@@ -23,6 +25,7 @@ public class CorePackageRequiredPrimitiveTests
             var repositoryRoot = GetRepositoryRoot();
             var coreProject = Path.Combine(repositoryRoot, "Trellis.Core", "src", "Trellis.Core.csproj");
             var configuration = GetBuildConfiguration();
+            var packageVersion = CreatePackageVersion();
 
             await RunDotnetAsync(
                 repositoryRoot,
@@ -34,21 +37,90 @@ public class CorePackageRequiredPrimitiveTests
                 configuration,
                 "--output",
                 packageDirectory,
+                $"-p:PackageVersion={packageVersion}",
                 "--verbosity",
                 "quiet");
 
             var packagePath = Directory.EnumerateFiles(packageDirectory, "Trellis.Core.*.nupkg").Single();
             AssertCorePackageContainsGenerator(packagePath);
+            var coreAssemblyPath = ExtractPackageEntry(packagePath, GetPackageLibEntry("Trellis.Core"), extractedDirectory);
+            var coreGeneratorPath = ExtractPackageEntry(packagePath, "analyzers/dotnet/cs/Trellis.Core.Generator.dll", extractedDirectory);
 
-            var packageVersion = GetPackageVersion(packagePath);
-            WriteConsumerProject(consumerDirectory, packageDirectory, packageVersion);
+            WriteCoreOnlyConsumerProject(consumerDirectory, packageVersion, coreAssemblyPath, coreGeneratorPath);
+
+            await RestoreProjectAssetsAsync(consumerDirectory, cancellationToken);
 
             await RunDotnetAsync(
                 consumerDirectory,
                 cancellationToken,
-                "restore",
+                "run",
+                "--no-restore",
                 "--verbosity",
                 "quiet");
+        }
+        finally
+        {
+            TryDeleteDirectory(tempRoot);
+        }
+    }
+
+    [Fact]
+    public async Task PrimitivesPackage_MovedCoreTypesResolveThroughTypeForwarders()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"trellis-primitives-package-{Guid.NewGuid():N}");
+        var packageDirectory = Path.Combine(tempRoot, "packages");
+        var extractedDirectory = Path.Combine(tempRoot, "extracted");
+        var consumerDirectory = Path.Combine(tempRoot, "consumer");
+
+        Directory.CreateDirectory(packageDirectory);
+        Directory.CreateDirectory(extractedDirectory);
+        Directory.CreateDirectory(consumerDirectory);
+
+        try
+        {
+            var repositoryRoot = GetRepositoryRoot();
+            var coreProject = Path.Combine(repositoryRoot, "Trellis.Core", "src", "Trellis.Core.csproj");
+            var primitivesProject = Path.Combine(repositoryRoot, "Trellis.Primitives", "src", "Trellis.Primitives.csproj");
+            var configuration = GetBuildConfiguration();
+            var packageVersion = CreatePackageVersion();
+
+            await RunDotnetAsync(
+                repositoryRoot,
+                cancellationToken,
+                "pack",
+                coreProject,
+                "--no-build",
+                "--configuration",
+                configuration,
+                "--output",
+                packageDirectory,
+                $"-p:PackageVersion={packageVersion}",
+                "--verbosity",
+                "quiet");
+
+            await RunDotnetAsync(
+                repositoryRoot,
+                cancellationToken,
+                "pack",
+                primitivesProject,
+                "--no-build",
+                "--configuration",
+                configuration,
+                "--output",
+                packageDirectory,
+                $"-p:PackageVersion={packageVersion}",
+                "--verbosity",
+                "quiet");
+
+            var corePackagePath = Directory.EnumerateFiles(packageDirectory, "Trellis.Core.*.nupkg").Single();
+            var primitivesPackagePath = Directory.EnumerateFiles(packageDirectory, "Trellis.Primitives.*.nupkg").Single();
+            var coreAssemblyPath = ExtractPackageEntry(corePackagePath, GetPackageLibEntry("Trellis.Core"), extractedDirectory);
+            var primitivesAssemblyPath = ExtractPackageEntry(primitivesPackagePath, GetPackageLibEntry("Trellis.Primitives"), extractedDirectory);
+
+            WriteTypeForwarderConsumerProject(consumerDirectory, packageVersion, coreAssemblyPath, primitivesAssemblyPath);
+
+            await RestoreProjectAssetsAsync(consumerDirectory, cancellationToken);
 
             await RunDotnetAsync(
                 consumerDirectory,
@@ -72,14 +144,29 @@ public class CorePackageRequiredPrimitiveTests
             .Should().Contain("analyzers/dotnet/cs/Trellis.Core.Generator.dll");
     }
 
-    private static string GetPackageVersion(string packagePath)
-    {
-        var packageIdPrefix = "Trellis.Core.";
-        var fileName = Path.GetFileNameWithoutExtension(packagePath);
+    private static string CreatePackageVersion() => $"0.0.0-smoke-{Guid.NewGuid():N}";
 
-        fileName.Should().StartWith(packageIdPrefix);
-        return fileName[packageIdPrefix.Length..];
+    private static string GetPackageLibEntry(string packageId) => $"lib/{GetTargetFrameworkMoniker()}/{packageId}.dll";
+
+    private static string ExtractPackageEntry(string packagePath, string entryName, string outputDirectory)
+    {
+        using var archive = ZipFile.OpenRead(packagePath);
+
+        var entry = archive.GetEntry(entryName)
+            ?? throw new InvalidOperationException($"Package '{packagePath}' does not contain '{entryName}'.");
+        var outputPath = Path.Combine(outputDirectory, entry.Name);
+        entry.ExtractToFile(outputPath, overwrite: true);
+        return outputPath;
     }
+
+    private static async Task RestoreProjectAssetsAsync(string consumerDirectory, CancellationToken cancellationToken) =>
+        await RunDotnetAsync(
+            consumerDirectory,
+            cancellationToken,
+            "restore",
+            "-p:RestoreSources=",
+            "--verbosity",
+            "quiet");
 
     private static string GetRepositoryRoot()
     {
@@ -108,20 +195,13 @@ public class CorePackageRequiredPrimitiveTests
         return $"net{framework.Version.Major}.{framework.Version.Minor}";
     }
 
-    private static void WriteConsumerProject(string consumerDirectory, string packageDirectory, string packageVersion)
+    private static void WriteCoreOnlyConsumerProject(
+        string consumerDirectory,
+        string packageVersion,
+        string coreAssemblyPath,
+        string coreGeneratorPath)
     {
         var targetFramework = GetTargetFrameworkMoniker();
-
-        File.WriteAllText(
-            Path.Combine(consumerDirectory, "NuGet.config"),
-            $$"""
-              <?xml version="1.0" encoding="utf-8"?>
-              <configuration>
-                <packageSources>
-                  <add key="local-trellis" value="{{packageDirectory}}" />
-                </packageSources>
-              </configuration>
-              """);
 
         File.WriteAllText(
             Path.Combine(consumerDirectory, "Consumer.csproj"),
@@ -133,10 +213,12 @@ public class CorePackageRequiredPrimitiveTests
                   <ImplicitUsings>enable</ImplicitUsings>
                   <Nullable>enable</Nullable>
                   <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-                  <RestorePackagesPath>.packages</RestorePackagesPath>
                 </PropertyGroup>
                 <ItemGroup>
-                  <PackageReference Include="Trellis.Core" Version="{{packageVersion}}" />
+                  <Reference Include="Trellis.Core">
+                    <HintPath>{{coreAssemblyPath}}</HintPath>
+                  </Reference>
+                  <Analyzer Include="{{coreGeneratorPath}}" />
                 </ItemGroup>
               </Project>
               """);
@@ -190,6 +272,60 @@ public class CorePackageRequiredPrimitiveTests
             {
                 public static readonly CoreOnlyState Draft = new();
             }
+            """);
+    }
+
+    private static void WriteTypeForwarderConsumerProject(
+        string consumerDirectory,
+        string packageVersion,
+        string coreAssemblyPath,
+        string primitivesAssemblyPath)
+    {
+        var targetFramework = GetTargetFrameworkMoniker();
+
+        File.WriteAllText(
+            Path.Combine(consumerDirectory, "Consumer.csproj"),
+            $$"""
+              <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                  <OutputType>Exe</OutputType>
+                  <TargetFramework>{{targetFramework}}</TargetFramework>
+                  <ImplicitUsings>enable</ImplicitUsings>
+                  <Nullable>enable</Nullable>
+                  <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+                </PropertyGroup>
+                <ItemGroup>
+                  <Reference Include="Trellis.Core">
+                    <HintPath>{{coreAssemblyPath}}</HintPath>
+                  </Reference>
+                  <Reference Include="Trellis.Primitives">
+                    <HintPath>{{primitivesAssemblyPath}}</HintPath>
+                  </Reference>
+                </ItemGroup>
+              </Project>
+              """);
+
+        File.WriteAllText(
+            Path.Combine(consumerDirectory, "Program.cs"),
+            """
+            using Trellis;
+            using Trellis.Primitives;
+
+            _ = typeof(EmailAddress);
+
+            var converterType = Type.GetType("Trellis.ParsableJsonConverter`1, Trellis.Primitives", throwOnError: true)
+                ?? throw new InvalidOperationException("Trellis.Primitives did not forward ParsableJsonConverter<T>.");
+            if (converterType.Assembly.GetName().Name != "Trellis.Core")
+                throw new InvalidOperationException($"Expected ParsableJsonConverter<T> to resolve to Trellis.Core, got {converterType.Assembly.FullName}.");
+
+            var traceType = Type.GetType("Trellis.PrimitiveValueObjectTrace, Trellis.Primitives", throwOnError: true)
+                ?? throw new InvalidOperationException("Trellis.Primitives did not forward PrimitiveValueObjectTrace.");
+            if (traceType != typeof(PrimitiveValueObjectTrace))
+                throw new InvalidOperationException($"Expected PrimitiveValueObjectTrace forwarder to resolve to the Core type, got {traceType.Assembly.FullName}.");
+
+            var closedConverterType = converterType.MakeGenericType(typeof(EmailAddress));
+            if (closedConverterType.Assembly.GetName().Name != "Trellis.Core")
+                throw new InvalidOperationException($"Expected closed converter type to resolve to Trellis.Core, got {closedConverterType.Assembly.FullName}.");
             """);
     }
 
