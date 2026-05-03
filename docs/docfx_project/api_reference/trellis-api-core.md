@@ -35,7 +35,7 @@ Use this table before searching the long type catalog.
 | Combine multiple validated *typed* fields into a tuple | static `Result.Combine<T1,T2>(Result<T1>, Result<T2>)` or instance `r1.Combine(r2)`, then `.Map(...)` | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
 | Combine multiple boolean guards | `Result.Ensure(...).Combine(Result.Ensure(...))` then `.Bind(...)` (extension `Combine` aggregates errors and adds each value as the next tuple element; pass a `Result<Unit>` from a no-payload guard and ignore it with `_` in the next lambda) | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
 | Adapt an already-computed result to async APIs | `.AsTask()` / `.AsValueTask()` | [`ResultTaskAdapterExtensions`](#task-adapter-family--resulttaskadapterextensions) |
-| Model expected absence | `Maybe<T>`, `Maybe.Some(value)`, `Maybe<T>.None` | [`Maybe<T>`](#public-readonly-struct-maybet-where-t--notnull) |
+| Model expected absence | `Maybe<T>`, `Maybe.From(value)`, `Maybe<T>.None` | [`Maybe<T>`](#public-readonly-struct-maybet-where-t--notnull) |
 | Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
 | Create HTTP-oriented domain errors | Closed `Error` cases plus `ResourceRef.For<TResource>(id)` | [`Error`](#public-abstract-record-error), [`Error Cases`](#error-cases-closed-adt) |
 | Page list responses | `new Page<T>(items, next, previous, requestedLimit, appliedLimit)` (or `Page.Empty<T>(...)` when there are no items), `Cursor` | [`Pagination`](#pagination) |

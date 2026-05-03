@@ -16,7 +16,7 @@ audience: [llm]
   - [trellis-api-primitives.md](trellis-api-primitives.md) — `RequiredString`, `RequiredGuid`, `[Range]`, `[StringLength]`
   - [trellis-api-mediator.md](trellis-api-mediator.md) — `ICommand<T>`, `IQuery<T>`, `IPipelineBehavior<,>`, `AddTrellisBehaviors`
   - [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md) — `AddTrellisFluentValidation`
-  - [trellis-api-efcore.md](trellis-api-efcore.md) — `SaveChangesResultAsync`, `MaybePropertyMapping`, `EfRepositoryBase<>`
+  - [trellis-api-efcore.md](trellis-api-efcore.md) — `SaveChangesResultAsync`, `MaybePropertyMapping`, `RepositoryBase<TAggregate,TId>`
   - [trellis-api-asp.md](trellis-api-asp.md) — `ToHttpResponse`, `HttpResponseOptionsBuilder<T>`, `AddTrellisAsp`, `AsActionResult`
   - [trellis-api-http.md](trellis-api-http.md) — `ToResultAsync`, `ReadJsonAsync`, `ReadJsonOrNoneOn404Async`
   - [trellis-api-authorization.md](trellis-api-authorization.md) — `IActorProvider`, `IAuthorize`, `IAuthorizeResource<>`
@@ -24,7 +24,7 @@ audience: [llm]
   - [trellis-api-statemachine.md](trellis-api-statemachine.md) — `FireResult`, `LazyStateMachine<,>`
   - [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — `Should().Be(...)`, `UnwrapError()`
   - [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md) — `WebApplicationFactoryExtensions`, `.http` replay helpers
-  - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`–`TRLS021`, `TrellisDiagnosticIds`
+  - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`-`TRLS039`, `TrellisDiagnosticIds`
 
 ## How to read these recipes
 
@@ -42,6 +42,24 @@ Conventions used throughout:
 - `Result.Ok` / `Result.Fail` are *the* construction APIs. `default(Result<T>)` is a typed failure; do not rely on it as success.
 - Every async pipeline uses `*Async` extensions; mixing sync chain methods with `Task<Result<T>>` triggers `TRLS009`.
 - Examples reference an `OrderId : RequiredGuid<OrderId>` value object and an `Order` aggregate. Substitute your own types without changing the structure.
+
+## LLM preflight: load the smallest correct reference set
+
+Before writing Trellis code, choose the task in the lookup table below, then load only the package references needed for that task. The cookbook gives the end-to-end recipe; the package references are the source of truth for exact signatures, overloads, ordering, and edge-case behavior.
+
+| If you are changing... | Load these references before coding | Why |
+|---|---|---|
+| Result, Maybe, errors, value-object bases, aggregates, specifications, pagination | `trellis-api-cookbook.md`, `trellis-api-core.md` | Core owns the ROP primitives and DDD base types used by every package. |
+| ASP.NET endpoints, controllers, response mapping, ETags, Prefer, ranges, actor providers | `trellis-api-cookbook.md`, `trellis-api-asp.md`, `trellis-api-core.md`; add `trellis-api-mediator.md` when endpoints send messages | `ToHttpResponse` and scalar validation are ASP-owned, while handlers and result shapes come from Core/Mediator. |
+| Mediator handlers, pipeline behaviors, validation, authorization, domain events | `trellis-api-cookbook.md`, `trellis-api-mediator.md`, `trellis-api-core.md`; add `trellis-api-efcore.md` for unit-of-work and `trellis-api-authorization.md` for resource guards | Pipeline ordering and opt-in behaviors are cross-package; missing one reference usually creates a registration-order bug. |
+| EF Core persistence, repositories, unit of work, `Maybe<T>` queries, `[OwnedEntity]` | `trellis-api-cookbook.md`, `trellis-api-efcore.md`, `trellis-api-core.md`; add `trellis-api-mediator.md` when commits happen through handlers | EF owns mapping/interceptors; Mediator owns when command commits run. |
+| FluentValidation integration | `trellis-api-cookbook.md`, `trellis-api-fluentvalidation.md`, `trellis-api-mediator.md` | FluentValidation plugs into `ValidationBehavior` through `IMessageValidator<TMessage>`; it is not a separate pipeline behavior. |
+| Composition-root helpers (`AddTrellis`, `UseXxx`) | `trellis-api-cookbook.md`, `trellis-api-servicedefaults.md`, plus every package reference for selected modules | `TrellisServiceBuilder` preserves canonical order but does not register app-owned services like `DbContext` or Mediator handlers. |
+| HTTP client adapters | `trellis-api-cookbook.md`, `trellis-api-http.md`, `trellis-api-core.md` | The HTTP package maps upstream responses into Core `Result<T>` / `Maybe<T>` shapes. |
+| Tests | `trellis-api-testing-reference.md`; add `trellis-api-testing-aspnetcore.md` for `WebApplicationFactory` or `.http` replay | Unit/helper assertions and ASP integration helpers live in separate test packages. |
+| Analyzer diagnostics | `trellis-api-analyzers.md`, then the package reference named by the diagnostic category | Analyzer docs explain the warning; the package reference gives the canonical API to use instead. |
+
+Measurable completion check for generated code: every Trellis method call should be traceable to a loaded package reference, every selected integration module should be wired in the documented order, and every public API or behavior change should update the matching package reference plus this cookbook when it affects a cross-package recipe.
 
 Known non-APIs and corrected assumptions:
 
@@ -548,12 +566,11 @@ public sealed class OverdueOrderSpecification(DateTime asOf) : Specification<Ord
 {
     private readonly DateTime _threshold = asOf.AddDays(-7);
 
-    // HasValue gates Value so the compiled lambda short-circuits on None for
-    // FakeRepository tests; the interceptor rewrites both halves to EF.Property.
+    // GetValueOrDefault keeps the same predicate safe in FakeRepository and EF.
+    // DateTime.MaxValue means "None is never overdue".
     public override Expression<Func<Order, bool>> ToExpression() =>
         o => o.Status == OrderStatus.Submitted
-             && o.SubmittedAt.HasValue
-             && o.SubmittedAt.Value < _threshold;
+             && o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < _threshold;
 }
 
 // Repository / DbContext usage — the spec composes through IQueryable.Where.
@@ -562,13 +579,14 @@ var overdue = await context.Orders
     .ToListAsync(ct);
 ```
 
-**Why this works in both EF and `FakeRepository<T, TId>`** — the `HasValue && Value` idiom is C# `AndAlso`, which short-circuits in the compiled `Func<Order, bool>` that `FakeRepository` evaluates in memory: `Value` never executes when the property is `None`, so no `InvalidOperationException`. In EF, the interceptor rewrites the entire predicate to `... AND "_submittedAt" IS NOT NULL AND "_submittedAt" < @threshold` so the same expression translates faithfully to SQL. **One Specification, one predicate, identical semantics in production and in tests.**
+**Why this works in both EF and `FakeRepository<T, TId>`** — the compiled `Func<Order, bool>` that `FakeRepository` evaluates in memory uses the supplied `DateTime.MaxValue` sentinel for `None`, so absent dates never match the overdue predicate and no throwing `.Value` accessor is involved. In EF, the interceptor rewrites `GetValueOrDefault(DateTime.MaxValue)` to the mapped storage member plus SQL fallback semantics, so the same expression translates faithfully to SQL. **One Specification, one predicate, identical semantics in production and in tests.**
 
 ```csharp
-// Equivalent alternative — pick whichever reads better for your team.
+// Direct guard alternative — keep the HasValue && Value guard as one parenthesized subexpression.
+// For longer predicates, the sentinel form above is easier for analyzers and reviewers.
 public override Expression<Func<Order, bool>> ToExpression() =>
     o => o.Status == OrderStatus.Submitted
-         && o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < _threshold;
+         && (o.SubmittedAt.HasValue && o.SubmittedAt.Value < _threshold);
 ```
 
 > **Prerequisite.** The interceptor only runs when the `DbContext` is configured with `optionsBuilder.AddTrellisInterceptors()`. Without it, EF Core sees `Maybe<T>` as an unmapped CLR type and either drops the predicate silently or fails translation — while the `FakeRepository` tests continue to pass. This is the failure mode that creates "fake says yes, production says no". Always wire interceptors in `AddDbContext`. See [Recipe 15](#recipe-15--specifications-with-maybet-the-fakereal-divergence-trap) for the complete spec walkthrough.
@@ -1165,17 +1183,16 @@ public sealed class OverdueOrderSpecification : Specification<Order>
 
     public override Expression<Func<Order, bool>> ToExpression() =>
         o => o.Status == OrderStatus.Submitted
-             && o.SubmittedAt.HasValue
-             && o.SubmittedAt.Value < _threshold;
+             && o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < _threshold;
 }
 ```
 
 **Why this expression is safe in both worlds.**
 
-| Path | What runs | Why `.Value` is safe |
+| Path | What runs | Why it is safe |
 |------|-----------|---------------------|
-| EF Core production | `MaybeQueryInterceptor` (registered via `AddTrellisInterceptors()`) rewrites `o.SubmittedAt.HasValue` → `EF.Property<DateTime?>(o, "_submittedAt") IS NOT NULL` and `o.SubmittedAt.Value` → `EF.Property<DateTime?>(o, "_submittedAt")`. The whole predicate translates to one SQL `WHERE` clause. | The CLR `.Value` accessor never executes — the interceptor strips it before EF Core compiles the query. |
-| `FakeRepository<Order, OrderId>.WhereAsync(spec.ToExpression().Compile())` | The expression compiles to `Func<Order, bool>` and is evaluated per element. C# `&&` short-circuits — when `HasValue` is `false`, `.Value` is never called. | C# `AndAlso` semantics on the compiled delegate. |
+| EF Core production | `MaybeQueryInterceptor` (registered via `AddTrellisInterceptors()`) rewrites `o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue)` to the mapped storage member plus SQL fallback semantics. The whole predicate translates to one SQL `WHERE` clause. | The CLR `Maybe<T>` property is not evaluated by EF; the interceptor targets the generated storage member. |
+| `FakeRepository<Order, OrderId>.WhereAsync(spec.ToExpression().Compile())` | The expression compiles to `Func<Order, bool>` and is evaluated per element. `None` becomes `DateTime.MaxValue`, which cannot be older than the threshold. | No throwing `.Value` accessor is involved, and the sentinel preserves the intended domain meaning. |
 
 **Anti-pattern → fix.**
 

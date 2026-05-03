@@ -24,7 +24,7 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 | Order an `IQueryable<T>` by a `Maybe<TInner>` property | `OrderByMaybe` / `OrderByMaybeDescending` / `ThenByMaybe` / `ThenByMaybeDescending` | [`MaybeQueryableExtensions`](#maybequeryableextensions) |
 | Make `Maybe<T>.GetValueOrDefault(d)` and similar expressions translate in EF queries (alternative to the helpers above when you must write a raw expression) | Register `AddTrellisInterceptors()` on the `DbContextOptionsBuilder`. The `MaybeQueryInterceptor` rewrites supported `Maybe<T>` calls to SQL. Prefer the `WhereXxx` helpers above when available. | [`DbContextOptionsBuilderExtensions`](#dbcontextoptionsbuilderextensions), [`MaybeQueryInterceptor`](#maybequeryinterceptor) |
 | Index a `Maybe<T>` property (avoids TRLS016 by mapping to the storage member) | `entityTypeBuilder.HasTrellisIndex(x => x.M)` (or composite `x => new { x.M, x.Other }`) | [`MaybeEntityTypeBuilderExtensions`](#maybeentitytypebuilderextensions) |
-| Save changes and get a `Result<int>` / `Result` instead of throwing | `db.SaveChangesResultAsync()` / `db.SaveChangesResultUnitAsync()` (analyzer TRLS015 enforces in non-UoW contexts) | [`DbContextExtensions`](#dbcontextextensions) |
+| Save changes and get a `Result<int>` / `Result<Unit>` instead of throwing | `db.SaveChangesResultAsync()` / `db.SaveChangesResultUnitAsync()` (analyzer TRLS015 enforces in non-UoW contexts) | [`DbContextExtensions`](#dbcontextextensions) |
 | Update a `Maybe<T>` property via EF Core `ExecuteUpdate` | `MaybeUpdateExtensions.SetMaybeValue(...)` (set Some) / `SetMaybeNone(...)` (clear) | [`MaybeUpdateExtensions`](#maybeupdateextensions) |
 | Mark a composite value object as EF-owned (replaces `OwnsOne`/`OwnsMany` boilerplate) | `[OwnedEntity]` on the value-object class. Init-only setters are flagged by TRLS022 — use `{ get; private set; }`. | [`OwnedEntityAttribute`](#ownedentityattribute) |
 | Wire Trellis EF conventions in `ConfigureConventions` (preferred — compile-time, no reflection) | `configurationBuilder.ApplyTrellisConventionsFor<TContext>()` (source-generated) | [`GeneratedTrellisConventions`](#generatedtrellisconventions-source-generated) |
@@ -42,6 +42,19 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 - For EF `IQueryable` predicates over `Maybe<T>`, prefer `MaybeQueryableExtensions.WhereXxx` helpers over sentinel `GetValueOrDefault(...)` expressions when there is a matching helper.
 - Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes only; the mediator transaction behavior commits.
 - `[OwnedEntity]` classes should be `partial` and use `{ get; private set; }` for EF-owned properties.
+
+### `Maybe<T>` query shape decision table
+
+Use this table before writing predicates over `Maybe<T>` so fake repositories, EF SQL translation, and analyzers agree.
+
+| Code location | Preferred shape | Required setup / caveat |
+|---|---|---|
+| Reusable `Specification<T>.ToExpression()` used by both EF and `FakeRepository<T,TId>` | Use a natural expression that does not duplicate fake-only logic, usually `x.M.GetValueOrDefault(sentinel) < value` or a parenthesized immediate guard `(x.M.HasValue && x.M.Value < value)`. | EF translation requires `ApplyTrellisConventions(...)` or `ApplyTrellisConventionsFor<TContext>()` plus `optionsBuilder.AddTrellisInterceptors()`. |
+| Ad-hoc EF `IQueryable<T>` filtering or ordering | Prefer `WhereHasValue`, `WhereNone`, `WhereEquals`, `WhereLessThan`, `WhereGreaterThanOrEqual`, `OrderByMaybe`, etc. | These helpers target the mapped storage member directly and do not require the `MaybeQueryInterceptor` for that specific predicate. |
+| Projection after filtering for presence | Filter first with `.Where(x => x.M.HasValue)` or `.WhereHasValue(x => x.M)`, then project the value. | This is the shape TRLS013 can recognize; projecting `.Value` before a presence filter is unsafe. |
+| `ExecuteUpdate` over `Maybe<T>` | Use `SetMaybeValue(...)` or `SetMaybeNone(...)`. | Composite owned `Maybe<T>` values are not supported by the scalar update helpers. |
+
+Never write a different predicate for `FakeRepository` than for EF. If a reusable concept matters to the domain, put it in a `Specification<T>` and run the same expression in both paths.
 
 ## Types
 
