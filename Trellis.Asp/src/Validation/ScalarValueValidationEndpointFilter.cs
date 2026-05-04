@@ -39,7 +39,7 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
         if (validationError is not null)
         {
             var dictionary = validationError.Fields.Items
-                .GroupBy(fv => fv.Field.Path.TrimStart('/'))
+                .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path))
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
             return Results.ValidationProblem(dictionary);
         }

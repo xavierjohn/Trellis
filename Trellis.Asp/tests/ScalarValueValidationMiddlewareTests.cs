@@ -467,7 +467,7 @@ public class ScalarValueValidationMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+        problem.GetProperty("errors").GetProperty(string.Empty)[0].GetString()
             .Should().Be("The request was invalid.");
     }
 
@@ -515,7 +515,7 @@ public class ScalarValueValidationMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+        problem.GetProperty("errors").GetProperty(string.Empty)[0].GetString()
             .Should().Be("The request body contains invalid JSON.");
     }
 
@@ -537,7 +537,7 @@ public class ScalarValueValidationMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        var errorMessage = problem.GetProperty("errors").GetProperty("$")[0].GetString()!;
+        var errorMessage = problem.GetProperty("errors").GetProperty(string.Empty)[0].GetString()!;
         errorMessage.Should().NotContain("System.Int32",
             "internal type names from JsonException should not be exposed to clients");
     }
@@ -566,8 +566,9 @@ public class ScalarValueValidationMiddlewareTests
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
         var errors = problem.GetProperty("errors");
         // No JSON path was set on the exception (STJ would normally fill it during deserialization),
-        // so the middleware falls back to the "$" key — but the message MUST come from the exception.
-        errors.GetProperty("$")[0].GetString()
+        // so the middleware falls back to the empty-string MVC root key — but the message MUST
+        // come from the exception.
+        errors.GetProperty(string.Empty)[0].GetString()
             .Should().Be("Amount cannot be negative.");
     }
 
@@ -589,7 +590,7 @@ public class ScalarValueValidationMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+        problem.GetProperty("errors").GetProperty(string.Empty)[0].GetString()
             .Should().Be("The request was invalid.");
     }
 
@@ -609,7 +610,7 @@ public class ScalarValueValidationMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+        problem.GetProperty("errors").GetProperty(string.Empty)[0].GetString()
             .Should().Be("The request was invalid.", "should not leak ex.Message to clients");
     }
 
@@ -629,7 +630,7 @@ public class ScalarValueValidationMiddlewareTests
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadResponseBodyAsync(context);
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+        problem.GetProperty("errors").GetProperty(string.Empty)[0].GetString()
             .Should().Be("The request was invalid.", "should not leak ex.Message to clients");
     }
 
@@ -726,7 +727,7 @@ public class ScalarValueValidationMiddlewareTests
         body.Should().NotContain("binding detail", "internal details should not be exposed");
 
         var problem = JsonSerializer.Deserialize<JsonElement>(body);
-        problem.GetProperty("errors").GetProperty("$")[0].GetString()
+        problem.GetProperty("errors").GetProperty(string.Empty)[0].GetString()
             .Should().Be("The request was invalid.");
     }
 

@@ -22,7 +22,7 @@ internal static class ModelStateExtensions
         if (error is Error.UnprocessableContent unprocessable && unprocessable.Fields.Items.Length > 0)
         {
             foreach (var fieldViolation in unprocessable.Fields)
-                modelState.AddModelError(fieldViolation.Field.Path.TrimStart('/'), fieldViolation.Detail ?? fieldViolation.ReasonCode);
+                modelState.AddModelError(JsonPointerToMvc.Translate(fieldViolation.Field.Path), fieldViolation.Detail ?? fieldViolation.ReasonCode);
         }
         else
         {

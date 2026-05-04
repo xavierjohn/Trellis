@@ -17,8 +17,14 @@ using Trellis.Showcase.MinimalApi.Endpoints;
 /// <para>
 /// Validates that the unified <c>ValidationBehavior</c> composes <c>IValidate</c> + the
 /// FluentValidation adapter on the same message and aggregates every violation into one
-/// 422 response, with FluentValidation property names normalized to RFC 6901 JSON Pointers
-/// (nested <c>/Metadata/Reference</c>, indexer <c>/Lines/0/Memo</c>).
+/// 422 response. Internally, FluentValidation property names (e.g. <c>"Metadata.Reference"</c>,
+/// <c>"Lines[0].Memo"</c>) are normalized to RFC 6901 JSON Pointers
+/// (<c>/Metadata/Reference</c>, <c>/Lines/0/Memo</c>) and stored on
+/// <see cref="FieldViolation"/>. The ASP boundary then translates those pointers into the
+/// dot+bracket convention used by ASP.NET Core's default <c>ValidationProblemDetails</c>
+/// (<c>Metadata.Reference</c>, <c>Lines[0].Memo</c>) for the wire <c>errors</c> dict, so
+/// React form libraries (react-hook-form, Formik) and OpenAPI codegen consumers can lookup
+/// errors by the same field name they use client-side.
 /// </para>
 /// </summary>
 public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFactory<Program>>
@@ -72,7 +78,7 @@ public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFac
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
         var body = await response.Content.ReadAsStringAsync(Ct);
-        body.Should().Contain("Lines/0/ToAccountId");
+        body.Should().Contain("Lines[0].ToAccountId");
         body.Should().Contain("A line may not target the source account.");
     }
 
@@ -91,13 +97,15 @@ public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFac
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
         var body = await response.Content.ReadAsStringAsync(Ct);
 
-        // Nested property: FluentValidation reports "Metadata.Reference" → normalized to RFC 6901 segments.
-        body.Should().Contain("Metadata/Reference");
-        // Indexer property: FluentValidation reports "Lines[0].Memo" → normalized to RFC 6901 segments.
-        body.Should().Contain("Lines/0/Memo");
-        // Confirm the dotted/bracketed raw forms did NOT leak through.
-        body.Should().NotContain("Metadata.Reference");
-        body.Should().NotContain("Lines[0].Memo");
+        // Nested property: FluentValidation reports "Metadata.Reference" → adapter normalizes to
+        // RFC 6901 pointer "/Metadata/Reference" → ASP wire emits MVC convention "Metadata.Reference".
+        body.Should().Contain("Metadata.Reference");
+        // Indexer property: FluentValidation reports "Lines[0].Memo" → adapter normalizes to
+        // "/Lines/0/Memo" → ASP wire emits MVC convention "Lines[0].Memo".
+        body.Should().Contain("Lines[0].Memo");
+        // Confirm the JSON Pointer slash form did NOT leak through to the wire.
+        body.Should().NotContain("Metadata/Reference");
+        body.Should().NotContain("Lines/0/Memo");
     }
 
     [Fact]
@@ -117,12 +125,12 @@ public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFac
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
         var body = await response.Content.ReadAsStringAsync(Ct);
 
-        // From IValidate
-        body.Should().Contain("Lines/0/ToAccountId");
+        // From IValidate (uses InputPointer "/Lines/0/ToAccountId" → wire "Lines[0].ToAccountId")
+        body.Should().Contain("Lines[0].ToAccountId");
         body.Should().Contain("A line may not target the source account.");
-        // From FluentValidation, normalized to JSON Pointer segments
-        body.Should().Contain("Metadata/Reference");
-        body.Should().Contain("Lines/0/Memo");
+        // From FluentValidation, normalized through "/Metadata/Reference" / "/Lines/0/Memo" then translated to MVC convention.
+        body.Should().Contain("Metadata.Reference");
+        body.Should().Contain("Lines[0].Memo");
     }
 
     [Fact]
