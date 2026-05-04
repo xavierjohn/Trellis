@@ -45,14 +45,16 @@ public static class ValidationErrorsContext
 
     /// <summary>
     /// Gets or sets the current property name being deserialized.
-    /// Used by ValidatingJsonConverter to determine the field name for validation errors.
+    /// Used by ValidatingJsonConverter (reflection mode) and AOT-generated converters
+    /// to determine the field name for validation errors.
     /// </summary>
     /// <remarks>
-    /// This property is set by the property-aware converter wrapper during JSON deserialization
-    /// and read by the validating converter when creating validation errors.
-    /// Using AsyncLocal ensures thread-safety and proper isolation across concurrent requests.
+    /// In reflection mode, the property name is set by <c>PropertyNameAwareConverter&lt;TInner, TValue&gt;</c>
+    /// during JSON deserialization. In AOT mode, generated converters read this property and fall back
+    /// to a camel-cased type name when no scope is active. Using AsyncLocal ensures thread-safety
+    /// and proper isolation across concurrent requests.
     /// </remarks>
-    internal static string? CurrentPropertyName
+    public static string? CurrentPropertyName
     {
         get => s_currentPropertyName.Value;
         set => s_currentPropertyName.Value = value;
@@ -80,9 +82,11 @@ public static class ValidationErrorsContext
     /// <param name="fieldName">The name of the field that failed validation.</param>
     /// <param name="errorMessage">The validation error message.</param>
     /// <remarks>
-    /// If no scope is active, this method is a no-op.
+    /// If no scope is active, this method is a no-op. Called by the framework's reflection-mode
+    /// converters and by AOT-generated scalar value converters to surface deserialization
+    /// failures as 422 responses via <see cref="ScalarValueValidationMiddleware"/>.
     /// </remarks>
-    internal static void AddError(string fieldName, string errorMessage) =>
+    public static void AddError(string fieldName, string errorMessage) =>
         s_current.Value?.AddError(fieldName, errorMessage);
 
     /// <summary>
@@ -95,10 +99,12 @@ public static class ValidationErrorsContext
     /// The merge preserves each field violation's full structure — including its
     /// <see cref="FieldViolation.ReasonCode"/>, <see cref="FieldViolation.Args"/>,
     /// and <see cref="FieldViolation.Detail"/> — and also preserves any top-level
-    /// <see cref="Error.UnprocessableContent.Rules"/> entries.
+    /// <see cref="Error.UnprocessableContent.Rules"/> entries. Used by the framework's
+    /// reflection-mode converters and by AOT-generated scalar value converters to surface
+    /// rich, structured validation failures.
     /// </para>
     /// </remarks>
-    internal static void AddError(Error.UnprocessableContent unprocessableContent) =>
+    public static void AddError(Error.UnprocessableContent unprocessableContent) =>
         s_current.Value?.AddError(unprocessableContent);
 
     /// <summary>

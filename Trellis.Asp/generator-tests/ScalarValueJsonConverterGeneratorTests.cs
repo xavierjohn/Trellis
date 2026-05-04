@@ -191,13 +191,192 @@ public class ScalarValueJsonConverterGeneratorTests
     }
 
     /// <summary>
-    /// Generated converters must never call reflection-based <c>JsonSerializer.Deserialize</c>
-    /// or <c>JsonSerializer.Serialize</c> overloads — those are annotated
-    /// <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and produce
-    /// IL2026/IL3050 under <c>PublishAot=true</c>. Mixed fixture (one supported +
-    /// one unsupported primitive) verifies the unsupported type is skipped while the
-    /// supported type still generates an AOT-safe converter. See issue #413.
+    /// Regression guard for inspection finding M-2: the AOT-generated converter must integrate
+    /// with <c>ValidationErrorsContext</c> so semantic validation failures surface as 422
+    /// errors instead of being silently swallowed to <c>null</c>. Match runtime behavior
+    /// bit-for-bit with <c>ScalarValueJsonConverterBase.Read</c>.
     /// </summary>
+    [Fact]
+    public void Generated_Converter_Reads_Field_Name_From_ValidationErrorsContext()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+        var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
+
+        converter.Should().Contain("ValidationErrorsContext.CurrentPropertyName",
+            "M-2: generated Read must consult ValidationErrorsContext for the property name to mirror reflection-mode behavior");
+    }
+
+    [Fact]
+    public void Generated_Converter_Passes_NonNull_FieldName_To_TryCreate()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+        var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
+
+        converter.Should().NotContain("TryCreate(primitiveValue, null)",
+            "M-2: TryCreate must receive the resolved fieldName, not a literal null, so failures carry an actionable field reference");
+        converter.Should().Contain("TryCreate(primitiveValue, fieldName",
+            "M-2: TryCreate must receive the resolved fieldName so the resulting Error.UnprocessableContent points at the right property");
+    }
+
+    [Fact]
+    public void Generated_Converter_Records_Validation_Failure_In_ValidationErrorsContext()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+        var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
+
+        converter.Should().Contain("ValidationErrorsContext.AddError",
+            "M-2: validation failures must be reported via ValidationErrorsContext so the request middleware can surface a 422 response");
+    }
+
+    [Fact]
+    public void Generated_Converter_Falls_Back_To_Camel_Cased_Type_Name_When_PropertyName_Missing()
+    {
+        // AOT consumers that don't wire up the property-name TypeInfoResolver modifier (which
+        // is reflection-based) still get a useful field reference in the validation error,
+        // matching ScalarValueJsonConverterBase.GetDefaultFieldName().
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+        var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
+
+        converter.Should().Contain("\"orderId\"",
+            "M-2: the generated default field name must be the camel-cased simple type name to match ScalarValueJsonConverterBase.GetDefaultFieldName()");
+    }
+
+    /// <summary>
+    /// Regression guard for inspection finding M-2 (acronym camel-case parity): the AOT-generator
+    /// must mirror <c>JsonNamingPolicy.CamelCase.ConvertName</c> bit-for-bit, including the
+    /// acronym-block rule (<c>SKU → "sku"</c>, <c>URLValue → "urlValue"</c>,
+    /// <c>IPAddress → "ipAddress"</c>, <c>XMLDocument → "xmlDocument"</c>). The naive
+    /// "lowercase-first-character-only" implementation produces <c>"sKU"</c>/<c>"uRLValue"</c>
+    /// /<c>"iPAddress"</c> and silently diverges from reflection mode for acronym-leading types.
+    /// </summary>
+    [Theory]
+    [InlineData("SKU", "sku")]
+    [InlineData("URLValue", "urlValue")]
+    [InlineData("IPAddress", "ipAddress")]
+    [InlineData("XMLDocument", "xmlDocument")]
+    public void Generated_Converter_Camel_Cases_Acronym_Type_Names_Like_JsonNamingPolicy_CamelCase(
+        string typeName,
+        string expectedCamelCase)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var source = $$"""
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class {{typeName}} : RequiredString<{{typeName}}>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+        var converter = generatedSources.Should().ContainSingle(s => s.Contains($"{typeName}JsonConverter")).Subject;
+
+        converter.Should().Contain($"\"{expectedCamelCase}\"",
+            $"M-2: the generated default field name for '{typeName}' must be '{expectedCamelCase}' " +
+            "(the JsonNamingPolicy.CamelCase.ConvertName output) to match reflection-mode behavior");
+
+        var naive = char.ToLowerInvariant(typeName[0]) + typeName.Substring(1);
+        if (!string.Equals(naive, expectedCamelCase, StringComparison.Ordinal))
+        {
+            converter.Should().NotContain($"\"{naive}\"",
+                $"M-2: the naive lowercase-first-character form '{naive}' diverges from " +
+                "JsonNamingPolicy.CamelCase and must not appear in the generated source");
+        }
+    }
+
+    /// <summary>
+    /// Regression guard for inspection finding M-2 (primitive read failure parity): when the JSON
+    /// token has the wrong shape for the wrapped primitive (e.g. a number for a string VO, or a
+    /// non-Guid string for a Guid VO), the typed <c>Utf8JsonReader</c> getters throw
+    /// <c>FormatException</c>/<c>InvalidOperationException</c>. Reflection mode catches both via
+    /// <c>PrimitiveJsonReader.TryRead</c> and records a 422 instead of letting the exception escape
+    /// as a <c>JsonException</c>. The AOT generator must do the same; otherwise AOT consumers see
+    /// a 400/500 from the deserializer instead of the same 422 reflection-mode produces.
+    /// </summary>
+    [Fact]
+    public void Generated_Converter_Wraps_Primitive_Read_In_Try_Catch_For_FormatException_And_InvalidOperationException()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+        var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
+
+        converter.Should().Contain("FormatException",
+            "M-2: generated Read must catch FormatException so invalid tokens for the wrapped primitive surface as 422 instead of escaping as JsonException");
+        converter.Should().Contain("InvalidOperationException",
+            "M-2: generated Read must catch InvalidOperationException so invalid tokens for the wrapped primitive surface as 422 instead of escaping as JsonException");
+        converter.Should().Contain("is not a valid",
+            "M-2: generated Read must record the same 'is not a valid {Type}' error message that PrimitiveJsonReader.TryRead emits in reflection mode");
+    }
+
+     /// <summary>
+     /// Generated converters must never call reflection-based <c>JsonSerializer.Deserialize</c>
+     /// or <c>JsonSerializer.Serialize</c> overloads — those are annotated
+     /// <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and produce
+     /// IL2026/IL3050 under <c>PublishAot=true</c>. Mixed fixture (one supported +
+     /// one unsupported primitive) verifies the unsupported type is skipped while the
+     /// supported type still generates an AOT-safe converter. See issue #413.
+     /// </summary>
     [Fact]
     public void Unsupported_Primitive_Is_Skipped_And_No_Reflection_Based_JsonSerializer_Calls_Are_Emitted()
     {
@@ -386,6 +565,7 @@ public class ScalarValueJsonConverterGeneratorTests
             .Concat([
                 typeof(RequiredGuid<>).Assembly.Location,
                 typeof(ScalarValueObject<,>).Assembly.Location,
+                typeof(Trellis.Asp.ValidationErrorsContext).Assembly.Location,
                 typeof(System.Text.Json.JsonSerializer).Assembly.Location,
                 typeof(System.ComponentModel.DataAnnotations.StringLengthAttribute).Assembly.Location,
             ])

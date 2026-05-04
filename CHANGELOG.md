@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 `ResponseFailureWriter` now emits a `WWW-Authenticate` header for every `AuthChallenge` carried on `Error.Unauthorized.Challenges`, completing the round-trip that `AuthChallenge` already documented. Format follows RFC 9110 §11.6.1: scheme alone for parameterless challenges (e.g. `Bearer`), or `<scheme> key1="value1", key2="value2"` for parameterized ones; values are always emitted as quoted-strings with `"` and `\` backslash-escaped per §5.6.4. Multiple challenges produce one `WWW-Authenticate` header per challenge (matching ASP.NET Core authentication handler convention). Emission is gated on the resolved status code being `401` — if `WithErrorMapping` promotes `Error.Unauthorized` to a non-401 status, the header is suppressed, mirroring the m-13 status-aware design used by ValidationProblem detail scrubbing. When `Challenges` is empty (the default `Error.Unauthorized()`), no header is written — the configured authentication handler retains full ownership of that flow.
 
+#### Trellis.Asp — public `ValidationErrorsContext` validation-recording surface
+
+`ValidationErrorsContext.AddError(string fieldName, string errorMessage)`, `ValidationErrorsContext.AddError(Error.UnprocessableContent unprocessableContent)`, and `ValidationErrorsContext.CurrentPropertyName` (get/set) are now `public` (previously `internal`). Promoting these formalizes the contract that AOT-generated `JsonConverter<TValue>`s in consumer assemblies depend on. The reflection-mode `ScalarValueJsonConverterBase<,,>` continues to use the same APIs unchanged. No behavioral change for any existing caller.
+
 ### Changed
 
 #### Trellis.Core — null-check consistency, default-uninit defensiveness, tracing perf docs
@@ -49,6 +53,23 @@ Every `Trellis.Asp` `ValidationProblem` emitter now produces field keys in the s
 - **Escape hatch:** for `ValidationProblem` payloads carrying `RuleViolation`s, `extensions["rules"][n].fields[]` preserves the raw JSON Pointer values (`/items/0/name`) so consumers needing path fidelity for those payloads still have it. This escape hatch is `RuleViolation`-scoped only; flat field-violation payloads (`Error.UnprocessableContent` from FluentValidation, model binding, deserialization, etc.) are MVC-shape on the wire.
 
 **Migration:** consumers keying off the slash form (`/items/0/name`) or the JSONPath form (`$.items[0].name`, `$['name']`) for `errors` map lookups must migrate to the MVC dot+bracket form (`items[0].name`, `name`). Code generators and form libraries that already target ASP.NET Core's `ValidationProblemDetails` shape (OpenAPI, react-hook-form, Formik) require no change. Producers that emitted `RuleViolation`s and want to keep raw JSON Pointers in their integration tests should assert against `extensions.rules[n].fields[]` rather than `errors`.
+
+#### Trellis.Asp — AOT-generated JSON converters integrate with `ValidationErrorsContext`
+
+The source-generated `JsonConverter<TValue>` emitted by `Trellis.AspSourceGenerator` for each scalar value object now mirrors the reflection-mode `ScalarValueJsonConverterBase<,,>.Read` bit-for-bit. Previously the generated `Read` called `TValue.TryCreate(primitiveValue, null)` and silently coerced any failure to `null`, so under AOT a deserialization that should have produced a 422 ProblemDetails just dropped the value — divergent from the reflection-mode behavior and breaking the framework's "one programming model" promise across the two modes.
+
+After this fix, the generated `Read`:
+
+- Resolves the field name from `ValidationErrorsContext.CurrentPropertyName`, falling back to a baked-in camel-cased type name when the AOT path has no `PropertyNameAwareConverter<,>` setting it. The fallback name is computed at generation time using a port of `JsonNamingPolicy.CamelCase.ConvertName`, so acronym-leading types (`SKU` → `"sku"`, `URLValue` → `"urlValue"`, `IPAddress` → `"ipAddress"`) match reflection mode bit-for-bit instead of the naive `"sKU"`/`"uRLValue"`/`"iPAddress"`. The result is emitted as a string literal, so there is no runtime cost.
+- Sets `HandleNull = true` so JSON `null` tokens reach `Read` and get recorded as `"{TypeName} cannot be null."` instead of bypassing the converter.
+- Wraps the typed `Utf8JsonReader` getter (`reader.GetGuid()`, `reader.GetInt32()`, etc.) in a `try`/`catch` for `FormatException`/`InvalidOperationException` matching `PrimitiveJsonReader.TryRead`; an invalid token like `"not-a-guid"` for a `Guid`-backed value object is now recorded as `'{fieldName}' is not a valid Guid.` via `ValidationErrorsContext.AddError` instead of escaping as a `JsonException` from the deserializer.
+- Calls `TryCreate(primitiveValue, fieldName)` so the failure carries the correct field reference.
+- Forwards `Error.UnprocessableContent` failures verbatim via `ValidationErrorsContext.AddError(unprocessableContent)` (preserving `ReasonCode` / `Args` / `Detail`); records other failures with the failure's `Detail` (or `"{TypeName} is invalid."` when `Detail` is blank) keyed under `fieldName`.
+- Returns `null` after recording, matching reflection-mode `OnValidationFailure`.
+
+Direct typed `Utf8JsonReader`/`Utf8JsonWriter` calls (`reader.GetGuid()`, `writer.WriteNumberValue(i)`, etc.) are preserved — no boxing or `JsonSerializer.Deserialize` reflection is introduced.
+
+**Migration:** AOT consumers that previously caught the `null` and built their own ProblemDetails should remove that workaround and let `ScalarValueValidationMiddleware` produce the 422 from `ValidationErrorsContext`. Reflection-mode consumers see no change.
 
 ### Added
 
