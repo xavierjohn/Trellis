@@ -122,4 +122,29 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         errors.Should().ContainKey("amount");
         errors.Should().NotContainKey("$.amount");
     }
+
+    [Fact]
+    public async Task plain_JsonException_with_populated_path_emits_MVC_dot_bracket_key()
+    {
+        // Common case: System.Text.Json's built-in failures (e.g. type conversion errors)
+        // populate JsonException.Path automatically. The middleware MUST translate that to MVC
+        // shape too — not only TrellisJsonValidationException paths.
+        var ctx = NewContext();
+        var inner = new JsonException("The JSON value could not be converted.");
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, "$.items[0].amount");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+        errors.Should().ContainKey("items[0].amount",
+            "plain STJ JsonException.Path must also be translated to MVC convention");
+        errors.Should().NotContainKey(string.Empty,
+            "with a populated JsonException.Path the error must not collapse to the root key");
+        errors["items[0].amount"][0].Should().Be("The request body contains invalid JSON.",
+            "the curated message stays generic for non-Trellis JsonExceptions");
+    }
 }

@@ -184,17 +184,22 @@ public sealed class ScalarValueValidationMiddleware
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
+        // System.Text.Json populates JsonException.Path automatically as the deserializer
+        // unwinds (e.g. "$.items[0].amount"). Pull it from any JsonException — both the
+        // built-in failures and the TrellisJsonValidationException subclass — so the wire-key
+        // shape is consistent regardless of which converter raised the error.
+        var rawPath = (ex.InnerException as JsonException)?.Path;
+
         // Surface the inner exception's message ONLY for TrellisJsonValidationException, which is
         // the dedicated marker thrown by Trellis converters with curated, client-safe messages
         // (e.g. Money: "Amount cannot be negative"). Plain JsonException keeps the generic message
         // because System.Text.Json's built-in errors can include internal type names.
-        var (rawPath, message) = ex.InnerException is Trellis.TrellisJsonValidationException tjx
-            ? (tjx.Path, tjx.Message)
-            : (null, "The request body contains invalid JSON.");
+        var message = ex.InnerException is Trellis.TrellisJsonValidationException tjx
+            ? tjx.Message
+            : "The request body contains invalid JSON.";
 
-        // System.Text.Json reports the failing location via JSON Path (e.g. "$.items[0].amount").
-        // Translate to MVC dot+bracket convention so this 400 path shares the same wire-key shape
-        // as every other Trellis.Asp ValidationProblem emitter (ResponseFailureWriter, etc.).
+        // Translate JSON Path notation to MVC dot+bracket convention so this 400 path shares the
+        // same wire-key shape as every other Trellis.Asp ValidationProblem emitter.
         var key = JsonPathToMvcKey(rawPath);
 
         var errors = new Dictionary<string, string[]>
