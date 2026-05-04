@@ -147,4 +147,80 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         errors["items[0].amount"][0].Should().Be("The request body contains invalid JSON.",
             "the curated message stays generic for non-Trellis JsonExceptions");
     }
+
+    [Theory]
+    [InlineData("$['weird name']", "weird name")]
+    [InlineData("$['a.b']", "a.b")]
+    [InlineData("$['a/b']", "a/b")]
+    [InlineData("$['a[0]']", "a[0]")]
+    [InlineData("$.items[0]['weird name']", "items[0].weird name")]
+    [InlineData("$['a''b']", "a'b")]
+    [InlineData("$.foo['bar'].baz", "foo.bar.baz")]
+    [InlineData("$['outer']['inner']", "outer.inner")]
+    public async Task JsonException_with_bracket_quoted_property_segments_emits_MVC_key(
+        string jsonExceptionPath, string expectedMvcKey)
+    {
+        // STJ uses JSONPath bracket-quoted syntax for property names containing characters
+        // that aren't valid identifiers (space, dot, slash, bracket, etc.). Verified directly:
+        // JsonSerializer.Deserialize<Dictionary<string,int>>("{\"weird name\":\"x\"}")
+        //   throws JsonException with Path = "$['weird name']".
+        // The middleware MUST translate these to MVC convention so the wire shape stays
+        // consistent with JsonPointerToMvc.Translate output for equivalent field names.
+        var ctx = NewContext();
+        var inner = new JsonException("conversion failure");
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, jsonExceptionPath);
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+        errors.Should().ContainKey(expectedMvcKey,
+            $"path '{jsonExceptionPath}' should translate to MVC key '{expectedMvcKey}'");
+        errors.Should().NotContainKey(jsonExceptionPath,
+            "JSONPath bracket notation must not leak through to the wire");
+    }
+
+    [Fact]
+    public async Task real_STJ_deserialization_failure_with_dot_in_property_name_emits_MVC_property_key()
+    {
+        // Integration-style guard: don't rely on reflection-set Path values. Trigger an actual
+        // System.Text.Json deserialization failure on a property whose JSON name contains a dot
+        // (forces STJ to emit JSONPath bracket-quoted notation: $['a.b']) and assert the
+        // middleware's translator produces the bare property name on the wire.
+        const string payload = "{\"a.b\":\"not-a-number\"}";
+        using var doc = JsonDocument.Parse(payload);
+        JsonException? captured = null;
+        try
+        {
+            JsonSerializer.Deserialize<DotNamedModel>(payload);
+        }
+        catch (JsonException ex)
+        {
+            captured = ex;
+        }
+
+        captured.Should().NotBeNull("the deserialize call must throw a JsonException");
+        captured!.Path.Should().Be("$['a.b']",
+            "STJ should emit JSONPath bracket-quoted notation for property names containing '.'");
+
+        var ctx = NewContext();
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, captured);
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+        errors.Should().ContainKey("a.b",
+            "the bracket-quoted JSONPath segment must be unquoted to the bare property name");
+    }
+
+    private sealed class DotNamedModel
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("a.b")]
+        public int Value { get; set; }
+    }
 }

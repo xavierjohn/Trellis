@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -212,22 +213,102 @@ public sealed class ScalarValueValidationMiddleware
     }
 
     /// <summary>
-    /// Strips the JSON Path root marker so System.Text.Json's <see cref="JsonException.Path"/>
-    /// (e.g. <c>$.items[0].amount</c> or <c>$</c>) is rendered using the same MVC dot+bracket
-    /// shape as <see cref="JsonPointerToMvc"/>: top-level becomes <see cref="string.Empty"/>;
-    /// nested paths drop the leading <c>$.</c> (or <c>$</c> for indexer-only paths like
-    /// <c>$[0]</c>). Anything else is returned verbatim as a defensive fallback.
+    /// Translates System.Text.Json's <see cref="JsonException.Path"/> (JSONPath syntax) to
+    /// the MVC dot+bracket key shape used by every other Trellis.Asp <c>ValidationProblem</c>
+    /// emitter (see <see cref="JsonPointerToMvc"/>). This keeps the wire shape consistent
+    /// regardless of which layer produced the 400.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// STJ uses JSONPath: <c>$</c> for root, <c>$.foo.bar</c> for dot-property segments,
+    /// <c>$[0]</c> for array indices, and <c>$['weird name']</c> bracket-quoted notation
+    /// for property names containing characters that are not valid JSONPath identifiers
+    /// (space, dot, slash, bracket, single quote). Embedded single quotes are escaped by
+    /// doubling: <c>$['a''b']</c> represents the property <c>a'b</c>.
+    /// </para>
+    /// <para>
+    /// Mapping: drop the leading <c>$</c>; emit each subsequent segment as MVC produces it,
+    /// using bare property names joined with <c>.</c> and numeric indices as <c>[N]</c>.
+    /// Bracket-quoted property segments are unquoted and emitted as bare property segments
+    /// so the wire key stays consistent with <see cref="JsonPointerToMvc.Translate"/> output
+    /// for the equivalent JSON Pointer (single quotes are not part of MVC convention).
+    /// </para>
+    /// </remarks>
     private static string JsonPathToMvcKey(string? jsonExceptionPath)
     {
         if (string.IsNullOrEmpty(jsonExceptionPath) || jsonExceptionPath == "$")
             return string.Empty;
-        if (jsonExceptionPath.StartsWith("$.", StringComparison.Ordinal))
-            return jsonExceptionPath[2..];
-        if (jsonExceptionPath[0] == '$')
-            return jsonExceptionPath[1..];
 
-        return jsonExceptionPath;
+        if (jsonExceptionPath[0] != '$')
+            return jsonExceptionPath;
+
+        var sb = new StringBuilder(jsonExceptionPath.Length);
+        var i = 1;
+        while (i < jsonExceptionPath.Length)
+        {
+            var c = jsonExceptionPath[i];
+            if (c == '.')
+            {
+                i++;
+                var start = i;
+                while (i < jsonExceptionPath.Length
+                       && jsonExceptionPath[i] != '.'
+                       && jsonExceptionPath[i] != '[')
+                    i++;
+                if (i > start)
+                {
+                    if (sb.Length > 0) sb.Append('.');
+                    sb.Append(jsonExceptionPath, start, i - start);
+                }
+            }
+            else if (c == '[')
+            {
+                if (i + 1 < jsonExceptionPath.Length && jsonExceptionPath[i + 1] == '\'')
+                {
+                    i += 2;
+                    var inner = new StringBuilder();
+                    while (i < jsonExceptionPath.Length)
+                    {
+                        if (jsonExceptionPath[i] == '\'')
+                        {
+                            if (i + 1 < jsonExceptionPath.Length && jsonExceptionPath[i + 1] == '\'')
+                            {
+                                inner.Append('\'');
+                                i += 2;
+                            }
+                            else
+                            {
+                                i++;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            inner.Append(jsonExceptionPath[i]);
+                            i++;
+                        }
+                    }
+
+                    if (i < jsonExceptionPath.Length && jsonExceptionPath[i] == ']') i++;
+                    if (sb.Length > 0) sb.Append('.');
+                    sb.Append(inner);
+                }
+                else
+                {
+                    var start = i;
+                    while (i < jsonExceptionPath.Length && jsonExceptionPath[i] != ']') i++;
+                    if (i < jsonExceptionPath.Length) i++;
+                    sb.Append(jsonExceptionPath, start, i - start);
+                }
+            }
+            else
+            {
+                sb.Append(c);
+                i++;
+            }
+        }
+
+        return sb.ToString();
     }
 
 }

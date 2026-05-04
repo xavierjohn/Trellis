@@ -32,6 +32,17 @@ Documented the actual performance characteristics of `AddResultsInstrumentation`
 
 The new docs make the granularity guidance explicit: per-Result-extension spans add limited signal beyond the outer pipeline-behavior or HTTP-request span; for high-throughput services, instrument at the pipeline-behavior altitude (`Trellis.Mediator.TracingBehavior`) and reserve `AddResultsInstrumentation` for development/debugging or low-rate paths. Updated `ResultsTraceProviderBuilderExtensions.cs` xmldoc and the corresponding section in `trellis-api-core.md`.
 
+#### Trellis.Asp — `ValidationProblem` error key shape (breaking)
+
+Every `Trellis.Asp` `ValidationProblem` emitter now produces field keys in the same MVC dot+bracket convention used by ASP.NET Core's built-in `ValidationProblemDetails`, instead of leaking JSON Pointer or JSONPath syntax onto the wire. The on-the-wire `errors` map keys are now consistent regardless of which layer produced the 400 (model binding, scalar-value endpoint filter, FluentValidation adapter, business-rule violations, deserialization failure middleware).
+
+- **Before:** mixed shapes per emitter — JSON Pointer (`/items/0/name`), JSONPath (`$.items[0].amount`, `$['property with space']`), or `"$"` for the root.
+- **After:** uniform MVC convention — `items[0].name`, `items[0].amount`, `property with space`, and `""` for the root.
+- A new internal translator (`Trellis.Asp.JsonPointerToMvc.Translate`) is wired into every emitter; the `ScalarValueValidationMiddleware` deserialization path additionally translates `System.Text.Json`'s `JsonException.Path` (including bracket-quoted JSONPath segments such as `$['a.b']`, `$['a/b']`, `$.items[0]['weird name']`) to the same shape.
+- **Escape hatch:** for `ValidationProblem` payloads carrying `RuleViolation`s, `extensions["rules"][n].fields[]` preserves the raw JSON Pointer values (`/items/0/name`) so consumers needing path fidelity for those payloads still have it. This escape hatch is `RuleViolation`-scoped only; flat field-violation payloads (`Error.UnprocessableContent` from FluentValidation, model binding, deserialization, etc.) are MVC-shape on the wire.
+
+**Migration:** consumers keying off the slash form (`/items/0/name`) or the JSONPath form (`$.items[0].name`, `$['name']`) for `errors` map lookups must migrate to the MVC dot+bracket form (`items[0].name`, `name`). Code generators and form libraries that already target ASP.NET Core's `ValidationProblemDetails` shape (OpenAPI, react-hook-form, Formik) require no change. Producers that emitted `RuleViolation`s and want to keep raw JSON Pointers in their integration tests should assert against `extensions.rules[n].fields[]` rather than `errors`.
+
 ### Added
 
 #### Trellis.Mediator — Domain event dispatch
