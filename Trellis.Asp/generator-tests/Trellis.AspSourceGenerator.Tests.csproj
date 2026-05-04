@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\generator\Trellis.AspSourceGenerator.csproj" />
+    <ProjectReference Include="..\src\Trellis.Asp.csproj" />
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
   </ItemGroup>

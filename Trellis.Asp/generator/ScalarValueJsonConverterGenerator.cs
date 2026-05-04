@@ -72,8 +72,9 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
     /// using direct <c>Utf8JsonReader</c>/<c>Utf8JsonWriter</c> APIs (no reflection).
     /// </summary>
     /// <remarks>
-    /// Must be kept in sync with the case branches in <see cref="GenerateReadPrimitive"/>
-    /// and <see cref="GenerateWritePrimitive"/>. When a value object wraps a primitive
+    /// Must be kept in sync with the case branches in <see cref="GetTypedReaderCall"/>,
+    /// <see cref="GetPrimitiveCsName"/>, <see cref="GetPrimitiveFriendlyName"/>, and
+    /// <see cref="GenerateWritePrimitive"/>. When a value object wraps a primitive
     /// outside this set the generator emits TRLS039 and skips converter generation rather
     /// than falling back to <c>JsonSerializer.Deserialize</c>/<c>Serialize</c>, which are
     /// annotated <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and would
@@ -474,34 +475,93 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
     /// <summary>
     /// Generates a single JSON converter for a value object type.
     /// </summary>
+    /// <remarks>
+    /// The generated <c>Read</c> method mirrors <c>ScalarValueJsonConverterBase&lt;TValue?, TValue, TPrimitive&gt;</c>
+    /// from the reflection-mode runtime: it consults <c>ValidationErrorsContext.CurrentPropertyName</c>
+    /// for the property name, falls back to the camel-cased type name when no scope is active,
+    /// passes the resolved field name to <c>TryCreate</c>, and reports validation failures via
+    /// <c>ValidationErrorsContext.AddError</c> instead of silently coercing them to <c>null</c>.
+    /// Primitive-read failures (<c>FormatException</c>/<c>InvalidOperationException</c> from the
+    /// typed <c>Utf8JsonReader</c> getters) are caught and recorded the same way reflection mode
+    /// does via <c>PrimitiveJsonReader.TryRead</c>, so an invalid token like a non-Guid string for
+    /// a Guid VO produces a 422 instead of bubbling up as a <c>JsonException</c>.
+    /// This is the M-2 fix; without it, AOT consumers got <c>null</c> on validation failure
+    /// while reflection-mode consumers got a 422 — a divergence that broke the framework's
+    /// "one programming model" promise.
+    /// </remarks>
     private static void GenerateSingleConverter(StringBuilder sb, ScalarValueInfo vo)
     {
         var converterName = $"{vo.GeneratedTypeName}JsonConverter";
         var fullTypeName = vo.FullTypeName;
         var primitiveType = vo.PrimitiveType;
+        var defaultFieldName = ToCamelCase(vo.TypeName);
+        var primitiveFriendlyName = GetPrimitiveFriendlyName(primitiveType);
 
         sb.AppendLine($"/// <summary>");
         sb.AppendLine($"/// AOT-compatible JSON converter for <see cref=\"{fullTypeName}\"/>.");
         sb.AppendLine($"/// </summary>");
         sb.AppendLine($"internal sealed class {converterName} : JsonConverter<{fullTypeName}>");
         sb.AppendLine("{");
+        sb.AppendLine($"    private const string DefaultFieldName = \"{defaultFieldName}\";");
+        sb.AppendLine();
+        sb.AppendLine("    /// <summary>");
+        sb.AppendLine("    /// Tells System.Text.Json to call <see cref=\"Read\"/> even when the JSON token is <c>null</c>");
+        sb.AppendLine("    /// so a missing/null value can be reported via ValidationErrorsContext rather than bypassing the converter.");
+        sb.AppendLine("    /// </summary>");
+        sb.AppendLine("    public override bool HandleNull => true;");
+        sb.AppendLine();
 
         // Read method
         sb.AppendLine($"    public override {fullTypeName}? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)");
         sb.AppendLine("    {");
+        sb.AppendLine("        var fieldName = global::Trellis.Asp.ValidationErrorsContext.CurrentPropertyName ?? DefaultFieldName;");
+        sb.AppendLine();
         sb.AppendLine("        if (reader.TokenType == JsonTokenType.Null)");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddError(fieldName, \"{vo.TypeName} cannot be null.\");");
         sb.AppendLine("            return null;");
+        sb.AppendLine("        }");
         sb.AppendLine();
 
-        // Read the primitive value based on type
-        GenerateReadPrimitive(sb, primitiveType);
+        // Read the primitive via the local helper which mirrors
+        // PrimitiveJsonReader.TryRead — invalid tokens for the wrapped primitive
+        // (e.g. a non-Guid string for a Guid VO) are recorded as a validation error
+        // instead of escaping as a JsonException.
+        sb.AppendLine($"        if (!__TryReadPrimitive(ref reader, fieldName, out var primitiveValue))");
+        sb.AppendLine("            return null;");
+
+        if (PrimitiveCanBeNull(primitiveType))
+        {
+            sb.AppendLine();
+            sb.AppendLine("        if (primitiveValue is null)");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddError(fieldName, \"Cannot deserialize null to {vo.TypeName}\");");
+            sb.AppendLine("            return null;");
+            sb.AppendLine("        }");
+        }
 
         sb.AppendLine();
-        sb.AppendLine($"        var result = {fullTypeName}.TryCreate(primitiveValue, null);");
+        sb.AppendLine($"        var result = {fullTypeName}.TryCreate(primitiveValue, fieldName);");
         sb.AppendLine();
         sb.AppendLine($"        return result.Match<{fullTypeName}, {fullTypeName}?>(");
         sb.AppendLine("            onSuccess: v => v,");
-        sb.AppendLine("            onFailure: _ => null);");
+        sb.AppendLine("            onFailure: createError =>");
+        sb.AppendLine("            {");
+        sb.AppendLine("                if (createError is global::Trellis.Error.UnprocessableContent unprocessable)");
+        sb.AppendLine("                {");
+        sb.AppendLine("                    global::Trellis.Asp.ValidationErrorsContext.AddError(unprocessable);");
+        sb.AppendLine("                }");
+        sb.AppendLine("                else");
+        sb.AppendLine("                {");
+        sb.AppendLine("                    global::Trellis.Asp.ValidationErrorsContext.AddError(");
+        sb.AppendLine("                        fieldName,");
+        sb.AppendLine("                        string.IsNullOrWhiteSpace(createError.Detail)");
+        sb.AppendLine($"                            ? \"{vo.TypeName} is invalid.\"");
+        sb.AppendLine("                            : createError.Detail);");
+        sb.AppendLine("                }");
+        sb.AppendLine();
+        sb.AppendLine("                return null;");
+        sb.AppendLine("            });");
         sb.AppendLine("    }");
         sb.AppendLine();
 
@@ -519,63 +579,130 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         GenerateWritePrimitive(sb, primitiveType);
 
         sb.AppendLine("    }");
+        sb.AppendLine();
+
+        // Local-typed primitive-read helper. Hoisted into the converter so each closed-generic
+        // converter has its own non-generic reader (no boxing) and the try/catch lives outside
+        // the public Read method to keep the hot path readable.
+        sb.AppendLine($"    private static bool __TryReadPrimitive(ref Utf8JsonReader reader, string fieldName, out {GetPrimitiveCsName(primitiveType)} value)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        try");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            value = {GetTypedReaderCall(primitiveType)};");
+        sb.AppendLine("            return true;");
+        sb.AppendLine("        }");
+        sb.AppendLine("        catch (global::System.Exception ex) when (ex is global::System.FormatException || ex is global::System.InvalidOperationException)");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddError(fieldName, $\"'{{fieldName}}' is not a valid {primitiveFriendlyName}.\");");
+        sb.AppendLine($"            value = default({GetPrimitiveCsName(primitiveType)});");
+        sb.AppendLine("            return false;");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
         sb.AppendLine("}");
     }
 
     /// <summary>
-    /// Generates code to read a primitive value from JSON.
+    /// Returns true when the C# primitive type can hold <c>null</c> via the typed
+    /// <c>Utf8JsonReader</c> getter. Only <c>string?</c> is null-bearing in the supported set;
+    /// the value-type getters (<c>GetInt32</c>, <c>GetGuid</c>, etc.) cannot return <c>null</c>.
     /// </summary>
-    private static void GenerateReadPrimitive(StringBuilder sb, string primitiveType)
+    private static bool PrimitiveCanBeNull(string primitiveType) =>
+        string.Equals(primitiveType, "string", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Returns the friendly C#-keyword type name that matches <c>typeof(TPrimitive).Name</c>
+    /// from the reflection-mode error string, so AOT and reflection produce the same 422 detail.
+    /// </summary>
+    private static string GetPrimitiveFriendlyName(string primitiveType) => primitiveType switch
     {
-        switch (primitiveType)
-        {
-            case "string":
-                sb.AppendLine("        var primitiveValue = reader.GetString();");
-                break;
-            case "int":
-                sb.AppendLine("        var primitiveValue = reader.GetInt32();");
-                break;
-            case "long":
-                sb.AppendLine("        var primitiveValue = reader.GetInt64();");
-                break;
-            case "bool":
-                sb.AppendLine("        var primitiveValue = reader.GetBoolean();");
-                break;
-            case "double":
-                sb.AppendLine("        var primitiveValue = reader.GetDouble();");
-                break;
-            case "decimal":
-                sb.AppendLine("        var primitiveValue = reader.GetDecimal();");
-                break;
-            case "float":
-                sb.AppendLine("        var primitiveValue = reader.GetSingle();");
-                break;
-            case "short":
-                sb.AppendLine("        var primitiveValue = reader.GetInt16();");
-                break;
-            case "byte":
-                sb.AppendLine("        var primitiveValue = reader.GetByte();");
-                break;
-            case "System.Guid":
-            case "Guid":
-                sb.AppendLine("        var primitiveValue = reader.GetGuid();");
-                break;
-            case "System.DateTime":
-            case "DateTime":
-                sb.AppendLine("        var primitiveValue = reader.GetDateTime();");
-                break;
-            case "System.DateTimeOffset":
-            case "DateTimeOffset":
-                sb.AppendLine("        var primitiveValue = reader.GetDateTimeOffset();");
-                break;
-            default:
-                // Unsupported primitives are filtered out in Execute before reaching this
-                // method (see TRLS039). This branch must remain unreachable; the throw
-                // documents the contract and surfaces a clear runtime error if the filter
-                // is ever bypassed.
-                throw new InvalidOperationException(
-                    $"Unsupported primitive '{primitiveType}' reached GenerateReadPrimitive; should have been filtered upstream.");
-        }
+        "string" => "String",
+        "int" => "Int32",
+        "long" => "Int64",
+        "short" => "Int16",
+        "byte" => "Byte",
+        "bool" => "Boolean",
+        "float" => "Single",
+        "double" => "Double",
+        "decimal" => "Decimal",
+        "Guid" or "System.Guid" => "Guid",
+        "DateTime" or "System.DateTime" => "DateTime",
+        "DateTimeOffset" or "System.DateTimeOffset" => "DateTimeOffset",
+        _ => primitiveType,
+    };
+
+    /// <summary>
+    /// Returns the C# type name suitable for a local variable declaration. <c>string</c> is
+    /// declared nullable because <c>Utf8JsonReader.GetString()</c> has return type <c>string?</c>
+    /// (its API contract — for example, an actual <c>JsonTokenType.Null</c> token round-trips as
+    /// <c>null</c>). The generated <c>Read</c> already short-circuits on <c>JsonTokenType.Null</c>
+    /// before calling the typed reader, so under normal usage the value is non-null when the
+    /// token is <c>String</c>; the nullable local exists to match the API surface and to keep
+    /// the downstream <c>primitiveValue is null</c> guard in <see cref="GenerateSingleConverter"/>
+    /// well-typed without nullable-warning suppressions.
+    /// </summary>
+    private static string GetPrimitiveCsName(string primitiveType) => primitiveType switch
+    {
+        "string" => "string?",
+        "Guid" => "System.Guid",
+        "DateTime" => "System.DateTime",
+        "DateTimeOffset" => "System.DateTimeOffset",
+        _ => primitiveType,
+    };
+
+    /// <summary>
+    /// Returns the typed <c>Utf8JsonReader</c> getter call appropriate for the primitive.
+    /// </summary>
+    private static string GetTypedReaderCall(string primitiveType) => primitiveType switch
+    {
+        "string" => "reader.GetString()",
+        "int" => "reader.GetInt32()",
+        "long" => "reader.GetInt64()",
+        "short" => "reader.GetInt16()",
+        "byte" => "reader.GetByte()",
+        "bool" => "reader.GetBoolean()",
+        "float" => "reader.GetSingle()",
+        "double" => "reader.GetDouble()",
+        "decimal" => "reader.GetDecimal()",
+        "Guid" or "System.Guid" => "reader.GetGuid()",
+        "DateTime" or "System.DateTime" => "reader.GetDateTime()",
+        "DateTimeOffset" or "System.DateTimeOffset" => "reader.GetDateTimeOffset()",
+        _ => throw new InvalidOperationException(
+            $"Unsupported primitive '{primitiveType}' reached GetTypedReaderCall; should have been filtered upstream."),
+    };
+
+    /// <summary>
+    /// Camel-cases a simple type name to produce the default field reference used in
+    /// validation errors when no <c>ValidationErrorsContext.CurrentPropertyName</c> is set.
+    /// Mirrors <c>JsonNamingPolicy.CamelCase.ConvertName</c> bit-for-bit so the AOT and
+    /// reflection paths agree on the field key for acronym-leading types like
+    /// <c>SKU → "sku"</c>, <c>URLValue → "urlValue"</c>, <c>IPAddress → "ipAddress"</c>,
+    /// and <c>XMLDocument → "xmlDocument"</c>. The naive
+    /// "lowercase-first-character-only" approach the generator originally used produced
+    /// <c>"sKU"</c>/<c>"uRLValue"</c>/<c>"iPAddress"</c> and silently diverged from
+    /// reflection mode.
+    /// </summary>
+    private static string ToCamelCase(string typeName)
+    {
+        if (string.IsNullOrEmpty(typeName) || !char.IsUpper(typeName[0]))
+            return typeName;
+
+        // Find the run of consecutive uppercase characters at the start.
+        var runLength = 1;
+        while (runLength < typeName.Length && char.IsUpper(typeName[runLength]))
+            runLength++;
+
+        // All-uppercase string — lowercase the entire thing (e.g. "SKU" → "sku").
+        if (runLength == typeName.Length)
+            return typeName.ToLowerInvariant();
+
+        // Single leading uppercase — lowercase that one character (e.g. "OrderId" → "orderId").
+        if (runLength == 1)
+            return char.ToLowerInvariant(typeName[0]) + typeName.Substring(1);
+
+        // Acronym block followed by a non-uppercase character. STJ treats the LAST uppercase
+        // letter in the run as the start of the next "word" and lowercases all earlier ones
+        // (e.g. "URLValue" → "urlValue"; "XMLDocument" → "xmlDocument"; "IPAddress" → "ipAddress").
+        return typeName.Substring(0, runLength - 1).ToLowerInvariant() + typeName.Substring(runLength - 1);
     }
 
     /// <summary>
