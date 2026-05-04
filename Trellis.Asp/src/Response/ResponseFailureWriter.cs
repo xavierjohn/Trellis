@@ -23,7 +23,7 @@ internal static class ResponseFailureWriter
             && (unprocessable.Fields.Items.Length > 0 || unprocessable.Rules.Items.Length > 0))
         {
             var errors = unprocessable.Fields.Items
-                .GroupBy(fv => fv.Field.Path.TrimStart('/'))
+                .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path))
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
 
             var validationDetail = statusCode >= 500 ? "An internal error occurred." : unprocessable.Detail;

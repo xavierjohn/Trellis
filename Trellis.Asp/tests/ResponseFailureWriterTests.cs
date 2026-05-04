@@ -2,6 +2,7 @@
 
 using System.Collections.Immutable;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -166,5 +167,76 @@ public sealed class ResponseFailureWriterTests
         ctx.Response.Body.Position = 0;
         var body = await new StreamReader(ctx.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken);
         body.Should().Contain("One or more validation errors occurred.");
+    }
+
+    // ---------------------------------------------------------------------
+    // Bundle C / m-9 (#33): JSON Pointer field paths translated to MVC
+    // dot+bracket convention on the wire `errors` keys, matching ASP.NET
+    // Core's default ValidationProblemDetails shape (so OpenAPI codegen and
+    // React form libraries like react-hook-form / Formik can lookup
+    // setError(key, ...) directly without a slash→dot translation shim).
+    // RFC 6901 escapes (~1, ~0) are decoded so segments containing literal
+    // '/' or '~' appear correctly in the wire key.
+    // ---------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("/email", "email")]                       // single segment: bare (regression guard)
+    [InlineData("/customer/email", "customer.email")]     // nested object: dot
+    [InlineData("/items/0", "items[0]")]                  // object → array index: brackets
+    [InlineData("/items/0/name", "items[0].name")]        // object → array → object
+    [InlineData("/items/0/tags/3", "items[0].tags[3]")]   // mixed nesting
+    [InlineData("/0/name", "[0].name")]                   // root array index
+    [InlineData("/foo~1bar", "foo/bar")]                  // RFC 6901 ~1 unescape
+    [InlineData("/foo~0bar", "foo~bar")]                  // RFC 6901 ~0 unescape
+    public async Task UnprocessableContent_translates_pointer_to_MVC_dot_bracket(string pointerPath, string expectedKey)
+    {
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+            new FieldViolation(new InputPointer(pointerPath), "format", null, "must be valid"));
+        var r = Result.Fail<T>(new Error.UnprocessableContent(fields));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.Body.Position = 0;
+        using var body = await JsonDocument.ParseAsync(ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);
+        body.RootElement.TryGetProperty("errors", out var errors).Should().BeTrue();
+        errors.TryGetProperty(expectedKey, out _)
+            .Should().BeTrue($"expected MVC convention key '{expectedKey}' for pointer '{pointerPath}'");
+    }
+
+    [Fact]
+    public async Task UnprocessableContent_does_not_emit_JSON_Pointer_slash_form_on_the_wire()
+    {
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+            new FieldViolation(new InputPointer("/items/0/name"), "format", null, "must be valid"));
+        var r = Result.Fail<T>(new Error.UnprocessableContent(fields));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.Body.Position = 0;
+        var raw = await new StreamReader(ctx.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken);
+        raw.Should().Contain("items[0].name");
+        raw.Should().NotContain("items/0/name", "JSON Pointer slash form must not appear in the wire `errors` keys");
+    }
+
+    [Fact]
+    public async Task UnprocessableContent_aggregates_multiple_violations_for_same_pointer_under_one_MVC_key()
+    {
+        // Regression guard: two FieldViolations with the same pointer must aggregate into ONE
+        // wire `errors` key with an array of two messages — not two separate keys.
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+            new FieldViolation(new InputPointer("/items/0/name"), "required", null, "is required"),
+            new FieldViolation(new InputPointer("/items/0/name"), "format", null, "must be valid"));
+        var r = Result.Fail<T>(new Error.UnprocessableContent(fields));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.Body.Position = 0;
+        using var body = await JsonDocument.ParseAsync(ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);
+        var errors = body.RootElement.GetProperty("errors");
+        var messages = errors.GetProperty("items[0].name").EnumerateArray();
+        messages.Should().HaveCount(2);
     }
 }

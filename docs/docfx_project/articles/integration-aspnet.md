@@ -270,7 +270,7 @@ Content-Type: application/problem+json
 }
 ```
 
-The `errors` dictionary keys are each `FieldViolation.Field.Path` with the leading `/` trimmed; the values are `Detail ?? ReasonCode`.
+The `errors` dictionary keys are each `FieldViolation.Field.Path` translated from RFC 6901 JSON Pointer (e.g. `/items/0/name`) to the dot+bracket convention used by ASP.NET Core's default `ValidationProblemDetails` (e.g. `items[0].name`). RFC 6901 escapes (`~1` → `/`, `~0` → `~`) are decoded so segments containing literal `/` or `~` appear correctly. Values are `Detail ?? ReasonCode`. The wire shape matches what `[ApiController]` emits in its automatic 400 responses, so OpenAPI codegen consumers (axios + react-query, NSwag, etc.) and React form libraries (`react-hook-form`, Formik) can lookup `setError(name, ...)` directly without a slash → dot translation shim. The original JSON Pointer is preserved verbatim inside `extensions["rules"][n].fields[]` for rule-level violations.
 
 ## Created responses
 
