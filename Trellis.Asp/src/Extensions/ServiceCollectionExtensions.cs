@@ -484,6 +484,21 @@ public static class ServiceCollectionExtensions
     /// Default mappings are applied first. The <paramref name="configure"/> action can override
     /// any mapping using <see cref="TrellisAspOptions.MapError{TError}"/>.
     /// </para>
+    /// <para>
+    /// <b>Composition:</b> multiple <c>AddTrellisAsp(...)</c> calls compose. Each call's
+    /// <paramref name="configure"/> delegate runs (in registration order) against the same
+    /// <see cref="TrellisAspOptions"/> instance materialized by
+    /// <c>OptionsFactory&lt;TrellisAspOptions&gt;</c>, so mappings for distinct
+    /// <c>TError</c> types from earlier calls survive. Mappings for the same
+    /// <c>TError</c> follow last-wins.
+    /// </para>
+    /// <para>
+    /// <b>Slot ownership:</b> <c>AddTrellisAsp</c> owns the <see cref="TrellisAspOptions"/>
+    /// service descriptor and replaces any existing one with a bridge factory that resolves
+    /// from <c>IOptions&lt;TrellisAspOptions&gt;.Value</c>. Hosts must customize via this
+    /// <paramref name="configure"/> action; raw <c>services.AddSingleton(new TrellisAspOptions())</c>
+    /// is unsupported and will be silently overwritten the next time <c>AddTrellisAsp</c> runs.
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code>

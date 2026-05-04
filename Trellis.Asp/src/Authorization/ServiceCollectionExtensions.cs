@@ -21,6 +21,11 @@ public static class ServiceCollectionExtensions
     /// <see cref="ClaimsActorOptions.PermissionsClaim"/> to match your token format.
     /// </param>
     /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// <b>Replaces</b> any prior <see cref="IActorProvider"/> registration — actor-provider
+    /// helpers do not stack. Pick one provider per environment (or wrap an inner provider
+    /// with <see cref="AddCachingActorProvider{T}"/>); the last <c>AddXxxActorProvider</c> call wins.
+    /// </remarks>
     /// <example>
     /// <code>
     /// // Auth0
@@ -69,6 +74,12 @@ public static class ServiceCollectionExtensions
     /// <see cref="EntraActorOptions.MapAttributes"/> to add custom ABAC attributes.
     /// </param>
     /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// <b>Replaces</b> any prior <see cref="IActorProvider"/> registration — actor-provider
+    /// helpers do not stack. Pick one provider per environment (or wrap with
+    /// <see cref="AddCachingActorProvider{T}"/> using <c>EntraActorProvider</c> as the inner type);
+    /// the last <c>AddXxxActorProvider</c> call wins.
+    /// </remarks>
     /// <example>
     /// <code>
     /// builder.Services.AddEntraActorProvider(options =>
@@ -116,6 +127,11 @@ public static class ServiceCollectionExtensions
     /// <c>X-Test-Actor</c> header is present on the request. Use <see cref="AddEntraActorProvider"/>
     /// for production deployments.
     /// </para>
+    /// <para>
+    /// <b>Replaces</b> any prior <see cref="IActorProvider"/> registration — actor-provider
+    /// helpers do not stack. Pick one provider per environment; the last
+    /// <c>AddXxxActorProvider</c> call wins.
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code>
@@ -160,10 +176,37 @@ public static class ServiceCollectionExtensions
     /// <typeparam name="T">The concrete <see cref="IActorProvider"/> implementation to cache.</typeparam>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>Replaces</b> the <see cref="IActorProvider"/> slot with the caching wrapper. The inner
+    /// type <typeparamref name="T"/> is registered via <c>TryAddScoped&lt;T&gt;()</c>, so repeated
+    /// calls do not accumulate inner-provider descriptors.
+    /// </para>
+    /// <para>
+    /// <b>Inner-provider dependencies are NOT auto-registered.</b> This helper only adds
+    /// <typeparamref name="T"/> itself and <c>IHttpContextAccessor</c>. If <typeparamref name="T"/>
+    /// is one of the built-in providers (<see cref="EntraActorProvider"/>,
+    /// <see cref="ClaimsActorProvider"/>) or a subclass thereof, you must first call the matching
+    /// <c>AddXxxActorProvider(...)</c> helper so its <c>IOptions&lt;TOptions&gt;</c> is configured.
+    /// The matching helper's <c>Replace</c> on the <see cref="IActorProvider"/> slot is then
+    /// overwritten by this caching wrap — that is the intended composition order.
+    /// </para>
+    /// </remarks>
     /// <example>
     /// <code>
-    /// // Wrap a DB-backed provider that resolves permissions from a database
+    /// // Pattern B(i): Custom provider with no Trellis-managed options dependencies.
     /// services.AddCachingActorProvider&lt;DatabaseActorProvider&gt;();
+    ///
+    /// // Pattern B(ii): Built-in provider — register the inner provider's options
+    /// // helper FIRST so IOptions&lt;EntraActorOptions&gt; is configured, then wrap.
+    /// services.AddEntraActorProvider(o => o.MapPermissions = ...);
+    /// services.AddCachingActorProvider&lt;EntraActorProvider&gt;();
+    ///
+    /// // Pattern B(iii): Subclass of ClaimsActorProvider (e.g. KeycloakActorProvider).
+    /// // Inner subclass shares ClaimsActorOptions, so AddClaimsActorProvider(...)
+    /// // configures IOptions&lt;ClaimsActorOptions&gt; for the subclass too.
+    /// services.AddClaimsActorProvider(o => o.ActorIdClaim = "sub");
+    /// services.AddCachingActorProvider&lt;KeycloakActorProvider&gt;();
     /// </code>
     /// </example>
     public static IServiceCollection AddCachingActorProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(this IServiceCollection services)
