@@ -166,9 +166,6 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     }
 
     /// <summary>
-    /// Gets the default field name derived from the value object type name.
-    /// </summary>
-    /// <summary>
     /// Returns the default field name used when no <see cref="ValidationErrorsContext.CurrentPropertyName"/>
     /// is set for the current async-local scope (e.g. AOT consumers that haven't wired the
     /// reflection-based <c>PropertyNameAwareConverter&lt;T&gt;</c>). The CLR simple name is

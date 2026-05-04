@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Trellis.Core — `ResourceRef.FormatTypeName(Type)` public helper
 
-`ResourceRef.FormatTypeName(Type)` is a new public static helper that returns the simple CLR name of a type with backtick arity-mangling stripped (`List`1` → `"List"`, `Dictionary`2` → `"Dictionary"`). It is used internally by `ResourceRef.For<TResource>()` and exposed publicly so other Trellis components — and consumer code — can sanitize type-derived identifiers without duplicating the algorithm. Non-generic types pass through unchanged.
+`ResourceRef.FormatTypeName(Type)` is a new public static helper that returns the simple CLR name of a type with backtick arity-mangling stripped (``List`1`` → `"List"`, ``Dictionary`2`` → `"Dictionary"`). It is used internally by `ResourceRef.For<TResource>()` and exposed publicly so other Trellis components — and consumer code — can sanitize type-derived identifiers without duplicating the algorithm. Non-generic types pass through unchanged.
 
-`ResourceRef.For<TResource>(id)` additionally peels `Maybe<T>` wrappers (recursively) before formatting, so `For<Maybe<Order>>()` produces `"Order"` instead of the previously-mangled `"Maybe`1"`. This mirrors the documented use case where a result type happens to wrap its domain in `Maybe<>` (e.g. `Result<Maybe<Order>>.ToHttpResponse(...)` for the precondition-fail branch). Non-`Maybe` generics collapse to the outer simple name (e.g. `List<Order>` → `"List"`); when the inner type argument is the meaningful resource identifier, callers should continue to use `ResourceRef.For(string, object?)` with an explicit name. The xmldoc carries the full contract.
+`ResourceRef.For<TResource>(id)` additionally peels `Maybe<T>` wrappers (recursively) before formatting, so `For<Maybe<Order>>()` produces `"Order"` instead of the previously-mangled ``"Maybe`1"``. This mirrors the documented use case where a result type happens to wrap its domain in `Maybe<>` (e.g. `Result<Maybe<Order>>.ToHttpResponse(...)` for the precondition-fail branch). Non-`Maybe` generics collapse to the outer simple name (e.g. `List<Order>` → `"List"`); when the inner type argument is the meaningful resource identifier, callers should continue to use `ResourceRef.For(string, object?)` with an explicit name. The xmldoc carries the full contract.
 
 #### Trellis.Asp — `WWW-Authenticate` emission for `Error.Unauthorized`
 
@@ -27,11 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Trellis.Core / Trellis.Asp / Trellis.EntityFrameworkCore / Trellis.Testing — sweep CLR-mangled type names out of resource refs and wire-facing error messages
 
-Across the framework, several wire-facing error messages and `ResourceRef` constructions used `typeof(T).Name` directly. For closed-generic Ts this leaks the CLR-mangled form (`List`1`, `Maybe`1`) onto the wire — an inspection finding (ASP m-4 / m-7 / m-10, Core 2.4-4) flagged this as both ugly and a "one programming model" violation between modes (the AOT generator already emits friendly names at generation time; only the runtime/reflection paths mangled).
+Across the framework, several wire-facing error messages and `ResourceRef` constructions used `typeof(T).Name` directly. For closed-generic Ts this leaks the CLR-mangled form (``List`1``, ``Maybe`1``) onto the wire — an inspection finding (ASP m-4 / m-7 / m-10, Core 2.4-4) flagged this as both ugly and a "one programming model" violation between modes (the AOT generator already emits friendly names at generation time; only the runtime/reflection paths mangled).
 
 This release routes every such site through one of two new Trellis.Core helpers:
 
-- `ResourceRef.For<TResource>(id)` — peels `Maybe<T>` wrappers (recursively, so `Result<Maybe<Order>>`-backed precondition fails report `"Order"` not `"Maybe`1"`), then strips backtick mangling.
+- `ResourceRef.For<TResource>(id)` — peels `Maybe<T>` wrappers (recursively, so `Result<Maybe<Order>>`-backed precondition fails report `"Order"` not ``"Maybe`1"``), then strips backtick mangling.
 - `ResourceRef.FormatTypeName(Type)` — strips backtick mangling only (no `Maybe<>` peeling, since that is intentionally scoped to the resource-naming contract on `For<T>`).
 
 Sites updated:
