@@ -17,7 +17,7 @@ internal static class ResponseFailureWriter
 {
     public static Task WriteAsync(HttpContext httpContext, Error error, int statusCode)
     {
-        EmitCompanionHeaders(error, httpContext.Response);
+        EmitCompanionHeaders(error, httpContext.Response, statusCode);
 
         Microsoft.AspNetCore.Http.IResult inner;
         if (error is Error.UnprocessableContent unprocessable
@@ -49,7 +49,7 @@ internal static class ResponseFailureWriter
         return inner.ExecuteAsync(httpContext);
     }
 
-    private static void EmitCompanionHeaders(Error error, HttpResponse response)
+    private static void EmitCompanionHeaders(Error error, HttpResponse response, int statusCode)
     {
         switch (error)
         {
@@ -69,7 +69,12 @@ internal static class ResponseFailureWriter
                 response.Headers["Content-Range"] = $"{rnse.Unit} */{rnse.CompleteLength}";
                 break;
 
-            case Error.Unauthorized unauth when unauth.Challenges.Items.Length > 0:
+            // Gated on the resolved status code: WWW-Authenticate is RFC 9110 §11.6.1
+            // tied specifically to 401. If WithErrorMapping promotes Error.Unauthorized
+            // to a non-401 status, suppress the header rather than mislead clients into
+            // attempting re-authentication. Mirrors the m-13 status-aware design used
+            // by ValidationProblem detail scrubbing.
+            case Error.Unauthorized unauth when statusCode == 401 && unauth.Challenges.Items.Length > 0:
                 foreach (var challenge in unauth.Challenges.Items)
                     response.Headers.Append("WWW-Authenticate", FormatChallenge(challenge));
                 break;

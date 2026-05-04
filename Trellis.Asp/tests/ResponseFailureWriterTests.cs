@@ -142,6 +142,26 @@ public sealed class ResponseFailureWriterTests
     }
 
     [Fact]
+    public async Task Unauthorized_with_challenges_but_non_401_mapped_status_does_not_emit_WwwAuthenticate()
+    {
+        // Mirrors the m-13 design (ValidationProblem_with_5xx_status_scrubs_detail): when
+        // WithErrorMapping promotes Error.Unauthorized to a non-401 status, companion
+        // headers tied to the original 401 semantics must not be emitted. RFC 9110 §11.6.1
+        // ties WWW-Authenticate to 401 specifically; emitting it on a 500 (or any other
+        // mapped status) would mislead clients into attempting re-authentication.
+        var ctx = NewContext();
+        var error = new Error.Unauthorized(EquatableArray.Create(new AuthChallenge("Bearer")));
+        var r = Result.Fail<T>(error);
+
+        await r.ToHttpResponse(t => t, o => o.WithErrorMapping<Error.Unauthorized>(500))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(500);
+        ctx.Response.Headers.ContainsKey("WWW-Authenticate")
+            .Should().BeFalse("WWW-Authenticate is meaningful only on 401 responses per RFC 9110 §11.6.1");
+    }
+
+    [Fact]
     public async Task ServiceUnavailable_with_RetryAfter_emits_RetryAfter_header()
     {
         var ctx = NewContext();
