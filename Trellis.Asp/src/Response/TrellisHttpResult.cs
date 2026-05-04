@@ -102,7 +102,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
                     if (decision == ConditionalDecision.PreconditionFailed)
                     {
-                        var pf = new Error.PreconditionFailed(new ResourceRef(typeof(TDomain).Name, null), failedKind ?? PreconditionKind.IfMatch)
+                        var pf = new Error.PreconditionFailed(ResourceRef.For<TDomain>(), failedKind ?? PreconditionKind.IfMatch)
                         { Detail = "A conditional request header evaluated to false." };
 
                         return ResponseFailureWriter.WriteAsync(httpContext, pf, ResolveErrorStatusCode(httpContext, pf, _options));

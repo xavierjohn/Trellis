@@ -79,4 +79,39 @@ public class IfNoneMatchExtensionsTests
 
         actual.Should().BeFailureOfType<Error.PreconditionFailed>();
     }
+
+    /// <summary>
+    /// Regression for inspection finding m-7: <c>EnforceIfNoneMatchPrecondition&lt;T&gt;</c> previously
+    /// constructed <c>new ResourceRef(typeof(T).Name, null)</c>, which leaks CLR backtick mangling for
+    /// closed-generic Ts and ignores documented wrapper-peeling for <see cref="Maybe{T}"/>. The fix
+    /// routes through <see cref="ResourceRef.For{TResource}(object?)"/> so both concerns are handled
+    /// in one place.
+    /// </summary>
+    [Fact]
+    public void EnforceIfNoneMatchPrecondition_ResourceRef_uses_friendly_type_name_for_closed_generic_T()
+    {
+        var result = Result.Ok(new List<string>());
+
+        var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
+
+        actual.Should().BeFailureOfType<Error.PreconditionFailed>();
+        actual.TryGetError(out var error).Should().BeTrue();
+        var pf = (Error.PreconditionFailed)error!;
+        pf.Resource.Type.Should().Be("List",
+            "m-7: backtick-mangled CLR names like 'List`1' must not leak through to the resource ref");
+    }
+
+    [Fact]
+    public void EnforceIfNoneMatchPrecondition_ResourceRef_peels_Maybe_wrapper_to_expose_inner_domain()
+    {
+        var result = Result.Ok(Maybe.From("value"));
+
+        var actual = result.EnforceIfNoneMatchPrecondition([EntityTagValue.Wildcard()]);
+
+        actual.Should().BeFailureOfType<Error.PreconditionFailed>();
+        actual.TryGetError(out var error).Should().BeTrue();
+        var pf = (Error.PreconditionFailed)error!;
+        pf.Resource.Type.Should().Be("String",
+            "m-7: Maybe<T> wrappers must be peeled so the meaningful inner domain name is the resource type");
+    }
 }

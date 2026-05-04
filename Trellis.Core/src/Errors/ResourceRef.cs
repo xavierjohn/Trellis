@@ -31,19 +31,73 @@ public readonly record struct ResourceRef(string Type, string? Id = null)
     }
 
     /// <summary>
-    /// Creates a resource reference whose resource type is <c>typeof(TResource).Name</c>.
+    /// Creates a resource reference whose resource type name is derived from
+    /// <typeparamref name="TResource"/>.
     /// </summary>
     /// <typeparam name="TResource">The resource type.</typeparam>
     /// <param name="id">Optional resource identifier.</param>
     /// <returns>A resource reference.</returns>
     /// <remarks>
-    /// For closed generic resource types (e.g. <c>List&lt;User&gt;</c>) <see cref="System.Reflection.MemberInfo.Name">Type.Name</see>
-    /// produces the CLR mangled form <c>"List`1"</c>, which is rarely the desired user-visible
-    /// name. Prefer <see cref="For(string, object?)"/> with an explicit, stable resource name
-    /// when the resource is parameterized.
+    /// <para>
+    /// The resource type name is the simple CLR name with two normalisations applied:
+    /// </para>
+    /// <list type="number">
+    /// <item>
+    /// <description>
+    /// <b>Backtick mangling stripped.</b> A closed generic such as <c>List&lt;User&gt;</c>
+    /// reports a CLR <see cref="System.Reflection.MemberInfo.Name">Name</see> of
+    /// <c>"List`1"</c>; the backtick suffix is removed so the resource type is <c>"List"</c>.
+    /// Closed generics with multiple type arguments collapse to the outer simple name
+    /// (e.g. <c>Dictionary&lt;string,int&gt;</c> → <c>"Dictionary"</c>). When the inner type
+    /// argument is the meaningful resource identifier, prefer <see cref="For(string, object?)"/>
+    /// with an explicit name.
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// <b><see cref="Maybe{T}"/> wrappers are peeled.</b> <c>Maybe&lt;Order&gt;</c> reports
+    /// <c>"Order"</c>, and the peeling is recursive (<c>Maybe&lt;Maybe&lt;Order&gt;&gt;</c>
+    /// also reports <c>"Order"</c>). This avoids the CLR-mangled <c>"Maybe`1"</c> from
+    /// leaking onto the wire when a result type happens to wrap its domain in
+    /// <see cref="Maybe{T}"/> (e.g. <c>Result&lt;Maybe&lt;Order&gt;&gt;.ToHttpResponse(...)</c>).
+    /// Other generic wrappers are not peeled — see <see cref="FormatTypeName"/> if you need
+    /// the formatting without the Maybe-peeling step.
+    /// </description>
+    /// </item>
+    /// </list>
     /// </remarks>
     public static ResourceRef For<TResource>(object? id = null) =>
-        new(typeof(TResource).Name, FormatId(id));
+        new(FormatTypeName(PeelMaybe(typeof(TResource))), FormatId(id));
+
+    /// <summary>
+    /// Returns the simple CLR name for <paramref name="type"/> with backtick-mangling
+    /// stripped. Used by Trellis components that surface a type-derived identifier on the
+    /// wire (e.g. AOT-generated JSON converter fallback messages).
+    /// </summary>
+    /// <param name="type">The type whose name should be formatted.</param>
+    /// <returns>
+    /// The simple name with any <c>`N</c> arity suffix removed. For example,
+    /// <c>typeof(List&lt;int&gt;)</c> returns <c>"List"</c>; <c>typeof(Order)</c> returns
+    /// <c>"Order"</c>.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="type"/> is null.</exception>
+    /// <remarks>
+    /// This helper does <b>not</b> peel <see cref="Maybe{T}"/> wrappers — that is intentionally
+    /// scoped to <see cref="For{TResource}(object?)"/>, which owns the resource-naming contract.
+    /// </remarks>
+    public static string FormatTypeName(Type type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        var name = type.Name;
+        var tickIndex = name.IndexOf('`');
+        return tickIndex < 0 ? name : name.Substring(0, tickIndex);
+    }
+
+    private static Type PeelMaybe(Type type) =>
+        type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Maybe<>)
+            ? PeelMaybe(type.GetGenericArguments()[0])
+            : type;
 
     private static string? FormatId(object? id) =>
         id switch

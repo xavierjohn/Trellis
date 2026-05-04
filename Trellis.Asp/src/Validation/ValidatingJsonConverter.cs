@@ -38,7 +38,7 @@ public sealed class ValidatingJsonConverter<TValue, TPrimitive> : ScalarValueJso
     /// <inheritdoc />
     protected override TValue? OnNullToken(string fieldName)
     {
-        ValidationErrorsContext.AddError(fieldName, $"{typeof(TValue).Name} cannot be null.");
+        ValidationErrorsContext.AddError(fieldName, $"{ResourceRef.FormatTypeName(typeof(TValue))} cannot be null.");
         return null;
     }
 
