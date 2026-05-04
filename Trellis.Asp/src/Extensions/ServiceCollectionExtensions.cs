@@ -500,11 +500,17 @@ public static class ServiceCollectionExtensions
         // Compose configuration via IConfigureOptions<TrellisAspOptions>: multiple
         // AddTrellisAsp(o => ...) calls (e.g. library + application) all run against
         // the same options instance built lazily by OptionsFactory<TrellisAspOptions>.
-        // Resolution remains via GetService<TrellisAspOptions>() through a single
-        // TryAddSingleton that materializes from IOptions<TrellisAspOptions>.Value.
+        // Resolution remains via GetService<TrellisAspOptions>() through a singleton
+        // bridge that materializes from IOptions<TrellisAspOptions>.Value.
+        //
+        // Replace (not TryAdd): AddTrellisAsp claims the TrellisAspOptions slot. Without
+        // Replace, a host's pre-registered TrellisAspOptions instance would silently mask
+        // every Configure delegate registered here, so MapError overrides would never
+        // reach the resolved options. Hosts customize via the configure action, not via
+        // raw AddSingleton(new TrellisAspOptions()).
         services.Configure(configure);
-        services.TryAddSingleton<TrellisAspOptions>(sp =>
-            sp.GetRequiredService<IOptions<TrellisAspOptions>>().Value);
+        services.Replace(ServiceDescriptor.Singleton<TrellisAspOptions>(sp =>
+            sp.GetRequiredService<IOptions<TrellisAspOptions>>().Value));
 
         // auto-register VO binding / JSON converter infrastructure.
         // Idempotent: configures both MVC and Minimal API JSON pipelines for ScalarValue/Maybe support.

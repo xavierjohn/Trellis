@@ -482,22 +482,10 @@ app.MapGet("/products/{id:ProductId}", (ProductId id) => Results.Ok(id));
 
 `Trellis.Asp.Authorization` hydrates the current `Actor` from JWT/OIDC claims. The `Actor` and `IActorProvider` types themselves live in `Trellis.Authorization`.
 
+Each `AddXxxActorProvider` helper **replaces** the `IActorProvider` slot — chaining multiple helpers does not stack them. Pick one provider per environment, then optionally wrap with caching:
+
 ```csharp
 using Trellis.Asp.Authorization;
-
-services.AddClaimsActorProvider(opts =>
-{
-    opts.ActorIdClaim = "sub";
-    opts.PermissionsClaim = "permissions";
-});
-
-services.AddEntraActorProvider(opts =>
-{
-    opts.MapPermissions = claims => claims
-        .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
-        .Select(c => c.Value)
-        .ToHashSet();
-});
 
 if (env.IsDevelopment())
 {
@@ -507,9 +495,21 @@ if (env.IsDevelopment())
         opts.DefaultPermissions = new HashSet<string> { "orders:read", "orders:create" };
     });
 }
+else
+{
+    services.AddEntraActorProvider(opts =>
+    {
+        opts.MapPermissions = claims => claims
+            .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.Value)
+            .ToHashSet();
+    });
 
-// Wraps the previously registered IActorProvider with per-request caching:
-services.AddCachingActorProvider<EntraActorProvider>();
+    // Wraps EntraActorProvider with per-request caching. The inner provider type is
+    // registered idempotently via TryAddScoped<T>(); the outer IActorProvider slot
+    // is replaced with the caching decorator.
+    services.AddCachingActorProvider<EntraActorProvider>();
+}
 ```
 
 `DevelopmentActorProvider` throws `InvalidOperationException` outside the Development environment regardless of header presence; in Development it reads the `X-Test-Actor` header (JSON: `{ "Id", "Permissions", "ForbiddenPermissions", "Attributes" }`, case-insensitive). See [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md) for `WebApplicationFactory.CreateClientWithActor`.

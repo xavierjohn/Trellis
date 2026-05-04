@@ -312,6 +312,26 @@ public class TrellisAspOptionsTests
     }
 
     [Fact]
+    public void AddTrellisAsp_after_pre_registered_TrellisAspOptions_singleton_applies_configure_delegates()
+    {
+        // PR #453 review (Finding 3): hosts that pre-register their own TrellisAspOptions
+        // (documented as "hosts that want a different default must register their own")
+        // must not silently mask the Configure delegates registered by AddTrellisAsp.
+        // AddTrellisAsp owns the TrellisAspOptions slot — it must Replace, not TryAdd.
+        var services = new ServiceCollection();
+        services.AddSingleton(new TrellisAspOptions());
+
+        services.AddTrellisAsp(o => o.MapError<Error.Conflict>(StatusCodes.Status418ImATeapot));
+
+        var sp = services.BuildServiceProvider();
+        var resolved = sp.GetRequiredService<TrellisAspOptions>();
+
+        resolved
+            .GetStatusCode(new Error.Conflict(null, "k") { Detail = "x" })
+            .Should().Be(StatusCodes.Status418ImATeapot, "AddTrellisAsp must claim the TrellisAspOptions slot so its Configure delegates run, even when a host pre-registered the type");
+    }
+
+    [Fact]
     public async Task ResultExecuteAsync_uses_TrellisAspOptions_resolved_from_request_services()
     {
         // ga-09 contract: error → status mapping flows through DI, not ambient static state.

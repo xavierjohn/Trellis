@@ -208,6 +208,23 @@ public class ServiceCollectionExtensionsTests
         descriptor.ImplementationType.Should().Be<ClaimsActorProvider>();
     }
 
+    [Fact]
+    public void AddCachingActorProvider_called_twice_does_not_accumulate_inner_T_descriptors()
+    {
+        // Composition contract: a library and an app must each be safe to call
+        // AddCachingActorProvider<X>() without accumulating duplicate inner-T scoped
+        // descriptors. Without TryAddScoped, GetServices<X>()/IEnumerable<X> would
+        // expose multiple instances even though IActorProvider (replaced) does not.
+        var services = new ServiceCollection();
+
+        services.AddCachingActorProvider<FakeActorProvider>();
+        services.AddCachingActorProvider<FakeActorProvider>();
+
+        services
+            .Where(d => d.ServiceType == typeof(FakeActorProvider))
+            .Should().HaveCount(1, "AddCachingActorProvider must not accumulate duplicate inner-T descriptors");
+    }
+
     private sealed class FakeActorProvider : IActorProvider
     {
         public Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default) =>

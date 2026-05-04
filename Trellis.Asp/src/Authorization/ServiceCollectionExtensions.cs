@@ -170,7 +170,11 @@ public static class ServiceCollectionExtensions
         where T : class, IActorProvider
     {
         services.AddHttpContextAccessor();
-        services.AddScoped<T>();
+        // TryAddScoped (not AddScoped): repeated AddCachingActorProvider<T>() calls
+        // (e.g. library + application) must not accumulate duplicate scoped descriptors
+        // for the inner provider type. The IActorProvider slot is already idempotent via
+        // the Replace below.
+        services.TryAddScoped<T>();
         services.Replace(ServiceDescriptor.Scoped<IActorProvider>(sp =>
             new CachingActorProvider(
                 sp.GetRequiredService<T>(),

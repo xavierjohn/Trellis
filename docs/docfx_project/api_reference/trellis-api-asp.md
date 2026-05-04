@@ -851,25 +851,15 @@ return result.ToHttpResponse(opts => opts
 
 ### Actor providers
 
+`AddXxxActorProvider` helpers all `Replace` the `IActorProvider` slot — only the **last** call wins. The two clean composition patterns:
+
+**Pattern A — select one provider per environment:**
+
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Asp.Authorization;
 
 var services = new ServiceCollection();
-
-services.AddClaimsActorProvider(opts =>
-{
-    opts.ActorIdClaim = "sub";
-    opts.PermissionsClaim = "permissions";
-});
-
-services.AddEntraActorProvider(opts =>
-{
-    opts.MapPermissions = claims => claims
-        .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
-        .Select(c => c.Value)
-        .ToHashSet();
-});
 
 if (env.IsDevelopment())
 {
@@ -879,9 +869,30 @@ if (env.IsDevelopment())
         opts.DefaultPermissions = new HashSet<string> { "orders:read", "orders:create" };
     });
 }
+else
+{
+    services.AddEntraActorProvider(opts =>
+    {
+        opts.MapPermissions = claims => claims
+            .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.Value)
+            .ToHashSet();
+    });
+}
+```
 
+**Pattern B — wrap the chosen inner provider with caching:**
+
+```csharp
+// First register the inner provider, then wrap with caching.
+// Each AddCachingActorProvider<T>() call replaces the IActorProvider slot
+// with CachingActorProvider over T. The inner T is registered idempotently
+// via TryAddScoped<T>() so library + application calls do not duplicate.
+services.AddEntraActorProvider(opts => { /* ... */ });
 services.AddCachingActorProvider<EntraActorProvider>();
 ```
+
+Do **not** chain multiple `AddXxxActorProvider` calls expecting them to coexist or fall back — the last one always wins. If you need different providers in different environments, branch the registration code as in Pattern A.
 
 ### Route constraints for scalar value objects
 
