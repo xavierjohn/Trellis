@@ -108,8 +108,8 @@ public sealed class ResponseFailureWriterTests
         // Trellis only emits the header when the caller supplies challenges. RFC 9110
         // requires 401 responses to carry the header but does not specify the source —
         // standard ASP.NET authentication handlers (JwtBearerHandler, etc.) own that flow
-        // when configured. When application code returns Error.Unauthorized() without
-        // challenges, leave the header to the auth pipeline rather than synthesise one.
+        // when configured. When application code returns an empty Error.Unauthorized,
+        // leave the header to the auth pipeline rather than synthesise one.
         var ctx = NewContext();
         var r = Result.Fail<T>(new Error.Unauthorized());
 
