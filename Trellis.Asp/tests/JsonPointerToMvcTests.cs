@@ -16,7 +16,7 @@ public sealed class JsonPointerToMvcTests
 {
     [Theory]
     [InlineData("", "")]
-    [InlineData("/", "")]
+    [InlineData("/", "[\"\"]")]
     [InlineData("/email", "email")]
     [InlineData("/items/0/name", "items[0].name")]
     [InlineData("/Lines/0/Memo", "Lines[0].Memo")]
@@ -29,11 +29,28 @@ public sealed class JsonPointerToMvcTests
     [InlineData("/a~0b", "a~b")]
     [InlineData("/a~01", "a~1")]
     [InlineData("/items/12345/name", "items[12345].name")]
+    [InlineData("/foo/", "foo[\"\"]")]
+    [InlineData("//bar", "[\"\"].bar")]
     public void Translate_returns_expected_mvc_field_key(string pointerPath, string expected)
     {
         var actual = JsonPointerToMvc.Translate(pointerPath);
 
         actual.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Translate_distinguishes_root_pointer_from_single_empty_segment()
+    {
+        // RFC 6901: "" is the root document, "/" denotes a single reference token
+        // whose value is the empty string. The MVC wire shape must keep these
+        // distinct; otherwise an error on an empty-named member would be merged
+        // with document-level errors.
+        var root = JsonPointerToMvc.Translate(string.Empty);
+        var emptySegment = JsonPointerToMvc.Translate("/");
+
+        root.Should().Be(string.Empty);
+        emptySegment.Should().Be("[\"\"]");
+        root.Should().NotBe(emptySegment);
     }
 
     [Fact]

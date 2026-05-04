@@ -22,8 +22,35 @@ using System.Text;
 /// <c>[N]</c>; non-numeric segments are joined with a dot. A leading numeric
 /// segment becomes <c>[N]</c> (root array convention). Per RFC 6901, a numeric
 /// segment with leading zeros (e.g. <c>01</c>) is treated as a property name,
-/// not an array index.
+/// not an array index. Empty reference tokens (e.g. <c>/</c> = a single
+/// empty-named member, <c>/foo/</c> = an empty-named member of <c>foo</c>) are
+/// emitted as the MVC indexer-with-empty-string form <c>[""]</c>, matching
+/// ASP.NET Core's own treatment of dictionary access with an empty key. This
+/// keeps <c>""</c> (root) distinct from <c>/</c> on the wire.
 /// </para>
+/// <para>
+/// <b>Inherent ambiguity of MVC convention.</b> The dot+bracket wire format
+/// cannot losslessly encode every JSON Pointer:
+/// </para>
+/// <list type="bullet">
+/// <item>
+/// A numeric reference token is always emitted as <c>[N]</c> regardless of
+/// whether the underlying container is an array or a numeric-keyed dictionary,
+/// because the translator does not have access to the schema. This matches
+/// what <c>[ApiController]</c> emits for both <c>List&lt;T&gt;</c> and
+/// <c>Dictionary&lt;int,T&gt;</c> property access.
+/// </item>
+/// <item>
+/// Pointer segments that contain MVC syntax characters (<c>.</c>, <c>[</c>,
+/// <c>]</c>) collapse with structurally distinct pointers — for example,
+/// <c>/customer.email</c> (one segment) and <c>/customer/email</c> (two
+/// segments) both translate to <c>customer.email</c>. C# property names
+/// (the source of FluentValidation paths and <c>InputPointer.ForProperty</c>)
+/// cannot contain these characters, so this case is unreachable from the
+/// built-in adapters; hand-constructed pointers that need raw fidelity are
+/// preserved per-rule on <c>extensions["rules"][n].fields[]</c>.
+/// </item>
+/// </list>
 /// </remarks>
 internal static class JsonPointerToMvc
 {
@@ -39,8 +66,6 @@ internal static class JsonPointerToMvc
 
         // InputPointer guarantees a leading '/' for non-empty paths.
         var trimmed = jsonPointer[0] == '/' ? jsonPointer[1..] : jsonPointer;
-        if (trimmed.Length == 0)
-            return string.Empty;
 
         var segments = trimmed.Split('/');
         var sb = new StringBuilder();
@@ -51,7 +76,14 @@ internal static class JsonPointerToMvc
                 .Replace("~1", "/", StringComparison.Ordinal)
                 .Replace("~0", "~", StringComparison.Ordinal);
 
-            if (IsArrayIndex(decoded))
+            if (decoded.Length == 0)
+            {
+                // RFC 6901 allows empty reference tokens (members with empty names).
+                // Emit MVC's indexer-with-empty-string form so "/" stays distinct from
+                // root ("") and structurally-distinct pointers don't collapse silently.
+                sb.Append("[\"\"]");
+            }
+            else if (IsArrayIndex(decoded))
             {
                 sb.Append('[').Append(decoded).Append(']');
             }
