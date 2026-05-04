@@ -301,4 +301,34 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         [System.Text.Json.Serialization.JsonPropertyName("a.b")]
         public int Value { get; set; }
     }
+
+    [Theory]
+    // Documents the deliberate lossiness in JsonPathToMvcKey for property names containing
+    // the literal sequence '][. STJ does not escape these characters, so the path output
+    // is genuinely ambiguous between "multiple segments" and "single segment with embedded
+    // '][". The heuristic prefers the multi-segment interpretation because legitimate
+    // adjacent non-identifier property names (e.g. $['weird name']['another weird'])
+    // are common; property names containing literal '][ are not. Pinning the current
+    // behavior here so any future change is intentional.
+    [InlineData("$['a'][']", "a.]")]               // STJ emits this for dict key "a'][" (lossy → multi-segment + malformed tail)
+    [InlineData("$['a'][b']", "a[b']")]            // STJ emits this for dict key "a'][b" (lossy → multi-segment + malformed tail)
+    [InlineData("$['a'.b']['foo']", "a'.b.foo")]   // STJ emits this for dict key "a'.b']['foo" (lossy → split on '][)
+    public async Task JsonException_with_property_name_containing_quote_bracket_sequence_uses_multi_segment_interpretation(
+        string jsonExceptionPath, string expectedMvcKey)
+    {
+        var ctx = NewContext();
+        var inner = new JsonException("conversion failure");
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, jsonExceptionPath);
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+        errors.Should().ContainKey(expectedMvcKey,
+            "STJ path output is genuinely lossy for property names containing '][; "
+            + "the heuristic prefers the multi-segment interpretation as a deliberate trade-off");
+    }
 }

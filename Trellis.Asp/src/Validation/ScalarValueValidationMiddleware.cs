@@ -239,6 +239,20 @@ public sealed class ScalarValueValidationMiddleware
     /// <c>[""]</c> to match <see cref="JsonPointerToMvc.Translate"/> output for the
     /// equivalent JSON Pointer (<c>/</c> → <c>[""]</c>).
     /// </para>
+    /// <para>
+    /// <b>Known limitation:</b> STJ's path serialization is genuinely lossy for property
+    /// names containing the literal sequence <c>'][</c> (e.g. dictionary keys
+    /// <c>a'][</c>, <c>a'][b</c>, <c>a'.b']['foo</c>). For these adversarial inputs the
+    /// heuristic prefers the "multiple segments" interpretation over the
+    /// "embedded <c>'][</c> in a single property name" interpretation, so the resulting
+    /// MVC key may not equal <see cref="JsonPointerToMvc.Translate"/>'s output for the
+    /// equivalent JSON Pointer. This is a deliberate trade-off: legitimate paths with
+    /// adjacent non-identifier property names (e.g. <c>$['weird name']['another weird']</c>)
+    /// are common; property names containing the literal <c>'][</c> sequence are not.
+    /// Consumers requiring lossless field paths for adversarial keys should rely on
+    /// <c>RuleViolation</c> payloads carrying raw JSON Pointers in
+    /// <c>extensions["rules"][n].fields[]</c>.
+    /// </para>
     /// </remarks>
     private static string JsonPathToMvcKey(string? jsonExceptionPath)
     {
