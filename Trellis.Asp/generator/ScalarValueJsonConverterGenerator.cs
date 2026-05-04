@@ -631,9 +631,14 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
     };
 
     /// <summary>
-    /// Returns the C# type name suitable for a local variable declaration; <c>string</c> is
-    /// declared nullable because <c>reader.GetString()</c> can legitimately return <c>null</c>
-    /// for a quoted JSON null literal.
+    /// Returns the C# type name suitable for a local variable declaration. <c>string</c> is
+    /// declared nullable because <c>Utf8JsonReader.GetString()</c> has return type <c>string?</c>
+    /// (its API contract — for example, an actual <c>JsonTokenType.Null</c> token round-trips as
+    /// <c>null</c>). The generated <c>Read</c> already short-circuits on <c>JsonTokenType.Null</c>
+    /// before calling the typed reader, so under normal usage the value is non-null when the
+    /// token is <c>String</c>; the nullable local exists to match the API surface and to keep
+    /// the downstream <c>primitiveValue is null</c> guard in <see cref="GenerateSingleConverter"/>
+    /// well-typed without nullable-warning suppressions.
     /// </summary>
     private static string GetPrimitiveCsName(string primitiveType) => primitiveType switch
     {

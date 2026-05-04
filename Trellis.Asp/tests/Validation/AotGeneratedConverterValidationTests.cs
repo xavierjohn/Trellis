@@ -163,12 +163,14 @@ public sealed class AotGeneratedConverterValidationTests
     }
 
     [Fact]
-    public void Aot_generated_converter_records_failure_for_wrong_token_type_instead_of_throwing()
+    public void Aot_generated_converter_records_failure_for_invalid_primitive_format_instead_of_throwing()
     {
-        // M-2 (GPT-5.5 finding): when the JSON token is a string that can't be parsed as a Guid,
-        // reader.GetGuid() throws FormatException. Reflection mode catches that via
-        // PrimitiveJsonReader.TryRead and records a 422; the AOT generator must do the same so
-        // AOT consumers don't see a JsonException escape into the deserializer.
+        // M-2 (GPT-5.5 finding): when the JSON token is a syntactically valid string that
+        // doesn't parse as a Guid (e.g. "not-a-guid"), reader.GetGuid() throws FormatException.
+        // The token type is correct -- it's the *content* of the primitive that's invalid for the
+        // wrapped type. Reflection mode catches the FormatException via PrimitiveJsonReader.TryRead
+        // and records a 422; the AOT generator must do the same so AOT consumers don't see a
+        // JsonException escape into the deserializer.
         var options = BuildOptions();
 
         using (ValidationErrorsContext.BeginScope())
@@ -177,11 +179,11 @@ public sealed class AotGeneratedConverterValidationTests
             var act = () => result = JsonSerializer.Deserialize<TestM2OrderId>("\"not-a-guid\"", options);
 
             act.Should().NotThrow(
-                "M-2: invalid primitive tokens must surface as ValidationErrorsContext entries, " +
-                "not escape from the converter as a JsonException");
+                "M-2: invalid primitive content (e.g. an unparseable Guid string) must surface as a " +
+                "ValidationErrorsContext entry, not escape from the converter as a JsonException");
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue(
-                "M-2: invalid primitive tokens must be recorded so ScalarValueValidationMiddleware can produce a 422");
+                "M-2: invalid primitive content must be recorded so ScalarValueValidationMiddleware can produce a 422");
         }
     }
 }
