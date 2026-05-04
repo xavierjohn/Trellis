@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Trellis.Asp — `WWW-Authenticate` emission for `Error.Unauthorized`
+
+`ResponseFailureWriter` now emits a `WWW-Authenticate` header for every `AuthChallenge` carried on `Error.Unauthorized.Challenges`, completing the round-trip that `AuthChallenge` already documented. Format follows RFC 9110 §11.6.1: scheme alone for parameterless challenges (e.g. `Bearer`), or `<scheme> key1="value1", key2="value2"` for parameterized ones; values are always emitted as quoted-strings with `"` and `\` backslash-escaped per §5.6.4. Multiple challenges produce one `WWW-Authenticate` header per challenge (matching ASP.NET Core authentication handler convention). When `Challenges` is empty (the default `Error.Unauthorized()`), no header is written — the configured authentication handler retains full ownership of that flow.
+
 ### Changed
 
 #### Trellis.Core — null-check consistency, default-uninit defensiveness, tracing perf docs
