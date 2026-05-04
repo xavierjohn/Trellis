@@ -79,7 +79,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         var modelState = new ModelStateDictionary();
         foreach (var fieldViolation in validationError.Fields)
         {
-            modelState.AddModelError(fieldViolation.Field.Path.TrimStart('/'), fieldViolation.Detail ?? fieldViolation.ReasonCode);
+            modelState.AddModelError(JsonPointerToMvc.Translate(fieldViolation.Field.Path), fieldViolation.Detail ?? fieldViolation.ReasonCode);
         }
 
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();

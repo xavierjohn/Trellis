@@ -169,7 +169,7 @@ internal static class ScalarValueTypeHelper
         {
             return unprocessable.Fields
                 .Items
-                .GroupBy(fv => fv.Field.Path.TrimStart('/'))
+                .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path))
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
         }
 

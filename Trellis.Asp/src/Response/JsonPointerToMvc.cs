@@ -45,10 +45,15 @@ using System.Text;
 /// <c>]</c>) collapse with structurally distinct pointers — for example,
 /// <c>/customer.email</c> (one segment) and <c>/customer/email</c> (two
 /// segments) both translate to <c>customer.email</c>. C# property names
-/// (the source of FluentValidation paths and <c>InputPointer.ForProperty</c>)
-/// cannot contain these characters, so this case is unreachable from the
-/// built-in adapters; hand-constructed pointers that need raw fidelity are
-/// preserved per-rule on <c>extensions["rules"][n].fields[]</c>.
+/// reflected by FluentValidation cannot contain these characters, but
+/// <see cref="InputPointer.ForProperty(string)"/> only escapes <c>~</c> and
+/// <c>/</c> per RFC 6901, so any caller that passes a propertyName containing
+/// <c>.</c>, <c>[</c>, or <c>]</c> (for example a custom adapter mapping a
+/// dotted path to a flat field) will produce a single-segment pointer that
+/// collides with structurally distinct multi-segment pointers under this
+/// translation. Hand-constructed pointers that need raw fidelity are preserved
+/// per-rule on <c>extensions["rules"][n].fields[]</c>, which clients needing
+/// exact JSON Pointer values can read directly.
 /// </item>
 /// </list>
 /// </remarks>
