@@ -88,9 +88,11 @@ public sealed class ScalarValueValidationMiddleware
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
 
+        // Use an empty string key so this fallback shares the same MVC dot+bracket wire shape
+        // as every other Trellis.Asp ValidationProblem emitter (matches JsonPointerToMvc.Translate("")).
         var errors = new Dictionary<string, string[]>
         {
-            ["$"] = ["The request was invalid."]
+            [string.Empty] = ["The request was invalid."]
         };
 
         var result = Results.ValidationProblem(errors);
@@ -186,9 +188,14 @@ public sealed class ScalarValueValidationMiddleware
         // the dedicated marker thrown by Trellis converters with curated, client-safe messages
         // (e.g. Money: "Amount cannot be negative"). Plain JsonException keeps the generic message
         // because System.Text.Json's built-in errors can include internal type names.
-        var (key, message) = ex.InnerException is Trellis.TrellisJsonValidationException tjx
-            ? (string.IsNullOrEmpty(tjx.Path) ? "$" : tjx.Path!, tjx.Message)
-            : ("$", "The request body contains invalid JSON.");
+        var (rawPath, message) = ex.InnerException is Trellis.TrellisJsonValidationException tjx
+            ? (tjx.Path, tjx.Message)
+            : (null, "The request body contains invalid JSON.");
+
+        // System.Text.Json reports the failing location via JSON Path (e.g. "$.items[0].amount").
+        // Translate to MVC dot+bracket convention so this 400 path shares the same wire-key shape
+        // as every other Trellis.Asp ValidationProblem emitter (ResponseFailureWriter, etc.).
+        var key = JsonPathToMvcKey(rawPath);
 
         var errors = new Dictionary<string, string[]>
         {
@@ -197,6 +204,25 @@ public sealed class ScalarValueValidationMiddleware
 
         var result = Results.ValidationProblem(errors);
         await result.ExecuteAsync(context).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Strips the JSON Path root marker so System.Text.Json's <see cref="JsonException.Path"/>
+    /// (e.g. <c>$.items[0].amount</c> or <c>$</c>) is rendered using the same MVC dot+bracket
+    /// shape as <see cref="JsonPointerToMvc"/>: top-level becomes <see cref="string.Empty"/>;
+    /// nested paths drop the leading <c>$.</c> (or <c>$</c> for indexer-only paths like
+    /// <c>$[0]</c>). Anything else is returned verbatim as a defensive fallback.
+    /// </summary>
+    private static string JsonPathToMvcKey(string? jsonExceptionPath)
+    {
+        if (string.IsNullOrEmpty(jsonExceptionPath) || jsonExceptionPath == "$")
+            return string.Empty;
+        if (jsonExceptionPath.StartsWith("$.", StringComparison.Ordinal))
+            return jsonExceptionPath[2..];
+        if (jsonExceptionPath[0] == '$')
+            return jsonExceptionPath[1..];
+
+        return jsonExceptionPath;
     }
 
 }
