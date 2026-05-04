@@ -158,7 +158,7 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `SystemDefault` | `static TrellisAspOptions` (internal) | Read-only default instance used when DI cannot resolve a configured `TrellisAspOptions` (e.g. the host did not call `AddTrellisAsp`). Internal — not callable from user code; hosts that want a different default must register their own. |
+| `SystemDefault` | `static TrellisAspOptions` (internal) | Read-only default instance used when DI cannot resolve a configured `TrellisAspOptions` (e.g. the host did not call `AddTrellisAsp`). Internal — not callable from user code. Hosts customize the mappings by passing a configure delegate to `AddTrellisAsp(o => o.MapError<...>(...))`; raw `AddSingleton(new TrellisAspOptions())` is unsupported and will be replaced by the bridge factory the next time `AddTrellisAsp` runs. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -374,7 +374,7 @@ The main DI surface for `Trellis.Asp` (in folder `Extensions/`).
 | `public static IServiceCollection AddScalarValueValidationForMinimalApi(this IServiceCollection services)` | `IServiceCollection` | Configures only the Minimal API JSON pipeline. |
 | `public static RouteHandlerBuilder WithScalarValueValidation(this RouteHandlerBuilder builder)` | `RouteHandlerBuilder` | Adds `ScalarValueValidationEndpointFilter` to the route handler. |
 | `public static IServiceCollection AddTrellisAsp(this IServiceCollection services)` | `IServiceCollection` | Registers `TrellisAspOptions` with default error mappings, then calls `AddScalarValueValidation()`. |
-| `public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action<TrellisAspOptions> configure)` | `IServiceCollection` | Same as above, with a `MapError<TError>(...)` callback for overrides. |
+| `public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action<TrellisAspOptions> configure)` | `IServiceCollection` | Same as above, with a `MapError<TError>(...)` callback for overrides. **Calls compose** — when `AddTrellisAsp(o => ...)` is invoked more than once (e.g. by a library and the application), every `configure` delegate runs in registration order against the same `TrellisAspOptions` instance built lazily by `OptionsFactory<TrellisAspOptions>`. Same-`TError` mappings still follow last-wins, but mappings for different error types from earlier calls are preserved. |
 
 ### Namespace `Trellis.Asp.Authorization`
 
@@ -390,10 +390,18 @@ public static class ServiceCollectionExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddClaimsActorProvider(this IServiceCollection services, Action<ClaimsActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `ClaimsActorOptions`, and registers `IActorProvider` as a scoped `ClaimsActorProvider`. |
-| `public static IServiceCollection AddEntraActorProvider(this IServiceCollection services, Action<EntraActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `EntraActorOptions`, and registers `IActorProvider` as a scoped `EntraActorProvider`. |
-| `public static IServiceCollection AddDevelopmentActorProvider(this IServiceCollection services, Action<DevelopmentActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor` + logging, configures `DevelopmentActorOptions`, and registers `IActorProvider` as a scoped `DevelopmentActorProvider`. The provider itself throws outside the Development environment. |
-| `public static IServiceCollection AddCachingActorProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(this IServiceCollection services) where T : class, IActorProvider` | `IServiceCollection` | Registers concrete provider `T` as scoped, then wraps it with `CachingActorProvider` as the scoped `IActorProvider`. |
+| `public static IServiceCollection AddClaimsActorProvider(this IServiceCollection services, Action<ClaimsActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `ClaimsActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `ClaimsActorProvider`. |
+| `public static IServiceCollection AddEntraActorProvider(this IServiceCollection services, Action<EntraActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `EntraActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `EntraActorProvider`. |
+| `public static IServiceCollection AddDevelopmentActorProvider(this IServiceCollection services, Action<DevelopmentActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor` + logging, configures `DevelopmentActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `DevelopmentActorProvider`. The provider itself throws outside the Development environment. |
+| `public static IServiceCollection AddCachingActorProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(this IServiceCollection services) where T : class, IActorProvider` | `IServiceCollection` | Registers concrete provider `T` as scoped, then **replaces** the `IActorProvider` registration with a scoped `CachingActorProvider` wrapping `T`. |
+
+> **Replacement semantics.** Each `AddXxxActorProvider` helper calls
+> `services.Replace(...)` for the `IActorProvider` slot. Calling more than one
+> helper leaves exactly one `IActorProvider` descriptor — the last one wins —
+> and `GetServices<IActorProvider>()` returns a single provider. Without
+> `Replace`, two helpers would leave two scoped descriptors with surprising
+> resolution semantics (single resolve picks the last; enumeration exposes
+> both).
 
 ### `ClaimsActorOptions`
 
@@ -843,25 +851,15 @@ return result.ToHttpResponse(opts => opts
 
 ### Actor providers
 
+`AddXxxActorProvider` helpers all `Replace` the `IActorProvider` slot — only the **last** call wins. The two clean composition patterns:
+
+**Pattern A — select one provider per environment:**
+
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Asp.Authorization;
 
 var services = new ServiceCollection();
-
-services.AddClaimsActorProvider(opts =>
-{
-    opts.ActorIdClaim = "sub";
-    opts.PermissionsClaim = "permissions";
-});
-
-services.AddEntraActorProvider(opts =>
-{
-    opts.MapPermissions = claims => claims
-        .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
-        .Select(c => c.Value)
-        .ToHashSet();
-});
 
 if (env.IsDevelopment())
 {
@@ -871,9 +869,30 @@ if (env.IsDevelopment())
         opts.DefaultPermissions = new HashSet<string> { "orders:read", "orders:create" };
     });
 }
+else
+{
+    services.AddEntraActorProvider(opts =>
+    {
+        opts.MapPermissions = claims => claims
+            .Where(c => string.Equals(c.Type, "roles", StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.Value)
+            .ToHashSet();
+    });
+}
+```
 
+**Pattern B — wrap the chosen inner provider with caching:**
+
+```csharp
+// First register the inner provider, then wrap with caching.
+// Each AddCachingActorProvider<T>() call replaces the IActorProvider slot
+// with CachingActorProvider over T. The inner T is registered idempotently
+// via TryAddScoped<T>() so library + application calls do not duplicate.
+services.AddEntraActorProvider(opts => { /* ... */ });
 services.AddCachingActorProvider<EntraActorProvider>();
 ```
+
+Do **not** chain multiple `AddXxxActorProvider` calls expecting them to coexist or fall back — the last one always wins. If you need different providers in different environments, branch the registration code as in Pattern A.
 
 ### Route constraints for scalar value objects
 

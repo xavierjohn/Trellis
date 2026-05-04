@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Trellis;
 using Trellis.Asp.ModelBinding;
 using Trellis.Asp.Validation;
@@ -482,6 +484,21 @@ public static class ServiceCollectionExtensions
     /// Default mappings are applied first. The <paramref name="configure"/> action can override
     /// any mapping using <see cref="TrellisAspOptions.MapError{TError}"/>.
     /// </para>
+    /// <para>
+    /// <b>Composition:</b> multiple <c>AddTrellisAsp(...)</c> calls compose. Each call's
+    /// <paramref name="configure"/> delegate runs (in registration order) against the same
+    /// <see cref="TrellisAspOptions"/> instance materialized by
+    /// <c>OptionsFactory&lt;TrellisAspOptions&gt;</c>, so mappings for distinct
+    /// <c>TError</c> types from earlier calls survive. Mappings for the same
+    /// <c>TError</c> follow last-wins.
+    /// </para>
+    /// <para>
+    /// <b>Slot ownership:</b> <c>AddTrellisAsp</c> owns the <see cref="TrellisAspOptions"/>
+    /// service descriptor and replaces any existing one with a bridge factory that resolves
+    /// from <c>IOptions&lt;TrellisAspOptions&gt;.Value</c>. Hosts must customize via this
+    /// <paramref name="configure"/> action; raw <c>services.AddSingleton(new TrellisAspOptions())</c>
+    /// is unsupported and will be silently overwritten the next time <c>AddTrellisAsp</c> runs.
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code>
@@ -494,9 +511,21 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action<TrellisAspOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        var options = new TrellisAspOptions();
-        configure(options);
-        services.AddSingleton(options);
+
+        // Compose configuration via IConfigureOptions<TrellisAspOptions>: multiple
+        // AddTrellisAsp(o => ...) calls (e.g. library + application) all run against
+        // the same options instance built lazily by OptionsFactory<TrellisAspOptions>.
+        // Resolution remains via GetService<TrellisAspOptions>() through a singleton
+        // bridge that materializes from IOptions<TrellisAspOptions>.Value.
+        //
+        // Replace (not TryAdd): AddTrellisAsp claims the TrellisAspOptions slot. Without
+        // Replace, a host's pre-registered TrellisAspOptions instance would silently mask
+        // every Configure delegate registered here, so MapError overrides would never
+        // reach the resolved options. Hosts customize via the configure action, not via
+        // raw AddSingleton(new TrellisAspOptions()).
+        services.Configure(configure);
+        services.Replace(ServiceDescriptor.Singleton<TrellisAspOptions>(sp =>
+            sp.GetRequiredService<IOptions<TrellisAspOptions>>().Value));
 
         // auto-register VO binding / JSON converter infrastructure.
         // Idempotent: configures both MVC and Minimal API JSON pipelines for ScalarValue/Maybe support.

@@ -16,7 +16,7 @@ audience: [developer]
 |---|---|---|
 | Validate Entra ID v2.0 tokens and project them onto an `Actor` | `AddJwtBearer` + `AddEntraActorProvider(options?)` | [Entra ID provider](#entra-id-provider) |
 | Validate any flat-claim OIDC token (Auth0, Okta, Google) | `AddJwtBearer` + `AddClaimsActorProvider(options?)` | [Generic OIDC provider](#generic-oidc-provider) |
-| Project nested JSON claims (Keycloak `realm_access.roles`) | Subclass `ClaimsActorProvider` + `AddCachingActorProvider<T>()` | [Nested-claim providers](#nested-claim-providers) |
+| Project nested JSON claims (Keycloak `realm_access.roles`) | Subclass `ClaimsActorProvider` + `AddClaimsActorProvider(opts?)` for options + `AddCachingActorProvider<T>()` for the wrap | [Nested-claim providers](#nested-claim-providers) |
 | Use `roles` for app permissions (Entra app roles) | Default `EntraActorOptions.MapPermissions` | [Claim mapping](#claim-mapping) |
 | Use delegated scopes (`scp`) for permissions | Override `EntraActorOptions.MapPermissions` | [Scope and permission extraction](#scope-and-permission-extraction) |
 | Accept multi-tenant Entra tokens and pin allowed tenants | `JwtBearerOptions.TokenValidationParameters` + read `ActorAttributes.TenantId` | [Multi-tenant Entra](#multi-tenant-entra) |
@@ -238,10 +238,16 @@ public sealed class KeycloakActorProvider(
     }
 }
 
+// Register IOptions<ClaimsActorOptions> first (the subclass shares the base
+// options type), then wrap with the caching helper. AddClaimsActorProvider
+// initially Replaces IActorProvider with ClaimsActorProvider; the subsequent
+// AddCachingActorProvider then Replaces it again with CachingActorProvider
+// wrapping KeycloakActorProvider — that final composition is the one resolved.
+services.AddClaimsActorProvider(opts => opts.ActorIdClaim = "sub");
 services.AddCachingActorProvider<KeycloakActorProvider>();
 ```
 
-`AddCachingActorProvider<T>` registers `T` as scoped and wraps it with `CachingActorProvider`, so the JSON parse runs once per request even if multiple handlers ask for the actor.
+`AddClaimsActorProvider(...)` configures `IOptions<ClaimsActorOptions>` (which `KeycloakActorProvider` consumes through its base constructor). `AddCachingActorProvider<T>` then registers `T` as scoped via `TryAddScoped` and wraps it with `CachingActorProvider`, so the JSON parse runs once per request even if multiple handlers ask for the actor. Because every `AddXxxActorProvider` Replaces the `IActorProvider` slot, the order matters: register the inner-provider's options helper first, then wrap.
 
 ## JWT validation options
 

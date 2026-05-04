@@ -33,7 +33,7 @@ The repository includes full examples you can browse after these snippets click:
 
 - [`Showcase`](https://github.com/xavierjohn/Trellis/tree/main/Examples/Showcase) — one banking domain hosted twice (MVC + Minimal API) with full Result/Error walkthrough, `TimeProvider`, lifecycle state machine, and integration tests for both hosting styles.
 - [`ConditionalRequestExample`](https://github.com/xavierjohn/Trellis/tree/main/Examples/ConditionalRequestExample) — RFC 9110 conditional requests (`If-Match` / `If-None-Match`) with strong ETags.
-- [`SsoExample`](https://github.com/xavierjohn/Trellis/tree/main/Examples/SsoExample) — `AddDevelopmentActorProvider()` and `AddClaimsActorProvider()` wired side-by-side.
+- [`SsoExample`](https://github.com/xavierjohn/Trellis/tree/main/Examples/SsoExample) — `AddDevelopmentActorProvider()` in Development, JWT bearer + `AddClaimsActorProvider()` otherwise (single-provider-per-environment pattern; `AddXxxActorProvider` helpers Replace the `IActorProvider` slot and do not stack).
 - [`EfCoreExample`](https://github.com/xavierjohn/Trellis/tree/main/Examples/EfCoreExample) — VO ID conversions, automatic timestamps, value-object composition over `DbContext`.
 - [`TestingPatterns`](https://github.com/xavierjohn/Trellis/tree/main/Examples/TestingPatterns) — async, parallel, `Maybe`, `EquatableArray`, and validating-by-result patterns.
 
