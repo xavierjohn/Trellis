@@ -158,7 +158,7 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `SystemDefault` | `static TrellisAspOptions` (internal) | Read-only default instance used when DI cannot resolve a configured `TrellisAspOptions` (e.g. the host did not call `AddTrellisAsp`). Internal — not callable from user code; hosts that want a different default must register their own. |
+| `SystemDefault` | `static TrellisAspOptions` (internal) | Read-only default instance used when DI cannot resolve a configured `TrellisAspOptions` (e.g. the host did not call `AddTrellisAsp`). Internal — not callable from user code. Hosts customize the mappings by passing a configure delegate to `AddTrellisAsp(o => o.MapError<...>(...))`; raw `AddSingleton(new TrellisAspOptions())` is unsupported and will be replaced by the bridge factory the next time `AddTrellisAsp` runs. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |

@@ -193,13 +193,13 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void Last_AddXxxActorProvider_wins_after_replacement()
+    public void AddClaimsActorProvider_after_AddEntraActorProvider_leaves_ClaimsActorProvider_as_implementation_type()
     {
-        // After Replace, the resolved IActorProvider must be the LAST registered.
-        // (Same observable last-wins outcome, but achieved via explicit replacement
-        // instead of relying on resolution-order semantics over multiple descriptors.)
-        // Asserts via descriptor introspection to keep the test isolated from each
-        // provider's full constructor dependency graph (e.g. IHostEnvironment).
+        // After Replace, the resolved IActorProvider must be the LAST helper's
+        // concrete type. Same observable last-wins outcome as before, but achieved
+        // via explicit replacement instead of resolution-order semantics over
+        // multiple descriptors. Asserts via descriptor introspection to keep the
+        // test isolated from each provider's full constructor dependency graph.
         var services = new ServiceCollection();
         services.AddEntraActorProvider();
         services.AddClaimsActorProvider();
