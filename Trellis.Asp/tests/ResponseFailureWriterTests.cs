@@ -37,6 +37,131 @@ public sealed class ResponseFailureWriterTests
     private sealed record T(int Id);
 
     [Fact]
+    public async Task Unauthorized_with_single_Bearer_challenge_emits_WwwAuthenticate_header()
+    {
+        // RFC 9110 §11.6.1: a 401 response MUST include a WWW-Authenticate header listing
+        // every challenge applicable to the target resource. Error.Unauthorized.Challenges
+        // is the round-trip carrier; ResponseFailureWriter must emit the header.
+        var ctx = NewContext();
+        var challenge = new AuthChallenge(
+            "Bearer",
+            ImmutableDictionary<string, string>.Empty
+                .Add("realm", "api")
+                .Add("scope", "read"));
+        var r = Result.Fail<T>(new Error.Unauthorized(EquatableArray.Create(challenge)));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(401);
+        var values = ctx.Response.Headers["WWW-Authenticate"];
+        values.Count.Should().Be(1, "a single challenge should produce a single header value");
+        var header = values.ToString();
+        header.Should().StartWith("Bearer ", "the auth-scheme leads the challenge");
+        header.Should().Contain("realm=\"api\"");
+        header.Should().Contain("scope=\"read\"");
+    }
+
+    [Fact]
+    public async Task Unauthorized_with_scheme_only_challenge_emits_bare_scheme()
+    {
+        // A scheme without parameters is valid (e.g. "Bearer" alone). No trailing space
+        // or empty parameter section.
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.Unauthorized(
+            EquatableArray.Create(new AuthChallenge("Bearer"))));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(401);
+        var values = ctx.Response.Headers["WWW-Authenticate"];
+        values.Count.Should().Be(1);
+        values.ToString().Should().Be("Bearer", "scheme-only challenges must not have a trailing space or = sign");
+    }
+
+    [Fact]
+    public async Task Unauthorized_with_multiple_challenges_emits_one_header_value_per_challenge()
+    {
+        // RFC 9110 §11.6.1: WWW-Authenticate is a list-valued header; multiple challenges
+        // can be combined into one comma-separated value or repeated headers. ASP.NET Core
+        // authentication handlers conventionally append one header per challenge so the
+        // emitted shape is unambiguous to downstream middleware that doesn't parse list
+        // syntax. ResponseFailureWriter follows the same convention.
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.Unauthorized(EquatableArray.Create(
+            new AuthChallenge("Bearer", ImmutableDictionary<string, string>.Empty.Add("realm", "api")),
+            new AuthChallenge("Basic", ImmutableDictionary<string, string>.Empty.Add("realm", "legacy")))));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(401);
+        var values = ctx.Response.Headers["WWW-Authenticate"];
+        values.Count.Should().Be(2, "two challenges should produce two header values");
+        values.Should().Contain(v => v!.StartsWith("Bearer", System.StringComparison.Ordinal)
+                                      && v.Contains("realm=\"api\"", System.StringComparison.Ordinal));
+        values.Should().Contain(v => v!.StartsWith("Basic", System.StringComparison.Ordinal)
+                                      && v.Contains("realm=\"legacy\"", System.StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Unauthorized_without_challenges_emits_no_WwwAuthenticate_header()
+    {
+        // Trellis only emits the header when the caller supplies challenges. RFC 9110
+        // requires 401 responses to carry the header but does not specify the source —
+        // standard ASP.NET authentication handlers (JwtBearerHandler, etc.) own that flow
+        // when configured. When application code returns an empty Error.Unauthorized,
+        // leave the header to the auth pipeline rather than synthesise one.
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.Unauthorized());
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(401);
+        ctx.Response.Headers.ContainsKey("WWW-Authenticate")
+            .Should().BeFalse("no challenges → no WWW-Authenticate header from the writer");
+    }
+
+    [Fact]
+    public async Task Unauthorized_param_value_with_quote_and_backslash_is_escaped_per_RFC_9110()
+    {
+        // RFC 9110 §5.6.4 quoted-string: DQUOTE and backslash inside a quoted-string MUST
+        // be escaped with a preceding backslash. A real-world case is challenge param
+        // values like error_description carrying user-supplied phrases that may contain
+        // quotes or backslashes.
+        var ctx = NewContext();
+        var challenge = new AuthChallenge(
+            "Bearer",
+            ImmutableDictionary<string, string>.Empty.Add("error_description", "bad \"token\" \\path"));
+        var r = Result.Fail<T>(new Error.Unauthorized(EquatableArray.Create(challenge)));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(401);
+        var header = ctx.Response.Headers["WWW-Authenticate"].ToString();
+        header.Should().Contain("error_description=\"bad \\\"token\\\" \\\\path\"",
+            "quote and backslash inside a quoted-string MUST be backslash-escaped per RFC 9110 §5.6.4");
+    }
+
+    [Fact]
+    public async Task Unauthorized_with_challenges_but_non_401_mapped_status_does_not_emit_WwwAuthenticate()
+    {
+        // Mirrors the m-13 design (ValidationProblem_with_5xx_status_scrubs_detail): when
+        // WithErrorMapping promotes Error.Unauthorized to a non-401 status, companion
+        // headers tied to the original 401 semantics must not be emitted. RFC 9110 §11.6.1
+        // ties WWW-Authenticate to 401 specifically; emitting it on a 500 (or any other
+        // mapped status) would mislead clients into attempting re-authentication.
+        var ctx = NewContext();
+        var error = new Error.Unauthorized(EquatableArray.Create(new AuthChallenge("Bearer")));
+        var r = Result.Fail<T>(error);
+
+        await r.ToHttpResponse(t => t, o => o.WithErrorMapping<Error.Unauthorized>(500))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(500);
+        ctx.Response.Headers.ContainsKey("WWW-Authenticate")
+            .Should().BeFalse("WWW-Authenticate is meaningful only on 401 responses per RFC 9110 §11.6.1");
+    }
+
+    [Fact]
     public async Task ServiceUnavailable_with_RetryAfter_emits_RetryAfter_header()
     {
         var ctx = NewContext();
