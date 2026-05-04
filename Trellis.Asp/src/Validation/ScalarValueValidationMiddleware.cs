@@ -223,15 +223,21 @@ public sealed class ScalarValueValidationMiddleware
     /// STJ uses JSONPath: <c>$</c> for root, <c>$.foo.bar</c> for dot-property segments,
     /// <c>$[0]</c> for array indices, and <c>$['weird name']</c> bracket-quoted notation
     /// for property names containing characters that are not valid JSONPath identifiers
-    /// (space, dot, slash, bracket, single quote). Embedded single quotes are escaped by
-    /// doubling: <c>$['a''b']</c> represents the property <c>a'b</c>.
+    /// (space, dot, slash, bracket, single quote, etc.). STJ does <b>not</b> escape
+    /// embedded single quotes in bracket-quoted segments — for the dictionary key
+    /// <c>a'b</c> it emits the literal string <c>$['a'b']</c>. The forward-scan-with-
+    /// lookahead heuristic below closes a bracket-quoted segment only at <c>'</c>
+    /// followed by <c>]</c> followed by <c>.</c>, <c>[</c>, or end-of-string, which
+    /// recovers the property name correctly for every observed STJ output (including
+    /// nested cases like <c>$['a'b'].foo</c>, <c>$['a'b'][0]</c>, <c>$['a'.b']</c>).
     /// </para>
     /// <para>
     /// Mapping: drop the leading <c>$</c>; emit each subsequent segment as MVC produces it,
     /// using bare property names joined with <c>.</c> and numeric indices as <c>[N]</c>.
-    /// Bracket-quoted property segments are unquoted and emitted as bare property segments
-    /// so the wire key stays consistent with <see cref="JsonPointerToMvc.Translate"/> output
-    /// for the equivalent JSON Pointer (single quotes are not part of MVC convention).
+    /// Bracket-quoted property segments are unquoted and emitted as bare property segments.
+    /// Empty property names (<c>$.</c>, <c>$..foo</c>, <c>$.foo.</c>, <c>$['']</c>) emit
+    /// <c>[""]</c> to match <see cref="JsonPointerToMvc.Translate"/> output for the
+    /// equivalent JSON Pointer (<c>/</c> → <c>[""]</c>).
     /// </para>
     /// </remarks>
     private static string JsonPathToMvcKey(string? jsonExceptionPath)
@@ -260,38 +266,52 @@ public sealed class ScalarValueValidationMiddleware
                     if (sb.Length > 0) sb.Append('.');
                     sb.Append(jsonExceptionPath, start, i - start);
                 }
+                else
+                {
+                    sb.Append("[\"\"]");
+                }
             }
             else if (c == '[')
             {
                 if (i + 1 < jsonExceptionPath.Length && jsonExceptionPath[i + 1] == '\'')
                 {
-                    i += 2;
-                    var inner = new StringBuilder();
-                    while (i < jsonExceptionPath.Length)
+                    var contentStart = i + 2;
+                    var closeIdx = -1;
+                    for (var j = contentStart; j + 1 < jsonExceptionPath.Length; j++)
                     {
-                        if (jsonExceptionPath[i] == '\'')
+                        if (jsonExceptionPath[j] != '\'') continue;
+                        if (jsonExceptionPath[j + 1] != ']') continue;
+                        var afterIdx = j + 2;
+                        if (afterIdx == jsonExceptionPath.Length
+                            || jsonExceptionPath[afterIdx] == '.'
+                            || jsonExceptionPath[afterIdx] == '[')
                         {
-                            if (i + 1 < jsonExceptionPath.Length && jsonExceptionPath[i + 1] == '\'')
-                            {
-                                inner.Append('\'');
-                                i += 2;
-                            }
-                            else
-                            {
-                                i++;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            inner.Append(jsonExceptionPath[i]);
-                            i++;
+                            closeIdx = j;
+                            break;
                         }
                     }
 
-                    if (i < jsonExceptionPath.Length && jsonExceptionPath[i] == ']') i++;
-                    if (sb.Length > 0) sb.Append('.');
-                    sb.Append(inner);
+                    string content;
+                    if (closeIdx >= 0)
+                    {
+                        content = jsonExceptionPath.Substring(contentStart, closeIdx - contentStart);
+                        i = closeIdx + 2;
+                    }
+                    else
+                    {
+                        content = jsonExceptionPath[contentStart..];
+                        i = jsonExceptionPath.Length;
+                    }
+
+                    if (content.Length == 0)
+                    {
+                        sb.Append("[\"\"]");
+                    }
+                    else
+                    {
+                        if (sb.Length > 0) sb.Append('.');
+                        sb.Append(content);
+                    }
                 }
                 else
                 {
