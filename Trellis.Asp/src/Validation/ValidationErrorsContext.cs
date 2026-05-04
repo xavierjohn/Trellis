@@ -49,7 +49,7 @@ public static class ValidationErrorsContext
     /// to determine the field name for validation errors.
     /// </summary>
     /// <remarks>
-    /// In reflection mode, the property name is set by <c>PropertyNameAwareConverter&lt;TInner, TValue&gt;</c>
+    /// In reflection mode, the property name is set by <c>PropertyNameAwareConverter&lt;T&gt;</c>
     /// during JSON deserialization. In AOT mode, generated converters read this property and fall back
     /// to a camel-cased type name when no scope is active. Using AsyncLocal ensures thread-safety
     /// and proper isolation across concurrent requests.

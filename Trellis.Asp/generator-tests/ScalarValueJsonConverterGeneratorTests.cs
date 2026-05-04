@@ -369,14 +369,14 @@ public class ScalarValueJsonConverterGeneratorTests
             "M-2: generated Read must record the same 'is not a valid {Type}' error message that PrimitiveJsonReader.TryRead emits in reflection mode");
     }
 
-     /// <summary>
-     /// Generated converters must never call reflection-based <c>JsonSerializer.Deserialize</c>
-     /// or <c>JsonSerializer.Serialize</c> overloads — those are annotated
-     /// <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and produce
-     /// IL2026/IL3050 under <c>PublishAot=true</c>. Mixed fixture (one supported +
-     /// one unsupported primitive) verifies the unsupported type is skipped while the
-     /// supported type still generates an AOT-safe converter. See issue #413.
-     /// </summary>
+    /// <summary>
+    /// Generated converters must never call reflection-based <c>JsonSerializer.Deserialize</c>
+    /// or <c>JsonSerializer.Serialize</c> overloads — those are annotated
+    /// <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and produce
+    /// IL2026/IL3050 under <c>PublishAot=true</c>. Mixed fixture (one supported +
+    /// one unsupported primitive) verifies the unsupported type is skipped while the
+    /// supported type still generates an AOT-safe converter. See issue #413.
+    /// </summary>
     [Fact]
     public void Unsupported_Primitive_Is_Skipped_And_No_Reflection_Based_JsonSerializer_Calls_Are_Emitted()
     {

@@ -72,8 +72,9 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
     /// using direct <c>Utf8JsonReader</c>/<c>Utf8JsonWriter</c> APIs (no reflection).
     /// </summary>
     /// <remarks>
-    /// Must be kept in sync with the case branches in <see cref="GenerateReadPrimitive"/>
-    /// and <see cref="GenerateWritePrimitive"/>. When a value object wraps a primitive
+    /// Must be kept in sync with the case branches in <see cref="GetTypedReaderCall"/>,
+    /// <see cref="GetPrimitiveCsName"/>, <see cref="GetPrimitiveFriendlyName"/>, and
+    /// <see cref="GenerateWritePrimitive"/>. When a value object wraps a primitive
     /// outside this set the generator emits TRLS039 and skips converter generation rather
     /// than falling back to <c>JsonSerializer.Deserialize</c>/<c>Serialize</c>, which are
     /// annotated <c>[RequiresUnreferencedCode]</c>/<c>[RequiresDynamicCode]</c> and would
@@ -697,62 +698,6 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         // letter in the run as the start of the next "word" and lowercases all earlier ones
         // (e.g. "URLValue" → "urlValue"; "XMLDocument" → "xmlDocument"; "IPAddress" → "ipAddress").
         return typeName.Substring(0, runLength - 1).ToLowerInvariant() + typeName.Substring(runLength - 1);
-    }
-
-    /// <summary>
-    /// Generates code to read a primitive value from JSON.
-    /// </summary>
-    private static void GenerateReadPrimitive(StringBuilder sb, string primitiveType)
-    {
-        switch (primitiveType)
-        {
-            case "string":
-                sb.AppendLine("        var primitiveValue = reader.GetString();");
-                break;
-            case "int":
-                sb.AppendLine("        var primitiveValue = reader.GetInt32();");
-                break;
-            case "long":
-                sb.AppendLine("        var primitiveValue = reader.GetInt64();");
-                break;
-            case "bool":
-                sb.AppendLine("        var primitiveValue = reader.GetBoolean();");
-                break;
-            case "double":
-                sb.AppendLine("        var primitiveValue = reader.GetDouble();");
-                break;
-            case "decimal":
-                sb.AppendLine("        var primitiveValue = reader.GetDecimal();");
-                break;
-            case "float":
-                sb.AppendLine("        var primitiveValue = reader.GetSingle();");
-                break;
-            case "short":
-                sb.AppendLine("        var primitiveValue = reader.GetInt16();");
-                break;
-            case "byte":
-                sb.AppendLine("        var primitiveValue = reader.GetByte();");
-                break;
-            case "System.Guid":
-            case "Guid":
-                sb.AppendLine("        var primitiveValue = reader.GetGuid();");
-                break;
-            case "System.DateTime":
-            case "DateTime":
-                sb.AppendLine("        var primitiveValue = reader.GetDateTime();");
-                break;
-            case "System.DateTimeOffset":
-            case "DateTimeOffset":
-                sb.AppendLine("        var primitiveValue = reader.GetDateTimeOffset();");
-                break;
-            default:
-                // Unsupported primitives are filtered out in Execute before reaching this
-                // method (see TRLS039). This branch must remain unreachable; the throw
-                // documents the contract and surfaces a clear runtime error if the filter
-                // is ever bypassed.
-                throw new InvalidOperationException(
-                    $"Unsupported primitive '{primitiveType}' reached GenerateReadPrimitive; should have been filtered upstream.");
-        }
     }
 
     /// <summary>
