@@ -382,6 +382,9 @@ public async ValueTask<Result<Unit>> Handle(ShipOrder cmd, CancellationToken ct)
 > [!IMPORTANT]
 > The unit of work is shared with the outer's `DbContext`, so per-scope rollback of staged changes is not supported. If an inner command returns `Result.Fail` but the outer handler ignores that failure and returns success, the outer's commit will persist any changes the inner staged before failing. Handlers that need to discard inner failures' staged work must detach the affected entities themselves.
 
+> [!WARNING]
+> The depth counter is per-`IUnitOfWork`-instance — i.e. per DI scope. **Concurrent commands on the same scoped `IUnitOfWork`** (e.g. `Task.WhenAll(mediator.Send(a), mediator.Send(b))` from inside a handler) are **not supported**: their scopes share the counter and one command's commit can suppress or get folded into the other's. This is consistent with EF Core's existing constraint that `DbContext` is not thread-safe — concurrent dispatch on a single request scope is unsafe regardless. To run commands in parallel, give each one its own DI scope via `IServiceScopeFactory.CreateScope()` so each resolves its own `IUnitOfWork` and `DbContext`.
+
 > [!NOTE]
 > **Custom `IUnitOfWork` implementations must implement `BeginScope()` with the same depth-aware semantics.** Mirror the `EfUnitOfWork<TContext>` shape: an `Interlocked.Increment`-counted depth field with a disposable releaser; `CommitAsync` returns `Result.Ok()` at depth > 1 and persists otherwise. The `Trellis.Asp` package's `SAMPLES.md` shows a complete custom `UnitOfWork` example with this shape.
 

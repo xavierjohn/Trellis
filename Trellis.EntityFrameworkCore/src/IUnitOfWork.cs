@@ -57,6 +57,17 @@ public interface IUnitOfWork
     /// changes is not supported. Handlers that need to discard inner failures' staged work must
     /// detach the affected entities themselves.
     /// </para>
+    /// <para>
+    /// <b>Concurrency.</b> The depth counter is per-<see cref="IUnitOfWork"/>-instance — i.e.
+    /// per DI scope. Concurrent commands sent on the **same** scoped <see cref="IUnitOfWork"/>
+    /// (e.g. via <c>Task.WhenAll(mediator.Send(a), mediator.Send(b))</c> from inside a handler)
+    /// are **not supported**: their scopes share the counter and one command's commit can be
+    /// suppressed by the other's open scope, or vice versa. This aligns with EF Core's existing
+    /// constraint that <see cref="Microsoft.EntityFrameworkCore.DbContext"/> is not thread-safe;
+    /// concurrent dispatch on a single request scope is unsafe regardless. To run commands in
+    /// parallel, give each one its own DI scope (e.g. <c>IServiceScopeFactory</c>) so each
+    /// resolves its own <see cref="IUnitOfWork"/> and <c>DbContext</c>.
+    /// </para>
     /// </remarks>
     IDisposable BeginScope();
 }

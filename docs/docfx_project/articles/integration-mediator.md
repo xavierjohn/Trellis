@@ -417,10 +417,10 @@ services.AddDomainEventHandler<UserRegistered, ProvisionTenantHandler>();
 services.AddDomainEventDispatch(typeof(SendWelcomeEmailHandler).Assembly);
 
 // 3. Service-defaults builder (Trellis.ServiceDefaults). Order-safe with the other Use* slots.
-builder.Services.AddTrellisServices()
-    .UseEntra()
+builder.Services.AddTrellis(trellis => trellis
+    .UseEntraActorProvider()
     .UseDomainEvents(typeof(SendWelcomeEmailHandler).Assembly)
-    .UseEntityFrameworkUnitOfWork<AppDbContext>();
+    .UseEntityFrameworkUnitOfWork<AppDbContext>());
 ```
 
 `AddDomainEventDispatch()` is **idempotent** — calling it more than once registers the behavior and the default `IDomainEventPublisher` exactly once. Both the per-handler overload and the assembly-scan overload call it for you.
