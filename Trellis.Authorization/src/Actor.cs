@@ -23,8 +23,19 @@ using System.Collections.Frozen;
 /// All permission and attribute lookups use ordinal (case-sensitive) comparison.
 /// Ensure consistent casing when hydrating permissions, forbidden permissions, and attributes.
 /// </para>
+/// <para>
+/// <b>Equality is identity-based.</b> <see cref="Actor"/> is conceptually an entity — its
+/// <see cref="Id"/> is a stable, externally-meaningful principal identifier (e.g. JWT
+/// <c>sub</c> claim) and the other properties are point-in-time state about that principal
+/// (granted permissions and ABAC attributes change over time). Two <see cref="Actor"/>
+/// instances with the same <see cref="Id"/> are equal even when their <see cref="Permissions"/>
+/// or <see cref="Attributes"/> differ; two with different <see cref="Id"/>s are never equal.
+/// This deliberately mirrors the framework's domain-layer
+/// <c>Trellis.Entity&lt;TId&gt;</c> semantics without taking on the full <see cref="IAggregate"/>
+/// surface (Actor is an authorization-layer principal, not a domain aggregate root).
+/// </para>
 /// </remarks>
-public sealed record Actor
+public sealed class Actor : IEquatable<Actor>
 {
     private IReadOnlySet<string> _permissions = FrozenSet<string>.Empty;
     private IReadOnlySet<string> _forbiddenPermissions = FrozenSet<string>.Empty;
@@ -217,6 +228,67 @@ public sealed record Actor
         return Attributes.TryGetValue(key, out var value) ? value : null;
     }
 
+    /// <summary>
+    /// Determines whether the specified <see cref="Actor"/> represents the same principal.
+    /// </summary>
+    /// <param name="other">The actor to compare against.</param>
+    /// <returns>
+    /// <see langword="true"/> when both actors share the same <see cref="Id"/> (ordinal
+    /// comparison); otherwise <see langword="false"/>. The other properties
+    /// (<see cref="Permissions"/>, <see cref="ForbiddenPermissions"/>, <see cref="Attributes"/>)
+    /// are state about the principal, not part of identity, and are intentionally excluded
+    /// from the equality comparison.
+    /// </returns>
+    /// <remarks>
+    /// Identity-based equality mirrors the domain-layer <c>Trellis.Entity&lt;TId&gt;</c>
+    /// pattern without inheriting the full <see cref="IAggregate"/> contract. Two
+    /// <see cref="Actor"/>s with the same <see cref="Id"/> represent the same principal even
+    /// when one carries a freshly-rotated permission set or a different request-bound IP
+    /// address — both are point-in-time snapshots of the same actor.
+    /// </remarks>
+    public bool Equals(Actor? other)
+    {
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
+        return string.Equals(Id, other.Id, StringComparison.Ordinal);
+    }
+
+    /// <inheritdoc />
+    public override bool Equals(object? obj) => Equals(obj as Actor);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The hash is derived from <see cref="Id"/> only, matching the identity-based equality
+    /// contract on <see cref="Equals(Actor)"/>.
+    /// </remarks>
+    public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Id);
+
+    /// <summary>
+    /// Determines whether two actors represent the same principal (identity-based comparison).
+    /// </summary>
+    /// <param name="left">The first actor to compare.</param>
+    /// <param name="right">The second actor to compare.</param>
+    /// <returns>
+    /// <see langword="true"/> when both operands are <see langword="null"/>, or when both
+    /// share the same <see cref="Id"/>; otherwise <see langword="false"/>.
+    /// </returns>
+    public static bool operator ==(Actor? left, Actor? right)
+    {
+        if (left is null)
+            return right is null;
+        return left.Equals(right);
+    }
+
+    /// <summary>
+    /// Determines whether two actors represent different principals.
+    /// </summary>
+    /// <param name="left">The first actor to compare.</param>
+    /// <param name="right">The second actor to compare.</param>
+    /// <returns><see langword="true"/> when the actors have different <see cref="Id"/>s or exactly one is <see langword="null"/>; otherwise <see langword="false"/>.</returns>
+    public static bool operator !=(Actor? left, Actor? right) => !(left == right);
+
     private static FrozenSet<string> SnapshotSet(IReadOnlySet<string> values) =>
         values.Count == 0
             ? FrozenSet<string>.Empty
@@ -226,69 +298,4 @@ public sealed record Actor
         values.Count == 0
             ? FrozenDictionary<string, string>.Empty
             : values.ToFrozenDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-
-    /// <summary>
-    /// Determines whether the specified <see cref="Actor"/> has the same authorization state.
-    /// </summary>
-    /// <param name="other">The actor to compare against.</param>
-    /// <returns>
-    /// <see langword="true"/> when both actors share the same <see cref="Id"/> and structurally
-    /// equivalent <see cref="Permissions"/>, <see cref="ForbiddenPermissions"/>, and
-    /// <see cref="Attributes"/>; otherwise <see langword="false"/>.
-    /// </returns>
-    /// <remarks>
-    /// The compiler-synthesised record equality compares the collection-typed properties
-    /// (<see cref="IReadOnlySet{T}"/>, <see cref="IReadOnlyDictionary{TKey,TValue}"/>) by
-    /// reference, which would mark two actors built from identical inputs as unequal because
-    /// the constructor snapshots the inputs into distinct <see cref="FrozenSet{T}"/> /
-    /// <see cref="FrozenDictionary{TKey,TValue}"/> instances. This override compares the
-    /// snapshots structurally so the <c>record</c>'s value-equality contract holds.
-    /// </remarks>
-    public bool Equals(Actor? other)
-    {
-        if (other is null)
-            return false;
-        if (ReferenceEquals(this, other))
-            return true;
-
-        return string.Equals(Id, other.Id, StringComparison.Ordinal)
-            && Permissions.SetEquals(other.Permissions)
-            && ForbiddenPermissions.SetEquals(other.ForbiddenPermissions)
-            && DictionaryEquals(Attributes, other.Attributes);
-    }
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// The hash incorporates <see cref="Id"/> plus the size of each collection. Including the
-    /// element contents would either bind the hash to enumeration order (incorrect for
-    /// <see cref="Permissions"/> set semantics) or be expensive on every dictionary access;
-    /// the size-only approximation respects the "equal objects must have equal hash codes"
-    /// contract while keeping the operation O(1).
-    /// </remarks>
-    public override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(Id, StringComparer.Ordinal);
-        hash.Add(Permissions.Count);
-        hash.Add(ForbiddenPermissions.Count);
-        hash.Add(Attributes.Count);
-        return hash.ToHashCode();
-    }
-
-    private static bool DictionaryEquals(
-        IReadOnlyDictionary<string, string> left,
-        IReadOnlyDictionary<string, string> right)
-    {
-        if (left.Count != right.Count)
-            return false;
-
-        foreach (var (key, value) in left)
-        {
-            if (!right.TryGetValue(key, out var otherValue) ||
-                !string.Equals(value, otherValue, StringComparison.Ordinal))
-                return false;
-        }
-
-        return true;
-    }
 }

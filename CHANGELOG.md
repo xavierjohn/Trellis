@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### Trellis.Authorization — `Actor` structural equality
+#### Trellis.Authorization — `Actor` is now an entity (identity-based equality), no longer a record
 
-`Actor.Equals(Actor?)` and `Actor.GetHashCode()` are now overridden so the `record` declaration's value-equality contract holds. The compiler-synthesised equality compared `Permissions`, `ForbiddenPermissions`, and `Attributes` by reference (their interface types have no structural comparer), so two actors built from identical inputs always compared unequal because the constructor snapshots inputs into distinct `FrozenSet<string>` / `FrozenDictionary<string,string>` instances. The override compares the snapshots structurally — `Id` ordinally, the two permission sets via `IReadOnlySet<T>.SetEquals`, and the attribute dictionary entry-by-entry. `GetHashCode` incorporates `Id` plus the size of each collection (size-only is the only stable element-aware hash for a set; element contents are O(N) and would force enumeration on every dictionary key access). Inspection finding **Trellis.Authorization m-1**.
+`Actor` is converted from `sealed record` to `sealed class` with explicit identity-based equality. The `Id` property (e.g. JWT `sub` claim) is the principal identifier; `Permissions`, `ForbiddenPermissions`, and `Attributes` are point-in-time state about that principal (granted/revoked over time, ABAC attributes change every request). Two `Actor`s with the same `Id` are now equal regardless of their state — mirroring the framework's domain-layer `Trellis.Entity<TId>` pattern without inheriting the full `IAggregate` surface (Actor is an authorization-layer principal, not a domain aggregate root).
+
+`Actor.Equals(Actor?)` / `Actor.Equals(object?)` / `Actor.GetHashCode()` / `==` / `!=` are all overridden to use `Id` only (ordinal comparison). Init-only properties remain unchanged so the type is still immutable after construction. The `with`-expression syntax (a `record`-only feature) is no longer available — use the constructor directly when copy-with-changes is needed. **Behavior change**: any caller that put `Actor`s into a `HashSet`, used `Should().Be(expectedActor)`, or compared actors via `==` previously got reference equality (always false for distinct instances). After this change they get identity equality. No current consumer in the framework was equality-keying actors; the upgrade is otherwise transparent.
+
+Inspection finding **Trellis.Authorization m-1**.
 
 #### Trellis.Core — `ResourceRef.FormatTypeName(Type)` public helper
 
