@@ -105,7 +105,7 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 | 4 | `AuthorizationBehavior` | `IAuthorize` messages | Resolves the actor and checks `RequiredPermissions`. |
 | 5 | `ResourceAuthorizationBehavior` *(opt-in)* | `IAuthorizeResource<T>` messages | Loads the resource and calls `Authorize(actor, resource)`. Inserted by `AddResourceAuthorization(...)` immediately before `ValidationBehavior`. |
 | 6 | `ValidationBehavior` | all messages | Runs `IValidate.Validate()` and every `IMessageValidator<TMessage>`; aggregates `Error.UnprocessableContent`. |
-| 7 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success. Register **after** `AddTrellisBehaviors()` so it lands innermost. |
+| 7 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success; wraps each command in `using var scope = unitOfWork.BeginScope();` so nested commands defer commit to the outermost scope. Register **after** `AddTrellisBehaviors()` so it lands innermost. See [Nested commands and scope-aware commit](integration-ef.md#nested-commands-and-scope-aware-commit). |
 
 The first five live in `ServiceCollectionExtensions.PipelineBehaviors` for the AOT-friendly source-generator path; assign that list to `MediatorOptions.PipelineBehaviors` when configuring `AddMediator`.
 

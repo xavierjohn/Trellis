@@ -411,8 +411,8 @@ public static class DbExceptionClassifier
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static bool IsDuplicateKey(DbUpdateException ex)` | `bool` | Detects duplicate-key violations across SQL Server, PostgreSQL, SQLite, and generic message-based fallbacks. |
-| `public static bool IsForeignKeyViolation(DbUpdateException ex)` | `bool` | Detects foreign-key violations across SQL Server, PostgreSQL, SQLite, and generic message-based fallbacks. |
+| `public static bool IsDuplicateKey(DbUpdateException ex)` | `bool` | Detects duplicate-key violations across SQL Server (errors 2601/2627), PostgreSQL (SQLSTATE 23505), SQLite (`UNIQUE constraint failed` / `PRIMARY KEY constraint failed`), MySQL/MariaDB (error 1062 / SQLSTATE 23000 — works with both `MySql.Data.MySqlClient` and `MySqlConnector`), and generic message-based fallbacks. Provider exception types are detected by name, so consumers do not take a transitive dependency on any particular driver. |
+| `public static bool IsForeignKeyViolation(DbUpdateException ex)` | `bool` | Detects foreign-key violations across SQL Server (error 547), PostgreSQL (SQLSTATE 23503), SQLite (`FOREIGN KEY constraint failed`), MySQL/MariaDB (errors 1451/1452 / SQLSTATE 23000 with `Cannot add or update a child row` / `Cannot delete or update a parent row`), and generic message-based fallbacks. Provider exception types are detected by name. |
 | `public static string? ExtractConstraintDetail(DbUpdateException ex)` | `string?` | Returns a logging-oriented detail string such as the PostgreSQL constraint name or the provider message. |
 
 ### `TrellisPersistenceMappingException`
