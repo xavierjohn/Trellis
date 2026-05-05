@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Trellis.Authorization — `Actor` is now an entity (identity-based equality), no longer a record
+
+`Actor` is converted from `sealed record` to `sealed class` with explicit identity-based equality. The `Id` property (e.g. JWT `sub` claim) is the principal identifier; `Permissions`, `ForbiddenPermissions`, and `Attributes` are point-in-time state about that principal (granted/revoked over time, ABAC attributes change every request). Two `Actor`s with the same `Id` are now equal regardless of their state — mirroring the framework's domain-layer `Trellis.Entity<TId>` pattern without inheriting the full `IAggregate` surface (Actor is an authorization-layer principal, not a domain aggregate root).
+
+`Actor.Equals(Actor?)` / `Actor.Equals(object?)` / `Actor.GetHashCode()` / `==` / `!=` are all overridden to use `Id` only (ordinal comparison). Init-only properties remain unchanged so the type is still immutable after construction. The `with`-expression syntax (a `record`-only feature) is no longer available — use the constructor directly when copy-with-changes is needed. **Behavior change**: as a `record`, equality was synthesised structurally but the collection-typed properties (`Permissions`, `ForbiddenPermissions`, `Attributes`) compared by **reference** (their interface types have no structural comparer). Distinct `Actor` instances built from independent inputs were therefore unequal even when logically identical, because the constructor snapshots inputs into fresh `FrozenSet`/`FrozenDictionary` instances; the only way two distinct `Actor`s could compare equal was if a caller passed the exact same `FrozenSet`/`FrozenDictionary` references to both constructors. After this change they get identity equality based on `Id` regardless of state. No current consumer in the framework was equality-keying actors; the upgrade is otherwise transparent.
+
+Inspection finding **Trellis.Authorization m-1**.
+
 #### Trellis.Core — `ResourceRef.FormatTypeName(Type)` public helper
 
 `ResourceRef.FormatTypeName(Type)` is a new public static helper that returns the simple CLR name of a type with backtick arity-mangling stripped (``List`1`` → `"List"`, ``Dictionary`2`` → `"Dictionary"`). It is used internally by `ResourceRef.For<TResource>()` and exposed publicly so other Trellis components — and consumer code — can sanitize type-derived identifiers without duplicating the algorithm. Non-generic types pass through unchanged.
@@ -24,6 +32,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `ValidationErrorsContext.AddError(string fieldName, string errorMessage)`, `ValidationErrorsContext.AddError(Error.UnprocessableContent unprocessableContent)`, and `ValidationErrorsContext.CurrentPropertyName` (get/set) are now `public` (previously `internal`). Promoting these formalizes the contract that AOT-generated `JsonConverter<TValue>`s in consumer assemblies depend on. The reflection-mode `ScalarValueJsonConverterBase<,,>` continues to use the same APIs unchanged. No behavioral change for any existing caller.
 
 ### Changed
+
+#### Trellis.Authorization — argument-null guards on the public surface
+
+`Actor` constructor, `Actor.Create`, every `Actor` lookup method (`HasPermission` / `HasPermission(string,string)` / `HasAllPermissions` / `HasAnyPermission` / `IsOwner` / `HasAttribute` / `GetAttribute`), and `ResourceLoaderById<TMessage,TResource,TId>.LoadAsync` now throw `ArgumentNullException` with the offending parameter name when called with a null argument. Previously these calls deferred null-checks to internal helpers (`SnapshotSet` / `FrozenSet.Contains` / `Enumerable.All` over a null `IEnumerable`) which surfaced as confusing `NullReferenceException`s with no parameter name. Aligns with the framework's defensive-coding posture established by Trellis.Core 2.3-2 / 2.3-7. Inspection findings **Trellis.Authorization m-2 / m-3 / i-3**.
+
+#### Trellis.Authorization — xmldoc and API reference clarifications
+
+Inspection findings **m-4 / m-5 / m-6 / i-4 / i-5 / i-6**:
+
+- `Actor` constructor xmldoc and API reference table now enumerate every `ArgumentNullException`-throwing parameter (previously only `id` was documented).
+- `Actor.Permissions` xmldoc nudges callers toward the `PermissionScopeSeparator` convention so scoped permissions round-trip through `HasPermission(string, string)` correctly.
+- `IAuthorize.RequiredPermissions` xmldoc and API reference clarify that duplicates and order are ignored under AND-semantics.
+- `IActorProvider.GetCurrentActorAsync` xmldoc and API reference now name `InvalidOperationException` as the canonical throw on unauthenticated, with subclass-specific guidance for concrete implementations.
+- `SharedResourceLoaderById<TResource, TId>` xmldoc and API reference document that `Trellis.Mediator.AddResourceAuthorization(...)` registers it as **scoped** (safe to depend on a `DbContext`).
+- The API reference's `HasPermission(string, string)` description previously rendered the composed key in TypeScript template-literal syntax (`${permission}:${scope}`); rewritten as plain prose to avoid misleading LLM-targeted doc consumers.
 
 #### Trellis.Core / Trellis.Asp / Trellis.EntityFrameworkCore / Trellis.Testing — sweep CLR-mangled type names out of resource refs and wire-facing error messages
 

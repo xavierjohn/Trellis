@@ -50,5 +50,8 @@ public abstract class ResourceLoaderById<TMessage, TResource, TId>
 
     /// <inheritdoc />
     public Task<Result<TResource>> LoadAsync(TMessage message, CancellationToken cancellationToken)
-        => GetByIdAsync(GetId(message), cancellationToken);
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        return GetByIdAsync(GetId(message), cancellationToken);
+    }
 }

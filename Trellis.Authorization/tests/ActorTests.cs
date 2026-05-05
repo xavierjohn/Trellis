@@ -286,15 +286,26 @@ public class ActorTests
 
     #region Immutability
 
+    /// <summary>
+    /// Inspection finding m-1: <see cref="Actor"/> was previously declared as a
+    /// <c>sealed record</c>, which signalled value semantics that did not match the type's
+    /// DDD role. The <see cref="Actor.Id"/> is a stable principal identifier and the other
+    /// properties (<see cref="Actor.Permissions"/>, <see cref="Actor.ForbiddenPermissions"/>,
+    /// <see cref="Actor.Attributes"/>) are point-in-time state about that principal. The fix
+    /// converts the type to a <c>sealed class</c> with identity-based equality (mirroring
+    /// the framework's <c>Trellis.Entity&lt;TId&gt;</c> pattern), so init-only properties
+    /// remain immutable but <c>with</c>-expression syntax (a <c>record</c>-only feature) is
+    /// no longer available. Use the constructor directly when copy-with-changes is needed.
+    /// </summary>
     [Fact]
-    public void Record_IsImmutable_WithExpression_CreatesNewInstance()
+    public void Actor_ReturnsConstructorArgumentsViaProperties_AndPropertiesRemainStable()
     {
-        var original = CreateActor(id: "user-1", permissions: ["A"]);
-        var modified = original with { Id = "user-2" };
+        var actor = CreateActor(id: "user-1", permissions: ["A"]);
 
-        original.Id.Should().Be("user-1");
-        modified.Id.Should().Be("user-2");
-        modified.Permissions.Should().BeEquivalentTo(original.Permissions);
+        actor.Id.Should().Be("user-1");
+        actor.Permissions.Should().Contain("A");
+        actor.ForbiddenPermissions.Should().BeEmpty();
+        actor.Attributes.Should().BeEmpty();
     }
 
     #endregion
@@ -363,6 +374,249 @@ public class ActorTests
 
         actor.GetAttribute(ActorAttributes.TenantId).Should().Be("tenant-a");
         actor.HasAttribute(ActorAttributes.MfaAuthenticated).Should().BeFalse("Actor should snapshot attributes at construction time");
+    }
+
+    #endregion
+
+    #region Argument-null guards (inspection findings m-2 + m-3)
+
+    /// <summary>
+    /// Inspection finding m-2: <see cref="Actor"/>'s constructor previously deferred null-checks
+    /// on the three collection parameters to the snapshot helpers, which surfaced as confusing
+    /// <see cref="NullReferenceException"/>s with no parameter name. Public APIs in Trellis
+    /// uniformly throw <see cref="ArgumentNullException"/> with the offending parameter name.
+    /// </summary>
+    [Theory]
+    [InlineData("permissions")]
+    [InlineData("forbiddenPermissions")]
+    [InlineData("attributes")]
+    public void Constructor_NullCollection_ThrowsArgumentNullException(string nullParameterName)
+    {
+        var act = () => new Actor(
+            "user-1",
+            permissions: nullParameterName == "permissions" ? null! : new HashSet<string>(),
+            forbiddenPermissions: nullParameterName == "forbiddenPermissions" ? null! : new HashSet<string>(),
+            attributes: nullParameterName == "attributes" ? null! : new Dictionary<string, string>());
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == nullParameterName);
+    }
+
+    [Fact]
+    public void Create_NullPermissions_ThrowsArgumentNullException()
+    {
+        var act = () => Actor.Create("user-1", permissions: null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permissions");
+    }
+
+    [Fact]
+    public void HasPermission_NullPermission_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasPermission(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permission");
+    }
+
+    [Theory]
+    [InlineData(null, "scope")]
+    [InlineData("permission", null)]
+    public void HasPermission_Scoped_NullArgument_ThrowsArgumentNullException(string? permission, string? scope)
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasPermission(permission!, scope!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void HasAllPermissions_NullEnumerable_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasAllPermissions(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permissions");
+    }
+
+    [Fact]
+    public void HasAnyPermission_NullEnumerable_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasAnyPermission(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permissions");
+    }
+
+    [Fact]
+    public void IsOwner_NullResourceOwnerId_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.IsOwner(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resourceOwnerId");
+    }
+
+    [Fact]
+    public void HasAttribute_NullKey_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasAttribute(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "key");
+    }
+
+    [Fact]
+    public void GetAttribute_NullKey_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.GetAttribute(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "key");
+    }
+
+    #endregion
+
+    #region Identity-based equality (inspection finding m-1 + i-1)
+
+    /// <summary>
+    /// Inspection finding m-1: <see cref="Actor"/> is conceptually an entity (its
+    /// <see cref="Actor.Id"/> is a stable principal identifier; <see cref="Actor.Permissions"/>,
+    /// <see cref="Actor.ForbiddenPermissions"/>, and <see cref="Actor.Attributes"/> are
+    /// point-in-time state about that principal). The fix converts the type from
+    /// <c>sealed record</c> to <c>sealed class</c> with identity-based equality so two actors
+    /// with the same <see cref="Actor.Id"/> compare equal even when their permission/attribute
+    /// state differs.
+    /// </summary>
+    [Fact]
+    public void Equals_TwoActorsWithSameIdAndIdenticalState_AreEqual()
+    {
+        var a1 = new Actor(
+            "user-1",
+            new HashSet<string> { "Orders.Read", "Orders.Write" },
+            new HashSet<string> { "Orders.Delete" },
+            new Dictionary<string, string> { [ActorAttributes.TenantId] = "tenant-a" });
+
+        var a2 = new Actor(
+            "user-1",
+            new HashSet<string> { "Orders.Read", "Orders.Write" },
+            new HashSet<string> { "Orders.Delete" },
+            new Dictionary<string, string> { [ActorAttributes.TenantId] = "tenant-a" });
+
+        a1.Equals(a2).Should().BeTrue();
+        (a1 == a2).Should().BeTrue();
+        a1.GetHashCode().Should().Be(a2.GetHashCode(), "equal objects must have equal hash codes");
+    }
+
+    [Fact]
+    public void Equals_DifferentId_ReturnsFalse()
+    {
+        var a1 = Actor.Create("user-1", new HashSet<string> { "X" });
+        var a2 = Actor.Create("user-2", new HashSet<string> { "X" });
+
+        a1.Equals(a2).Should().BeFalse();
+        (a1 == a2).Should().BeFalse();
+        (a1 != a2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Equals_SameIdDifferentPermissions_AreEqual()
+    {
+        var a1 = Actor.Create("user-1", new HashSet<string> { "X" });
+        var a2 = Actor.Create("user-1", new HashSet<string> { "Y", "Z" });
+
+        a1.Equals(a2).Should().BeTrue(
+            "Permissions are state about the principal, not part of identity");
+        a1.GetHashCode().Should().Be(a2.GetHashCode());
+    }
+
+    [Fact]
+    public void Equals_SameIdDifferentForbiddenPermissions_AreEqual()
+    {
+        var a1 = new Actor("user-1", new HashSet<string> { "X" }, new HashSet<string>(), new Dictionary<string, string>());
+        var a2 = new Actor("user-1", new HashSet<string> { "X" }, new HashSet<string> { "X" }, new Dictionary<string, string>());
+
+        a1.Equals(a2).Should().BeTrue(
+            "ForbiddenPermissions are state, not identity — same principal at two points in time");
+    }
+
+    [Fact]
+    public void Equals_SameIdDifferentAttributes_AreEqual()
+    {
+        var a1 = new Actor("user-1", new HashSet<string>(), new HashSet<string>(),
+            new Dictionary<string, string> { [ActorAttributes.IpAddress] = "10.0.0.1" });
+        var a2 = new Actor("user-1", new HashSet<string>(), new HashSet<string>(),
+            new Dictionary<string, string> { [ActorAttributes.IpAddress] = "10.0.0.2" });
+
+        a1.Equals(a2).Should().BeTrue(
+            "ABAC attributes (IP, MFA, etc.) literally change between requests for the same principal");
+    }
+
+    [Fact]
+    public void Equals_NullOther_ReturnsFalse()
+    {
+        var actor = Actor.Create("user-1", new HashSet<string>());
+
+        actor.Equals(null).Should().BeFalse();
+        (actor == null).Should().BeFalse();
+        (actor != null).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Equals_NullOnBothSides_OperatorReturnsTrue()
+    {
+        Actor? a = null;
+        Actor? b = null;
+
+        (a == b).Should().BeTrue();
+        (a != b).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Equals_SameReference_ReturnsTrue()
+    {
+        var actor = Actor.Create("user-1", new HashSet<string> { "X" });
+
+        actor.Equals(actor).Should().BeTrue();
+#pragma warning disable CS1718 // Comparison made to same variable -- intentional, asserting operator== short-circuit on same reference
+        (actor == actor).Should().BeTrue();
+#pragma warning restore CS1718
+    }
+
+    [Fact]
+    public void EqualsObject_NonActorObject_ReturnsFalse()
+    {
+        var actor = Actor.Create("user-1", new HashSet<string>());
+
+        actor.Equals((object)"user-1").Should().BeFalse();
+        actor.Equals((object?)null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetHashCode_DependsOnlyOnId()
+    {
+        var a1 = Actor.Create("user-1", new HashSet<string> { "X" });
+        var a2 = new Actor("user-1",
+            new HashSet<string> { "Y", "Z", "Q" },
+            new HashSet<string> { "Q" },
+            new Dictionary<string, string> { [ActorAttributes.IpAddress] = "10.0.0.42" });
+
+        a1.GetHashCode().Should().Be(a2.GetHashCode(),
+            "identity-based equality requires identity-based hash code");
     }
 
     #endregion
