@@ -1,6 +1,8 @@
 ﻿namespace Trellis.Http;
 
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -166,7 +168,9 @@ public static class HttpResponseExtensions
             HttpStatusCode.PreconditionFailed => new Error.PreconditionFailed(resource, PreconditionKind.IfMatch),
             HttpStatusCode.RequestEntityTooLarge => new Error.ContentTooLarge(),
             HttpStatusCode.UnsupportedMediaType => new Error.UnsupportedMediaType(EquatableArray<string>.Empty),
-            HttpStatusCode.RequestedRangeNotSatisfiable => new Error.RangeNotSatisfiable(ExtractCompleteLength(response)),
+            HttpStatusCode.RequestedRangeNotSatisfiable => new Error.RangeNotSatisfiable(
+                ExtractCompleteLength(response),
+                response.Content?.Headers.ContentRange?.Unit ?? "bytes"),
             HttpStatusCode.UnprocessableEntity => Error.UnprocessableContent.ForRule("http.unprocessable_content"),
             (HttpStatusCode)428 => new Error.PreconditionRequired(PreconditionKind.IfMatch),
             (HttpStatusCode)429 => new Error.TooManyRequests(ExtractRetryAfter(response)),
@@ -232,9 +236,10 @@ public static class HttpResponseExtensions
 
     /// <summary>
     /// Extracts the <c>WWW-Authenticate</c> challenges from a 401 response into a typed
-    /// <see cref="EquatableArray{T}"/> of <see cref="AuthChallenge"/>. Captures the scheme
-    /// (e.g. <c>Bearer</c>) for each challenge; auth parameters are not parsed (a full RFC 7235
-    /// parameter parser is out of scope for the strict default mapper).
+    /// <see cref="EquatableArray{T}"/> of <see cref="AuthChallenge"/>. Each challenge captures
+    /// its scheme (e.g. <c>Bearer</c>) plus a best-effort parse of its auth parameters
+    /// (<c>realm</c>, <c>error</c>, etc.) into an <c>ImmutableDictionary</c>. If the parameter
+    /// string fails to parse, the challenge falls back to scheme-only rather than throwing.
     /// </summary>
     private static EquatableArray<AuthChallenge> ExtractAuthChallenges(HttpResponseMessage response)
     {
@@ -245,13 +250,73 @@ public static class HttpResponseExtensions
         var challenges = new List<AuthChallenge>(headers.Count);
         foreach (var header in headers)
         {
-            if (!string.IsNullOrEmpty(header.Scheme))
-                challenges.Add(new AuthChallenge(header.Scheme));
+            if (string.IsNullOrEmpty(header.Scheme))
+                continue;
+            challenges.Add(BuildChallenge(header));
         }
 
         return challenges.Count == 0
             ? EquatableArray<AuthChallenge>.Empty
             : new EquatableArray<AuthChallenge>([.. challenges]);
+    }
+
+    /// <summary>
+    /// Builds a single <see cref="AuthChallenge"/> from an
+    /// <see cref="System.Net.Http.Headers.AuthenticationHeaderValue"/>, parsing the parameter
+    /// string when present so <c>realm</c> / <c>error</c> / etc. round-trip into
+    /// <see cref="AuthChallenge.Params"/>. Falls back to scheme-only when the parameter string
+    /// is empty or no recognizable auth-params are found.
+    /// </summary>
+    private static AuthChallenge BuildChallenge(System.Net.Http.Headers.AuthenticationHeaderValue header)
+    {
+        if (string.IsNullOrEmpty(header.Parameter))
+            return new AuthChallenge(header.Scheme);
+
+        var builder = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.OrdinalIgnoreCase);
+        // RFC 7235 auth-param: token "=" ( token / quoted-string ); comma-separated.
+        // Capture groups: 1 = key (token), 2 = quoted-value-with-escapes, 3 = unquoted-token-value.
+        foreach (System.Text.RegularExpressions.Match match in s_authParamRegex.Matches(header.Parameter))
+        {
+            var key = match.Groups[1].Value;
+            if (string.IsNullOrEmpty(key))
+                continue;
+            var quoted = match.Groups[2];
+            var token = match.Groups[3];
+            var value = quoted.Success
+                ? UnescapeQuotedPair(quoted.Value)
+                : token.Value;
+            builder[key] = value;
+        }
+
+        return builder.Count == 0
+            ? new AuthChallenge(header.Scheme)
+            : new AuthChallenge(header.Scheme, builder.ToImmutable());
+    }
+
+    // RFC 9110 §5.6.2 token + quoted-string; comma-separated auth-params.
+    private static readonly System.Text.RegularExpressions.Regex s_authParamRegex =
+        new(@"([A-Za-z0-9!#$%&'*+\-.^_`|~]+)\s*=\s*(?:""((?:[^""\\]|\\.)*)""|([A-Za-z0-9!#$%&'*+\-.^_`|~]+))",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// Unescapes RFC 9110 §5.6.4 quoted-pair forms: <c>\X</c> becomes <c>X</c> for any visible
+    /// character. Leaves characters that aren't part of an escape sequence unchanged.
+    /// </summary>
+    private static string UnescapeQuotedPair(string inner)
+    {
+        if (!inner.Contains('\\'))
+            return inner;
+
+        var sb = new System.Text.StringBuilder(inner.Length);
+        for (var i = 0; i < inner.Length; i++)
+        {
+            if (inner[i] == '\\' && i + 1 < inner.Length)
+                sb.Append(inner[++i]);
+            else
+                sb.Append(inner[i]);
+        }
+
+        return sb.ToString();
     }
 
     /// <summary>

@@ -55,7 +55,7 @@ public static class HttpResponseExtensions
 | `HandleNotFoundAsync(this Task<HttpResponseMessage> response, Error.NotFound error)` | `Task<Result<HttpResponseMessage>>` | Maps `404` to `Fail(error)` (response disposed); any other status passes through as `Ok(response)`. Throws `ArgumentNullException` when `error` is null. |
 | `HandleConflictAsync(this Task<HttpResponseMessage> response, Error.Conflict error)` | `Task<Result<HttpResponseMessage>>` | Maps `409` to `Fail(error)` (response disposed); pass through otherwise. Throws `ArgumentNullException` when `error` is null. |
 | `HandleUnauthorizedAsync(this Task<HttpResponseMessage> response, Error.Unauthorized error)` | `Task<Result<HttpResponseMessage>>` | Maps `401` to `Fail(error)` (response disposed); pass through otherwise. Throws `ArgumentNullException` when `error` is null. |
-| `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<T>>` | Already-failed input short-circuits with the upstream error. Otherwise reads the body and deserializes; non-success status, `204`, `205`, empty body, null payload, or `JsonException` (caught) all map to `Fail<InternalServerError>`. JSON-parse failures use structured `JsonException` members (`Path`, `LineNumber`, `BytePositionInLine`) — never the response body or `ex.Message` content — so user data echoed by the upstream cannot leak into the failure detail. **Always disposes** the response after reading, including on the null-`jsonTypeInfo` path. |
+| `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<T>>` | Already-failed input short-circuits with the upstream error. Otherwise reads the body and deserializes; non-success status, `204`, `205`, empty body, null payload, or `JsonException` (caught) all map to `Fail<InternalServerError>`. JSON-parse failures use only `JsonException.LineNumber` / `BytePositionInLine` — never `Message`, never `Path` (which can include user-controlled dictionary keys), never the response body — so user data echoed by the upstream cannot leak into the failure detail. **Always disposes** the response after reading, including on the null-`jsonTypeInfo` path. |
 | `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Already-failed input short-circuits. Non-success status -> `Fail<InternalServerError>`. `204`, `205`, empty body, JSON `null` -> `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). **Always disposes** the response, including on the null-`jsonTypeInfo` path. |
 | `ReadJsonOrNoneOn404Async<T>(this Task<HttpResponseMessage> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Terminal optional-resource helper. `404` -> `Ok(Maybe.None)`; other non-2xx statuses use strict status mapping; `204`, `205`, empty body, and JSON `null` keep `ReadJsonMaybeAsync` semantics. **Always disposes** the response. |
 
@@ -63,16 +63,17 @@ public static class HttpResponseExtensions
 
 ## Strict default with header context
 
-When `statusMap` is omitted, the default mapper inspects the `HttpResponseMessage` (not just the status code) and copies relevant HTTP headers into the typed `Error` so downstream rendering (e.g. ASP's `Allow` / `Retry-After` header emission) sees the upstream context.
+When `statusMap` is omitted, the default mapper inspects the `HttpResponseMessage` (not just the status code) and copies relevant HTTP headers into the typed `Error` so downstream rendering (e.g. ASP's `Allow` / `Retry-After` / `WWW-Authenticate` header emission) sees the upstream context.
 
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
+| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort `realm` / `error` / etc. parameter parse) | `Error.Unauthorized.Challenges` |
 | `405 Method Not Allowed` | `Allow` (response content header) | `Error.MethodNotAllowed.Allow` |
-| `416 Range Not Satisfiable` | `Content-Range: */<total>` | `Error.RangeNotSatisfiable.CompleteLength` |
-| `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date) | `Error.TooManyRequests.RetryAfter` |
+| `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved) | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
+| `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
 | `503 Service Unavailable` | `Retry-After` | `Error.ServiceUnavailable.RetryAfter` |
 
-Headers that aren't present produce empty arrays / null `RetryAfter` / zero `CompleteLength` — the mapper never invents values. Status codes not listed above produce typed errors with their default empty/zero context (e.g. `406 Not Acceptable` and `415 Unsupported Media Type` don't have a single canonical response header to extract).
+Headers that aren't present produce empty arrays / null `RetryAfter` / zero `CompleteLength` / default `bytes` unit / empty `Challenges` — the mapper never invents values. Status codes not listed above produce typed errors with their default empty/zero context (e.g. `406 Not Acceptable` and `415 Unsupported Media Type` don't have a single canonical response header to extract).
 
 ## Exception propagation
 

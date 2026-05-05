@@ -410,6 +410,53 @@ public class ToResultAsyncTests
     }
 
     [Fact]
+    public async Task Default_401_preserves_WWW_Authenticate_parameters_in_typed_error()
+    {
+        // Copilot PR-comment finding: ExtractAuthChallenges previously dropped the auth
+        // parameters and produced bare-scheme challenges. ASP's ResponseFailureWriter then
+        // re-emitted Bearer with no realm/error/etc. — losing important auth semantics.
+        // The mapper now does a best-effort parse of the parameter string.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.Unauthorized);
+        tracker.Headers.WwwAuthenticate.Add(new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer", "realm=\"api\", error=\"invalid_token\", error_description=\"The access token expired\""));
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.Unauthorized>().Subject;
+        err.Challenges.Length.Should().Be(1);
+        var challenge = err.Challenges.Items[0];
+        challenge.Scheme.Should().Be("Bearer");
+        challenge.Params.Should().NotBeNull();
+        challenge.Params!["realm"].Should().Be("api");
+        challenge.Params["error"].Should().Be("invalid_token");
+        challenge.Params["error_description"].Should().Be("The access token expired");
+    }
+
+    [Fact]
+    public async Task Default_416_preserves_Content_Range_unit_in_typed_error()
+    {
+        // Copilot PR-comment finding: Error.RangeNotSatisfiable.Unit drives the wire-level
+        // Content-Range unit when ASP renders the error. The mapper must preserve the upstream
+        // unit (e.g. "items") rather than hard-coding "bytes".
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
+        {
+            Content = new ByteArrayContent(Array.Empty<byte>()),
+        };
+        tracker.Content!.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(length: 50)
+        {
+            Unit = "items",
+        };
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.RangeNotSatisfiable>().Subject;
+        err.CompleteLength.Should().Be(50);
+        err.Unit.Should().Be("items");
+    }
+
+    [Fact]
     public async Task Default_401_with_no_WWW_Authenticate_header_keeps_challenges_empty()
     {
         var tracker = new TrackingHttpResponseMessage(HttpStatusCode.Unauthorized);
