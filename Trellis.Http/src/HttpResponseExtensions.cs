@@ -267,6 +267,15 @@ public static class HttpResponseExtensions
     /// <see cref="AuthChallenge.Params"/>. Falls back to scheme-only when the parameter string
     /// is empty or no recognizable auth-params are found.
     /// </summary>
+    /// <remarks>
+    /// <b>Token68 limitation.</b> RFC 7235 also defines a <c>token68</c> form
+    /// (<c>WWW-Authenticate: Negotiate &lt;base64-token&gt;</c>) used by SPNEGO/Negotiate/NTLM
+    /// for multi-step authentication. <see cref="AuthChallenge"/> has no slot for the bare
+    /// token, so when an upstream sends a token68-form challenge this method captures only the
+    /// scheme and the token is dropped on round-trip. Callers needing token68 support must
+    /// use <c>ToResultAsync(statusMap)</c> or the body-aware overload to inspect
+    /// <see cref="HttpResponseMessage.Headers"/> directly.
+    /// </remarks>
     private static AuthChallenge BuildChallenge(System.Net.Http.Headers.AuthenticationHeaderValue header)
     {
         if (string.IsNullOrEmpty(header.Parameter))

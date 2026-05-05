@@ -434,6 +434,27 @@ public class ToResultAsyncTests
     }
 
     [Fact]
+    public async Task Default_401_token68_challenge_degrades_to_scheme_only()
+    {
+        // Documented limitation: AuthChallenge has no slot for the RFC 7235 token68
+        // form (e.g. "Negotiate <base64-token>"), so a token68-form challenge captures
+        // only the scheme on round-trip. Callers needing token68 support must use
+        // ToResultAsync(statusMap) or the body-aware overload. This test pins the
+        // documented behavior so future changes don't silently regress callers.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.Unauthorized);
+        tracker.Headers.WwwAuthenticate.Add(new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Negotiate", "TlRMTVNTUAABAAAA"));
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.Unauthorized>().Subject;
+        err.Challenges.Length.Should().Be(1);
+        err.Challenges.Items[0].Scheme.Should().Be("Negotiate");
+        err.Challenges.Items[0].Params.Should().BeNull("token68 is not parsed; AuthChallenge has no slot for it");
+    }
+
+    [Fact]
     public async Task Default_416_preserves_Content_Range_unit_in_typed_error()
     {
         // Copilot PR-comment finding: Error.RangeNotSatisfiable.Unit drives the wire-level

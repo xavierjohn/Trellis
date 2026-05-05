@@ -186,6 +186,49 @@ public sealed class ResponseFailureWriterTests
     }
 
     [Fact]
+    public async Task RangeNotSatisfiable_with_zero_complete_length_skips_ContentRange_header()
+    {
+        // Inspection finding (PR #462 round 2): when an upstream 416 omits Content-Range,
+        // Trellis.Http synthesizes the typed error with the default zero length. Without
+        // this guard the renderer would emit `Content-Range: bytes */0`, fabricating
+        // a zero-length-resource signal the upstream did not send.
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.RangeNotSatisfiable(0));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(416);
+        ctx.Response.Headers.ContainsKey("Content-Range").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MethodNotAllowed_with_non_empty_Allow_emits_Allow_header()
+    {
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.MethodNotAllowed(EquatableArray.Create("GET", "HEAD")));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(405);
+        ctx.Response.Headers["Allow"].ToString().Should().Be("GET, HEAD");
+    }
+
+    [Fact]
+    public async Task MethodNotAllowed_with_empty_Allow_skips_Allow_header()
+    {
+        // Inspection finding (PR #462 round 2): an empty Allow array (typically from
+        // round-tripping an upstream 405 that omitted the Allow header) must not emit
+        // an empty `Allow:` wire header. Mirrors the WWW-Authenticate empty-Challenges guard.
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.MethodNotAllowed(EquatableArray<string>.Empty));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(405);
+        ctx.Response.Headers.ContainsKey("Allow").Should().BeFalse();
+    }
+
+    [Fact]
     public async Task UnprocessableContent_with_field_violations_writes_validation_problem()
     {
         var ctx = NewContext();

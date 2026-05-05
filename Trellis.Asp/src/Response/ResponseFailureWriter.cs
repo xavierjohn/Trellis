@@ -53,7 +53,12 @@ internal static class ResponseFailureWriter
     {
         switch (error)
         {
-            case Error.MethodNotAllowed mae:
+            // Skip the Allow header when the typed payload is empty: an empty Allow array is
+            // unusual to construct intentionally (any 405 response should list at least one
+            // method) and emitting `Allow:` (empty) on round-trip turns a missing/unknown
+            // upstream method list into a concrete-but-empty wire header. Mirrors the
+            // status-aware skip applied to WWW-Authenticate below.
+            case Error.MethodNotAllowed mae when mae.Allow.Items.Length > 0:
                 response.Headers["Allow"] = string.Join(", ", mae.Allow.Items);
                 break;
 
@@ -65,7 +70,13 @@ internal static class ResponseFailureWriter
                 response.Headers["Retry-After"] = sue.RetryAfter.ToHeaderValue();
                 break;
 
-            case Error.RangeNotSatisfiable rnse:
+            // Skip the Content-Range header when CompleteLength == 0: zero is the default value
+            // for the long field, so a `RangeNotSatisfiable(0)` instance — typically synthesized
+            // when an upstream 416 omits the Content-Range header — would otherwise be rendered
+            // as `Content-Range: bytes */0`, fabricating a zero-length-resource signal that the
+            // upstream did not send. Callers who genuinely need to communicate a 0-length
+            // resource can construct the header explicitly outside the typed-error path.
+            case Error.RangeNotSatisfiable rnse when rnse.CompleteLength > 0:
                 response.Headers["Content-Range"] = $"{rnse.Unit} */{rnse.CompleteLength}";
                 break;
 
