@@ -66,6 +66,21 @@ public class ResourceLoaderByIdTests
 
     #endregion
 
+    #region Argument-null guard (inspection finding i-3)
+
+    [Fact]
+    public async Task LoadAsync_NullMessage_ThrowsArgumentNullException()
+    {
+        var loader = new TrackingOrderLoader();
+
+        var act = () => loader.LoadAsync(message: null!, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "message");
+    }
+
+    #endregion
+
     #region Test helpers
 
     private sealed record TestOrder(string Id, string OwnerId);

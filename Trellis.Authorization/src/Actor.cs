@@ -37,7 +37,9 @@ public sealed record Actor
     /// <param name="permissions">
     /// The set of permissions granted to the actor.
     /// Implementations such as <see cref="HashSet{T}"/> and <see cref="System.Collections.Frozen.FrozenSet{T}"/>
-    /// provide O(1) lookups.
+    /// provide O(1) lookups. Scoped permissions must use the <see cref="PermissionScopeSeparator"/>
+    /// convention (e.g. <c>"Document.Edit:Tenant_A"</c>) so they round-trip correctly through
+    /// <see cref="HasPermission(string, string)"/>.
     /// </param>
     /// <param name="forbiddenPermissions">
     /// Permissions that are explicitly denied for this actor.
@@ -49,6 +51,11 @@ public sealed record Actor
     /// Stores environmental metadata such as IP address, MFA status, risk score, or VPN status.
     /// Use <see cref="ActorAttributes"/> constants for well-known keys.
     /// </param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is null, empty, or whitespace.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="permissions"/>, <paramref name="forbiddenPermissions"/>, or
+    /// <paramref name="attributes"/> is null.
+    /// </exception>
     public Actor(
         string id,
         IReadOnlySet<string> permissions,
@@ -56,6 +63,9 @@ public sealed record Actor
         IReadOnlyDictionary<string, string> attributes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(permissions);
+        ArgumentNullException.ThrowIfNull(forbiddenPermissions);
+        ArgumentNullException.ThrowIfNull(attributes);
         Id = id;
         Permissions = permissions;
         ForbiddenPermissions = forbiddenPermissions;
@@ -73,7 +83,9 @@ public sealed record Actor
     public string Id { get; init; }
 
     /// <summary>
-    /// The set of permissions granted to the actor.
+    /// The set of permissions granted to the actor. Scoped permissions use the
+    /// <see cref="PermissionScopeSeparator"/> convention (e.g. <c>"Document.Edit:Tenant_A"</c>)
+    /// — the format <see cref="HasPermission(string, string)"/> reconstructs at lookup time.
     /// </summary>
     public IReadOnlySet<string> Permissions
     {
@@ -106,8 +118,13 @@ public sealed record Actor
     /// <param name="id">The unique identifier of the actor.</param>
     /// <param name="permissions">The set of permissions granted to the actor.</param>
     /// <returns>A new <see cref="Actor"/> instance.</returns>
-    public static Actor Create(string id, IReadOnlySet<string> permissions) =>
-        new(id, permissions, FrozenSet<string>.Empty, FrozenDictionary<string, string>.Empty);
+    /// <exception cref="ArgumentException">Thrown when <paramref name="id"/> is null, empty, or whitespace.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="permissions"/> is null.</exception>
+    public static Actor Create(string id, IReadOnlySet<string> permissions)
+    {
+        ArgumentNullException.ThrowIfNull(permissions);
+        return new(id, permissions, FrozenSet<string>.Empty, FrozenDictionary<string, string>.Empty);
+    }
 
     /// <summary>
     /// Returns true if this actor has the specified permission and it is not forbidden.
@@ -116,8 +133,12 @@ public sealed record Actor
     /// </summary>
     /// <param name="permission">The permission to check (case-sensitive, ordinal comparison).</param>
     /// <returns>True if the permission is granted and not explicitly denied; otherwise false.</returns>
-    public bool HasPermission(string permission) =>
-        !ForbiddenPermissions.Contains(permission) && Permissions.Contains(permission);
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="permission"/> is null.</exception>
+    public bool HasPermission(string permission)
+    {
+        ArgumentNullException.ThrowIfNull(permission);
+        return !ForbiddenPermissions.Contains(permission) && Permissions.Contains(permission);
+    }
 
     /// <summary>
     /// Returns true if this actor has the specified permission within the given scope
@@ -127,8 +148,13 @@ public sealed record Actor
     /// <param name="permission">The base permission (e.g., <c>"Document.Edit"</c>).</param>
     /// <param name="scope">The scope qualifier (e.g., <c>"Tenant_A"</c> or a resource ID). Case-sensitive.</param>
     /// <returns>True if the scoped permission is granted and not explicitly denied; otherwise false.</returns>
-    public bool HasPermission(string permission, string scope) =>
-        HasPermission($"{permission}{PermissionScopeSeparator}{scope}");
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="permission"/> or <paramref name="scope"/> is null.</exception>
+    public bool HasPermission(string permission, string scope)
+    {
+        ArgumentNullException.ThrowIfNull(permission);
+        ArgumentNullException.ThrowIfNull(scope);
+        return HasPermission($"{permission}{PermissionScopeSeparator}{scope}");
+    }
 
     /// <summary>
     /// Returns true if this actor has ALL of the specified permissions.
@@ -136,8 +162,12 @@ public sealed record Actor
     /// </summary>
     /// <param name="permissions">The permissions to check.</param>
     /// <returns>True if the actor has every specified permission and none are forbidden; otherwise false.</returns>
-    public bool HasAllPermissions(IEnumerable<string> permissions) =>
-        permissions.All(HasPermission);
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="permissions"/> is null.</exception>
+    public bool HasAllPermissions(IEnumerable<string> permissions)
+    {
+        ArgumentNullException.ThrowIfNull(permissions);
+        return permissions.All(HasPermission);
+    }
 
     /// <summary>
     /// Returns true if this actor has ANY of the specified permissions.
@@ -145,8 +175,12 @@ public sealed record Actor
     /// </summary>
     /// <param name="permissions">The permissions to check.</param>
     /// <returns>True if the actor has at least one non-forbidden specified permission; otherwise false.</returns>
-    public bool HasAnyPermission(IEnumerable<string> permissions) =>
-        permissions.Any(HasPermission);
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="permissions"/> is null.</exception>
+    public bool HasAnyPermission(IEnumerable<string> permissions)
+    {
+        ArgumentNullException.ThrowIfNull(permissions);
+        return permissions.Any(HasPermission);
+    }
 
     /// <summary>
     /// Returns true if this actor is the owner of the specified resource.
@@ -154,21 +188,34 @@ public sealed record Actor
     /// </summary>
     /// <param name="resourceOwnerId">The identifier of the resource owner (e.g., creator ID).</param>
     /// <returns>True if the actor's ID matches the resource owner ID; otherwise false.</returns>
-    public bool IsOwner(string resourceOwnerId) =>
-        string.Equals(Id, resourceOwnerId, StringComparison.Ordinal);
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="resourceOwnerId"/> is null.</exception>
+    public bool IsOwner(string resourceOwnerId)
+    {
+        ArgumentNullException.ThrowIfNull(resourceOwnerId);
+        return string.Equals(Id, resourceOwnerId, StringComparison.Ordinal);
+    }
 
     /// <summary>Returns true if this actor has the specified attribute.</summary>
     /// <param name="key">The attribute key. Use <see cref="ActorAttributes"/> constants for well-known keys.</param>
     /// <returns>True if the attribute exists; otherwise false.</returns>
-    public bool HasAttribute(string key) => Attributes.ContainsKey(key);
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is null.</exception>
+    public bool HasAttribute(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return Attributes.ContainsKey(key);
+    }
 
     /// <summary>
     /// Returns the value of the specified attribute, or <c>null</c> if the attribute does not exist.
     /// </summary>
     /// <param name="key">The attribute key. Use <see cref="ActorAttributes"/> constants for well-known keys.</param>
     /// <returns>The attribute value if found; otherwise <c>null</c>.</returns>
-    public string? GetAttribute(string key) =>
-        Attributes.TryGetValue(key, out var value) ? value : null;
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is null.</exception>
+    public string? GetAttribute(string key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return Attributes.TryGetValue(key, out var value) ? value : null;
+    }
 
     private static FrozenSet<string> SnapshotSet(IReadOnlySet<string> values) =>
         values.Count == 0
@@ -179,4 +226,69 @@ public sealed record Actor
         values.Count == 0
             ? FrozenDictionary<string, string>.Empty
             : values.ToFrozenDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Determines whether the specified <see cref="Actor"/> has the same authorization state.
+    /// </summary>
+    /// <param name="other">The actor to compare against.</param>
+    /// <returns>
+    /// <see langword="true"/> when both actors share the same <see cref="Id"/> and structurally
+    /// equivalent <see cref="Permissions"/>, <see cref="ForbiddenPermissions"/>, and
+    /// <see cref="Attributes"/>; otherwise <see langword="false"/>.
+    /// </returns>
+    /// <remarks>
+    /// The compiler-synthesised record equality compares the collection-typed properties
+    /// (<see cref="IReadOnlySet{T}"/>, <see cref="IReadOnlyDictionary{TKey,TValue}"/>) by
+    /// reference, which would mark two actors built from identical inputs as unequal because
+    /// the constructor snapshots the inputs into distinct <see cref="FrozenSet{T}"/> /
+    /// <see cref="FrozenDictionary{TKey,TValue}"/> instances. This override compares the
+    /// snapshots structurally so the <c>record</c>'s value-equality contract holds.
+    /// </remarks>
+    public bool Equals(Actor? other)
+    {
+        if (other is null)
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
+
+        return string.Equals(Id, other.Id, StringComparison.Ordinal)
+            && Permissions.SetEquals(other.Permissions)
+            && ForbiddenPermissions.SetEquals(other.ForbiddenPermissions)
+            && DictionaryEquals(Attributes, other.Attributes);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The hash incorporates <see cref="Id"/> plus the size of each collection. Including the
+    /// element contents would either bind the hash to enumeration order (incorrect for
+    /// <see cref="Permissions"/> set semantics) or be expensive on every dictionary access;
+    /// the size-only approximation respects the "equal objects must have equal hash codes"
+    /// contract while keeping the operation O(1).
+    /// </remarks>
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Id, StringComparer.Ordinal);
+        hash.Add(Permissions.Count);
+        hash.Add(ForbiddenPermissions.Count);
+        hash.Add(Attributes.Count);
+        return hash.ToHashCode();
+    }
+
+    private static bool DictionaryEquals(
+        IReadOnlyDictionary<string, string> left,
+        IReadOnlyDictionary<string, string> right)
+    {
+        if (left.Count != right.Count)
+            return false;
+
+        foreach (var (key, value) in left)
+        {
+            if (!right.TryGetValue(key, out var otherValue) ||
+                !string.Equals(value, otherValue, StringComparison.Ordinal))
+                return false;
+        }
+
+        return true;
+    }
 }

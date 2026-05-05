@@ -366,4 +366,225 @@ public class ActorTests
     }
 
     #endregion
+
+    #region Argument-null guards (inspection findings m-2 + m-3)
+
+    /// <summary>
+    /// Inspection finding m-2: <see cref="Actor"/>'s constructor previously deferred null-checks
+    /// on the three collection parameters to the snapshot helpers, which surfaced as confusing
+    /// <see cref="NullReferenceException"/>s with no parameter name. Public APIs in Trellis
+    /// uniformly throw <see cref="ArgumentNullException"/> with the offending parameter name.
+    /// </summary>
+    [Theory]
+    [InlineData("permissions")]
+    [InlineData("forbiddenPermissions")]
+    [InlineData("attributes")]
+    public void Constructor_NullCollection_ThrowsArgumentNullException(string nullParameterName)
+    {
+        var act = () => new Actor(
+            "user-1",
+            permissions: nullParameterName == "permissions" ? null! : new HashSet<string>(),
+            forbiddenPermissions: nullParameterName == "forbiddenPermissions" ? null! : new HashSet<string>(),
+            attributes: nullParameterName == "attributes" ? null! : new Dictionary<string, string>());
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == nullParameterName);
+    }
+
+    [Fact]
+    public void Create_NullPermissions_ThrowsArgumentNullException()
+    {
+        var act = () => Actor.Create("user-1", permissions: null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permissions");
+    }
+
+    [Fact]
+    public void HasPermission_NullPermission_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasPermission(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permission");
+    }
+
+    [Theory]
+    [InlineData(null, "scope")]
+    [InlineData("permission", null)]
+    public void HasPermission_Scoped_NullArgument_ThrowsArgumentNullException(string? permission, string? scope)
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasPermission(permission!, scope!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void HasAllPermissions_NullEnumerable_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasAllPermissions(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permissions");
+    }
+
+    [Fact]
+    public void HasAnyPermission_NullEnumerable_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasAnyPermission(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "permissions");
+    }
+
+    [Fact]
+    public void IsOwner_NullResourceOwnerId_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.IsOwner(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "resourceOwnerId");
+    }
+
+    [Fact]
+    public void HasAttribute_NullKey_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.HasAttribute(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "key");
+    }
+
+    [Fact]
+    public void GetAttribute_NullKey_ThrowsArgumentNullException()
+    {
+        var actor = CreateActor();
+
+        var act = () => actor.GetAttribute(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "key");
+    }
+
+    #endregion
+
+    #region Structural equality (inspection finding m-1 + i-1)
+
+    /// <summary>
+    /// Inspection finding m-1: <see cref="Actor"/> is declared <c>sealed record</c> so the
+    /// compiler synthesises structural <see cref="object.Equals(object)"/> /
+    /// <see cref="object.GetHashCode"/>. Two of the three collection-typed properties
+    /// (<see cref="Actor.Permissions"/>, <see cref="Actor.ForbiddenPermissions"/>,
+    /// <see cref="Actor.Attributes"/>) are interface types whose default equality
+    /// comparer falls back to reference equality — so two actors built from identical
+    /// inputs would compare unequal. The fix overrides <c>Equals</c> / <c>GetHashCode</c>
+    /// to compare the snapshots structurally so the <c>record</c> contract holds.
+    /// </summary>
+    [Fact]
+    public void Equals_TwoActorsWithIdenticalState_AreEqual()
+    {
+        var a1 = new Actor(
+            "user-1",
+            new HashSet<string> { "Orders.Read", "Orders.Write" },
+            new HashSet<string> { "Orders.Delete" },
+            new Dictionary<string, string> { [ActorAttributes.TenantId] = "tenant-a" });
+
+        var a2 = new Actor(
+            "user-1",
+            new HashSet<string> { "Orders.Read", "Orders.Write" },
+            new HashSet<string> { "Orders.Delete" },
+            new Dictionary<string, string> { [ActorAttributes.TenantId] = "tenant-a" });
+
+        a1.Equals(a2).Should().BeTrue("the record's structural equality should compare collections by content");
+        (a1 == a2).Should().BeTrue();
+        a1.GetHashCode().Should().Be(a2.GetHashCode(), "equal objects must have equal hash codes");
+    }
+
+    [Fact]
+    public void Equals_DifferentId_ReturnsFalse()
+    {
+        var a1 = Actor.Create("user-1", new HashSet<string> { "X" });
+        var a2 = Actor.Create("user-2", new HashSet<string> { "X" });
+
+        a1.Equals(a2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Equals_DifferentPermissionContent_ReturnsFalse()
+    {
+        var a1 = Actor.Create("user-1", new HashSet<string> { "X" });
+        var a2 = Actor.Create("user-1", new HashSet<string> { "Y" });
+
+        a1.Equals(a2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Equals_PermissionsSameContentDifferentOrder_ReturnsTrue()
+    {
+        var a1 = Actor.Create("user-1", new HashSet<string> { "A", "B", "C" });
+        var a2 = Actor.Create("user-1", new HashSet<string> { "C", "B", "A" });
+
+        a1.Equals(a2).Should().BeTrue("set equality is order-independent");
+    }
+
+    [Fact]
+    public void Equals_DifferentForbiddenPermissions_ReturnsFalse()
+    {
+        var a1 = new Actor("user-1", new HashSet<string> { "X" }, new HashSet<string>(), new Dictionary<string, string>());
+        var a2 = new Actor("user-1", new HashSet<string> { "X" }, new HashSet<string> { "X" }, new Dictionary<string, string>());
+
+        a1.Equals(a2).Should().BeFalse("ForbiddenPermissions participates in equality");
+    }
+
+    [Fact]
+    public void Equals_DifferentAttributeValues_ReturnsFalse()
+    {
+        var a1 = new Actor("user-1", new HashSet<string>(), new HashSet<string>(),
+            new Dictionary<string, string> { ["k"] = "v1" });
+        var a2 = new Actor("user-1", new HashSet<string>(), new HashSet<string>(),
+            new Dictionary<string, string> { ["k"] = "v2" });
+
+        a1.Equals(a2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Equals_DifferentAttributeKeys_ReturnsFalse()
+    {
+        var a1 = new Actor("user-1", new HashSet<string>(), new HashSet<string>(),
+            new Dictionary<string, string> { ["k1"] = "v" });
+        var a2 = new Actor("user-1", new HashSet<string>(), new HashSet<string>(),
+            new Dictionary<string, string> { ["k2"] = "v" });
+
+        a1.Equals(a2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Equals_NullOther_ReturnsFalse()
+    {
+        var actor = Actor.Create("user-1", new HashSet<string>());
+
+        actor.Equals(null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Equals_SameReference_ReturnsTrue()
+    {
+        var actor = Actor.Create("user-1", new HashSet<string> { "X" });
+
+        actor.Equals(actor).Should().BeTrue();
+    }
+
+    #endregion
 }

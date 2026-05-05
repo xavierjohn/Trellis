@@ -55,7 +55,7 @@ public sealed record Actor
 
 | Signature | Description |
 | --- | --- |
-| `public Actor(string id, IReadOnlySet<string> permissions, IReadOnlySet<string> forbiddenPermissions, IReadOnlyDictionary<string, string> attributes)` | Snapshots the supplied state into frozen collections (ordinal comparison). Throws `ArgumentException` for null/whitespace `id`. |
+| `public Actor(string id, IReadOnlySet<string> permissions, IReadOnlySet<string> forbiddenPermissions, IReadOnlyDictionary<string, string> attributes)` | Snapshots the supplied state into frozen collections (ordinal comparison). Throws `ArgumentException` when `id` is null/whitespace; throws `ArgumentNullException` when `permissions`, `forbiddenPermissions`, or `attributes` is null. |
 
 **Fields**
 
@@ -78,7 +78,7 @@ public sealed record Actor
 | --- | --- | --- |
 | `public static Actor Create(string id, IReadOnlySet<string> permissions)` | `Actor` | Creates an actor with empty `ForbiddenPermissions` and empty `Attributes`. |
 | `public bool HasPermission(string permission)` | `bool` | Returns `true` only when `permission` is in `Permissions` and not in `ForbiddenPermissions`. |
-| `public bool HasPermission(string permission, string scope)` | `bool` | Checks the scoped permission `${permission}:${scope}` (deny-aware). |
+| `public bool HasPermission(string permission, string scope)` | `bool` | Checks the scoped permission composed as `permission` + `':'` + `scope` (deny-aware). Throws `ArgumentNullException` when either argument is null. |
 | `public bool HasAllPermissions(IEnumerable<string> permissions)` | `bool` | `true` when every entry passes `HasPermission`. |
 | `public bool HasAnyPermission(IEnumerable<string> permissions)` | `bool` | `true` when at least one entry passes `HasPermission`. |
 | `public bool IsOwner(string resourceOwnerId)` | `bool` | Compares `Id` and `resourceOwnerId` with `StringComparison.Ordinal`. |
@@ -117,7 +117,7 @@ public interface IActorProvider
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Actor>` | Returns the current authenticated actor. Implementations should throw `InvalidOperationException` (or equivalent) when the request is unauthenticated or the actor cannot be resolved. Register as scoped. |
+| `Task<Actor> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Actor>` | Returns the current authenticated actor. Implementations must throw `InvalidOperationException` (or a more specific subclass) when the request is unauthenticated or the actor cannot be resolved. Register as scoped. |
 
 ### `IAuthorize`
 
@@ -131,7 +131,7 @@ Marker for commands/queries enforcing static (permission-only) authorization. Th
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `RequiredPermissions` | `IReadOnlyList<string>` | Permissions every caller must hold. |
+| `RequiredPermissions` | `IReadOnlyList<string>` | Permissions every caller must hold. Duplicates and order are ignored — the check is set-like under AND-semantics. |
 
 ### `IAuthorizeResource<TResource>`
 
@@ -200,6 +200,8 @@ public abstract class SharedResourceLoaderById<TResource, TId>
 ```
 
 A single loader shared across every command that authorizes against the same `TResource`. When a command implements both `IAuthorizeResource<TResource>` and `IIdentifyResource<TResource, TId>` the pipeline bridges to this shared loader automatically. Explicit `IResourceLoader<TMessage, TResource>` registrations win over the shared loader.
+
+`Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization(...)` registers all concrete `SharedResourceLoaderById<TResource, TId>` implementations as **scoped** — safe to depend on a `DbContext` or other scoped repository. Replace the registration after the scan completes if a different lifetime is required.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

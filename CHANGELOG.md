@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Trellis.Authorization — `Actor` structural equality
+
+`Actor.Equals(Actor?)` and `Actor.GetHashCode()` are now overridden so the `record` declaration's value-equality contract holds. The compiler-synthesised equality compared `Permissions`, `ForbiddenPermissions`, and `Attributes` by reference (their interface types have no structural comparer), so two actors built from identical inputs always compared unequal because the constructor snapshots inputs into distinct `FrozenSet<string>` / `FrozenDictionary<string,string>` instances. The override compares the snapshots structurally — `Id` ordinally, the two permission sets via `IReadOnlySet<T>.SetEquals`, and the attribute dictionary entry-by-entry. `GetHashCode` incorporates `Id` plus the size of each collection (size-only is the only stable element-aware hash for a set; element contents are O(N) and would force enumeration on every dictionary key access). Inspection finding **Trellis.Authorization m-1**.
+
 #### Trellis.Core — `ResourceRef.FormatTypeName(Type)` public helper
 
 `ResourceRef.FormatTypeName(Type)` is a new public static helper that returns the simple CLR name of a type with backtick arity-mangling stripped (``List`1`` → `"List"`, ``Dictionary`2`` → `"Dictionary"`). It is used internally by `ResourceRef.For<TResource>()` and exposed publicly so other Trellis components — and consumer code — can sanitize type-derived identifiers without duplicating the algorithm. Non-generic types pass through unchanged.
@@ -24,6 +28,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `ValidationErrorsContext.AddError(string fieldName, string errorMessage)`, `ValidationErrorsContext.AddError(Error.UnprocessableContent unprocessableContent)`, and `ValidationErrorsContext.CurrentPropertyName` (get/set) are now `public` (previously `internal`). Promoting these formalizes the contract that AOT-generated `JsonConverter<TValue>`s in consumer assemblies depend on. The reflection-mode `ScalarValueJsonConverterBase<,,>` continues to use the same APIs unchanged. No behavioral change for any existing caller.
 
 ### Changed
+
+#### Trellis.Authorization — argument-null guards on the public surface
+
+`Actor` constructor, `Actor.Create`, every `Actor` lookup method (`HasPermission` / `HasPermission(string,string)` / `HasAllPermissions` / `HasAnyPermission` / `IsOwner` / `HasAttribute` / `GetAttribute`), and `ResourceLoaderById<TMessage,TResource,TId>.LoadAsync` now throw `ArgumentNullException` with the offending parameter name when called with a null argument. Previously these calls deferred null-checks to internal helpers (`SnapshotSet` / `FrozenSet.Contains` / `Enumerable.All` over a null `IEnumerable`) which surfaced as confusing `NullReferenceException`s with no parameter name. Aligns with the framework's defensive-coding posture established by Trellis.Core 2.3-2 / 2.3-7. Inspection findings **Trellis.Authorization m-2 / m-3 / i-3**.
+
+#### Trellis.Authorization — xmldoc and API reference clarifications
+
+Inspection findings **m-4 / m-5 / m-6 / i-4 / i-5 / i-6**:
+
+- `Actor` constructor xmldoc and API reference table now enumerate every `ArgumentNullException`-throwing parameter (previously only `id` was documented).
+- `Actor.Permissions` xmldoc nudges callers toward the `PermissionScopeSeparator` convention so scoped permissions round-trip through `HasPermission(string, string)` correctly.
+- `IAuthorize.RequiredPermissions` xmldoc and API reference clarify that duplicates and order are ignored under AND-semantics.
+- `IActorProvider.GetCurrentActorAsync` xmldoc and API reference now name `InvalidOperationException` as the canonical throw on unauthenticated, with subclass-specific guidance for concrete implementations.
+- `SharedResourceLoaderById<TResource, TId>` xmldoc and API reference document that `Trellis.Mediator.AddResourceAuthorization(...)` registers it as **scoped** (safe to depend on a `DbContext`).
+- The API reference's `HasPermission(string, string)` description previously rendered the composed key in TypeScript template-literal syntax (`${permission}:${scope}`); rewritten as plain prose to avoid misleading LLM-targeted doc consumers.
 
 #### Trellis.Core / Trellis.Asp / Trellis.EntityFrameworkCore / Trellis.Testing — sweep CLR-mangled type names out of resource refs and wire-facing error messages
 

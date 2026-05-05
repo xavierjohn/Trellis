@@ -16,6 +16,12 @@
 /// Explicit <see cref="IResourceLoader{TMessage, TResource}"/> registrations always
 /// take priority over the shared loader.
 /// </para>
+/// <para>
+/// <b>DI lifetime.</b> <c>Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization(...)</c>
+/// registers all <see cref="SharedResourceLoaderById{TResource, TId}"/> implementations as
+/// <b>scoped</b> — safe to depend on a <c>DbContext</c> or other scoped repository. To use a
+/// different lifetime, replace the registration after the assembly scan completes.
+/// </para>
 /// </remarks>
 /// <example>
 /// <code>
