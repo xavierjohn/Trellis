@@ -77,8 +77,11 @@ public class Money : ValueObject
     /// <summary>
     /// Adds two Money amounts if they have the same currency.
     /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
     public Result<Money> Add(Money other)
     {
+        ArgumentNullException.ThrowIfNull(other);
+
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
                 Error.UnprocessableContent.ForField("currency", "validation.error", $"Cannot add {other.Currency} to {Currency}."));
@@ -90,8 +93,11 @@ public class Money : ValueObject
     /// <summary>
     /// Subtracts another Money amount if they have the same currency.
     /// </summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
     public Result<Money> Subtract(Money other)
     {
+        ArgumentNullException.ThrowIfNull(other);
+
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
                 Error.UnprocessableContent.ForField("currency", "validation.error", $"Cannot subtract {other.Currency} from {Currency}."));
@@ -112,7 +118,8 @@ public class Money : ValueObject
             return Result.Fail<Money>(
                 Error.UnprocessableContent.ForField(nameof(multiplier), "validation.error", "Multiplier cannot be negative."));
 
-        return TryCreate(Amount * multiplier, Currency);
+        try { return TryCreate(Amount * multiplier, Currency); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.UnprocessableContent.ForField("amount", "validation.error", "Multiplication would overflow.")); }
     }
 
     /// <summary>
@@ -124,7 +131,8 @@ public class Money : ValueObject
             return Result.Fail<Money>(
                 Error.UnprocessableContent.ForField(nameof(quantity), "validation.error", "Quantity cannot be negative."));
 
-        return TryCreate(Amount * quantity, Currency);
+        try { return TryCreate(Amount * quantity, Currency); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.UnprocessableContent.ForField("amount", "validation.error", "Multiplication would overflow.")); }
     }
 
     /// <summary>
@@ -136,7 +144,8 @@ public class Money : ValueObject
             return Result.Fail<Money>(
                 Error.UnprocessableContent.ForField(nameof(divisor), "validation.error", "Divisor must be positive."));
 
-        return TryCreate(Amount / divisor, Currency);
+        try { return TryCreate(Amount / divisor, Currency); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.UnprocessableContent.ForField("amount", "validation.error", "Division would overflow.")); }
     }
 
     /// <summary>
@@ -148,7 +157,8 @@ public class Money : ValueObject
             return Result.Fail<Money>(
                 Error.UnprocessableContent.ForField(nameof(divisor), "validation.error", "Divisor must be positive."));
 
-        return TryCreate(Amount / divisor, Currency);
+        try { return TryCreate(Amount / divisor, Currency); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.UnprocessableContent.ForField("amount", "validation.error", "Division would overflow.")); }
     }
 
     /// <summary>
@@ -157,59 +167,112 @@ public class Money : ValueObject
     /// </summary>
     /// <param name="ratios">The ratios to split by (e.g., [1, 2, 1] for 25%, 50%, 25%).</param>
     /// <returns>Array of Money amounts matching the ratios.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="ratios"/> is null.</exception>
     public Result<Money[]> Allocate(params int[] ratios)
     {
+        ArgumentNullException.ThrowIfNull(ratios);
+
         if (ratios.Length == 0)
             return Result.Fail<Money[]>(Error.UnprocessableContent.ForField(nameof(ratios), "validation.error", "At least one ratio required."));
 
         if (ratios.Any(r => r <= 0))
             return Result.Fail<Money[]>(Error.UnprocessableContent.ForField(nameof(ratios), "validation.error", "All ratios must be positive."));
 
-        var decimalPlaces = GetDecimalPlaces(Currency);
-        var multiplier = (decimal)Math.Pow(10, decimalPlaces);
-        var totalRatio = ratios.Sum();
-        var amountInMinorUnits = (long)Math.Round(Amount * multiplier, MidpointRounding.AwayFromZero);
-        var remainder = amountInMinorUnits;
-        var results = new Money[ratios.Length];
-
-        for (int i = 0; i < ratios.Length; i++)
+        // Split overflow handling so the failure field accurately identifies the offending input:
+        //   * ratios.Sum() overflowing int   -> "ratios" failure
+        //   * Amount * multiplier / round / cast / share-mul overflowing -> "amount" failure
+        int totalRatio;
+        try { totalRatio = ratios.Sum(); }
+        catch (OverflowException)
         {
-            var share = amountInMinorUnits * ratios[i] / totalRatio;
-            results[i] = new Money(share / multiplier, Currency);
-            remainder -= share;
+            return Result.Fail<Money[]>(Error.UnprocessableContent.ForField(nameof(ratios), "validation.error", "Sum of ratios would overflow."));
         }
 
-        // Distribute remainder (due to rounding) to first portions
-        var adjustment = 1m / multiplier * Math.Sign(remainder);
-        for (var i = 0; i < Math.Abs(remainder) && i < results.Length; i++)
-            results[i] = new Money(results[i].Amount + adjustment, Currency);
+        try
+        {
+            var decimalPlaces = GetDecimalPlaces(Currency);
+            var multiplier = (decimal)Math.Pow(10, decimalPlaces);
+            var amountInMinorUnits = (long)Math.Round(Amount * multiplier, MidpointRounding.AwayFromZero);
+            var remainder = amountInMinorUnits;
+            var results = new Money[ratios.Length];
 
-        return Result.Ok(results);
+            for (int i = 0; i < ratios.Length; i++)
+            {
+                // The integral multiplication can overflow long for extreme amounts +
+                // large ratios; force a checked context so the catch below converts
+                // it to Result.Fail rather than silently wrapping.
+                var share = checked(amountInMinorUnits * ratios[i]) / totalRatio;
+                results[i] = new Money(share / multiplier, Currency);
+                remainder -= share;
+            }
+
+            // Distribute remainder (due to rounding) to first portions
+            var adjustment = 1m / multiplier * Math.Sign(remainder);
+            for (var i = 0; i < Math.Abs(remainder) && i < results.Length; i++)
+                results[i] = new Money(results[i].Amount + adjustment, Currency);
+
+            return Result.Ok(results);
+        }
+        catch (OverflowException)
+        {
+            return Result.Fail<Money[]>(Error.UnprocessableContent.ForField("amount", "validation.error", "Allocation arithmetic would overflow."));
+        }
     }
 
     /// <summary>
     /// Checks if this money is greater than another money amount (same currency required).
     /// </summary>
-    public bool IsGreaterThan(Money other) =>
-        Currency.Equals(other.Currency) && Amount > other.Amount;
+    /// <remarks>
+    /// Returns <c>false</c> for cross-currency comparisons; mismatched currencies are
+    /// neither greater than nor less than each other under this contract. Callers that need
+    /// to distinguish "smaller" from "different currency" must compare <see cref="Currency"/>
+    /// explicitly.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
+    public bool IsGreaterThan(Money other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return Currency.Equals(other.Currency) && Amount > other.Amount;
+    }
 
     /// <summary>
     /// Checks if this money is greater than or equal to another amount (same currency required).
     /// </summary>
-    public bool IsGreaterThanOrEqual(Money other) =>
-        Currency.Equals(other.Currency) && Amount >= other.Amount;
+    /// <remarks>
+    /// Returns <c>false</c> for cross-currency comparisons. See <see cref="IsGreaterThan"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
+    public bool IsGreaterThanOrEqual(Money other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return Currency.Equals(other.Currency) && Amount >= other.Amount;
+    }
 
     /// <summary>
     /// Checks if this money is less than another money amount (same currency required).
     /// </summary>
-    public bool IsLessThan(Money other) =>
-        Currency.Equals(other.Currency) && Amount < other.Amount;
+    /// <remarks>
+    /// Returns <c>false</c> for cross-currency comparisons. See <see cref="IsGreaterThan"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
+    public bool IsLessThan(Money other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return Currency.Equals(other.Currency) && Amount < other.Amount;
+    }
 
     /// <summary>
     /// Checks if this money is less than or equal to another amount (same currency required).
     /// </summary>
-    public bool IsLessThanOrEqual(Money other) =>
-        Currency.Equals(other.Currency) && Amount <= other.Amount;
+    /// <remarks>
+    /// Returns <c>false</c> for cross-currency comparisons. See <see cref="IsGreaterThan"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
+    public bool IsLessThanOrEqual(Money other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return Currency.Equals(other.Currency) && Amount <= other.Amount;
+    }
 
     /// <summary>
     /// Creates a zero-value Money instance for the specified currency.
@@ -231,17 +294,44 @@ public class Money : ValueObject
     public override string ToString() => $"{Amount.ToString($"F{GetDecimalPlaces(Currency)}", System.Globalization.CultureInfo.InvariantCulture)} {Currency}";
 
     /// <summary>
-    /// Gets the number of decimal places for a currency (e.g., 2 for USD/EUR, 0 for JPY).
+    /// Gets the number of decimal places for a currency per ISO 4217 minor-unit assignments.
+    /// Currencies not in the table default to 2 decimal places.
     /// </summary>
     private static int GetDecimalPlaces(CurrencyCode currency) => currency.Value switch
     {
-        "JPY" => 0, // Japanese Yen has no minor units
-        "KRW" => 0, // Korean Won has no minor units
-        "BHD" => 3, // Bahraini Dinar has 3 decimal places
-        "KWD" => 3, // Kuwaiti Dinar has 3 decimal places
-        "OMR" => 3, // Omani Rial has 3 decimal places
-        "TND" => 3, // Tunisian Dinar has 3 decimal places
-        _ => 2      // Most currencies have 2 decimal places
+        // 0 minor units (whole-unit currencies)
+        "BIF" => 0,    // Burundian Franc
+        "CLP" => 0,    // Chilean Peso
+        "DJF" => 0,    // Djiboutian Franc
+        "GNF" => 0,    // Guinean Franc
+        "ISK" => 0,    // Icelandic Króna
+        "JPY" => 0,    // Japanese Yen
+        "KMF" => 0,    // Comorian Franc
+        "KRW" => 0,    // South Korean Won
+        "PYG" => 0,    // Paraguayan Guaraní
+        "RWF" => 0,    // Rwandan Franc
+        "UGX" => 0,    // Ugandan Shilling
+        "UYI" => 0,    // Uruguay Peso en Unidades Indexadas
+        "VND" => 0,    // Vietnamese Đồng
+        "VUV" => 0,    // Vanuatu Vatu
+        "XAF" => 0,    // CFA Franc BEAC
+        "XOF" => 0,    // CFA Franc BCEAO
+        "XPF" => 0,    // CFP Franc
+
+        // 3 minor units
+        "BHD" => 3,    // Bahraini Dinar
+        "IQD" => 3,    // Iraqi Dinar
+        "JOD" => 3,    // Jordanian Dinar
+        "KWD" => 3,    // Kuwaiti Dinar
+        "LYD" => 3,    // Libyan Dinar
+        "OMR" => 3,    // Omani Rial
+        "TND" => 3,    // Tunisian Dinar
+
+        // 4 minor units (unidad-de-fomento types)
+        "CLF" => 4,    // Chilean Unidad de Fomento
+        "UYW" => 4,    // Unidad Previsional (Uruguay)
+
+        _ => 2          // Most currencies have 2 decimal places (default per ISO 4217)
     };
 
     /// <summary>
@@ -261,6 +351,9 @@ public class Money : ValueObject
             return Result.Fail<Money>(Error.UnprocessableContent.ForField(nameof(values), "validation.error", "Cannot sum an empty collection."));
 
         var first = enumerator.Current;
+        if (first is null)
+            throw new ArgumentException("Collection contains a null element.", nameof(values));
+
         var currency = first.Currency;
         var totalAmount = first.Amount;
 
@@ -269,6 +362,8 @@ public class Money : ValueObject
             while (enumerator.MoveNext())
             {
                 var current = enumerator.Current;
+                if (current is null)
+                    throw new ArgumentException("Collection contains a null element.", nameof(values));
 
                 if (!currency.Equals(current.Currency))
                     return Result.Fail<Money>(

@@ -133,9 +133,9 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// <param name="value">The string value to parse (must be a valid decimal, optionally with a trailing %).</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
     /// <returns>Success with the Percentage if valid; Failure with <see cref="Error.UnprocessableContent"/> otherwise.</returns>
+    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
     public static Result<Percentage> TryCreate(string? value, string? fieldName = null)
     {
-        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("percentage");
 
         if (string.IsNullOrWhiteSpace(value))
@@ -157,9 +157,9 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
     /// <returns>Success with the Percentage if valid; Failure with <see cref="Error.UnprocessableContent"/> otherwise.</returns>
+    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
     public static Result<Percentage> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
     {
-        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("percentage");
 
         if (string.IsNullOrWhiteSpace(value))

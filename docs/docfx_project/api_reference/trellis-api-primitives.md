@@ -80,7 +80,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)` | `TracerProviderBuilder` | Registers the Core-owned Trellis primitive activity source (`PrimitiveValueObjectTrace.ActivitySourceName`) with OpenTelemetry. |
+| `public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)` | `TracerProviderBuilder` | Registers the Core-owned Trellis primitive activity source (`PrimitiveValueObjectTrace.ActivitySourceName`) with OpenTelemetry. Throws `ArgumentNullException` when `builder` is null. |
 
 ### `Age`
 
@@ -214,15 +214,15 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 | `public static Result<MonetaryAmount> TryCreate(decimal? value, string? fieldName = null)` | `Result<MonetaryAmount>` | Rejects `null`. |
 | `public static Result<MonetaryAmount> TryCreate(string? value, string? fieldName = null)` | `Result<MonetaryAmount>` | Invariant string parsing. |
 | `public static Result<MonetaryAmount> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)` | `Result<MonetaryAmount>` | Culture-aware string parsing. |
-| `public Result<MonetaryAmount> Add(MonetaryAmount other)` | `Result<MonetaryAmount>` | Adds two amounts. |
-| `public Result<MonetaryAmount> Subtract(MonetaryAmount other)` | `Result<MonetaryAmount>` | Subtracts and fails if result would become invalid. |
+| `public Result<MonetaryAmount> Add(MonetaryAmount other)` | `Result<MonetaryAmount>` | Adds two amounts. Throws `ArgumentNullException` when `other` is null. |
+| `public Result<MonetaryAmount> Subtract(MonetaryAmount other)` | `Result<MonetaryAmount>` | Subtracts and fails if result would become invalid. Throws `ArgumentNullException` when `other` is null. |
 | `public Result<MonetaryAmount> Multiply(int quantity)` | `Result<MonetaryAmount>` | Rejects negative quantity. |
 | `public Result<MonetaryAmount> Multiply(decimal multiplier)` | `Result<MonetaryAmount>` | Rejects negative multiplier. |
 | `public static MonetaryAmount Parse(string? s, IFormatProvider? provider)` | `MonetaryAmount` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out MonetaryAmount result)` | `bool` | Safe parse helper. |
 | `public static explicit operator MonetaryAmount(decimal value)` | `MonetaryAmount` | Explicit cast using `Create(decimal)`. |
 | `public override string ToString()` | `string` | Invariant decimal string. |
-| `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Returns `Zero` for empty collections. |
+| `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Returns `Zero` for empty collections. Throws `ArgumentNullException` when `values` is null and `ArgumentException` when any element is null. |
 
 ### `CompositeValueObjectJsonConverter<T>`
 
@@ -240,7 +240,7 @@ order the properties are declared.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Reads a JSON object, populates parameters by JSON property name (case-insensitive), invokes `TryCreate`, and throws `TrellisJsonValidationException` with the error display message on failure. Throws `TrellisJsonValidationException` for missing required properties. |
+| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Reads a JSON object, populates parameters by JSON property name (case-insensitive), invokes `TryCreate`, and throws `TrellisJsonValidationException` with the error display message on failure. When required properties are missing, throws a single `TrellisJsonValidationException` listing **all** missing names (e.g. `Required properties missing: 'amount', 'currency'.`) so multi-field violations surface in one round trip. |
 | `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes one JSON property per public instance property in declaration order, using the underlying primitive value for `IScalarValue<,>` properties. |
 
 Apply via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object type.
@@ -264,20 +264,20 @@ public class Money : ValueObject
 | --- | --- | --- |
 | `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null)` | `Result<Money>` | Rejects negative amounts and invalid currency codes. |
 | `public static Money Create(decimal amount, string currencyCode)` | `Money` | Throwing factory. |
-| `public Result<Money> Add(Money other)` | `Result<Money>` | Requires matching currencies. |
-| `public Result<Money> Subtract(Money other)` | `Result<Money>` | Requires matching currencies and non-negative result. |
-| `public Result<Money> Multiply(decimal multiplier)` | `Result<Money>` | Rejects negative multiplier. |
-| `public Result<Money> Multiply(int quantity)` | `Result<Money>` | Rejects negative quantity. |
-| `public Result<Money> Divide(decimal divisor)` | `Result<Money>` | Divisor must be positive. |
-| `public Result<Money> Divide(int divisor)` | `Result<Money>` | Divisor must be positive. |
-| `public Result<Money[]> Allocate(params int[] ratios)` | `Result<Money[]>` | Ratio-based split with remainder distribution. |
-| `public bool IsGreaterThan(Money other)` | `bool` | False when currencies differ. |
-| `public bool IsGreaterThanOrEqual(Money other)` | `bool` | False when currencies differ. |
-| `public bool IsLessThan(Money other)` | `bool` | False when currencies differ. |
-| `public bool IsLessThanOrEqual(Money other)` | `bool` | False when currencies differ. |
+| `public Result<Money> Add(Money other)` | `Result<Money>` | Requires matching currencies. Throws `ArgumentNullException` when `other` is null. Returns `Error.UnprocessableContent` on currency mismatch or addition overflow. |
+| `public Result<Money> Subtract(Money other)` | `Result<Money>` | Requires matching currencies and non-negative result. Throws `ArgumentNullException` when `other` is null. |
+| `public Result<Money> Multiply(decimal multiplier)` | `Result<Money>` | Rejects negative multiplier. Returns `Error.UnprocessableContent` on multiplication overflow. |
+| `public Result<Money> Multiply(int quantity)` | `Result<Money>` | Rejects negative quantity. Returns `Error.UnprocessableContent` on multiplication overflow. |
+| `public Result<Money> Divide(decimal divisor)` | `Result<Money>` | Divisor must be positive. Returns `Error.UnprocessableContent` when division would overflow (e.g. very small positive divisor). |
+| `public Result<Money> Divide(int divisor)` | `Result<Money>` | Divisor must be positive. Returns `Error.UnprocessableContent` on division overflow. |
+| `public Result<Money[]> Allocate(params int[] ratios)` | `Result<Money[]>` | Ratio-based split with remainder distribution. Throws `ArgumentNullException` when `ratios` is null. Returns `Error.UnprocessableContent` with field `ratios` when any ratio is non-positive or `ratios.Sum()` overflows; with field `amount` when the minor-unit conversion or the per-ratio share multiplication (`amountInMinorUnits * ratios[i]`, computed in a checked context) overflows. |
+| `public bool IsGreaterThan(Money other)` | `bool` | False when currencies differ. Throws `ArgumentNullException` when `other` is null. |
+| `public bool IsGreaterThanOrEqual(Money other)` | `bool` | False when currencies differ. Throws `ArgumentNullException` when `other` is null. |
+| `public bool IsLessThan(Money other)` | `bool` | False when currencies differ. Throws `ArgumentNullException` when `other` is null. |
+| `public bool IsLessThanOrEqual(Money other)` | `bool` | False when currencies differ. Throws `ArgumentNullException` when `other` is null. |
 | `public static Result<Money> Zero(string currencyCode = "USD")` | `Result<Money>` | Currency-aware zero instance. |
 | `public override string ToString()` | `string` | Invariant amount plus currency code. |
-| `public static Result<Money> Sum(IEnumerable<Money> values)` | `Result<Money>` | Fails for empty or mixed-currency collections. |
+| `public static Result<Money> Sum(IEnumerable<Money> values)` | `Result<Money>` | Fails for empty or mixed-currency collections. Throws `ArgumentNullException` when `values` is null and `ArgumentException` when any element is null. |
 
 ### `Percentage`
 
@@ -320,7 +320,7 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
 | `public static Result<PhoneNumber> TryCreate(string? value, string? fieldName = null)` | `Result<PhoneNumber>` | Removes spaces, dashes, and parentheses, then validates E.164. |
 | `public static PhoneNumber Parse(string? s, IFormatProvider? provider)` | `PhoneNumber` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out PhoneNumber result)` | `bool` | Safe parse helper. |
-| `public string GetCountryCode()` | `string` | Extracts the E.164 country calling code. |
+| `public string GetCountryCode()` | `string` | Extracts the E.164 country calling code via longest-prefix lookup. Throws `InvalidOperationException` when the prefix does not match any assigned ITU-T calling code (`TryCreate` validates only E.164 *shape*, not assigned-code membership). |
 
 ### `Slug`
 
@@ -375,16 +375,16 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 | Type | Namespace | Category | Underlying/wire shape | Notes |
 | --- | --- | --- | --- | --- |
 | `Age` | `Trellis.Primitives` | Scalar | JSON number or numeric string input; JSON number output | `int`, range `0..150`. |
-| `CountryCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ISO 3166-1 alpha-2. |
-| `CurrencyCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ISO 4217. |
+| `CountryCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ASCII ISO 3166-1 alpha-2 (exactly two ASCII letters). |
+| `CurrencyCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ASCII ISO 4217 (exactly three ASCII letters). |
 | `EmailAddress` | `Trellis.Primitives` | Scalar | JSON string | Trimmed validated email. |
 | `Hostname` | `Trellis.Primitives` | Scalar | JSON string | RFC 1123 hostname. |
 | `IpAddress` | `Trellis.Primitives` | Scalar | JSON string | IPv4 or IPv6 text. |
-| `LanguageCode` | `Trellis.Primitives` | Scalar | JSON string | Lowercase ISO 639-1 alpha-2. |
+| `LanguageCode` | `Trellis.Primitives` | Scalar | JSON string | Lowercase ASCII ISO 639-1 alpha-2. |
 | `MonetaryAmount` | `Trellis.Primitives` | Scalar | JSON number or numeric string input; JSON number output | Non-negative single-currency amount with 2-decimal rounding. |
-| `Money` | `Trellis.Primitives` | Structured | JSON object `{ "amount": number, "currency": string }` | Multi-currency value object; not scalar. |
+| `Money` | `Trellis.Primitives` | Structured | JSON object `{ "amount": number, "currency": string }` | Multi-currency value object; not scalar. Decimal places per ISO 4217 minor units (0 for JPY/KRW/BIF/CLP/DJF/GNF/ISK/KMF/PYG/RWF/UGX/UYI/VND/VUV/XAF/XOF/XPF; 3 for BHD/IQD/JOD/KWD/LYD/OMR/TND; 4 for CLF/UYW; 2 otherwise). |
 | `Percentage` | `Trellis.Primitives` | Scalar | JSON number or numeric string input; JSON number output | `decimal` in `0..100`; `ToString()` adds `%`. |
-| `PhoneNumber` | `Trellis.Primitives` | Scalar | JSON string | Normalized E.164 string. |
+| `PhoneNumber` | `Trellis.Primitives` | Scalar | JSON string | Normalized E.164 string. `GetCountryCode()` throws when the prefix is not an assigned ITU-T calling code. |
 | `Slug` | `Trellis.Primitives` | Scalar | JSON string | Lowercase letters, digits, single hyphens. |
 | `Url` | `Trellis.Primitives` | Scalar | JSON string | Absolute HTTP/HTTPS URI. |
 

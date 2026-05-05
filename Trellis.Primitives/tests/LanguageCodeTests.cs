@@ -104,6 +104,32 @@ public class LanguageCodeTests
         validation.Fields[0].Detail.Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
     }
 
+    [Theory]
+    // Inspection finding New-2: ISO 639-1 is ASCII-only.
+    [InlineData("Ää")]
+    [InlineData("Öö")]
+    [InlineData("αβ")]
+    [InlineData("ru")]   // 'ru' is a real ISO 639-1 code — keep this OUT of the asciilettering test (it's valid ASCII)
+    public void Non_ASCII_or_known_lowercase_LanguageCode_handling(string code)
+    {
+        // 'ru' is valid; the rest are invalid Unicode-letter inputs. This test verifies
+        // the ASCII-only contract (rejecting Greek/German letters) and the lowercase
+        // normalization remains intact for valid input.
+        var result = LanguageCode.TryCreate(code);
+
+        if (code == "ru")
+        {
+            result.IsSuccess.Should().BeTrue();
+            result.Unwrap().Value.Should().Be("ru");
+        }
+        else
+        {
+            result.IsFailure.Should().BeTrue();
+            var validation = (Error.UnprocessableContent)result.UnwrapError();
+            validation.Fields[0].Detail.Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
+        }
+    }
+
     [Fact]
     public void TryCreate_uses_custom_fieldName()
     {

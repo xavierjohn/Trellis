@@ -120,6 +120,25 @@ public class PhoneNumberTests
         countryCode.Should().Be(expectedCountryCode);
     }
 
+    [Theory]
+    // Inspection finding M-5: GetCountryCode previously returned an invalid 1-digit
+    // prefix when the input passed E.164 validation but did not match any of the
+    // 1/2/3-digit calling-code lookup tables. It must throw rather than silently
+    // return invalid data. Test data: prefixes that pass E.164 (`+[1-9]\d{7,14}`)
+    // but are not in s_twoDigitCountryCodes / s_threeDigitCountryCodes and don't
+    // start with "1" or "7".
+    [InlineData("+99912345678")]    // "999" not in 3-digit; "99" not in 2-digit
+    [InlineData("+88812345678")]    // "888" not in 3-digit; "88" not in 2-digit
+    [InlineData("+28012345678")]    // "280" not in 3-digit; "28" not in 2-digit
+    public void GetCountryCode_throws_when_lookup_tables_dont_match(string phone)
+    {
+        var phoneNumber = PhoneNumber.TryCreate(phone).Unwrap();
+
+        FluentActions.Invoking(() => phoneNumber.GetCountryCode())
+            .Should().Throw<InvalidOperationException>()
+            .WithMessage("*country calling code*");
+    }
+
     [Fact]
     public void Two_PhoneNumber_with_same_value_should_be_equal()
     {

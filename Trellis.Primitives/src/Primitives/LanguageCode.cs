@@ -7,6 +7,13 @@ using Trellis;
 /// <summary>
 /// ISO 639-1 language code value object.
 /// </summary>
+/// <remarks>
+/// <b>Validation Rules (Opinionated):</b>
+/// <list type="bullet">
+/// <item>Exactly 2 ASCII letters (ISO 639-1 alpha-2 format) — Unicode letters such as German umlauts, Greek, or Cyrillic are rejected.</item>
+/// <item>Normalized to lowercase</item>
+/// </list>
+/// </remarks>
 [JsonConverter(typeof(ParsableJsonConverter<LanguageCode>))]
 public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValue<LanguageCode, string>, IParsable<LanguageCode>
 {
@@ -25,7 +32,7 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
         if (string.IsNullOrWhiteSpace(value))
             return Result.Fail<LanguageCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Language code is required."));
         var code = value.Trim();
-        if (code.Length != 2 || !code.All(char.IsLetter))
+        if (code.Length != 2 || !code.All(char.IsAsciiLetter))
             return Result.Fail<LanguageCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Language code must be an ISO 639-1 alpha-2 code."));
         return Result.Ok(new LanguageCode(code.ToLowerInvariant()));
     }

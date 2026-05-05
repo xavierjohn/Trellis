@@ -107,6 +107,18 @@ public class CompositeValueObjectJsonConverterTests
     }
 
     [Fact]
+    public void Read_aggregates_all_missing_required_properties()
+    {
+        // Inspection finding m-2: when multiple properties are missing, the converter
+        // should report all of them in one round trip rather than only the first.
+        Action act = () => JsonSerializer.Deserialize<IntStringVo>("{}");
+
+        act.Should().Throw<TrellisJsonValidationException>()
+            .Where(ex => ex.Message.Contains("number") && ex.Message.Contains("label"),
+                "both missing properties must be reported in one error message");
+    }
+
+    [Fact]
     public void Read_skips_unknown_properties()
     {
         var rt = JsonSerializer.Deserialize<IntStringVo>(

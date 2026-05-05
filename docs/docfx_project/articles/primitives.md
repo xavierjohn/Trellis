@@ -313,16 +313,16 @@ The converter discovers properties in declaration order, populates a matching `s
 | Type | Category | Wire shape | Notes |
 |---|---|---|---|
 | `Age` | scalar `int` | JSON number / numeric string | Range `0..150`. |
-| `CountryCode` | scalar `string` | JSON string | Uppercase ISO 3166-1 alpha-2 (exactly two letters). |
-| `CurrencyCode` | scalar `string` | JSON string | Uppercase ISO 4217 (exactly three letters). |
+| `CountryCode` | scalar `string` | JSON string | Uppercase **ASCII** ISO 3166-1 alpha-2 (exactly two ASCII letters). Non-ASCII letters are rejected. |
+| `CurrencyCode` | scalar `string` | JSON string | Uppercase **ASCII** ISO 4217 (exactly three ASCII letters). |
 | `EmailAddress` | scalar `string` | JSON string | Trimmed, regex-validated. |
 | `Hostname` | scalar `string` | JSON string | RFC 1123 hostname. |
 | `IpAddress` | scalar `string` | JSON string | IPv4/IPv6 via `IPAddress.TryParse`; `ToIPAddress()` returns the cached parse. |
-| `LanguageCode` | scalar `string` | JSON string | Lowercase ISO 639-1 alpha-2. |
-| `MonetaryAmount` | scalar `decimal` | JSON number / numeric string | Non-negative; rounds to two decimals (`MidpointRounding.AwayFromZero`). Single-currency. `Add` / `Subtract` / `Multiply` / `Sum` return `Result`. |
-| `Money` | structured `ValueObject` | JSON object `{ "amount": number, "currency": string }` | Amount + `CurrencyCode`. `Add` / `Subtract` / `Sum` require matching currencies. `Allocate(int[] ratios)` distributes remainders. |
+| `LanguageCode` | scalar `string` | JSON string | Lowercase **ASCII** ISO 639-1 alpha-2. |
+| `MonetaryAmount` | scalar `decimal` | JSON number / numeric string | Non-negative; rounds to two decimals (`MidpointRounding.AwayFromZero`). Single-currency. `Add` / `Subtract` / `Multiply` / `Sum` return `Result`; `Add` / `Subtract` / `Sum` reject null inputs/elements. |
+| `Money` | structured `ValueObject` | JSON object `{ "amount": number, "currency": string }` | Amount + `CurrencyCode`. `Add` / `Subtract` / `Multiply` / `Divide` / `Allocate` / `Sum` return `Result` with consistent overflow handling and reject null inputs. Decimal places per ISO 4217 minor units (0 for JPY/KRW/BIF/CLP/DJF/GNF/ISK/KMF/PYG/RWF/UGX/UYI/VND/VUV/XAF/XOF/XPF; 3 for BHD/IQD/JOD/KWD/LYD/OMR/TND; 4 for CLF/UYW; 2 otherwise). |
 | `Percentage` | scalar `decimal` | JSON number / numeric string | Range `0..100`; `ToString()` appends `%`; `FromFraction(0..1)` and `Of(amount)` helpers. |
-| `PhoneNumber` | scalar `string` | JSON string | Strips spaces / dashes / parentheses then validates E.164; `GetCountryCode()` extracts the calling code. |
+| `PhoneNumber` | scalar `string` | JSON string | Strips spaces / dashes / parentheses then validates E.164; `GetCountryCode()` extracts the calling code (throws `InvalidOperationException` when the prefix is not an ITU-T-assigned calling code — `TryCreate` validates only E.164 *shape*, not assigned-code membership). |
 | `Slug` | scalar `string` | JSON string | Lowercase letters, digits, single-hyphen separators. |
 | `Url` | scalar `string` | JSON string | Absolute HTTP/HTTPS only; exposes `Scheme`, `Host`, `Port`, `Path`, `Query`, `IsSecure`, `ToUri()`. |
 
