@@ -37,17 +37,19 @@ public static class DbExceptionClassifier
             return message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase)
                 || message.Contains("PRIMARY KEY constraint failed", StringComparison.OrdinalIgnoreCase);
 
-        // MySQL/MariaDB: MySqlException with Number 1062 (ER_DUP_ENTRY) or SQLSTATE "23000".
+        // MySQL/MariaDB: MySqlException with Number 1062 (ER_DUP_ENTRY) or "Duplicate entry"
+        // message form. SQLSTATE "23000" is **not** a sufficient signal on its own — MySQL
+        // reuses 23000 for foreign-key violations as well, so trusting it here would let
+        // FK violations be misclassified as duplicate-key conflicts (SaveChangesResultAsync
+        // checks IsDuplicateKey before IsForeignKeyViolation).
         // The provider type lives in the consumer's MySql.Data.* / MySqlConnector package, so
         // detect by name (matches the SQL Server / PostgreSQL pattern above).
         if (typeName == "MySqlException")
         {
             if (TryGetMySqlNumber(inner, out var mysqlNumber) && mysqlNumber == 1062)
                 return true;
-            if (TryGetSqlState(inner, out var mysqlState) && mysqlState == "23000")
-                return true;
             // Fallback message form ("Duplicate entry '...' for key '...'") for older drivers
-            // that don't surface Number / SqlState.
+            // that don't surface Number.
             if (message.StartsWith("Duplicate entry", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
@@ -84,15 +86,16 @@ public static class DbExceptionClassifier
             return message.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase);
 
         // MySQL/MariaDB: MySqlException with Number 1452 (ER_NO_REFERENCED_ROW_2) or 1451
-        // (ER_ROW_IS_REFERENCED_2), SQLSTATE "23000". Message form starts with
-        // "Cannot add or update a child row" or "Cannot delete or update a parent row".
+        // (ER_ROW_IS_REFERENCED_2). Message form starts with "Cannot add or update a child row"
+        // or "Cannot delete or update a parent row". Note that SQLSTATE "23000" alone is not a
+        // sufficient signal — MySQL reuses 23000 for duplicate-key violations as well — so the
+        // message prefix is checked unconditionally rather than only inside the SQLSTATE branch.
         if (typeName == "MySqlException")
         {
             if (TryGetMySqlNumber(inner, out var mysqlNumber) && mysqlNumber is 1451 or 1452)
                 return true;
-            if (TryGetSqlState(inner, out var mysqlState) && mysqlState == "23000"
-                && (message.StartsWith("Cannot add or update a child row", StringComparison.OrdinalIgnoreCase)
-                    || message.StartsWith("Cannot delete or update a parent row", StringComparison.OrdinalIgnoreCase)))
+            if (message.StartsWith("Cannot add or update a child row", StringComparison.OrdinalIgnoreCase)
+                || message.StartsWith("Cannot delete or update a parent row", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 
@@ -179,20 +182,5 @@ public static class DbExceptionClassifier
         }
 
         return false;
-    }
-
-    private static bool TryGetSqlState(Exception ex, out string? state)
-    {
-        // MySQL providers expose either SqlState or SqlStateMarker; pick whichever is non-null.
-        state = null;
-        var type = ex.GetType();
-        var sqlStateProp = type.GetProperty("SqlState");
-        state = sqlStateProp?.GetValue(ex) as string;
-        if (state is not null)
-            return true;
-
-        var markerProp = type.GetProperty("SqlStateMarker");
-        state = markerProp?.GetValue(ex) as string;
-        return state is not null;
     }
 }

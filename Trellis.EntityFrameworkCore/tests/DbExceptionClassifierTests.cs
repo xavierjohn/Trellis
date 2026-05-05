@@ -404,14 +404,23 @@ public class DbExceptionClassifierTests
         DbExceptionClassifier.IsDuplicateKey(ex).Should().BeTrue();
     }
 
+    /// <summary>
+    /// Regression: SQLSTATE "23000" alone is **not** a sufficient duplicate-key signal —
+    /// MySQL reuses 23000 for both unique-constraint and foreign-key violations. The
+    /// classifier must require error number 1062 or a "Duplicate entry" message; otherwise
+    /// `SaveChangesResultAsync` (which checks <c>IsDuplicateKey</c> before
+    /// <c>IsForeignKeyViolation</c>) would surface FK violations as
+    /// <c>Error.Conflict("duplicate.key")</c>.
+    /// </summary>
     [Fact]
-    public void IsDuplicateKey_MySqlSqlState23000_ReturnsTrue()
+    public void IsDuplicateKey_MySqlSqlState23000Alone_ReturnsFalse()
     {
-        // Older drivers may surface SqlState without Number; classifier should still detect.
+        // Driver surfaces SqlState 23000 with no Number and a message that doesn't start
+        // with "Duplicate entry" — could equally be an FK violation. Refuse to misclassify.
         var inner = new MySqlException(0, "23000", "Some message that doesn't start with 'Duplicate entry'");
         var ex = CreateDbUpdateException(inner);
 
-        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeTrue();
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeFalse();
     }
 
     [Fact]

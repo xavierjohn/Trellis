@@ -30,21 +30,24 @@ public interface IUnitOfWork
 
     /// <summary>
     /// Begins a unit-of-work scope so that <see cref="CommitAsync"/> calls inside nested scopes
-    /// defer until the outermost scope unwinds. The Trellis pipeline's
+    /// defer until only the outermost scope remains. The Trellis pipeline's
     /// <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> wraps every command in a
     /// scope so that a successful inner command does not commit a partially-completed outer
     /// command's staged changes.
     /// </summary>
-    /// <returns>A disposable handle. Dispose ends the scope; the outermost scope's exit re-enables
-    /// commit on the next <see cref="CommitAsync"/> call.</returns>
+    /// <returns>A disposable handle. Dispose ends the scope by decrementing the depth counter;
+    /// disposal itself does not trigger a commit.</returns>
     /// <remarks>
     /// <para>
     /// <b>Nested-command semantics.</b> Within a nested command's pipeline, a successful inner
-    /// handler's <see cref="CommitAsync"/> is deferred (returns <see cref="Result.Ok()"/> without
-    /// touching the database) so the outer command can still abort. Only when the outermost scope
-    /// is disposed and the outer handler returns success does the deferred commit actually run —
-    /// at that point both the outer and inner staged changes are persisted atomically through the
-    /// shared <c>DbContext</c>'s implicit transaction.
+    /// handler's <see cref="CommitAsync"/> call is a no-op (returns <see cref="Result.Ok()"/>
+    /// without touching the database) because depth &gt; 1. The actual database write happens
+    /// when the **outer** <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> calls
+    /// <see cref="CommitAsync"/> at depth == 1 — that call is still inside the outermost
+    /// <c>using</c> scope. Disposing the outermost scope afterwards just decrements the counter
+    /// to 0; it does **not** itself invoke <see cref="CommitAsync"/>. At commit time, both the
+    /// outer and inner staged changes are persisted atomically through the shared
+    /// <c>DbContext</c>'s implicit transaction.
     /// </para>
     /// <para>
     /// <b>Caveat.</b> If the inner command returns a failure but the outer handler chooses to

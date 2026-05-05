@@ -129,8 +129,10 @@ public class TransactionalCommandBehaviorTests
 
     /// <summary>
     /// Regression: when the outer command fails, neither the inner's deferred commit nor the
-    /// outer's commit fire — staged changes remain in the change tracker and are discarded
-    /// when the scope ends.
+    /// outer's commit fire — <c>CommitAsync</c> is never called on the success path, so no
+    /// <c>SaveChanges</c> runs and nothing is persisted. (Per-scope rollback of staged changes
+    /// is not supported: any entities the inner handler tracked remain in the change tracker
+    /// until the <c>DbContext</c> itself is disposed.)
     /// </summary>
     [Fact]
     public async Task Handle_nested_outer_failure_after_inner_success_does_not_commit_anything()
