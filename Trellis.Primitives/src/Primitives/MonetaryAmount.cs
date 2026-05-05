@@ -68,9 +68,9 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// <param name="value">The string value to parse (must be a valid decimal).</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
     /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.UnprocessableContent"/> otherwise.</returns>
+    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
     public static Result<MonetaryAmount> TryCreate(string? value, string? fieldName = null)
     {
-        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("amount");
 
         if (string.IsNullOrWhiteSpace(value))
@@ -89,9 +89,9 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
     /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.UnprocessableContent"/> otherwise.</returns>
+    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
     public static Result<MonetaryAmount> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
     {
-        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
         var field = fieldName.NormalizeFieldName("amount");
 
         if (string.IsNullOrWhiteSpace(value))
@@ -104,15 +104,21 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     }
 
     /// <summary>Adds two monetary amounts.</summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
     public Result<MonetaryAmount> Add(MonetaryAmount other)
     {
+        ArgumentNullException.ThrowIfNull(other);
+
         try { return TryCreate(Value + other.Value); }
         catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField("amount", "validation.error", "Addition would overflow.")); }
     }
 
     /// <summary>Subtracts a monetary amount. Fails if result would be negative.</summary>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
     public Result<MonetaryAmount> Subtract(MonetaryAmount other)
     {
+        ArgumentNullException.ThrowIfNull(other);
+
         try { return TryCreate(Value - other.Value); }
         catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.UnprocessableContent.ForField("amount", "validation.error", "Subtraction would overflow.")); }
     }
@@ -180,6 +186,9 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 
         foreach (var value in values)
         {
+            if (value is null)
+                throw new ArgumentException("Collection contains a null element.", nameof(values));
+
             var addResult = total.Add(value);
             if (!addResult.TryGetValue(out var next))
                 return addResult;

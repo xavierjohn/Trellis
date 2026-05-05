@@ -719,5 +719,221 @@ public class MoneyTests
         act.Should().Throw<ArgumentNullException>();
     }
 
+    [Fact]
+    public void Sum_CollectionWithNullElement_ReturnsFailure()
+    {
+        // Inspection finding New-3: Sum<Money> should reject null elements explicitly
+        // rather than NRE on element.Currency.
+        var items = new[]
+        {
+            Money.Create(10m, "USD"),
+            null!,
+            Money.Create(5m, "USD"),
+        };
+
+        var act = () => Money.Sum(items);
+
+        act.Should().Throw<ArgumentException>()
+            .Where(ex => ex.ParamName == "values");
+    }
+
+    #endregion
+
+    #region Inspection regression tests (Trellis.Primitives M-1, M-3, i-6, New-1)
+
+    [Fact]
+    public void Add_NullOther_ThrowsArgumentNullException()
+    {
+        // Inspection finding M-1: arithmetic methods must reject null other.
+        var money = Money.Create(10m, "USD");
+
+        FluentActions.Invoking(() => money.Add(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void Subtract_NullOther_ThrowsArgumentNullException()
+    {
+        var money = Money.Create(10m, "USD");
+
+        FluentActions.Invoking(() => money.Subtract(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void IsGreaterThan_NullOther_ThrowsArgumentNullException()
+    {
+        var money = Money.Create(10m, "USD");
+
+        FluentActions.Invoking(() => money.IsGreaterThan(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void IsGreaterThanOrEqual_NullOther_ThrowsArgumentNullException()
+    {
+        var money = Money.Create(10m, "USD");
+
+        FluentActions.Invoking(() => money.IsGreaterThanOrEqual(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void IsLessThan_NullOther_ThrowsArgumentNullException()
+    {
+        var money = Money.Create(10m, "USD");
+
+        FluentActions.Invoking(() => money.IsLessThan(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void IsLessThanOrEqual_NullOther_ThrowsArgumentNullException()
+    {
+        var money = Money.Create(10m, "USD");
+
+        FluentActions.Invoking(() => money.IsLessThanOrEqual(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void Allocate_NullRatios_ThrowsArgumentNullException()
+    {
+        // Inspection finding M-3: Allocate must null-guard ratios (the params syntactic
+        // sugar makes a direct null-array call possible from non-params call sites).
+        var money = Money.Create(100m, "USD");
+
+        FluentActions.Invoking(() => money.Allocate(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "ratios");
+    }
+
+    [Fact]
+    public void Allocate_RatiosOverflow_ReturnsFailure()
+    {
+        // Inspection finding M-3: ratios.Sum() can OverflowException on int overflow;
+        // wrap in Result.Fail rather than letting the exception propagate.
+        var money = Money.Create(100m, "USD");
+
+        var result = money.Allocate(int.MaxValue, int.MaxValue);
+
+        result.IsFailure.Should().BeTrue();
+        var err = (Error.UnprocessableContent)result.UnwrapError();
+        err.Fields[0].Detail.Should().Contain("overflow", "ratios.Sum overflow surfaces as a Result failure rather than an unhandled exception");
+    }
+
+    [Fact]
+    public void Multiply_DecimalOverflow_ReturnsFailure()
+    {
+        // Inspection finding i-6: Multiply must wrap OverflowException to Result.Fail
+        // for parity with Add (which already does this).
+        var money = Money.Create(decimal.MaxValue / 2, "USD");
+
+        var result = money.Multiply(3m);
+
+        result.IsFailure.Should().BeTrue();
+        var err = (Error.UnprocessableContent)result.UnwrapError();
+        err.Fields[0].Detail.Should().Contain("overflow");
+    }
+
+    [Fact]
+    public void Multiply_IntOverflow_ReturnsFailure()
+    {
+        var money = Money.Create(decimal.MaxValue / 2, "USD");
+
+        var result = money.Multiply(3);
+
+        result.IsFailure.Should().BeTrue();
+        var err = (Error.UnprocessableContent)result.UnwrapError();
+        err.Fields[0].Detail.Should().Contain("overflow");
+    }
+
+    [Fact]
+    public void Divide_DecimalDivisorTinyOverflow_ReturnsFailure()
+    {
+        // Inspection finding i-6: Divide by a tiny positive divisor can overflow decimal.
+        var money = Money.Create(decimal.MaxValue / 2, "USD");
+
+        var result = money.Divide(0.0000000000000000000000000001m);
+
+        result.IsFailure.Should().BeTrue();
+        var err = (Error.UnprocessableContent)result.UnwrapError();
+        err.Fields[0].Detail.Should().Contain("overflow");
+    }
+
+    [Theory]
+    // Inspection finding New-1: Money's ISO 4217 minor-unit table was incomplete.
+    // 0-decimal currencies beyond JPY/KRW must round to 0 decimals on creation.
+    [InlineData("BIF", 100.99, 101)]    // Burundian Franc
+    [InlineData("CLP", 12345.67, 12346)] // Chilean Peso
+    [InlineData("DJF", 50.5, 51)]       // Djiboutian Franc
+    [InlineData("GNF", 1000.49, 1000)]  // Guinean Franc
+    [InlineData("ISK", 999.99, 1000)]   // Icelandic Króna
+    [InlineData("KMF", 250.4, 250)]     // Comorian Franc
+    [InlineData("PYG", 50000.5, 50001)] // Paraguayan Guaraní
+    [InlineData("RWF", 1500.25, 1500)]  // Rwandan Franc
+    [InlineData("UGX", 5000.75, 5001)]  // Ugandan Shilling
+    [InlineData("UYI", 1500.5, 1501)]   // Uruguay Peso en Unidades Indexadas
+    [InlineData("VND", 25000.4, 25000)] // Vietnamese Đồng
+    [InlineData("VUV", 1000.5, 1001)]   // Vanuatu Vatu
+    [InlineData("XAF", 500.7, 501)]     // CFA Franc BEAC
+    [InlineData("XOF", 750.3, 750)]     // CFA Franc BCEAO
+    [InlineData("XPF", 1200.6, 1201)]   // CFP Franc
+    public void TryCreate_ZeroMinorUnitCurrencies_RoundToWholeUnits(string currency, decimal input, decimal expected)
+    {
+        var result = Money.TryCreate(input, currency);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Amount.Should().Be(expected, $"{currency} has 0 minor units per ISO 4217");
+    }
+
+    [Theory]
+    // 3-decimal currencies beyond BHD/KWD/OMR/TND.
+    [InlineData("IQD", 100.12345, 100.123)] // Iraqi Dinar
+    [InlineData("JOD", 50.6789, 50.679)]    // Jordanian Dinar
+    [InlineData("LYD", 75.4321, 75.432)]    // Libyan Dinar
+    public void TryCreate_ThreeMinorUnitCurrencies_RoundToThreeDecimals(string currency, decimal input, decimal expected)
+    {
+        var result = Money.TryCreate(input, currency);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Amount.Should().Be(expected, $"{currency} has 3 minor units per ISO 4217");
+    }
+
+    [Theory]
+    // 4-decimal currencies (CLF / UYW are unidad-de-fomento types).
+    [InlineData("CLF", 1.23456789, 1.2346)]  // Chilean Unidad de Fomento
+    [InlineData("UYW", 2.34567, 2.3457)]     // Unidad Previsional (Uruguay)
+    public void TryCreate_FourMinorUnitCurrencies_RoundToFourDecimals(string currency, decimal input, decimal expected)
+    {
+        var result = Money.TryCreate(input, currency);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Amount.Should().Be(expected, $"{currency} has 4 minor units per ISO 4217");
+    }
+
+    [Fact]
+    public void Allocate_ShareArithmeticOverflow_ReturnsFailure()
+    {
+        // Inspection finding refuted by GPT-5.5: amountInMinorUnits * ratios[i] is
+        // unchecked long*int and silently wraps for extreme amount + large ratio
+        // combinations. Force a checked context so overflow is caught and surfaced
+        // as Result.Fail.
+        var money = Money.Create(50_000_000_000m, "USD");
+
+        // amountInMinorUnits = 5e12; share-mul: 5e12 * 1e9 = 5e21 > long.MaxValue (9.2e18).
+        var result = money.Allocate(1_000_000_000, 1_000_000_000);
+
+        result.IsFailure.Should().BeTrue();
+        var err = (Error.UnprocessableContent)result.UnwrapError();
+        err.Fields[0].Detail.Should().Contain("overflow");
+    }
+
     #endregion
 }

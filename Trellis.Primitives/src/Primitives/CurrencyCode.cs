@@ -39,7 +39,7 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
             return Result.Fail<CurrencyCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Currency code is required."));
 
         var code = value.Trim();
-        if (code.Length != 3 || !code.All(char.IsLetter))
+        if (code.Length != 3 || !code.All(char.IsAsciiLetter))
             return Result.Fail<CurrencyCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Currency code must be a 3-letter ISO 4217 code."));
 
         var upper = code.ToUpperInvariant();

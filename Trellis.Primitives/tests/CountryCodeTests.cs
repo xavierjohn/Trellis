@@ -104,6 +104,23 @@ public class CountryCodeTests
         validation.Fields[0].Detail.Should().Be("Country code must be an ISO 3166-1 alpha-2 code.");
     }
 
+    [Theory]
+    // Inspection finding New-2: char.IsLetter accepts Unicode letters (German umlauts,
+    // Greek, Cyrillic, etc). ISO 3166-1 alpha-2 is ASCII-only — must reject these.
+    [InlineData("Ää")]   // German letters: char.IsLetter=true, char.IsAsciiLetter=false
+    [InlineData("ÖÜ")]
+    [InlineData("Αα")]   // Greek alpha
+    [InlineData("Ωω")]   // Greek omega
+    [InlineData("ЯЯ")]   // Cyrillic
+    public void Cannot_create_CountryCode_with_non_ASCII_letters(string code)
+    {
+        var result = CountryCode.TryCreate(code);
+
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Country code must be an ISO 3166-1 alpha-2 code.");
+    }
+
     [Fact]
     public void TryCreate_uses_custom_fieldName()
     {

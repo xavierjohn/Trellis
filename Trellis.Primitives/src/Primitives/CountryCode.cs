@@ -36,7 +36,7 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
         if (string.IsNullOrWhiteSpace(value))
             return Result.Fail<CountryCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Country code is required."));
         var code = value.Trim();
-        if (code.Length != 2 || !code.All(char.IsLetter))
+        if (code.Length != 2 || !code.All(char.IsAsciiLetter))
             return Result.Fail<CountryCode>(Error.UnprocessableContent.ForField(field, "validation.error", "Country code must be an ISO 3166-1 alpha-2 code."));
         return Result.Ok(new CountryCode(code.ToUpperInvariant()));
     }

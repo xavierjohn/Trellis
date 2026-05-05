@@ -424,4 +424,44 @@ public class MonetaryAmountTests
     }
 
     #endregion
+
+    #region Inspection regression tests (Trellis.Primitives M-2, New-3)
+
+    [Fact]
+    public void Add_NullOther_ThrowsArgumentNullException()
+    {
+        var amt = MonetaryAmount.Create(10m);
+
+        FluentActions.Invoking(() => amt.Add(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void Subtract_NullOther_ThrowsArgumentNullException()
+    {
+        var amt = MonetaryAmount.Create(10m);
+
+        FluentActions.Invoking(() => amt.Subtract(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "other");
+    }
+
+    [Fact]
+    public void Sum_CollectionWithNullElement_ReturnsFailure()
+    {
+        var items = new[]
+        {
+            MonetaryAmount.Create(10m),
+            null!,
+            MonetaryAmount.Create(5m),
+        };
+
+        var act = () => MonetaryAmount.Sum(items);
+
+        act.Should().Throw<ArgumentException>()
+            .Where(ex => ex.ParamName == "values");
+    }
+
+    #endregion
 }

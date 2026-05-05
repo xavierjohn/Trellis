@@ -135,9 +135,16 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         StringExtensions.TryParseScalarValue(s, out result);
 
     /// <summary>
-    /// Gets the country code portion of the phone number.
+    /// Gets the country calling code portion of the phone number.
     /// </summary>
-    /// <returns>The country code (digits after + and before subscriber number).</returns>
+    /// <returns>The country calling code (digits after <c>+</c> and before the subscriber number).</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the phone number's prefix does not match any assigned ITU-T E.164 country
+    /// calling code. <see cref="TryCreate"/> validates only E.164 shape, not assigned-code
+    /// membership, so a phone number that passes <c>TryCreate</c> can still have a prefix that
+    /// is not a real calling code (e.g. unassigned ranges, or a code added after this library
+    /// shipped).
+    /// </exception>
     public string GetCountryCode()
     {
         // E.164 country codes are 1-3 digits and require longest-prefix matching
@@ -153,7 +160,10 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         if (digits.Length >= 2 && s_twoDigitCountryCodes.Contains(digits[..2]))
             return digits[..2];
 
-        return digits[..1];
+        throw new InvalidOperationException(
+            $"Phone number '{Value}' passed E.164 format validation but does not start with a recognized " +
+            $"country calling code. This may indicate stale lookup tables in Trellis.Primitives or a " +
+            $"malformed input that happens to satisfy the E.164 length/character rules.");
     }
 
     /// <summary>

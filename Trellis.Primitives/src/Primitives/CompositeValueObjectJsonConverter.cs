@@ -83,10 +83,19 @@ T> : JsonConverter<T>
             }
         }
 
+        List<string>? missing = null;
         for (var i = 0; i < Metadata.Properties.Count; i++)
         {
             if (!seen[i])
-                throw new TrellisJsonValidationException($"Required property '{Metadata.Properties[i].JsonName}' is missing.");
+                (missing ??= []).Add(Metadata.Properties[i].JsonName);
+        }
+
+        if (missing is not null)
+        {
+            throw new TrellisJsonValidationException(
+                missing.Count == 1
+                    ? $"Required property '{missing[0]}' is missing."
+                    : $"Required properties missing: {string.Join(", ", missing.Select(n => $"'{n}'"))}.");
         }
 
         var result = Metadata.Invoke(values);

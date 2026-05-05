@@ -83,6 +83,22 @@ public class CurrencyCodeTests
         validation.Fields[0].Detail.Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
+    [Theory]
+    // Inspection finding New-2: ISO 4217 is ASCII-only; reject Unicode letters that
+    // char.IsLetter accepts but char.IsAsciiLetter rejects.
+    [InlineData("Ääö")]
+    [InlineData("ÖÜß")]
+    [InlineData("Ωαβ")]
+    [InlineData("МИР")]   // Cyrillic — ironically a real Russian payment-system name
+    public void Cannot_create_CurrencyCode_with_non_ASCII_letters(string code)
+    {
+        var result = CurrencyCode.TryCreate(code);
+
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.UnprocessableContent)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Currency code must be a 3-letter ISO 4217 code.");
+    }
+
     [Fact]
     public void Two_CurrencyCode_with_same_value_should_be_equal()
     {

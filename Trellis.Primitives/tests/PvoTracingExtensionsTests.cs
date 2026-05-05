@@ -179,6 +179,13 @@ public class PvoTracingExtensionsTests : IDisposable
         PrimitiveValueObjectTrace.ActivitySourceName.Should().Be(expectedName);
     }
 
+    [Fact]
+    public void AddPrimitiveValueObjectInstrumentation_NullBuilder_ThrowsArgumentNullException() =>
+        FluentActions.Invoking(() => PrimitiveValueObjectTraceProviderBuilderExtensions
+            .AddPrimitiveValueObjectInstrumentation(builder: null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(ex => ex.ParamName == "builder");
+
     public void Dispose()
     {
         _activityHelper.Dispose();
