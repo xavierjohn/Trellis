@@ -261,4 +261,165 @@ public class ToResultAsyncTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("async-fail");
         tracker.Disposed.Should().BeTrue();
     }
+
+    #region Inspection finding i-H2 — header-aware status mapping
+
+    [Fact]
+    public async Task Default_405_preserves_Allow_header_in_typed_error()
+    {
+        // Inspection finding i-H2: Error.MethodNotAllowed.Allow drives the wire-level
+        // Allow response header in ASP. The strict default mapper must extract the
+        // upstream Allow header rather than producing an empty list.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.MethodNotAllowed)
+        {
+            Content = new StringContent(string.Empty),
+        };
+        // Allow lives on Content.Headers per HttpContentHeaders.
+        tracker.Content!.Headers.Allow.Add("GET");
+        tracker.Content.Headers.Allow.Add("HEAD");
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.MethodNotAllowed>().Subject;
+        err.Allow.Items.Should().Equal("GET", "HEAD");
+    }
+
+    [Fact]
+    public async Task Default_416_preserves_Content_Range_complete_length_in_typed_error()
+    {
+        // Inspection finding i-H2: Error.RangeNotSatisfiable.CompleteLength comes from
+        // the upstream Content-Range: */<size> header.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
+        {
+            Content = new ByteArrayContent(Array.Empty<byte>()),
+        };
+        tracker.Content!.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(length: 9999);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.RangeNotSatisfiable>().Subject;
+        err.CompleteLength.Should().Be(9999);
+    }
+
+    [Fact]
+    public async Task Default_429_preserves_Retry_After_seconds_in_typed_error()
+    {
+        // Inspection finding i-H2: Retry-After is part of the typed error.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.TooManyRequests);
+        tracker.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(60));
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.TooManyRequests>().Subject;
+        err.RetryAfter.Should().NotBeNull();
+        err.RetryAfter!.IsDelaySeconds.Should().BeTrue();
+        err.RetryAfter.DelaySeconds.Should().Be(60);
+    }
+
+    [Fact]
+    public async Task Default_503_preserves_Retry_After_date_in_typed_error()
+    {
+        var when = new DateTimeOffset(2027, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        tracker.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(when);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.ServiceUnavailable>().Subject;
+        err.RetryAfter.Should().NotBeNull();
+        err.RetryAfter!.IsDelaySeconds.Should().BeFalse();
+        err.RetryAfter.Date.Should().Be(when);
+    }
+
+    [Fact]
+    public async Task Default_405_with_no_Allow_header_returns_empty_typed_array()
+    {
+        // Negative test: mapper must not invent values when the upstream omits the header.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.MethodNotAllowed);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.MethodNotAllowed>().Subject;
+        err.Allow.IsEmpty.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Default_429_with_no_Retry_After_header_keeps_RetryAfter_null()
+    {
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.TooManyRequests);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.TooManyRequests>().Subject;
+        err.RetryAfter.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Default_416_with_no_Content_Range_header_returns_zero_complete_length()
+    {
+        // Inspection finding (GPT-5.5 pre-commit review): negative test was missing for 416.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.RangeNotSatisfiable>().Subject;
+        err.CompleteLength.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Default_429_with_negative_Retry_After_treats_header_as_absent()
+    {
+        // Inspection finding (GPT-5.5 pre-commit review): a malformed negative Retry-After
+        // would have caused RetryAfterValue.FromSeconds to throw ArgumentOutOfRangeException
+        // *inside* MapStatusToError, leaking the response. ExtractRetryAfter now treats
+        // negative deltas as absent (null).
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.TooManyRequests);
+        // Synthesize a malformed (negative) delta — adversarial / buggy upstream pattern.
+        tracker.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(-30));
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.TooManyRequests>().Subject;
+        err.RetryAfter.Should().BeNull("malformed (negative) Retry-After must not crash the strict-default mapper");
+    }
+
+    [Fact]
+    public async Task Default_401_preserves_WWW_Authenticate_schemes_in_typed_error()
+    {
+        // Inspection finding (GPT-5.5 pre-commit review): 401 had no header preservation
+        // even though Error.Unauthorized.Challenges round-trips through ASP's response writer.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.Unauthorized);
+        tracker.Headers.WwwAuthenticate.Add(new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "realm=\"api\""));
+        tracker.Headers.WwwAuthenticate.Add(new System.Net.Http.Headers.AuthenticationHeaderValue("Basic"));
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.Unauthorized>().Subject;
+        err.Challenges.Length.Should().Be(2);
+        err.Challenges.Items[0].Scheme.Should().Be("Bearer");
+        err.Challenges.Items[1].Scheme.Should().Be("Basic");
+    }
+
+    [Fact]
+    public async Task Default_401_with_no_WWW_Authenticate_header_keeps_challenges_empty()
+    {
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.Unauthorized);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.Unauthorized>().Subject;
+        err.Challenges.IsEmpty.Should().BeTrue();
+    }
+
+    #endregion
 }

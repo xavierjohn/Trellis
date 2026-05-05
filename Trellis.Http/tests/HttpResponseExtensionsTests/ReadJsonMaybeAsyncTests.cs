@@ -137,4 +137,18 @@ public class ReadJsonMaybeAsyncTests
         await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("response");
     }
+
+    [Fact]
+    public async Task Null_jsonTypeInfo_on_Ok_disposes_response_before_throwing()
+    {
+        // Inspection finding M-H2: same as ReadJsonAsync, the response was already
+        // awaited so disposal must happen before the ANE escapes.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult(Result.Ok<HttpResponseMessage>(tracker));
+
+        var act = async () => await task.ReadJsonMaybeAsync<camelcasePerson>(jsonTypeInfo: null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+        tracker.Disposed.Should().BeTrue("ReadJsonMaybeAsync's disposal contract must hold even on the null-jsonTypeInfo path");
+    }
 }

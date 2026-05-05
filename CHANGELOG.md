@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Trellis.Http — inspection findings (M-H1, M-H2, M-H3, i-H2, i-H3, N-H1, N-H2)
+
+Closes the formal Trellis.Http inspection backlog from `files/http-inspection-report.md` after a meta-review by GPT-5.5 validated, refuted, or adjusted each finding and surfaced 2 additional ones.
+
+- **(Minor) i-H2 — `MapStatusToError` now extracts response headers into the typed errors.** Previously produced typed errors with empty arrays / zero values (`Error.MethodNotAllowed(Allow: empty)`, `Error.TooManyRequests(RetryAfter: null)`, etc.) regardless of what the upstream sent. Since `Trellis.Asp`'s response writer renders these typed payloads on the wire (the `Allow` header is taken from `Error.MethodNotAllowed.Allow`; `Retry-After` from `Error.TooManyRequests.RetryAfter` / `Error.ServiceUnavailable.RetryAfter`; `WWW-Authenticate` from `Error.Unauthorized.Challenges`), the empty placeholders were actively wrong UX rather than just incomplete. The mapper now reads:
+  - `401` → copies `Headers.WwwAuthenticate` schemes (e.g. `Bearer`, `Basic`) into `Error.Unauthorized.Challenges`. Auth parameters (`realm=...`, `error=...`) are not parsed — a full RFC 7235 parser is out of scope for the strict default.
+  - `405` → copies `Content.Headers.Allow` into `Error.MethodNotAllowed.Allow`.
+  - `416` → copies `Content.Headers.ContentRange.Length` into `Error.RangeNotSatisfiable.CompleteLength`.
+  - `429` / `503` → copies `Headers.RetryAfter` (delta seconds or HTTP date) into `Error.TooManyRequests.RetryAfter` / `Error.ServiceUnavailable.RetryAfter`. Malformed negative deltas (an adversarial / buggy upstream pattern) are treated as absent rather than crashing the mapper.
+
+  When the upstream omits the header, the typed error keeps its empty/null default — the mapper never invents values.
+- **(Minor) M-H1 — `Handle*Async` methods now `ArgumentNullException.ThrowIfNull(error)`.** Previously `error` was deferred to `Result.Fail<T>(error)` (which itself throws on null), but the throw only happened on the matched-status path. A null `error` on a non-matching status was silently ignored. Aligns with the framework's defensive-coding posture and matches the existing `response` null-guard.
+- **(Minor) M-H2 — `ReadJsonAsync` / `ReadJsonMaybeAsync` move the `jsonTypeInfo` null check inside the `try` / `finally` so the awaited `HttpResponseMessage` is disposed even when `jsonTypeInfo` is null.** Previously the ANE thrown by `ArgumentNullException.ThrowIfNull(jsonTypeInfo)` skipped the `finally` block, leaking the response (deterministic disposal violated). The class-level disposal contract now holds on every exception path, including null-jsonTypeInfo.
+- **(Info) M-H3 — `ReadJsonAsync`'s caught `JsonException` no longer interpolates `ex.Message` or `ex.Path` into the failure `Detail`.** GPT-5.5 pre-commit review caught that `ex.Message` removal alone wasn't enough: `JsonException.Path` can also contain user-controlled dictionary keys (e.g. `$.customers['alice@example.com']`) for object-key payloads. The detail now uses only `LineNumber` / `BytePositionInLine` — schema-free position diagnostics that don't echo upstream-supplied content.
+- **(Info) i-H3 — Network-exception propagation is now documented** in `trellis-api-http.md` and `integration-http.md`. `HttpRequestException`, `OperationCanceledException` / `TaskCanceledException`, and `JsonException` (from `ReadJsonMaybeAsync` only) propagate through the chain rather than being mapped to `Result.Fail`. This was always the case but wasn't documented; readers could reasonably believe `ToResultAsync()` always returned a `Result` and never threw.
+- **(Minor) N-H1 — API-reference frontmatter type list corrected.** `trellis-api-http.md` previously listed `[HttpResponseMessageExtensions, HttpClientResultExtensions]` — those names don't exist in source. Updated to `[HttpResponseExtensions]`.
+- **(Minor) N-H2 — 3xx-redirect handling under the strict default is now documented.** `HttpClient` follows redirects automatically by default; callers who set `AllowAutoRedirect = false` (e.g. SSO landing-page detection) get `Error.InternalServerError` for the unhandled 3xx because it falls through `MapStatusToError`. The strict-default doc section in both `trellis-api-http.md` and `integration-http.md` now flags this and recommends `ToResultAsync(statusMap)` for redirect-aware callers.
+
+Refuted findings (kept current behavior intentional and documented): i-H1 (`Error` ADT has no inner-exception slot — design intent); body-aware mapper cancellation path is already correct (catch-rethrow with disposal); `ReadJsonOrNoneOn404Async` has no double-dispose; 429 ctor usage is valid (`RetryAfter` is optional); multi-await is caller misuse; `statusMap` turning 2xx into failure is documented; `ReadJsonAsync` non-success fallback is documented; `HandleForbiddenAsync` deletion is deliberate; `ResourceRef.For("HttpResponse")` is semantically valid.
+
+Tests: **+12** new tests in `Trellis.Http.Tests` covering null-`error` guards on all three `Handle*Async` methods (matched + non-matched paths); response disposal on the null-`jsonTypeInfo` path for `ReadJsonAsync` and `ReadJsonMaybeAsync`; absence of response-body content in the deserialization-failure `Detail`; header preservation for `405` (`Allow`), `416` (`Content-Range`), `429` (`Retry-After: seconds`), and `503` (`Retry-After: date`); negative tests for missing `Allow` / `Retry-After` keeping the typed payloads empty/null.
+
+### Changed
+
 #### Trellis.Primitives — inspection findings (M-1..M-5, m-3..m-7, i-6) + GPT-5.5 review (New-1..New-3)
 
 Closes the formal inspection backlog from `files/primitives-inspection-report.md` after a meta-review by GPT-5.5 validated, refuted, or adjusted each finding and surfaced 3 additional ones I missed.

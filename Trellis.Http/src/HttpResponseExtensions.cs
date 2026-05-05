@@ -82,7 +82,7 @@ public static class HttpResponseExtensions
             if (message.IsSuccessStatusCode)
                 return Result.Ok(message);
 
-            var error = MapStatusToError(message.StatusCode);
+            var error = MapStatusToError(message);
             message.Dispose();
             return Result.Fail<HttpResponseMessage>(error);
         }
@@ -136,7 +136,7 @@ public static class HttpResponseExtensions
 
         if (!message.IsSuccessStatusCode)
         {
-            var error = MapStatusToError(message.StatusCode);
+            var error = MapStatusToError(message);
             message.Dispose();
             return Result.Fail<Maybe<T>>(error);
         }
@@ -147,34 +147,111 @@ public static class HttpResponseExtensions
             .ConfigureAwait(false);
     }
 
-    private static Error MapStatusToError(HttpStatusCode statusCode)
+    private static Error MapStatusToError(HttpResponseMessage response)
     {
+        var statusCode = response.StatusCode;
         var detail = $"HTTP response returned status code {(int)statusCode} ({statusCode}).";
         var resource = ResourceRef.For("HttpResponse");
 
         Error error = statusCode switch
         {
             HttpStatusCode.BadRequest => new Error.BadRequest("http.bad_request"),
-            HttpStatusCode.Unauthorized => new Error.Unauthorized(),
+            HttpStatusCode.Unauthorized => new Error.Unauthorized(ExtractAuthChallenges(response)),
             HttpStatusCode.Forbidden => new Error.Forbidden("http.forbidden"),
             HttpStatusCode.NotFound => new Error.NotFound(resource),
-            HttpStatusCode.MethodNotAllowed => new Error.MethodNotAllowed(EquatableArray<string>.Empty),
+            HttpStatusCode.MethodNotAllowed => new Error.MethodNotAllowed(ExtractAllow(response)),
             HttpStatusCode.NotAcceptable => new Error.NotAcceptable(EquatableArray<string>.Empty),
             HttpStatusCode.Conflict => new Error.Conflict(null, "http.conflict"),
             HttpStatusCode.Gone => new Error.Gone(resource),
             HttpStatusCode.PreconditionFailed => new Error.PreconditionFailed(resource, PreconditionKind.IfMatch),
             HttpStatusCode.RequestEntityTooLarge => new Error.ContentTooLarge(),
             HttpStatusCode.UnsupportedMediaType => new Error.UnsupportedMediaType(EquatableArray<string>.Empty),
-            HttpStatusCode.RequestedRangeNotSatisfiable => new Error.RangeNotSatisfiable(0),
+            HttpStatusCode.RequestedRangeNotSatisfiable => new Error.RangeNotSatisfiable(ExtractCompleteLength(response)),
             HttpStatusCode.UnprocessableEntity => Error.UnprocessableContent.ForRule("http.unprocessable_content"),
             (HttpStatusCode)428 => new Error.PreconditionRequired(PreconditionKind.IfMatch),
-            (HttpStatusCode)429 => new Error.TooManyRequests(),
+            (HttpStatusCode)429 => new Error.TooManyRequests(ExtractRetryAfter(response)),
             HttpStatusCode.NotImplemented => new Error.NotImplemented("http.not_implemented"),
-            HttpStatusCode.ServiceUnavailable => new Error.ServiceUnavailable(),
+            HttpStatusCode.ServiceUnavailable => new Error.ServiceUnavailable(ExtractRetryAfter(response)),
             _ => new Error.InternalServerError(Guid.NewGuid().ToString("N")),
         };
 
         return error with { Detail = detail };
+    }
+
+    /// <summary>
+    /// Extracts the response's <c>Allow</c> header values into an <see cref="EquatableArray{T}"/>.
+    /// Returns an empty array when the header is absent so the caller does not need a null check.
+    /// </summary>
+    private static EquatableArray<string> ExtractAllow(HttpResponseMessage response)
+    {
+        var allow = response.Content?.Headers.Allow;
+        if (allow is null || allow.Count == 0)
+            return EquatableArray<string>.Empty;
+        return new EquatableArray<string>([.. allow]);
+    }
+
+    /// <summary>
+    /// Extracts the <c>Content-Range</c> header's complete length (the value after the slash in
+    /// <c>bytes &lt;range&gt;/&lt;total&gt;</c>). Returns <c>0</c> when the header is absent or
+    /// has no length component.
+    /// </summary>
+    private static long ExtractCompleteLength(HttpResponseMessage response)
+    {
+        var contentRange = response.Content?.Headers.ContentRange;
+        return contentRange?.Length ?? 0L;
+    }
+
+    /// <summary>
+    /// Maps the response's <c>Retry-After</c> header to a <see cref="RetryAfterValue"/>, preserving
+    /// the seconds-vs-date distinction. Returns <see langword="null"/> when the header is absent
+    /// or when the upstream sends a malformed (negative) delta — treating the malformed case as
+    /// absent rather than throwing keeps <see cref="MapStatusToError"/> exception-free even with
+    /// adversarial upstreams.
+    /// </summary>
+    private static RetryAfterValue? ExtractRetryAfter(HttpResponseMessage response)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        if (retryAfter is null)
+            return null;
+
+        if (retryAfter.Delta is { } delta)
+        {
+            var seconds = (long)delta.TotalSeconds;
+            if (seconds < 0)
+                return null;
+            // Clamp huge deltas to int.MaxValue (RFC permits arbitrary large values; our typed
+            // RetryAfterValue takes int seconds, which is ~68 years and more than sufficient).
+            return RetryAfterValue.FromSeconds(seconds > int.MaxValue ? int.MaxValue : (int)seconds);
+        }
+
+        if (retryAfter.Date is { } date)
+            return RetryAfterValue.FromDate(date);
+
+        return null;
+    }
+
+    /// <summary>
+    /// Extracts the <c>WWW-Authenticate</c> challenges from a 401 response into a typed
+    /// <see cref="EquatableArray{T}"/> of <see cref="AuthChallenge"/>. Captures the scheme
+    /// (e.g. <c>Bearer</c>) for each challenge; auth parameters are not parsed (a full RFC 7235
+    /// parameter parser is out of scope for the strict default mapper).
+    /// </summary>
+    private static EquatableArray<AuthChallenge> ExtractAuthChallenges(HttpResponseMessage response)
+    {
+        var headers = response.Headers.WwwAuthenticate;
+        if (headers.Count == 0)
+            return EquatableArray<AuthChallenge>.Empty;
+
+        var challenges = new List<AuthChallenge>(headers.Count);
+        foreach (var header in headers)
+        {
+            if (!string.IsNullOrEmpty(header.Scheme))
+                challenges.Add(new AuthChallenge(header.Scheme));
+        }
+
+        return challenges.Count == 0
+            ? EquatableArray<AuthChallenge>.Empty
+            : new EquatableArray<AuthChallenge>([.. challenges]);
     }
 
     /// <summary>
@@ -248,6 +325,7 @@ public static class HttpResponseExtensions
         Error.NotFound error)
     {
         ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(error);
 
         var message = await response.ConfigureAwait(false);
 
@@ -277,6 +355,7 @@ public static class HttpResponseExtensions
         Error.Conflict error)
     {
         ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(error);
 
         var message = await response.ConfigureAwait(false);
 
@@ -306,6 +385,7 @@ public static class HttpResponseExtensions
         Error.Unauthorized error)
     {
         ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(error);
 
         var message = await response.ConfigureAwait(false);
 
@@ -348,10 +428,13 @@ public static class HttpResponseExtensions
         if (!result.TryGetValue(out var message, out var error))
             return Result.Fail<T>(error);
 
-        ArgumentNullException.ThrowIfNull(jsonTypeInfo);
-
+        // The response was awaited and is now owned by this method; the disposal contract
+        // (always-dispose) requires the try/finally to cover any exception path including the
+        // jsonTypeInfo null-guard. Move the null check INSIDE the try block.
         try
         {
+            ArgumentNullException.ThrowIfNull(jsonTypeInfo);
+
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)
@@ -386,9 +469,18 @@ public static class HttpResponseExtensions
             }
             catch (JsonException ex)
             {
+                // Use only structured position info (line / byte). Avoid `ex.Message`
+                // entirely (can include offending JSON snippet text) and `ex.Path`
+                // (can contain user-controlled dictionary keys, e.g.
+                // `$.customers['alice@example.com']`). Line + byte are
+                // schema-free diagnostics that don't echo upstream-supplied content.
+                var location = ex.LineNumber.HasValue
+                    ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
+                    : string.Empty;
+
                 return Result.Fail<T>(new Error.InternalServerError(Guid.NewGuid().ToString("N"))
                 {
-                    Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}: {ex.Message}",
+                    Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
                 });
             }
 
@@ -440,10 +532,12 @@ public static class HttpResponseExtensions
         if (!result.TryGetValue(out var message, out var error))
             return Result.Fail<Maybe<T>>(error);
 
-        ArgumentNullException.ThrowIfNull(jsonTypeInfo);
-
+        // Same disposal-contract reasoning as ReadJsonAsync: the jsonTypeInfo null-guard
+        // must run inside the try/finally so a null arg cannot leak the awaited response.
         try
         {
+            ArgumentNullException.ThrowIfNull(jsonTypeInfo);
+
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)

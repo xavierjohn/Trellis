@@ -66,6 +66,28 @@ public class ReadJsonAsyncTests
     }
 
     [Fact]
+    public async Task Invalid_json_detail_uses_structured_position_not_response_body()
+    {
+        // Inspection finding M-H3 + GPT-5.5 pre-commit refinement: the Detail must use only
+        // line / byte position info, not ex.Message (raw snippet) and not ex.Path (which can
+        // contain user-controlled dictionary keys like $.customers['alice@example.com']).
+        var bodyWithUserData = "{ \"firstName\": \"Xavier\", \"age\": \"not-a-number-12345\" }";
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(bodyWithUserData),
+        };
+        var task = Task.FromResult(Result.Ok<HttpResponseMessage>(tracker));
+
+        var result = await task.ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+
+        var err = result.Should().BeFailureOfType<Error.InternalServerError>().Subject;
+        err.Detail.Should().NotContain("Xavier", "user data from the response body must not appear in the failure detail");
+        err.Detail.Should().NotContain("not-a-number-12345", "user data from the response body must not appear in the failure detail");
+        err.Detail.Should().NotContain("$.", "JsonException.Path can contain user-controlled dictionary keys; do not surface it");
+        err.Detail.Should().Contain("camelcasePerson", "type name is acceptable diagnostic detail");
+    }
+
+    [Fact]
     public async Task Success_with_empty_body_returns_Fail_and_disposes_response()
     {
         var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK)
@@ -116,6 +138,22 @@ public class ReadJsonAsyncTests
         var act = async () => await task.ReadJsonAsync<camelcasePerson>(jsonTypeInfo: null!, CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task Null_jsonTypeInfo_on_Ok_disposes_response_before_throwing()
+    {
+        // Inspection finding M-H2: the response was awaited and held in `message`,
+        // so the API must dispose it even when jsonTypeInfo is null. The previous
+        // implementation null-checked jsonTypeInfo *after* await but *before* the
+        // try/finally that disposes — leaking the response.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult(Result.Ok<HttpResponseMessage>(tracker));
+
+        var act = async () => await task.ReadJsonAsync<camelcasePerson>(jsonTypeInfo: null!, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>();
+        tracker.Disposed.Should().BeTrue("ReadJsonAsync's disposal contract must hold even on the null-jsonTypeInfo path");
     }
 
     [Fact]

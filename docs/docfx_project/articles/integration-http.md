@@ -81,6 +81,26 @@ public sealed class UserDirectoryClient(HttpClient httpClient)
 
 Handle status codes **before** reading the body. This keeps transport failures separate from payload bugs.
 
+### Strict default with HTTP-header context
+
+Bare `ToResultAsync()` (no `statusMap`) maps non-success status codes to typed Trellis errors. As of v3.x, the strict default also **inspects the upstream response headers** and copies the relevant context into the typed error so downstream rendering (e.g. ASP's `Allow` / `Retry-After` header emission) sees the upstream's intent rather than an empty placeholder.
+
+| HTTP status | Header consulted | Surfaces on |
+|---|---|---|
+| `401 Unauthorized` | `WWW-Authenticate` (scheme only; auth params not parsed) | `Error.Unauthorized.Challenges` |
+| `405 Method Not Allowed` | `Allow` (response content header) | `Error.MethodNotAllowed.Allow` |
+| `416 Range Not Satisfiable` | `Content-Range: */<total>` | `Error.RangeNotSatisfiable.CompleteLength` |
+| `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
+| `503 Service Unavailable` | `Retry-After` | `Error.ServiceUnavailable.RetryAfter` |
+
+Headers that aren't present produce empty arrays / null `RetryAfter` / zero `CompleteLength` — the mapper never invents values. `406 Not Acceptable`, `415 Unsupported Media Type`, and other statuses without a single canonical response header still produce typed errors with default empty/zero context.
+
+> [!IMPORTANT]
+> **3xx redirects under the strict default fold into `Error.InternalServerError`.** `HttpClient` follows redirects automatically by default, so this is rarely seen — but callers who set `HttpClientHandler.AllowAutoRedirect = false` (e.g. SSO landing-page detection) must use `ToResultAsync(statusMap)` or the body-aware overload to handle 3xx explicitly.
+
+> [!NOTE]
+> **Exception propagation.** `Trellis.Http` does not swallow non-Result-shaped exceptions. `HttpRequestException` (network failure, DNS, TLS), `OperationCanceledException` / `TaskCanceledException` (cancellation, timeout), and — from `ReadJsonMaybeAsync<T>` only — `JsonException` propagate through the chain. `ReadJsonAsync<T>` catches `JsonException` and maps it to `Fail<InternalServerError>` with structured position info (path / line / byte) — never the response body content, so user data the upstream may have echoed cannot leak into the failure detail.
+
 ### Single-status handlers
 
 Use these when one specific failure status is part of the contract.

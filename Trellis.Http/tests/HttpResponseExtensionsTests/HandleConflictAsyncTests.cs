@@ -59,4 +59,16 @@ public class HandleConflictAsyncTests
         await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("response");
     }
+
+    [Fact]
+    public async Task Throws_ArgumentNullException_when_error_is_null()
+    {
+        // Inspection finding M-H1.
+        var task = Task.FromResult<HttpResponseMessage>(new HttpResponseMessage(HttpStatusCode.OK));
+
+        var act = async () => await task.HandleConflictAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("error");
+    }
 }
