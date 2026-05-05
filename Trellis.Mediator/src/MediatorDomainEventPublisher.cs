@@ -37,6 +37,8 @@ internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublish
         IServiceProvider serviceProvider,
         ILogger<MediatorDomainEventPublisher> logger)
     {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        ArgumentNullException.ThrowIfNull(logger);
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -94,10 +96,24 @@ internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublish
     {
         var handlerInterface = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
         var enumerableType = typeof(IEnumerable<>).MakeGenericType(handlerInterface);
-        var handleAsync = handlerInterface.GetMethod(nameof(IDomainEventHandler<IDomainEvent>.HandleAsync))
+        // The interface declares HandleAsync; reach for it by name. Using the bare string
+        // (rather than a closed-generic nameof) avoids the speculative IDomainEventHandler<IDomainEvent>
+        // instantiation that was in the original lookup expression.
+        var handleAsync = handlerInterface.GetMethod(HandleAsyncMethodName)
             ?? throw new InvalidOperationException(
-                $"IDomainEventHandler<{eventType.FullName}> is missing a HandleAsync method.");
+                $"IDomainEventHandler<{eventType.FullName}> is missing a {HandleAsyncMethodName} method.");
         return new HandlerInvoker(enumerableType, handleAsync);
+    }
+
+    private const string HandleAsyncMethodName = nameof(IDomainEventHandler<DummyDomainEvent>.HandleAsync);
+
+    /// <summary>
+    /// Sentinel type used solely for the <see cref="HandleAsyncMethodName"/> <c>nameof</c> lookup.
+    /// Avoids instantiating <c>IDomainEventHandler&lt;IDomainEvent&gt;</c> just for a method name.
+    /// </summary>
+    private sealed record DummyDomainEvent : IDomainEvent
+    {
+        public DateTimeOffset OccurredAt => default;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to resolve handlers for domain event {EventType}.")]
@@ -139,7 +155,10 @@ internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublish
                 throw; // unreachable
             }
 
-            return result is ValueTask vt ? vt : ValueTask.CompletedTask;
+            // IDomainEventHandler<TEvent>.HandleAsync returns ValueTask by contract; null or
+            // any other shape would mean the contract is violated. Direct cast surfaces the
+            // violation immediately rather than masking it with a CompletedTask fallback.
+            return (ValueTask)result!;
         }
     }
 }

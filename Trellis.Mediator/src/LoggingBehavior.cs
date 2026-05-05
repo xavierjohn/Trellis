@@ -23,13 +23,18 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
     /// </summary>
     /// <param name="logger">The logger instance.</param>
     /// <param name="options">
-    /// Telemetry redaction options resolved from DI. When <c>null</c> (i.e. not registered)
-    /// the safe-by-default options are used and <see cref="Error.Detail"/> is redacted.
+    /// Telemetry redaction options resolved from DI. Under <see cref="ServiceCollectionExtensions.AddTrellisBehaviors(Microsoft.Extensions.DependencyInjection.IServiceCollection)"/>
+    /// the singleton is always registered, so this argument is non-null in production. The
+    /// optional-null fallback exists only for consumers that instantiate the behavior outside
+    /// of DI (custom test fixtures); when null, the safe-by-default options are used and
+    /// <see cref="Error.Detail"/> is redacted.
     /// </param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> is null.</exception>
     public LoggingBehavior(
         ILogger<LoggingBehavior<TMessage, TResponse>> logger,
         TrellisMediatorTelemetryOptions? options = null)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _options = options ?? new TrellisMediatorTelemetryOptions();
     }

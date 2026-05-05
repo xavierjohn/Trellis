@@ -26,9 +26,11 @@ public sealed class TracingBehavior<TMessage, TResponse>
     /// Initializes a new instance of the <see cref="TracingBehavior{TMessage, TResponse}"/> class.
     /// </summary>
     /// <param name="options">
-    /// Telemetry redaction options resolved from DI. When <c>null</c> (i.e. not registered)
-    /// the safe-by-default options are used and <see cref="Error.Detail"/> is redacted from
-    /// the activity status description.
+    /// Telemetry redaction options resolved from DI. Under <see cref="ServiceCollectionExtensions.AddTrellisBehaviors(Microsoft.Extensions.DependencyInjection.IServiceCollection)"/>
+    /// the singleton is always registered, so this argument is non-null in production. The
+    /// optional-null fallback exists only for consumers that instantiate the behavior outside
+    /// of DI (custom test fixtures); when null, the safe-by-default options are used and
+    /// <see cref="Error.Detail"/> is redacted from the activity status description.
     /// </param>
     public TracingBehavior(TrellisMediatorTelemetryOptions? options = null)
         => _options = options ?? new TrellisMediatorTelemetryOptions();

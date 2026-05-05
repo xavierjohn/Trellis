@@ -84,6 +84,8 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         // Safe-by-default telemetry options (Detail redacted). Registered as TryAddSingleton so
         // a prior call to AddTrellisBehaviors(configure) wins — idempotency is preserved.
         services.TryAddSingleton<TrellisMediatorTelemetryOptions>();
@@ -115,6 +117,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<TrellisMediatorTelemetryOptions> configure)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
         var instance = new TrellisMediatorTelemetryOptions();
@@ -173,6 +176,8 @@ public static class ServiceCollectionExtensions
         where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage
         where TResponse : IResult, IFailureFactory<TResponse>
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         InsertResourceAuthorizationBehavior(
             services,
             ServiceDescriptor.Scoped<
@@ -229,6 +234,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddResourceAuthorization(
         this IServiceCollection services, params Assembly[] assemblies)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(assemblies);
         if (assemblies.Length == 0)
             throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
@@ -304,10 +310,13 @@ public static class ServiceCollectionExtensions
                 if (tResponse is null)
                     continue;
 
-                // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>
-                if (!typeof(IResult).IsAssignableFrom(tResponse)
-                    || !typeof(IFailureFactory<>).MakeGenericType(tResponse).IsAssignableFrom(tResponse))
-                    continue;
+                // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>.
+                // Fail fast on misconfigured security-marked commands rather than silently
+                // skipping them — IAuthorizeResource<TResource> is a security marker and a
+                // resource-authorized command that is silently never wired up at startup is a
+                // dangerous failure mode (the command runs without resource authorization).
+                // Reported by GPT-5.5 review.
+                ValidateResourceAuthorizationResponseType(type, commandResource, tResponse);
 
                 // Register ResourceAuthorizationBehavior<TMessage, TResource, TResponse>
                 // as IPipelineBehavior<TMessage, TResponse>
@@ -379,6 +388,9 @@ public static class ServiceCollectionExtensions
     [RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.")]
     public static IServiceCollection AddResourceLoaders(this IServiceCollection services, Assembly assembly)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(assembly);
+
         var loaderInterface = typeof(IResourceLoader<,>);
 
         foreach (var type in GetLoadableTypes(assembly))
@@ -426,6 +438,8 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services)
         where TMessage : IAuthorizeResource<TResource>, IIdentifyResource<TResource, TId>
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         services.TryAddScoped<IResourceLoader<TMessage, TResource>,
             SharedResourceLoaderAdapter<TMessage, TResource, TId>>();
         return services;
@@ -444,7 +458,7 @@ public static class ServiceCollectionExtensions
         }
         catch (ReflectionTypeLoadException ex)
         {
-            return ex.Types.Where(t => t is not null).ToArray()!;
+            return ex.Types.OfType<Type>().ToArray();
         }
     }
 
@@ -459,5 +473,67 @@ public static class ServiceCollectionExtensions
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// Validates that a message-implemented <c>TResponse</c> can satisfy the
+    /// <see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> constraints
+    /// (<see cref="IResult"/> + <see cref="IFailureFactory{TSelf}"/>). Throws
+    /// <see cref="InvalidOperationException"/> with a diagnostic message naming the message
+    /// type, resource type, and response type when the constraints are not met. Internal so
+    /// the assembly scanner's fail-fast contract can be unit-tested without round-tripping
+    /// through a synthetic assembly.
+    /// </summary>
+    /// <param name="messageType">The concrete message type discovered by the scanner.</param>
+    /// <param name="resourceType">The closed <c>TResource</c> from the message's
+    /// <see cref="IAuthorizeResource{TResource}"/> interface.</param>
+    /// <param name="responseType">The closed response type from the message's
+    /// <c>ICommand&lt;TResponse&gt;</c> / <c>IQuery&lt;TResponse&gt;</c> /
+    /// <c>IRequest&lt;TResponse&gt;</c> interface.</param>
+    /// <exception cref="InvalidOperationException">Thrown when <paramref name="responseType"/>
+    /// does not implement <see cref="IResult"/> or <see cref="IFailureFactory{TSelf}"/>
+    /// closed over itself.</exception>
+    internal static void ValidateResourceAuthorizationResponseType(
+        Type messageType,
+        Type resourceType,
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.Interfaces)]
+        Type responseType)
+    {
+        if (!typeof(IResult).IsAssignableFrom(responseType))
+            throw new InvalidOperationException(
+                $"{messageType.FullName ?? messageType.Name} implements IAuthorizeResource<{resourceType.Name}> " +
+                $"and {responseType.FullName ?? responseType.Name} via the message-marker interface, but " +
+                $"{responseType.FullName ?? responseType.Name} does not implement IResult. " +
+                $"ResourceAuthorizationBehavior<TMessage, TResource, TResponse> requires TResponse : IResult, IFailureFactory<TResponse>. " +
+                $"Use a result type that satisfies both constraints — e.g. Result<{resourceType.Name}>, Result<string>, Result<Unit>, " +
+                $"or any other Result<T> the message handler can return; alternatively, remove IAuthorizeResource<{resourceType.Name}> " +
+                $"from the message.");
+
+        // IFailureFactory<TSelf> is F-bounded (where TSelf : IFailureFactory<TSelf>), so we
+        // can't use MakeGenericType(responseType).IsAssignableFrom(responseType) — that would
+        // throw ArgumentException at MakeGenericType time when responseType doesn't satisfy
+        // the constraint. Walk the implemented interfaces directly looking for a closed
+        // IFailureFactory<X> where X == responseType.
+        var implementsFailureFactory = false;
+        foreach (var iface in responseType.GetInterfaces())
+        {
+            if (iface.IsGenericType
+                && iface.GetGenericTypeDefinition() == typeof(IFailureFactory<>)
+                && iface.GetGenericArguments()[0] == responseType)
+            {
+                implementsFailureFactory = true;
+                break;
+            }
+        }
+
+        if (!implementsFailureFactory)
+            throw new InvalidOperationException(
+                $"{messageType.FullName ?? messageType.Name} implements IAuthorizeResource<{resourceType.Name}> " +
+                $"and {responseType.FullName ?? responseType.Name} via the message-marker interface, but " +
+                $"{responseType.FullName ?? responseType.Name} does not implement IFailureFactory<{responseType.Name}>. " +
+                $"ResourceAuthorizationBehavior<TMessage, TResource, TResponse> requires TResponse : IResult, IFailureFactory<TResponse>. " +
+                $"Use a result type that satisfies both constraints — e.g. Result<{resourceType.Name}>, Result<string>, Result<Unit>, " +
+                $"or any other Result<T> the message handler can return; alternatively, remove IAuthorizeResource<{resourceType.Name}> " +
+                $"from the message.");
     }
 }
