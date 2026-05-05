@@ -48,8 +48,10 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 **Declaration**
 
 ```csharp
-public sealed record Actor
+public sealed class Actor : IEquatable<Actor>
 ```
+
+`Actor` is an authorization-layer **entity**. Equality / `GetHashCode` / `==` / `!=` are based on the `Id` property only — two `Actor` instances with the same `Id` represent the same principal even when their `Permissions`, `ForbiddenPermissions`, or `Attributes` differ (those are point-in-time state about the principal, not part of identity). Mirrors `Trellis.Entity<TId>` semantics without inheriting the full `IAggregate` surface.
 
 **Constructors**
 
