@@ -410,7 +410,7 @@ public class DbExceptionClassifierTests
     /// classifier must require error number 1062 or a "Duplicate entry" message; otherwise
     /// `SaveChangesResultAsync` (which checks <c>IsDuplicateKey</c> before
     /// <c>IsForeignKeyViolation</c>) would surface FK violations as
-    /// <c>Error.Conflict("duplicate.key")</c>.
+    /// <c>new Error.Conflict(null, "duplicate.key")</c>.
     /// </summary>
     [Fact]
     public void IsDuplicateKey_MySqlSqlState23000Alone_ReturnsFalse()
