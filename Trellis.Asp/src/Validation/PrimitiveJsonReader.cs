@@ -28,13 +28,13 @@ internal static class PrimitiveJsonReader
         }
         catch (Exception ex) when (ex is FormatException or InvalidOperationException)
         {
-            ValidationErrorsContext.AddError(fieldName, $"'{fieldName}' is not a valid {typeof(TPrimitive).Name}.");
+            ValidationErrorsContext.AddError(fieldName, $"'{fieldName}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
             return false;
         }
 
         ValidationErrorsContext.AddError(
             fieldName,
-            $"Primitive type '{typeof(TPrimitive).Name}' is not supported by the Trellis validation JSON converter. Provide a custom JsonConverter.");
+            $"Primitive type '{ResourceRef.FormatTypeName(typeof(TPrimitive))}' is not supported by the Trellis validation JSON converter. Provide a custom JsonConverter.");
         return false;
     }
 

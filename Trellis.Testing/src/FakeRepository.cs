@@ -79,7 +79,7 @@ public class FakeRepository<TAggregate, TId>
             return Task.FromResult(Result.Ok(aggregate));
 
         return Task.FromResult(Result.Fail<TAggregate>(
-            new Error.NotFound(new ResourceRef(typeof(TAggregate).Name, id?.ToString())) { Detail = $"{typeof(TAggregate).Name} with ID {id} not found" }));
+            new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID {id} not found" }));
     }
 
     /// <summary>
@@ -133,7 +133,7 @@ public class FakeRepository<TAggregate, TId>
 
             if (conflict is not null)
                 throw new InvalidOperationException(
-                    $"Cannot Add {typeof(TAggregate).Name} with ID '{id}': would violate unique constraint " +
+                    $"Cannot Add {ResourceRef.FormatTypeName(typeof(TAggregate))} with ID '{id}': would violate unique constraint " +
                     $"(another aggregate with the same constrained value already exists). " +
                     $"If you are testing conflict handling, call SaveAsync and assert on the Result instead.");
         }
@@ -186,7 +186,7 @@ public class FakeRepository<TAggregate, TId>
 
             if (conflict is not null)
                 return Task.FromResult(Result.Fail(
-                    new Error.Conflict(Resource: new ResourceRef(typeof(TAggregate).Name, id?.ToString()), ReasonCode: "duplicate.unique.constraint") { Detail = $"A {typeof(TAggregate).Name} with the same value already exists." }));
+                    new Error.Conflict(Resource: ResourceRef.For<TAggregate>(id), ReasonCode: "duplicate.unique.constraint") { Detail = $"A {ResourceRef.FormatTypeName(typeof(TAggregate))} with the same value already exists." }));
         }
 
         _store[id] = aggregate;
@@ -207,7 +207,7 @@ public class FakeRepository<TAggregate, TId>
             return Task.FromResult(Result.Ok());
 
         return Task.FromResult(Result.Fail(
-            new Error.NotFound(new ResourceRef(typeof(TAggregate).Name, id?.ToString())) { Detail = $"{typeof(TAggregate).Name} with ID {id} not found" }));
+            new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID {id} not found" }));
     }
 
     /// <summary>

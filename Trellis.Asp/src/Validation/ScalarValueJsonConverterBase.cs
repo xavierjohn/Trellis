@@ -53,7 +53,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
 
         if (primitiveValue is null)
         {
-            ValidationErrorsContext.AddError(fieldName, $"Cannot deserialize null to {typeof(TValue).Name}");
+            ValidationErrorsContext.AddError(fieldName, $"Cannot deserialize null to {ResourceRef.FormatTypeName(typeof(TValue))}");
             return OnValidationFailure();
         }
 
@@ -67,7 +67,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
                     ValidationErrorsContext.AddError(
                         fieldName,
                         string.IsNullOrWhiteSpace(createError.Detail)
-                            ? $"{typeof(TValue).Name} is invalid."
+                            ? $"{ResourceRef.FormatTypeName(typeof(TValue))} is invalid."
                             : createError.Detail);
 
                 return OnValidationFailure();
@@ -101,7 +101,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             if (TryParseEnumValue(rawValue, out primitiveValue))
                 return true;
 
-            ValidationErrorsContext.AddError(fieldName, $"'{rawValue}' is not a valid {typeof(TPrimitive).Name}.");
+            ValidationErrorsContext.AddError(fieldName, $"'{rawValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
             return false;
         }
 
@@ -112,7 +112,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
                 var enumValue = ReadNumericEnumValue(ref reader);
                 if (!IsValidEnumValue(enumValue))
                 {
-                    ValidationErrorsContext.AddError(fieldName, $"'{enumValue}' is not a valid {typeof(TPrimitive).Name}.");
+                    ValidationErrorsContext.AddError(fieldName, $"'{enumValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
                     return false;
                 }
 
@@ -121,12 +121,12 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             }
             catch (Exception ex) when (ex is FormatException or InvalidOperationException)
             {
-                ValidationErrorsContext.AddError(fieldName, $"JSON number is not a valid {typeof(TPrimitive).Name}.");
+                ValidationErrorsContext.AddError(fieldName, $"JSON number is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
                 return false;
             }
         }
 
-        ValidationErrorsContext.AddError(fieldName, $"JSON token '{reader.TokenType}' is not a valid {typeof(TPrimitive).Name}.");
+        ValidationErrorsContext.AddError(fieldName, $"JSON token '{reader.TokenType}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
         return false;
     }
 
@@ -166,11 +166,12 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     }
 
     /// <summary>
-    /// Gets the default field name derived from the value object type name.
+    /// Returns the default field name used when no <see cref="ValidationErrorsContext.CurrentPropertyName"/>
+    /// is set for the current async-local scope (e.g. AOT consumers that haven't wired the
+    /// reflection-based <c>PropertyNameAwareConverter&lt;T&gt;</c>). The CLR simple name is
+    /// sanitized via <see cref="ResourceRef.FormatTypeName"/> so closed-generic types such as
+    /// <c>Maybe&lt;EmailAddress&gt;</c> produce <c>"maybe"</c> rather than <c>"maybe`1"</c>.
     /// </summary>
-    protected static string GetDefaultFieldName()
-    {
-        var name = typeof(TValue).Name;
-        return JsonNamingPolicy.CamelCase.ConvertName(name);
-    }
+    protected static string GetDefaultFieldName() =>
+        JsonNamingPolicy.CamelCase.ConvertName(ResourceRef.FormatTypeName(typeof(TValue)));
 }
