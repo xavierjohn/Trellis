@@ -23,6 +23,8 @@ audience: [developer]
 | Plug FluentValidation into the same stage | `services.AddTrellisFluentValidation()` | [FluentValidation adapter](#fluentvalidation-adapter) |
 | Show `Error.Detail` in logs/traces (dev only) | `AddTrellisBehaviors(o => o.IncludeErrorDetail = true)` | [Telemetry redaction](#telemetry-redaction) |
 | Convert thrown exceptions to typed failures | `ExceptionBehavior` (always-on) | [Exception safety net](#exception-safety-net) |
+| Dispatch domain events that aggregates raised during a command | `services.AddDomainEventDispatch()` + `IDomainEventHandler<TEvent>` | [Domain event dispatch](#domain-event-dispatch) |
+| Use a custom envelope response type around an aggregate | `TResponse : IResult<TAggregate>, IFailureFactory<TResponse>` | [Custom envelope response types](#custom-envelope-response-types) |
 
 ## Use this guide when
 
@@ -45,6 +47,10 @@ audience: [developer]
 | `TrellisMediatorTelemetryOptions.IncludeErrorDetail` | Property | Opt-in to include `Error.Detail` in logs/traces (default `false`). |
 | `TracingBehavior<,>.ActivitySourceName` | `const string` | `"Trellis.Mediator"` — add this to your OpenTelemetry config. |
 | `ServiceCollectionExtensions.PipelineBehaviors` | Property | Ordered behavior list for AOT `MediatorOptions.PipelineBehaviors`. |
+| `AddDomainEventDispatch()` / `AddDomainEventDispatch(params Assembly[])` | DI extension | Registers `DomainEventDispatchBehavior<,>` (open-generic) + the default `IDomainEventPublisher`; the assembly overload also scans for `IDomainEventHandler<TEvent>` implementations. Idempotent. |
+| `AddDomainEventHandler<TEvent, THandler>()` | DI extension | AOT/trim-friendly per-handler registration (also wires up the dispatch behavior + publisher). |
+| `IDomainEventHandler<TEvent>` | Interface | Side-effect handler invoked once per matching event after the command commits. |
+| `IDomainEventPublisher` | Interface | Resolves `IDomainEventHandler<TEvent>` instances and fans events out; default impl is `MediatorDomainEventPublisher` (DI-resolved, scoped). |
 
 Full signatures: [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md).
 
@@ -95,7 +101,7 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 
 ## Pipeline order
 
-`AddTrellisBehaviors()` registers the five always-on behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 5 and 7 slot in only when their registration helpers are called.
+`AddTrellisBehaviors()` registers the five always-on behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 5, 7, and 8 slot in only when their registration helpers are called.
 
 | # | Behavior | Runs for | What it does |
 |---|---|---|---|
@@ -105,9 +111,13 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 | 4 | `AuthorizationBehavior` | `IAuthorize` messages | Resolves the actor and checks `RequiredPermissions`. |
 | 5 | `ResourceAuthorizationBehavior` *(opt-in)* | `IAuthorizeResource<T>` messages | Loads the resource and calls `Authorize(actor, resource)`. Inserted by `AddResourceAuthorization(...)` immediately before `ValidationBehavior`. |
 | 6 | `ValidationBehavior` | all messages | Runs `IValidate.Validate()` and every `IMessageValidator<TMessage>`; aggregates `Error.UnprocessableContent`. |
-| 7 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success. Register **after** `AddTrellisBehaviors()` so it lands innermost. |
+| 7 | `DomainEventDispatchBehavior` *(opt-in)* | `ICommand<TResponse>` where `TResponse : IResult` | After a successful response, extracts the aggregate via `IResult<TAggregate>` and publishes the events it raised. Inserted by `AddDomainEventDispatch(...)`. See [Domain event dispatch](#domain-event-dispatch). |
+| 8 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success; wraps each command in `using var scope = unitOfWork.BeginScope();` so nested commands defer commit to the outermost scope. Register **after** `AddTrellisBehaviors()` so it lands innermost. See [Nested commands and scope-aware commit](integration-ef.md#nested-commands-and-scope-aware-commit). |
 
 The first five live in `ServiceCollectionExtensions.PipelineBehaviors` for the AOT-friendly source-generator path; assign that list to `MediatorOptions.PipelineBehaviors` when configuring `AddMediator`.
+
+> [!NOTE]
+> Rows 7 and 8 are designed to be **registration-order-independent**: `AddDomainEventDispatch(...)` and `AddTrellisUnitOfWork<TContext>()` both detect the other and shuffle so the canonical order (events fire after the transaction commits, so handlers see committed state) holds regardless of which `services.Add*` call comes first.
 
 ## Permission authorization
 
@@ -375,6 +385,116 @@ public static class Composition
 ```
 
 See [FluentValidation Integration](integration-fluentvalidation.md#mediator-integration) for the AOT vs. assembly-scanning registration overloads.
+
+## Domain event dispatch
+
+`DomainEventDispatchBehavior<TMessage, TResponse>` (registered by `AddDomainEventDispatch(...)`) closes the loop between the domain layer's `Aggregate<TId>.Raise(...)` and the outside world. It runs as an inner pipeline behavior — after the handler returns a successful response — and fans out the events the aggregate accumulated to every registered `IDomainEventHandler<TEvent>`. When `Trellis.EntityFrameworkCore` is also wired up, the behavior sits **before** `TransactionalCommandBehavior` in the pipeline, so handlers see the post-commit state and a transaction failure suppresses dispatch automatically.
+
+### What gets dispatched, and when
+
+| Aspect | Behavior |
+|---|---|
+| Message types covered | `ICommand<TResponse>` only — queries with the same response shape are skipped at the type-constraint level. |
+| Response shape required | `TResponse` must implement `IResult<TAggregate>` where `TAggregate : IAggregate`. The canonical case is `Result<TAggregate>`; custom envelope types also work — see [Custom envelope response types](#custom-envelope-response-types). |
+| When events fire | After the handler returns a successful response, before the response is returned up the pipeline. With `AddTrellisUnitOfWork<TContext>()` registered, that means **after** the transaction commits. |
+| Failure path | If the handler returns `Result.Fail`, no events are dispatched and the aggregate retains them. |
+| Per-event ordering | Events are dispatched sequentially in the order the aggregate raised them. |
+| Multiple handlers per event | Each `IDomainEventHandler<TEvent>` registered for the runtime event type runs in turn (registration order). One handler's failure does not stop the next from running — see "Handler exceptions" below. |
+| Re-entry cap | If a handler raises new events on the same aggregate, those are picked up on the next wave; the wave count is capped at `MaxDispatchWaves = 8` (an error is logged and remaining events are abandoned if exceeded). Handlers should be side-effect-only. |
+| Cancellation | `cancellationToken` is checked between each event; cancellation propagates and leaves undispatched events on the aggregate. `AcceptChanges()` runs only on the full-success path, so a mid-loop cancellation does not clear the queue. |
+
+### Registration
+
+Three registration shapes; pick by composition style.
+
+```csharp
+// 1. AOT/trim-friendly: register each handler explicitly. Implies AddDomainEventDispatch().
+services.AddDomainEventHandler<UserRegistered, SendWelcomeEmailHandler>();
+services.AddDomainEventHandler<UserRegistered, ProvisionTenantHandler>();
+
+// 2. Assembly scanning: discovers every concrete IDomainEventHandler<TEvent> in the listed assemblies.
+//    Carries [RequiresUnreferencedCode] / [RequiresDynamicCode] — not for AOT.
+services.AddDomainEventDispatch(typeof(SendWelcomeEmailHandler).Assembly);
+
+// 3. Service-defaults builder (Trellis.ServiceDefaults). Order-safe with the other Use* slots.
+builder.Services.AddTrellis(trellis => trellis
+    .UseEntraActorProvider()
+    .UseDomainEvents(typeof(SendWelcomeEmailHandler).Assembly)
+    .UseEntityFrameworkUnitOfWork<AppDbContext>());
+```
+
+`AddDomainEventDispatch()` is **idempotent** — calling it more than once registers the behavior and the default `IDomainEventPublisher` exactly once. Both the per-handler overload and the assembly-scan overload call it for you.
+
+### Handler shape
+
+```csharp
+using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+
+public sealed record UserRegistered(UserId UserId, DateTimeOffset OccurredAt) : IDomainEvent;
+
+public sealed class SendWelcomeEmailHandler : IDomainEventHandler<UserRegistered>
+{
+    private readonly IEmailSender _email;
+
+    public SendWelcomeEmailHandler(IEmailSender email) => _email = email;
+
+    public ValueTask HandleAsync(UserRegistered domainEvent, CancellationToken cancellationToken) =>
+        _email.SendWelcomeAsync(domainEvent.UserId, cancellationToken);
+}
+```
+
+Handlers are registered as **scoped** services (one instance per request). Inject any DI service you need — `DbContext`, repositories, `HttpClient` factories, message-bus producers — directly through the constructor.
+
+### Handler exceptions
+
+`MediatorDomainEventPublisher` (the default implementation) treats handler failures defensively:
+
+- **Non-cancellation exceptions** thrown by a handler are logged at `Error` level and **swallowed**; the publisher continues with the next handler so a single misbehaving handler does not block other side effects of the same event.
+- **`OperationCanceledException`** matching the supplied cancellation token propagates so the originating request can abort cleanly.
+- **No handler resolved** for a given runtime event type is logged at `Debug` and treated as a no-op.
+
+Event-to-handler matching uses `domainEvent.GetType()` exactly. Handlers registered against a base class or interface of the runtime event type are **not** invoked — register one handler per concrete event type (or one type implementing multiple `IDomainEventHandler<TEvent>` interfaces, each of which is wired up separately).
+
+### Custom envelope response types
+
+The dispatch behavior walks `TResponse.GetInterfaces()` looking for an `IResult<TValue>` where `TValue : IAggregate`. The common case (`Result<TAggregate>`) is detected directly; less common shapes also work:
+
+```csharp
+// A non-generic envelope that exposes an aggregate-valued result. Both interfaces are required:
+//   IResult<Order>          → so the dispatch behavior can extract the aggregate
+//   IFailureFactory<TSelf>  → so failure-projecting behaviors (e.g. ResourceAuthorizationBehavior)
+//                             can construct a failure of this envelope type
+public sealed class OrderEnvelope : IResult<Order>, IFailureFactory<OrderEnvelope>
+{
+    private readonly Result<Order> _inner;
+    public OrderEnvelope(Result<Order> inner) => _inner = inner;
+
+    public bool IsSuccess => _inner.IsSuccess;
+    public bool IsFailure => _inner.IsFailure;
+    public Error? Error => _inner.Error;
+    public bool TryGetValue(out Order value) => _inner.TryGetValue(out value!);
+    public bool TryGetError(out Error? error) => _inner.TryGetError(out error);
+
+    public static OrderEnvelope CreateFailure(Error error) => new(Result.Fail<Order>(error));
+}
+```
+
+> [!IMPORTANT]
+> If a message implements `IAuthorizeResource<TResource>`, its `TResponse` must satisfy **both** `IResult` *and* `IFailureFactory<TResponse>`. `Result<T>` does both automatically. `AddResourceAuthorization<TMessage, TResource, TResponse>()` (and the assembly-scanning overload) **fails fast at registration** with `InvalidOperationException` if either interface is missing — the security-marked command will not silently ship without resource authorization.
+
+Other response shapes pass through the dispatch behavior untouched:
+
+| `TResponse` | Effect |
+|---|---|
+| `Result<TAggregate>` where `TAggregate : IAggregate` | Events extracted and dispatched. |
+| Custom type implementing `IResult<TAggregate>` (envelope) | Same as above. |
+| `Result<Unit>`, `Result<string>`, `Result<TDto>` | No `IResult<TAggregate>` interface → behavior is a no-op. |
+| `Result<(A, B)>` (tuple) | Same — no `IResult<TAggregate>` match. Manual dispatch remains the option. |
+| Custom type with **two** distinct `IResult<TAggregate1>` / `IResult<TAggregate2>` interfaces | **Fails fast at startup** with `InvalidOperationException` — the behavior cannot disambiguate which aggregate's events to dispatch. |
+
+When the response is `Result<Unit>` or any non-aggregate shape and you still need events to fire, dispatch them yourself (e.g. through an injected `IDomainEventPublisher`) — but prefer the canonical `Result<TAggregate>` shape so the pipeline owns the boundary.
 
 ## Exception safety net
 

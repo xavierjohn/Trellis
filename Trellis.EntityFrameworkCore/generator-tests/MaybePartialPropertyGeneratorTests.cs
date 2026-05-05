@@ -252,6 +252,215 @@ public class MaybePartialPropertyGeneratorTests
 
     #endregion
 
+    #region GPT-5.5 review (Major #3) — generator robustness for nested types and generic arity overloads
+
+    /// <summary>
+    /// Regression for GPT-5.5 review finding (Major #3): the generator's containing-type
+    /// emission previously dropped the <c>static</c> modifier, producing a conflicting
+    /// partial class declaration that would fail to compile against the user's
+    /// <c>static partial class Outer</c>.
+    /// </summary>
+    [Fact]
+    public void Static_Containing_Type_Should_Preserve_Static_Modifier()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public static partial class Outer
+            {
+                public partial class Customer
+                {
+                    public partial Maybe<string> NickName { get; set; }
+                }
+            }
+            """;
+
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("a static parent must be emitted as `static partial class Outer` to match the user's declaration");
+
+        generatedSources.Should().Contain(s => s.Contains("static partial class Outer"),
+            "the generated nested wrapper must include 'static' so the partial declarations don't conflict");
+    }
+
+    /// <summary>
+    /// Regression for GPT-5.5 review finding (Major #3): <c>sealed partial class Outer</c> should
+    /// be emitted with the <c>sealed</c> modifier preserved.
+    /// </summary>
+    [Fact]
+    public void Sealed_Containing_Type_Should_Preserve_Sealed_Modifier()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public sealed partial class Outer
+            {
+                public partial Maybe<string> NickName { get; set; }
+            }
+            """;
+
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        // Maybe<T> properties on the sealed type itself — no nested wrapper needed; the test
+        // verifies the generator does not crash. The next test covers the nested-parent case.
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("sealed partial class with a partial Maybe<T> property must compile cleanly");
+        generatedSources.Should().NotBeEmpty();
+    }
+
+    /// <summary>
+    /// Regression for GPT-5.5 review finding (Major #3): when the partial-property is on a
+    /// nested type whose parent is <c>sealed partial class</c>, the generator must include
+    /// <c>sealed</c> on the parent's emitted partial declaration.
+    /// </summary>
+    [Fact]
+    public void Nested_Parent_With_Sealed_Modifier_Should_Preserve_It()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public sealed partial class Outer
+            {
+                public partial class Customer
+                {
+                    public partial Maybe<string> NickName { get; set; }
+                }
+            }
+            """;
+
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty();
+
+        generatedSources.Should().Contain(s => s.Contains("sealed partial class Outer"),
+            "the generated nested wrapper must include 'sealed' so the partial declarations don't conflict");
+    }
+
+    /// <summary>
+    /// Regression for GPT-5.5 review finding (Major #3): when the partial-property is on a
+    /// nested type whose parent is <c>abstract partial class</c>, the generator must include
+    /// <c>abstract</c> on the parent's emitted partial declaration.
+    /// </summary>
+    [Fact]
+    public void Nested_Parent_With_Abstract_Modifier_Should_Preserve_It()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public abstract partial class Outer
+            {
+                public partial class Customer
+                {
+                    public partial Maybe<string> NickName { get; set; }
+                }
+            }
+            """;
+
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty();
+
+        generatedSources.Should().Contain(s => s.Contains("abstract partial class Outer"),
+            "the generated nested wrapper must include 'abstract' so the partial declarations don't conflict");
+    }
+
+    /// <summary>
+    /// Regression for GPT-5.5 review finding (Major #3): <c>partial record struct Outer</c> was
+    /// previously emitted as <c>partial record class Outer</c> (the conflated <c>TypeKindKeyword</c>
+    /// produced "record class" for any record), causing a partial-declaration mismatch.
+    /// </summary>
+    [Fact]
+    public void Record_Struct_Containing_Type_Should_Emit_Record_Struct()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial record struct Outer(int Id)
+            {
+                public partial class Customer
+                {
+                    public partial Maybe<string> NickName { get; set; }
+                }
+            }
+            """;
+
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the generator must not emit `record class` for a `record struct` parent");
+
+        generatedSources.Should().Contain(s => s.Contains("partial record struct Outer"),
+            "the parent's partial declaration must read `record struct`, not `record class`");
+        generatedSources.Should().NotContain(s => s.Contains("partial record class Outer"));
+    }
+
+    /// <summary>
+    /// Regression for GPT-5.5 review finding (Major #3): generic-arity overloads (<c>Foo&lt;T&gt;</c>
+    /// and <c>Foo&lt;T1, T2&gt;</c>) in the same namespace previously collided into one generated
+    /// file because <c>BuildTypePath</c> used <c>Name</c> rather than <c>MetadataName</c>. The
+    /// generator must emit separate files (one per closed generic) so the partial implementations
+    /// don't collapse.
+    /// </summary>
+    [Fact]
+    public void Generic_Arity_Overloads_Should_Emit_Separate_Files()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Foo<T>
+            {
+                public partial Maybe<string> Tag { get; set; }
+            }
+
+            public partial class Foo<T1, T2>
+            {
+                public partial Maybe<string> Marker { get; set; }
+            }
+            """;
+
+        var (generatedSources, diagnostics, hintNames) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("generic-arity overloads must produce separate generated partials");
+
+        // MetadataName encodes arity as `1 / `2; assert both file paths appear distinctly.
+        hintNames.Should().Contain(name => name.Contains("Foo`1"),
+            "the arity-1 overload must produce its own generated file");
+        hintNames.Should().Contain(name => name.Contains("Foo`2"),
+            "the arity-2 overload must produce its own generated file");
+        hintNames.Should().OnlyHaveUniqueItems();
+        generatedSources.Should().HaveCount(2);
+    }
+
+    #endregion
+
     private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics, List<string> HintNames) RunGenerator(
         string source, CancellationToken cancellationToken)
     {

@@ -22,6 +22,7 @@ audience: [developer]
 | Read well-known attributes safely | `Actor.GetAttribute(ActorAttributes.*)` | [ABAC attributes](#abac-attributes) |
 | Enforce static permissions on a command | `IAuthorize.RequiredPermissions` | [Mediator integration](#mediator-integration) |
 | Authorize against a loaded entity | `IAuthorizeResource<TResource>` | [Mediator integration](#mediator-integration) |
+| Identify two `Actor` snapshots as the same principal | `actorA.Equals(actorB)` (Id-based) | [Surface at a glance](#surface-at-a-glance) |
 
 ## Use this guide when
 
@@ -47,6 +48,9 @@ audience: [developer]
 | `EntraActorOptions` / `ClaimsActorOptions` / `DevelopmentActorOptions` | Options | — | Mapping delegates / claim-type strings / dev defaults. |
 
 Full signatures: [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md).
+
+> [!NOTE]
+> **`Actor` is conceptually an entity, not a value.** Equality is identity-based on `Id` only — two `Actor` instances with the same `Id` are equal even when their `Permissions`, `ForbiddenPermissions`, or `Attributes` snapshots differ. `Id` is meant to be a stable, externally-meaningful principal identifier (e.g. JWT `sub` / `oid` claim); the other properties are point-in-time state about that principal (granted/revoked over time, ABAC attributes change every request). This mirrors `Trellis.Entity<TId>` semantics without taking on the full `IAggregate` surface. `Actor` is a `sealed class` (not a `record`), so the `with`-expression syntax is not available — call the constructor (or `Actor.Create`) directly when you need a copy with changes.
 
 ## Installation
 
@@ -377,6 +381,9 @@ builder.Services.AddMediator(options =>
 
 > [!NOTE]
 > `AddResourceAuthorization` lives in `Trellis.Mediator`. Forgetting `using Trellis.Mediator;` produces `CS1061: 'IServiceCollection' does not contain a definition for 'AddResourceAuthorization'`. The full registration shape is documented in [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md#servicecollectionextensions).
+
+> [!IMPORTANT]
+> **The `TResponse` type argument must satisfy `IResult` *and* `IFailureFactory<TResponse>`.** `Result<TValue>` (the canonical command response) satisfies both automatically. If you wire up a custom envelope response type that doesn't, `AddResourceAuthorization<TMessage, TResource, TResponse>()` (and the assembly-scanning overload, when it sees an `IAuthorizeResource<TResource>` message with that response type) **fails fast at registration** with `InvalidOperationException` — the security-marked command will not silently ship without resource authorization. See [Custom envelope response types](integration-mediator.md#custom-envelope-response-types) in the mediator article for the full contract.
 
 ## Composition
 

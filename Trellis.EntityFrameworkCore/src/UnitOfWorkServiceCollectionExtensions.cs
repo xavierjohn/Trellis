@@ -35,6 +35,7 @@ public static class UnitOfWorkServiceCollectionExtensions
     public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services)
         where TContext : DbContext
     {
+        ArgumentNullException.ThrowIfNull(services);
         services.TryAddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
         InsertTransactionalBehavior(services);
         return services;
@@ -52,6 +53,7 @@ public static class UnitOfWorkServiceCollectionExtensions
     public static IServiceCollection AddTrellisUnitOfWorkWithoutBehavior<TContext>(this IServiceCollection services)
         where TContext : DbContext
     {
+        ArgumentNullException.ThrowIfNull(services);
         services.TryAddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
         return services;
     }

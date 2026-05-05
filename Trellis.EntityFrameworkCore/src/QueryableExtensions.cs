@@ -27,6 +27,7 @@ public static class QueryableExtensions
         CancellationToken cancellationToken = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(query);
         var entity = await query.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         return Maybe.From(entity);
     }
@@ -46,6 +47,8 @@ public static class QueryableExtensions
         CancellationToken cancellationToken = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(predicate);
         var entity = await query.FirstOrDefaultAsync(predicate, cancellationToken).ConfigureAwait(false);
         return Maybe.From(entity);
     }
@@ -65,6 +68,7 @@ public static class QueryableExtensions
         CancellationToken cancellationToken = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(query);
         var entity = await query.SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         return Maybe.From(entity);
     }
@@ -84,6 +88,8 @@ public static class QueryableExtensions
         CancellationToken cancellationToken = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(predicate);
         var entity = await query.SingleOrDefaultAsync(predicate, cancellationToken).ConfigureAwait(false);
         return Maybe.From(entity);
     }
@@ -108,6 +114,8 @@ public static class QueryableExtensions
         CancellationToken cancellationToken = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(notFoundError);
         var entity = await query.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         return entity is not null
             ? Result.Ok(entity)
@@ -132,6 +140,9 @@ public static class QueryableExtensions
         CancellationToken cancellationToken = default)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(notFoundError);
         var entity = await query.FirstOrDefaultAsync(predicate, cancellationToken).ConfigureAwait(false);
         return entity is not null
             ? Result.Ok(entity)

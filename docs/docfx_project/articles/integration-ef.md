@@ -52,10 +52,10 @@ audience: [developer]
 | `DbContextExtensions.SaveChangesResultAsync(...)` | Save | `Task<Result<int>>`. Maps `DbUpdateConcurrencyException` / duplicate-key / FK violations to `Error.Conflict`. |
 | `DbContextExtensions.SaveChangesResultUnitAsync(...)` | Save | `Task<Result<Unit>>` overload when row count is not needed. |
 | `RepositoryBase<TAggregate, TId>` | Aggregate repo base | `FindByIdAsync` (Maybe), `QueryAsync(spec)`, `ExistsAsync`, `CountAsync`, `Add`, `Remove`, `RemoveByIdAsync` (`Task<Result<Unit>>`). Staging only — never calls `SaveChanges`. |
-| `IUnitOfWork.CommitAsync(ct)` | Commit boundary | `Task<Result<Unit>>`. Implemented by `EfUnitOfWork<TContext>`. |
-| `TransactionalCommandBehavior<TMessage, TResponse>` | Pipeline behavior | Auto-commits after a successful `ICommand<TResponse>` handler; only fires for commands. |
+| `IUnitOfWork.CommitAsync(ct)` | Commit boundary | `Task<Result<Unit>>`. Implemented by `EfUnitOfWork<TContext>`. Scope-aware via `BeginScope()`: only the outermost scope's commit persists. |
+| `TransactionalCommandBehavior<TMessage, TResponse>` | Pipeline behavior | Auto-commits after a successful `ICommand<TResponse>` handler; only fires for commands. Wraps each command in `using var scope = unitOfWork.BeginScope();` so a nested command (dispatched via `IMediator` from another handler) defers its commit until the outermost handler returns. |
 | `UnitOfWorkServiceCollectionExtensions.AddTrellisUnitOfWork<TContext>()` / `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` | DI | Registers `EfUnitOfWork<TContext>` (scoped) and inserts the commit behavior innermost. |
-| `DbExceptionClassifier.IsDuplicateKey` / `IsForeignKeyViolation` / `ExtractConstraintDetail` | Diagnostics | Cross-provider DB exception classification used by the save helpers. |
+| `DbExceptionClassifier.IsDuplicateKey` / `IsForeignKeyViolation` / `ExtractConstraintDetail` | Diagnostics | Cross-provider DB exception classification used by the save helpers. Recognizes SQL Server, PostgreSQL, SQLite, and MySQL/MariaDB (works with both `MySql.Data.MySqlClient` and `MySqlConnector`); provider exception types are detected by name so consumers don't take a transitive driver dependency. |
 | `MaybeModelExtensions.GetMaybePropertyMappings()` / `ToMaybeMappingDebugString()` | Diagnostics | Inspect resolved `Maybe<T>` storage members. |
 | `TrellisPersistenceMappingException` | Exception | Thrown when a persisted scalar value object value fails materialization. |
 
@@ -355,6 +355,38 @@ services.AddTrellisUnitOfWork<AppDbContext>(); // commit behavior goes innermost
 `TransactionalCommandBehavior<TMessage, TResponse>` only fires for `ICommand<TResponse>` (queries are skipped at the type-constraint level). On handler success it calls `unitOfWork.CommitAsync(ct)`; if commit fails, it returns `TResponse.CreateFailure(error)`. EF Core's implicit transaction around `SaveChanges` makes the staged changes commit atomically.
 
 For background jobs or non-mediator code, inject `IUnitOfWork` directly and call `CommitAsync`. Use `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` to skip the pipeline behavior registration.
+
+### Nested commands and scope-aware commit
+
+A command handler may dispatch another command via `IMediator` (typical for orchestration handlers that compose smaller use cases). Both invocations go through `TransactionalCommandBehavior`, which means without depth tracking the inner command would commit *its own* changes the moment its handler returned — even though those changes were staged inside the outer command's transaction. If the outer command then failed, the inner's writes would already be persisted.
+
+`EfUnitOfWork<TContext>` solves this with `BeginScope()`. Each call increments a depth counter; the returned `IDisposable` decrements it on disposal. `CommitAsync` reads the depth and **defers** (returns `Result.Ok()` without touching the database) when depth > 1. Only the outermost scope's commit actually calls `SaveChangesAsync`. The behavior wraps every command in `using var scope = unitOfWork.BeginScope();`, so the pattern is automatic — handlers do not call `BeginScope` themselves.
+
+```csharp
+public async ValueTask<Result<Unit>> Handle(ShipOrder cmd, CancellationToken ct)
+{
+    // Outer command's staged work goes into the same DbContext as the inner's.
+    var order = (await _orders.FindByIdAsync(cmd.OrderId, ct))
+        .ToResult(new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)));
+
+    // Inner command goes through the mediator pipeline → another scope is opened.
+    // Its TransactionalCommandBehavior calls CommitAsync at depth 2 → no-op.
+    await _mediator.Send(new RecordAuditEntry(cmd.OrderId), ct);
+
+    return order.Bind(o => o.Ship());
+    // TransactionalCommandBehavior commits at depth 1 → SaveChangesAsync persists
+    // both the outer's Ship() and the inner's audit entry atomically.
+}
+```
+
+> [!IMPORTANT]
+> The unit of work is shared with the outer's `DbContext`, so per-scope rollback of staged changes is not supported. If an inner command returns `Result.Fail` but the outer handler ignores that failure and returns success, the outer's commit will persist any changes the inner staged before failing. Handlers that need to discard inner failures' staged work must detach the affected entities themselves.
+
+> [!WARNING]
+> The depth counter is per-`IUnitOfWork`-instance — i.e. per DI scope. **Concurrent commands on the same scoped `IUnitOfWork`** (e.g. `Task.WhenAll(mediator.Send(a), mediator.Send(b))` from inside a handler) are **not supported**: their scopes share the counter and one command's commit can suppress or get folded into the other's. This is consistent with EF Core's existing constraint that `DbContext` is not thread-safe — concurrent dispatch on a single request scope is unsafe regardless. To run commands in parallel, give each one its own DI scope via `IServiceScopeFactory.CreateScope()` so each resolves its own `IUnitOfWork` and `DbContext`.
+
+> [!NOTE]
+> **Custom `IUnitOfWork` implementations must implement `BeginScope()` with the same depth-aware semantics.** Mirror the `EfUnitOfWork<TContext>` shape: an `Interlocked.Increment`-counted depth field with a disposable releaser; `CommitAsync` returns `Result.Ok()` at depth > 1 and persists otherwise. The `Trellis.Asp` package's `SAMPLES.md` shows a complete custom `UnitOfWork` example with this shape.
 
 ## Optimistic concurrency
 

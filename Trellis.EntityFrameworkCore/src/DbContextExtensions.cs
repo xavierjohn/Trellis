@@ -19,8 +19,11 @@ public static class DbContextExtensions
     /// or an error on failure.</returns>
     public static Task<Result<int>> SaveChangesResultAsync(
         this DbContext context,
-        CancellationToken cancellationToken = default) =>
-        context.SaveChangesResultAsync(true, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return context.SaveChangesResultAsync(true, cancellationToken);
+    }
 
     /// <summary>
     /// Calls <see cref="DbContext.SaveChangesAsync(bool, CancellationToken)"/> and converts expected database exceptions
@@ -56,6 +59,7 @@ public static class DbContextExtensions
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(context);
         try
         {
             var count = await context.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
@@ -95,6 +99,7 @@ public static class DbContextExtensions
         this DbContext context,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(context);
         var result = await context.SaveChangesResultAsync(cancellationToken).ConfigureAwait(false);
         return result.AsUnit();
     }
@@ -116,6 +121,7 @@ public static class DbContextExtensions
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(context);
         var result = await context.SaveChangesResultAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
         return result.AsUnit();
     }

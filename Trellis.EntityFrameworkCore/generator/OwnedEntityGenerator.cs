@@ -290,7 +290,9 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         };
 
     private static string TypeKindKeyword(INamedTypeSymbol type) =>
-        type.IsRecord ? "record class" : type.TypeKind == TypeKind.Struct ? "struct" : "class";
+        type.IsRecord
+            ? (type.TypeKind == TypeKind.Struct ? "record struct" : "record class")
+            : type.TypeKind == TypeKind.Struct ? "struct" : "class";
 
     private sealed class OwnedEntityInfo : IEquatable<OwnedEntityInfo>
     {

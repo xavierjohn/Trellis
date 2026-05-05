@@ -365,5 +365,102 @@ public class DbExceptionClassifierTests
         public SqliteException(string message, Exception innerException) : base(message, innerException) { }
     }
 
+    /// <summary>
+    /// Fake exception named "MySqlException" so GetType().Name returns "MySqlException".
+    /// Mirrors the shape of <c>MySql.Data.MySqlClient.MySqlException</c> /
+    /// <c>MySqlConnector.MySqlException</c> via Number + SqlState properties.
+    /// </summary>
+    // ReSharper disable once InconsistentNaming
+    private class MySqlException : Exception
+    {
+        public int Number { get; }
+        public string? SqlState { get; }
+
+        public MySqlException() { }
+        public MySqlException(string message) : base(message) { }
+        public MySqlException(string message, Exception innerException) : base(message, innerException) { }
+        public MySqlException(int number, string sqlState, string message) : base(message)
+        {
+            Number = number;
+            SqlState = sqlState;
+        }
+    }
+
+    #endregion
+
+    #region IsDuplicateKey — MySQL/MariaDB (PR #460 / GPT-5.5 review Major #2)
+
+    /// <summary>
+    /// Regression for the GPT-5.5 review finding (Major #2): MySQL duplicate-key violations
+    /// were previously not classified, so <c>SaveChangesResultAsync</c> would let a
+    /// <c>DbUpdateException</c> escape instead of converting to <c>Error.Conflict</c>.
+    /// </summary>
+    [Fact]
+    public void IsDuplicateKey_MySqlNumber1062_ReturnsTrue()
+    {
+        var inner = new MySqlException(1062, "23000", "Duplicate entry 'foo' for key 'PRIMARY'");
+        var ex = CreateDbUpdateException(inner);
+
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Regression: SQLSTATE "23000" alone is **not** a sufficient duplicate-key signal —
+    /// MySQL reuses 23000 for both unique-constraint and foreign-key violations. The
+    /// classifier must require error number 1062 or a "Duplicate entry" message; otherwise
+    /// `SaveChangesResultAsync` (which checks <c>IsDuplicateKey</c> before
+    /// <c>IsForeignKeyViolation</c>) would surface FK violations as
+    /// <c>new Error.Conflict(null, "duplicate.key")</c>.
+    /// </summary>
+    [Fact]
+    public void IsDuplicateKey_MySqlSqlState23000Alone_ReturnsFalse()
+    {
+        // Driver surfaces SqlState 23000 with no Number and a message that doesn't start
+        // with "Duplicate entry" — could equally be an FK violation. Refuse to misclassify.
+        var inner = new MySqlException(0, "23000", "Some message that doesn't start with 'Duplicate entry'");
+        var ex = CreateDbUpdateException(inner);
+
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsDuplicateKey_MySqlMessageFallback_ReturnsTrue()
+    {
+        // Driver doesn't expose Number / SqlState; classifier falls back to message form.
+        var inner = new MySqlException("Duplicate entry 'bar' for key 'IX_Customers_Email'");
+        var ex = CreateDbUpdateException(inner);
+
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsDuplicateKey_MySqlOtherError_ReturnsFalse()
+    {
+        var inner = new MySqlException(2002, "HY000", "Connection refused");
+        var ex = CreateDbUpdateException(inner);
+
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsForeignKeyViolation_MySqlNumber1452_ReturnsTrue()
+    {
+        var inner = new MySqlException(1452, "23000",
+            "Cannot add or update a child row: a foreign key constraint fails ...");
+        var ex = CreateDbUpdateException(inner);
+
+        DbExceptionClassifier.IsForeignKeyViolation(ex).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsForeignKeyViolation_MySqlNumber1451_ReturnsTrue()
+    {
+        var inner = new MySqlException(1451, "23000",
+            "Cannot delete or update a parent row: a foreign key constraint fails ...");
+        var ex = CreateDbUpdateException(inner);
+
+        DbExceptionClassifier.IsForeignKeyViolation(ex).Should().BeTrue();
+    }
+
     #endregion
 }

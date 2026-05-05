@@ -191,12 +191,16 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
             }
         }
 
-        // Build nesting chain
+        // Build nesting chain — reuse the shared BuildContainingTypeDeclaration shape from
+        // OwnedEntityGenerator so static / sealed / abstract modifiers are preserved on the
+        // emitted parent partial declarations (otherwise valid user code like
+        // `static partial class Outer { public partial Maybe<X> ... }` produces conflicting
+        // partial declarations and fails to compile). Reported by GPT-5.5 review.
         var nestingParents = new List<string>();
         INamedTypeSymbol? parent = containingType.ContainingType;
         while (parent is not null)
         {
-            nestingParents.Insert(0, $"{AccessibilityToString(parent.DeclaredAccessibility)} partial {TypeKindKeyword(parent)} {FormatTypeName(parent)}");
+            nestingParents.Insert(0, BuildContainingTypeDeclaration(parent));
             parent = parent.ContainingType;
         }
 
@@ -411,12 +415,16 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 
     private static string BuildTypePath(INamedTypeSymbol type)
     {
+        // Use MetadataName so generic arity is encoded (e.g. "Foo`1" vs "Foo`2"). Otherwise
+        // generic arity overloads in the same namespace collapse into the same group/hint and
+        // the generator emits members for two distinct CLR types into one partial declaration.
+        // Reported by GPT-5.5 review.
         var typeNames = new Stack<string>();
         var current = type;
 
         while (current is not null)
         {
-            typeNames.Push(current.Name);
+            typeNames.Push(current.MetadataName);
             current = current.ContainingType;
         }
 
@@ -449,7 +457,32 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
         };
 
     private static string TypeKindKeyword(INamedTypeSymbol type) =>
-        type.IsRecord ? "record class" : type.TypeKind == TypeKind.Struct ? "struct" : "class";
+        type.IsRecord
+            ? (type.TypeKind == TypeKind.Struct ? "record struct" : "record class")
+            : type.TypeKind == TypeKind.Struct ? "struct" : "class";
+
+    private static string BuildContainingTypeDeclaration(INamedTypeSymbol containingType)
+    {
+        var parts = new List<string> { AccessibilityToString(containingType.DeclaredAccessibility) };
+
+        if (containingType.IsStatic)
+        {
+            parts.Add("static");
+        }
+        else
+        {
+            if (containingType.IsAbstract && containingType.TypeKind == TypeKind.Class)
+                parts.Add("abstract");
+            if (containingType.IsSealed && containingType.TypeKind == TypeKind.Class)
+                parts.Add("sealed");
+        }
+
+        parts.Add("partial");
+        parts.Add(TypeKindKeyword(containingType));
+        parts.Add(FormatTypeName(containingType));
+
+        return string.Join(" ", parts);
+    }
 
     private static string FormatTypeName(INamedTypeSymbol type) =>
         type.TypeParameters.Length > 0
