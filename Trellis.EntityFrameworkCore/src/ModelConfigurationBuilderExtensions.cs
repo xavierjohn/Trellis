@@ -40,6 +40,14 @@ public static class ModelConfigurationBuilderExtensions
         this ModelConfigurationBuilder configurationBuilder,
         params Assembly[] assemblies)
     {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        ArgumentNullException.ThrowIfNull(assemblies);
+        for (var i = 0; i < assemblies.Length; i++)
+        {
+            if (assemblies[i] is null)
+                throw new ArgumentException($"Assembly at index [{i}] is null.", nameof(assemblies));
+        }
+
         var coreAssembly = typeof(RequiredEnum<>).Assembly;
         var primitivesAssembly = typeof(EmailAddress).Assembly;
         var allAssemblies = new HashSet<Assembly>(assemblies) { coreAssembly, primitivesAssembly };

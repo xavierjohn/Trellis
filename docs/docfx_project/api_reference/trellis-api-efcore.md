@@ -114,7 +114,7 @@ protected override void ConfigureConventions(ModelConfigurationBuilder configura
     configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
 ```
 
-The generator walks every concrete `DbContext` in the current compilation, follows public `DbSet<T>` roots, recursively discovers reachable Trellis value objects through entity properties, unwraps `Maybe<T>`, nullable types, arrays, and common collection navigations, and emits explicit calls to `AddTrellisScalarConverter<TClr, TProvider>` plus `AddTrellisCoreConventions(...)`.
+The generator walks every concrete `DbContext` in the current compilation, follows instance `DbSet<T>` properties (any accessibility — `public`, `internal`, `private`, etc., as long as the entity type is accessible to the generator), recursively discovers reachable Trellis value objects through entity properties, unwraps `Maybe<T>`, nullable types, arrays, and common collection navigations, and emits explicit calls to `AddTrellisScalarConverter<TClr, TProvider>` plus `AddTrellisCoreConventions(...)`.
 
 Scope limits:
 

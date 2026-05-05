@@ -38,6 +38,7 @@ public static class DbContextOptionsBuilderExtensions
         this DbContextOptionsBuilder<TContext> optionsBuilder)
         where TContext : DbContext
     {
+        ArgumentNullException.ThrowIfNull(optionsBuilder);
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_entityTimestampInterceptor);
         return optionsBuilder;
     }
@@ -51,6 +52,7 @@ public static class DbContextOptionsBuilderExtensions
     public static DbContextOptionsBuilder AddTrellisInterceptors(
         this DbContextOptionsBuilder optionsBuilder)
     {
+        ArgumentNullException.ThrowIfNull(optionsBuilder);
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_entityTimestampInterceptor);
         return optionsBuilder;
     }
@@ -69,6 +71,7 @@ public static class DbContextOptionsBuilderExtensions
         this DbContextOptionsBuilder<TContext> optionsBuilder, TimeProvider? timeProvider)
         where TContext : DbContext
     {
+        ArgumentNullException.ThrowIfNull(optionsBuilder);
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new EntityTimestampInterceptor(timeProvider));
         return optionsBuilder;
     }
@@ -86,6 +89,7 @@ public static class DbContextOptionsBuilderExtensions
     public static DbContextOptionsBuilder AddTrellisInterceptors(
         this DbContextOptionsBuilder optionsBuilder, TimeProvider? timeProvider)
     {
+        ArgumentNullException.ThrowIfNull(optionsBuilder);
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new EntityTimestampInterceptor(timeProvider));
         return optionsBuilder;
     }

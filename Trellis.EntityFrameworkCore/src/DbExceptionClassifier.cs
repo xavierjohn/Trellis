@@ -3,7 +3,7 @@
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>
-/// Classifies database exceptions across providers (SQL Server, PostgreSQL, SQLite).
+/// Classifies database exceptions across providers (SQL Server, PostgreSQL, SQLite, MySQL/MariaDB).
 /// Used internally by both <see cref="DbContextExtensions.SaveChangesResultAsync(DbContext, CancellationToken)"/>
 /// and <see cref="DbContextExtensions.SaveChangesResultAsync(DbContext, bool, CancellationToken)"/> overloads.
 /// Also available for direct use in repositories that need custom error messages per exception type.
@@ -37,6 +37,21 @@ public static class DbExceptionClassifier
             return message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase)
                 || message.Contains("PRIMARY KEY constraint failed", StringComparison.OrdinalIgnoreCase);
 
+        // MySQL/MariaDB: MySqlException with Number 1062 (ER_DUP_ENTRY) or SQLSTATE "23000".
+        // The provider type lives in the consumer's MySql.Data.* / MySqlConnector package, so
+        // detect by name (matches the SQL Server / PostgreSQL pattern above).
+        if (typeName == "MySqlException")
+        {
+            if (TryGetMySqlNumber(inner, out var mysqlNumber) && mysqlNumber == 1062)
+                return true;
+            if (TryGetSqlState(inner, out var mysqlState) && mysqlState == "23000")
+                return true;
+            // Fallback message form ("Duplicate entry '...' for key '...'") for older drivers
+            // that don't surface Number / SqlState.
+            if (message.StartsWith("Duplicate entry", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
         // Fallback: message-based detection for unknown providers
         return message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
             || message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase);
@@ -67,6 +82,19 @@ public static class DbExceptionClassifier
         // SQLite
         if (typeName == "SqliteException")
             return message.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase);
+
+        // MySQL/MariaDB: MySqlException with Number 1452 (ER_NO_REFERENCED_ROW_2) or 1451
+        // (ER_ROW_IS_REFERENCED_2), SQLSTATE "23000". Message form starts with
+        // "Cannot add or update a child row" or "Cannot delete or update a parent row".
+        if (typeName == "MySqlException")
+        {
+            if (TryGetMySqlNumber(inner, out var mysqlNumber) && mysqlNumber is 1451 or 1452)
+                return true;
+            if (TryGetSqlState(inner, out var mysqlState) && mysqlState == "23000"
+                && (message.StartsWith("Cannot add or update a child row", StringComparison.OrdinalIgnoreCase)
+                    || message.StartsWith("Cannot delete or update a parent row", StringComparison.OrdinalIgnoreCase)))
+                return true;
+        }
 
         // Fallback
         return message.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase)
@@ -120,6 +148,51 @@ public static class DbExceptionClassifier
         state = null;
         var prop = ex.GetType().GetProperty("SqlState");
         state = prop?.GetValue(ex) as string;
+        return state is not null;
+    }
+
+    private static bool TryGetMySqlNumber(Exception ex, out int number)
+    {
+        number = 0;
+        // MySql.Data.MySqlClient.MySqlException exposes a Number property; MySqlConnector's
+        // MySqlException exposes ErrorCode (an enum convertible to int) and Number.
+        var type = ex.GetType();
+        var numberProp = type.GetProperty("Number");
+        if (numberProp?.GetValue(ex) is int n)
+        {
+            number = n;
+            return true;
+        }
+
+        var errorCodeProp = type.GetProperty("ErrorCode");
+        if (errorCodeProp?.GetValue(ex) is { } errorCode)
+        {
+            try
+            {
+                number = Convert.ToInt32(errorCode, System.Globalization.CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch (Exception convertException) when (convertException is FormatException or InvalidCastException or OverflowException)
+            {
+                // Fall through; some driver versions expose ErrorCode as a non-numeric type.
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetSqlState(Exception ex, out string? state)
+    {
+        // MySQL providers expose either SqlState or SqlStateMarker; pick whichever is non-null.
+        state = null;
+        var type = ex.GetType();
+        var sqlStateProp = type.GetProperty("SqlState");
+        state = sqlStateProp?.GetValue(ex) as string;
+        if (state is not null)
+            return true;
+
+        var markerProp = type.GetProperty("SqlStateMarker");
+        state = markerProp?.GetValue(ex) as string;
         return state is not null;
     }
 }
