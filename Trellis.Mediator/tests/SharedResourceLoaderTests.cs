@@ -229,6 +229,35 @@ public class SharedResourceLoaderTests
 
     #endregion
 
+    #region SharedResourceLoaderAdapter argument-null guards (PR #459 review)
+
+    /// <summary>
+    /// PR #459 review feedback: the constructor and <c>LoadAsync</c> null-guards added to
+    /// <c>SharedResourceLoaderAdapter</c> (m-1) had no regression coverage. The adapter is
+    /// internal but reachable from this Tests assembly via the repo-wide
+    /// <c>InternalsVisibleTo</c> convention.
+    /// </summary>
+    [Fact]
+    public void SharedResourceLoaderAdapter_NullInner_ThrowsArgumentNullException() =>
+        FluentActions
+            .Invoking(() => new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(inner: null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "inner");
+
+    [Fact]
+    public async Task SharedResourceLoaderAdapter_LoadAsync_NullMessage_ThrowsArgumentNullException()
+    {
+        var adapter = new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(
+            new TestSharedOrderLoader());
+
+        await FluentActions
+            .Invoking(() => adapter.LoadAsync(message: null!, CancellationToken.None))
+            .Should().ThrowAsync<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "message");
+    }
+
+    #endregion
+
     #region Test helpers
 
     public sealed record SharedOrder(string Id, string OwnerId);

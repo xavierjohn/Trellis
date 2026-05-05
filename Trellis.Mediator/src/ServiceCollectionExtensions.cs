@@ -505,7 +505,9 @@ public static class ServiceCollectionExtensions
                 $"and {responseType.FullName ?? responseType.Name} via the message-marker interface, but " +
                 $"{responseType.FullName ?? responseType.Name} does not implement IResult. " +
                 $"ResourceAuthorizationBehavior<TMessage, TResource, TResponse> requires TResponse : IResult, IFailureFactory<TResponse>. " +
-                $"Either change the message's response type to one that implements IResult and IFailureFactory<TResponse> (e.g. Result<{resourceType.Name}>), or remove IAuthorizeResource<{resourceType.Name}> from the message.");
+                $"Use a result type that satisfies both constraints — e.g. Result<{resourceType.Name}>, Result<string>, Result<Unit>, " +
+                $"or any other Result<T> the message handler can return; alternatively, remove IAuthorizeResource<{resourceType.Name}> " +
+                $"from the message.");
 
         // IFailureFactory<TSelf> is F-bounded (where TSelf : IFailureFactory<TSelf>), so we
         // can't use MakeGenericType(responseType).IsAssignableFrom(responseType) — that would
@@ -530,6 +532,8 @@ public static class ServiceCollectionExtensions
                 $"and {responseType.FullName ?? responseType.Name} via the message-marker interface, but " +
                 $"{responseType.FullName ?? responseType.Name} does not implement IFailureFactory<{responseType.Name}>. " +
                 $"ResourceAuthorizationBehavior<TMessage, TResource, TResponse> requires TResponse : IResult, IFailureFactory<TResponse>. " +
-                $"Either change the message's response type to one that implements IResult and IFailureFactory<TResponse> (e.g. Result<{resourceType.Name}>), or remove IAuthorizeResource<{resourceType.Name}> from the message.");
+                $"Use a result type that satisfies both constraints — e.g. Result<{resourceType.Name}>, Result<string>, Result<Unit>, " +
+                $"or any other Result<T> the message handler can return; alternatively, remove IAuthorizeResource<{resourceType.Name}> " +
+                $"from the message.");
     }
 }
