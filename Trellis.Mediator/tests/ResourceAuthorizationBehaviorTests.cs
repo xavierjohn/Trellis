@@ -166,8 +166,12 @@ public class ResourceAuthorizationBehaviorTests
         var command = new ResourceOwnerCommand("res-1");
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(Result.Ok("Done"));
 
+        // Lock in the new contract-violation message so a regression cannot restore the
+        // misleading "Ensure an IActorProvider is configured" guidance (m-3 from PR #459).
         await FluentActions.Invoking(() => behavior.Handle(command, next, CancellationToken.None).AsTask())
-            .Should().ThrowAsync<InvalidOperationException>();
+            .Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*IActorProvider.GetCurrentActorAsync returned null*")
+            .WithMessage("*violation of the IActorProvider contract*");
 
         loader.WasCalled.Should().BeFalse();
     }
@@ -227,7 +231,10 @@ public class ResourceAuthorizationBehaviorTests
 
         var act = async () => await behavior.Handle(command, next, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        // Lock in the new contract-violation message wording (m-3 from PR #459).
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*IActorProvider.GetCurrentActorAsync returned null*")
+            .WithMessage("*violation of the IActorProvider contract*");
     }
 
     #endregion

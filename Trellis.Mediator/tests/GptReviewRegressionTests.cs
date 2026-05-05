@@ -171,9 +171,9 @@ public class GptReviewRegressionTests
 
         public bool IsFailure => false;
 
-        public Trellis.Error Error => throw new InvalidOperationException();
+        public Error Error => throw new InvalidOperationException();
 
-        public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Trellis.Error? error)
+        public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Error? error)
         {
             error = null;
             return false;
@@ -189,9 +189,9 @@ public class GptReviewRegressionTests
     public sealed class NonGenericAggregateResponse : IResult<TestAggregate>
     {
         private readonly TestAggregate? _value;
-        private readonly Trellis.Error? _error;
+        private readonly Error? _error;
 
-        private NonGenericAggregateResponse(TestAggregate? value, Trellis.Error? error)
+        private NonGenericAggregateResponse(TestAggregate? value, Error? error)
         {
             _value = value;
             _error = error;
@@ -203,10 +203,10 @@ public class GptReviewRegressionTests
 
         public bool IsFailure => _error is not null;
 
-        public Trellis.Error Error => _error
+        public Error Error => _error
             ?? throw new InvalidOperationException("Cannot access Error on a successful result.");
 
-        public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Trellis.Error? error)
+        public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Error? error)
         {
             error = _error;
             return _error is not null;
@@ -266,7 +266,7 @@ public class GptReviewRegressionTests
             return _resource is not null
                 ? Task.FromResult(Result.Ok(_resource))
                 : Task.FromResult(Result.Fail<TestResource>(
-                    new Trellis.Error.NotFound(Trellis.ResourceRef.For<TestResource>("not-found"))));
+                    new Error.NotFound(ResourceRef.For<TestResource>("not-found"))));
         }
     }
 

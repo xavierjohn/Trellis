@@ -113,7 +113,14 @@ public class AuthorizationBehaviorTests
 
         var act = async () => await behavior.Handle(command, next, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        // Assert on the contract-violation message (ga-11 / m-3): the previous error message
+        // misleadingly suggested "Ensure an IActorProvider is configured" when really the
+        // IActorProvider implementation is the contractual party that should have thrown.
+        // The assertion locks in the new wording so a regression cannot silently restore the
+        // misleading guidance.
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*IActorProvider.GetCurrentActorAsync returned null*")
+            .WithMessage("*violation of the IActorProvider contract*");
         tracker.WasInvoked.Should().BeFalse();
     }
 

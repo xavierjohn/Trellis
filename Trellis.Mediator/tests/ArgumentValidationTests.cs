@@ -83,6 +83,33 @@ public class ArgumentValidationTests
             .Should().Throw<ArgumentNullException>()
             .Where(exception => exception.ParamName == "logger");
 
+    /// <summary>
+    /// PR #459 review feedback: the null-guard suite must also lock in the
+    /// <see cref="MediatorDomainEventPublisher"/> constructor contract introduced by m-1.
+    /// The publisher is internal but its constructor is reachable from the
+    /// <c>Trellis.Mediator.Tests</c> assembly via InternalsVisibleTo (repo-wide convention);
+    /// custom DI containers and the <c>AddDomainEventDispatch</c> registration path also reach
+    /// the constructor, so an unguarded null would surface as a confusing
+    /// <see cref="NullReferenceException"/> later from inside <c>PublishAsync</c>.
+    /// </summary>
+    [Fact]
+    public void MediatorDomainEventPublisher_NullServiceProvider_Throws() =>
+        FluentActions
+            .Invoking(() => new MediatorDomainEventPublisher(
+                serviceProvider: null!,
+                logger: NullLogger<MediatorDomainEventPublisher>.Instance))
+            .Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "serviceProvider");
+
+    [Fact]
+    public void MediatorDomainEventPublisher_NullLogger_Throws() =>
+        FluentActions
+            .Invoking(() => new MediatorDomainEventPublisher(
+                serviceProvider: new ServiceCollection().BuildServiceProvider(),
+                logger: null!))
+            .Should().Throw<ArgumentNullException>()
+            .Where(exception => exception.ParamName == "logger");
+
     #endregion
 
     #region IServiceCollection extension-method null-guards (m-2)
