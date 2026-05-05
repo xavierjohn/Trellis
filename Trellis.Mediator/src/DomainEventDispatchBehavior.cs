@@ -69,10 +69,13 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     /// </summary>
     /// <param name="publisher">The publisher used to fan out events to registered handlers.</param>
     /// <param name="logger">The logger used to record dispatch diagnostics.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="publisher"/> or <paramref name="logger"/> is null.</exception>
     public DomainEventDispatchBehavior(
         IDomainEventPublisher publisher,
         ILogger<DomainEventDispatchBehavior<TMessage, TResponse>> logger)
     {
+        ArgumentNullException.ThrowIfNull(publisher);
+        ArgumentNullException.ThrowIfNull(logger);
         _publisher = publisher;
         _logger = logger;
     }

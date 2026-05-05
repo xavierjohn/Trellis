@@ -22,8 +22,12 @@ public sealed partial class ExceptionBehavior<TMessage, TResponse>
     /// Initializes a new instance of the <see cref="ExceptionBehavior{TMessage, TResponse}"/> class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> is null.</exception>
     public ExceptionBehavior(ILogger<ExceptionBehavior<TMessage, TResponse>> logger)
-        => _logger = logger;
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
 
     /// <inheritdoc />
     public async ValueTask<TResponse> Handle(

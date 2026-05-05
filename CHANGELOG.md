@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+#### Trellis.Mediator — defensive-coding sweep + small cleanups (m-1..m-4, m-7 + i-1..i-3, i-6)
+
+Closes the entire Trellis.Mediator inspection backlog from `files/mediator-inspection-report.md`. No behavior change for any documented contract; the fixes harden contract-violation paths and align the package with the framework's defensive-coding discipline.
+
+- **m-1** — Every behavior, the default publisher, and the shared-loader adapter now throw `ArgumentNullException` with the offending parameter name when constructed with null dependencies. Affects `AuthorizationBehavior`, `ResourceAuthorizationBehavior`, `SharedResourceLoaderAdapter`, `ValidationBehavior`, `LoggingBehavior`, `ExceptionBehavior`, `MediatorDomainEventPublisher`, and `DomainEventDispatchBehavior`. Primary-constructor parameters were converted to regular constructors with explicit guards. Mirrors the Authorization PR #458 / Asp PR #457 i-8 patterns.
+- **m-2** — `ServiceCollectionExtensions` public methods (`AddTrellisBehaviors` ×2, `AddResourceAuthorization` ×2, `AddResourceLoaders`, `AddSharedResourceLoader`) now consistently `ArgumentNullException.ThrowIfNull(services)`. The companion `DomainEventDispatchServiceCollectionExtensions` already had this discipline; the behavior-side helpers now match.
+- **m-3** — `AuthorizationBehavior` and `ResourceAuthorizationBehavior` previously threw `InvalidOperationException("No authenticated actor available. Ensure an IActorProvider is configured...")` when `IActorProvider.GetCurrentActorAsync` returned null. The check is **kept as defense-in-depth for the documented `ga-11` security guarantee** (the resource loader must not run when the caller is unauthenticated, even under contract violation), but the error message is rewritten to accurately describe what happened: a contract violation by the `IActorProvider` implementation.
+- **m-4** — `ResourceAuthorizationBehavior` previously called `loadResult.TryGetError(out var loadError); if (TryGetError) ...; if (!TryGetValue) throw new InvalidOperationException("Result is in an unexpected state.");` — the second branch is impossible because `TryGetError` and `TryGetValue` are mutually exclusive on `Result<T>`. Refactored to use the combined `Result<T>.TryGetValue(out value, out error)` overload (added precisely to support this shape). Removes the dead defensive throw.
+- **m-7** — `GetLoadableTypes` (in both `ServiceCollectionExtensions` and `DomainEventDispatchServiceCollectionExtensions`) replaced `ex.Types.Where(t => t is not null).ToArray()!` with `ex.Types.OfType<Type>().ToArray()`. Removes the null-forgiving operator (`!`) that was laundering a `Type?[]` to `Type[]`; `OfType<T>` filters AND narrows the static type in one step.
+- **i-1** — `ValidationBehavior` now uses the same `??= []; AddRange(...)` accumulator pattern in both the `IValidate` branch and the external-validator branch (previously the IValidate branch used `[.. upc.Fields.Items]` collection-expression seed). No behavior change; eliminates a maintenance hazard if the branches are reordered.
+- **i-2** — `MediatorDomainEventPublisher.CreateInvoker` previously used `nameof(IDomainEventHandler<IDomainEvent>.HandleAsync)` — a quirky closed-generic instantiation just to extract the method name. Replaced with a `private const string HandleAsyncMethodName = nameof(IDomainEventHandler<DummyDomainEvent>.HandleAsync);` field that uses a sentinel record explicitly scoped for this purpose.
+- **i-3** — `MediatorDomainEventPublisher.HandlerInvoker.InvokeAsync` previously had `result is ValueTask vt ? vt : ValueTask.CompletedTask;` — the fallback masks contract violations (`HandleAsync` is contractually `ValueTask`-returning). Replaced with a direct cast `(ValueTask)result!;` so a contract violation surfaces as an `InvalidCastException` rather than silently returning `CompletedTask`.
+- **i-6** — `LoggingBehavior` and `TracingBehavior` xmldoc on the `options` constructor parameter rewritten to clarify that under `AddTrellisBehaviors()` the singleton is always registered, so the parameter is non-null in production; the optional-null fallback exists only for consumers that instantiate the behavior outside DI (custom test fixtures).
+
+Tests: **+15** new tests in `Trellis.Mediator/tests/ArgumentValidationTests.cs` covering every constructor null-guard (8 tests) and every `IServiceCollection` extension-method null-guard (7 tests).
+
 ### Added
 
 #### Trellis.Authorization — `Actor` is now an entity (identity-based equality), no longer a record

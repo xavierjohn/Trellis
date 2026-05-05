@@ -84,6 +84,8 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         // Safe-by-default telemetry options (Detail redacted). Registered as TryAddSingleton so
         // a prior call to AddTrellisBehaviors(configure) wins — idempotency is preserved.
         services.TryAddSingleton<TrellisMediatorTelemetryOptions>();
@@ -115,6 +117,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<TrellisMediatorTelemetryOptions> configure)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
         var instance = new TrellisMediatorTelemetryOptions();
@@ -173,6 +176,8 @@ public static class ServiceCollectionExtensions
         where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage
         where TResponse : IResult, IFailureFactory<TResponse>
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         InsertResourceAuthorizationBehavior(
             services,
             ServiceDescriptor.Scoped<
@@ -229,6 +234,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddResourceAuthorization(
         this IServiceCollection services, params Assembly[] assemblies)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(assemblies);
         if (assemblies.Length == 0)
             throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
@@ -379,6 +385,9 @@ public static class ServiceCollectionExtensions
     [RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.")]
     public static IServiceCollection AddResourceLoaders(this IServiceCollection services, Assembly assembly)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(assembly);
+
         var loaderInterface = typeof(IResourceLoader<,>);
 
         foreach (var type in GetLoadableTypes(assembly))
@@ -426,6 +435,8 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services)
         where TMessage : IAuthorizeResource<TResource>, IIdentifyResource<TResource, TId>
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         services.TryAddScoped<IResourceLoader<TMessage, TResource>,
             SharedResourceLoaderAdapter<TMessage, TResource, TId>>();
         return services;
@@ -444,7 +455,7 @@ public static class ServiceCollectionExtensions
         }
         catch (ReflectionTypeLoadException ex)
         {
-            return ex.Types.Where(t => t is not null).ToArray()!;
+            return ex.Types.OfType<Type>().ToArray();
         }
     }
 

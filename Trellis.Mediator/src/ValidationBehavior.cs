@@ -44,12 +44,24 @@ using global::Mediator;
 /// The response type, constrained to <see cref="IResult"/> and <see cref="IFailureFactory{TSelf}"/>
 /// so the behavior can construct typed failures without reflection.
 /// </typeparam>
-public sealed class ValidationBehavior<TMessage, TResponse>(
-    IEnumerable<IMessageValidator<TMessage>> validators)
+public sealed class ValidationBehavior<TMessage, TResponse>
     : IPipelineBehavior<TMessage, TResponse>
     where TMessage : global::Mediator.IMessage
     where TResponse : IResult, IFailureFactory<TResponse>
 {
+    private readonly IEnumerable<IMessageValidator<TMessage>> _validators;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ValidationBehavior{TMessage, TResponse}"/> class.
+    /// </summary>
+    /// <param name="validators">The collection of validators registered for this message type.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="validators"/> is null.</exception>
+    public ValidationBehavior(IEnumerable<IMessageValidator<TMessage>> validators)
+    {
+        ArgumentNullException.ThrowIfNull(validators);
+        _validators = validators;
+    }
+
     /// <inheritdoc />
     public async ValueTask<TResponse> Handle(
         TMessage message,
@@ -69,16 +81,23 @@ public sealed class ValidationBehavior<TMessage, TResponse>(
                 {
                     sawUnprocessableContent = true;
                     if (upc.Fields.Items.Length > 0)
-                        violations = [.. upc.Fields.Items];
+                    {
+                        violations ??= [];
+                        violations.AddRange(upc.Fields.Items);
+                    }
+
                     if (upc.Rules.Items.Length > 0)
-                        rules = [.. upc.Rules.Items];
+                    {
+                        rules ??= [];
+                        rules.AddRange(upc.Rules.Items);
+                    }
                 }
                 else
                     return TResponse.CreateFailure(error);
             }
         }
 
-        foreach (var validator in validators)
+        foreach (var validator in _validators)
         {
             var externalResult = await validator
                 .ValidateAsync(message, cancellationToken)

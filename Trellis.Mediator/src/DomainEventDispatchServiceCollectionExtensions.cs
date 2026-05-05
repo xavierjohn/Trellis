@@ -148,7 +148,7 @@ public static class DomainEventDispatchServiceCollectionExtensions
         }
         catch (ReflectionTypeLoadException ex)
         {
-            return ex.Types.Where(t => t is not null).ToArray()!;
+            return ex.Types.OfType<Type>().ToArray();
         }
     }
 
