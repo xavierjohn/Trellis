@@ -87,7 +87,7 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         "690", "691", "692",
         "800", "808",
         "850", "852", "853", "855", "856",
-        "870", "880", "881", "882", "883", "886",
+        "870", "878", "880", "881", "882", "883", "886",
         "960", "961", "962", "963", "964", "965", "966", "967", "968",
         "970", "971", "972", "973", "974", "975", "976", "977", "979",
         "992", "993", "994", "995", "996", "998"
@@ -161,9 +161,11 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
             return digits[..2];
 
         throw new InvalidOperationException(
-            $"Phone number '{Value}' passed E.164 format validation but does not start with a recognized " +
-            $"country calling code. This may indicate stale lookup tables in Trellis.Primitives or a " +
-            $"malformed input that happens to satisfy the E.164 length/character rules.");
+            "Phone number passed E.164 format validation but does not start with a recognized " +
+            "country calling code. This may indicate stale lookup tables in Trellis.Primitives or a " +
+            "malformed input that happens to satisfy the E.164 length/character rules. " +
+            "(The phone number value is intentionally not included in this message because " +
+            "phone numbers are PII and exception messages are commonly logged.)");
     }
 
     /// <summary>

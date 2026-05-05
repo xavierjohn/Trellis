@@ -7,6 +7,13 @@ using Trellis;
 /// <summary>
 /// ISO 639-1 language code value object.
 /// </summary>
+/// <remarks>
+/// <b>Validation Rules (Opinionated):</b>
+/// <list type="bullet">
+/// <item>Exactly 2 ASCII letters (ISO 639-1 alpha-2 format) — Unicode letters such as German umlauts, Greek, or Cyrillic are rejected.</item>
+/// <item>Normalized to lowercase</item>
+/// </list>
+/// </remarks>
 [JsonConverter(typeof(ParsableJsonConverter<LanguageCode>))]
 public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValue<LanguageCode, string>, IParsable<LanguageCode>
 {

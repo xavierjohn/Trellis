@@ -720,7 +720,7 @@ public class MoneyTests
     }
 
     [Fact]
-    public void Sum_CollectionWithNullElement_ReturnsFailure()
+    public void Sum_CollectionWithNullElement_ThrowsArgumentException()
     {
         // Inspection finding New-3: Sum<Money> should reject null elements explicitly
         // rather than NRE on element.Currency.
@@ -818,14 +818,15 @@ public class MoneyTests
     public void Allocate_RatiosOverflow_ReturnsFailure()
     {
         // Inspection finding M-3: ratios.Sum() can OverflowException on int overflow;
-        // wrap in Result.Fail rather than letting the exception propagate.
+        // wrap in Result.Fail with field "ratios" rather than letting the exception propagate.
         var money = Money.Create(100m, "USD");
 
         var result = money.Allocate(int.MaxValue, int.MaxValue);
 
         result.IsFailure.Should().BeTrue();
         var err = (Error.UnprocessableContent)result.UnwrapError();
-        err.Fields[0].Detail.Should().Contain("overflow", "ratios.Sum overflow surfaces as a Result failure rather than an unhandled exception");
+        err.Fields[0].Field.Path.Should().Be("/ratios", "ratio-sum overflow is a ratios-side failure");
+        err.Fields[0].Detail.Should().Contain("overflow");
     }
 
     [Fact]
@@ -924,7 +925,8 @@ public class MoneyTests
         // Inspection finding refuted by GPT-5.5: amountInMinorUnits * ratios[i] is
         // unchecked long*int and silently wraps for extreme amount + large ratio
         // combinations. Force a checked context so overflow is caught and surfaced
-        // as Result.Fail.
+        // as Result.Fail. This is an amount-side failure (the amount * ratio product
+        // overflows because the amount is large), so the field should be "amount".
         var money = Money.Create(50_000_000_000m, "USD");
 
         // amountInMinorUnits = 5e12; share-mul: 5e12 * 1e9 = 5e21 > long.MaxValue (9.2e18).
@@ -932,6 +934,7 @@ public class MoneyTests
 
         result.IsFailure.Should().BeTrue();
         var err = (Error.UnprocessableContent)result.UnwrapError();
+        err.Fields[0].Field.Path.Should().Be("/amount", "share-arithmetic overflow is an amount-side failure");
         err.Fields[0].Detail.Should().Contain("overflow");
     }
 

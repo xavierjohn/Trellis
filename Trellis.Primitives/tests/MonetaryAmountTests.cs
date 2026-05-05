@@ -448,7 +448,7 @@ public class MonetaryAmountTests
     }
 
     [Fact]
-    public void Sum_CollectionWithNullElement_ReturnsFailure()
+    public void Sum_CollectionWithNullElement_ThrowsArgumentException()
     {
         var items = new[]
         {

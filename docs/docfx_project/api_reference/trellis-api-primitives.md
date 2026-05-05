@@ -270,7 +270,7 @@ public class Money : ValueObject
 | `public Result<Money> Multiply(int quantity)` | `Result<Money>` | Rejects negative quantity. Returns `Error.UnprocessableContent` on multiplication overflow. |
 | `public Result<Money> Divide(decimal divisor)` | `Result<Money>` | Divisor must be positive. Returns `Error.UnprocessableContent` when division would overflow (e.g. very small positive divisor). |
 | `public Result<Money> Divide(int divisor)` | `Result<Money>` | Divisor must be positive. Returns `Error.UnprocessableContent` on division overflow. |
-| `public Result<Money[]> Allocate(params int[] ratios)` | `Result<Money[]>` | Ratio-based split with remainder distribution. Throws `ArgumentNullException` when `ratios` is null. Returns `Error.UnprocessableContent` if any ratio is non-positive, the ratio sum overflows `int`, or the minor-unit conversion overflows. |
+| `public Result<Money[]> Allocate(params int[] ratios)` | `Result<Money[]>` | Ratio-based split with remainder distribution. Throws `ArgumentNullException` when `ratios` is null. Returns `Error.UnprocessableContent` with field `ratios` when any ratio is non-positive or `ratios.Sum()` overflows; with field `amount` when the minor-unit conversion or the per-ratio share multiplication (`amountInMinorUnits * ratios[i]`, computed in a checked context) overflows. |
 | `public bool IsGreaterThan(Money other)` | `bool` | False when currencies differ. Throws `ArgumentNullException` when `other` is null. |
 | `public bool IsGreaterThanOrEqual(Money other)` | `bool` | False when currencies differ. Throws `ArgumentNullException` when `other` is null. |
 | `public bool IsLessThan(Money other)` | `bool` | False when currencies differ. Throws `ArgumentNullException` when `other` is null. |

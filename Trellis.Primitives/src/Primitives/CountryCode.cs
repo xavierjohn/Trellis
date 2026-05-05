@@ -10,7 +10,7 @@ using Trellis;
 /// <remarks>
 /// <b>Validation Rules (Opinionated):</b>
 /// <list type="bullet">
-/// <item>Exactly 2 letters (ISO 3166-1 alpha-2 format)</item>
+/// <item>Exactly 2 ASCII letters (ISO 3166-1 alpha-2 format) — Unicode letters such as German umlauts, Greek, or Cyrillic are rejected.</item>
 /// <item>Normalized to uppercase</item>
 /// </list>
 /// <para>

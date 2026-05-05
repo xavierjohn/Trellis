@@ -178,11 +178,20 @@ public class Money : ValueObject
         if (ratios.Any(r => r <= 0))
             return Result.Fail<Money[]>(Error.UnprocessableContent.ForField(nameof(ratios), "validation.error", "All ratios must be positive."));
 
+        // Split overflow handling so the failure field accurately identifies the offending input:
+        //   * ratios.Sum() overflowing int   -> "ratios" failure
+        //   * Amount * multiplier / round / cast / share-mul overflowing -> "amount" failure
+        int totalRatio;
+        try { totalRatio = ratios.Sum(); }
+        catch (OverflowException)
+        {
+            return Result.Fail<Money[]>(Error.UnprocessableContent.ForField(nameof(ratios), "validation.error", "Sum of ratios would overflow."));
+        }
+
         try
         {
             var decimalPlaces = GetDecimalPlaces(Currency);
             var multiplier = (decimal)Math.Pow(10, decimalPlaces);
-            var totalRatio = ratios.Sum();
             var amountInMinorUnits = (long)Math.Round(Amount * multiplier, MidpointRounding.AwayFromZero);
             var remainder = amountInMinorUnits;
             var results = new Money[ratios.Length];
@@ -190,7 +199,7 @@ public class Money : ValueObject
             for (int i = 0; i < ratios.Length; i++)
             {
                 // The integral multiplication can overflow long for extreme amounts +
-                // large ratios; force a checked context so the catch below can convert
+                // large ratios; force a checked context so the catch below converts
                 // it to Result.Fail rather than silently wrapping.
                 var share = checked(amountInMinorUnits * ratios[i]) / totalRatio;
                 results[i] = new Money(share / multiplier, Currency);
@@ -206,7 +215,7 @@ public class Money : ValueObject
         }
         catch (OverflowException)
         {
-            return Result.Fail<Money[]>(Error.UnprocessableContent.ForField(nameof(ratios), "validation.error", "Allocation arithmetic would overflow."));
+            return Result.Fail<Money[]>(Error.UnprocessableContent.ForField("amount", "validation.error", "Allocation arithmetic would overflow."));
         }
     }
 

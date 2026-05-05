@@ -10,7 +10,8 @@ using Trellis;
 /// <remarks>
 /// <b>Validation Rules (Opinionated):</b>
 /// <para>
-/// Valid codes are three alphabetic characters (e.g., USD, EUR, GBP). The stored value is uppercase.
+/// Valid codes are three ASCII letters (e.g., USD, EUR, GBP). Non-ASCII letters such as
+/// German umlauts, Greek, or Cyrillic are rejected. The stored value is uppercase.
 /// </para>
 /// <para>
 /// <b>If these rules don't fit your domain</b> (e.g., cryptocurrency codes like BTC, ETH),
