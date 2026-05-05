@@ -150,29 +150,57 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     [RequiresDynamicCode("Reflects on IResult<T>.TryGetValue via the runtime response type.")]
     private static Func<TResponse, IAggregate?> BuildExtractorOrNoop(Type responseType)
     {
-        // Result<T> deliberately removed the v1 `Value` property in favor of the non-throwing
-        // TryGetValue accessor on IResult<T>. We extract the aggregate by reflecting on
-        // IResult<T>.TryGetValue(out T) so we stay decoupled from any future internal layout
-        // changes and never throw if the result is a failure.
-        if (!responseType.IsGenericType)
-            return static _ => null;
+        // Walk the interfaces looking for IResult<TValue> where TValue : IAggregate. This handles:
+        //   * the canonical case Result<TAggregate> (TResponse is itself the closed generic)
+        //   * non-generic concrete types implementing IResult<TAggregate> (e.g. a custom envelope)
+        //   * generics where the aggregate is not the first type argument
+        // Reported by GPT-5.5 review: the previous shape extracted via
+        // typeof(TResponse).GetGenericArguments()[0] which silently failed on those alternative shapes.
+        Type? aggregateType = null;
+        Type? closedIResult = null;
 
-        var valueType = responseType.GetGenericArguments()[0];
-        if (!typeof(IAggregate).IsAssignableFrom(valueType))
-            return static _ => null;
+        // Check the response type itself first (it can directly implement IResult<TAggregate>).
+        // GetInterfaces returns implemented and inherited interfaces; if responseType is itself
+        // an interface, we still need to consider it explicitly.
+        var candidates = responseType.IsInterface
+            ? responseType.GetInterfaces().Concat([responseType])
+            : (IEnumerable<Type>)responseType.GetInterfaces();
 
-        // IResult<TValue>.TryGetValue(out TValue value)
-        var iResultGeneric = typeof(IResult<>).MakeGenericType(valueType);
-        if (!iResultGeneric.IsAssignableFrom(responseType))
+        foreach (var iface in candidates)
+        {
+            if (!iface.IsGenericType || iface.GetGenericTypeDefinition() != typeof(IResult<>))
+                continue;
+
+            var valueType = iface.GetGenericArguments()[0];
+            if (!typeof(IAggregate).IsAssignableFrom(valueType))
+                continue;
+
+            if (aggregateType is not null && aggregateType != valueType)
+            {
+                // Multiple aggregate-valued IResult<> interfaces: ambiguous. Fail fast at
+                // generic-instantiation time so the misconfiguration is visible at startup
+                // rather than silently picking one and dropping the other's events.
+                throw new InvalidOperationException(
+                    $"Response type {responseType.FullName ?? responseType.Name} implements multiple " +
+                    $"IResult<TAggregate> interfaces with distinct TAggregate type arguments " +
+                    $"({aggregateType.FullName ?? aggregateType.Name} and {valueType.FullName ?? valueType.Name}). " +
+                    "DomainEventDispatchBehavior cannot disambiguate which aggregate to extract events from.");
+            }
+
+            aggregateType = valueType;
+            closedIResult = iface;
+        }
+
+        if (aggregateType is null || closedIResult is null)
             return static _ => null;
 
         // IResult<TValue>.TryGetValue(out TValue value). Pin the overload by parameter
         // signature so a future second TryGetValue overload on the interface would not
         // cause this lookup to throw AmbiguousMatchException.
-        var tryGetValue = iResultGeneric.GetMethod(
+        var tryGetValue = closedIResult.GetMethod(
             nameof(IResult<int>.TryGetValue),
-            [valueType.MakeByRefType()])
-            ?? throw new InvalidOperationException($"IResult<{valueType.FullName}> is missing TryGetValue(out {valueType.Name}).");
+            [aggregateType.MakeByRefType()])
+            ?? throw new InvalidOperationException($"IResult<{aggregateType.FullName}> is missing TryGetValue(out {aggregateType.Name}).");
 
         return response =>
         {

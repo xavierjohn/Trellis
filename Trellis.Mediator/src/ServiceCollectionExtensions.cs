@@ -310,10 +310,13 @@ public static class ServiceCollectionExtensions
                 if (tResponse is null)
                     continue;
 
-                // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>
-                if (!typeof(IResult).IsAssignableFrom(tResponse)
-                    || !typeof(IFailureFactory<>).MakeGenericType(tResponse).IsAssignableFrom(tResponse))
-                    continue;
+                // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>.
+                // Fail fast on misconfigured security-marked commands rather than silently
+                // skipping them — IAuthorizeResource<TResource> is a security marker and a
+                // resource-authorized command that is silently never wired up at startup is a
+                // dangerous failure mode (the command runs without resource authorization).
+                // Reported by GPT-5.5 review.
+                ValidateResourceAuthorizationResponseType(type, commandResource, tResponse);
 
                 // Register ResourceAuthorizationBehavior<TMessage, TResource, TResponse>
                 // as IPipelineBehavior<TMessage, TResponse>
@@ -470,5 +473,63 @@ public static class ServiceCollectionExtensions
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// Validates that a message-implemented <c>TResponse</c> can satisfy the
+    /// <see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> constraints
+    /// (<see cref="IResult"/> + <see cref="IFailureFactory{TSelf}"/>). Throws
+    /// <see cref="InvalidOperationException"/> with a diagnostic message naming the message
+    /// type, resource type, and response type when the constraints are not met. Internal so
+    /// the assembly scanner's fail-fast contract can be unit-tested without round-tripping
+    /// through a synthetic assembly.
+    /// </summary>
+    /// <param name="messageType">The concrete message type discovered by the scanner.</param>
+    /// <param name="resourceType">The closed <c>TResource</c> from the message's
+    /// <see cref="IAuthorizeResource{TResource}"/> interface.</param>
+    /// <param name="responseType">The closed response type from the message's
+    /// <c>ICommand&lt;TResponse&gt;</c> / <c>IQuery&lt;TResponse&gt;</c> /
+    /// <c>IRequest&lt;TResponse&gt;</c> interface.</param>
+    /// <exception cref="InvalidOperationException">Thrown when <paramref name="responseType"/>
+    /// does not implement <see cref="IResult"/> or <see cref="IFailureFactory{TSelf}"/>
+    /// closed over itself.</exception>
+    internal static void ValidateResourceAuthorizationResponseType(
+        Type messageType,
+        Type resourceType,
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.Interfaces)]
+        Type responseType)
+    {
+        if (!typeof(IResult).IsAssignableFrom(responseType))
+            throw new InvalidOperationException(
+                $"{messageType.FullName ?? messageType.Name} implements IAuthorizeResource<{resourceType.Name}> " +
+                $"and {responseType.FullName ?? responseType.Name} via the message-marker interface, but " +
+                $"{responseType.FullName ?? responseType.Name} does not implement IResult. " +
+                $"ResourceAuthorizationBehavior<TMessage, TResource, TResponse> requires TResponse : IResult, IFailureFactory<TResponse>. " +
+                $"Either change the message's response type to one that implements IResult and IFailureFactory<TResponse> (e.g. Result<{resourceType.Name}>), or remove IAuthorizeResource<{resourceType.Name}> from the message.");
+
+        // IFailureFactory<TSelf> is F-bounded (where TSelf : IFailureFactory<TSelf>), so we
+        // can't use MakeGenericType(responseType).IsAssignableFrom(responseType) — that would
+        // throw ArgumentException at MakeGenericType time when responseType doesn't satisfy
+        // the constraint. Walk the implemented interfaces directly looking for a closed
+        // IFailureFactory<X> where X == responseType.
+        var implementsFailureFactory = false;
+        foreach (var iface in responseType.GetInterfaces())
+        {
+            if (iface.IsGenericType
+                && iface.GetGenericTypeDefinition() == typeof(IFailureFactory<>)
+                && iface.GetGenericArguments()[0] == responseType)
+            {
+                implementsFailureFactory = true;
+                break;
+            }
+        }
+
+        if (!implementsFailureFactory)
+            throw new InvalidOperationException(
+                $"{messageType.FullName ?? messageType.Name} implements IAuthorizeResource<{resourceType.Name}> " +
+                $"and {responseType.FullName ?? responseType.Name} via the message-marker interface, but " +
+                $"{responseType.FullName ?? responseType.Name} does not implement IFailureFactory<{responseType.Name}>. " +
+                $"ResourceAuthorizationBehavior<TMessage, TResource, TResponse> requires TResponse : IResult, IFailureFactory<TResponse>. " +
+                $"Either change the message's response type to one that implements IResult and IFailureFactory<TResponse> (e.g. Result<{resourceType.Name}>), or remove IAuthorizeResource<{resourceType.Name}> from the message.");
     }
 }

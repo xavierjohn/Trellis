@@ -67,20 +67,16 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
         MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
-        // Resolve the scoped loader per-request (like middleware resolving scoped services)
-        var loader = _serviceProvider.GetService<IResourceLoader<TMessage, TResource>>()
-            ?? throw new InvalidOperationException(
-                $"ResourceAuthorizationBehavior<{typeof(TMessage).Name}, {typeof(TResource).Name}, {typeof(TResponse).Name}> " +
-                $"requires a registered {typeof(IResourceLoader<TMessage, TResource>).Name}. " +
-                $"Register IResourceLoader<{typeof(TMessage).Name}, {typeof(TResource).Name}> in the current DI scope.");
-
-        // 1. Check the caller is authenticated BEFORE doing any I/O. Avoids spending a database
-        //    round-trip on the resource loader when the request would be rejected anyway, and
-        //    closes a small enumeration / timing-side-channel surface (an attacker could
-        //    otherwise probe resource existence without credentials). The IActorProvider
-        //    contract requires implementations to throw when no authenticated actor exists;
-        //    the explicit null-check is defense-in-depth so a misbehaving provider that returns
-        //    null cannot silently bypass the actor-first ordering (ga-11).
+        // 1. Check the caller is authenticated BEFORE doing any I/O — including resolving
+        //    the resource loader from DI. The DI factory or constructor for a custom
+        //    IResourceLoader<TMessage, TResource> is arbitrary user code (e.g. it may open a
+        //    DbContext or pre-fetch state during construction), so loader *resolution* itself
+        //    counts as I/O for the ga-11 guarantee. The IActorProvider contract requires
+        //    implementations to throw when no authenticated actor exists; the explicit
+        //    null-check is defense-in-depth so a misbehaving provider that returns null
+        //    cannot silently bypass the actor-first ordering (ga-11). Reported by GPT-5.5
+        //    review: the previous order (resolve loader → resolve actor) let an unauthenticated
+        //    caller trigger loader-side effects via the DI factory before the actor check.
         var actor = await _actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
         if (actor is null)
             throw new InvalidOperationException(
@@ -88,18 +84,25 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
                 + "implementations to throw when no authenticated actor exists; returning null is a "
                 + "violation of the IActorProvider contract.");
 
-        // 2. Load the resource. The combined TryGetValue(out value, out error) overload removes
+        // 2. Resolve the scoped loader per-request (like middleware resolving scoped services).
+        var loader = _serviceProvider.GetService<IResourceLoader<TMessage, TResource>>()
+            ?? throw new InvalidOperationException(
+                $"ResourceAuthorizationBehavior<{typeof(TMessage).Name}, {typeof(TResource).Name}, {typeof(TResponse).Name}> " +
+                $"requires a registered {typeof(IResourceLoader<TMessage, TResource>).Name}. " +
+                $"Register IResourceLoader<{typeof(TMessage).Name}, {typeof(TResource).Name}> in the current DI scope.");
+
+        // 3. Load the resource. The combined TryGetValue(out value, out error) overload removes
         //    the dead defensive throw the two-call (TryGetError + TryGetValue) shape required.
         var loadResult = await loader.LoadAsync(message, cancellationToken).ConfigureAwait(false);
         if (!loadResult.TryGetValue(out var resource, out var loadError))
             return TResponse.CreateFailure(loadError);
 
-        // 3. Authorize against the loaded resource
+        // 4. Authorize against the loaded resource
         var authResult = message.Authorize(actor, resource);
         if (authResult.TryGetError(out var authError))
             return TResponse.CreateFailure(authError);
 
-        // 4. Proceed to handler
+        // 5. Proceed to handler
         return await next(message, cancellationToken).ConfigureAwait(false);
     }
 }
