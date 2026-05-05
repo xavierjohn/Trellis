@@ -31,9 +31,9 @@ using global::Mediator;
 /// staged changes. <b>Caveat:</b> if the inner command returns a failure but the outer handler
 /// ignores it and returns success, the outer's commit will persist any changes the inner staged
 /// before failing — handlers that need to discard inner failures' staged work must detach the
-/// affected entities themselves. Custom <see cref="IUnitOfWork"/> implementations that don't
-/// override <see cref="IUnitOfWork.BeginScope"/> reproduce the v1 commit-on-every-call behavior
-/// and are vulnerable to the original nested-commit bug.
+/// affected entities themselves. Every <see cref="IUnitOfWork"/> implementation must implement
+/// <see cref="IUnitOfWork.BeginScope"/> with depth-aware semantics; the default
+/// <see cref="EfUnitOfWork{TContext}"/> does this with an internal depth counter.
 /// </para>
 /// </summary>
 /// <typeparam name="TMessage">The command type.</typeparam>

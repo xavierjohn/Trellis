@@ -172,6 +172,13 @@ public class TransactionalCommandBehaviorTests
             CommitCount++;
             return Task.FromResult(CommitResult ?? Result.Ok());
         }
+
+        public IDisposable BeginScope() => new NoOpScope();
+
+        private sealed class NoOpScope : IDisposable
+        {
+            public void Dispose() { }
+        }
     }
 
     /// <summary>

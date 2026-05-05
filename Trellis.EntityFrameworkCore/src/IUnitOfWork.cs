@@ -17,6 +17,13 @@ public interface IUnitOfWork
     /// Returns <see cref="Result{TValue}"/> with <see cref="Unit"/> to surface concurrency, duplicate-key,
     /// and foreign-key errors as <see cref="Error"/> instead of exceptions.
     /// </summary>
+    /// <remarks>
+    /// When called inside a nested <see cref="BeginScope"/> scope (i.e. depth > 1),
+    /// implementations should defer the actual database write and return success without
+    /// touching the database; only the outermost scope's <see cref="CommitAsync"/> call
+    /// should persist staged changes. This prevents a successful inner command from
+    /// committing a partially-completed outer command's staged changes.
+    /// </remarks>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> representing success or failure.</returns>
     Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default);
@@ -47,29 +54,6 @@ public interface IUnitOfWork
     /// changes is not supported. Handlers that need to discard inner failures' staged work must
     /// detach the affected entities themselves.
     /// </para>
-    /// <para>
-    /// Custom <see cref="IUnitOfWork"/> implementations may rely on the default no-op scope
-    /// (commit-on-every-call) by not overriding this method; doing so reproduces the v1
-    /// behavior and is appropriate when the implementation does not need nested-scope safety.
-    /// </para>
     /// </remarks>
-    IDisposable BeginScope() => NoOpUnitOfWorkScope.Instance;
-}
-
-/// <summary>
-/// Default no-op scope used by custom <see cref="IUnitOfWork"/> implementations that do not
-/// implement nested-scope tracking. <see cref="EfUnitOfWork{TContext}"/> overrides
-/// <see cref="IUnitOfWork.BeginScope"/> with a depth-counting scope.
-/// </summary>
-internal sealed class NoOpUnitOfWorkScope : IDisposable
-{
-    public static readonly NoOpUnitOfWorkScope Instance = new();
-
-    private NoOpUnitOfWorkScope()
-    {
-    }
-
-    public void Dispose()
-    {
-    }
+    IDisposable BeginScope();
 }

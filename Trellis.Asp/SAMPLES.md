@@ -926,9 +926,15 @@ Transactional operations with UnitOfWork:
 public class UnitOfWork : IUnitOfWork
 {
     private readonly DbContext _context;
+    private int _scopeDepth;
 
     public async Task<Result> CommitAsync(CancellationToken ct)
     {
+        // Defer until the outermost scope unwinds so a nested command's success
+        // doesn't commit a partially-completed outer command's staged changes.
+        if (Volatile.Read(ref _scopeDepth) > 1)
+            return Result.Ok();
+
         try
         {
             await _context.SaveChangesAsync(ct);
@@ -941,6 +947,27 @@ public class UnitOfWork : IUnitOfWork
         catch (DbUpdateException ex)
         {
             return new Error.InternalServerError("fault-id") { Detail = "Database update failed" };
+        }
+    }
+
+    public IDisposable BeginScope()
+    {
+        Interlocked.Increment(ref _scopeDepth);
+        return new ScopeReleaser(this);
+    }
+
+    private sealed class ScopeReleaser : IDisposable
+    {
+        private readonly UnitOfWork _owner;
+        private bool _disposed;
+
+        public ScopeReleaser(UnitOfWork owner) => _owner = owner;
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            Interlocked.Decrement(ref _owner._scopeDepth);
         }
     }
 }

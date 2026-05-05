@@ -230,7 +230,8 @@ Abstraction over the commit boundary for staged changes. Repositories stage chan
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. |
+| `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. Implementations must defer (return success without persisting) when called inside a nested `BeginScope` scope so a successful inner command does not commit a partially-completed outer command's staged changes. |
+| `IDisposable BeginScope()` | `IDisposable` | Begins a unit-of-work scope; nested scopes track depth so only the outermost scope's `CommitAsync` actually persists. The Trellis pipeline's `TransactionalCommandBehavior` wraps every command in a scope. Custom `IUnitOfWork` implementations are required to implement depth-aware scope tracking; `EfUnitOfWork<TContext>` does this with an internal counter. **Caveat:** if an inner command returns failure but the outer ignores it and returns success, the outer's commit will persist any changes the inner staged before failing — per-scope rollback of staged changes is not supported. |
 
 ### `EfUnitOfWork<TContext>`
 
@@ -239,12 +240,13 @@ public class EfUnitOfWork<TContext> : IUnitOfWork
     where TContext : DbContext
 ```
 
-EF Core implementation of `IUnitOfWork`. Delegates to `DbContextExtensions.SaveChangesResultUnitAsync` which maps `DbUpdateConcurrencyException` → `new Error.Conflict(null, "concurrency.modified")`, duplicate-key → `new Error.Conflict(null, "duplicate.key")`, and FK violations → `new Error.Conflict(null, "referential.integrity")`.
+EF Core implementation of `IUnitOfWork`. Delegates to `DbContextExtensions.SaveChangesResultUnitAsync` which maps `DbUpdateConcurrencyException` → `new Error.Conflict(null, "concurrency.modified")`, duplicate-key → `new Error.Conflict(null, "duplicate.key")`, and FK violations → `new Error.Conflict(null, "referential.integrity")`. Tracks scope depth via an internal counter; `CommitAsync` defers (returns success without persisting) when depth > 1.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public EfUnitOfWork(TContext context)` | — | Captures the resolved `TContext` instance. Registered as scoped by `AddTrellisUnitOfWork<TContext>()`. |
-| `public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Calls `context.SaveChangesResultUnitAsync(cancellationToken)`. |
+| `public EfUnitOfWork(TContext context)` | — | Captures the resolved `TContext` instance. Throws `ArgumentNullException` when `context` is null. Registered as scoped by `AddTrellisUnitOfWork<TContext>()`. |
+| `public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | At depth 0/1, calls `context.SaveChangesResultUnitAsync(cancellationToken)`. At depth > 1 (inside a nested scope), returns `Result.Ok()` without touching the database. |
+| `public IDisposable BeginScope()` | `IDisposable` | Increments the scope-depth counter; the returned `IDisposable.Dispose()` decrements it. Thread-safe via `Interlocked`. |
 
 ### `TransactionalCommandBehavior<TMessage, TResponse>`
 
@@ -261,8 +263,8 @@ Pipeline behavior that auto-commits staged changes after a successful command ha
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public TransactionalCommandBehavior(IUnitOfWork unitOfWork)` | — | Captures the scoped `IUnitOfWork` resolved alongside the handler. |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits the inner handler. On success, calls `unitOfWork.CommitAsync(cancellationToken)`; if the commit reports an `Error`, returns `TResponse.CreateFailure(error)`. On handler failure, returns the failure as-is without committing. |
+| `public TransactionalCommandBehavior(IUnitOfWork unitOfWork)` | — | Captures the scoped `IUnitOfWork` resolved alongside the handler. Throws `ArgumentNullException` when `unitOfWork` is null. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Wraps the invocation in `using var scope = unitOfWork.BeginScope();` so a successful inner command's commit is deferred until the outermost scope unwinds. Awaits the inner handler; on success, calls `unitOfWork.CommitAsync(cancellationToken)`; if the commit reports an `Error`, returns `TResponse.CreateFailure(error)`. On handler failure, returns the failure as-is without committing. |
 
 ### `UnitOfWorkServiceCollectionExtensions`
 
