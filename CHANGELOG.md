@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Trellis.FluentValidation — inspection findings (m-FV-1..m-FV-4, i-FV-2 + GPT-5.5 N-FV-1)
+
+Closes the formal Trellis.FluentValidation inspection backlog from `files/fluentvalidation-inspection-report.md` after a Phase-2 GPT-5.5 meta-review validated 5 of 6 self-inspection findings, refuted i-FV-1 (`/`-prefixed-input pass-through is documented escape-hatch + `InputPointer` validates escape sequences), and surfaced 1 additional Minor (N-FV-1: `ToResult<T>` doc/code drift). Pre-commit GPT-5.5 review TODO.
+
+- **(Minor) m-FV-1 — api ref frontmatter `types:` corrected.** Previously listed `[TrellisValidator<T>, ValidationResultExtensions]` — neither type exists in source. Updated to `[FluentValidationServiceCollectionExtensions, FluentValidationMessageValidatorAdapter<TMessage>, FluentValidationResultExtensions]`.
+
+- **(Minor) m-FV-2 — `FluentValidationMessageValidatorAdapter<TMessage>` constructor null-guards `validators`.** Previously the public primary-constructor parameter was captured directly; passing `null!` would defer the failure to a `NullReferenceException` at the first `foreach (var validator in validators)`. Converted to a traditional constructor with `ArgumentNullException.ThrowIfNull(validators)` at the entry point. Direct construction is reachable from tests (e.g. `new FluentValidationMessageValidatorAdapter<CreateUserCommand>([])` in the test suite), so this is a real public-API surface, not just a DI internal.
+
+- **(Minor) m-FV-3 — `FluentValidationExtension.cs` renamed to `FluentValidationResultExtensions.cs`.** Pure file rename to match the framework convention "one type per file with matching name". The other three source files in the package already follow this convention.
+
+- **(Minor) m-FV-4 — `AddTrellisFluentValidation()` idempotency check now uses `TryAddEnumerable`.** Replaced the manual `services.Any(d => ...)` linear scan with `services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IMessageValidator<>), typeof(FluentValidationMessageValidatorAdapter<>)))` — the canonical .NET pattern matching `Trellis.Mediator.AddTrellisBehaviors`. Behavior unchanged: deduplicates by `(ServiceType, ImplementationType)` so repeated calls register the open-generic adapter exactly once.
+
+- **(Minor) N-FV-1 — `ToResult<T>` documentation corrected.** The api ref method-table row and the source xmldoc both contained behavior claims that didn't match the implementation:
+  - api ref claimed it "groups `validationResult.Errors` by property name" — implementation does NOT group; emits one `FieldViolation` per `ValidationFailure`. Multiple failures on the same property produce multiple violations (no information loss).
+  - api ref claimed it uses `FieldViolation(InputPointer.ForProperty(propName), ...)` — implementation uses `new InputPointer(JsonPointerNormalizer.ToJsonPointer(rawName))`.
+  - source xmldoc `<returns>` said failure "if validation failed or value is null" — implementation returns `Result.Ok(value)` whenever `validationResult.IsValid`, regardless of `value` being null. The api ref's behavioral notes correctly stated this; only the methods-table row and xmldoc were wrong.
+  All three drifts now corrected; api ref + xmldoc reflect the actual contract.
+
+- **(Info) i-FV-2 — `ValidateToResultAsync` now observes cancellation before the null-value short-circuit.** Previously a caller passing a cancelled `CancellationToken` AND a null `value` received a `Failure` result rather than the `OperationCanceledException` the documented "Cancellation token to observe" contract implies. Added `cancellationToken.ThrowIfCancellationRequested()` at the top of the method (after the `validator` null-check) so cancellation always wins over null-value short-circuit.
+
+Refuted findings: i-FV-1 (`JsonPointerNormalizer` `/`-prefixed pass-through is documented escape-hatch behavior; `InputPointer` rejects malformed `~` sequences anyway, so silent corruption is not possible). Refuted candidate findings: PII leakage via `failure.ErrorMessage` (FluentValidation message templates are consumer-controlled — Trellis must not silently rewrite them); open-generic `IMessageValidator<>` registration AOT compatibility (open-generic DI is AOT-safe; the scanning overload correctly carries `[RequiresUnreferencedCode]`).
+
+Tests: **+2** new tests in `Trellis.FluentValidation.Tests`:
+- `Constructor_throws_ArgumentNullException_when_validators_is_null` (m-FV-2).
+- `ValidateToResultAsync_NullValue_CancelledToken_observes_cancellation` (i-FV-2).
+
 #### Trellis.ServiceDefaults — inspection findings (M-S1, M-S2, m-S1..m-S3, i-S1..i-S4 + GPT-5.5 N-S1..N-S4)
 
 Closes the formal Trellis.ServiceDefaults inspection backlog from `files/servicedefaults-inspection-report.md` after a meta-review by GPT-5.5 validated all 9 self-inspection findings and surfaced 4 additional ones (one Major, two Minor, one Info).

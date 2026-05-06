@@ -279,5 +279,27 @@ public class FluentTests
         result.Should().BeSuccess();
     }
 
+    [Fact]
+    public async Task ValidateToResultAsync_NullValue_CancelledToken_observes_cancellation()
+    {
+        // Inspection finding i-FV-2: when the caller passes a cancelled token AND a null
+        // value, the previous implementation returned a Failure result without observing
+        // the token (the null short-circuit ran before any cancellation check). The fix
+        // observes the token at the top of the method so cancellation always wins over
+        // null-value short-circuit, matching the documented "Cancellation token to observe"
+        // contract.
+        var validator = new InlineValidator<string?>
+        {
+            v => v.RuleFor(x => x).NotEmpty()
+        };
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        string? value = null;
+
+        var act = async () => await validator.ValidateToResultAsync(value, cancellationToken: cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     #endregion
 }

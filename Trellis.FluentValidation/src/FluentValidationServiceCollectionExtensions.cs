@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using global::FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Trellis.Mediator;
 
 /// <summary>
@@ -49,12 +50,10 @@ public static class FluentValidationServiceCollectionExtensions
         // scanning overload) must not register the open-generic adapter more than once. Without
         // this guard, DI would resolve multiple IMessageValidator<TMessage> instances and the
         // adapter would execute every IValidator<TMessage> twice per request.
-        if (!services.Any(d =>
-                d.ServiceType == typeof(IMessageValidator<>)
-                && d.ImplementationType == typeof(FluentValidationMessageValidatorAdapter<>)))
-        {
-            services.AddScoped(typeof(IMessageValidator<>), typeof(FluentValidationMessageValidatorAdapter<>));
-        }
+        // TryAddEnumerable deduplicates by (ServiceType, ImplementationType), matching the
+        // canonical pattern used by Trellis.Mediator.AddTrellisBehaviors.
+        services.TryAddEnumerable(
+            ServiceDescriptor.Scoped(typeof(IMessageValidator<>), typeof(FluentValidationMessageValidatorAdapter<>)));
 
         return services;
     }

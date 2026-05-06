@@ -28,11 +28,26 @@ using Trellis.Mediator;
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The message type the contained validators target.</typeparam>
-public sealed class FluentValidationMessageValidatorAdapter<TMessage>(
-    IEnumerable<IValidator<TMessage>> validators)
+public sealed class FluentValidationMessageValidatorAdapter<TMessage>
     : IMessageValidator<TMessage>
     where TMessage : global::Mediator.IMessage
 {
+    private readonly IEnumerable<IValidator<TMessage>> _validators;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="FluentValidationMessageValidatorAdapter{TMessage}"/>.
+    /// </summary>
+    /// <param name="validators">
+    /// The injected sequence of <see cref="IValidator{T}"/> implementations to run against each
+    /// message. Typically resolved from DI as <c>IEnumerable&lt;IValidator&lt;TMessage&gt;&gt;</c>.
+    /// </param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="validators"/> is null.</exception>
+    public FluentValidationMessageValidatorAdapter(IEnumerable<IValidator<TMessage>> validators)
+    {
+        ArgumentNullException.ThrowIfNull(validators);
+        _validators = validators;
+    }
+
     /// <inheritdoc />
     public async ValueTask<IResult> ValidateAsync(
         TMessage message,
@@ -40,7 +55,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>(
     {
         List<FieldViolation>? violations = null;
 
-        foreach (var validator in validators)
+        foreach (var validator in _validators)
         {
             var validationResult = await validator
                 .ValidateAsync(message, cancellationToken)

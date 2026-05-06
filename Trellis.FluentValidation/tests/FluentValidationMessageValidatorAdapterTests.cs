@@ -28,6 +28,20 @@ public class FluentValidationMessageValidatorAdapterTests
     }
 
     [Fact]
+    public void Constructor_throws_ArgumentNullException_when_validators_is_null()
+    {
+        // Inspection finding m-FV-2: the public constructor is reachable directly
+        // (DI never passes null IEnumerable<T>, but tests + future callers can).
+        // Without a guard the adapter NREs at the first foreach(validators) on
+        // ValidateAsync. Defensive convention from PR #459/#461/#462: every public
+        // constructor null-guards reference parameters.
+        var act = () => new FluentValidationMessageValidatorAdapter<CreateUserCommand>(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("validators");
+    }
+
+    [Fact]
     public async Task ValidateAsync_all_validators_pass_returns_success()
     {
         var adapter = new FluentValidationMessageValidatorAdapter<CreateUserCommand>(
