@@ -22,10 +22,12 @@ var result = Parse("abc")
 
 ## Key Features
 - Flags unsafe `Maybe.Value` access as an error (TRLS003).
-- Catches async misuse, double-wrapped results, and common ROP anti-patterns.
+- Catches async misuse, double-wrapped results, and common ROP anti-patterns (TRLS001/004/005/007/009/010).
+- Catches unsafe `Result<T>` deconstruction reads, `default(Result/Maybe)` literals, and `[OwnedEntity]` init-only properties (TRLS018, TRLS019, TRLS022).
 - Flags composite value objects exposed through request/response DTOs without `CompositeValueObjectJsonConverter<T>` (TRLS020).
 - Flags redundant EF Core `HasConversion`, `OwnsOne`, and `Ignore` mappings for Trellis convention-owned properties (TRLS021).
 - Includes fixes for Trellis-specific issues such as `SaveChangesAsync` vs. `SaveChangesResultAsync`.
+- See the [API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html) for the full diagnostic list (TRLS001–TRLS022 + generator IDs TRLS031–TRLS039).
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/analyzers/index.html)

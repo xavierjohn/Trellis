@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Analyzers
-namespaces: [Trellis.Analyzers]
-types: [TRLS001..TRLS022 diagnostic rules, TrellisDiagnosticIds]
+namespaces: [Trellis, Trellis.Analyzers]
+types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, WrongAttributeNamespaceAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-06
 audience: [llm]
 ---
 # Trellis.Analyzers — API Reference
@@ -52,7 +52,7 @@ Prefer fixing the code over suppressing diagnostics. When a suppression is genui
 | `TRLS008` | Info | Consider using Result.Combine | When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach than manually checking IsSuccess on each result. |
 | `TRLS009` | Warning | Use async method variant for async lambda | When using an async lambda with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) to properly handle the async operation. Using sync methods with async lambdas causes the Task to not be awaited. |
 | `TRLS010` | Warning | Don't throw exceptions in Result chains | Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. Return Result.Fail<T>() to signal errors and keep the error on the failure track. |
-| `TRLS013` | Warning | Unsafe access to Maybe.Value in LINQ projection | `.Value` on `Maybe<T>` inside Select-family LINQ projections (`Select`/`SelectMany`/`OrderBy*`/`ThenBy*`/`GroupBy`/`ToDictionary`/`ToLookup`) throws for None elements unless an earlier `.Where(x => x.HasValue)` makes the access safe. For EF Core IQueryable predicates over a `Maybe<T>` property, either register `AddTrellisInterceptors()` (which rewrites `.HasValue`/`.Value`/`GetValueOrDefault(d)` into `EF.Property`/null-checks/`COALESCE`) or use `Trellis.EntityFrameworkCore.MaybeQueryableExtensions` (`WhereHasValue`/`WhereNone`/`WhereEquals`/`WhereLessThan`/`WhereLessThanOrEqual`/`WhereGreaterThan`/`WhereGreaterThanOrEqual`) explicitly. |
+| `TRLS013` | Warning | Unsafe access to Maybe.Value in LINQ projection | `.Value` on `Maybe<T>` inside Select-family LINQ projections (`Select`/`SelectMany`/`OrderBy*`/`ThenBy*`/`GroupBy`/`ToDictionary`/`ToLookup`) throws for None elements unless an earlier `.Where(...)` lambda mentions `HasValue`. Suppression is **keyword-presence based**: predicate-shape verification (e.g., distinguishing `.Where(x => x.HasValue)` from `.Where(x => !x.HasValue)`) is a known limitation. For EF Core IQueryable predicates over a `Maybe<T>` property, either register `AddTrellisInterceptors()` (which rewrites `.HasValue`/`.Value`/`GetValueOrDefault(d)` into `EF.Property`/null-checks/`COALESCE`) or use `Trellis.EntityFrameworkCore.MaybeQueryableExtensions` (`WhereHasValue`/`WhereNone`/`WhereEquals`/`WhereLessThan`/`WhereLessThanOrEqual`/`WhereGreaterThan`/`WhereGreaterThanOrEqual`) explicitly. |
 | `TRLS014` | Error | Combine chain exceeds maximum supported tuple size | Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. Group related fields into intermediate value objects or sub-results, then combine those groups. |
 | `TRLS015` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | In non-UoW contexts, direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions; use `SaveChangesResultAsync` (returns `Result<int>`) or `SaveChangesResultUnitAsync` (returns `Result<Unit>`). Under `AddTrellisUnitOfWork<TContext>` the `TransactionalCommandBehavior` owns commit — repositories should stage changes via DbContext APIs (Add/Update/Remove) and not invoke SaveChanges at all. |
 | `TRLS016` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
@@ -123,27 +123,31 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 
 The public static class `Trellis.Analyzers.DiagnosticDescriptors` exposes one `public static readonly DiagnosticDescriptor` field per analyzer-emitted diagnostic. Analyzer implementations register these via `SupportedDiagnostics`; consumers normally don't reference them directly, but the field names are stable API and can be used in tests or in custom Roslyn tooling that re-exports the rules.
 
-| Field | Backing ID | Default severity | Category |
-| --- | --- | --- | --- |
-| `ResultNotHandled` | `TRLS001` | Warning | Trellis.Result |
-| `UseBindInsteadOfMap` | `TRLS002` | Info | Trellis.Result |
-| `UnsafeMaybeValueAccess` | `TRLS003` | Error | Trellis.Maybe |
-| `ResultDoubleWrapping` | `TRLS004` | Warning | Trellis.Result |
-| `AsyncResultMisuse` | `TRLS005` | Warning | Trellis.Result |
-| `MaybeDoubleWrapping` | `TRLS007` | Warning | Trellis.Maybe |
-| `UseResultCombine` | `TRLS008` | Info | Trellis.Result |
-| `UseAsyncMethodVariant` | `TRLS009` | Warning | Trellis.Result |
-| `ThrowInResultChain` | `TRLS010` | Warning | Trellis.Result |
-| `UnsafeValueInLinq` | `TRLS013` | Warning | Trellis.Maybe |
-| `CombineChainTooLong` | `TRLS014` | Error | Trellis.Result |
-| `UseSaveChangesResult` | `TRLS015` | Warning | Trellis.EntityFrameworkCore |
-| `HasIndexMaybeProperty` | `TRLS016` | Warning | Trellis.EntityFrameworkCore |
-| `WrongAttributeNamespace` | `TRLS017` | Warning | Trellis.Primitives |
-| `UnsafeResultDeconstruction` | `TRLS018` | Warning | Trellis.Result |
-| `DefaultResultOrMaybe` | `TRLS019` | Warning | Trellis.Result |
-| `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | Warning | Trellis.Asp |
-| `RedundantEfConfiguration` | `TRLS021` | Warning | Trellis.EntityFrameworkCore |
-| `OwnedEntityInitOnlyProperty` | `TRLS022` | Warning | Trellis.EntityFrameworkCore |
+Every descriptor uses the single shared category `Trellis` (defined as `private const string Category = "Trellis";` in `DiagnosticDescriptors`). Configure rule severities in `.editorconfig` or rule sets via the diagnostic ID (`dotnet_diagnostic.TRLS013.severity = warning`) rather than by category, since the category does not differentiate between Result, Maybe, EF Core, and ASP.NET Core rules today.
+
+| Field | Backing ID | Default severity |
+| --- | --- | --- |
+| `ResultNotHandled` | `TRLS001` | Warning |
+| `UseBindInsteadOfMap` | `TRLS002` | Info |
+| `UnsafeMaybeValueAccess` | `TRLS003` | Error |
+| `ResultDoubleWrapping` | `TRLS004` | Warning |
+| `AsyncResultMisuse` | `TRLS005` | Warning |
+| `MaybeDoubleWrapping` | `TRLS007` | Warning |
+| `UseResultCombine` | `TRLS008` | Info |
+| `UseAsyncMethodVariant` | `TRLS009` | Warning |
+| `ThrowInResultChain` | `TRLS010` | Warning |
+| `UnsafeMaybeValueInLinq` | `TRLS013` | Warning |
+| `CombineChainTooLong` | `TRLS014` | Error |
+| `UseSaveChangesResult` | `TRLS015` | Warning |
+| `HasIndexMaybeProperty` | `TRLS016` | Warning |
+| `WrongAttributeNamespace` | `TRLS017` | Warning |
+| `UnsafeResultDeconstruction` | `TRLS018` | Warning |
+| `DefaultResultOrMaybe` | `TRLS019` | Warning |
+| `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | Warning |
+| `RedundantEfConfiguration` | `TRLS021` | Warning |
+| `OwnedEntityInitOnlyProperty` | `TRLS022` | Warning |
+
+> **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
 > **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS039`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
 
@@ -275,7 +279,7 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
   - `ThenBy`
   - `ThenByDescending`
 - Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed along with `Result<T>.Value`.
-- Suppresses the diagnostic when an earlier `.Where(maybe => maybe.HasValue)` in the same chain proves the access is safe.
+- Suppresses the diagnostic when an earlier `.Where(...)` clause **mentions** `HasValue` anywhere in its lambda body. This is **keyword-presence detection**, not predicate-shape verification: `.Where(x => !x.HasValue).Select(x => x.Value)` (filtering down to None elements before reading their value) silences the diagnostic but still throws at runtime. Tightening the suppression to only honor `Where(x => x.HasValue)`-shaped predicates is a known limitation tracked separately.
 - For EF Core IQueryable predicates over a `Maybe<T>` property, either register `AddTrellisInterceptors()` (which rewrites `.HasValue`/`.Value`/`GetValueOrDefault(d)` into `EF.Property`/null-checks/`COALESCE`) or use `Trellis.EntityFrameworkCore.MaybeQueryableExtensions` (`WhereHasValue`/`WhereNone`/`WhereEquals`/`WhereLessThan`/`WhereLessThanOrEqual`/`WhereGreaterThan`/`WhereGreaterThanOrEqual`) explicitly. Note: this analyzer only fires on Select-family methods today; coverage of `.Where`/`.Any`/`.First` etc. is tracked as a follow-up.
 - No code fix.
 
@@ -321,6 +325,7 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
   - a check that the error is `null`, or
   - the value being assigned to `_` (discard).
 - Skips deconstructions where the value identifier is never read.
+- For the **assignment-form** deconstruction `(success, value, error) = result;` (which writes into existing locals rather than declaring fresh ones), only structural guards and early-returns whose **condition is authored after** the deconstruction assignment are accepted as proof of safety. A pre-existing `if (!success) return;` authored before the assignment is rejected because the locals' pre-assignment values may be stale and unrelated to the freshly produced result triple.
 - No code fix.
 
 #### `DefaultResultOrMaybeAnalyzer` — `TRLS019`

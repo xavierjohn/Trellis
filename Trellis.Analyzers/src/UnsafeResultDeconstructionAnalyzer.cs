@@ -63,9 +63,15 @@ public sealed class UnsafeResultDeconstructionAnalyzer : DiagnosticAnalyzer
         if (valueReads.Count == 0)
             return;
 
+        // Only accept early-return / if-success guards that occur *after* the deconstruction
+        // assignment. A guard authored before the assignment cannot have inspected the freshly
+        // produced success/error pair (especially in assignment-form deconstructions that write
+        // into existing locals; the pre-assignment values may be stale).
+        var assignmentEnd = assignment.Span.End;
+
         foreach (var read in valueReads)
         {
-            if (!IsGuardedRead(read, successSlot.Local, errorSlot.Local, context.SemanticModel))
+            if (!IsGuardedRead(read, successSlot.Local, errorSlot.Local, context.SemanticModel, assignmentEnd))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.UnsafeResultDeconstruction,
@@ -173,23 +179,30 @@ public sealed class UnsafeResultDeconstructionAnalyzer : DiagnosticAnalyzer
         IdentifierNameSyntax read,
         ILocalSymbol? successLocal,
         ILocalSymbol? errorLocal,
-        SemanticModel model)
+        SemanticModel model,
+        int assignmentEnd)
     {
         SyntaxNode? current = read;
         while (current is not null)
         {
+            // Only accept structural guards whose *condition* is authored after the deconstruction
+            // assignment. A guard whose condition position predates the assignment is mechanically
+            // unable to reason about the freshly assigned success/error/value triple.
             switch (current)
             {
                 case IfStatementSyntax ifStmt
-                    when IsConditionGuaranteesSuccess(ifStmt.Condition, successLocal, errorLocal, model)
+                    when ifStmt.Condition.SpanStart >= assignmentEnd
+                      && IsConditionGuaranteesSuccess(ifStmt.Condition, successLocal, errorLocal, model)
                       && SpanContains(ifStmt.Statement, read):
                     return true;
                 case WhileStatementSyntax whileStmt
-                    when IsConditionGuaranteesSuccess(whileStmt.Condition, successLocal, errorLocal, model)
+                    when whileStmt.Condition.SpanStart >= assignmentEnd
+                      && IsConditionGuaranteesSuccess(whileStmt.Condition, successLocal, errorLocal, model)
                       && SpanContains(whileStmt.Statement, read):
                     return true;
                 case ConditionalExpressionSyntax cond
-                    when IsConditionGuaranteesSuccess(cond.Condition, successLocal, errorLocal, model)
+                    when cond.Condition.SpanStart >= assignmentEnd
+                      && IsConditionGuaranteesSuccess(cond.Condition, successLocal, errorLocal, model)
                       && SpanContains(cond.WhenTrue, read):
                     return true;
             }
@@ -197,7 +210,7 @@ public sealed class UnsafeResultDeconstructionAnalyzer : DiagnosticAnalyzer
             current = current.Parent;
         }
 
-        return HasEarlyReturnGuard(read, successLocal, errorLocal, model);
+        return HasEarlyReturnGuard(read, successLocal, errorLocal, model, assignmentEnd);
     }
 
     private static bool SpanContains(SyntaxNode container, SyntaxNode inner)
@@ -251,7 +264,8 @@ public sealed class UnsafeResultDeconstructionAnalyzer : DiagnosticAnalyzer
         IdentifierNameSyntax read,
         ILocalSymbol? successLocal,
         ILocalSymbol? errorLocal,
-        SemanticModel model)
+        SemanticModel model,
+        int assignmentEnd)
     {
         var enclosingBlock = read.FirstAncestorOrSelf<BlockSyntax>();
         if (enclosingBlock is null)
@@ -261,6 +275,13 @@ public sealed class UnsafeResultDeconstructionAnalyzer : DiagnosticAnalyzer
         {
             if (stmt.SpanStart >= read.SpanStart)
                 break;
+
+            // Reject early-return guards authored before the deconstruction assignment — they
+            // cannot have inspected the freshly produced success/error pair (especially in the
+            // assignment-form `(success, value, error) = result;` where the locals already hold
+            // potentially stale values from earlier in the method).
+            if (stmt.SpanStart < assignmentEnd)
+                continue;
 
             if (stmt is IfStatementSyntax ifStmt &&
                 IsExitingStatement(ifStmt.Statement) &&

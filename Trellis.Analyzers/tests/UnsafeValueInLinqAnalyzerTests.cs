@@ -26,7 +26,7 @@ public class UnsafeValueInLinqAnalyzerTests
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
-            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeValueInLinq)
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueInLinq)
                 .WithArguments("Maybe.Value", "HasValue")
                 .WithLocation(14, 43));
 
@@ -101,7 +101,7 @@ public class UnsafeValueInLinqAnalyzerTests
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
-            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeValueInLinq)
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueInLinq)
                 .WithArguments("Maybe.Value", "HasValue")
                 .WithLocation(14, 57));
 
@@ -128,10 +128,23 @@ public class UnsafeValueInLinqAnalyzerTests
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
-            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeValueInLinq)
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueInLinq)
                 .WithArguments("Maybe.Value", "HasValue")
                 .WithLocation(14, 54));
 
         await test.RunAsync();
+    }
+
+    [Fact]
+    public void UnsafeValueInLinq_DescriptorAlias_PointsToSameInstance()
+    {
+        // N-A-1 (GPT-5.5 meta-review): older versions of Trellis.Analyzers exposed the TRLS013
+        // descriptor as `UnsafeValueInLinq`, drifting from the matching `TrellisDiagnosticIds`
+        // constant `UnsafeMaybeValueInLinq`. The alias keeps existing custom analyzers and rule-set
+        // tooling compiling. This test pins the alias still resolves to the same descriptor.
+#pragma warning disable CS0618 // intentionally referencing the obsolete alias
+        Assert.Same(DiagnosticDescriptors.UnsafeMaybeValueInLinq, DiagnosticDescriptors.UnsafeValueInLinq);
+        Assert.Equal(TrellisDiagnosticIds.UnsafeMaybeValueInLinq, DiagnosticDescriptors.UnsafeValueInLinq.Id);
+#pragma warning restore CS0618
     }
 }
