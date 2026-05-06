@@ -20,6 +20,7 @@ public static class ResultAssertionsAsyncExtensions
         string because = "",
         params object[] becauseArgs)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return new ResultAssertions<TValue>(result).BeSuccess(because, becauseArgs);
     }
@@ -37,6 +38,7 @@ public static class ResultAssertionsAsyncExtensions
         string because = "",
         params object[] becauseArgs)
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return new ResultAssertions<TValue>(result).BeFailure(because, becauseArgs);
     }
@@ -56,6 +58,7 @@ public static class ResultAssertionsAsyncExtensions
         params object[] becauseArgs)
         where TError : Error
     {
+        ArgumentNullException.ThrowIfNull(resultTask);
         var result = await resultTask.ConfigureAwait(false);
         return new ResultAssertions<TValue>(result).BeFailureOfType<TError>(because, becauseArgs);
     }

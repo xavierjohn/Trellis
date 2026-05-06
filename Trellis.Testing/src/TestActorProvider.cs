@@ -27,8 +27,12 @@ public sealed class TestActorProvider : IActorProvider
     /// Initializes a new <see cref="TestActorProvider"/> with the specified <see cref="Actor"/>.
     /// </summary>
     /// <param name="actor">The initial (default) actor returned when no scope is active.</param>
-    public TestActorProvider(Actor actor) =>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="actor"/> is <see langword="null"/>.</exception>
+    public TestActorProvider(Actor actor)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
         _defaultActor = actor;
+    }
 
     /// <summary>
     /// Initializes a new <see cref="TestActorProvider"/> with an actor created from the specified user ID and permissions.
@@ -50,8 +54,10 @@ public sealed class TestActorProvider : IActorProvider
     /// </summary>
     /// <param name="actor">The actor to use for the duration of the scope.</param>
     /// <returns>A disposable scope that restores the previous actor.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="actor"/> is <see langword="null"/>.</exception>
     public TestActorScope WithActor(Actor actor)
     {
+        ArgumentNullException.ThrowIfNull(actor);
         var previous = _asyncLocalActor.Value;
         _asyncLocalActor.Value = actor;
         return new TestActorScope(_asyncLocalActor, previous);

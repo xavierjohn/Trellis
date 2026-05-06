@@ -262,4 +262,37 @@ public class TestActorProviderTests
     }
 
     #endregion
+
+    #region Round-N inspection finding (N-T-2) — null Actor guards
+
+    [Fact]
+    public void Constructor_WithNullActor_Throws_ArgumentNullException()
+    {
+        // Inspection finding N-T-2: previously TestActorProvider((Actor)null!) silently
+        // stored null as the default actor. GetCurrentActorAsync(...) would surface a
+        // null Actor through the Task<Actor> result, masking the misconfiguration.
+        // Now fails fast at the call site.
+        var act = () => new TestActorProvider((Actor)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("actor");
+    }
+
+    [Fact]
+    public void WithActor_NullActor_Throws_ArgumentNullException()
+    {
+        // Inspection finding N-T-2: same issue as the constructor — previously
+        // WithActor((Actor)null!) silently set the AsyncLocal slot to null, which
+        // GetCurrentActorAsync then coalesced to the default actor. The "swap to a
+        // restricted actor" intent of the call was silently turned into "swap to the
+        // default actor". Now fails fast.
+        var provider = new TestActorProvider("admin", "Read");
+
+        var act = () => provider.WithActor((Actor)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("actor");
+    }
+
+    #endregion
 }

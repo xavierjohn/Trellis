@@ -291,4 +291,28 @@ public class ErrorAssertionsTests
     }
 
     #endregion
+
+    #region Round-N inspection finding (N-T-3) — BeOfType under AssertionScope
+
+    [Fact]
+    public void BeOfType_Wrong_Type_Inside_AssertionScope_Reports_Assertion_Failure_Without_InvalidCastException()
+    {
+        // Inspection finding N-T-3: same shape as ResultAssertions.BeFailureOfType<TError> —
+        // ErrorAssertions.BeOfType<TError> previously did `(TError)Subject!` after the
+        // type-check, which under an active FluentAssertions AssertionScope throws
+        // InvalidCastException instead of producing a clean assertion-failure message.
+        Error error = new Error.NotFound(ResourceRef.For("Order", "1"));
+
+        var act = () =>
+        {
+            using var scope = new FluentAssertions.Execution.AssertionScope();
+            error.Should().BeOfType<Error.Conflict>();
+        };
+
+        var ex = act.Should().Throw<Exception>().Which;
+        ex.Should().NotBeOfType<InvalidCastException>(
+            "the assertion should produce a clean assertion-failure message, not an InvalidCastException that masks it");
+    }
+
+    #endregion
 }

@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Testing
 namespaces: [Trellis.Testing]
-types: ["FakeRepository<,>", InMemoryUnitOfWork, ResultAssertions]
+types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", TestActorProvider, TestActorScope, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-06
 audience: [llm]
 ---
 # Trellis.Testing — API Reference
@@ -305,6 +305,7 @@ public sealed class UnwrapFailedException : Exception
 ```csharp
 public static class AggregateTestMutator
 {
+    [RequiresUnreferencedCode("Uses reflection to set source-generated backing fields. Not AOT-compatible — test-only.")]
     public static TEntity SetMaybeField<TEntity, TValue>(
         this TEntity entity,
         Expression<Func<TEntity, Maybe<TValue>>> propertySelector,
@@ -312,6 +313,7 @@ public static class AggregateTestMutator
         where TEntity : class
         where TValue : notnull;
 
+    [RequiresUnreferencedCode("Uses reflection to set source-generated backing fields. Not AOT-compatible — test-only.")]
     public static TEntity ClearMaybeField<TEntity, TValue>(
         this TEntity entity,
         Expression<Func<TEntity, Maybe<TValue>>> propertySelector)
@@ -319,6 +321,8 @@ public static class AggregateTestMutator
         where TValue : notnull;
 }
 ```
+
+> **AOT/trim incompatibility.** `AggregateTestMutator` uses reflection to set source-generated `Maybe<T>` backing fields. Both methods carry `[RequiresUnreferencedCode]`; AOT-published consumers will receive IL2026 / IL3050 warnings at the call site. The helpers are intentionally test-only — do not call them from production code.
 
 #### `FakeRepository<TAggregate, TId>`
 ```csharp
@@ -334,8 +338,24 @@ public class FakeRepository<TAggregate, TId>
     public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default);
     public Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default);
 
+    // Read surface mirroring RepositoryBase<TAggregate, TId>. Use these from test
+    // repository adapters that expose specification-based queries.
+    public Task<IReadOnlyList<TAggregate>> QueryAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default);
+    public Task<bool> ExistsAsync(TId id, CancellationToken cancellationToken = default);
+    public Task<bool> ExistsAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default);
+    public Task<int> CountAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default);
+
     // Setup surface — mirrors RepositoryBase<TAggregate, TId>. Use these in handlers and
     // in test setup so the same IRepository contract works in both the EF and fake paths.
+    // Both Add and Remove (and DeleteAsync below) capture aggregate.UncommittedEvents()
+    // into PublishedEvents and call AcceptChanges, so deletion-related domain events
+    // are observable through PublishedEvents.
     public void Add(TAggregate aggregate);
     public void Remove(TAggregate aggregate);
     public Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default);
@@ -350,11 +370,18 @@ public class FakeRepository<TAggregate, TId>
     public TAggregate? Get(TId id);
     public IEnumerable<TAggregate> GetAll();
 
+    // Predicate/specification-based local helpers. Prefer the RepositoryBase-shaped
+    // QueryAsync/ExistsAsync/CountAsync above when building same-contract test adapters;
+    // these remain available for legacy test code and ad-hoc Func-based filtering.
     public Task<Maybe<TAggregate>> FindAsync(Func<TAggregate, bool> predicate);
     public Task<IReadOnlyList<TAggregate>> WhereAsync(Func<TAggregate, bool> predicate);
     public Task<IReadOnlyList<TAggregate>> WhereAsync(Specification<TAggregate> specification);
 }
 ```
+
+> **Cancellation token observability.** All `*Async` methods on `FakeRepository<TAggregate, TId>` accept a `CancellationToken` parameter for source-compat with `RepositoryBase<TAggregate, TId>` but **do not observe it** — the fake completes synchronously. Tests that rely on cancellation behavior need a different test double; this fake intentionally trades cancellation-observability for the simpler synchronous semantics that DDD aggregate tests typically need.
+
+> **Null guards.** `Add`, `Remove`, `SaveAsync`, `WithUniqueConstraint`, `QueryAsync`, `ExistsAsync(Specification<TAggregate>)`, `CountAsync`, `FindAsync`, and `WhereAsync` all `ArgumentNullException.ThrowIfNull(...)` their reference-type parameters. `GetByIdAsync`, `FindByIdAsync`, `RemoveByIdAsync`, `DeleteAsync`, and `ExistsAsync(TId)` rely on the `TId : notnull` constraint at compile time.
 
 #### `FakeSharedResourceLoader<TResource, TId>`
 ```csharp
