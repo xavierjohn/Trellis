@@ -142,5 +142,45 @@ public class MaybeLinqTests
 
     #endregion
 
+    #region m-C-2 entry-point null-guards
+
+    [Fact]
+    public void Select_NullSelector_ThrowsArgumentNullException_WithSelectorParamName()
+    {
+        var maybe = Maybe.From("hello");
+        Func<string, int> selector = null!;
+
+        var act = () => maybe.Select(selector);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("selector");
+    }
+
+    [Fact]
+    public void SelectMany_NullCollectionSelector_ThrowsArgumentNullException_WithCollectionSelectorParamName()
+    {
+        var maybe = Maybe.From("hello");
+        Func<string, Maybe<int>> collectionSelector = null!;
+
+        var act = () => maybe.SelectMany(collectionSelector, (a, b) => $"{a}{b}");
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("collectionSelector");
+    }
+
+    [Fact]
+    public void SelectMany_NullResultSelector_ThrowsArgumentNullException_WithResultSelectorParamName()
+    {
+        var maybe = Maybe.From("hello");
+        Func<string, int, string> resultSelector = null!;
+
+        var act = () => maybe.SelectMany(_ => Maybe.From(7), resultSelector);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("resultSelector");
+    }
+
+    #endregion
+
     private sealed record PersonRecord(string Name, int Age);
 }

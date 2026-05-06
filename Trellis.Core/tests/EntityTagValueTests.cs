@@ -351,4 +351,36 @@ public class EntityTagValueTests
     }
 
     #endregion
+
+    #region N-C-7 entry-point null-guards
+
+    [Fact]
+    public void StrongEquals_NullOther_ThrowsArgumentNullException_WithOtherParamName()
+    {
+        // N-C-7 (GPT-5.5 meta-review): public comparison APIs should throw
+        // ArgumentNullException with the user's paramName rather than a NullReferenceException
+        // from dereferencing the parameter inside the comparison.
+        var tag = EntityTagValue.Strong("abc123");
+        EntityTagValue other = null!;
+
+        var act = () => tag.StrongEquals(other);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("other");
+    }
+
+    [Fact]
+    public void WeakEquals_NullOther_ThrowsArgumentNullException_WithOtherParamName()
+    {
+        // N-C-7 follow-up: same shape for WeakEquals.
+        var tag = EntityTagValue.Strong("abc123");
+        EntityTagValue other = null!;
+
+        var act = () => tag.WeakEquals(other);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("other");
+    }
+
+    #endregion
 }

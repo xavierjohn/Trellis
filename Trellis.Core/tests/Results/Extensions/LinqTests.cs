@@ -89,4 +89,46 @@ public class LinqTests : TestBase
 
         combined.Should().BeSuccess().Which.Should().Be(1 + 2 + 3 + 4);
     }
+
+    // ---------- m-C-2 entry-point null-guards ----------
+    // These tests pin that the LINQ extensions throw ArgumentNullException with the user's
+    // declared paramName ("selector"/"collectionSelector"/"resultSelector") at the public-API
+    // entry point — NOT the underlying Map/Bind paramName ("func") nor a NullReferenceException
+    // from inside a compiler-generated lambda.
+
+    [Fact]
+    public void Select_NullSelector_ThrowsArgumentNullException_WithSelectorParamName()
+    {
+        var r = Result.Ok(5);
+        Func<int, int> selector = null!;
+
+        var act = () => r.Select(selector);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("selector");
+    }
+
+    [Fact]
+    public void SelectMany_NullCollectionSelector_ThrowsArgumentNullException_WithCollectionSelectorParamName()
+    {
+        var r = Result.Ok(5);
+        Func<int, Result<int>> collectionSelector = null!;
+
+        var act = () => r.SelectMany(collectionSelector, (a, b) => a + b);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("collectionSelector");
+    }
+
+    [Fact]
+    public void SelectMany_NullResultSelector_ThrowsArgumentNullException_WithResultSelectorParamName()
+    {
+        var r = Result.Ok(5);
+        Func<int, int, int> resultSelector = null!;
+
+        var act = () => r.SelectMany(_ => Result.Ok(7), resultSelector);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("resultSelector");
+    }
 }
