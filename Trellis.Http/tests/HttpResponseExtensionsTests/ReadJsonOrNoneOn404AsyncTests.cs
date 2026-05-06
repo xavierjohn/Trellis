@@ -121,4 +121,23 @@ public class ReadJsonOrNoneOn404AsyncTests
         await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("jsonTypeInfo");
     }
+
+    [Fact]
+    public async Task Null_jsonTypeInfo_disposes_response_before_throwing()
+    {
+        // Round-6 PR finding: round-1 fixed ReadJsonAsync and ReadJsonMaybeAsync to put
+        // their jsonTypeInfo null-check inside the try/finally so the awaited
+        // HttpResponseMessage gets disposed even on the null-arg path. The same shape
+        // existed in ReadJsonOrNoneOn404Async (null-check ran BEFORE await response) and
+        // was missed. This test pins the corrected ordering: await first, then null-check
+        // + dispose + throw.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.ReadJsonOrNoneOn404Async<camelcasePerson>(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("jsonTypeInfo");
+        tracker.Disposed.Should().BeTrue("ReadJsonOrNoneOn404Async's disposal contract must hold even on the null-jsonTypeInfo path");
+    }
 }

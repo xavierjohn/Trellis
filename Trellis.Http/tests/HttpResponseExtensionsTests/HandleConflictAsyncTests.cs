@@ -59,4 +59,29 @@ public class HandleConflictAsyncTests
         await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("response");
     }
+
+    [Fact]
+    public async Task Throws_ArgumentNullException_when_error_is_null()
+    {
+        // Inspection finding M-H1.
+        var task = Task.FromResult<HttpResponseMessage>(new HttpResponseMessage(HttpStatusCode.OK));
+
+        var act = async () => await task.HandleConflictAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("error");
+    }
+
+    [Fact]
+    public async Task Null_error_disposes_response_before_throwing()
+    {
+        // Inspection finding (PR #462 round 4): null-error guard must run after await + dispose.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.HandleConflictAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        tracker.Disposed.Should().BeTrue("HandleConflictAsync's disposal contract must hold even on the null-error throw path");
+    }
 }
