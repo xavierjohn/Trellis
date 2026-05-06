@@ -26,7 +26,7 @@ builder.Services.AddTrellis(options => options
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString));
 ```
 
-`AddTrellis` does NOT register your `DbContext`, your mediator handlers, your route constraints, or your application-specific validators. Those remain explicit registrations.
+`AddTrellis` does NOT register your `DbContext`, your mediator handlers, or your route constraints — those are always application-owned. Validators, resource loaders, and domain event handlers are registered only when you opt into assembly scanning via the params-`Assembly[]` overloads (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`); the parameterless overloads register only the adapter / pipeline behavior and leave per-type registrations to you.
 
 ## Canonical order
 

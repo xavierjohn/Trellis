@@ -34,7 +34,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 
 ## Common traps
 
-- `AddTrellis(...)` does not register `DbContext`, Mediator handlers, route constraints, or app-specific validators.
+- `AddTrellis(...)` does not register `DbContext`, Mediator handlers, or route constraints — those are always application-owned. Validators (`IValidator<T>`), resource loaders (`IResourceLoader<TMessage, TResource>`), and domain event handlers (`IDomainEventHandler<TEvent>`) are registered ONLY when you opt into assembly scanning via the params-`Assembly[]` overloads (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`); the parameterless overloads register only the adapter / pipeline behavior and leave per-type registrations to you.
 - `UseEntityFrameworkUnitOfWork<TContext>()` is applied last so transaction commit remains innermost in the mediator pipeline.
 - Calling `UseEntityFrameworkUnitOfWork<TContext>()` more than once (with the same or a different `TContext`) throws `InvalidOperationException`. The Trellis pipeline supports exactly one transactional `IUnitOfWork` per composition; chaining two calls (e.g. for a read/write context split) is always misconfiguration. Use a separate composition root or a single multi-tenant `DbContext` instead.
 - If you only need one module, direct package-specific registration remains valid; the builder is for composition-root clarity.
