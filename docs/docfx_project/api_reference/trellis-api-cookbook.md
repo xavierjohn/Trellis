@@ -1241,12 +1241,13 @@ public override Expression<Func<Order, bool>> ToExpression() =>
 
 1. **`AddTrellisInterceptors()` is wired in `AddDbContext`.** Without it, the interceptor isn't registered and EF Core can't translate the `Maybe<T>` access — you'll see either a `NotSupportedException` at query time or, worse, a silently dropped predicate.
 2. **`MaybeConvention` is applied via `ApplyTrellisConventions`** (see Recipe 8). Without it, no storage member exists for the interceptor to target.
-3. **The fake uses the *same* `spec.ToExpression()`** — never duplicate the predicate by hand in `FakeRepository.WhereAsync`. The whole point of `Specification<T>` is single-sourcing.
+3. **The fake uses the *same* `Specification<T>`** — never duplicate the predicate by hand in a fake repository adapter. The whole point of `Specification<T>` is single-sourcing.
 
 ```csharp
-// FakeRepository wiring — pass the spec expression through, do NOT rewrite it.
+// FakeRepository wiring — pass the same Specification<T> through QueryAsync, which
+// mirrors RepositoryBase<TAggregate, TId>.QueryAsync. Do NOT rewrite the predicate.
 public Task<IReadOnlyList<Order>> FindOverdueAsync(DateTime asOf, CancellationToken ct) =>
-    fake.WhereAsync(new OverdueOrderSpecification(asOf).ToExpression(), ct);
+    fake.QueryAsync(new OverdueOrderSpecification(asOf), ct);
 ```
 
 **For ad-hoc queries** (no `Specification`), `MaybeQueryableExtensions` gives strongly-typed `IQueryable<T>` operators that don't depend on the interceptor:

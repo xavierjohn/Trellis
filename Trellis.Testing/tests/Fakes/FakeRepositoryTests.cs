@@ -657,4 +657,202 @@ public class FakeRepositoryTests
     }
 
     #endregion
+
+    #region Round-N inspection findings (m-T-2, m-T-3, N-T-1)
+
+    [Fact]
+    public async Task SaveAsync_Should_Throw_ArgumentNullException_For_Null()
+    {
+        // Inspection finding m-T-2: Add and Remove already null-guard the aggregate
+        // parameter; SaveAsync was missing the same guard. A null caller previously
+        // got an opaque NullReferenceException at `aggregate.Id` instead of fail-fast
+        // ArgumentNullException with the parameter name.
+        var repository = new FakeRepository<TestAggregate, string>();
+
+        var act = async () => await repository.SaveAsync(null!, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("aggregate");
+    }
+
+    [Fact]
+    public void Remove_Should_Capture_Domain_Events_Before_Removing()
+    {
+        // Inspection finding m-T-3: Remove() previously dropped the aggregate's
+        // UncommittedEvents() — domain events raised on an aggregate before deletion
+        // (e.g. OrderCancelled, CustomerArchived) were silently lost. EF's
+        // RepositoryBase/SaveChanges flow captures these events at commit time;
+        // the fake should mirror that. Add already captures + AcceptChanges; Remove
+        // and DeleteAsync now do the same.
+        var repository = new FakeRepository<TestAggregate, string>();
+        var aggregate = TestAggregate.Create("1", "Doomed");
+        repository.Add(aggregate);
+        // Arrange: Add already published the creation event. Now raise an explicit
+        // pre-deletion event by calling a domain method.
+        aggregate.UpdateName("Final");
+        var preRemovalEventCount = repository.PublishedEvents.Count;
+        aggregate.UncommittedEvents().Should().NotBeEmpty(
+            "the test arranges UpdateName to raise an event so Remove has something to capture");
+
+        repository.Remove(aggregate);
+
+        repository.PublishedEvents.Count.Should().BeGreaterThan(preRemovalEventCount,
+            "Remove must capture the aggregate's UncommittedEvents before removing it from the store");
+        aggregate.UncommittedEvents().Should().BeEmpty("Remove must AcceptChanges on the aggregate");
+    }
+
+    [Fact]
+    public void Remove_Untracked_Aggregate_Is_NoOp_Does_Not_Publish_Events()
+    {
+        // Inspection finding (pre-commit GPT-5.5): when m-T-3 added event capture to
+        // Remove, the unconditional `_publishedEvents.AddRange + AcceptChanges`
+        // accidentally broke the documented "Remove of an untracked aggregate is a
+        // no-op" contract — events of an untracked aggregate would be published and
+        // its UncommittedEvents() cleared. The guard `if (_store.ContainsKey(id))`
+        // restores the no-op semantics for the untracked path.
+        var repository = new FakeRepository<TestAggregate, string>();
+        var untrackedAggregate = TestAggregate.Create("never-added", "Detached");
+        var preRemovalEventCount = repository.PublishedEvents.Count;
+        var preRemovalUncommitted = untrackedAggregate.UncommittedEvents().ToList();
+        preRemovalUncommitted.Should().NotBeEmpty(
+            "the test arranges TestAggregate.Create to raise a TestEvent so we can verify it is NOT published");
+
+        repository.Remove(untrackedAggregate);
+
+        repository.PublishedEvents.Count.Should().Be(preRemovalEventCount,
+            "Remove must NOT publish events for an aggregate that is not tracked by the fake");
+        untrackedAggregate.UncommittedEvents().Should().BeEquivalentTo(preRemovalUncommitted,
+            "Remove must NOT call AcceptChanges on an untracked aggregate");
+        repository.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void Remove_With_Different_Instance_Same_Id_Operates_On_Tracked_Instance_Not_Passed_In()
+    {
+        // PR-466 round 1 review finding: previously Remove(aggregate) called
+        // aggregate.UncommittedEvents() and aggregate.AcceptChanges() on the
+        // PASSED-IN instance even when a different instance was tracked under the
+        // same ID. That contradicted EF's SaveChanges semantics, where the change
+        // tracker captures events from the TRACKED entity, not from a detached
+        // instance the caller might pass in. The fix uses
+        // Dictionary.Remove(key, out value) to retrieve the tracked instance and
+        // operate on it instead.
+        var repository = new FakeRepository<TestAggregate, string>();
+        var trackedAggregate = TestAggregate.Create("1", "Tracked");
+        repository.Add(trackedAggregate);
+        // Raise an event ON THE TRACKED INSTANCE that we expect to be published.
+        trackedAggregate.UpdateName("Tracked-modified");
+        var preRemovalEventCount = repository.PublishedEvents.Count;
+        trackedAggregate.UncommittedEvents().Should().NotBeEmpty(
+            "the test arranges UpdateName to raise an event on the tracked instance");
+
+        // Caller passes a DIFFERENT instance with the same ID — common when the
+        // caller has re-loaded the aggregate from a query or built a stub.
+        var detachedAggregate = TestAggregate.Create("1", "Detached");
+        var detachedPreRemovalUncommitted = detachedAggregate.UncommittedEvents().ToList();
+        detachedPreRemovalUncommitted.Should().NotBeEmpty(
+            "the test arranges TestAggregate.Create to raise an event on the detached instance");
+
+        repository.Remove(detachedAggregate);
+
+        repository.PublishedEvents.Count.Should().BeGreaterThan(preRemovalEventCount,
+            "Remove must capture events from the TRACKED instance (its UpdateName event)");
+        trackedAggregate.UncommittedEvents().Should().BeEmpty(
+            "Remove must call AcceptChanges on the TRACKED instance");
+        detachedAggregate.UncommittedEvents().Should().BeEquivalentTo(detachedPreRemovalUncommitted,
+            "Remove must NOT touch the passed-in detached instance when a different tracked instance shares the ID");
+        repository.Count.Should().Be(0, "the tracked aggregate must be removed");
+    }
+
+    [Fact]
+    public async Task DeleteAsync_Should_Capture_Domain_Events_Before_Removing()
+    {
+        // Inspection finding m-T-3: same issue as Remove — DeleteAsync(id) used
+        // _store.Remove(id) without ever accessing the aggregate, so pre-deletion
+        // domain events were lost. Now looks up the aggregate first, captures
+        // events + AcceptChanges, then removes.
+        var repository = new FakeRepository<TestAggregate, string>();
+        var aggregate = TestAggregate.Create("1", "Doomed");
+        repository.Add(aggregate);
+        aggregate.UpdateName("Final");
+        var preRemovalEventCount = repository.PublishedEvents.Count;
+
+        var result = await repository.DeleteAsync(aggregate.Id, TestContext.Current.CancellationToken);
+
+        result.Should().BeSuccess();
+        repository.PublishedEvents.Count.Should().BeGreaterThan(preRemovalEventCount,
+            "DeleteAsync must capture the aggregate's UncommittedEvents before removing it");
+        aggregate.UncommittedEvents().Should().BeEmpty("DeleteAsync must AcceptChanges on the aggregate");
+    }
+
+    [Fact]
+    public async Task QueryAsync_With_Specification_Returns_Matching_Aggregates()
+    {
+        // Inspection finding N-T-1: FakeRepository now mirrors RepositoryBase's read
+        // surface (QueryAsync, ExistsAsync, CountAsync) so test repository adapters
+        // built from the RepositoryBase contract work directly against the fake.
+        var repository = new FakeRepository<TestAggregate, string>();
+        repository.Add(TestAggregate.Create("1", "Apple"));
+        repository.Add(TestAggregate.Create("2", "Avocado"));
+        repository.Add(TestAggregate.Create("3", "Banana"));
+
+        var results = await repository.QueryAsync(
+            new NameStartsWithSpecification("A"),
+            TestContext.Current.CancellationToken);
+
+        results.Should().HaveCount(2);
+        results.Select(a => a.Name).Should().BeEquivalentTo(["Apple", "Avocado"]);
+    }
+
+    [Fact]
+    public async Task ExistsAsync_With_Id_Returns_True_When_Aggregate_Exists()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        repository.Add(TestAggregate.Create("1", "Apple"));
+
+        var exists = await repository.ExistsAsync("1", TestContext.Current.CancellationToken);
+        var missing = await repository.ExistsAsync("99", TestContext.Current.CancellationToken);
+
+        exists.Should().BeTrue();
+        missing.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExistsAsync_With_Specification_Returns_True_When_Any_Match()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        repository.Add(TestAggregate.Create("1", "Apple"));
+        repository.Add(TestAggregate.Create("2", "Banana"));
+
+        var anyA = await repository.ExistsAsync(
+            new NameStartsWithSpecification("A"),
+            TestContext.Current.CancellationToken);
+        var anyZ = await repository.ExistsAsync(
+            new NameStartsWithSpecification("Z"),
+            TestContext.Current.CancellationToken);
+
+        anyA.Should().BeTrue();
+        anyZ.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CountAsync_With_Specification_Returns_Match_Count()
+    {
+        var repository = new FakeRepository<TestAggregate, string>();
+        repository.Add(TestAggregate.Create("1", "Apple"));
+        repository.Add(TestAggregate.Create("2", "Avocado"));
+        repository.Add(TestAggregate.Create("3", "Banana"));
+
+        var countA = await repository.CountAsync(
+            new NameStartsWithSpecification("A"),
+            TestContext.Current.CancellationToken);
+        var countZ = await repository.CountAsync(
+            new NameStartsWithSpecification("Z"),
+            TestContext.Current.CancellationToken);
+
+        countA.Should().Be(2);
+        countZ.Should().Be(0);
+    }
+
+    #endregion
 }

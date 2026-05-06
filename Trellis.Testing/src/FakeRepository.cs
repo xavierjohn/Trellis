@@ -71,7 +71,7 @@ public class FakeRepository<TAggregate, TId>
     /// Gets an aggregate by its ID.
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
     /// <returns>A Result containing the aggregate or an <see cref="Error.NotFound"/>.</returns>
     public Task<Result<TAggregate>> GetByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
@@ -86,7 +86,7 @@ public class FakeRepository<TAggregate, TId>
     /// Finds an aggregate by its ID, returning Maybe if not found.
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
     /// <returns>Maybe with the aggregate or None.</returns>
     public Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
@@ -145,15 +145,30 @@ public class FakeRepository<TAggregate, TId>
 
     /// <summary>
     /// Stages an aggregate for deletion from the in-memory store, mirroring
-    /// <c>RepositoryBase&lt;TAggregate, TId&gt;.Remove</c>. No-op if the aggregate is not
-    /// in the store (matching the EF semantics where the change tracker accepts
-    /// the call without verifying database existence).
+    /// <c>RepositoryBase&lt;TAggregate, TId&gt;.Remove</c>. Captures the aggregate's
+    /// uncommitted domain events into <see cref="PublishedEvents"/> before removing
+    /// it from the store and calling <see cref="Aggregate{TId}.AcceptChanges"/>, so
+    /// deletion-related events (e.g., <c>OrderCancelled</c>) are observable through
+    /// <see cref="PublishedEvents"/>. No-op if the aggregate is not in the store
+    /// (matching the EF semantics where the change tracker accepts the call without
+    /// verifying database existence).
     /// </summary>
     /// <param name="aggregate">The aggregate to remove.</param>
     public void Remove(TAggregate aggregate)
     {
         ArgumentNullException.ThrowIfNull(aggregate);
-        _store.Remove(aggregate.Id);
+        // Use Dictionary.Remove(key, out value) — a single dictionary operation that
+        // returns the TRACKED instance (which may differ from `aggregate` if the caller
+        // passed a re-loaded copy with the same ID). EF's SaveChanges captures events
+        // from the change tracker's tracked entity, not from a detached instance the
+        // caller might pass to Remove; the fake mirrors that. No-op when the aggregate
+        // isn't in the store (matches EF semantics — change tracker accepts the call
+        // without verifying database existence).
+        if (_store.Remove(aggregate.Id, out var tracked))
+        {
+            _publishedEvents.AddRange(tracked.UncommittedEvents());
+            tracked.AcceptChanges();
+        }
     }
 
     /// <summary>
@@ -171,10 +186,11 @@ public class FakeRepository<TAggregate, TId>
     /// Saves an aggregate and captures its domain events.
     /// </summary>
     /// <param name="aggregate">The aggregate to save.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
     /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> indicating success or failure.</returns>
     public Task<Result<Unit>> SaveAsync(TAggregate aggregate, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(aggregate);
         var id = aggregate.Id;
 
         // Check unique constraints against other aggregates (not self)
@@ -196,15 +212,26 @@ public class FakeRepository<TAggregate, TId>
     }
 
     /// <summary>
-    /// Deletes an aggregate by its ID.
+    /// Deletes an aggregate by its ID. Captures the aggregate's uncommitted domain events
+    /// into <see cref="PublishedEvents"/> before removing it from the store, mirroring
+    /// the behavior of <see cref="Remove(TAggregate)"/> so deletion-related events
+    /// (e.g., <c>OrderCancelled</c>) are observable through <see cref="PublishedEvents"/>.
     /// </summary>
     /// <param name="id">The aggregate ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
     /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> indicating success or <see cref="Error.NotFound"/>.</returns>
     public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default)
     {
-        if (_store.Remove(id))
+        // Use Dictionary.Remove(key, out value) — a single dictionary operation rather
+        // than TryGetValue + Remove (two ops). Captures the removed aggregate's events
+        // and calls AcceptChanges so deletion-related domain events are observable
+        // through PublishedEvents.
+        if (_store.Remove(id, out var aggregate))
+        {
+            _publishedEvents.AddRange(aggregate.UncommittedEvents());
+            aggregate.AcceptChanges();
             return Task.FromResult(Result.Ok());
+        }
 
         return Task.FromResult(Result.Fail(
             new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID {id} not found" }));
@@ -274,6 +301,64 @@ public class FakeRepository<TAggregate, TId>
     {
         ArgumentNullException.ThrowIfNull(specification);
         return Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(specification.IsSatisfiedBy).ToList());
+    }
+
+    /// <summary>
+    /// Queries aggregates matching the given specification, mirroring
+    /// <c>RepositoryBase&lt;TAggregate, TId&gt;.QueryAsync</c>. Use this from test
+    /// repository adapters that expose a specification-based query method
+    /// (e.g., <c>GetOverdueOrdersAsync</c>) so the same <c>IRepository</c> contract
+    /// works in both the EF and fake implementations.
+    /// </summary>
+    /// <param name="specification">The specification to filter by.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
+    /// <returns>A read-only list of matching aggregates.</returns>
+    public Task<IReadOnlyList<TAggregate>> QueryAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+        return Task.FromResult<IReadOnlyList<TAggregate>>(_store.Values.Where(specification.IsSatisfiedBy).ToList());
+    }
+
+    /// <summary>
+    /// Checks whether an aggregate with the given identifier exists, mirroring
+    /// <c>RepositoryBase&lt;TAggregate, TId&gt;.ExistsAsync(TId)</c>.
+    /// </summary>
+    /// <param name="id">The aggregate identifier to check.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
+    /// <returns><see langword="true"/> if an aggregate with the given ID exists; otherwise <see langword="false"/>.</returns>
+    public Task<bool> ExistsAsync(TId id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.ContainsKey(id));
+
+    /// <summary>
+    /// Checks whether any aggregate matches the given specification, mirroring
+    /// <c>RepositoryBase&lt;TAggregate, TId&gt;.ExistsAsync(Specification&lt;TAggregate&gt;)</c>.
+    /// </summary>
+    /// <param name="specification">The specification to test.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
+    /// <returns><see langword="true"/> if at least one aggregate matches; otherwise <see langword="false"/>.</returns>
+    public Task<bool> ExistsAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+        return Task.FromResult(_store.Values.Any(specification.IsSatisfiedBy));
+    }
+
+    /// <summary>
+    /// Counts aggregates matching the given specification, mirroring
+    /// <c>RepositoryBase&lt;TAggregate, TId&gt;.CountAsync</c>.
+    /// </summary>
+    /// <param name="specification">The specification to filter by.</param>
+    /// <param name="cancellationToken">Cancellation token (accepted for source-compat with <c>RepositoryBase</c>; not observed — the fake completes synchronously).</param>
+    /// <returns>The number of matching aggregates.</returns>
+    public Task<int> CountAsync(
+        Specification<TAggregate> specification,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(specification);
+        return Task.FromResult(_store.Values.Count(specification.IsSatisfiedBy));
     }
 
     /// <summary>

@@ -134,6 +134,20 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
     /// <param name="becauseArgs">
     /// Zero or more objects to format using the placeholders in <paramref name="because" />.
     /// </param>
+    /// <remarks>
+    /// <b>Behavior under <see cref="FluentAssertions.Execution.AssertionScope"/>.</b> Without
+    /// an active scope, a wrong-type assertion throws via <c>FailWith</c> and execution stops
+    /// immediately. With an active scope, the failure is recorded and execution continues —
+    /// the returned <c>AndWhichConstraint.Which</c> is <see langword="default"/> (null for
+    /// reference types). Chaining <c>.Which.Foo.Should()...</c> after a wrong-type
+    /// <c>BeOfType&lt;TError&gt;()</c> would normally throw <see cref="NullReferenceException"/>
+    /// on the null typed error; in practice the surrounding <c>using var scope</c> disposes via
+    /// the language finally block and raises the recorded assertion failure, which masks the
+    /// chained NRE. Net effect: the test still sees the "expected <typeparamref name="TError"/>,
+    /// found ..." assertion message. (The chained-<c>.Which</c> pattern is still considered an
+    /// anti-pattern inside scopes — assert the type in its own statement and access <c>.Which</c>
+    /// only after you know the type matches.)
+    /// </remarks>
     public new AndWhichConstraint<ErrorAssertions, TError> BeOfType<TError>(
         string because = "",
         params object[] becauseArgs)
@@ -142,13 +156,19 @@ public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
         if (!RequireNonNullSubject(because, becauseArgs))
             return new AndWhichConstraint<ErrorAssertions, TError>(this, default(TError)!);
 
+        var matches = Subject is TError;
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(Subject is TError)
+            .ForCondition(matches)
             .FailWith("Expected {context:error} to be of type {0}{reason}, but found {1}",
                 typeof(TError).Name,
                 Subject!.GetType().Name);
 
-        return new AndWhichConstraint<ErrorAssertions, TError>(this, (TError)Subject!);
+        // Return default(TError)! on wrong-type so an active FluentAssertions
+        // AssertionScope (which records FailWith and continues execution) doesn't
+        // surface an InvalidCastException that masks the recorded assertion failure.
+        return new AndWhichConstraint<ErrorAssertions, TError>(
+            this,
+            matches ? (TError)Subject! : default!);
     }
 }

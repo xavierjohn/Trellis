@@ -260,4 +260,73 @@ public class ResultAssertionsTests
     }
 
     #endregion
+
+    #region Round-N inspection finding (N-T-3) — BeFailureOfType under AssertionScope
+
+    [Fact]
+    public void BeFailureOfType_Wrong_Type_Inside_AssertionScope_Reports_Assertion_Failure_Without_InvalidCastException()
+    {
+        // Inspection finding N-T-3: previously BeFailureOfType<TError> recorded the
+        // type mismatch via Execute.Assertion.ForCondition(...).FailWith(...) but then
+        // unconditionally cast `(TError)error!`. Without an active AssertionScope,
+        // FailWith aborts before the cast — so the bug never fires. WITH an active
+        // FluentAssertions.Execution.AssertionScope, FailWith only RECORDS the failure
+        // and execution continues, so the wrong-type cast throws InvalidCastException
+        // and masks the intended assertion error.
+        //
+        // The fix: when the type-check fails, return default(TError)! instead of
+        // performing the wrong-type cast — matching the guarded pattern already used
+        // in ErrorAssertions.BeOfType<TError>.
+        var result = Result.Fail<int>(new Error.NotFound(ResourceRef.For("Order", "1")));
+
+        var act = () =>
+        {
+            using var scope = new FluentAssertions.Execution.AssertionScope();
+            result.Should().BeFailureOfType<Error.Conflict>();
+        };
+
+        // Pre-fix: act throws InvalidCastException (Error.NotFound -> Error.Conflict).
+        // Post-fix: act throws Xunit.Sdk.XunitException with the assertion message
+        // (the AssertionScope flushes the recorded "expected Error.Conflict, but found
+        // Error.NotFound" failure when it's disposed).
+        var ex = act.Should().Throw<Exception>().Which;
+        ex.Should().NotBeOfType<InvalidCastException>(
+            "the assertion should produce a clean assertion-failure message, not an InvalidCastException that masks it");
+    }
+
+    [Fact]
+    public void BeFailureOfType_Wrong_Type_With_Which_Chain_Inside_AssertionScope_Still_Surfaces_Recorded_Assertion_Failure()
+    {
+        // Pre-commit GPT-5.5 review raised a concern: returning default(TError)! on
+        // wrong-type avoids the immediate InvalidCastException, but chaining
+        // `.Which.Foo` (or any member access) on the null typed error could throw
+        // NullReferenceException inside the using block. NRE WOULD mask the recorded
+        // failure if it escaped the scope before scope.Dispose() ran.
+        //
+        // In practice it doesn't: when the NRE is thrown inside the `using var scope`
+        // block, scope.Dispose() runs in its finally and raises an XunitException
+        // carrying the AccumulatedFailures collected during the scope. .NET's
+        // exception model says when Dispose throws while an exception is in flight,
+        // the new exception MASKS the original — so the test sees the XunitException
+        // with the recorded "expected Conflict, found NotFound" message, and the NRE
+        // is suppressed. Net effect: the assertion failure is surfaced cleanly.
+        //
+        // This test pins that observed behavior. If a future FluentAssertions or
+        // AssertionScope change inverts the masking order, this test will catch it.
+        var result = Result.Fail<int>(new Error.NotFound(ResourceRef.For("Order", "1")));
+
+        var act = () =>
+        {
+            using var scope = new FluentAssertions.Execution.AssertionScope();
+            _ = result.Should().BeFailureOfType<Error.Conflict>().Which.Resource;
+        };
+
+        var ex = act.Should().Throw<Exception>().Which;
+        ex.Should().NotBeOfType<NullReferenceException>(
+            "the AssertionScope.Dispose() flush masks the chained-.Which NRE with the recorded assertion failure");
+        ex.Message.Should().Contain("Conflict",
+            "the recorded \"expected Error.Conflict\" assertion failure must be surfaced");
+    }
+
+    #endregion
 }
