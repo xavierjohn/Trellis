@@ -7,12 +7,8 @@ using CookbookSnippets.Recipe07;
 using CookbookSnippets.Stubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Trellis;
-using Trellis.Asp;
 using Trellis.Asp.Routing;
 using Trellis.EntityFrameworkCore;
-using Trellis.FluentValidation;
-using Trellis.Mediator;
 using Trellis.ServiceDefaults;
 
 public static class CompositionRoot

@@ -124,9 +124,12 @@ public static class ServiceCollectionExtensions
         if (validationIndex < 0)
             return;
 
-        // Collect (descriptor, originalIndex) pairs for closed-generic resource-auth behaviors
-        // that are NOT already in the slot directly preceding ValidationBehavior. Walk in
-        // descriptor order so relative ordering is preserved when we re-insert.
+        // Collect every closed-generic resource-auth descriptor in source-order so relative
+        // ordering among them is preserved when we re-insert. We don't filter out descriptors
+        // that already happen to sit directly before ValidationBehavior — moving such a
+        // descriptor from position N to position N is a no-op effectively (the same instance
+        // is removed and re-inserted at the same slot), and skipping the optimization keeps
+        // the relocation logic uniform.
         var relocations = new List<ServiceDescriptor>();
         for (int i = 0; i < services.Count; i++)
         {
