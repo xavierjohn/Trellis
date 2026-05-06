@@ -157,16 +157,17 @@ public class FakeRepository<TAggregate, TId>
     public void Remove(TAggregate aggregate)
     {
         ArgumentNullException.ThrowIfNull(aggregate);
-        // No-op when the aggregate isn't in the store (matches EF semantics — change tracker
-        // accepts the call without verifying database existence). Only capture events for
-        // aggregates we actually own; otherwise we'd publish the events of an untracked
-        // aggregate that happens to be passed in by a test, which contradicts the
-        // "Remove of unknown aggregate is a no-op" contract.
-        if (_store.ContainsKey(aggregate.Id))
+        // Use Dictionary.Remove(key, out value) — a single dictionary operation that
+        // returns the TRACKED instance (which may differ from `aggregate` if the caller
+        // passed a re-loaded copy with the same ID). EF's SaveChanges captures events
+        // from the change tracker's tracked entity, not from a detached instance the
+        // caller might pass to Remove; the fake mirrors that. No-op when the aggregate
+        // isn't in the store (matches EF semantics — change tracker accepts the call
+        // without verifying database existence).
+        if (_store.Remove(aggregate.Id, out var tracked))
         {
-            _publishedEvents.AddRange(aggregate.UncommittedEvents());
-            aggregate.AcceptChanges();
-            _store.Remove(aggregate.Id);
+            _publishedEvents.AddRange(tracked.UncommittedEvents());
+            tracked.AcceptChanges();
         }
     }
 
@@ -221,11 +222,14 @@ public class FakeRepository<TAggregate, TId>
     /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> indicating success or <see cref="Error.NotFound"/>.</returns>
     public Task<Result<Unit>> DeleteAsync(TId id, CancellationToken cancellationToken = default)
     {
-        if (_store.TryGetValue(id, out var aggregate))
+        // Use Dictionary.Remove(key, out value) — a single dictionary operation rather
+        // than TryGetValue + Remove (two ops). Captures the removed aggregate's events
+        // and calls AcceptChanges so deletion-related domain events are observable
+        // through PublishedEvents.
+        if (_store.Remove(id, out var aggregate))
         {
             _publishedEvents.AddRange(aggregate.UncommittedEvents());
             aggregate.AcceptChanges();
-            _store.Remove(id);
             return Task.FromResult(Result.Ok());
         }
 

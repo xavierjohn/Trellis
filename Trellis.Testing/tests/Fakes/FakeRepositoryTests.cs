@@ -727,6 +727,44 @@ public class FakeRepositoryTests
     }
 
     [Fact]
+    public void Remove_With_Different_Instance_Same_Id_Operates_On_Tracked_Instance_Not_Passed_In()
+    {
+        // PR-466 round 1 review finding: previously Remove(aggregate) called
+        // aggregate.UncommittedEvents() and aggregate.AcceptChanges() on the
+        // PASSED-IN instance even when a different instance was tracked under the
+        // same ID. That contradicted EF's SaveChanges semantics, where the change
+        // tracker captures events from the TRACKED entity, not from a detached
+        // instance the caller might pass in. The fix uses
+        // Dictionary.Remove(key, out value) to retrieve the tracked instance and
+        // operate on it instead.
+        var repository = new FakeRepository<TestAggregate, string>();
+        var trackedAggregate = TestAggregate.Create("1", "Tracked");
+        repository.Add(trackedAggregate);
+        // Raise an event ON THE TRACKED INSTANCE that we expect to be published.
+        trackedAggregate.UpdateName("Tracked-modified");
+        var preRemovalEventCount = repository.PublishedEvents.Count;
+        trackedAggregate.UncommittedEvents().Should().NotBeEmpty(
+            "the test arranges UpdateName to raise an event on the tracked instance");
+
+        // Caller passes a DIFFERENT instance with the same ID — common when the
+        // caller has re-loaded the aggregate from a query or built a stub.
+        var detachedAggregate = TestAggregate.Create("1", "Detached");
+        var detachedPreRemovalUncommitted = detachedAggregate.UncommittedEvents().ToList();
+        detachedPreRemovalUncommitted.Should().NotBeEmpty(
+            "the test arranges TestAggregate.Create to raise an event on the detached instance");
+
+        repository.Remove(detachedAggregate);
+
+        repository.PublishedEvents.Count.Should().BeGreaterThan(preRemovalEventCount,
+            "Remove must capture events from the TRACKED instance (its UpdateName event)");
+        trackedAggregate.UncommittedEvents().Should().BeEmpty(
+            "Remove must call AcceptChanges on the TRACKED instance");
+        detachedAggregate.UncommittedEvents().Should().BeEquivalentTo(detachedPreRemovalUncommitted,
+            "Remove must NOT touch the passed-in detached instance when a different tracked instance shares the ID");
+        repository.Count.Should().Be(0, "the tracked aggregate must be removed");
+    }
+
+    [Fact]
     public async Task DeleteAsync_Should_Capture_Domain_Events_Before_Removing()
     {
         // Inspection finding m-T-3: same issue as Remove — DeleteAsync(id) used
