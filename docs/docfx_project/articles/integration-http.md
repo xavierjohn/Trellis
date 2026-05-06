@@ -87,13 +87,13 @@ Bare `ToResultAsync()` (no `statusMap`) maps non-success status codes to typed T
 
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
-| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only — `AuthChallenge` has no slot for the bare token; use `ToResultAsync(statusMap)` if token68 round-trip matters. | `Error.Unauthorized.Challenges` |
+| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only — `AuthChallenge` has no slot for the bare token; use the body-aware `ToResultAsync(mapper, ct)` overload (the only public API that exposes `HttpResponseMessage.Headers`) if token68 round-trip matters. | `Error.Unauthorized.Challenges` |
 | `405 Method Not Allowed` | `Allow` (response content header). When upstream omits it, falls through to `Error.InternalServerError`. | `Error.MethodNotAllowed.Allow` |
-| `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved). When upstream omits it, falls through to `Error.InternalServerError`. | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
+| `416 Range Not Satisfiable` | `Content-Range` header presence with a known length (preserves unit and length, including the legitimate `bytes */0` empty-resource case). When upstream omits the header entirely or sends a Length-unspecified form like `bytes 0-99/*`, falls through to `Error.InternalServerError`. | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
 | `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
 | `503 Service Unavailable` | `Retry-After` | `Error.ServiceUnavailable.RetryAfter` |
 
-Headers that aren't present produce empty arrays / null `RetryAfter` / zero `CompleteLength` — the mapper never invents values. `406 Not Acceptable`, `415 Unsupported Media Type`, and other statuses without a single canonical response header still produce typed errors with default empty/zero context.
+Headers that aren't present produce empty arrays / null `RetryAfter` / empty `Challenges` — the mapper never invents values. **Two exceptions:** `405` without `Allow` and `416` without `Content-Range` fall through to `Error.InternalServerError` (per the rows above) rather than producing typed errors with default empty/zero values; rendering those defaults through ASP would fabricate misleading wire headers. `406 Not Acceptable`, `415 Unsupported Media Type`, and other statuses without a single canonical response header still produce typed errors with default empty/zero context.
 
 > [!IMPORTANT]
 > **3xx redirects under the strict default fold into `Error.InternalServerError`.** `HttpClient` follows redirects automatically by default, so this is rarely seen — but callers who set `HttpClientHandler.AllowAutoRedirect = false` (e.g. SSO landing-page detection) must use `ToResultAsync(statusMap)` or the body-aware overload to handle 3xx explicitly.

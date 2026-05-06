@@ -67,13 +67,13 @@ When `statusMap` is omitted, the default mapper inspects the `HttpResponseMessag
 
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
-| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort `realm` / `error` / etc. parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only because `AuthChallenge` has no slot for the bare token; use `ToResultAsync(statusMap)` or the body-aware overload when token68 round-trip fidelity matters. | `Error.Unauthorized.Challenges` |
+| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort `realm` / `error` / etc. parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only because `AuthChallenge` has no slot for the bare token; use the body-aware `ToResultAsync(mapper, ct)` overload (the only public API that exposes `HttpResponseMessage.Headers`) when token68 round-trip fidelity matters. | `Error.Unauthorized.Challenges` |
 | `405 Method Not Allowed` | `Allow` (response content header). When the upstream omits `Allow`, falls through to `Error.InternalServerError` per RFC 9110 §15.5.6 (which requires the header on 405 responses). | `Error.MethodNotAllowed.Allow` |
-| `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved). When the upstream omits `Content-Range`, falls through to `Error.InternalServerError` per RFC 9110 §15.5.17. | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
+| `416 Range Not Satisfiable` | `Content-Range` header presence with a known length (RFC 9110 §15.5.17). The typed error preserves both unit and length, including the legitimate `bytes */0` case for an empty resource. When the upstream omits `Content-Range` entirely **or** sends a Length-unspecified form like `bytes 0-99/*`, falls through to `Error.InternalServerError` rather than synthesizing a typed error from incomplete information. | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
 | `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
 | `503 Service Unavailable` | `Retry-After` | `Error.ServiceUnavailable.RetryAfter` |
 
-Headers that aren't present produce empty arrays / null `RetryAfter` / zero `CompleteLength` / default `bytes` unit / empty `Challenges` — the mapper never invents values. Status codes not listed above produce typed errors with their default empty/zero context (e.g. `406 Not Acceptable` and `415 Unsupported Media Type` don't have a single canonical response header to extract).
+Headers that aren't present produce empty arrays / null `RetryAfter` / empty `Challenges` — the mapper never invents values. **Exceptions:** `405` without `Allow` and `416` without `Content-Range` fall through to `Error.InternalServerError` (per the rows above) rather than producing typed errors with default empty/zero context, because rendering those defaults back through ASP would fabricate misleading wire headers. Status codes not listed in the table produce typed errors with their default empty/zero context (e.g. `406 Not Acceptable` and `415 Unsupported Media Type` don't have a single canonical response header to extract).
 
 ## Exception propagation
 

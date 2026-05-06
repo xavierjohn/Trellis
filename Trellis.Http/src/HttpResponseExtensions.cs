@@ -174,13 +174,17 @@ public static class HttpResponseExtensions
             HttpStatusCode.PreconditionFailed => new Error.PreconditionFailed(resource, PreconditionKind.IfMatch),
             HttpStatusCode.RequestEntityTooLarge => new Error.ContentTooLarge(),
             HttpStatusCode.UnsupportedMediaType => new Error.UnsupportedMediaType(EquatableArray<string>.Empty),
-            // RFC 9110 §15.5.17 says a 416 response SHOULD include Content-Range. When the
-            // upstream omits it (length is 0), fall through to InternalServerError rather than
-            // synthesizing `new Error.RangeNotSatisfiable(0)` — that zero-length shape would
-            // produce a misleading `Content-Range: bytes */0` wire header on round-trip
-            // through ASP.
-            HttpStatusCode.RequestedRangeNotSatisfiable when ExtractCompleteLength(response) is var length and > 0
-                => new Error.RangeNotSatisfiable(length, response.Content?.Headers.ContentRange?.Unit ?? "bytes"),
+            // RFC 9110 §15.5.17 says a 416 response SHOULD include Content-Range. Key the
+            // typed-error mapping on header *presence* with a known length, not on
+            // Length > 0: `bytes */0` is a legitimate response for an empty resource and
+            // must round-trip as a typed `new Error.RangeNotSatisfiable(0, "bytes")`. Also
+            // require Length non-null: `bytes 0-99/*` (Length unspecified) is itself an
+            // unusual 416 form and we can't honestly synthesize a typed error from it.
+            // Falls through to InternalServerError when Content-Range is absent or has no
+            // Length component.
+            HttpStatusCode.RequestedRangeNotSatisfiable
+                when response.Content?.Headers.ContentRange is { Length: { } length } cr
+                => new Error.RangeNotSatisfiable(length, cr.Unit ?? "bytes"),
             HttpStatusCode.UnprocessableEntity => Error.UnprocessableContent.ForRule("http.unprocessable_content"),
             (HttpStatusCode)428 => new Error.PreconditionRequired(PreconditionKind.IfMatch),
             (HttpStatusCode)429 => new Error.TooManyRequests(ExtractRetryAfter(response)),
@@ -202,17 +206,6 @@ public static class HttpResponseExtensions
         if (allow is null || allow.Count == 0)
             return EquatableArray<string>.Empty;
         return new EquatableArray<string>([.. allow]);
-    }
-
-    /// <summary>
-    /// Extracts the <c>Content-Range</c> header's complete length (the value after the slash in
-    /// <c>bytes &lt;range&gt;/&lt;total&gt;</c>). Returns <c>0</c> when the header is absent or
-    /// has no length component.
-    /// </summary>
-    private static long ExtractCompleteLength(HttpResponseMessage response)
-    {
-        var contentRange = response.Content?.Headers.ContentRange;
-        return contentRange?.Length ?? 0L;
     }
 
     /// <summary>
@@ -277,8 +270,11 @@ public static class HttpResponseExtensions
     /// for multi-step authentication. <see cref="AuthChallenge"/> has no slot for the bare
     /// token, so when an upstream sends a token68-form challenge this method captures only the
     /// scheme and the token is dropped on round-trip. Callers needing token68 support must
-    /// use <c>ToResultAsync(statusMap)</c> or the body-aware overload to inspect
-    /// <see cref="HttpResponseMessage.Headers"/> directly.
+    /// use the body-aware <c>ToResultAsync(mapper, ct)</c> overload — the only public API in
+    /// this package that exposes <see cref="HttpResponseMessage"/> (and thus
+    /// <see cref="HttpResponseMessage.Headers"/>) for direct inspection. The
+    /// <c>ToResultAsync(statusMap)</c> overload only receives <see cref="HttpStatusCode"/> and
+    /// cannot help here.
     /// </remarks>
     private static AuthChallenge BuildChallenge(System.Net.Http.Headers.AuthenticationHeaderValue header)
     {

@@ -543,5 +543,96 @@ public class ToResultAsyncTests
         err.Challenges.IsEmpty.Should().BeTrue();
     }
 
+    // -------- RFC-strict defensive cases (gaps in initial i-H2 coverage) --------
+    //
+    // The following tests pin behavior that the original i-H2 implementation either
+    // didn't address explicitly or got wrong (and was fixed in a later round). Each test
+    // cites the RFC clause it locks in. They live here rather than in a parallel "Rfc_*"
+    // region because they're behaviorally peers of the i-H2 tests above; the difference
+    // is purely citation-style.
+
+    [Fact]
+    public async Task Default_416_with_Content_Range_zero_length_produces_typed_error_for_empty_resource()
+    {
+        // RFC 9110 §15.5.17: a 416 response SHOULD include Content-Range. `bytes */0` is the
+        // legitimate form for an empty resource. Mapping must produce a typed
+        // RangeNotSatisfiable(0) so it round-trips (mapper → typed error → ASP renderer →
+        // wire) without losing the zero-length signal.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
+        {
+            Content = new ByteArrayContent(Array.Empty<byte>()),
+        };
+        tracker.Content!.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(0L);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.RangeNotSatisfiable>().Subject;
+        err.CompleteLength.Should().Be(0);
+        err.Unit.Should().Be("bytes");
+    }
+
+    [Fact]
+    public async Task Default_416_with_range_form_but_no_length_falls_through_to_InternalServerError()
+    {
+        // RFC 9110 §14.4: the unsatisfied-range form `bytes 0-99/*` (no complete length)
+        // is permitted by the grammar but conveys no length we can attach to a typed
+        // RangeNotSatisfiable. The mapper falls through to InternalServerError rather
+        // than synthesizing a (long, string) Error.RangeNotSatisfiable from incomplete
+        // information.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable)
+        {
+            Content = new ByteArrayContent(Array.Empty<byte>()),
+        };
+        tracker.Content!.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(0L, 99L);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        result.Should().BeFailureOfType<Error.InternalServerError>();
+    }
+
+    [Fact]
+    public async Task Default_405_Allow_header_present_but_empty_value_falls_through()
+    {
+        // RFC 9110 §15.5.6: a 405 response MUST generate an Allow header. An empty list
+        // (literal `Allow:` on the wire) is non-conformant. The mapper still falls through
+        // to InternalServerError rather than synthesizing MethodNotAllowed(empty) — which
+        // would round-trip as a malformed empty Allow on the wire.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.MethodNotAllowed)
+        {
+            Content = new StringContent(string.Empty),
+        };
+        // Add a literal empty Allow header (Contains("Allow") == true, Allow.Count == 0)
+        // to faithfully represent the wire shape "Allow:" — distinct from "header was
+        // never sent". The mapper treats both the same, but the test name is about the
+        // empty-value case so we pin the wire shape explicitly.
+        tracker.Content!.Headers.TryAddWithoutValidation("Allow", string.Empty);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        result.Should().BeFailureOfType<Error.InternalServerError>();
+    }
+
+    [Fact]
+    public async Task Default_429_zero_Retry_After_delta_means_retry_now()
+    {
+        // RFC 9110 §10.2.3: Retry-After: 0 is well-formed and conveys "retry immediately".
+        // The mapper preserves zero (distinct from a missing header) so consumers can
+        // distinguish "server explicitly said retry now" from "server didn't say
+        // anything".
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.TooManyRequests);
+        tracker.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.Zero);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.TooManyRequests>().Subject;
+        err.RetryAfter.Should().NotBeNull();
+        err.RetryAfter!.IsDelaySeconds.Should().BeTrue();
+        err.RetryAfter.DelaySeconds.Should().Be(0);
+    }
+
     #endregion
 }
