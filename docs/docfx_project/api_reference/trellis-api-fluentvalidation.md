@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.FluentValidation
 namespaces: [Trellis.FluentValidation]
-types: [TrellisValidator<T>, ValidationResultExtensions]
+types: [FluentValidationServiceCollectionExtensions, FluentValidationMessageValidatorAdapter<TMessage>, FluentValidationResultExtensions]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-05
 audience: [llm]
 ---
 # Trellis.FluentValidation — API Reference
@@ -107,9 +107,9 @@ public static class FluentValidationResultExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<T> ToResult<T>(this ValidationResult validationResult, T value, [CallerArgumentExpression(nameof(value))] string paramName = "value")` | `Result<T>` | Returns `Result.Ok(value)` when `validationResult.IsValid` is `true`; otherwise groups `validationResult.Errors` by property name, substitutes `paramName` for root-level failures, and returns `Result.Fail<T>(new Error.UnprocessableContent(fieldViolations))` where each FluentValidation failure becomes a `FieldViolation(InputPointer.ForProperty(propName), reasonCode) { Detail = fvMessage }`. Throws `ArgumentNullException` when `validationResult` is `null`. |
+| `public static Result<T> ToResult<T>(this ValidationResult validationResult, T value, [CallerArgumentExpression(nameof(value))] string paramName = "value")` | `Result<T>` | Returns `Result.Ok(value)` when `validationResult.IsValid` is `true` (does **not** independently reject `null` values). Otherwise emits one `FieldViolation` per `validationResult.Errors` entry and returns `Result.Fail<T>(new Error.UnprocessableContent(fieldViolations))`. Each FluentValidation failure becomes a `FieldViolation(new InputPointer(JsonPointerNormalizer.ToJsonPointer(rawName)), reasonCode) { Detail = fvMessage }`, where `rawName = string.IsNullOrWhiteSpace(failure.PropertyName) ? paramName : failure.PropertyName` and `reasonCode = string.IsNullOrWhiteSpace(failure.ErrorCode) ? "validation.error" : failure.ErrorCode`. Multiple failures on the same property produce multiple `FieldViolation` entries (no grouping). Throws `ArgumentNullException` when `validationResult` is `null`. |
 | `public static Result<T> ValidateToResult<T>(this IValidator<T> validator, T value, [CallerArgumentExpression(nameof(value))] string paramName = "value", string? message = null)` | `Result<T>` | Throws `ArgumentNullException` when `validator` is `null`. If `value is null`, does **not** call `validator.Validate`; instead returns a validation failure for `paramName` using `message ?? $"'{paramName}' must not be empty."`. Otherwise calls `validator.Validate(value)` and forwards to `ToResult(value, paramName)`. |
-| `public static async Task<Result<T>> ValidateToResultAsync<T>(this IValidator<T> validator, T value, [CallerArgumentExpression(nameof(value))] string paramName = "value", string? message = null, CancellationToken cancellationToken = default)` | `Task<Result<T>>` | Throws `ArgumentNullException` when `validator` is `null`. If `value is null`, does **not** call `validator.ValidateAsync`; instead returns the same validation failure shape as `ValidateToResult`. Otherwise awaits `validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false)` and forwards to `ToResult(value, paramName)`. |
+| `public static async Task<Result<T>> ValidateToResultAsync<T>(this IValidator<T> validator, T value, [CallerArgumentExpression(nameof(value))] string paramName = "value", string? message = null, CancellationToken cancellationToken = default)` | `Task<Result<T>>` | Throws `ArgumentNullException` when `validator` is `null`. Observes `cancellationToken` BEFORE the null-value short-circuit, so a cancelled token always wins over the synchronous fallback path. If `value is null`, does **not** call `validator.ValidateAsync`; instead returns the same validation failure shape as `ValidateToResult`. Otherwise awaits `validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false)` and forwards to `ToResult(value, paramName)`. |
 
 ## Extension methods
 
@@ -153,10 +153,10 @@ public static async Task<Result<T>> ValidateToResultAsync<T>(
 - Shared validator instances are only as concurrency-safe as the underlying `IValidator<T>` implementation; these helpers do not change that.
 - `ToResult<T>` only null-checks `validationResult`; it does not independently reject a `null` `value`.
 - Validation failures are converted into `Error.UnprocessableContent` whose `Fields` collection is built from one `FieldViolation` per FluentValidation failure (no grouping; multiple failures on the same property emit multiple violations).
-- Grouping rule: `string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName`.
+- Field-name selection rule: `string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName` (FluentValidation root-level failures fall back to the caller-captured `paramName`).
 - `ValidateToResult<T>` and `ValidateToResultAsync<T>` short-circuit `null` input before invoking FluentValidation.
 - Null-input failures are created as `new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")])`.
-- `ValidateToResultAsync<T>` propagates cancellation through `validator.ValidateAsync(value, cancellationToken)`.
+- `ValidateToResultAsync<T>` observes `cancellationToken` BEFORE the null-value short-circuit (so a cancelled token always wins over the synchronous fallback) AND propagates cancellation through `validator.ValidateAsync(value, cancellationToken)`.
 - Exceptions from FluentValidation itself are not caught, except for the explicit `ArgumentNullException.ThrowIfNull(...)` guards on `validationResult` and `validator`.
 
 ## Code examples

@@ -136,8 +136,10 @@ public static class FluentValidationResultExtensions
     /// <param name="value">The value that was validated.</param>
     /// <returns>
     /// <list type="bullet">
-    /// <item>Success containing the value if validation passed</item>
-    /// <item>Failure with validation errors if validation failed or value is null</item>
+    /// <item>Success containing the value if <see cref="ValidationResult.IsValid"/> is <see langword="true"/>
+    /// (does <b>not</b> independently reject <see langword="null"/> values — the caller-side
+    /// <c>ValidateToResult</c> / <c>ValidateToResultAsync</c> helpers handle null short-circuiting)</item>
+    /// <item>Failure with validation errors if <see cref="ValidationResult.IsValid"/> is <see langword="false"/></item>
     /// </list>
     /// </returns>
     /// <remarks>
@@ -430,6 +432,12 @@ public static class FluentValidationResultExtensions
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(validator);
+        // Observe cancellation BEFORE the null-value short-circuit so a cancelled token
+        // always wins over the synchronous fallback path. Without this, callers passing a
+        // cancelled token + null value would receive a Failure result rather than the
+        // OperationCanceledException the documented "Cancellation token to observe"
+        // contract implies. (Inspection finding i-FV-2.)
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (value is null)
         {
