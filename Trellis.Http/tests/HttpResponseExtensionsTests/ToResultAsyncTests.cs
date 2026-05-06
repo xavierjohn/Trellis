@@ -229,6 +229,27 @@ public class ToResultAsyncTests
     }
 
     [Fact]
+    public async Task Body_aware_overload_throws_ArgumentNullException_when_mapper_is_null_and_disposes_response()
+    {
+        // Round-6 PR finding: round-4 fixed Handle*Async to await BEFORE the null-error
+        // guard so the in-flight HttpResponseMessage is owned and disposed even on the
+        // programmer's null-arg path. The body-aware ToResultAsync(mapper, ct) overload
+        // had the same shape — ArgumentNullException.ThrowIfNull(mapper) running BEFORE
+        // the await let the awaited message leak. This test pins the corrected ordering:
+        // await first, then null-check + dispose + throw.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.NotFound);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.ToResultAsync(
+            (Func<HttpResponseMessage, CancellationToken, Task<Error?>>)null!,
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("mapper");
+        tracker.Disposed.Should().BeTrue("body-aware overload's disposal contract must hold even on the null-mapper path");
+    }
+
+    [Fact]
     public async Task Status_map_throwing_disposes_response_before_propagating()
     {
         var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
@@ -403,6 +424,35 @@ public class ToResultAsyncTests
 
         var err = result.Should().BeFailureOfType<Error.TooManyRequests>().Subject;
         err.RetryAfter.Should().BeNull("malformed (negative) Retry-After must not crash the strict-default mapper");
+    }
+
+    [Fact]
+    public async Task Default_429_with_Retry_After_seconds_overflowing_int_treats_header_as_absent()
+    {
+        // Round-6 PR finding: RFC 9110 §10.2.3 permits arbitrary delay-seconds (1*DIGIT,
+        // unsigned, no upper bound), but our typed RetryAfterValue uses int (~68 years).
+        // The original concern was that values > int.MaxValue would be silently clamped to
+        // ~68 years, inventing a wire value the upstream didn't send. End-to-end the
+        // contract is now: an out-of-range delta is treated as absent (RetryAfter is null
+        // on the typed error).
+        //
+        // .NET's HttpResponseHeaders parser actually rejects delta-seconds > int.MaxValue
+        // at the wire-parsing layer (Headers.RetryAfter returns null for such values), so
+        // ExtractRetryAfter never sees them — but the contract holds either way: the
+        // mapper's defensive `seconds is < 0 or > int.MaxValue` guard is belt-and-suspenders
+        // in case a future .NET change starts surfacing larger deltas. This test pins the
+        // public end-to-end contract.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.TooManyRequests);
+        // Set the wire form via TryAddWithoutValidation to bypass the
+        // RetryConditionHeaderValue(TimeSpan) ctor's argument validation, which itself
+        // rejects values > int.MaxValue seconds.
+        tracker.Headers.TryAddWithoutValidation("Retry-After", "9999999999");
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ToResultAsync();
+
+        var err = result.Should().BeFailureOfType<Error.TooManyRequests>().Subject;
+        err.RetryAfter.Should().BeNull("Retry-After delta-seconds out of int range is treated as absent (no misleading clamped value round-trips through ASP)");
     }
 
     [Fact]

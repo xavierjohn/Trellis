@@ -87,7 +87,7 @@ Bare `ToResultAsync()` (no `statusMap`) maps non-success status codes to typed T
 
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
-| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only — `AuthChallenge` has no slot for the bare token; use the body-aware `ToResultAsync(mapper, ct)` overload (the only public API that exposes `HttpResponseMessage.Headers`) if token68 round-trip matters. | `Error.Unauthorized.Challenges` |
+| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only — `AuthChallenge` has no slot for the bare token; if token68 round-trip matters, either pass a `statusMap` that returns `null` for 401 (the raw `HttpResponseMessage` then flows through as `Result.Ok` and you read the headers directly) or use the body-aware `ToResultAsync(mapper, ct)` overload. | `Error.Unauthorized.Challenges` |
 | `405 Method Not Allowed` | `Allow` (response content header). When upstream omits it, falls through to `Error.InternalServerError`. | `Error.MethodNotAllowed.Allow` |
 | `416 Range Not Satisfiable` | `Content-Range` header presence with a known length (preserves unit and length, including the legitimate `bytes */0` empty-resource case). When upstream omits the header entirely or sends a Length-unspecified form like `bytes 0-99/*`, falls through to `Error.InternalServerError`. | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
 | `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |

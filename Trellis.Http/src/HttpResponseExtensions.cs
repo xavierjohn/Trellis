@@ -126,9 +126,20 @@ public static class HttpResponseExtensions
         where T : notnull
     {
         ArgumentNullException.ThrowIfNull(response);
-        ArgumentNullException.ThrowIfNull(jsonTypeInfo);
 
+        // Await BEFORE the null-`jsonTypeInfo` guard so we own the HttpResponseMessage's
+        // disposal regardless of where the throw fires. Throwing before await would let
+        // the in-flight response task complete and leak the message until GC finalization.
+        // Same fix shape as round-1's ReadJsonAsync / ReadJsonMaybeAsync (where the null
+        // check moved inside their try/finally) — but the two-branch flow here makes a
+        // dispose-then-throw simpler than retrofitting a try/finally. (Round-6 PR finding.)
         var message = await response.ConfigureAwait(false);
+
+        if (jsonTypeInfo is null)
+        {
+            message.Dispose();
+            throw new ArgumentNullException(nameof(jsonTypeInfo));
+        }
 
         if (message.StatusCode == HttpStatusCode.NotFound)
         {
@@ -211,9 +222,13 @@ public static class HttpResponseExtensions
     /// <summary>
     /// Maps the response's <c>Retry-After</c> header to a <see cref="RetryAfterValue"/>, preserving
     /// the seconds-vs-date distinction. Returns <see langword="null"/> when the header is absent
-    /// or when the upstream sends a malformed (negative) delta — treating the malformed case as
-    /// absent rather than throwing keeps <see cref="MapStatusToError"/> exception-free even with
-    /// adversarial upstreams.
+    /// or when the upstream sends a malformed (negative) delta — treating malformed input as
+    /// absent rather than throwing keeps <see cref="MapStatusToError"/> exception-free even
+    /// with adversarial upstreams. The <c>seconds &gt; int.MaxValue</c> branch is defensive:
+    /// .NET's <see cref="System.Net.Http.Headers.HttpResponseHeaders"/> parser already rejects
+    /// out-of-range <c>delay-seconds</c> at the wire-parsing layer (<c>Headers.RetryAfter</c>
+    /// returns <see langword="null"/>), so this code path is unreachable today — but the guard
+    /// pins the contract in case a future .NET change starts surfacing larger deltas.
     /// </summary>
     private static RetryAfterValue? ExtractRetryAfter(HttpResponseMessage response)
     {
@@ -224,11 +239,9 @@ public static class HttpResponseExtensions
         if (retryAfter.Delta is { } delta)
         {
             var seconds = (long)delta.TotalSeconds;
-            if (seconds < 0)
+            if (seconds is < 0 or > int.MaxValue)
                 return null;
-            // Clamp huge deltas to int.MaxValue (RFC permits arbitrary large values; our typed
-            // RetryAfterValue takes int seconds, which is ~68 years and more than sufficient).
-            return RetryAfterValue.FromSeconds(seconds > int.MaxValue ? int.MaxValue : (int)seconds);
+            return RetryAfterValue.FromSeconds((int)seconds);
         }
 
         if (retryAfter.Date is { } date)
@@ -268,13 +281,14 @@ public static class HttpResponseExtensions
     /// <b>Token68 limitation.</b> RFC 7235 also defines a <c>token68</c> form
     /// (<c>WWW-Authenticate: Negotiate &lt;base64-token&gt;</c>) used by SPNEGO/Negotiate/NTLM
     /// for multi-step authentication. <see cref="AuthChallenge"/> has no slot for the bare
-    /// token, so when an upstream sends a token68-form challenge this method captures only the
-    /// scheme and the token is dropped on round-trip. Callers needing token68 support must
-    /// use the body-aware <c>ToResultAsync(mapper, ct)</c> overload — the only public API in
-    /// this package that exposes <see cref="HttpResponseMessage"/> (and thus
-    /// <see cref="HttpResponseMessage.Headers"/>) for direct inspection. The
-    /// <c>ToResultAsync(statusMap)</c> overload only receives <see cref="HttpStatusCode"/> and
-    /// cannot help here.
+    /// token, so when an upstream sends a token68-form challenge this method captures only
+    /// the scheme and the token is dropped on round-trip. Callers needing token68 support can
+    /// either (a) use <c>ToResultAsync(statusMap)</c> and have the map return <see langword="null"/>
+    /// for 401 — that yields <see cref="Result.Ok{T}(T)"/> carrying the original
+    /// <see cref="HttpResponseMessage"/> with the raw <see cref="HttpResponseMessage.Headers"/>
+    /// intact for direct inspection — or (b) use the body-aware
+    /// <c>ToResultAsync(mapper, ct)</c> overload, which receives the
+    /// <see cref="HttpResponseMessage"/> directly inside the mapper.
     /// </remarks>
     private static AuthChallenge BuildChallenge(System.Net.Http.Headers.AuthenticationHeaderValue header)
     {
@@ -355,9 +369,19 @@ public static class HttpResponseExtensions
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(response);
-        ArgumentNullException.ThrowIfNull(mapper);
 
+        // Await BEFORE the null-`mapper` guard so we own the HttpResponseMessage's
+        // disposal regardless of where the throw fires. Throwing before await would let
+        // the in-flight response task complete and leak the message until GC finalization.
+        // Same fix shape as round-4's Handle*Async fix; missed this overload in round 4.
+        // (Round-6 PR finding.)
         var message = await response.ConfigureAwait(false);
+
+        if (mapper is null)
+        {
+            message.Dispose();
+            throw new ArgumentNullException(nameof(mapper));
+        }
 
         if (message.IsSuccessStatusCode)
             return Result.Ok(message);
