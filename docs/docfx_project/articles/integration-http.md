@@ -87,7 +87,7 @@ Bare `ToResultAsync()` (no `statusMap`) maps non-success status codes to typed T
 
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
-| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort parameter parse) | `Error.Unauthorized.Challenges` |
+| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only — `AuthChallenge` has no slot for the bare token; use `ToResultAsync(statusMap)` if token68 round-trip matters. | `Error.Unauthorized.Challenges` |
 | `405 Method Not Allowed` | `Allow` (response content header) | `Error.MethodNotAllowed.Allow` |
 | `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved) | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
 | `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
@@ -99,7 +99,7 @@ Headers that aren't present produce empty arrays / null `RetryAfter` / zero `Com
 > **3xx redirects under the strict default fold into `Error.InternalServerError`.** `HttpClient` follows redirects automatically by default, so this is rarely seen — but callers who set `HttpClientHandler.AllowAutoRedirect = false` (e.g. SSO landing-page detection) must use `ToResultAsync(statusMap)` or the body-aware overload to handle 3xx explicitly.
 
 > [!NOTE]
-> **Exception propagation.** `Trellis.Http` does not swallow non-Result-shaped exceptions. `HttpRequestException` (network failure, DNS, TLS), `OperationCanceledException` / `TaskCanceledException` (cancellation, timeout), and — from `ReadJsonMaybeAsync<T>` only — `JsonException` propagate through the chain. `ReadJsonAsync<T>` catches `JsonException` and maps it to `Fail<InternalServerError>` with structured position info (line / byte) only — never `JsonException.Message`, never `JsonException.Path` (which can include user-controlled dictionary keys), never the response body content — so user data the upstream may have echoed cannot leak into the failure detail.
+> **Exception propagation.** `Trellis.Http` does not swallow non-Result-shaped exceptions. `HttpRequestException` (network failure, DNS, TLS), `OperationCanceledException` / `TaskCanceledException` (cancellation, timeout), and `JsonException` from **both** `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` (which delegates to `ReadJsonMaybeAsync<T>` for non-404 statuses) propagate through the chain. Only `ReadJsonAsync<T>` catches `JsonException` and maps it to `Fail<InternalServerError>` with structured position info (line / byte) only — never `JsonException.Message`, never `JsonException.Path` (which can include user-controlled dictionary keys), never the response body content — so user data the upstream may have echoed cannot leak into the failure detail.
 
 ### Single-status handlers
 

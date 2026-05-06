@@ -67,7 +67,7 @@ When `statusMap` is omitted, the default mapper inspects the `HttpResponseMessag
 
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
-| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort `realm` / `error` / etc. parameter parse) | `Error.Unauthorized.Challenges` |
+| `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort `realm` / `error` / etc. parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only because `AuthChallenge` has no slot for the bare token; use `ToResultAsync(statusMap)` or the body-aware overload when token68 round-trip fidelity matters. | `Error.Unauthorized.Challenges` |
 | `405 Method Not Allowed` | `Allow` (response content header) | `Error.MethodNotAllowed.Allow` |
 | `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved) | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
 | `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
@@ -81,7 +81,7 @@ The Trellis.Http extensions deliberately do **not** swallow non-Result-shaped ex
 
 - **`HttpRequestException`** — propagates from any extension when the underlying `Task<HttpResponseMessage>` faults (DNS failure, connection refused, TLS handshake error, etc.).
 - **`OperationCanceledException` / `TaskCanceledException`** — propagates when the `CancellationToken` is signaled or the upstream `HttpClient` times out.
-- **`JsonException`** — caught and mapped to `Fail<InternalServerError>` only by `ReadJsonAsync<T>`. `ReadJsonMaybeAsync<T>` lets it propagate (intentional — see method docs).
+- **`JsonException`** — caught and mapped to `Fail<InternalServerError>` only by `ReadJsonAsync<T>`. Both `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` (which delegates to `ReadJsonMaybeAsync<T>` after the 404 check) let it propagate (intentional — see method docs).
 
 Any of these cases that surface inside a `try` block where a response has already been awaited still trigger the disposal contract described below before the exception escapes.
 
