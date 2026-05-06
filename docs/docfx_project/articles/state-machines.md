@@ -85,7 +85,7 @@ Result<OrderState> invalid = machine.FireResult(OrderTrigger.Submit);  // Fail (
 |---|---|
 | `CanFire(trigger)` is `true` | Calls `Fire(trigger)`, returns `Result.Ok(stateMachine.State)`. |
 | `CanFire(trigger)` is `false`, default unhandled-trigger handler throws | Returns `Error.UnprocessableContent` (HTTP 422) carrying a `RuleViolation` with reason code `state.machine.invalid.transition`. |
-| `CanFire(trigger)` is `false`, custom `OnUnhandledTrigger` swallows the trigger | Returns `Result.Ok(stateMachine.State)` — state unchanged. |
+| `CanFire(trigger)` is `false`, custom `OnUnhandledTrigger` swallows the trigger | Returns `Result.Ok(stateMachine.State)` — state read AFTER the callback runs (normally unchanged unless the callback itself mutates or reroutes state). |
 | User entry/exit/transition/guard/accessor/mutator code throws | Exception propagates untouched. |
 
 Invalid-transition detection uses `CanFire` (which honors `PermitIf` / `IgnoreIf` guards) — there is no Stateless message-string parsing, so the failure shape is independent of Stateless's exception text.
