@@ -199,4 +199,38 @@ public class UnsafeResultDeconstructionAnalyzerTests
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeResultDeconstructionAnalyzer>(source);
         await test.RunAsync();
     }
+
+    [Fact]
+    public async Task ValueReadAfterStaleEarlyReturnGuard_BeforeAssignmentDeconstruction_ReportsDiagnostic()
+    {
+        // N-A-2 (GPT-5.5 meta-review): an early-return guard authored *before* an assignment-form
+        // deconstruction (writing into existing locals) cannot have looked at the freshly produced
+        // success/error pair. The analyzer used to accept any prior `if (!success) return;` in the
+        // enclosing block, even when it gated on a stale value. This test pins that the diagnostic
+        // fires for value reads after the deconstruction when only a pre-deconstruction guard exists.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Result<int> result, bool previousSuccess)
+                {
+                    bool success = previousSuccess;
+                    int value;
+                    Trellis.Error? error;
+
+                    if (!success) return -1; // stale guard for an unrelated boolean
+
+                    (success, value, error) = result;
+                    return value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeResultDeconstructionAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultDeconstruction)
+                .WithLocation(17, 19)
+                .WithArguments("value"));
+
+        await test.RunAsync();
+    }
 }

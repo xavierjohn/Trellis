@@ -19,7 +19,7 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         ["Select", "SelectMany", "ToDictionary", "ToLookup", "GroupBy", "OrderBy", "OrderByDescending", "ThenBy", "ThenByDescending"];
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        [DiagnosticDescriptors.UnsafeValueInLinq];
+        [DiagnosticDescriptors.UnsafeMaybeValueInLinq];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -89,7 +89,7 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
             return;
 
         var diagnostic = Diagnostic.Create(
-            DiagnosticDescriptors.UnsafeValueInLinq,
+            DiagnosticDescriptors.UnsafeMaybeValueInLinq,
             memberAccess.Name.GetLocation(),
             typeName,
             checkProperty);

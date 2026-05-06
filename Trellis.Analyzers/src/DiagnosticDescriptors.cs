@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Analyzers;
 
+using System;
 using Microsoft.CodeAnalysis;
 
 /// <summary>
@@ -140,7 +141,7 @@ public static class DiagnosticDescriptors
     /// <summary>
     /// TRLS013: Using <c>Maybe&lt;T&gt;.Value</c> in LINQ without checking HasValue.
     /// </summary>
-    public static readonly DiagnosticDescriptor UnsafeValueInLinq = new(
+    public static readonly DiagnosticDescriptor UnsafeMaybeValueInLinq = new(
         id: TrellisDiagnosticIds.UnsafeMaybeValueInLinq,
         title: "Unsafe access to Maybe.Value in LINQ projection",
         messageFormat: "Accessing '{0}' in a LINQ projection without filtering by {1} first may throw at runtime. " +
@@ -150,14 +151,27 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Direct .Value access on Maybe<T> inside Select-family LINQ projections " +
                      "(Select/SelectMany/OrderBy/OrderByDescending/ThenBy/ThenByDescending/GroupBy/ToDictionary/ToLookup) " +
-                     "throws InvalidOperationException for None elements unless an earlier .Where(x => x.HasValue) " +
-                     "makes the access safe. For EF Core IQueryable predicates over a Maybe<T> property, either " +
+                     "throws InvalidOperationException for None elements unless an earlier .Where(...) " +
+                     "lambda whose body mentions HasValue suppresses the diagnostic. " +
+                     "Suppression is keyword-presence based; predicate-shape verification (e.g. distinguishing " +
+                     ".Where(x => x.HasValue) from .Where(x => !x.HasValue)) is a known limitation. " +
+                     "For EF Core IQueryable predicates over a Maybe<T> property, either " +
                      "register Trellis.EntityFrameworkCore.DbContextOptionsBuilderExtensions.AddTrellisInterceptors() " +
                      "(which rewrites .HasValue/.Value/GetValueOrDefault into EF.Property/null-checks/COALESCE), " +
                      "or use Trellis.EntityFrameworkCore.MaybeQueryableExtensions " +
                      "(WhereHasValue/WhereNone/WhereEquals/WhereLessThan/WhereLessThanOrEqual/WhereGreaterThan/WhereGreaterThanOrEqual) " +
                      "explicitly.",
         helpLinkUri: HelpLinkBase + "TRLS013");
+
+    /// <summary>
+    /// TRLS013: Backwards-compatible alias for <see cref="UnsafeMaybeValueInLinq"/>.
+    /// Retained because earlier versions of <c>Trellis.Analyzers</c> exposed this descriptor as
+    /// <c>UnsafeValueInLinq</c>, which drifted from the matching <c>TrellisDiagnosticIds</c> constant
+    /// (<see cref="TrellisDiagnosticIds.UnsafeMaybeValueInLinq"/>). Prefer the new field name in
+    /// new code; this alias keeps existing custom analyzers and tests compiling.
+    /// </summary>
+    [Obsolete("Use UnsafeMaybeValueInLinq instead. Both names refer to the same DiagnosticDescriptor.")]
+    public static readonly DiagnosticDescriptor UnsafeValueInLinq = UnsafeMaybeValueInLinq;
 
     /// <summary>
     /// TRLS014: Combine chain exceeds maximum supported tuple size.
