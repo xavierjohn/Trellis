@@ -64,4 +64,32 @@ public class OptionalTests
             return Result.Ok(new ZipCode(zipCode));
         }
     }
+
+    [Fact]
+    public void Reference_overload_NullFunction_ThrowsArgumentNullException_WithFunctionParamName()
+    {
+        // N-C-4 (GPT-5.5 meta-review): Maybe.Optional<TIn, TOut>(TIn? value, Func<...> function)
+        // for reference TIn must throw ArgumentNullException with paramName "function" rather than
+        // a NullReferenceException from inside `function(value)` when the input is non-null.
+        string? zipCode = "92874";
+        Func<string, Result<ZipCode>> function = null!;
+
+        var act = () => Maybe.Optional(zipCode, function);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("function");
+    }
+
+    [Fact]
+    public void Value_overload_NullFunction_ThrowsArgumentNullException_WithFunctionParamName()
+    {
+        // N-C-4 follow-up: same shape for the value-type TIn overload.
+        int? quantity = 5;
+        Func<int, Result<ZipCode>> function = null!;
+
+        var act = () => Maybe.Optional(quantity, function);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("function");
+    }
 }

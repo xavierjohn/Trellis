@@ -47,7 +47,10 @@ public static class MaybeLinqExtensions
     public static Maybe<TOut> Select<TIn, TOut>(this Maybe<TIn> maybe, Func<TIn, TOut> selector)
         where TIn : notnull
         where TOut : notnull
-        => maybe.Map(selector);
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        return maybe.Map(selector);
+    }
 
     /// <summary>
     /// Projects each value of a Maybe to a new Maybe and flattens the result (LINQ SelectMany operation).
@@ -72,6 +75,9 @@ public static class MaybeLinqExtensions
         where TCollection : notnull
         where TResult : notnull
     {
+        ArgumentNullException.ThrowIfNull(collectionSelector);
+        ArgumentNullException.ThrowIfNull(resultSelector);
+
         if (source.HasNoValue)
             return default;
 

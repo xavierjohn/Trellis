@@ -147,16 +147,24 @@ public sealed record EntityTagValue
     /// Both tags must be strong and their opaque tags must match character-by-character.
     /// Wildcards never match in entity tag comparison — they are a precondition token, not a tag.
     /// </summary>
-    public bool StrongEquals(EntityTagValue other) =>
-        !IsWildcard && !other.IsWildcard && !IsWeak && !other.IsWeak && OpaqueTag == other.OpaqueTag;
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is <see langword="null"/>.</exception>
+    public bool StrongEquals(EntityTagValue other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return !IsWildcard && !other.IsWildcard && !IsWeak && !other.IsWeak && OpaqueTag == other.OpaqueTag;
+    }
 
     /// <summary>
     /// Performs a weak comparison per RFC 9110 §8.8.3.2.
     /// Only the opaque tags must match; the weakness indicator is ignored.
     /// Wildcards never match in entity tag comparison — they are a precondition token, not a tag.
     /// </summary>
-    public bool WeakEquals(EntityTagValue other) =>
-        !IsWildcard && !other.IsWildcard && OpaqueTag == other.OpaqueTag;
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is <see langword="null"/>.</exception>
+    public bool WeakEquals(EntityTagValue other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return !IsWildcard && !other.IsWildcard && OpaqueTag == other.OpaqueTag;
+    }
 
     /// <summary>
     /// Formats this entity tag for use in an HTTP header.

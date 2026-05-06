@@ -69,14 +69,24 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>
     /// </summary>
     /// <param name="items">The items.</param>
     /// <returns>A new <see cref="EquatableArray{T}"/>.</returns>
-    public static EquatableArray<T> Create(params T[] items) => new(items.ToImmutableArray());
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="items"/> is <see langword="null"/>.</exception>
+    public static EquatableArray<T> Create(params T[] items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return new(items.ToImmutableArray());
+    }
 
     /// <summary>
     /// Creates an <see cref="EquatableArray{T}"/> from the provided items.
     /// </summary>
     /// <param name="items">The items.</param>
     /// <returns>A new <see cref="EquatableArray{T}"/>.</returns>
-    public static EquatableArray<T> From(IEnumerable<T> items) => new(items.ToImmutableArray());
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="items"/> is <see langword="null"/>.</exception>
+    public static EquatableArray<T> From(IEnumerable<T> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return new(items.ToImmutableArray());
+    }
 #pragma warning restore CA1000
 
     /// <summary>
@@ -129,10 +139,20 @@ public static class EquatableArray
     /// <summary>
     /// Creates an <see cref="EquatableArray{T}"/> from the provided items, inferring <typeparamref name="T"/>.
     /// </summary>
-    public static EquatableArray<T> Create<T>(params T[] items) => new(items.ToImmutableArray());
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="items"/> is <see langword="null"/>.</exception>
+    public static EquatableArray<T> Create<T>(params T[] items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return new(items.ToImmutableArray());
+    }
 
     /// <summary>
     /// Creates an <see cref="EquatableArray{T}"/> from an enumerable of items, inferring <typeparamref name="T"/>.
     /// </summary>
-    public static EquatableArray<T> From<T>(IEnumerable<T> items) => new(items.ToImmutableArray());
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="items"/> is <see langword="null"/>.</exception>
+    public static EquatableArray<T> From<T>(IEnumerable<T> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        return new(items.ToImmutableArray());
+    }
 }

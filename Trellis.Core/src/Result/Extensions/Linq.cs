@@ -47,8 +47,11 @@ public static class ResultLinqExtensions
     /// <param name="result">The result to project.</param>
     /// <param name="selector">The projection function to apply to the value.</param>
     /// <returns>A new Result with the projected value, or the original failure.</returns>
-    public static Result<TOut> Select<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> selector) =>
-        result.Map(selector);
+    public static Result<TOut> Select<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        return result.Map(selector);
+    }
 
     /// <summary>
     /// Projects each value of a Result to a new Result and flattens the result (LINQ SelectMany operation).
@@ -69,7 +72,11 @@ public static class ResultLinqExtensions
         this Result<TSource> source,
         Func<TSource, Result<TCollection>> collectionSelector,
         Func<TSource, TCollection, TResult> resultSelector)
-        => source.Bind(s => collectionSelector(s).Map(c => resultSelector(s, c)));
+    {
+        ArgumentNullException.ThrowIfNull(collectionSelector);
+        ArgumentNullException.ThrowIfNull(resultSelector);
+        return source.Bind(s => collectionSelector(s).Map(c => resultSelector(s, c)));
+    }
 
     /// <summary>
     /// Filters a Result based on a predicate (LINQ Where operation).

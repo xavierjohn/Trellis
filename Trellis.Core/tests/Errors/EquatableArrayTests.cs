@@ -97,4 +97,57 @@ public class EquatableArrayTests
         left.Equals(right).Should().BeTrue();
         left.GetHashCode().Should().Be(right.GetHashCode());
     }
+
+    // ---------- N-C-5 entry-point null-guards ----------
+
+    [Fact]
+    public void GenericCreate_NullItems_ThrowsArgumentNullException_WithItemsParamName()
+    {
+        // N-C-5 (GPT-5.5 meta-review): EquatableArray<T>.Create(params T[] items) is foundational
+        // for immutable error collections; passing a null params array must throw
+        // ArgumentNullException with paramName "items" rather than a framework-level null failure
+        // from inside ToImmutableArray().
+        string[] items = null!;
+
+        var act = () => EquatableArray<string>.Create(items);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("items");
+    }
+
+    [Fact]
+    public void GenericFrom_NullItems_ThrowsArgumentNullException_WithItemsParamName()
+    {
+        // N-C-5 follow-up: EquatableArray<T>.From(IEnumerable<T> items) — same shape.
+        IEnumerable<string> items = null!;
+
+        var act = () => EquatableArray<string>.From(items);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("items");
+    }
+
+    [Fact]
+    public void NonGenericCreate_NullItems_ThrowsArgumentNullException_WithItemsParamName()
+    {
+        // N-C-5 follow-up: non-generic companion EquatableArray.Create<T>(params T[] items).
+        string[] items = null!;
+
+        var act = () => EquatableArray.Create<string>(items);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("items");
+    }
+
+    [Fact]
+    public void NonGenericFrom_NullItems_ThrowsArgumentNullException_WithItemsParamName()
+    {
+        // N-C-5 follow-up: non-generic companion EquatableArray.From<T>(IEnumerable<T> items).
+        IEnumerable<string> items = null!;
+
+        var act = () => EquatableArray.From<string>(items);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("items");
+    }
 }

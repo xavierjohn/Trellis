@@ -51,6 +51,8 @@ public static class Maybe
         where TIn : class
         where TOut : notnull
     {
+        ArgumentNullException.ThrowIfNull(function);
+
         if (value is null)
             return Result.Ok<Maybe<TOut>>(Maybe<TOut>.None);
 
@@ -94,6 +96,8 @@ public static class Maybe
         where TIn : struct
         where TOut : notnull
     {
+        ArgumentNullException.ThrowIfNull(function);
+
         if (!value.HasValue)
             return Result.Ok<Maybe<TOut>>(Maybe<TOut>.None);
 

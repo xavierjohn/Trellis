@@ -71,5 +71,8 @@ public static class ResultsTraceProviderBuilderExtensions
     /// </code>
     /// </example>
     public static TracerProviderBuilder AddResultsInstrumentation(this TracerProviderBuilder builder)
-        => builder.AddSource(RopTrace.ActivitySourceName);
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder.AddSource(RopTrace.ActivitySourceName);
+    }
 }
