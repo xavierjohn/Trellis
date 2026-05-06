@@ -100,8 +100,10 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// <param name="id">The aggregate identifier to search for.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Maybe{T}"/> containing the aggregate, or None if not found.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="id"/> is null.</exception>
     public virtual Task<Maybe<TAggregate>> FindByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(id);
         var predicate = BuildIdPredicate(id);
         return BuildFindByIdQuery().FirstOrDefaultMaybeAsync(predicate, cancellationToken);
     }
@@ -129,8 +131,10 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// <param name="id">The aggregate identifier to check.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns><see langword="true"/> if an aggregate with the given ID exists; otherwise <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="id"/> is null.</exception>
     public virtual Task<bool> ExistsAsync(TId id, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(id);
         var predicate = BuildIdPredicate(id);
         return BuildQueryBase().AnyAsync(predicate, cancellationToken);
     }
@@ -216,8 +220,10 @@ public abstract class RepositoryBase<TAggregate, TId>
     /// <param name="id">The aggregate identifier to remove.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> representing success (staged) or not-found failure.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="id"/> is null.</exception>
     public virtual async Task<Result<Unit>> RemoveByIdAsync(TId id, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(id);
         var entity = await DbSet.FindAsync([id], cancellationToken).ConfigureAwait(false);
         if (entity is null)
             return Result.Fail(new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID '{id}' not found." });

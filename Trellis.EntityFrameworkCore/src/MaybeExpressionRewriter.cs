@@ -25,6 +25,27 @@ using Microsoft.EntityFrameworkCore;
 /// <item><term><c>entity.Phone.Value</c></term><description><c>EF.Property&lt;T?&gt;(entity, "_phone")</c> (strip accessor)</description></item>
 /// <item><term><c>entity.Phone.GetValueOrDefault(d)</c></term><description><c>EF.Property&lt;T?&gt;(entity, "_phone") ?? d</c></description></item>
 /// </list>
+/// <para>
+/// <b>Limitation — comparing <c>Maybe&lt;T&gt;</c> to a captured Maybe value.</b> EF Core extracts
+/// closed-expression operands (including <c>Maybe&lt;T&gt;.None</c> and <c>Maybe.From(value)</c>)
+/// to <c>QueryParameterExpression</c>s during expression-tree funcletization, which runs
+/// **before** <c>IQueryExpressionInterceptor.QueryCompilationStarting</c>. By the time this
+/// rewriter sees the operand the syntactic distinction is lost. <see cref="VisitBinary"/>
+/// conservatively converts any unrecognized <see cref="Maybe{T}"/>-typed operand to a typed
+/// null constant so that <c>c.Phone == Maybe&lt;T&gt;.None</c> remains valid. As a consequence,
+/// <c>c.Phone == Maybe.From(value)</c> silently miss-queries to <c>_phone IS NULL</c>. Use
+/// <c>MaybeQueryableExtensions.WhereEquals(c => c.Phone, value)</c> for value comparisons.
+/// A future fix could intercept earlier via <c>IEvaluatableExpressionFilterPlugin</c> to
+/// prevent funcletization of <c>Maybe</c>-bearing nodes; this is tracked as a follow-up.
+/// </para>
+/// <para>
+/// <b>Limitation — bare <see cref="Maybe{T}"/> projection.</b> Rewriting bare <c>entity.Phone</c>
+/// to <c>EF.Property&lt;T?&gt;(entity, "_phone")</c> changes the lambda return type from
+/// <see cref="Maybe{T}"/> to <c>T?</c>. Inside <c>.Select(c => c.Phone)</c> projections, the
+/// return-type mismatch causes EF Core to throw a translation error. Project
+/// <c>c.Phone.GetValueOrDefault(default)</c> instead, or materialize the entity and read
+/// <c>Phone</c> client-side.
+/// </para>
 /// </remarks>
 internal sealed class MaybeExpressionRewriter : ExpressionVisitor
 {

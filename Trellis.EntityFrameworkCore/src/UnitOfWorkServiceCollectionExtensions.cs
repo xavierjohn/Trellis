@@ -67,27 +67,31 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// </summary>
     private static void InsertTransactionalBehavior(IServiceCollection services)
     {
+        // Single-pass scan: simultaneously detect an existing TransactionalCommandBehavior
+        // registration (idempotency) and track the index of the last open-or-closed
+        // IPipelineBehavior<,> registration so the new behavior can be inserted innermost.
+        var lastBehaviorIndex = -1;
         for (var i = 0; i < services.Count; i++)
         {
-            if (services[i].ServiceType == typeof(IPipelineBehavior<,>)
-                && services[i].ImplementationType == typeof(TransactionalCommandBehavior<,>))
+            var serviceType = services[i].ServiceType;
+            var implementationType = services[i].ImplementationType;
+
+            if (serviceType == typeof(IPipelineBehavior<,>)
+                && implementationType == typeof(TransactionalCommandBehavior<,>))
             {
                 return;
+            }
+
+            if (serviceType == typeof(IPipelineBehavior<,>)
+                || (serviceType.IsGenericType
+                    && serviceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
+            {
+                lastBehaviorIndex = i;
             }
         }
 
         var descriptor = ServiceDescriptor.Scoped(
             typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
-
-        var lastBehaviorIndex = -1;
-        for (var i = 0; i < services.Count; i++)
-        {
-            var serviceType = services[i].ServiceType;
-            if (serviceType == typeof(IPipelineBehavior<,>)
-                || (serviceType.IsGenericType
-                    && serviceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
-                lastBehaviorIndex = i;
-        }
 
         if (lastBehaviorIndex >= 0)
             services.Insert(lastBehaviorIndex + 1, descriptor);

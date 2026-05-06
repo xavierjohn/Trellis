@@ -163,8 +163,12 @@ public static class MaybeQueryableExtensions
         Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
         TInner value)
         where TEntity : class
-        where TInner : notnull, IComparable<TInner> =>
-        WhereComparison(source, propertySelector, value, ExpressionType.LessThan);
+        where TInner : notnull, IComparable<TInner>
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(propertySelector);
+        return WhereComparison(source, propertySelector, value, ExpressionType.LessThan);
+    }
 
     /// <summary>
     /// Filters the query to entities where the <see cref="Maybe{T}"/> property is less than or equal to
@@ -184,8 +188,12 @@ public static class MaybeQueryableExtensions
         Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
         TInner value)
         where TEntity : class
-        where TInner : notnull, IComparable<TInner> =>
-        WhereComparison(source, propertySelector, value, ExpressionType.LessThanOrEqual);
+        where TInner : notnull, IComparable<TInner>
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(propertySelector);
+        return WhereComparison(source, propertySelector, value, ExpressionType.LessThanOrEqual);
+    }
 
     /// <summary>
     /// Filters the query to entities where the <see cref="Maybe{T}"/> property is greater than
@@ -205,8 +213,12 @@ public static class MaybeQueryableExtensions
         Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
         TInner value)
         where TEntity : class
-        where TInner : notnull, IComparable<TInner> =>
-        WhereComparison(source, propertySelector, value, ExpressionType.GreaterThan);
+        where TInner : notnull, IComparable<TInner>
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(propertySelector);
+        return WhereComparison(source, propertySelector, value, ExpressionType.GreaterThan);
+    }
 
     /// <summary>
     /// Filters the query to entities where the <see cref="Maybe{T}"/> property is greater than or equal to
@@ -226,8 +238,12 @@ public static class MaybeQueryableExtensions
         Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
         TInner value)
         where TEntity : class
-        where TInner : notnull, IComparable<TInner> =>
-        WhereComparison(source, propertySelector, value, ExpressionType.GreaterThanOrEqual);
+        where TInner : notnull, IComparable<TInner>
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(propertySelector);
+        return WhereComparison(source, propertySelector, value, ExpressionType.GreaterThanOrEqual);
+    }
 
     private static IQueryable<TEntity> WhereComparison<TEntity, TInner>(
         IQueryable<TEntity> source,

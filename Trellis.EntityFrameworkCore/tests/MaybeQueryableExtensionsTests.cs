@@ -1,6 +1,7 @@
 ﻿using Trellis.Testing;
 namespace Trellis.EntityFrameworkCore.Tests;
 
+using System.Linq.Expressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
@@ -605,6 +606,52 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Assert
         results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WhereLessThan_NullSource_ThrowsArgumentNullException()
+    {
+        // m-EF-4 (self-inspection): the four comparison helpers (`WhereLessThan`,
+        // `WhereLessThanOrEqual`, `WhereGreaterThan`, `WhereGreaterThanOrEqual`) previously
+        // delegated null-checks to the private `WhereComparison` helper. The behavior was
+        // correct (paramName matched), but the entry-point guard pattern used by every other
+        // public method in this class (WhereNone/WhereHasValue/WhereEquals/OrderBy*) was
+        // inconsistent. After the m-EF-4 cleanup, all 4 comparison helpers guard at entry.
+        IQueryable<TestOrder> source = null!;
+        var act = () => source.WhereLessThan(o => o.SubmittedAt, DateTime.UtcNow);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("source");
+    }
+
+    [Fact]
+    public void WhereLessThanOrEqual_NullPropertySelector_ThrowsArgumentNullException()
+    {
+        Expression<Func<TestOrder, Maybe<DateTime>>> selector = null!;
+        var act = () => _context.Orders.WhereLessThanOrEqual(selector, DateTime.UtcNow);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("propertySelector");
+    }
+
+    [Fact]
+    public void WhereGreaterThan_NullSource_ThrowsArgumentNullException()
+    {
+        IQueryable<TestOrder> source = null!;
+        var act = () => source.WhereGreaterThan(o => o.SubmittedAt, DateTime.UtcNow);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("source");
+    }
+
+    [Fact]
+    public void WhereGreaterThanOrEqual_NullPropertySelector_ThrowsArgumentNullException()
+    {
+        Expression<Func<TestOrder, Maybe<DateTime>>> selector = null!;
+        var act = () => _context.Orders.WhereGreaterThanOrEqual(selector, DateTime.UtcNow);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("propertySelector");
     }
 
     #endregion

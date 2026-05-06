@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
-types: ["RepositoryBase<TAggregate,TId>", IUnitOfWork, DbContextExtensions, SaveChangesResultAsync, OwnedEntityHelpers]
+types: [DbContextExtensions, DbContextOptionsBuilderExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, IUnitOfWork, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-06
 audience: [llm]
 ---
 # Trellis.EntityFrameworkCore
@@ -42,6 +42,8 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 - For EF `IQueryable` predicates over `Maybe<T>`, prefer `MaybeQueryableExtensions.WhereXxx` helpers over sentinel `GetValueOrDefault(...)` expressions when there is a matching helper.
 - Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes only; the mediator transaction behavior commits.
 - `[OwnedEntity]` classes should be `partial` and use `{ get; private set; }` for EF-owned properties.
+- **Do not compare `Maybe<T>` properties to `Maybe.From(value)` literals using the `==` / `!=` operator inside EF queries.** EF Core extracts the closed-expression operand to a `QueryParameterExpression` during expression-tree funcletization, which runs **before** `IQueryExpressionInterceptor.QueryCompilationStarting` (where `MaybeQueryInterceptor` runs), erasing the syntactic difference between `Maybe<T>.None` and `Maybe.From(value)`. The rewriter therefore conservatively converts any unrecognized `Maybe<T>`-typed operand to typed null, which means `c.Phone == Maybe.From(value)` translates to `_phone IS NULL` and silently miss-queries. Use `MaybeQueryableExtensions.WhereEquals(c => c.Phone, value)` for value comparisons; reserve the natural `==` operator for `Maybe<T>.None` comparisons (or migrate to `WhereNone`/`c.Phone.HasNoValue` for clarity). A future fix via `IEvaluatableExpressionFilterPlugin` (which runs before funcletization) is tracked as a follow-up.
+- **Do not project a bare `Maybe<T>` property in a `.Select(c => c.Phone)` clause inside EF queries.** `MaybeQueryInterceptor` rewrites bare `c.Phone` to `EF.Property<T?>(c, "_phone")`, which changes the projection's lambda return type from `Maybe<T>` to `T?` and produces an EF translation error. Project the storage value instead via `.Select(c => c.Phone.GetValueOrDefault(default))` (with `AddTrellisInterceptors()` registered) or fetch the entity and read `Phone` after materialization.
 
 ### `Maybe<T>` query shape decision table
 
