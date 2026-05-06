@@ -223,4 +223,18 @@ public class ScenarioContextTests
         ctx.TryResolve("x.response.body.n", out var v).Should().BeTrue();
         v.Should().Be("999");
     }
+
+    [Fact]
+    public void Record_NullHeaders_Throws_ArgumentNullException()
+    {
+        // Inspection finding m-TA-6: Record stored `headers` without null-check, then
+        // later TryResolve iterated/queried it. A null `headers` would NRE later, far
+        // from the misconfiguration site. Now fails fast at Record's entry.
+        var ctx = new ScenarioContext();
+
+        var act = () => ctx.Record("name", 200, headers: null!, body: "{}");
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("headers");
+    }
 }

@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Testing.AspNetCore
 namespaces: [Trellis.Testing.AspNetCore, Trellis.Testing.AspNetCore.Http]
-types: [WebApplicationFactory<TEntryPoint>, TestClient, FakeTimeProvider, EntraTokenAcquirer, HttpFileReplayer]
+types: [WebApplicationFactoryExtensions, WebApplicationFactoryTimeExtensions, ServiceCollectionExtensions, ServiceCollectionDbProviderExtensions, MsalTestTokenProvider, MsalTestOptions, TestUserCredentials, HttpFileParser, HttpFileRunner, HttpFileAssertions, HttpFileTheoryData, HttpFileRequest, HttpFileResult, ExpectedOutcome, HttpFileAssertionException, ScenarioContext]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-06
 audience: [llm]
 ---
 # Trellis.Testing.AspNetCore &mdash; API Reference

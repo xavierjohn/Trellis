@@ -97,4 +97,33 @@ public sealed class WebApplicationFactoryTimeExtensionsTests : IDisposable
             return host;
         }
     }
+
+    [Fact]
+    public void WithFakeTimeProvider_OutOverload_NullFactory_Throws_ArgumentNullException()
+    {
+        // Inspection finding m-TA-3: the 2-arg out-overload didn't null-check `factory`
+        // at its entry; the eventual ArgumentNullException came from the delegated
+        // overload, leaking the implementation chain into the stack trace. Defensive
+        // convention: public-API entry points get an explicit guard.
+        WebApplicationFactory<TestFactory> factory = null!;
+
+        var act = () => factory.WithFakeTimeProvider(out var _);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("factory");
+    }
+
+    [Fact]
+    public void WithFakeTimeProvider_OutOverloadWithStartInstant_NullFactory_Throws_ArgumentNullException()
+    {
+        // Same as above for the 3-arg out-overload taking an explicit DateTimeOffset.
+        WebApplicationFactory<TestFactory> factory = null!;
+
+        var act = () => factory.WithFakeTimeProvider(
+            DateTimeOffset.UtcNow,
+            out var _);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("factory");
+    }
 }

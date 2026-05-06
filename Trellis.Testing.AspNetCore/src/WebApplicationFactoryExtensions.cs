@@ -109,7 +109,9 @@ public static class WebApplicationFactoryExtensions
         CancellationToken cancellationToken = default)
         where TEntryPoint : class
     {
+        ArgumentNullException.ThrowIfNull(factory);
         ArgumentNullException.ThrowIfNull(tokenProvider);
+        ArgumentNullException.ThrowIfNull(testUserName);
 
         var token = await tokenProvider.AcquireTokenAsync(testUserName, cancellationToken)
             .ConfigureAwait(false);
