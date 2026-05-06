@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.StateMachine
 namespaces: [Trellis.StateMachine]
-types: [StateMachineExtensions, LazyStateMachine<TState, TTrigger>]
+types: [StateMachineExtensions, "LazyStateMachine<TState, TTrigger>"]
 version: v3
 last_verified: 2026-05-05
 audience: [llm]
