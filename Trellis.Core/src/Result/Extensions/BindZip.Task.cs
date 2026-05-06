@@ -24,17 +24,17 @@ public static partial class BindZipExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
         var result = await resultTask.ConfigureAwait(false);
-        if (!result.TryGetValue(out var value, out var error3))
+        if (!result.TryGetValue(out var value, out var error))
         {
-            var failure = Result.Fail<(T1, T2)>(error3);
+            var failure = Result.Fail<(T1, T2)>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
         var nextResult = await func(value).ConfigureAwait(false);
-        if (!nextResult.TryGetValue(out var inner, out var error4))
+        if (!nextResult.TryGetValue(out var inner, out var innerError))
         {
-            var failure = Result.Fail<(T1, T2)>(error4);
+            var failure = Result.Fail<(T1, T2)>(innerError);
             failure.LogActivityStatus();
             return failure;
         }
