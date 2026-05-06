@@ -143,4 +143,58 @@ public sealed class WebApplicationFactoryExtensionsTests : IDisposable
             return host;
         }
     }
+
+    #region Round-N inspection findings (m-TA-4) — CreateClientWithEntraTokenAsync null-guards
+
+    [Fact]
+    public async Task CreateClientWithEntraTokenAsync_NullFactory_Throws_ArgumentNullException()
+    {
+        // Inspection finding m-TA-4: previously only `tokenProvider` was null-checked.
+        // A null `factory` would NRE on factory.CreateClient() AFTER paying the cost of
+        // a real Entra token acquisition. Companion CreateClientWithActor overloads
+        // both null-check `factory`; this overload was the inconsistent one.
+        WebApplicationFactory<TestFactory> factory = null!;
+        // tokenProvider intentionally null too — but the factory check should fire FIRST,
+        // matching the parameter order. We pass a non-null tokenProvider to ensure the
+        // factory check is what's exercised.
+        var msalOptions = new Trellis.Testing.AspNetCore.MsalTestOptions
+        {
+            TenantId = "fake-tenant",
+            ClientId = Guid.NewGuid().ToString(),
+            Scopes = ["api://fake/.default"],
+        };
+#pragma warning disable IL2026 // RequiresUnreferencedCode propagation — test exercises ArgumentNullException, not the MSAL path.
+        var tokenProvider = new Trellis.Testing.AspNetCore.MsalTestTokenProvider(msalOptions);
+
+        var act = async () => await factory.CreateClientWithEntraTokenAsync(tokenProvider, "salesRep");
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("factory");
+#pragma warning restore IL2026
+    }
+
+    [Fact]
+    public async Task CreateClientWithEntraTokenAsync_NullTestUserName_Throws_ArgumentNullException()
+    {
+        // Inspection finding m-TA-4: a null `testUserName` flowed into
+        // tokenProvider.AcquireTokenAsync where Dictionary.TryGetValue threw with
+        // paramName "key", confusingly NOT matching the user's parameter name.
+        // Defensive null-check at the public entry surfaces the right name.
+        var msalOptions = new Trellis.Testing.AspNetCore.MsalTestOptions
+        {
+            TenantId = "fake-tenant",
+            ClientId = Guid.NewGuid().ToString(),
+            Scopes = ["api://fake/.default"],
+        };
+#pragma warning disable IL2026
+        var tokenProvider = new Trellis.Testing.AspNetCore.MsalTestTokenProvider(msalOptions);
+
+        var act = async () => await _factory.CreateClientWithEntraTokenAsync(tokenProvider, null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("testUserName");
+#pragma warning restore IL2026
+    }
+
+    #endregion
 }

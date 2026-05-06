@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Trellis.Testing.AspNetCore — inspection findings (m-TA-1, m-TA-3..m-TA-7, i-TA-1, i-TA-2 + GPT-5.5 N-TA-1)
+
+Closes the formal Trellis.Testing.AspNetCore inspection backlog from `files/testing-aspnetcore-inspection-report.md` after a Phase-2 GPT-5.5 meta-review validated 5 of 6 self-inspection findings, refuted m-TA-2 (the case-insensitive fallback in `ScenarioContext.TryResolve` is required because `Record` accepts public callers' arbitrary `IReadOnlyDictionary<string, string>` headers), promoted my refutation of `MsalTestTokenProvider.AcquireTokenAsync` testUserName null-check to a real Minor (m-TA-7), and surfaced 1 NEW Major (N-TA-1: UTF-8 BOM mishandling in `HttpFileParser`).
+
+- **(Major) N-TA-1 — `HttpFileParser` now strips a leading UTF-8 BOM (U+FEFF) before line dispatch.** Many editors save `.http` files with a UTF-8 BOM by default; without stripping it, the first line of the file failed all dispatch checks (`line.StartsWith("###")` returned false because line[0] was U+FEFF, `line[0] == '@'` returned false for the same reason) and fell into `ParseRequestLine`, producing a bogus request with method `"\uFEFF@HOST"` and URL `"="`. The variable definition was lost; subsequent `{{host}}` substitutions resolved against an empty bag. The repository has a real BOM-prefixed `.http` file at `Examples/ConditionalRequestExample/api.http` that demonstrates the case. Fix: strip a single leading `'\uFEFF'` from `content` at the top of `Parse(...)` before splitting into lines. Added a regression test (`Parse_strips_leading_UTF8_BOM_so_first_line_variable_is_registered`).
+
+- **(Minor) m-TA-1 — api ref frontmatter `types:` corrected.** Previously listed `[WebApplicationFactory<TEntryPoint>, TestClient, FakeTimeProvider, EntraTokenAcquirer, HttpFileReplayer]` — all 5 entries were wrong (some belong to other packages, others don't exist anywhere). Updated to the complete actual public-type list (16 types). The api ref body already documented the real surface; only the frontmatter was broken.
+
+- **(Minor) m-TA-3 — `WithFakeTimeProvider` `out`-overloads now `ArgumentNullException.ThrowIfNull(factory)` at their entry points.** Previously the null-check happened 2 calls deep in the delegated `(FakeTimeProvider)` overload. Per GPT-5.5: not an observable param-name bug (the delegated check produces `paramName: "factory"` correctly), but inconsistent with the public-API entry-point guard pattern used elsewhere in the package. Added entry-point guards + regression tests.
+
+- **(Minor) m-TA-4 — `CreateClientWithEntraTokenAsync` now null-checks `factory` and `testUserName`.** Previously only `tokenProvider` was null-checked. A null `factory` would NRE on `factory.CreateClient()` AFTER paying the cost of a real Entra token acquisition. A null `testUserName` flowed into `MsalTestTokenProvider.AcquireTokenAsync` which threw `ArgumentNullException(paramName: "key")` from `Dictionary.TryGetValue`, confusingly NOT matching the user's parameter name. Both companion `CreateClientWithActor` overloads already null-checked `factory`; this overload was the inconsistent one.
+
+- **(Minor) m-TA-5 — `HttpFileTheoryData.FromFile` now `ArgumentNullException.ThrowIfNull(path)`.** Companion `HttpFileParser.ParseFile` already had the explicit guard. `File.ReadAllText` would also throw on null `path`, but the explicit guard at the public-API entry point keeps the surface uniform.
+
+- **(Minor) m-TA-6 — `ScenarioContext.Record` now `ArgumentNullException.ThrowIfNull(headers)`.** Previously a null `headers` was stored in the `_named` dictionary and only NRE'd later in `TryResolve` (far from the misconfiguration site). Fails fast at `Record`'s entry now.
+
+- **(Minor) m-TA-7 (GPT-5.5 promotion) — `MsalTestTokenProvider.AcquireTokenAsync` now null-checks `testUserName`.** Same shape as m-TA-4 but at the inner `AcquireTokenAsync` public surface. Previously `Dictionary.TryGetValue(null, ...)` threw `ArgumentNullException(paramName: "key")`. Defensive convention: public-API entry points get an explicit guard surfacing the right parameter name.
+
+- **(Info) i-TA-1 — Two-step → single-step audit (per the PR-466 standing inspection-checklist memory).** Audited every two-step API pattern in the package. Result: only `ScenarioContext.TryResolve`'s case-insensitive fallback looked like a two-step that could collapse to a single TryGetValue, but GPT-5.5 correctly refuted that — the fallback IS required because `Record` accepts public callers' arbitrary `IReadOnlyDictionary<string, string>` (which may or may not be case-insensitive). Other audited locations: `HttpFileRunner.cs` content-header replace (no single-op equivalent in `HttpHeaders`); `ServiceCollectionDbProviderExtensions` Where-then-Remove (list-then-remove avoids in-iteration-modification); `IServiceCollection.RemoveAll<T>() + AddXxx` (canonical idiom; framework's `Replace(...)` has different semantics). Net: **0 actionable two-step → single-step opportunities** in this package.
+
+- **(Info) i-TA-2 — `WebApplicationFactoryExtensions.CreateClientWithActor` JSON-building duplication.** The two overloads share ~10 lines of `JsonObject` construction. Refactoring was deferred — the duplication is harmless and the shapes differ slightly (the simpler overload uses empty `JsonArray` / `JsonObject` for forbidden-permissions / attributes rather than copying from an `Actor`).
+
+Refuted findings: m-TA-2 (`ScenarioContext.TryResolve` case-insensitive fallback is NOT dead code; required by public `Record` accepting arbitrary `IReadOnlyDictionary<string, string>` — existing test `ScenarioContextTests.cs:177-181` records via case-sensitive `Dictionary<string, string>` and resolves `etag` against stored `ETag`); `MsalTestOptions` mutable `Dictionary<string, TestUserCredentials> TestUsers` (intentional configuration POCO); `HttpFileParser.SubstituteStaticVars` ordinal `IndexOf` (correct for `.http`-file byte-level parsing); `HttpFileRunner.RunSingleAsync` `client.BaseAddress` null-check (`HttpClient.SendAsync` documented to throw on relative URL with no BaseAddress); `MsalTestOptions.Scopes`/`TestUsers` getter-setter (configuration POCO).
+
+Tests: **+8** new tests in `Trellis.Testing.AspNetCore.Tests`:
+- `Parse_strips_leading_UTF8_BOM_so_first_line_variable_is_registered` (N-TA-1).
+- `WithFakeTimeProvider_OutOverload_NullFactory_Throws_ArgumentNullException`, `WithFakeTimeProvider_OutOverloadWithStartInstant_NullFactory_Throws_ArgumentNullException` (m-TA-3).
+- `CreateClientWithEntraTokenAsync_NullFactory_Throws_ArgumentNullException`, `CreateClientWithEntraTokenAsync_NullTestUserName_Throws_ArgumentNullException` (m-TA-4).
+- `FromFile_NullPath_Throws_ArgumentNullException` (m-TA-5).
+- `Record_NullHeaders_Throws_ArgumentNullException` (m-TA-6).
+- `AcquireTokenAsync_NullTestUserName_Throws_ArgumentNullException` (m-TA-7, in new `MsalTestTokenProviderTests.cs`).
+
+Pre-commit GPT-5.5 review confirmed all 7 fix points (correctness of BOM-strip, null-check ordering, out-overload guards before allocations, IL2026 suppression scope, test string construction, project test-globbing, no-network-trigger from null-tests, CHANGELOG-bullet/test-count alignment) and surfaced **zero** additional findings.
+
 #### Trellis.Testing — inspection findings (m-T-1, m-T-2, m-T-3, i-T-1 + GPT-5.5 N-T-1..N-T-4)
 
 Closes the formal Trellis.Testing inspection backlog from `files/testing-inspection-report.md` after a Phase-2 GPT-5.5 meta-review validated all 4 self-inspection findings and surfaced 4 additional ones (all Minor).

@@ -77,6 +77,8 @@ public sealed class MsalTestTokenProvider
         string testUserName,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(testUserName);
+
         if (!_options.TestUsers.TryGetValue(testUserName, out var credentials))
             throw new KeyNotFoundException(
                 $"Test user '{testUserName}' not found in MsalTestOptions.TestUsers. " +

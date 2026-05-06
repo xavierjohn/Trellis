@@ -23,6 +23,7 @@ public static class HttpFileTheoryData
     /// <returns>An enumerable of single-element <c>object[]</c> rows.</returns>
     public static IEnumerable<object[]> FromFile(string path, IReadOnlyDictionary<string, string>? vars = null)
     {
+        ArgumentNullException.ThrowIfNull(path);
         var content = File.ReadAllText(path);
         return HttpFileParser.Parse(content, vars).Select(r => new object[] { r }).ToArray();
     }

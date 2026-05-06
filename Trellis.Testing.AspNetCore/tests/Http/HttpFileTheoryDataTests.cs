@@ -52,4 +52,17 @@ public class HttpFileTheoryDataTests
             if (File.Exists(path)) File.Delete(path);
         }
     }
+
+    [Fact]
+    public void FromFile_NullPath_Throws_ArgumentNullException()
+    {
+        // Inspection finding m-TA-5: HttpFileParser.ParseFile null-checks `path`
+        // explicitly; HttpFileTheoryData.FromFile delegated to File.ReadAllText which
+        // throws on null but with a different stack trace. Defensive convention:
+        // public-API entry points get an explicit guard.
+        var act = () => HttpFileTheoryData.FromFile(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("path");
+    }
 }

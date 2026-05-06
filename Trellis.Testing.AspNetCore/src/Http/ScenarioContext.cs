@@ -22,6 +22,7 @@ public sealed class ScenarioContext
     public void Record(string name, int status, IReadOnlyDictionary<string, string> headers, string? body)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentNullException.ThrowIfNull(headers);
         JsonNode? node = null;
         if (!string.IsNullOrWhiteSpace(body))
         {

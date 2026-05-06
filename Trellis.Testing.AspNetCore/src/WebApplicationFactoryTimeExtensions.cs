@@ -96,7 +96,10 @@ public static class WebApplicationFactoryTimeExtensions
         this WebApplicationFactory<TEntryPoint> factory,
         out FakeTimeProvider fakeTimeProvider)
         where TEntryPoint : class
-        => factory.WithFakeTimeProvider(DefaultTestStartInstant, out fakeTimeProvider);
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        return factory.WithFakeTimeProvider(DefaultTestStartInstant, out fakeTimeProvider);
+    }
 
     /// <summary>
     /// Returns a new <see cref="WebApplicationFactory{TEntryPoint}"/> with a <see cref="FakeTimeProvider"/>
@@ -118,6 +121,7 @@ public static class WebApplicationFactoryTimeExtensions
         out FakeTimeProvider fakeTimeProvider)
         where TEntryPoint : class
     {
+        ArgumentNullException.ThrowIfNull(factory);
         var fake = new FakeTimeProvider(startInstant);
         fakeTimeProvider = fake;
         return factory.WithFakeTimeProvider(fake);

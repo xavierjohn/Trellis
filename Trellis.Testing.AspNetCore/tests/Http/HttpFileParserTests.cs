@@ -166,4 +166,29 @@ public class HttpFileParserTests
         reqs[0].Title.Should().Be("Case");
         reqs[0].ParityMode.Should().Be("status-only");
     }
+
+    [Fact]
+    public void Parse_strips_leading_UTF8_BOM_so_first_line_variable_is_registered()
+    {
+        // Inspection finding N-TA-1: many editors save .http files with a UTF-8 BOM
+        // (U+FEFF prefix). Without BOM stripping, the first line was misclassified —
+        // `line.StartsWith("###")` returned false (line starts with U+FEFF then '#'),
+        // `line[0] == '@'` returned false (line[0] is U+FEFF), so the line fell into
+        // ParseRequestLine and produced a bogus request with method "\uFEFF@HOST" and
+        // URL "=". The variable definition was lost; subsequent {{host}} substitutions
+        // resolved against an empty bag.
+        const char Bom = '\uFEFF';
+        var content = Bom + """
+            @host = http://localhost:62266
+            ### Get root
+            GET {{host}}/
+            """;
+
+        var reqs = HttpFileParser.Parse(content);
+
+        reqs.Should().HaveCount(1, "the BOM-prefixed @host line must be recognized as a variable, not a bogus request");
+        reqs[0].Title.Should().Be("Get root");
+        reqs[0].Method.Should().Be("GET");
+        reqs[0].Url.Should().Be("http://localhost:62266/", "the {{host}} substitution must succeed against the BOM-prefixed @host variable");
+    }
 }

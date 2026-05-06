@@ -47,6 +47,16 @@ public static class HttpFileParser
     {
         ArgumentNullException.ThrowIfNull(content);
 
+        // Strip a single leading UTF-8 BOM (U+FEFF). Many editors save .http files
+        // with a BOM by default; without this, the first line's leading FEFF byte
+        // would defeat the `line.StartsWith("###")` and `line[0] == '@'` dispatch
+        // checks below, so a file beginning with `@host = ...` would be misparsed
+        // as a bogus request with method `\uFEFF@HOST` and URL `=`. (N-TA-1.)
+        if (content.Length > 0 && content[0] == '\uFEFF')
+        {
+            content = content.Substring(1);
+        }
+
         var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (vars is not null)
         {
