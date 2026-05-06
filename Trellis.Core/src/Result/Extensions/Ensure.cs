@@ -178,10 +178,10 @@ public static class EnsureExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (!result.TryGetValue(out var value))
+        if (!result.TryGetValue(out var value, out var resultError))
         {
             result.LogActivityStatus();
-            return Result.Fail<T>(result.Error);
+            return Result.Fail<T>(resultError);
         }
 
         if (value is null)
@@ -209,9 +209,9 @@ public static class EnsureExtensions
     {
         using var activity = RopTrace.ActivitySource.StartActivity();
 
-        if (!result.TryGetValue(out var value))
+        if (!result.TryGetValue(out var value, out var resultError))
         {
-            var failure = Result.Fail<T>(result.Error);
+            var failure = Result.Fail<T>(resultError);
             failure.LogActivityStatus();
             return failure;
         }

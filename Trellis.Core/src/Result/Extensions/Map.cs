@@ -36,8 +36,8 @@ public static partial class MapExtensions
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (!result.TryGetValue(out var value))
-            return Result.Fail<TOut>(result.Error);
+        if (!result.TryGetValue(out var value, out var error))
+            return Result.Fail<TOut>(error);
 
         return Result.Ok<TOut>(func(value));
     }
@@ -62,8 +62,8 @@ public static partial class MapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapExtensions.Map));
-        if (!result.TryGetValue(out var value))
-            return Result.Fail<TOut>(result.Error);
+        if (!result.TryGetValue(out var value, out var error))
+            return Result.Fail<TOut>(error);
 
         TOut outValue = await func(value).ConfigureAwait(false);
 
@@ -119,8 +119,8 @@ public static partial class MapExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MapExtensions.Map));
-        if (!result.TryGetValue(out var value))
-            return Result.Fail<TOut>(result.Error);
+        if (!result.TryGetValue(out var value, out var error))
+            return Result.Fail<TOut>(error);
 
         TOut outValue = await func(value).ConfigureAwait(false);
 

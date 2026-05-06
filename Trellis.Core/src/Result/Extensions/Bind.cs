@@ -29,8 +29,8 @@ public static partial class BindExtensions
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        if (!result.TryGetValue(out var value))
-            return Result.Fail<TResult>(result.Error);
+        if (!result.TryGetValue(out var value, out var error))
+            return Result.Fail<TResult>(error);
 
         var output = func(value);
         output.LogActivityStatus();
@@ -57,8 +57,8 @@ public static partial class BindExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
-        if (!result.TryGetValue(out var value))
-            return Result.Fail<TResult>(result.Error);
+        if (!result.TryGetValue(out var value, out var error))
+            return Result.Fail<TResult>(error);
 
         var output = await func(value).ConfigureAwait(false);
         output.LogActivityStatus();
@@ -144,8 +144,8 @@ public static partial class BindExtensionsAsync
         ArgumentNullException.ThrowIfNull(valueTask);
 
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindExtensions.Bind));
-        if (!result.TryGetValue(out var value))
-            return Result.Fail<TResult>(result.Error);
+        if (!result.TryGetValue(out var value, out var error))
+            return Result.Fail<TResult>(error);
 
         var output = await valueTask(value).ConfigureAwait(false);
         output.LogActivityStatus();

@@ -1,4 +1,4 @@
-<#@ template debug="false" hostspecific="false" language="C#" #>
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
@@ -61,18 +61,18 @@ public static partial class BindZipExtensions
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
-        if (!result.TryGetValue(out var tupleValue))
+        if (!result.TryGetValue(out var tupleValue, out var error))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
         var (<# WriteArgs(i); #>) = tupleValue;
         var nextResult = func(<# WriteArgs(i); #>);
-        if (!nextResult.TryGetValue(out var nextValue))
+        if (!nextResult.TryGetValue(out var nextValue, out var innerError))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(innerError);
             failure.LogActivityStatus();
             return failure;
         }
@@ -110,18 +110,18 @@ public static partial class BindZipExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
-        if (!result.TryGetValue(out var tupleValue))
+        if (!result.TryGetValue(out var tupleValue, out var error))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
         var (<# WriteArgs(i); #>) = tupleValue;
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
-        if (!nextResult.TryGetValue(out var nextValue))
+        if (!nextResult.TryGetValue(out var nextValue, out var innerError))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(innerError);
             failure.LogActivityStatus();
             return failure;
         }
@@ -156,18 +156,18 @@ public static partial class BindZipExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
         var result = await resultTask.ConfigureAwait(false);
-        if (!result.TryGetValue(out var tupleValue))
+        if (!result.TryGetValue(out var tupleValue, out var error))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
         var (<# WriteArgs(i); #>) = tupleValue;
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
-        if (!nextResult.TryGetValue(out var nextValue))
+        if (!nextResult.TryGetValue(out var nextValue, out var innerError))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(innerError);
             failure.LogActivityStatus();
             return failure;
         }
@@ -187,18 +187,18 @@ public static partial class BindZipExtensionsAsync
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
-        if (!result.TryGetValue(out var tupleValue))
+        if (!result.TryGetValue(out var tupleValue, out var error))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
         var (<# WriteArgs(i); #>) = tupleValue;
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
-        if (!nextResult.TryGetValue(out var nextValue))
+        if (!nextResult.TryGetValue(out var nextValue, out var innerError))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(innerError);
             failure.LogActivityStatus();
             return failure;
         }
@@ -232,18 +232,18 @@ public static partial class BindZipExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
         var result = await resultTask.ConfigureAwait(false);
-        if (!result.TryGetValue(out var tupleValue))
+        if (!result.TryGetValue(out var tupleValue, out var error))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(result.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(error);
             failure.LogActivityStatus();
             return failure;
         }
 
         var (<# WriteArgs(i); #>) = tupleValue;
         var nextResult = await func(<# WriteArgs(i); #>).ConfigureAwait(false);
-        if (!nextResult.TryGetValue(out var nextValue))
+        if (!nextResult.TryGetValue(out var nextValue, out var innerError))
         {
-            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(nextResult.Error);
+            var failure = Result.Fail<(<# WriteTs(outputSize); #>)>(innerError);
             failure.LogActivityStatus();
             return failure;
         }
