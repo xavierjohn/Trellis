@@ -88,6 +88,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// The minimum length (inclusive), or <c>null</c> if no constraint was specified.
     /// Only applicable when <see cref="ClassBase"/> is <c>"RequiredString"</c>.
     /// </value>
+    public readonly int? MinLength;
 
     /// <summary>
     /// Gets the minimum range constraint, if specified via <c>[Range(min, max)]</c>.
@@ -136,7 +137,6 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// Gets a unique type path including namespace and nesting used for hint names.
     /// </summary>
     public readonly string TypePath;
-    public readonly int? MinLength;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RequiredPartialClassInfo"/> class.
