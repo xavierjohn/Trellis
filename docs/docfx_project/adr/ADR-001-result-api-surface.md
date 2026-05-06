@@ -368,7 +368,7 @@ public sealed record Conflict(ResourceRef? Resource, string ReasonCode) : Error;
 Rationale:
 
 - RFC 9110 § 15.5.10 implies the target resource via the request URI; the response body is not required to identify it.
-- Real-world 409 cases lack a specific addressable resource: stateless workflow engines, state-machine guards (e.g. `Trellis.StateMachine.StateMachineExtensions.FireResult`), library code with no aggregate context, multi-resource transactions.
+- Real-world 409 cases lack a specific addressable resource: stateless workflow engines, library code with no aggregate context, multi-resource transactions. (Note: state-machine guard failures via `Trellis.StateMachine.StateMachineExtensions.FireResult` are NOT 409 — they map to `Error.UnprocessableContent` / HTTP 422 because invalid transitions are semantic rule violations against the aggregate's current state, not concurrent-modification conflicts. This was once cited as a 409 example here; the package settled on 422 — see `trellis-api-statemachine.md` for the rationale.)
 - Forcing a placeholder `new ResourceRef("StateMachine", null)` would lie about meaning. `ResourceRef` is meant to identify; nullable is the honest type.
 - `NotFound`/`Gone` keep their non-null `Resource` — they are definitionally about a specific resource. Same applies to `PreconditionFailed` (the precondition is evaluated against a specific resource).
 

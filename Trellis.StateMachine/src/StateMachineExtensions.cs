@@ -118,6 +118,12 @@ public static class StateMachineExtensions
         catch (InvalidOperationException)
         {
             var detail = $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.";
+            // Populate Detail on BOTH the outer Error.Detail AND the single RuleViolation.Detail
+            // so HTTP-422 rendering surfaces the same message in both Problem Details.detail
+            // (top-level, read from Error.Detail) and per-rule context (read from
+            // RuleViolation.Detail). Error.UnprocessableContent.ForRule(reasonCode, detail)
+            // sets RuleViolation.Detail only; the `with { Detail = detail }` lifts it to
+            // Error.Detail. Trellis.Asp.ResponseFailureWriter consumes both surfaces.
             return Result.Fail<TState>(
                 Error.UnprocessableContent.ForRule(
                     reasonCode: "state.machine.invalid.transition",
@@ -125,7 +131,10 @@ public static class StateMachineExtensions
                 { Detail = detail });
         }
 
-        // Custom OnUnhandledTrigger swallowed the trigger — surface the (unchanged) state as success.
+        // Custom OnUnhandledTrigger swallowed the trigger — surface the current state as
+        // success. The state is read AFTER the callback runs; it is normally unchanged but
+        // a callback that mutates or reroutes state will surface the resulting state, not
+        // a snapshot of the pre-call state.
         return Result.Ok(stateMachine.State);
     }
 }
