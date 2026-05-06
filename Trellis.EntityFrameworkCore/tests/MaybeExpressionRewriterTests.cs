@@ -325,6 +325,46 @@ public class MaybeExpressionRewriterTests : IDisposable
             .Which.Id.Should().Be(withPhone.Id);
     }
 
+    [Fact]
+    public async Task EqualsMaybeFromValue_DocumentedLimitation_NaturalFormMissQueriesUseWhereEqualsInstead()
+    {
+        // N-EF-1 (GPT-5.5 meta-review): the natural form `c.Phone == Maybe.From(value)` is
+        // intentionally NOT supported by `MaybeExpressionRewriter`. EF Core's parameter
+        // extraction lifts the closed-expression operand (`Maybe.From(value)` and
+        // `Maybe<T>.None` alike) to a `QueryParameterExpression` *before* the rewriter runs
+        // in `IQueryExpressionInterceptor.QueryCompilationStarting`, erasing the syntactic
+        // difference. The rewriter therefore conservatively converts any unrecognized
+        // `Maybe<T>`-typed operand to typed null so that None comparisons remain valid; this
+        // means the natural form translates to `_phone IS NULL` and silently miss-queries.
+        // This test pins **both** the miss-query behavior (so we'd notice if the rewriter ever
+        // gains a pre-funcletization hook via `IEvaluatableExpressionFilterPlugin` or similar)
+        // and the documented migration path (`MaybeQueryableExtensions.WhereEquals`).
+        var ct = TestContext.Current.CancellationToken;
+        var target = "+1-555-0500";
+        var withTarget = CreateCustomer("Eve", target);
+        var withOther = CreateCustomer("Frank", "+1-555-0501");
+        _context.Customers.AddRange(withTarget, withOther);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+
+        var phone = PhoneNumber.Create(target);
+
+        // Natural form: silently miss-queries because the parameter is treated as None.
+        // Both customers have non-null phones, so `_phone IS NULL` matches zero rows.
+        var naturalResults = await _context.Customers
+            .Where(c => c.Phone == Maybe.From(phone))
+            .ToListAsync(ct);
+        naturalResults.Should().BeEmpty(
+            "the natural `==` form translates `Maybe.From(value)` to typed null after EF parameter extraction; this is the documented limitation N-EF-1");
+
+        // Documented migration path: `WhereEquals` correctly returns the target row.
+        var whereEqualsResults = await _context.Customers
+            .WhereEquals(c => c.Phone, phone)
+            .ToListAsync(ct);
+        whereEqualsResults.Should().ContainSingle()
+            .Which.Id.Should().Be(withTarget.Id);
+    }
+
     #endregion
 
     #region Helpers

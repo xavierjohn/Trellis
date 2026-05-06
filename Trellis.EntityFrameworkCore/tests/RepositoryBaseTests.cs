@@ -404,6 +404,50 @@ public partial class RepositoryBaseTests : IDisposable
 
     #endregion
 
+    #region Argument validation (id-null guards)
+
+    [Fact]
+    public async Task FindByIdAsync_NullId_ThrowsArgumentNullException()
+    {
+        // m-EF-3 (self-inspection): the generic constraint `where TId : notnull` is not enforced
+        // at runtime for reference TIds (caller can pass null via `null!` suppression). Without an
+        // explicit guard, `BuildIdPredicate` produced `entity.Id == null` and the query silently
+        // returned `Maybe<T>.None`, masking the caller's bug. This test pins the entry-point
+        // null-guard so a null TId surfaces immediately at the call site with the right paramName.
+        var ct = TestContext.Current.CancellationToken;
+        var act = async () => await _repository.FindByIdAsync(null!, ct);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("id");
+    }
+
+    [Fact]
+    public async Task ExistsAsync_NullId_ThrowsArgumentNullException()
+    {
+        // m-EF-3 follow-up: same shape as FindByIdAsync. Without the guard a null TId would
+        // build `entity.Id == null` and silently return false.
+        var ct = TestContext.Current.CancellationToken;
+        var act = async () => await _repository.ExistsAsync((TestItemId)null!, ct);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("id");
+    }
+
+    [Fact]
+    public async Task RemoveByIdAsync_NullId_ThrowsArgumentNullException()
+    {
+        // m-EF-3 follow-up: `DbSet.FindAsync([null], ct)` behavior is provider-dependent; the
+        // explicit guard ensures the caller's null-bug surfaces with the correct paramName at the
+        // public-API entry rather than masquerading as a not-found Result.
+        var ct = TestContext.Current.CancellationToken;
+        var act = async () => await _repository.RemoveByIdAsync(null!, ct);
+
+        await act.Should().ThrowAsync<ArgumentNullException>()
+            .WithParameterName("id");
+    }
+
+    #endregion
+
     #region Test Infrastructure
 
     internal partial class TestItemId : RequiredGuid<TestItemId>;
