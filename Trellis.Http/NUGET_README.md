@@ -40,7 +40,15 @@ var result = await httpClient.GetAsync("/profile", cancellationToken)
 
 ## Disposal contract
 
-The library owns `HttpResponseMessage` disposal on terminal/transformative paths: `ToResultAsync` and `Handle*Async` dispose on the `Fail` path; `ReadJson*` always dispose after reading. Pass-through paths leave disposal to the caller.
+The library owns `HttpResponseMessage` disposal on terminal/transformative paths: `ToResultAsync` and `Handle*Async` dispose on the `Fail` path; `ReadJson*` always dispose after reading. Pass-through paths leave disposal to the caller. Programmer-error null-argument paths (e.g. `client.GetAsync(...).HandleNotFoundAsync(null!)`) await first, then dispose before throwing `ArgumentNullException`.
+
+## Strict-default behavior
+
+`ToResultAsync()` without a `statusMap` produces typed errors that preserve key upstream response-header context — `WWW-Authenticate` schemes + best-effort auth-param parse on `401` (token68 or unparseable parameter strings degrade to scheme-only), `Allow` on `405`, `Content-Range` unit + length on `416`, `Retry-After` on `429` / `503` — so downstream `Trellis.Asp` rendering can faithfully forward the original wire shape. Missing or unusable header values for `405` and `416` fall through to `Error.InternalServerError` rather than fabricating misleading wire headers. 3xx responses fall through; redirect-aware callers should pass a `statusMap`.
+
+## Exception propagation
+
+`HttpRequestException`, `OperationCanceledException` / `TaskCanceledException`, and `JsonException` (from `ReadJsonMaybeAsync<T>` / `ReadJsonOrNoneOn404Async<T>` on a 2xx invalid body) propagate through the chain rather than being mapped to `Result.Fail`. `ReadJsonAsync<T>` catches `JsonException` and returns `Fail<Error.InternalServerError>` with structured position diagnostics only (no response body, no `JsonException.Path`).
 
 ## Breaking changes from v1
 

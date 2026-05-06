@@ -38,6 +38,8 @@ Refuted findings (kept current behavior intentional and documented): i-H1 (`Erro
 
 Tests: **+31** total on the branch vs `main` (round 1: +18; round 3 coverage: +4; round 4: +2 — null-error disposal consolidated across the three `Handle*Async` methods, 405 without `Allow` falls through, 416 without `Content-Range` falls through; round 5: +4 — 416 with `bytes */0` produces typed `RangeNotSatisfiable(0, "bytes")` for empty resource, 416 with `bytes 0-99/*` (no length) falls through, 405 with literal-empty `Allow:` value falls through, 429 with `Retry-After: 0` preserves zero delta; round 6: +3 — body-aware `ToResultAsync` null-mapper disposal, `ReadJsonOrNoneOn404Async` null-jsonTypeInfo disposal, 429 with `Retry-After` delta-seconds overflowing `int` treated as absent). The round-2 renderer guards and round-3 misleading empty-scheme test were withdrawn.
 
+Package READMEs (round 7): both `Trellis.Http/README.md` and `Trellis.Http/NUGET_README.md` updated to reflect the new strict-default header preservation behavior, the exception propagation rules, and the round-4/round-6 await-then-dispose pattern for null-argument paths. Consumers reading the package docs on GitHub or NuGet now see the same contract surface as the api ref and integration article.
+
 ### Changed
 
 #### Trellis.Primitives — inspection findings (M-1..M-5, m-3..m-7, i-6) + GPT-5.5 review (New-1..New-3)

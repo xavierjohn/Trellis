@@ -50,8 +50,29 @@ The library owns the `HttpResponseMessage` lifecycle on terminal or transformati
 - `ToResultAsync` and `Handle*Async` dispose the response on the `Fail` path.
 - `ReadJsonAsync`, `ReadJsonMaybeAsync`, and `ReadJsonOrNoneOn404Async` always dispose after reading, success or failure (including when `JsonException` propagates from the `Maybe` overload).
 - Pass-through paths (success from bare `ToResultAsync`, non-matching `Handle*Async`) leave the response with the caller until a downstream `ReadJson*` consumes it.
+- Programmer-error null-argument paths (e.g. `client.GetAsync(...).HandleNotFoundAsync(null!)`) await the in-flight response first, then dispose it before throwing `ArgumentNullException` — so the disposal contract holds even when the caller passes `null!`.
 
 In practice: once you call `ReadJson*`, you no longer need to dispose the response yourself.
+
+## Strict-default behavior
+
+Calling `ToResultAsync()` without a `statusMap` produces typed errors that preserve key upstream response-header context, so downstream `Trellis.Asp` rendering can faithfully forward the original wire shape:
+
+| Upstream status | Header preserved into typed error |
+| --- | --- |
+| `401 Unauthorized` | `WWW-Authenticate` schemes + best-effort `realm` / `error` / etc. auth-param parse into `Error.Unauthorized.Challenges`. Token68 form (`Negotiate <base64>`) or unparseable parameter strings degrade to scheme-only. |
+| `405 Method Not Allowed` | `Allow` into `Error.MethodNotAllowed.Allow`. Missing or empty `Allow` falls through to `Error.InternalServerError`. |
+| `416 Range Not Satisfiable` | `Content-Range` unit + complete-length into `Error.RangeNotSatisfiable`. Missing header or unspecified length falls through to `Error.InternalServerError`. |
+| `429 Too Many Requests` / `503 Service Unavailable` | `Retry-After` (delta-seconds or HTTP-date) into the typed `RetryAfter` slot. Negative or out-of-range deltas are treated as absent. |
+| Other non-2xx statuses | Typed error with default empty/zero context (e.g. `406 Not Acceptable`, `415 Unsupported Media Type`). |
+
+3xx responses fall through to `Error.InternalServerError` under the strict default. Callers who set `AllowAutoRedirect = false` (e.g. SSO landing-page detection) should pass a `statusMap`.
+
+See the [API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-http.html) for the complete behavior matrix.
+
+## Exception propagation
+
+`HttpRequestException`, `OperationCanceledException` / `TaskCanceledException`, and `JsonException` (from `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` on a 2xx invalid body) propagate through the chain rather than being mapped to `Result.Fail`. `ReadJsonAsync<T>` catches `JsonException` and returns `Fail<Error.InternalServerError>` with structured position diagnostics (line / byte offset only — never response body content or `JsonException.Path`).
 
 ## Breaking changes from v1
 
