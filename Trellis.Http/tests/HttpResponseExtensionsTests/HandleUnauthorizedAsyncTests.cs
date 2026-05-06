@@ -71,4 +71,17 @@ public class HandleUnauthorizedAsyncTests
         await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("error");
     }
+
+    [Fact]
+    public async Task Null_error_disposes_response_before_throwing()
+    {
+        // Inspection finding (PR #462 round 4): null-error guard must run after await + dispose.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.HandleUnauthorizedAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        tracker.Disposed.Should().BeTrue("HandleUnauthorizedAsync's disposal contract must hold even on the null-error throw path");
+    }
 }

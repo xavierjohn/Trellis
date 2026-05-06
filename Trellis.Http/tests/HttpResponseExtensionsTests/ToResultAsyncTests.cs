@@ -31,14 +31,20 @@ public class ToResultAsyncTests
     [InlineData((int)HttpStatusCode.Unauthorized, typeof(Error.Unauthorized))]
     [InlineData((int)HttpStatusCode.Forbidden, typeof(Error.Forbidden))]
     [InlineData((int)HttpStatusCode.NotFound, typeof(Error.NotFound))]
-    [InlineData((int)HttpStatusCode.MethodNotAllowed, typeof(Error.MethodNotAllowed))]
+    // 405 (Method Not Allowed) is omitted here: it requires the Allow header to be present
+    // (per RFC 9110 §15.5.6) and falls through to InternalServerError when absent. Header-aware
+    // behavior is covered by Default_405_preserves_Allow_header_in_typed_error and
+    // Default_405_with_no_Allow_header_falls_through_to_InternalServerError.
     [InlineData((int)HttpStatusCode.NotAcceptable, typeof(Error.NotAcceptable))]
     [InlineData((int)HttpStatusCode.Conflict, typeof(Error.Conflict))]
     [InlineData((int)HttpStatusCode.Gone, typeof(Error.Gone))]
     [InlineData((int)HttpStatusCode.PreconditionFailed, typeof(Error.PreconditionFailed))]
     [InlineData((int)HttpStatusCode.RequestEntityTooLarge, typeof(Error.ContentTooLarge))]
     [InlineData((int)HttpStatusCode.UnsupportedMediaType, typeof(Error.UnsupportedMediaType))]
-    [InlineData((int)HttpStatusCode.RequestedRangeNotSatisfiable, typeof(Error.RangeNotSatisfiable))]
+    // 416 (Range Not Satisfiable) is omitted here: it requires the Content-Range header to be
+    // present (per RFC 9110 §15.5.17) and falls through to InternalServerError when absent.
+    // Header-aware behavior is covered by Default_416_preserves_Content_Range_* and
+    // Default_416_with_no_Content_Range_header_falls_through_to_InternalServerError.
     [InlineData((int)HttpStatusCode.UnprocessableEntity, typeof(Error.UnprocessableContent))]
     [InlineData(428, typeof(Error.PreconditionRequired))]
     [InlineData(429, typeof(Error.TooManyRequests))]
@@ -336,16 +342,20 @@ public class ToResultAsyncTests
     }
 
     [Fact]
-    public async Task Default_405_with_no_Allow_header_returns_empty_typed_array()
+    public async Task Default_405_with_no_Allow_header_falls_through_to_InternalServerError()
     {
-        // Negative test: mapper must not invent values when the upstream omits the header.
+        // Inspection finding (PR #462 round 4): RFC 9110 §15.5.6 says a 405 response MUST
+        // include the Allow header. When upstream is non-conforming and omits it, the
+        // strict default mapper falls through to InternalServerError rather than
+        // synthesizing a typed `new Error.MethodNotAllowed` with an empty array — that
+        // empty-array shape would produce a misleading wire-level `Allow:` header on
+        // round-trip through ASP.
         var tracker = new TrackingHttpResponseMessage(HttpStatusCode.MethodNotAllowed);
         var task = Task.FromResult<HttpResponseMessage>(tracker);
 
         var result = await task.ToResultAsync();
 
-        var err = result.Should().BeFailureOfType<Error.MethodNotAllowed>().Subject;
-        err.Allow.IsEmpty.Should().BeTrue();
+        result.Should().BeFailureOfType<Error.InternalServerError>();
     }
 
     [Fact]
@@ -361,16 +371,20 @@ public class ToResultAsyncTests
     }
 
     [Fact]
-    public async Task Default_416_with_no_Content_Range_header_returns_zero_complete_length()
+    public async Task Default_416_with_no_Content_Range_header_falls_through_to_InternalServerError()
     {
-        // Inspection finding (GPT-5.5 pre-commit review): negative test was missing for 416.
+        // Inspection finding (PR #462 round 4): RFC 9110 §15.5.17 says a 416 response
+        // SHOULD include Content-Range. When upstream omits it, the strict default
+        // mapper falls through to InternalServerError rather than synthesizing a typed
+        // `new Error.RangeNotSatisfiable` with a zero length — that zero-length shape
+        // would produce a misleading `Content-Range: bytes */0` wire header on
+        // round-trip through ASP.
         var tracker = new TrackingHttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
         var task = Task.FromResult<HttpResponseMessage>(tracker);
 
         var result = await task.ToResultAsync();
 
-        var err = result.Should().BeFailureOfType<Error.RangeNotSatisfiable>().Subject;
-        err.CompleteLength.Should().Be(0);
+        result.Should().BeFailureOfType<Error.InternalServerError>();
     }
 
     [Fact]
@@ -492,26 +506,6 @@ public class ToResultAsyncTests
         err.Challenges.Length.Should().Be(1);
         err.Challenges.Items[0].Scheme.Should().Be("Bearer");
         err.Challenges.Items[0].Params.Should().BeNull("parser matched no name=value pairs; falls back to scheme-only");
-    }
-
-    [Fact]
-    public async Task Default_401_empty_scheme_header_is_skipped()
-    {
-        // Coverage for the empty-scheme skip in ExtractAuthChallenges: if a header value
-        // somehow has no scheme (unusual but possible via direct AuthenticationHeaderValue
-        // construction), we skip it rather than producing a malformed AuthChallenge. Tested
-        // alongside a valid challenge so we can prove the loop continues correctly.
-        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.Unauthorized);
-        // Empty-scheme would be a synthetic edge case; the loop's `continue` simply skips.
-        // The valid challenge below proves we don't fall out of the loop entirely.
-        tracker.Headers.WwwAuthenticate.Add(new System.Net.Http.Headers.AuthenticationHeaderValue("Basic"));
-        var task = Task.FromResult<HttpResponseMessage>(tracker);
-
-        var result = await task.ToResultAsync();
-
-        var err = result.Should().BeFailureOfType<Error.Unauthorized>().Subject;
-        err.Challenges.Length.Should().Be(1);
-        err.Challenges.Items[0].Scheme.Should().Be("Basic");
     }
 
     [Fact]

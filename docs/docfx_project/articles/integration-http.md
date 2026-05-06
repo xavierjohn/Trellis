@@ -88,8 +88,8 @@ Bare `ToResultAsync()` (no `statusMap`) maps non-success status codes to typed T
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
 | `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only — `AuthChallenge` has no slot for the bare token; use `ToResultAsync(statusMap)` if token68 round-trip matters. | `Error.Unauthorized.Challenges` |
-| `405 Method Not Allowed` | `Allow` (response content header) | `Error.MethodNotAllowed.Allow` |
-| `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved) | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
+| `405 Method Not Allowed` | `Allow` (response content header). When upstream omits it, falls through to `Error.InternalServerError`. | `Error.MethodNotAllowed.Allow` |
+| `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved). When upstream omits it, falls through to `Error.InternalServerError`. | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
 | `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
 | `503 Service Unavailable` | `Retry-After` | `Error.ServiceUnavailable.RetryAfter` |
 

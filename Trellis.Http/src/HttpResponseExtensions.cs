@@ -161,16 +161,26 @@ public static class HttpResponseExtensions
             HttpStatusCode.Unauthorized => new Error.Unauthorized(ExtractAuthChallenges(response)),
             HttpStatusCode.Forbidden => new Error.Forbidden("http.forbidden"),
             HttpStatusCode.NotFound => new Error.NotFound(resource),
-            HttpStatusCode.MethodNotAllowed => new Error.MethodNotAllowed(ExtractAllow(response)),
+            // RFC 9110 §15.5.6 says a 405 response MUST include the Allow header. When the
+            // upstream is non-conforming and omits it, fall through to InternalServerError
+            // rather than synthesizing a `new Error.MethodNotAllowed(empty)` — that empty-array
+            // shape would produce a misleading wire-level `Allow:` header on round-trip
+            // through ASP.
+            HttpStatusCode.MethodNotAllowed when ExtractAllow(response) is { IsEmpty: false } allow
+                => new Error.MethodNotAllowed(allow),
             HttpStatusCode.NotAcceptable => new Error.NotAcceptable(EquatableArray<string>.Empty),
             HttpStatusCode.Conflict => new Error.Conflict(null, "http.conflict"),
             HttpStatusCode.Gone => new Error.Gone(resource),
             HttpStatusCode.PreconditionFailed => new Error.PreconditionFailed(resource, PreconditionKind.IfMatch),
             HttpStatusCode.RequestEntityTooLarge => new Error.ContentTooLarge(),
             HttpStatusCode.UnsupportedMediaType => new Error.UnsupportedMediaType(EquatableArray<string>.Empty),
-            HttpStatusCode.RequestedRangeNotSatisfiable => new Error.RangeNotSatisfiable(
-                ExtractCompleteLength(response),
-                response.Content?.Headers.ContentRange?.Unit ?? "bytes"),
+            // RFC 9110 §15.5.17 says a 416 response SHOULD include Content-Range. When the
+            // upstream omits it (length is 0), fall through to InternalServerError rather than
+            // synthesizing `new Error.RangeNotSatisfiable(0)` — that zero-length shape would
+            // produce a misleading `Content-Range: bytes */0` wire header on round-trip
+            // through ASP.
+            HttpStatusCode.RequestedRangeNotSatisfiable when ExtractCompleteLength(response) is var length and > 0
+                => new Error.RangeNotSatisfiable(length, response.Content?.Headers.ContentRange?.Unit ?? "bytes"),
             HttpStatusCode.UnprocessableEntity => Error.UnprocessableContent.ForRule("http.unprocessable_content"),
             (HttpStatusCode)428 => new Error.PreconditionRequired(PreconditionKind.IfMatch),
             (HttpStatusCode)429 => new Error.TooManyRequests(ExtractRetryAfter(response)),
@@ -249,15 +259,9 @@ public static class HttpResponseExtensions
 
         var challenges = new List<AuthChallenge>(headers.Count);
         foreach (var header in headers)
-        {
-            if (string.IsNullOrEmpty(header.Scheme))
-                continue;
             challenges.Add(BuildChallenge(header));
-        }
 
-        return challenges.Count == 0
-            ? EquatableArray<AuthChallenge>.Empty
-            : new EquatableArray<AuthChallenge>([.. challenges]);
+        return new EquatableArray<AuthChallenge>([.. challenges]);
     }
 
     /// <summary>
@@ -399,9 +403,17 @@ public static class HttpResponseExtensions
         Error.NotFound error)
     {
         ArgumentNullException.ThrowIfNull(response);
-        ArgumentNullException.ThrowIfNull(error);
 
+        // Await BEFORE the null-`error` guard so we own the HttpResponseMessage's disposal
+        // regardless of where the throw fires. Throwing before await would let the in-flight
+        // response task complete and leak the message until GC finalization.
         var message = await response.ConfigureAwait(false);
+
+        if (error is null)
+        {
+            message.Dispose();
+            throw new ArgumentNullException(nameof(error));
+        }
 
         if (message.StatusCode == HttpStatusCode.NotFound)
         {
@@ -429,9 +441,14 @@ public static class HttpResponseExtensions
         Error.Conflict error)
     {
         ArgumentNullException.ThrowIfNull(response);
-        ArgumentNullException.ThrowIfNull(error);
 
         var message = await response.ConfigureAwait(false);
+
+        if (error is null)
+        {
+            message.Dispose();
+            throw new ArgumentNullException(nameof(error));
+        }
 
         if (message.StatusCode == HttpStatusCode.Conflict)
         {
@@ -459,9 +476,14 @@ public static class HttpResponseExtensions
         Error.Unauthorized error)
     {
         ArgumentNullException.ThrowIfNull(response);
-        ArgumentNullException.ThrowIfNull(error);
 
         var message = await response.ConfigureAwait(false);
+
+        if (error is null)
+        {
+            message.Dispose();
+            throw new ArgumentNullException(nameof(error));
+        }
 
         if (message.StatusCode == HttpStatusCode.Unauthorized)
         {

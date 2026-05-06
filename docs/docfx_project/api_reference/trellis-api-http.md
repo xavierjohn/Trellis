@@ -68,8 +68,8 @@ When `statusMap` is omitted, the default mapper inspects the `HttpResponseMessag
 | HTTP status | Header consulted | Surfaces on |
 |---|---|---|
 | `401 Unauthorized` | `WWW-Authenticate` (scheme + best-effort `realm` / `error` / etc. parameter parse). **Token68 form** (e.g. `Negotiate <base64-token>`) degrades to scheme-only because `AuthChallenge` has no slot for the bare token; use `ToResultAsync(statusMap)` or the body-aware overload when token68 round-trip fidelity matters. | `Error.Unauthorized.Challenges` |
-| `405 Method Not Allowed` | `Allow` (response content header) | `Error.MethodNotAllowed.Allow` |
-| `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved) | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
+| `405 Method Not Allowed` | `Allow` (response content header). When the upstream omits `Allow`, falls through to `Error.InternalServerError` per RFC 9110 §15.5.6 (which requires the header on 405 responses). | `Error.MethodNotAllowed.Allow` |
+| `416 Range Not Satisfiable` | `Content-Range: <unit> */<total>` (both unit and length preserved). When the upstream omits `Content-Range`, falls through to `Error.InternalServerError` per RFC 9110 §15.5.17. | `Error.RangeNotSatisfiable.CompleteLength` + `Error.RangeNotSatisfiable.Unit` |
 | `429 Too Many Requests` | `Retry-After` (delay seconds **or** HTTP date; negative deltas treated as absent) | `Error.TooManyRequests.RetryAfter` |
 | `503 Service Unavailable` | `Retry-After` | `Error.ServiceUnavailable.RetryAfter` |
 

@@ -75,4 +75,19 @@ public class HandleNotFoundAsyncTests
         await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("error");
     }
+
+    [Fact]
+    public async Task Null_error_disposes_response_before_throwing()
+    {
+        // Inspection finding (PR #462 round 4): the null-`error` guard previously fired
+        // BEFORE awaiting the response task, leaking the in-flight HttpResponseMessage.
+        // The guard must run AFTER the await and dispose the message before throwing.
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK);
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var act = async () => await task.HandleNotFoundAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        tracker.Disposed.Should().BeTrue("HandleNotFoundAsync's disposal contract must hold even on the null-error throw path");
+    }
 }
