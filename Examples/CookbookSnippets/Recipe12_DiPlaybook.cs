@@ -9,41 +9,39 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
-using Trellis.Asp.Authorization;
 using Trellis.Asp.Routing;
 using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.ServiceDefaults;
 
 public static class CompositionRoot
 {
     public static IServiceCollection AddApp(this IServiceCollection services, string connectionString)
     {
-        // 1. Mediator pipeline (outermost behaviors first).
-        services.AddTrellisBehaviors();
+        // 1. Trellis composition root: ASP, Mediator behaviors, FluentValidation, claims-based
+        //    actor provider, resource authorization, and EF unit of work in canonical order.
+        //    UseEntityFrameworkUnitOfWork<TContext> is applied last so TransactionalCommandBehavior
+        //    lands innermost in the mediator pipeline.
+        services.AddTrellis(options => options
+            .UseAsp()
+            .UseMediator()
+            .UseFluentValidation(typeof(PlaceOrderValidator).Assembly)
+            .UseClaimsActorProvider()
+            .UseResourceAuthorization(typeof(UpdateOrderCommand).Assembly)
+            .UseEntityFrameworkUnitOfWork<AppDbContext>());
 
-        // 2. FluentValidation plug-in. Idempotent; safe to call after AddTrellisBehaviors.
-        services.AddTrellisFluentValidation(typeof(PlaceOrderValidator).Assembly);
-
-        // 3. ASP layer: Problem Details mapping + scalar-value validation pipeline.
-        services.AddTrellisAsp();
-
-        // 4. ASP authorization actor providers.
-        services.AddClaimsActorProvider();
-        services.AddResourceAuthorization(typeof(UpdateOrderCommand).Assembly);
-
-        // 5. EF Core context with Trellis interceptors + conventions.
+        // 2. EF Core context with Trellis interceptors + conventions.
+        //    DbContext registration is application-owned (provider, connection string, pooling).
         services.AddDbContext<AppDbContext>(opts => opts
             .UseInMemoryDatabase("CookbookSample")
             .AddTrellisInterceptors());
 
-        // 6. EF unit of work LAST so TransactionalCommandBehavior lands innermost.
-        services.AddTrellisUnitOfWork<AppDbContext>();
-
-        // 7. Optional: route constraints for value-object IDs (reflection-based).
+        // 3. Optional: route constraints for value-object IDs (reflection-based; not part of
+        //    AddTrellis because route parameter names are application-owned).
         services.AddTrellisRouteConstraints(typeof(OrderId).Assembly);
 
-        // 8. Application services.
+        // 4. Application services.
         services.AddScoped<IOrderRepository, EfOrderRepository>();
 
         return services;

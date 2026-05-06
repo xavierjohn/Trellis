@@ -8,6 +8,7 @@ using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Asp;
+using Trellis.Asp.Authorization;
 using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
 using Trellis.Mediator;
@@ -179,6 +180,14 @@ public class TrellisServiceBuilderTests
         }
     }
 
+    private sealed class SecondaryDbContext : DbContext
+    {
+        public SecondaryDbContext(DbContextOptions<SecondaryDbContext> options)
+            : base(options)
+        {
+        }
+    }
+
     public sealed record ProtectedOrder(string Id, string OwnerId);
 
     public sealed record UpdateProtectedOrderCommand(string ResourceId)
@@ -254,5 +263,121 @@ public class TrellisServiceBuilderTests
         dispatchIndex.Should().BeLessThan(txIndex,
             "domain events must dispatch after the transaction commits");
         pipeline.Should().EndWith(typeof(TransactionalCommandBehavior<,>));
+    }
+
+    // -------- Round-N inspection findings (M-S1, N-S1, N-S4) --------
+
+    [Fact]
+    public void UseEntityFrameworkUnitOfWork_TwiceWithSameContext_Throws()
+    {
+        // Inspection finding M-S1: the actor-provider slot throws on duplicate
+        // configuration to prevent silent misconfiguration. The UoW slot must
+        // follow the same fail-fast policy: a user mistakenly chaining two
+        // UseEntityFrameworkUnitOfWork calls is always misconfigured.
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseEntityFrameworkUnitOfWork<TestDbContext>()
+            .UseEntityFrameworkUnitOfWork<TestDbContext>());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*unit of work*");
+    }
+
+    [Fact]
+    public void UseEntityFrameworkUnitOfWork_TwiceWithDifferentContext_Throws()
+    {
+        // Inspection finding M-S1: chaining UseEntityFrameworkUnitOfWork<DbContextA>
+        // then UseEntityFrameworkUnitOfWork<DbContextB> previously silently
+        // overwrote the first registration so only DbContextB's UoW was wired.
+        // That class of mistake (read/write split, multi-tenant) must fail fast.
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseEntityFrameworkUnitOfWork<TestDbContext>()
+            .UseEntityFrameworkUnitOfWork<SecondaryDbContext>());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*unit of work*");
+    }
+
+    [Fact]
+    public void ExplicitResourceAuthorization_BeforeAddTrellis_PositionsBehaviorBeforeValidation()
+    {
+        // Inspection finding N-S1: the documented "explicit resource-authorization
+        // registrations without scanning" use case (UseResourceAuthorization() with
+        // no assemblies) requires the user to call AddResourceAuthorization<T,R,Resp>()
+        // explicitly. If they do so BEFORE AddTrellis(...), the closed-generic
+        // ResourceAuthorizationBehavior<,,> previously ended up at descriptor slot 0,
+        // before exception/tracing/logging/static-auth/validation — outside the
+        // canonical Trellis behavior envelope. AddTrellisBehaviors now re-positions
+        // any pre-existing closed-generic resource-auth behaviors to sit just before
+        // ValidationBehavior, mirroring the AddTrellisUnitOfWork ↔ AddDomainEventDispatch
+        // symmetry.
+        var services = new ServiceCollection();
+
+        services.AddResourceAuthorization<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>();
+        services.AddScoped<IResourceLoader<UpdateProtectedOrderCommand, ProtectedOrder>, UpdateProtectedOrderLoader>();
+        services.AddTrellis(options => options.UseResourceAuthorization());
+
+        var descriptors = services
+            .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>)
+                     || d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderCommand, Result<string>>))
+            .ToList();
+
+        var validationIndex = descriptors.FindIndex(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>) &&
+            d.ImplementationType == typeof(ValidationBehavior<,>));
+        var resAuthIndex = descriptors.FindIndex(d =>
+            d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderCommand, Result<string>>));
+
+        validationIndex.Should().BeGreaterOrEqualTo(0, "ValidationBehavior must be registered by AddTrellisBehaviors");
+        resAuthIndex.Should().BeGreaterOrEqualTo(0, "explicit AddResourceAuthorization must remain registered");
+        resAuthIndex.Should().Be(validationIndex - 1,
+            "ResourceAuthorizationBehavior<,,> must sit immediately before ValidationBehavior in the canonical pipeline");
+    }
+
+    [Fact]
+    public void UseCachingActorProvider_AfterUseClaimsActorProvider_WrapsInnerProvider()
+    {
+        // Inspection finding N-S4: Trellis.Asp exposes AddCachingActorProvider<T>()
+        // for per-request caching of an inner IActorProvider, but the builder didn't
+        // expose a slot for it. Calling AddCachingActorProvider<ClaimsActorProvider>()
+        // after AddTrellis(...UseClaimsActorProvider()) works but is awkward; making
+        // it a builder slot makes the composition explicit and prevents the user
+        // from forgetting the order constraint.
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseClaimsActorProvider()
+            .UseCachingActorProvider<ClaimsActorProvider>());
+
+        // The IActorProvider resolves to a delegate registration (factory-based
+        // CachingActorProvider) — assert by descriptor shape that the slot is
+        // factory-based rather than the bare ClaimsActorProvider implementation
+        // type registered by UseClaimsActorProvider alone.
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IActorProvider) &&
+            d.ImplementationFactory != null,
+            "UseCachingActorProvider must replace the IActorProvider slot with a CachingActorProvider factory");
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(ClaimsActorProvider),
+            "the inner provider type must be registered as scoped so the caching wrapper can resolve it");
+    }
+
+    [Fact]
+    public void UseCachingActorProvider_TwiceWithDifferentInner_Throws()
+    {
+        // Inspection finding N-S4: the caching slot must follow the same fail-fast
+        // duplicate-detection pattern as the actor-provider slot itself.
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseClaimsActorProvider()
+            .UseCachingActorProvider<ClaimsActorProvider>()
+            .UseCachingActorProvider<EntraActorProvider>());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*caching actor provider*");
     }
 }

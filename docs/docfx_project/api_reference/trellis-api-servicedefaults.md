@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.ServiceDefaults
 namespaces: [Trellis.ServiceDefaults]
-types: [AddTrellisServiceDefaults, WebApplicationBuilderExtensions]
+types: [TrellisServiceCollectionExtensions, TrellisServiceBuilder]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-05-05
 audience: [llm]
 ---
 # Trellis.ServiceDefaults API Reference
@@ -36,7 +36,22 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 
 - `AddTrellis(...)` does not register `DbContext`, Mediator handlers, route constraints, or app-specific validators.
 - `UseEntityFrameworkUnitOfWork<TContext>()` is applied last so transaction commit remains innermost in the mediator pipeline.
+- Calling `UseEntityFrameworkUnitOfWork<TContext>()` more than once (with the same or a different `TContext`) throws `InvalidOperationException`. The Trellis pipeline supports exactly one transactional `IUnitOfWork` per composition; chaining two calls (e.g. for a read/write context split) is always misconfiguration. Use a separate composition root or a single multi-tenant `DbContext` instead.
 - If you only need one module, direct package-specific registration remains valid; the builder is for composition-root clarity.
+
+## AOT compatibility
+
+`Trellis.ServiceDefaults` is **not** AOT- or trim-compatible. The package opts out of AOT/trim analyzers (`<IsAotCompatible>false</IsAotCompatible>`, `<IsTrimmable>false</IsTrimmable>`) because the assembly-scanning fluent methods (`UseFluentValidation(params Assembly[])`, `UseResourceAuthorization(params Assembly[])`, `UseDomainEvents(params Assembly[])`) wrap underlying `[RequiresUnreferencedCode]` + `[RequiresDynamicCode]` APIs whose attributes are not propagated through the wrapper.
+
+For AOT/trim consumers, use the per-package direct APIs that do propagate the attributes:
+
+| Builder method | AOT-friendly direct call |
+| --- | --- |
+| `o.UseFluentValidation(asm)` | `services.AddTrellisFluentValidation()` plus per-validator `services.AddScoped<IValidator<T>, TValidator>()` |
+| `o.UseResourceAuthorization(asm)` | `services.AddResourceAuthorization<TMessage, TResource, TResponse>()` plus `services.AddScoped<IResourceLoader<TMessage, TResource>, TLoader>()` |
+| `o.UseDomainEvents(asm)` | `services.AddDomainEventDispatch()` plus `services.AddDomainEventHandler<TEvent, THandler>()` |
+
+The parameterless `o.UseFluentValidation()` / `o.UseResourceAuthorization()` / `o.UseDomainEvents()` overloads are AOT-compatible — they only register the adapter / pipeline behaviors and rely on the consumer's explicit per-type registrations.
 
 ## Types
 
@@ -58,29 +73,34 @@ public sealed class TrellisServiceBuilder
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public TrellisServiceBuilder UseAsp(Action<TrellisAspOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `Trellis.Asp` integration via `AddTrellisAsp(...)`. |
-| `public TrellisServiceBuilder UseMediator(Action<TrellisMediatorTelemetryOptions>? configureTelemetry = null)` | `TrellisServiceBuilder` | Registers Trellis Mediator behaviors via `AddTrellisBehaviors(...)`. |
-| `public TrellisServiceBuilder UseFluentValidation(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers the FluentValidation adapter. When assemblies are supplied, also scans them for validators. Implies `UseMediator()`. |
-| `public TrellisServiceBuilder UseResourceAuthorization(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers resource authorization behaviors/loaders discovered in assemblies. With no assemblies, enables the mediator pipeline for explicit resource-authorization registrations without scanning. Implies `UseMediator()`. |
-| `public TrellisServiceBuilder UseClaimsActorProvider(Action<ClaimsActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `ClaimsActorProvider` as `IActorProvider`. |
-| `public TrellisServiceBuilder UseEntraActorProvider(Action<EntraActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `EntraActorProvider` as `IActorProvider`. |
-| `public TrellisServiceBuilder UseDevelopmentActorProvider(Action<DevelopmentActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `DevelopmentActorProvider` as `IActorProvider`. Use only in development/testing hosts. |
-| `public TrellisServiceBuilder UseEntityFrameworkUnitOfWork<TContext>() where TContext : DbContext` | `TrellisServiceBuilder` | Registers `EfUnitOfWork<TContext>` and `TransactionalCommandBehavior<,>` via `AddTrellisUnitOfWork<TContext>()`. Implies `UseMediator()` and is applied last. |
-| `public TrellisServiceBuilder UseDomainEvents(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers `DomainEventDispatchBehavior<,>` and the default `IDomainEventPublisher`. With assemblies, scans for `IDomainEventHandler<TEvent>` implementations and registers each as scoped. Implies `UseMediator()`. Applied between FluentValidation and `UseEntityFrameworkUnitOfWork<TContext>()` so events fire after the transaction commits. |
+| `public TrellisServiceBuilder UseAsp(Action<TrellisAspOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `Trellis.Asp` integration via `AddTrellisAsp(...)`. Repeated calls compose the configure delegates rather than overwriting. |
+| `public TrellisServiceBuilder UseMediator(Action<TrellisMediatorTelemetryOptions>? configureTelemetry = null)` | `TrellisServiceBuilder` | Registers Trellis Mediator behaviors via `AddTrellisBehaviors(...)`. Repeated calls compose the configure delegates rather than overwriting. |
+| `public TrellisServiceBuilder UseFluentValidation(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers the FluentValidation adapter. When assemblies are supplied, also scans them for validators (non-AOT). Implies `UseMediator()`. |
+| `public TrellisServiceBuilder UseResourceAuthorization(params Assembly[] assemblies)` | `TrellisServiceBuilder` | With assemblies: scans for `IAuthorizeResource<TResource>` commands and registers `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>` for each (non-AOT). With no assemblies: relies on the static-permission `AuthorizationBehavior<,>` registered unconditionally by `UseMediator()`/`AddTrellisBehaviors()`, and on the consumer's explicit per-message `services.AddResourceAuthorization<TMessage, TResource, TResponse>()` calls. Implies `UseMediator()`. |
+| `public TrellisServiceBuilder UseClaimsActorProvider(Action<ClaimsActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `ClaimsActorProvider` as `IActorProvider`. Mutually exclusive with the other actor-provider selectors. |
+| `public TrellisServiceBuilder UseEntraActorProvider(Action<EntraActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `EntraActorProvider` as `IActorProvider`. Mutually exclusive with the other actor-provider selectors. |
+| `public TrellisServiceBuilder UseDevelopmentActorProvider(Action<DevelopmentActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `DevelopmentActorProvider` as `IActorProvider`. Mutually exclusive with the other actor-provider selectors. Use only in development/testing hosts. |
+| `public TrellisServiceBuilder UseCachingActorProvider<T>() where T : class, IActorProvider` | `TrellisServiceBuilder` | Wraps the inner `IActorProvider` registration with a per-request caching decorator via `AddCachingActorProvider<T>()`. Chain after the matching `UseXxxActorProvider(...)` call so the inner provider's `IOptions<TOptions>` is configured first. |
+| `public TrellisServiceBuilder UseEntityFrameworkUnitOfWork<TContext>() where TContext : DbContext` | `TrellisServiceBuilder` | Registers `EfUnitOfWork<TContext>` and `TransactionalCommandBehavior<,>` via `AddTrellisUnitOfWork<TContext>()`. Implies `UseMediator()` and is applied last. Throws `InvalidOperationException` on repeated call — see "Common traps". |
+| `public TrellisServiceBuilder UseDomainEvents(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers `DomainEventDispatchBehavior<,>` and the default `IDomainEventPublisher`. With assemblies, scans for `IDomainEventHandler<TEvent>` implementations and registers each as scoped (non-AOT). Implies `UseMediator()`. Applied between FluentValidation and `UseEntityFrameworkUnitOfWork<TContext>()` so events fire after the transaction commits. |
 
 ## Behavior
 
 `AddTrellis(...)` records selected modules first and then applies them in this order:
 
 1. ASP integration.
-2. Actor provider.
+2. Actor provider (and the optional caching wrap that chains after it).
 3. Mediator behaviors.
-4. Resource authorization.
+4. Resource authorization (assembly scanning, when assemblies are supplied).
 5. FluentValidation adapter/scanning when selected.
-6. Domain event dispatch (registers `DomainEventDispatchBehavior<,>` and any scanned handlers).
+6. Domain event dispatch (registers `DomainEventDispatchBehavior<,>`, the default `IDomainEventPublisher`, and any scanned handlers).
 7. EF Core Unit of Work.
 
 That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors.
+
+### Order-independence for explicit resource-authorization registrations
+
+Explicit `services.AddResourceAuthorization<TMessage, TResource, TResponse>()` calls made BEFORE `AddTrellis(...)` are now order-independent. `AddTrellisBehaviors()` (called by `UseMediator()`) detects any pre-existing closed-generic `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>` descriptors and re-positions them to sit immediately before `ValidationBehavior<,>`, so they end up in the canonical pipeline envelope regardless of registration order. This mirrors the symmetry between `AddTrellisUnitOfWork<TContext>` and `AddDomainEventDispatch`.
 
 `AddTrellis(...)` deliberately does **not** register:
 

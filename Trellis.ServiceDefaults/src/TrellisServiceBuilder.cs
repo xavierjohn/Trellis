@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
+using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
@@ -14,6 +15,13 @@ using Trellis.Mediator;
 /// <summary>
 /// Collects requested Trellis integration modules and applies them in canonical order.
 /// </summary>
+/// <remarks>
+/// Callers do not invoke this builder directly. Use
+/// <see cref="TrellisServiceCollectionExtensions.AddTrellis(IServiceCollection, Action{TrellisServiceBuilder})"/>;
+/// it constructs a <see cref="TrellisServiceBuilder"/>, hands it to the configure callback, and
+/// invokes <c>Apply()</c> after the callback returns to register the selected modules in the
+/// canonical pipeline order.
+/// </remarks>
 public sealed class TrellisServiceBuilder
 {
     private readonly IServiceCollection _services;
@@ -23,6 +31,7 @@ public sealed class TrellisServiceBuilder
     private Action<TrellisAspOptions>? _configureAsp;
     private Action<TrellisMediatorTelemetryOptions>? _configureMediatorTelemetry;
     private Action<IServiceCollection>? _actorProviderRegistration;
+    private Action<IServiceCollection>? _cachingActorProviderWrap;
     private Action<IServiceCollection>? _unitOfWorkRegistration;
     private bool _useAsp;
     private bool _useMediator;
@@ -37,6 +46,12 @@ public sealed class TrellisServiceBuilder
     /// <summary>
     /// Registers Trellis ASP.NET Core integration.
     /// </summary>
+    /// <remarks>
+    /// Calling this method more than once is allowed; the configure delegates are composed in
+    /// call order rather than overwriting. Each delegate runs against the same
+    /// <see cref="TrellisAspOptions"/> instance, so layered configuration (e.g. a library
+    /// applies defaults; the host overrides specific properties) is supported.
+    /// </remarks>
     public TrellisServiceBuilder UseAsp(Action<TrellisAspOptions>? configure = null)
     {
         _useAsp = true;
@@ -49,6 +64,10 @@ public sealed class TrellisServiceBuilder
     /// <summary>
     /// Registers the Trellis Mediator pipeline behaviors.
     /// </summary>
+    /// <remarks>
+    /// Calling this method more than once is allowed; the configure delegates are composed in
+    /// call order rather than overwriting.
+    /// </remarks>
     public TrellisServiceBuilder UseMediator(Action<TrellisMediatorTelemetryOptions>? configureTelemetry = null)
     {
         _useMediator = true;
@@ -123,9 +142,19 @@ public sealed class TrellisServiceBuilder
     /// Registers EF Core Unit of Work and the transactional command behavior.
     /// Implies <see cref="UseMediator"/> and is always applied after all other behavior registrations.
     /// </summary>
+    /// <remarks>
+    /// Calling this method more than once — with the same <typeparamref name="TContext"/> or
+    /// a different one — throws <see cref="InvalidOperationException"/>. The Trellis pipeline
+    /// supports exactly one transactional <see cref="IUnitOfWork"/> per composition; chaining
+    /// two calls (e.g. for a read/write context split) is always misconfiguration.
+    /// </remarks>
     public TrellisServiceBuilder UseEntityFrameworkUnitOfWork<TContext>()
         where TContext : DbContext
     {
+        if (_unitOfWorkRegistration is not null)
+            throw new InvalidOperationException(
+                "Only one unit of work can be configured per Trellis composition.");
+
         _useMediator = true;
         _unitOfWorkRegistration = services => services.AddTrellisUnitOfWork<TContext>();
         return this;
@@ -154,6 +183,30 @@ public sealed class TrellisServiceBuilder
         return this;
     }
 
+    /// <summary>
+    /// Registers a caching decorator around the inner <see cref="IActorProvider"/>
+    /// (typically registered by a previous <c>UseXxxActorProvider</c> call).
+    /// Per-request caching ensures multiple actor lookups within one request return the same instance.
+    /// </summary>
+    /// <typeparam name="T">The concrete <see cref="IActorProvider"/> implementation to wrap.</typeparam>
+    /// <remarks>
+    /// For built-in providers (<see cref="EntraActorProvider"/>, <see cref="ClaimsActorProvider"/>),
+    /// chain after the matching <c>UseXxxActorProvider(...)</c> call so its
+    /// <c>IOptions&lt;TOptions&gt;</c> is configured before the caching wrap replaces the
+    /// <see cref="IActorProvider"/> slot. Custom providers without Trellis-managed options can
+    /// be cached without a prior <c>UseXxxActorProvider</c>.
+    /// </remarks>
+    public TrellisServiceBuilder UseCachingActorProvider<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
+        where T : class, IActorProvider
+    {
+        if (_cachingActorProviderWrap is not null)
+            throw new InvalidOperationException(
+                "Only one caching actor provider can be configured. Caching actor provider already configured.");
+
+        _cachingActorProviderWrap = services => services.AddCachingActorProvider<T>();
+        return this;
+    }
+
     internal void Apply()
     {
         if (_useAsp)
@@ -165,6 +218,7 @@ public sealed class TrellisServiceBuilder
         }
 
         _actorProviderRegistration?.Invoke(_services);
+        _cachingActorProviderWrap?.Invoke(_services);
 
         if (_useMediator)
         {
@@ -179,12 +233,12 @@ public sealed class TrellisServiceBuilder
 
         if (_useFluentValidation && _fluentValidationAssemblies.Count == 0)
             _services.AddTrellisFluentValidation();
-        else if (_fluentValidationAssemblies.Count > 0)
+        else if (_useFluentValidation)
             _services.AddTrellisFluentValidation([.. _fluentValidationAssemblies]);
 
         if (_useDomainEvents && _domainEventAssemblies.Count == 0)
             _services.AddDomainEventDispatch();
-        else if (_domainEventAssemblies.Count > 0)
+        else if (_useDomainEvents)
             _services.AddDomainEventDispatch([.. _domainEventAssemblies]);
 
         _unitOfWorkRegistration?.Invoke(_services);

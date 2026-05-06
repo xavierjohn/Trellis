@@ -38,6 +38,7 @@
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\generator\Trellis.EntityFrameworkCore.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Trellis.ServiceDefaults\src\Trellis.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Trellis.StateMachine\src\Trellis.StateMachine.csproj" />
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
   </ItemGroup>

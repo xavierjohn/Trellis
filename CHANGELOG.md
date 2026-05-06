@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Trellis.ServiceDefaults — inspection findings (M-S1, M-S2, m-S1..m-S3, i-S1..i-S4 + GPT-5.5 N-S1..N-S4)
+
+Closes the formal Trellis.ServiceDefaults inspection backlog from `files/servicedefaults-inspection-report.md` after a meta-review by GPT-5.5 validated all 9 self-inspection findings and surfaced 4 additional ones (one Major, two Minor, one Info).
+
+- **(Major) M-S1 — `UseEntityFrameworkUnitOfWork<TContext>()` now throws on duplicate call.** Previously chaining `.UseEntityFrameworkUnitOfWork<DbContextA>().UseEntityFrameworkUnitOfWork<DbContextB>()` silently overwrote the first registration so only `DbContextB`'s UoW was wired. The actor-provider slot already enforces fail-fast; UoW now matches that policy. Same-`TContext` duplicates also throw — the Trellis pipeline supports exactly one transactional `IUnitOfWork` per composition; chaining is always misconfiguration. Read/write context splits should run as separate composition roots or use a multi-tenant `DbContext`.
+
+- **(Major) M-S2 — AOT/trim incompatibility now documented prominently.** The package opts out of AOT/trim analyzers (`<IsAotCompatible>false</IsAotCompatible>`, `<EnableAotAnalyzer>false</EnableAotAnalyzer>`) and the fluent assembly-scanning methods (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`) wrap underlying `[RequiresUnreferencedCode]` + `[RequiresDynamicCode]` APIs without propagating the attributes — so downstream AOT consumers do NOT receive IL2026/IL3050 warnings at the wrapper call site. New "AOT compatibility" section in api ref + integration article + NUGET_README documents the limitation and recommends per-package direct APIs (with the AOT-friendly mapping table) for AOT/trim consumers. The parameterless `o.UseFluentValidation()` / `o.UseResourceAuthorization()` / `o.UseDomainEvents()` overloads are AOT-compatible.
+
+- **(Major) N-S1 — explicit `AddResourceAuthorization<TMessage, TResource, TResponse>()` calls made BEFORE `AddTrellis(...)` are now order-independent.** `InsertResourceAuthorizationBehavior` (in `Trellis.Mediator`) inserts before `ValidationBehavior<,>` if it exists; otherwise it appended to the end of the descriptor list. When `AddTrellis(...)` then ran, the standard pipeline was registered AFTER the closed-generic resource-auth behaviors, so they ended up at descriptor slot 0 — outside the canonical Exception/Tracing/Logging/Authorization/Validation envelope. `AddTrellisBehaviors()` now performs a relocation pass after registering the standard pipeline: any pre-existing closed-generic `ResourceAuthorizationBehavior<,,>` descriptors are re-inserted immediately before `ValidationBehavior`, mirroring the `AddTrellisUnitOfWork ↔ AddDomainEventDispatch` symmetry.
+
+- **(Info) N-S4 — new `UseCachingActorProvider<T>()` builder slot.** `Trellis.Asp` exposes `AddCachingActorProvider<T>()` for per-request caching of an inner `IActorProvider`, but the builder didn't expose a slot. Now does, with the same fail-fast duplicate-detection as the other actor-provider slots. Chain after the matching `UseXxxActorProvider(...)` so the inner provider's `IOptions<TOptions>` is configured before the wrap replaces the `IActorProvider` slot.
+
+- **(Minor) m-S1 — api ref frontmatter `types:` corrected.** Previously listed `[AddTrellisServiceDefaults, WebApplicationBuilderExtensions]` — neither type exists in source. Updated to `[TrellisServiceCollectionExtensions, TrellisServiceBuilder]`.
+
+- **(Minor) m-S2 — Behavior section step 6 mentions `IDomainEventPublisher`.** The api ref previously said "registers `DomainEventDispatchBehavior<,>` and any scanned handlers", omitting the default `IDomainEventPublisher` registration that the existing test `UseDomainEvents_WithoutAssemblies_RegistersDispatchBehaviorAndPublisher` confirms. Step 6 now explicitly mentions all three.
+
+- **(Minor) m-S3 — `Apply()` else-if branches are explicit about the flag invariant.** The second branch in each `_useFluentValidation`/`_useDomainEvents` pair previously checked only `_xxxAssemblies.Count > 0`, relying on the implicit invariant that those private lists are only mutated by methods that also set the flag. Now the branches are `else if (_useFluentValidation)` / `else if (_useDomainEvents)` — equivalent today, robust against future refactor.
+
+- **(Minor) N-S2 — new integration article `docs/docfx_project/articles/integration-servicedefaults.md`.** ServiceDefaults previously had only an api ref — convention is every package has both a per-LLM api ref and a per-developer integration article. Article added with quick start, canonical order, mutually-exclusive slots, per-request actor caching example, the order-independence section for explicit resource-auth registrations, AOT compatibility note, and layered-config usage. Also added to `articles/toc.yml` under "Integration Guides".
+
+- **(Minor) N-S3 — `Examples/CookbookSnippets/Recipe12_DiPlaybook.cs` rewritten to use the `AddTrellis(...)` builder.** The cookbook prose for Recipe 12 already taught the builder pattern; the compiled snippet still demonstrated direct package-specific registrations, contradicting the recipe. Snippet now uses the builder consistently.
+
+- **(Info) i-S1 — xmldoc `<remarks>` on `UseAsp` and `UseMediator` document the repeated-call combine semantics** (configure delegates compose in call order rather than overwriting, supporting layered library-then-host configuration).
+
+- **(Info) i-S2 — api ref clarifies `UseResourceAuthorization()` no-assembly mechanism.** New "Order-independence" subsection in the Behavior section explains that `AuthorizationBehavior<,>` (static-permission flavor) is registered unconditionally by `AddTrellisBehaviors()` (called via `UseMediator()`), and that the no-assembly path is for AOT consumers who register each `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>` explicitly via `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`.
+
+- **(Info) i-S3 — `TrellisServiceBuilder` class summary now documents the `Apply()` lifecycle.** Callers don't invoke `Apply()` directly; `AddTrellis(services, configure)` constructs the builder, hands it to the configure callback, and invokes `Apply()` after the callback returns. `<remarks>` paragraph now states this explicitly.
+
+Refuted findings (kept current behavior intentional): i-S4 (`UseEntityFrameworkUnitOfWork<TContext>` lacks a configure delegate — forward-looking only; no concrete need today). Multiple `AddTrellis(...)` calls within one composition (`AddDomainEventDispatch` and `AddTrellisUnitOfWork` are aware of each other and re-order regardless of registration order). `Apply()` thread safety (builder is constructed/configured/applied/discarded synchronously inside `AddTrellis(...)`).
+
+Tests: **+5** new tests in `Trellis.ServiceDefaults.Tests` covering UoW duplicate-call throw (same context + different context), explicit resource-auth before `AddTrellis` ordering, `UseCachingActorProvider<T>()` wrap behavior, and caching-slot duplicate throw.
+
 #### Trellis.Http — inspection findings (M-H1, M-H2, M-H3, i-H2, i-H3, N-H1, N-H2)
 
 Closes the formal Trellis.Http inspection backlog from `files/http-inspection-report.md` after a meta-review by GPT-5.5 validated, refuted, or adjusted each finding and surfaced 2 additional ones.

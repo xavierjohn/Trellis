@@ -26,5 +26,11 @@ builder.Services.AddTrellis(options => options
 
 `UseFluentValidation()` and `UseResourceAuthorization()` both support no-assembly calls for explicit, no-scanning composition; pass assemblies only when you want Trellis to discover validators/resource loaders automatically.
 
+## AOT compatibility
+
+`Trellis.ServiceDefaults` is **not** AOT- or trim-compatible. The fluent assembly-scanning methods (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`) wrap underlying `[RequiresUnreferencedCode]` + `[RequiresDynamicCode]` APIs without propagating the attributes. For AOT consumers, use the per-package direct APIs (`services.AddTrellisFluentValidation()` + explicit validator registrations, `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`, `services.AddDomainEventDispatch()` + `services.AddDomainEventHandler<TEvent, THandler>()`).
+
+The parameterless `o.UseFluentValidation()` / `o.UseResourceAuthorization()` / `o.UseDomainEvents()` overloads are AOT-compatible — they only register the adapter / pipeline behaviors and rely on the consumer's explicit per-type registrations.
+
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
