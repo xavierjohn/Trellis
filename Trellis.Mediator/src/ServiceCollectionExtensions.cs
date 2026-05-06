@@ -98,7 +98,87 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
 
+        // Order-independence for explicit AddResourceAuthorization<TMessage,TResource,TResponse>()
+        // calls made BEFORE AddTrellisBehaviors(): such calls inserted closed-generic
+        // ResourceAuthorizationBehavior<,,> descriptors at the END of the collection (because
+        // ValidationBehavior wasn't registered yet to anchor the insert). Now that the standard
+        // pipeline is in place, relocate them to sit immediately before ValidationBehavior so
+        // they end up in the canonical envelope. Mirrors the AddTrellisUnitOfWork ↔
+        // AddDomainEventDispatch symmetry: pipeline-position-aware registrations are
+        // order-independent regardless of which one runs first.
+        RelocateResourceAuthorizationBehaviorsBeforeValidation(services);
+
         return services;
+    }
+
+    /// <summary>
+    /// Walks the descriptor list, finds any closed-generic
+    /// <c>IPipelineBehavior&lt;TMessage, TResponse&gt;</c> registrations whose
+    /// implementation type is <see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/>,
+    /// and re-inserts each one immediately before <see cref="ValidationBehavior{TMessage, TResponse}"/>
+    /// (preserving relative order among the resource-auth behaviors themselves).
+    /// </summary>
+    private static void RelocateResourceAuthorizationBehaviorsBeforeValidation(IServiceCollection services)
+    {
+        var validationIndex = FindValidationBehaviorIndex(services);
+        if (validationIndex < 0)
+            return;
+
+        // Collect every closed-generic resource-auth descriptor in source-order so relative
+        // ordering among them is preserved when we re-insert. We don't filter out descriptors
+        // that already happen to sit directly before ValidationBehavior — moving such a
+        // descriptor from position N to position N is a no-op effectively (the same instance
+        // is removed and re-inserted at the same slot), and skipping the optimization keeps
+        // the relocation logic uniform.
+        var relocations = new List<ServiceDescriptor>();
+        for (int i = 0; i < services.Count; i++)
+        {
+            var d = services[i];
+            if (IsClosedResourceAuthorizationBehavior(d))
+                relocations.Add(d);
+        }
+
+        if (relocations.Count == 0)
+            return;
+
+        // Remove first (descending index to avoid shifting), then re-insert before validation.
+        for (int i = services.Count - 1; i >= 0; i--)
+        {
+            if (IsClosedResourceAuthorizationBehavior(services[i]))
+                services.RemoveAt(i);
+        }
+
+        // ValidationBehavior may have moved if it was after any of the relocated entries; relocate
+        // it freshly post-removal.
+        var newValidationIndex = FindValidationBehaviorIndex(services);
+        if (newValidationIndex < 0)
+        {
+            // Defensive: ValidationBehavior should always be present since we just registered it.
+            // Fall back to appending to preserve the resource-auth registrations rather than
+            // dropping them.
+            foreach (var d in relocations)
+                services.Add(d);
+            return;
+        }
+
+        for (int i = 0; i < relocations.Count; i++)
+            services.Insert(newValidationIndex + i, relocations[i]);
+    }
+
+    private static bool IsClosedResourceAuthorizationBehavior(ServiceDescriptor descriptor)
+    {
+        if (descriptor.ServiceType.IsGenericTypeDefinition)
+            return false;
+        if (!descriptor.ServiceType.IsGenericType)
+            return false;
+        if (descriptor.ServiceType.GetGenericTypeDefinition() != typeof(IPipelineBehavior<,>))
+            return false;
+
+        var impl = descriptor.ImplementationType;
+        if (impl is null || !impl.IsGenericType || impl.IsGenericTypeDefinition)
+            return false;
+
+        return impl.GetGenericTypeDefinition() == typeof(ResourceAuthorizationBehavior<,,>);
     }
 
     /// <summary>

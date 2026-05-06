@@ -68,6 +68,8 @@
     href: integration-ef.md
   - name: Mediator Pipeline
     href: integration-mediator.md
+  - name: Service Defaults (Composition Root)
+    href: integration-servicedefaults.md
   - name: Testing
     href: integration-testing.md
   - name: Observability & Monitoring
