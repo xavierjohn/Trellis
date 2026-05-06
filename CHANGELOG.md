@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Trellis.FluentValidation — inspection findings (m-FV-1..m-FV-4, i-FV-2 + GPT-5.5 N-FV-1)
 
-Closes the formal Trellis.FluentValidation inspection backlog from `files/fluentvalidation-inspection-report.md` after a Phase-2 GPT-5.5 meta-review validated 5 of 6 self-inspection findings, refuted i-FV-1 (`/`-prefixed-input pass-through is documented escape-hatch + `InputPointer` validates escape sequences), and surfaced 1 additional Minor (N-FV-1: `ToResult<T>` doc/code drift). Pre-commit GPT-5.5 review TODO.
+Closes the formal Trellis.FluentValidation inspection backlog from `files/fluentvalidation-inspection-report.md` after a Phase-2 GPT-5.5 meta-review validated 5 of 6 self-inspection findings, refuted i-FV-1 (`/`-prefixed-input pass-through is documented escape-hatch + `InputPointer` validates escape sequences), and surfaced 1 additional Minor (N-FV-1: `ToResult<T>` doc/code drift). Pre-commit GPT-5.5 review confirmed all 6 fix points and surfaced 1 stale-wording cleanup (api ref Behavioral notes "Grouping rule" bullet + incomplete `ValidateToResultAsync` cancellation note); both addressed in the same commit. The "stale generated DocFX YAML" finding from the pre-commit review is moot — `*.yml` is gitignored under `docs/docfx_project/api/` and CI regenerates metadata fresh.
 
 - **(Minor) m-FV-1 — api ref frontmatter `types:` corrected.** Previously listed `[TrellisValidator<T>, ValidationResultExtensions]` — neither type exists in source. Updated to `[FluentValidationServiceCollectionExtensions, FluentValidationMessageValidatorAdapter<TMessage>, FluentValidationResultExtensions]`.
 
