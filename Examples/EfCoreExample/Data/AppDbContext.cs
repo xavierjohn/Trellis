@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore;
 
 /// <summary>
 /// EF Core DbContext demonstrating seamless integration with Trellis value objects.
-/// Uses <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/> to
-/// register value converters for all Trellis types automatically.
+/// Uses source-generated Trellis conventions to register value converters for all
+/// reachable Trellis types automatically.
 /// </summary>
 public class AppDbContext : DbContext
 {
@@ -26,7 +26,7 @@ public class AppDbContext : DbContext
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        configurationBuilder.ApplyTrellisConventions(typeof(CustomerId).Assembly);
+        configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

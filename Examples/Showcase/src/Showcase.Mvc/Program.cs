@@ -11,9 +11,10 @@ using Trellis.Showcase.Domain.ValueObjects;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddTrellisAsp();
+
 builder.Services
     .AddControllers()
-    .AddScalarValueValidation()
     .AddJsonOptions(o =>
     {
         o.JsonSerializerOptions.RespectRequiredConstructorParameters = true;

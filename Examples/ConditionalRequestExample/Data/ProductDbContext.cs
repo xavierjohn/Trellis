@@ -13,7 +13,7 @@ public class ProductDbContext : DbContext
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        configurationBuilder.ApplyTrellisConventions(typeof(ProductId).Assembly);
+        configurationBuilder.ApplyTrellisConventionsFor<ProductDbContext>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

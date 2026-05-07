@@ -37,14 +37,14 @@ public static class AntiPatternFixes
 
         // FIX 2 — convert to Result.
         Result<EmailAddress> r = customer.Email.ToResult(
-            new Error.NotFound(new ResourceRef("Email", customer.Id.Value.ToString())));
+            new Error.NotFound(ResourceRef.For("Email", customer.Id.Value)));
         _ = r;
     }
 
     // ─── TRLS010 — Throwing in a Result chain ──────────────────────────────
     public static Result<Order> TRLS010_Fix(Result<Order> input) =>
         input.Bind(o => Result.Fail<Order>(new Error.Conflict(
-            new ResourceRef("Order", o.Id.Value.ToString()), "invalid_state")));
+            ResourceRef.For<Order>(o.Id), "invalid_state")));
 
     // ─── TRLS016 — HasIndex on a Maybe<T> property: see Recipe08 FixPattern ─
 
@@ -65,6 +65,6 @@ public static class AntiPatternFixes
 #pragma warning restore CA1707
 
     // Helpers used above — minimal stubs.
-    private static Result<OrderId> PlaceOrder(object cmd) => Result.Fail<OrderId>(new Error.NotFound(new ResourceRef("Order")));
+    private static Result<OrderId> PlaceOrder(object cmd) => Result.Fail<OrderId>(new Error.NotFound(ResourceRef.For<Order>()));
     private static void SendEmail(EmailAddress _) { }
 }

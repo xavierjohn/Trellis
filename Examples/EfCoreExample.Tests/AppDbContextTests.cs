@@ -5,12 +5,13 @@ using EfCoreExample.Entities;
 using EfCoreExample.Enums;
 using EfCoreExample.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Trellis.EntityFrameworkCore;
 using Trellis.Testing;
 
 /// <summary>
 /// Tests for the EfCoreExample data layer. Each test uses a fresh
 /// in-memory database so behaviour is isolated. The intent is to prove
-/// that Trellis value-object conventions (<c>ApplyTrellisConventions</c>)
+/// that Trellis value-object conventions (<c>ApplyTrellisConventionsFor</c>)
 /// produce a database round-trip with strongly-typed IDs intact.
 /// </summary>
 public class AppDbContextTests
@@ -19,11 +20,18 @@ public class AppDbContextTests
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase($"EfCoreExample-{dbName}-{Guid.NewGuid():N}")
+            .AddTrellisInterceptors()
             .Options;
         return new AppDbContext(options);
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    private static async Task AssertSaveChangesAsync(AppDbContext db)
+    {
+        var result = await db.SaveChangesResultUnitAsync(Ct);
+        result.Should().BeSuccess();
+    }
 
     [Fact]
     public async Task Customer_round_trips_with_value_object_id_intact()
@@ -33,7 +41,7 @@ public class AppDbContextTests
 
         var created = Customer.TryCreate("Ada Lovelace", "ada@example.com").Unwrap();
         db.Customers.Add(created);
-        await db.SaveChangesAsync(Ct);
+        await AssertSaveChangesAsync(db);
 
         // Detach so the read goes through Trellis value converters, not tracked instances.
         db.ChangeTracker.Clear();
@@ -55,14 +63,14 @@ public class AppDbContextTests
         var product = Product.TryCreate("Compiler", 1000m, 10).Unwrap();
         db.Customers.Add(customer);
         db.Products.Add(product);
-        await db.SaveChangesAsync(Ct);
+        await AssertSaveChangesAsync(db);
 
         var order = Order.TryCreate(customer.Id)
             .Bind(o => o.AddLine(product, 2))
             .Bind(o => o.Confirm())
             .Unwrap();
         db.Orders.Add(order);
-        await db.SaveChangesAsync(Ct);
+        await AssertSaveChangesAsync(db);
 
         var fetched = await db.Orders
             .Include(o => o.Lines)
@@ -89,7 +97,7 @@ public class AppDbContextTests
         var product = Product.TryCreate("Bombe", 50m, 5).Unwrap();
         db.Customers.AddRange(customer);
         db.Products.Add(product);
-        await db.SaveChangesAsync(Ct);
+        await AssertSaveChangesAsync(db);
 
         var order = Order.TryCreate(customer.Id)
             .Bind(o => o.AddLine(product, 1))
@@ -97,7 +105,7 @@ public class AppDbContextTests
             .Bind(o => o.Ship())
             .Unwrap();
         db.Orders.Add(order);
-        await db.SaveChangesAsync(Ct);
+        await AssertSaveChangesAsync(db);
 
         // Detach so the next read goes through the value converter rather than the
         // tracked instance.
