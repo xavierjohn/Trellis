@@ -25,13 +25,10 @@ public sealed class SubmitBatchTransfersHandler
         if (command.Lines.Count == 0)
         {
             return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(
-                new Error.UnprocessableContent(EquatableArray.Create(
-                [
-                    new FieldViolation(
-                        InputPointer.ForProperty(nameof(command.Lines)),
-                        "batch.empty")
-                    { Detail = "At least one line is required." },
-                ]))));
+                Error.UnprocessableContent.ForField(
+                    nameof(command.Lines),
+                    "batch.empty",
+                    "At least one line is required.")));
         }
 
         var currency = command.Lines[0].Amount.Currency.Value;
@@ -41,11 +38,10 @@ public sealed class SubmitBatchTransfersHandler
             if (!string.Equals(line.Amount.Currency.Value, currency, System.StringComparison.Ordinal))
             {
                 return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(
-                    new Error.UnprocessableContent(EquatableArray.Create(
-                    [
-                        new FieldViolation(InputPointer.ForProperty(nameof(command.Lines)), "batch.mixed-currency")
-                        { Detail = "All lines in a batch must share a single currency." },
-                    ]))));
+                    Error.UnprocessableContent.ForField(
+                        nameof(command.Lines),
+                        "batch.mixed-currency",
+                        "All lines in a batch must share a single currency.")));
             }
 
             sum += line.Amount.Amount;

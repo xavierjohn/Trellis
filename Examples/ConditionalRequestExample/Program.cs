@@ -7,6 +7,8 @@ using Trellis.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddTrellisAsp();
+
 // SQLite in-memory: keep a single open connection so the database survives across requests.
 var connection = new SqliteConnection("DataSource=:memory:");
 connection.Open();
@@ -14,8 +16,6 @@ connection.Open();
 builder.Services.AddDbContext<ProductDbContext>(options =>
     options.UseSqlite(connection)
            .AddTrellisInterceptors());
-
-builder.Services.AddScalarValueValidationForMinimalApi();
 
 var app = builder.Build();
 

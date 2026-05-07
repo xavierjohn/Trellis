@@ -70,6 +70,6 @@ public static class FixPattern
             .BindAsync(id => repo.FindAsync(id, ct)
                 .MatchAsync(
                     some: _ => Result.Fail<OrderId>(new Error.Conflict(
-                        new ResourceRef("Order", id.Value.ToString()), "already_exists")),
+                        ResourceRef.For<Order>(id), "already_exists")),
                     none: () => Result.Ok(id)));
 }

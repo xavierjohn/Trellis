@@ -73,6 +73,20 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task Secure_withdraw_with_rejected_code_returns_401_with_authenticate_challenge()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
+            new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}/secure-withdraw", UriKind.Relative),
+            new SecureWithdrawRequest(Money.Create(2000m, "USD"), VerificationCode: "000000"),
+            Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        response.Headers.WwwAuthenticate.Should().ContainSingle()
+            .Which.ToString().Should().Be("TrellisVerification realm=\"showcase\"");
+    }
+
+    [Fact]
     public async Task Diagnostics_fault_returns_500_with_fault_id()
     {
         var client = _factory.CreateClient();

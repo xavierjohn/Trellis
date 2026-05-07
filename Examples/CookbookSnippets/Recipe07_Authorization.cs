@@ -26,7 +26,7 @@ public sealed record UpdateOrderCommand(OrderId OrderId, decimal NewAmount)
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden(
                 PolicyId: "orders.owner",
-                Resource: new ResourceRef("Order", OrderId.Value.ToString())));
+                Resource: ResourceRef.For<Order>(OrderId)));
 }
 
 public static class AuthorizationDi

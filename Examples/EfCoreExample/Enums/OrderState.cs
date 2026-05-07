@@ -46,6 +46,9 @@ public partial class OrderState : RequiredEnum<OrderState>
         if (CanTransitionTo(newState))
             return Result.Ok(newState);
 
-        return Result.Fail<OrderState>(new Error.UnprocessableContent(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("state"), "validation.error") { Detail = $"Cannot transition from '{this}' to '{newState}'. Allowed transitions: {string.Join(", ", AllowedTransitions)}" })));
+        return Result.Fail<OrderState>(Error.UnprocessableContent.ForField(
+            "state",
+            "validation.error",
+            $"Cannot transition from '{this}' to '{newState}'. Allowed transitions: {string.Join(", ", AllowedTransitions)}"));
     }
 }

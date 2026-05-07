@@ -20,5 +20,5 @@ public sealed class AppDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        configurationBuilder.ApplyTrellisConventions(typeof(AppDbContext).Assembly);
+        configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
 }

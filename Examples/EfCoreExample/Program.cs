@@ -23,6 +23,7 @@ using EfCoreExample.Entities;
 using EfCoreExample.Enums;
 using Microsoft.EntityFrameworkCore;
 using Trellis;
+using Trellis.EntityFrameworkCore;
 using Trellis.Primitives;
 
 // Enable UTF-8 output for Unicode characters (emojis, box-drawing, etc.)
@@ -36,6 +37,7 @@ Console.WriteLine();
 // Configure EF Core with in-memory database
 var options = new DbContextOptionsBuilder<AppDbContext>()
     .UseInMemoryDatabase("EfCoreExample")
+    .AddTrellisInterceptors()
     .Options;
 
 await using var context = new AppDbContext(options);
@@ -63,11 +65,12 @@ foreach (var result in productResults)
             Console.WriteLine($"  ✓ Created: {product.Name} (ID: {product.Id})");
             Console.WriteLine($"             Price: ${product.Price:N2}, Stock: {product.StockQuantity}");
         })
-        .TapOnFailure(error => Console.WriteLine($"  ✗ Failed: {error.Detail}"));
+        .TapOnFailure(error => Console.WriteLine($"  ✗ Failed: {DescribeError(error)}"));
 }
 
 context.Products.AddRange(products);
-await context.SaveChangesAsync();
+if (!await TrySaveChangesAsync(context))
+    return 1;
 Console.WriteLine();
 
 // =============================================================================
@@ -88,9 +91,10 @@ customerResult
         Console.WriteLine($"             ID: {c.Id}");
         Console.WriteLine($"             Email: {c.Email}");
     })
-    .TapOnFailure(error => Console.WriteLine($"  ✗ Failed: {error.Detail}"));
+    .TapOnFailure(error => Console.WriteLine($"  ✗ Failed: {DescribeError(error)}"));
 
-await context.SaveChangesAsync();
+if (!await TrySaveChangesAsync(context))
+    return 1;
 Console.WriteLine();
 
 // =============================================================================
@@ -102,17 +106,17 @@ Console.WriteLine("────────────────────�
 // Invalid email
 Customer.TryCreate("Jane Doe", "not-an-email")
     .Tap(_ => Console.WriteLine("  ✓ Customer created"))
-    .TapOnFailure(error => Console.WriteLine($"  ✗ Validation failed: {error.Detail}"));
+    .TapOnFailure(error => Console.WriteLine($"  ✗ Validation failed: {DescribeError(error)}"));
 
 // Empty name
 Customer.TryCreate("", "jane@example.com")
     .Tap(_ => Console.WriteLine("  ✓ Customer created"))
-    .TapOnFailure(error => Console.WriteLine($"  ✗ Validation failed: {error.Detail}"));
+    .TapOnFailure(error => Console.WriteLine($"  ✗ Validation failed: {DescribeError(error)}"));
 
 // Invalid product price
 Product.TryCreate("Invalid Product", -10m, 5)
     .Tap(_ => Console.WriteLine("  ✓ Product created"))
-    .TapOnFailure(error => Console.WriteLine($"  ✗ Validation failed: {error.Detail}"));
+    .TapOnFailure(error => Console.WriteLine($"  ✗ Validation failed: {DescribeError(error)}"));
 
 Console.WriteLine();
 
@@ -141,9 +145,10 @@ Order.TryCreate(customer.Id)
     foreach (var line in order.Lines)
         Console.WriteLine($"      - {line.ProductName} x{line.Quantity} @ ${line.UnitPrice:N2} = ${line.LineTotal:N2}");
 })
-.TapOnFailure(error => Console.WriteLine($"  ✗ Failed: {error.Detail}"));
+.TapOnFailure(error => Console.WriteLine($"  ✗ Failed: {DescribeError(error)}"));
 
-await context.SaveChangesAsync();
+if (!await TrySaveChangesAsync(context))
+    return 1;
 Console.WriteLine();
 
 // =============================================================================
@@ -186,7 +191,8 @@ for (int i = 0; i < 3; i++)
         .Tap(o => context.Orders.Add(o));
 }
 
-await context.SaveChangesAsync();
+if (!await TrySaveChangesAsync(context))
+    return 1;
 
 // Query orders sorted by ID (GUID V7 sorts chronologically!)
 var sortedOrders = await context.Orders
@@ -240,9 +246,10 @@ Order.TryCreate(customer.Id)
         Console.WriteLine($"      IsTerminal: {order.State.IsTerminal}");
         context.Orders.Add(order);
     })
-    .TapOnFailure(error => Console.WriteLine($"    ✗ Failed: {error.Detail}"));
+    .TapOnFailure(error => Console.WriteLine($"    ✗ Failed: {DescribeError(error)}"));
 
-await context.SaveChangesAsync();
+if (!await TrySaveChangesAsync(context))
+    return 1;
 Console.WriteLine();
 
 // Demonstrate invalid transitions
@@ -256,7 +263,7 @@ Order.TryCreate(customer.Id)
         return order.Ship();
     })
     .Tap(_ => Console.WriteLine("    ✓ Unexpected success"))
-    .TapOnFailure(error => Console.WriteLine($"    ✗ Correctly rejected: {error.Detail}"));
+    .TapOnFailure(error => Console.WriteLine($"    ✗ Correctly rejected: {DescribeError(error)}"));
 
 Console.WriteLine();
 
@@ -271,7 +278,7 @@ Order.TryCreate(customer.Id)
         return order.Cancel();
     })
     .Tap(_ => Console.WriteLine("    ✓ Unexpected success"))
-    .TapOnFailure(error => Console.WriteLine($"    ✗ Correctly rejected: {error.Detail}"));
+    .TapOnFailure(error => Console.WriteLine($"    ✗ Correctly rejected: {DescribeError(error)}"));
 
 Console.WriteLine();
 
@@ -291,8 +298,8 @@ Console.WriteLine();
 Console.WriteLine("🛡️  Type Safety Demonstration...");
 Console.WriteLine("────────────────────────────────────────────────────────────────────");
 Console.WriteLine("  The following would NOT compile:");
-Console.WriteLine("    // OrderId orderId = CustomerId.NewUnique();  // Error!");
-Console.WriteLine("    // ProductId productId = OrderId.NewUnique(); // Error!");
+Console.WriteLine("    // OrderId orderId = CustomerId.NewUniqueV4();  // Error!");
+Console.WriteLine("    // ProductId productId = OrderId.NewUniqueV7(); // Error!");
 Console.WriteLine("    // context.Customers.Find(orderId);           // Error!");
 Console.WriteLine("    // var status = (OrderState)999;              // Error! RequiredEnum prevents this");
 Console.WriteLine();
@@ -318,3 +325,20 @@ Console.WriteLine("║  ✓ ROP               - Railway Oriented Programming for
 Console.WriteLine("╚══════════════════════════════════════════════════════════════════╝");
 
 return 0;
+
+static async Task<bool> TrySaveChangesAsync(AppDbContext context)
+{
+    var result = await context.SaveChangesResultUnitAsync();
+    result.TapOnFailure(error => Console.WriteLine($"  ✗ Save failed: {DescribeError(error)}"));
+    return result.IsSuccess;
+}
+
+static string DescribeError(Error error) =>
+    error switch
+    {
+        Error.UnprocessableContent validation when validation.Fields.Items.Length > 0 =>
+            string.Join("; ", validation.Fields.Items.Select(field => field.Detail ?? field.ReasonCode)),
+        Error.UnprocessableContent validation when validation.Rules.Items.Length > 0 =>
+            string.Join("; ", validation.Rules.Items.Select(rule => rule.Detail ?? rule.ReasonCode)),
+        _ => error.Detail ?? error.Code
+    };

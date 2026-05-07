@@ -83,14 +83,13 @@ public sealed partial class Customer : Aggregate<CustomerId>
 
     public static Result<Customer> Create(CustomerId id, string name, ShippingAddress shipping) =>
         string.IsNullOrWhiteSpace(name)
-            ? Result.Fail<Customer>(new Error.UnprocessableContent(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty("name"), "required") { Detail = "Name is required." })))
+            ? Result.Fail<Customer>(Error.UnprocessableContent.ForField("name", "required", "Name is required."))
             : Result.Ok(new Customer(id, name, shipping));
 }
 
 // CONFIGURATION — note the absence of OwnsOne(c => c.ShippingAddress).
 // CompositeValueObjectConvention picks up [OwnedEntity] types automatically
-// from the assemblies passed to ApplyTrellisConventions.
+// through the source-generated ApplyTrellisConventionsFor<TContext>() entry point.
 internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
@@ -105,7 +104,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Customer> Customers => Set<Customer>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        configurationBuilder.ApplyTrellisConventions(typeof(Customer).Assembly);
+        configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

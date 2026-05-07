@@ -40,7 +40,7 @@ public sealed class InMemoryAccountRepository : IAccountRepository
         {
             return _accounts.TryGetValue(id, out var account)
                 ? Result.Ok(account)
-                : Result.Fail<BankAccount>(new Error.NotFound(new ResourceRef("Account", id.Value.ToString())));
+                : Result.Fail<BankAccount>(new Error.NotFound(ResourceRef.For<BankAccount>(id)));
         }
     }
 
