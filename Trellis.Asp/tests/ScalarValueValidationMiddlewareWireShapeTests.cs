@@ -365,6 +365,107 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
     }
 
     [Fact]
+    public async Task TrellisJsonValidationException_with_FieldViolation_no_Detail_uses_ReasonCode()
+    {
+        // Coverage: exercises the `!string.IsNullOrEmpty(fv.Detail) ? fv.Detail : fv.ReasonCode`
+        // fallback when a FieldViolation has no Detail set. The wire entry must surface the
+        // ReasonCode so the client still sees a non-empty error string.
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+        [
+            new FieldViolation(InputPointer.ForProperty("amount"), "amount.required"),  // no Detail
+        ]);
+        var error = new Error.UnprocessableContent(fields, EquatableArray<RuleViolation>.Empty);
+
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage())
+        {
+            UnprocessableContent = error,
+        };
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+
+        errors.Should().ContainKey("amount");
+        errors["amount"].Should().Equal(["amount.required"],
+            "when Detail is empty, the ReasonCode must surface as the wire detail");
+    }
+
+    [Fact]
+    public async Task TrellisJsonValidationException_with_two_violations_at_same_field_emits_merged_array()
+    {
+        // Coverage: exercises the `if (perLeafErrors.TryGetValue(combinedKey, out var existing))`
+        // merge branch. Two FieldViolations targeting the same leaf path must produce a single
+        // wire key with both messages in the array — not overwrite each other or split into
+        // duplicate keys.
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+        [
+            new FieldViolation(InputPointer.ForProperty("street"), "street.required") { Detail = "Street is required." },
+            new FieldViolation(InputPointer.ForProperty("street"), "street.too-short") { Detail = "Street must be at least 3 characters." },
+        ]);
+        var error = new Error.UnprocessableContent(fields, EquatableArray<RuleViolation>.Empty);
+
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage())
+        {
+            UnprocessableContent = error,
+        };
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, "$.shippingAddress");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+
+        errors.Should().ContainKey("shippingAddress.street");
+        errors["shippingAddress.street"].Should().BeEquivalentTo([
+            "Street is required.",
+            "Street must be at least 3 characters.",
+        ], "two violations at the same leaf path must merge into one array entry");
+    }
+
+    [Fact]
+    public async Task TrellisJsonValidationException_with_root_pointer_leaf_uses_parent_only()
+    {
+        // Coverage: exercises `CombineMvcKeys` `string.IsNullOrEmpty(leaf)` early-return branch.
+        // FieldViolation with InputPointer.Root has Field.Path = "" which JsonPointerToMvc
+        // translates to ""; combining "shippingAddress" + "" must yield "shippingAddress",
+        // not "shippingAddress." (with trailing dot).
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+        [
+            new FieldViolation(InputPointer.Root, "address.invalid") { Detail = "Address is malformed." },
+        ]);
+        var error = new Error.UnprocessableContent(fields, EquatableArray<RuleViolation>.Empty);
+
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage())
+        {
+            UnprocessableContent = error,
+        };
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, "$.shippingAddress");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+
+        errors.Should().ContainKey("shippingAddress");
+        errors["shippingAddress"].Should().Equal(["Address is malformed."]);
+        errors.Should().NotContainKey("shippingAddress.",
+            "empty leaf must not produce a trailing-dot key");
+    }
+
+    [Fact]
     public async Task TrellisJsonValidationException_with_RulesOnly_falls_back_to_unstructured_entry()
     {
         // Review feedback (PR #474, comment 1): when an Error.UnprocessableContent has only
