@@ -170,6 +170,47 @@ public class CompositeValueObjectJsonConverterTests
             .WithMessage("*must be non-negative*");
     }
 
+    [Fact]
+    public void Read_thrown_exception_carries_structured_UnprocessableContent_for_multi_field_failure()
+    {
+        // F9 regression guard (lab feedback round 2): when a composite VO's TryCreate
+        // returns an Error.UnprocessableContent with multiple FieldViolations, the
+        // converter MUST populate TrellisJsonValidationException.UnprocessableContent
+        // with the structured payload (preserving each leaf path and detail) rather than
+        // collapsing them into a ;-joined message string. ScalarValueValidationMiddleware
+        // depends on this property to emit per-leaf wire entries.
+        try
+        {
+            JsonSerializer.Deserialize<MultiFieldValidatedVo>("{\"street\":\"\",\"city\":\"\",\"state\":\"\"}");
+        }
+        catch (TrellisJsonValidationException ex)
+        {
+            // Avoid the Trellis-specific Error.UnprocessableContent assertion overload by
+            // null-checking directly before calling .Should() on the EquatableArray.
+            Assert.NotNull(ex.UnprocessableContent);
+            var fieldsList = new List<FieldViolation>();
+            foreach (var f in ex.UnprocessableContent.Fields)
+                fieldsList.Add(f);
+            var fields = fieldsList.ToArray();
+            fields.Length.Should().Be(3,
+                "the converter must surface the structured payload so per-leaf wire entries are recoverable");
+
+            var paths = Array.ConvertAll(fields, f => f.Field.Path);
+            paths.Should().BeEquivalentTo(["/street", "/city", "/state"]);
+
+            var details = Array.ConvertAll(fields, f => f.Detail);
+            details.Should().BeEquivalentTo([
+                "Street is required.",
+                "City is required.",
+                "State is required.",
+            ]);
+
+            return;
+        }
+
+        Assert.Fail("Deserialize was expected to throw TrellisJsonValidationException.");
+    }
+
     #endregion
 
     #region Write — null and unsupported
@@ -395,6 +436,43 @@ public class CompositeValueObjectJsonConverterTests
                 ? Result.Fail<ValidatedVo>(new Error.UnprocessableContent(EquatableArray.Create(
                     new FieldViolation(InputPointer.ForProperty("number"), "validation.error") { Detail = "must be non-negative." })))
                 : Result.Ok(new ValidatedVo(number));
+    }
+
+    /// <summary>
+    /// Multi-field-failing fixture mirroring the shape of <c>ShippingAddress</c> in real services:
+    /// three required string fields, each producing its own <see cref="FieldViolation"/> when
+    /// missing. Used to verify that the converter preserves per-field structure on failure.
+    /// </summary>
+    [JsonConverter(typeof(CompositeValueObjectJsonConverter<MultiFieldValidatedVo>))]
+    public class MultiFieldValidatedVo : TestVo
+    {
+        public string Street { get; private set; } = string.Empty;
+
+        public string City { get; private set; } = string.Empty;
+
+        public string State { get; private set; } = string.Empty;
+
+        private MultiFieldValidatedVo() { }
+
+        private MultiFieldValidatedVo(string street, string city, string state)
+        {
+            Street = street; City = city; State = state;
+        }
+
+        public static Result<MultiFieldValidatedVo> TryCreate(string street, string city, string state, string? fieldName = null)
+        {
+            var violations = new List<FieldViolation>();
+            if (string.IsNullOrWhiteSpace(street))
+                violations.Add(new FieldViolation(InputPointer.ForProperty("street"), "validation.error") { Detail = "Street is required." });
+            if (string.IsNullOrWhiteSpace(city))
+                violations.Add(new FieldViolation(InputPointer.ForProperty("city"), "validation.error") { Detail = "City is required." });
+            if (string.IsNullOrWhiteSpace(state))
+                violations.Add(new FieldViolation(InputPointer.ForProperty("state"), "validation.error") { Detail = "State is required." });
+
+            return violations.Count > 0
+                ? Result.Fail<MultiFieldValidatedVo>(new Error.UnprocessableContent(EquatableArray.Create(violations.ToArray())))
+                : Result.Ok(new MultiFieldValidatedVo(street, city, state));
+        }
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<NullableScalarVo>))]

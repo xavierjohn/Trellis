@@ -191,17 +191,55 @@ public sealed class ScalarValueValidationMiddleware
         // shape is consistent regardless of which converter raised the error.
         var rawPath = (ex.InnerException as JsonException)?.Path;
 
-        // Surface the inner exception's message ONLY for TrellisJsonValidationException, which is
-        // the dedicated marker thrown by Trellis converters with curated, client-safe messages
-        // (e.g. Money: "Amount cannot be negative"). Plain JsonException keeps the generic message
+        // Translate JSON Path notation to MVC dot+bracket convention so this 400 path shares the
+        // same wire-key shape as every other Trellis.Asp ValidationProblem emitter.
+        var key = JsonPathToMvcKey(rawPath);
+
+        // Structured shape: when the inner exception is a TrellisJsonValidationException
+        // carrying a structured Error.UnprocessableContent with at least one FieldViolation,
+        // emit ONE wire entry per FieldViolation. The parent path (`key`) becomes the prefix;
+        // each violation's leaf path is appended in MVC dot+bracket convention via
+        // JsonPointerToMvc.Translate.
+        //
+        // Rules-only UnprocessableContent (no FieldViolations) falls through to the unstructured
+        // branch so the curated exception message surfaces under the parent key — emitting an
+        // empty `errors` object would silently swallow the rule violation.
+        if (ex.InnerException is TrellisJsonValidationException { UnprocessableContent: { Fields.Length: > 0 } structuredError })
+        {
+            var perLeafErrors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+            foreach (var fv in structuredError.Fields)
+            {
+                var leafKey = JsonPointerToMvc.Translate(fv.Field.Path);
+                var combinedKey = CombineMvcKeys(key, leafKey);
+
+                var detail = !string.IsNullOrEmpty(fv.Detail) ? fv.Detail : fv.ReasonCode;
+                if (perLeafErrors.TryGetValue(combinedKey, out var existing))
+                {
+                    var merged = new string[existing.Length + 1];
+                    Array.Copy(existing, merged, existing.Length);
+                    merged[^1] = detail;
+                    perLeafErrors[combinedKey] = merged;
+                }
+                else
+                {
+                    perLeafErrors[combinedKey] = [detail];
+                }
+            }
+
+            var structuredResult = Results.ValidationProblem(perLeafErrors);
+            await structuredResult.ExecuteAsync(context).ConfigureAwait(false);
+            return;
+        }
+
+        // Unstructured shape: used when the inner exception has no structured payload
+        // (plain JsonException from System.Text.Json's built-in failures, or a Trellis
+        // converter throw without an associated Error.UnprocessableContent — e.g., missing
+        // required property, unsupported primitive type). Surface the curated message for
+        // TrellisJsonValidationException; emit a generic message for plain JsonException
         // because System.Text.Json's built-in errors can include internal type names.
         var message = ex.InnerException is Trellis.TrellisJsonValidationException tjx
             ? tjx.Message
             : "The request body contains invalid JSON.";
-
-        // Translate JSON Path notation to MVC dot+bracket convention so this 400 path shares the
-        // same wire-key shape as every other Trellis.Asp ValidationProblem emitter.
-        var key = JsonPathToMvcKey(rawPath);
 
         var errors = new Dictionary<string, string[]>
         {
@@ -345,4 +383,31 @@ public sealed class ScalarValueValidationMiddleware
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Combines a parent MVC key with a translated leaf MVC key per MVC dot+bracket convention.
+    /// </summary>
+    /// <remarks>
+    /// MVC convention is <c>parent.child</c> for property segments and <c>parent[0]</c> /
+    /// <c>parent[""]</c> for indexer segments — never <c>parent.[0]</c>. The dot separator is
+    /// inserted only when the leaf starts with a property segment (i.e., does NOT start with
+    /// <c>'['</c>); for indexer leaves the separator is omitted.
+    /// </remarks>
+    private static string CombineMvcKeys(string parent, string leaf)
+    {
+        if (string.IsNullOrEmpty(parent))
+            return leaf;
+
+        if (string.IsNullOrEmpty(leaf))
+            return parent;
+
+        // MVC indexer keys (e.g., "[0]", "[\"\"]", "[\"name\"]") concatenate without a dot:
+        //   parent + "[0]"     -> "parent[0]"
+        //   parent + "[\"\"]"  -> "parent[\"\"]"
+        // Property segments insert a dot:
+        //   parent + "child"   -> "parent.child"
+        //   parent + "a[0].b"  -> "parent.a[0].b"
+        return leaf[0] == '['
+            ? string.Concat(parent, leaf)
+            : string.Concat(parent, ".", leaf);
+    }
 }
