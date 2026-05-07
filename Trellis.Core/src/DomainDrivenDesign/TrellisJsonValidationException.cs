@@ -44,4 +44,29 @@ public sealed class TrellisJsonValidationException : JsonException
         : base(message, innerException)
     {
     }
+
+    /// <summary>
+    /// Optional structured payload describing per-field violations recovered during
+    /// deserialization. Populated by <c>CompositeValueObjectJsonConverter</c> when a
+    /// composite VO's <c>TryCreate</c> returns an <see cref="Error.UnprocessableContent"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When this property is set, <c>Trellis.Asp</c>'s <c>ScalarValueValidationMiddleware</c>
+    /// emits one wire entry per <see cref="FieldViolation"/> — keyed by
+    /// <c>&lt;parentPath&gt;.&lt;leafName&gt;</c> in MVC dot+bracket convention — instead
+    /// of collapsing all leaves into a single <c>;</c>-joined string under the parent path.
+    /// This restores per-field structure that the original <see cref="JsonException"/> shape
+    /// (one path + one message) cannot carry.
+    /// </para>
+    /// <para>
+    /// When <c>null</c> (the default), the inner-exception path has no structured payload —
+    /// either a plain <see cref="JsonException"/> from <c>System.Text.Json</c> or a Trellis
+    /// converter throw without an associated <see cref="Error.UnprocessableContent"/> (e.g.,
+    /// missing required property, unsupported primitive type). The middleware falls back to
+    /// a single entry under the translated parent path with <see cref="Exception.Message"/>
+    /// as the value.
+    /// </para>
+    /// </remarks>
+    public Error.UnprocessableContent? UnprocessableContent { get; init; }
 }

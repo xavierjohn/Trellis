@@ -263,6 +263,182 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
     }
 
     [Fact]
+    public async Task TrellisJsonValidationException_with_FieldViolations_emits_per_field_MVC_keys()
+    {
+        // F9 regression guard (lab feedback round 2): when a composite VO converter
+        // (e.g. ShippingAddress) fails multi-field validation during deserialization, the
+        // wire response MUST emit one entry per leaf — keyed by `<parentPath>.<leaf>` — and
+        // MUST NOT collapse all leaves into a single ;-joined string under the parent path.
+        //
+        // Today's broken behaviour (observed by Opus 4.7 lab run on 2026-05-06):
+        //   "errors": {
+        //     "$.shippingAddress": [
+        //       "/street: Street is required.; /city: City is required.; /state: ..."
+        //     ]
+        //   }
+        //
+        // Required behaviour:
+        //   "errors": {
+        //     "shippingAddress.street": ["Street is required."],
+        //     "shippingAddress.city":   ["City is required."],
+        //     "shippingAddress.state":  ["State is required."]
+        //   }
+        //
+        // The composite VO converter must carry the structured `Error.UnprocessableContent`
+        // on the thrown `TrellisJsonValidationException` (via the new `UnprocessableContent`
+        // init property) so the middleware can emit per-leaf entries instead of one opaque
+        // joined string.
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+        [
+            new FieldViolation(InputPointer.ForProperty("street"), "validation.error") { Detail = "Street is required." },
+            new FieldViolation(InputPointer.ForProperty("city"),   "validation.error") { Detail = "City is required." },
+            new FieldViolation(InputPointer.ForProperty("state"),  "validation.error") { Detail = "State is required." },
+        ]);
+        var error = new Error.UnprocessableContent(fields, EquatableArray<RuleViolation>.Empty)
+        {
+            Detail = "ShippingAddress validation failed.",
+        };
+
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage())
+        {
+            UnprocessableContent = error,
+        };
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, "$.shippingAddress");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+
+        errors.Should().ContainKey("shippingAddress.street");
+        errors.Should().ContainKey("shippingAddress.city");
+        errors.Should().ContainKey("shippingAddress.state");
+
+        errors["shippingAddress.street"].Should().Equal(["Street is required."]);
+        errors["shippingAddress.city"].Should().Equal(["City is required."]);
+        errors["shippingAddress.state"].Should().Equal(["State is required."]);
+
+        errors.Should().NotContainKey("shippingAddress",
+            "per-field entries must replace any single ;-joined entry under the parent path");
+        errors.Should().NotContainKey("$.shippingAddress",
+            "JSON Path '$.' prefix must be stripped on the wire — bug #1 of F9");
+    }
+
+    [Fact]
+    public async Task TrellisJsonValidationException_with_FieldViolations_at_root_emits_unprefixed_per_field_keys()
+    {
+        // Edge case: the structured error is at the root document (parent path "$" / empty).
+        // Per-leaf keys must NOT be prefixed with a leading dot ("." or ".street"); they
+        // must equal the raw leaf name (matching JsonPointerToMvc.Translate("/street") == "street").
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+        [
+            new FieldViolation(InputPointer.ForProperty("amount"),   "validation.error") { Detail = "Amount must be positive." },
+            new FieldViolation(InputPointer.ForProperty("currency"), "validation.error") { Detail = "Currency must be ISO 4217." },
+        ]);
+        var error = new Error.UnprocessableContent(fields, EquatableArray<RuleViolation>.Empty);
+
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage())
+        {
+            UnprocessableContent = error,
+        };
+        // Root path — JsonException.Path stays default ("$" or null).
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+
+        errors.Should().ContainKey("amount");
+        errors.Should().ContainKey("currency");
+        errors["amount"].Should().Equal(["Amount must be positive."]);
+        errors["currency"].Should().Equal(["Currency must be ISO 4217."]);
+        errors.Should().NotContainKey(string.Empty,
+            "with structured field violations the root key must not collapse to an empty entry");
+    }
+
+    [Fact]
+    public async Task TrellisJsonValidationException_with_RulesOnly_falls_back_to_unstructured_entry()
+    {
+        // Review feedback (PR #474, comment 1): when an Error.UnprocessableContent has only
+        // RuleViolations and no FieldViolations (e.g., produced by Error.UnprocessableContent.ForRule(...)),
+        // the structured per-leaf branch must NOT swallow the validation message into an empty
+        // `errors` object. Fall back to the unstructured single-entry shape under the parent path
+        // with the curated exception message intact.
+        var ctx = NewContext();
+        var rules = EquatableArray.Create(
+        [
+            new RuleViolation("order.total.exceeds-credit-limit") { Detail = "Order total exceeds the customer's credit limit." },
+        ]);
+        var error = new Error.UnprocessableContent(EquatableArray<FieldViolation>.Empty, rules);
+
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage())
+        {
+            UnprocessableContent = error,
+        };
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, "$.order");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+
+        errors.Should().NotBeEmpty(
+            "rules-only structured errors must surface the curated message — not collapse to an empty errors object");
+        errors.Should().ContainKey("order");
+        errors["order"][0].Should().Contain("credit limit",
+            "the curated exception message (or rule detail) must be visible to the client");
+    }
+
+    [Theory]
+    [InlineData("/0", "items[0]")]
+    [InlineData("/0/name", "items[0].name")]
+    [InlineData("/", "items[\"\"]")]
+    public async Task TrellisJsonValidationException_with_indexer_leaf_emits_MVC_indexer_concat(
+        string fieldPointer, string expectedKey)
+    {
+        // Review feedback (PR #474, comment 2): MVC convention is `items[0]`, not `items.[0]`.
+        // When the leaf MVC key starts with '[', concatenation with the parent must NOT insert
+        // a '.' separator. Same for empty-leaf indexer (`items[""]`).
+        var ctx = NewContext();
+        var fields = EquatableArray.Create(
+        [
+            new FieldViolation(new InputPointer(fieldPointer), "validation.error") { Detail = "Invalid line item." },
+        ]);
+        var error = new Error.UnprocessableContent(fields, EquatableArray<RuleViolation>.Empty);
+
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage())
+        {
+            UnprocessableContent = error,
+        };
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, "$.items");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var problem = await ReadProblemAsync(ctx);
+        var errors = ReadErrors(problem);
+
+        errors.Should().ContainKey(expectedKey,
+            $"indexer leaf '{fieldPointer}' under parent 'items' must produce '{expectedKey}', not 'items.{expectedKey.Substring(5)}'");
+        var brokenKey = $"items.{expectedKey.Substring("items".Length)}";
+        errors.Should().NotContainKey(brokenKey,
+            "MVC indexer keys must not contain a '.' separator before '['");
+    }
+
+    [Fact]
     public async Task real_STJ_deserialization_failure_with_single_quote_in_property_name_emits_MVC_property_key()
     {
         // Integration-style guard for finding 1 of GPT-5.5 round-7 review.
