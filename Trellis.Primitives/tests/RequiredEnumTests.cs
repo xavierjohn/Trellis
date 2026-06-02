@@ -218,13 +218,13 @@ public class RequiredEnumTests
     }
 
     [Fact]
-    public void JsonDeserialize_Null_ReturnsNull()
+    public void JsonDeserialize_Null_ThrowsJsonException()
     {
-        // Act
-        var state = JsonSerializer.Deserialize<TestOrderState>("null");
-
-        // Assert
-        state.Should().BeNull();
+        // Round-4 contract change: deserializing JSON null into a Required enum value object
+        // is a contract violation that must surface at the JSON boundary. The converter now
+        // overrides HandleNull and throws JsonException for null tokens.
+        var act = () => JsonSerializer.Deserialize<TestOrderState>("null");
+        act.Should().Throw<JsonException>();
     }
 
     [Fact]

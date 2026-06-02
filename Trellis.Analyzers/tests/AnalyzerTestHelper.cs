@@ -183,18 +183,25 @@ public static class AnalyzerTestHelper
 
                 public static Maybe<T> None => default;
                 public static Maybe<T> From(T value) => new Maybe<T>(value);
-                
+
                 public static implicit operator Maybe<T>(T value) => new Maybe<T>(value);
-                
+                public static bool operator ==(Maybe<T> first, Maybe<T> second) => first.Equals(second);
+                public static bool operator !=(Maybe<T> first, Maybe<T> second) => !first.Equals(second);
+
                 // ToResult stub methods
                 public Result<T> ToResult() => default;
                 public Result<T> ToResult(Error error) => default;
+                public bool HasValueWhere(Func<T, bool> predicate) => HasValue && predicate(default!);
 
                 public bool TryGetValue(out T value)
                 {
                     value = default!;
                     return HasValue;
                 }
+
+                public bool Equals(Maybe<T> other) => HasValue == other.HasValue;
+                public override bool Equals(object? obj) => obj is Maybe<T> other && Equals(other);
+                public override int GetHashCode() => HasValue.GetHashCode();
             }
 
             // Extension methods stub

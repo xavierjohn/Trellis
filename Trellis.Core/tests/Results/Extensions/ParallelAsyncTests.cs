@@ -98,8 +98,11 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Unexpected>()
-            .Which.Detail.Should().Be("sync boom");
+        var error = result.Error!.Should().BeOfType<Error.Unexpected>().Subject;
+        error.ReasonCode.Should().Be("unhandled_exception");
+        error.FaultId.Should().NotBeNullOrWhiteSpace();
+        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        error.Detail.Should().NotContain("sync boom");
     }
 
     [Fact]
@@ -116,10 +119,17 @@ public class ParallelAsyncTests : TestBase
         result.Error!.Should().BeOfType<Error.Aggregate>();
         var aggregateError = (Error.Aggregate)result.Error!;
         aggregateError.Errors.Items.Should().HaveCount(2);
-        aggregateError.Errors.Items[0].Should().BeOfType<Error.Unexpected>()
-            .Which.Detail.Should().Be("first sync boom");
-        aggregateError.Errors.Items[1].Should().BeOfType<Error.Unexpected>()
-            .Which.Detail.Should().Be("second sync boom");
+        var firstError = aggregateError.Errors.Items[0].Should().BeOfType<Error.Unexpected>().Subject;
+        firstError.ReasonCode.Should().Be("unhandled_exception");
+        firstError.FaultId.Should().NotBeNullOrWhiteSpace();
+        firstError.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        firstError.Detail.Should().NotContain("first sync boom");
+
+        var secondError = aggregateError.Errors.Items[1].Should().BeOfType<Error.Unexpected>().Subject;
+        secondError.ReasonCode.Should().Be("unhandled_exception");
+        secondError.FaultId.Should().NotBeNullOrWhiteSpace();
+        secondError.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        secondError.Detail.Should().NotContain("second sync boom");
     }
 
     #endregion

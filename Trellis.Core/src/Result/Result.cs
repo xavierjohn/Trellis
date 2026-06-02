@@ -23,6 +23,8 @@ using System.Threading.Tasks;
 /// </remarks>
 public static partial class Result
 {
+    private const string UnexpectedExceptionDetail = "An unexpected error occurred while processing the request.";
+
     // ----- Generic factories -----------------------------------------------------------------
 
     /// <summary>Creates a successful result wrapping the provided <paramref name="value"/>.</summary>
@@ -350,9 +352,9 @@ public static partial class Result
 
     /// <summary>
     /// Default mapper converting an exception into an <see cref="Error.Unexpected"/>.
-    /// The exception message is attached as <c>Detail</c>; richer diagnostics belong in the
-    /// logging/telemetry layer indexed by <c>FaultId</c>.
+    /// Public detail stays generic; exception diagnostics belong in call-site logging/telemetry
+    /// indexed by <c>FaultId</c>.
     /// </summary>
-    private static Error.Unexpected DefaultExceptionMapper(Exception ex) =>
-        new("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = ex.Message };
+    private static Error.Unexpected DefaultExceptionMapper(Exception _) =>
+        new("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = UnexpectedExceptionDetail };
 }

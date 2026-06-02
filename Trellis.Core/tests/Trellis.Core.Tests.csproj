@@ -1,10 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
 		<ProjectReference Include="..\src\Trellis.Core.csproj" />
 		<ProjectReference Include="..\generator\Trellis.Core.Generator.csproj" ReferenceOutputAssembly="true" OutputItemType="None" />
 		<ProjectReference Include="..\..\Trellis.Http.Abstractions\src\Trellis.Http.Abstractions.csproj" />
 		<ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
 	</ItemGroup>
 
 </Project>

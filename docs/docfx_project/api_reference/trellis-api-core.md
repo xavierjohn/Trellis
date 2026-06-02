@@ -116,7 +116,7 @@ Migration notes for users moving from the previous `Trellis.Core` API surface.
 | Conditional factory | `Result.SuccessIf(cond, value, error)` / `Result.SuccessIf(cond, t1, t2, error)` | *(removed)* | Use a ternary: `cond ? Result.Ok(value) : Result.Fail<T>(error)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
 | Inverse-conditional factory | `Result.FailureIf(cond, value, error)` / `Result.FailureIf(predicate, value, error)` | *(removed)* | Use a ternary: `cond ? Result.Fail<T>(error) : Result.Ok(value)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
 | Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `(await predicate()) ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed; parens required because `await` binds tighter than `?:`) | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Fail(new Error.Unexpected("unhandled_exception", faultId) { Detail = ex.Message, Cause = ... })` or rely on `Result.Try` / `Result.TryAsync` for inline exception capture. |
+| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Try` / `Result.TryAsync` for inline exception capture, or log the exception and return `Result.Fail(new Error.Unexpected("unhandled_exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Do not copy `ex.Message` into public `Detail`. |
 | Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
 | Non-generic `Result` for void flows | `Result` was a separate `readonly struct` for success/failure with no payload, distinct from `Result<T>`. | The non-generic `Result` instance type was removed. `Result` is now a `public static partial class` factory only; for no-payload success/failure use `Result<Unit>` (returned by parameterless `Result.Ok()` / `Result.Fail(error)` / `Result.Ensure(...)` / `Result.Try(...)` factories). The `Trellis.Unit` type is a public `readonly record struct` with a single value (`Unit.Default`). | Replace `Result` parameter/return types with `Result<Unit>`; replace `Task<Result>` with `Task<Result<Unit>>`; in lambdas after `.Bind(...)` / `BindAsync(...)` accept the `Unit` argument explicitly (`_ =>` or `(Unit _) =>`). |
 | `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **12 nested `sealed record` cases** (`Error.NotFound`, `Error.InvalidInput`, …). Closed via `private` constructor; no static factories. | Replace not-found factories with `new Error.NotFound(ResourceRef.For<TResource>(id)) { Detail = "..." }`. Replace validation factories with `Error.InvalidInput.ForField(field, code, detail)` or `Error.InvalidInput.ForRule(code, detail)`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.InvalidInput`, `Error.NotFound`. See "Error Cases (closed ADT)" below. | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
@@ -238,7 +238,7 @@ Static factory and helper surface for `Result<TValue>`. There is no non-generic 
 | `public static Result<(T1, ..., T9)> Combine<...>(...)` | Additional generated arities up to 9 |
 | `public static (Task<Result<T1>>, ..., Task<Result<T9>>) ParallelAsync<...>(...)` | Starts async result-producing operations in parallel, arities 2-9 |
 
-The default exception mapper produces `new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = ex.Message }`. `OperationCanceledException` is always rethrown rather than mapped.
+The default exception mapper produces `new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." }`. It never copies `Exception.Message` into public `Detail`; log exception details at the call site or provide a custom mapper with safe, domain-specific text. `OperationCanceledException` is always rethrown rather than mapped.
 
 #### Factory Methods
 
@@ -1971,7 +1971,8 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TRequiredEnum?` | Accepts only JSON `string` and `null`; string values are resolved through `RequiredEnum<TRequiredEnum>.TryFromName(name)`. |
+| `public override bool HandleNull` | `bool` | `true`; routes JSON `null` tokens through the converter so required enums can reject them explicitly. |
+| `public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TRequiredEnum?` | Accepts only JSON `string`; string values are resolved through `RequiredEnum<TRequiredEnum>.TryFromName(name)`, and `null` throws `JsonException`. |
 | `public override void Write(Utf8JsonWriter writer, TRequiredEnum value, JsonSerializerOptions options)` | `void` | Writes `value.Value` as a JSON string. |
 
 ### `RequiredString<TSelf>`
@@ -1988,9 +1989,13 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public bool StartsWith(string value)` | `bool` | Delegates to `string.StartsWith(string)`. |
-| `public bool Contains(string value)` | `bool` | Delegates to `string.Contains(string)`. |
-| `public bool EndsWith(string value)` | `bool` | Delegates to `string.EndsWith(string)`. |
+| `public bool StartsWith(string value)` | `bool` | Delegates to `string.StartsWith(string)` for EF Core-translatable query predicates. |
+| `public bool StartsWith(string value, StringComparison comparisonType)` | `bool` | Delegates to `string.StartsWith(string, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
+| `public bool Contains(string value)` | `bool` | Delegates to `string.Contains(string)` for EF Core-translatable query predicates. |
+| `public bool Contains(string value, StringComparison comparisonType)` | `bool` | Delegates to `string.Contains(string, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
+| `public bool Contains(char value, StringComparison comparisonType)` | `bool` | Delegates to `string.Contains(char, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
+| `public bool EndsWith(string value)` | `bool` | Delegates to `string.EndsWith(string)` for EF Core-translatable query predicates. |
+| `public bool EndsWith(string value, StringComparison comparisonType)` | `bool` | Delegates to `string.EndsWith(string, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
 | `public static TSelf Create(string value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
 
 ### `RequiredGuid<TSelf>`

@@ -346,4 +346,33 @@ public static class DiagnosticDescriptors
                      "declared/default fallbacks). Endpoints that are [ApiVersionNeutral] or use URL-segment versioning " +
                      "are exempt from this warning.",
         helpLinkUri: HelpLinkBase + "TRLS023");
+
+    /// <summary>
+    /// TRLS054: Maybe.Equals is not translatable in IQueryable expressions.
+    /// </summary>
+    public static readonly DiagnosticDescriptor MaybeEqualsInQueryable = new(
+        id: TrellisDiagnosticIds.MaybeEqualsInQueryable,
+        title: "Use operators instead of Maybe.Equals in IQueryable expressions",
+        messageFormat: "Maybe<T>.Equals is not translatable by EF Core. Use == or != operators for IQueryable comparisons.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "MaybeExpressionRewriter handles Maybe<T> == / != operator comparisons in IQueryable expression trees, " +
+                     "but Maybe<T>.Equals(...) and object.Equals(...) remain opaque method calls to EF Core. " +
+                     "Use the == or != operators for natural-form comparisons, or use Trellis.EntityFrameworkCore.MaybeQueryableExtensions.WhereEquals.",
+        helpLinkUri: HelpLinkBase + "TRLS054");
+
+    /// <summary>
+    /// TRLS055: HasValueWhere uses a captured predicate inside an IQueryable expression.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NonInlineHasValueWhereInQueryable = new(
+        id: TrellisDiagnosticIds.NonInlineHasValueWhereInQueryable,
+        title: "Inline HasValueWhere predicates in IQueryable expressions",
+        messageFormat: "HasValueWhere requires an inline lambda inside IQueryable expressions; captured delegate variables are not translatable. Inline the lambda or materialize the query first.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "MaybeExpressionRewriter can inspect and inline HasValueWhere(t => ...) predicate bodies in IQueryable expression trees. " +
+                     "Captured Func<T, bool> variables, method groups, and other non-inline delegate shapes are opaque to the rewriter and fall through to EF Core translation failures.",
+        helpLinkUri: HelpLinkBase + "TRLS055");
 }

@@ -304,7 +304,7 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     ///     catch (Exception ex)
     ///     {
     ///         await transaction.RollbackAsync(ct);
-    ///         return new Error.Unexpected("transaction_failed") { Detail = ex.Message };
+    ///         return new Error.Unexpected("transaction_failed") { Detail = "Transaction failed. See logs for details." };
     ///     }
     /// }
     /// ]]></code>

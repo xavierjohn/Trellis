@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS017, TRLS018, TRLS019, TRLS020, TRLS036, TRLS037, TRLS038]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS017, TRLS018, TRLS019, TRLS020, TRLS036, TRLS037, TRLS038, TRLS054, TRLS055]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-05-11
@@ -139,6 +139,53 @@ IQueryable<Order> submitted = db.Orders.WhereHasValue(o => o.SubmittedAt);
 
 > TRLS013 suppression is keyword-presence based: the prior `.Where(...)` body only has to mention `HasValue`, so predicate-shape verification (for example, distinguishing `m => m.HasValue` from `m => !m.HasValue`) is a known limitation. The analyzer recognizes prior `.Where(...)` chains for projections; `MaybeQueryableExtensions` are the EF translation path, not a general-purpose TRLS013 suppression mechanism.
 
+## TRLS054 — `Maybe<T>.Equals` in an `IQueryable` expression
+
+`MaybeExpressionRewriter` translates natural `==` / `!=` operator comparisons, not opaque `.Equals(...)` calls.
+
+```csharp
+// WRONG — EF Core sees an opaque Maybe<T>.Equals call
+IQueryable<Order> overdue = db.Orders
+    .Where(o => o.SubmittedAt.Equals(Maybe.From(cutoff)));   // TRLS054
+
+// WRONG — object.Equals is equally opaque to the rewriter
+IQueryable<Order> missing = db.Orders
+    .Where(o => object.Equals(o.SubmittedAt, Maybe<DateTime>.None)); // TRLS054
+
+// FIX 1 — natural-form operators are the supported expression-tree shape
+IQueryable<Order> overdue = db.Orders
+    .Where(o => o.SubmittedAt == Maybe.From(cutoff));
+
+// FIX 2 — for ad-hoc EF queries, prefer the typed helper when it matches
+IQueryable<Order> overdue = db.Orders
+    .WhereEquals(o => o.SubmittedAt, cutoff);
+```
+
+> TRLS054 is scoped to `IQueryable` / `System.Linq.Queryable` lambdas. In-memory `IEnumerable<T>` comparisons are allowed because no EF translation is involved.
+
+## TRLS055 — Non-inline `HasValueWhere` in an `IQueryable` expression
+
+`HasValueWhere` is translatable only when the predicate body is visible as an inline lambda inside the query expression tree.
+
+```csharp
+Func<DateTime, bool> isOverdue = submittedAt => submittedAt < cutoff;
+
+// WRONG — captured delegate variables are opaque to MaybeExpressionRewriter
+IQueryable<Order> overdue = db.Orders
+    .Where(o => o.SubmittedAt.HasValueWhere(isOverdue));      // TRLS055
+
+// FIX 1 — inline the predicate so the rewriter can substitute the storage member
+IQueryable<Order> overdue = db.Orders
+    .Where(o => o.SubmittedAt.HasValueWhere(submittedAt => submittedAt < cutoff));
+
+// FIX 2 — materialize first when the delegate must remain a runtime value
+IEnumerable<Order> overdueInMemory = db.Orders
+    .AsEnumerable()
+    .Where(o => o.SubmittedAt.HasValueWhere(isOverdue));
+```
+
+> Method groups and member-held delegates have the same limitation as local `Func<T, bool>` variables: EF Core cannot translate a delegate body it cannot see.
+
 ## TRLS015 — Use `SaveChangesResultAsync` instead of `SaveChangesAsync`
 
 Direct `SaveChanges`/`SaveChangesAsync` calls bypass the Result pipeline and turn database errors into unhandled exceptions.
@@ -265,6 +312,27 @@ public sealed partial class Address : ValueObject
 ```
 
 > Severity: Error. When TRLS038 fires, the generator skips source generation for that type.
+
+## TRLS056 — Required value object redeclares a generated member
+
+`Required*<TSelf>` partial classes get their factory, parse, conversion, and GUID helper surface from `RequiredPartialClassGenerator`. Do not redeclare those members in the user partial.
+
+```csharp
+// WRONG — TryParse is generated for RequiredString<TSelf>
+public sealed partial class CustomerCode : RequiredString<CustomerCode>
+{
+    public static bool TryParse(string? s, IFormatProvider? provider, out CustomerCode result) // TRLS056
+    {
+        result = default!;
+        return false;
+    }
+}
+
+// FIX — remove the redundant declaration and rely on the generated TryParse
+public sealed partial class CustomerCode : RequiredString<CustomerCode>;
+```
+
+> Severity: Error. The generator reports at the user member and skips emitting the conflicting generated member, so the diagnostic points at the redundant declaration instead of surfacing as a generic `CS0111` / `CS0102` duplicate-member error from generated source.
 
 ## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 

@@ -116,8 +116,10 @@ public class ErrorBenchmarks
     [Benchmark]
     public Error CreateErrorFromException()
     {
-        var exception = new InvalidOperationException("Test exception");
-        return new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = exception.Message };
+        return new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N"))
+        {
+            Detail = "An unexpected error occurred while processing the request.",
+        };
     }
 
     [Benchmark]

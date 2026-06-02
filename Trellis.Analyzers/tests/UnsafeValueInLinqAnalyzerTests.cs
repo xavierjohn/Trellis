@@ -151,6 +151,255 @@ public class UnsafeValueInLinqAnalyzerTests
     }
 
     [Fact]
+    public async Task Where_MaybeEqualsInQueryable_ReportsDiagnostic()
+    {
+        const string source = """
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(IQueryable<TestEntity> query)
+                {
+                    var matches = query.Where(e => e.OptionalNumber.Equals(Maybe<int>.From(42)));
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeEqualsInQueryable)
+                .WithLocation(13, 57));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task Where_ObjectEqualsMaybeInQueryable_ReportsDiagnostic()
+    {
+        const string source = """
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(IQueryable<TestEntity> query)
+                {
+                    var matches = query.Where(e => object.Equals(e.OptionalNumber, Maybe<int>.From(42)));
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeEqualsInQueryable)
+                .WithLocation(13, 47));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task QuerySyntax_WhereClauseMaybeEqualsRootedAtIQueryable_ReportsDiagnostic()
+    {
+        // Round-4 pre-PR review caught this gap: LINQ query syntax has no LambdaExpressionSyntax
+        // ancestor, so the original Queryable-context detector missed it. Query expressions are
+        // lowered to System.Linq.Queryable calls when rooted at IQueryable<T>, so the
+        // EF-translation failure mode is identical to method syntax.
+        const string source = """
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(IQueryable<TestEntity> query)
+                {
+                    var matches = from e in query
+                                  where e.OptionalNumber.Equals(Maybe<int>.From(42))
+                                  select e;
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeEqualsInQueryable)
+                .WithLocation(14, 46));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task QuerySyntax_WhereClauseMaybeEqualsRootedAtIEnumerable_NoDiagnostic()
+    {
+        // Negative case: query syntax over IEnumerable<T> is in-memory LINQ, not Queryable.
+        // The diagnostic must remain silent — in-memory Maybe<T>.Equals works fine.
+        const string source = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(List<TestEntity> entities)
+                {
+                    var matches = from e in entities
+                                  where e.OptionalNumber.Equals(Maybe<int>.From(42))
+                                  select e;
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task Where_MaybeEqualsInEnumerable_NoDiagnostic()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(List<TestEntity> entities)
+                {
+                    var matches = entities.Where(e => e.OptionalNumber.Equals(Maybe<int>.From(42)));
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueInLinqAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task Where_MaybeEqualityOperatorInQueryable_NoDiagnostic()
+    {
+        const string source = """
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(IQueryable<TestEntity> query)
+                {
+                    var matches = query.Where(e => e.OptionalNumber == Maybe<int>.From(42));
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueInLinqAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task Where_HasValueWhereCapturedDelegateInQueryable_ReportsDiagnostic()
+    {
+        const string source = """
+            using System;
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(IQueryable<TestEntity> query)
+                {
+                    Func<int, bool> predicate = value => value > 0;
+                    var matches = query.Where(e => e.OptionalNumber.HasValueWhere(predicate));
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.NonInlineHasValueWhereInQueryable)
+                .WithLocation(15, 57));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task Where_HasValueWhereCapturedDelegateInEnumerable_NoDiagnostic()
+    {
+        const string source = """
+            using System;
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(List<TestEntity> entities)
+                {
+                    Func<int, bool> predicate = value => value > 0;
+                    var matches = entities.Where(e => e.OptionalNumber.HasValueWhere(predicate));
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueInLinqAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task Where_HasValueWhereInlineLambdaInQueryable_NoDiagnostic()
+    {
+        const string source = """
+            using System.Linq;
+
+            public class TestClass
+            {
+                public void TestMethod(IQueryable<TestEntity> query)
+                {
+                    var matches = query.Where(e => e.OptionalNumber.HasValueWhere(value => value > 0));
+                }
+            }
+
+            public class TestEntity
+            {
+                public Maybe<int> OptionalNumber { get; set; }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueInLinqAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
     public void UnsafeValueInLinq_DescriptorAlias_PointsToSameInstance()
     {
         // N-A-1 (GPT-5.5 meta-review): older versions of Trellis.Analyzers exposed the TRLS013

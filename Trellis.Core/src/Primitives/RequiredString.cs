@@ -317,4 +317,28 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     /// </summary>
     public bool EndsWith(string value) => Value.EndsWith(value);
 #pragma warning restore CA1310
+
+    /// <summary>
+    /// Returns whether the string value starts with the specified prefix using the supplied comparison.
+    /// This overload is not EF Core translatable; use the single-argument overload for queries.
+    /// </summary>
+    public bool StartsWith(string value, StringComparison comparisonType) => Value.StartsWith(value, comparisonType);
+
+    /// <summary>
+    /// Returns whether the string value contains the specified substring using the supplied comparison.
+    /// This overload is not EF Core translatable; use the single-argument overload for queries.
+    /// </summary>
+    public bool Contains(string value, StringComparison comparisonType) => Value.Contains(value, comparisonType);
+
+    /// <summary>
+    /// Returns whether the string value contains the specified character using the supplied comparison.
+    /// This overload is not EF Core translatable; use the single-argument overload for queries.
+    /// </summary>
+    public bool Contains(char value, StringComparison comparisonType) => Value.Contains(value, comparisonType);
+
+    /// <summary>
+    /// Returns whether the string value ends with the specified suffix using the supplied comparison.
+    /// This overload is not EF Core translatable; use the single-argument overload for queries.
+    /// </summary>
+    public bool EndsWith(string value, StringComparison comparisonType) => Value.EndsWith(value, comparisonType);
 }

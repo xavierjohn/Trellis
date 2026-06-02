@@ -2,7 +2,75 @@
 
 using System;
 using System.Linq;
+using Microsoft.CodeAnalysis;
 
+internal sealed class GeneratedMemberDeclaration : IEquatable<GeneratedMemberDeclaration>
+{
+    private readonly string _filePath;
+    private readonly int _spanStart;
+    private readonly int _spanLength;
+
+    public readonly string Name;
+    public readonly string Signature;
+    public readonly bool MatchesByNameOnly;
+    public readonly Location? Location;
+
+    public GeneratedMemberDeclaration(string name, string signature, bool matchesByNameOnly, Location? location)
+    {
+        Name = name;
+        Signature = signature;
+        MatchesByNameOnly = matchesByNameOnly;
+        Location = location;
+
+        if (location is { IsInSource: true })
+        {
+            _filePath = location.GetLineSpan().Path;
+            _spanStart = location.SourceSpan.Start;
+            _spanLength = location.SourceSpan.Length;
+        }
+        else
+        {
+            _filePath = string.Empty;
+            _spanStart = 0;
+            _spanLength = 0;
+        }
+    }
+
+    public string ReportKey => MatchesByNameOnly ? Name : Signature;
+
+    public bool Matches(string name, string signature, bool generatedNameOnly) =>
+        Name == name && (generatedNameOnly || MatchesByNameOnly || Signature == signature);
+
+    public bool Equals(GeneratedMemberDeclaration? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        return Name == other.Name
+            && Signature == other.Signature
+            && MatchesByNameOnly == other.MatchesByNameOnly
+            && _filePath == other._filePath
+            && _spanStart == other._spanStart
+            && _spanLength == other._spanLength;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as GeneratedMemberDeclaration);
+
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            var hash = 17;
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(Name);
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(Signature);
+            hash = (hash * 31) + MatchesByNameOnly.GetHashCode();
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(_filePath);
+            hash = (hash * 31) + _spanStart.GetHashCode();
+            hash = (hash * 31) + _spanLength.GetHashCode();
+            return hash;
+        }
+    }
+}
 /// <summary>
 /// Represents metadata about a partial class that requires source generation for value object functionality.
 /// Used by the source generator to create factory methods, validation, and parsing logic.
@@ -232,6 +300,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// </summary>
     public readonly bool HasExplicitRange;
 
+    public readonly GeneratedMemberDeclaration[] UserDeclaredMembers;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="RequiredPartialClassInfo"/> class.
     /// </summary>
@@ -262,6 +332,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <param name="hasNegative">True when the target carries <c>[Negative]</c>.</param>
     /// <param name="hasNonPositive">True when the target carries <c>[NonPositive]</c>.</param>
     /// <param name="hasExplicitRange">True when the target had an explicit <c>[Range]</c> before convenience-attribute synthesis.</param>
+    /// <param name="userDeclaredMembers">Members declared by the user that may collide with generated members.</param>
     public RequiredPartialClassInfo(
         string nameSpace,
         string className,
@@ -289,7 +360,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         bool hasNonNegative = false,
         bool hasNegative = false,
         bool hasNonPositive = false,
-        bool hasExplicitRange = false)
+        bool hasExplicitRange = false,
+        GeneratedMemberDeclaration[]? userDeclaredMembers = null)
     {
         NameSpace = nameSpace;
         ClassName = className;
@@ -318,6 +390,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         HasNegative = hasNegative;
         HasNonPositive = hasNonPositive;
         HasExplicitRange = hasExplicitRange;
+        UserDeclaredMembers = userDeclaredMembers ?? [];
     }
 
     public bool Equals(RequiredPartialClassInfo? other)
@@ -351,7 +424,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             && HasNonPositive == other.HasNonPositive
             && HasExplicitRange == other.HasExplicitRange
             && TypePath == other.TypePath
-            && NestingParents.SequenceEqual(other.NestingParents);
+            && NestingParents.SequenceEqual(other.NestingParents)
+            && UserDeclaredMembers.SequenceEqual(other.UserDeclaredMembers);
     }
 
     public override bool Equals(object? obj) => Equals(obj as RequiredPartialClassInfo);
@@ -387,6 +461,8 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             hash = (hash * 31) + HasNonPositive.GetHashCode();
             hash = (hash * 31) + HasExplicitRange.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
+            foreach (var member in UserDeclaredMembers)
+                hash = (hash * 31) + member.GetHashCode();
             return hash;
         }
     }

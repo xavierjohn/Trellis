@@ -14,7 +14,11 @@ public class TryTests
         var r = Result.Try<int>(() => throw new InvalidOperationException("Boom"));
 
         r.IsFailure.Should().BeTrue();
-        r.Error!.Detail.Should().Be("Boom");
+        var error = r.Error.Should().BeOfType<Error.Unexpected>().Subject;
+        error.ReasonCode.Should().Be("unhandled_exception");
+        error.FaultId.Should().NotBeNullOrWhiteSpace();
+        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        error.Detail.Should().NotContain("Boom");
     }
 
     [Fact]
@@ -37,7 +41,11 @@ public class TryTests
         });
 
         r.IsFailure.Should().BeTrue();
-        r.Error!.Detail.Should().Be("AsyncBoom");
+        var error = r.Error.Should().BeOfType<Error.Unexpected>().Subject;
+        error.ReasonCode.Should().Be("unhandled_exception");
+        error.FaultId.Should().NotBeNullOrWhiteSpace();
+        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        error.Detail.Should().NotContain("AsyncBoom");
     }
 
     [Fact]

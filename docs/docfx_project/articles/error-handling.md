@@ -220,7 +220,7 @@ static Result<string> LoadConfig(string path) =>
         {
             FileNotFoundException       => new Error.NotFound(ResourceRef.For<FileInfo>(path)) { Detail = $"{path} was not found" },
             UnauthorizedAccessException => new Error.Forbidden("file.read") { Detail = "Access denied" },
-            _                           => new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = exception.Message },
+            _                           => new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while loading the file." },
         });
 ```
 

@@ -19,7 +19,11 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         ["Select", "SelectMany", "ToDictionary", "ToLookup", "GroupBy", "OrderBy", "OrderByDescending", "ThenBy", "ThenByDescending"];
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        [DiagnosticDescriptors.UnsafeMaybeValueInLinq];
+        [
+            DiagnosticDescriptors.UnsafeMaybeValueInLinq,
+            DiagnosticDescriptors.MaybeEqualsInQueryable,
+            DiagnosticDescriptors.NonInlineHasValueWhereInQueryable
+        ];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -27,6 +31,7 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeMemberAccess, SyntaxKind.SimpleMemberAccessExpression);
+        context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
     }
 
     private static void AnalyzeMemberAccess(SyntaxNodeAnalysisContext context)
@@ -96,6 +101,164 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
 
         context.ReportDiagnostic(diagnostic);
     }
+
+    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+
+        if (!IsInsideQueryableLinqContext(invocation, context.SemanticModel, context.CancellationToken))
+            return;
+
+        if (IsMaybeEqualsInvocation(invocation, context.SemanticModel, context.CancellationToken))
+        {
+            var diagnostic = Diagnostic.Create(
+                DiagnosticDescriptors.MaybeEqualsInQueryable,
+                GetInvocationNameLocation(invocation));
+
+            context.ReportDiagnostic(diagnostic);
+            return;
+        }
+
+        if (IsNonInlineHasValueWhereInvocation(invocation, context.SemanticModel, context.CancellationToken))
+        {
+            var diagnostic = Diagnostic.Create(
+                DiagnosticDescriptors.NonInlineHasValueWhereInQueryable,
+                GetInvocationNameLocation(invocation));
+
+            context.ReportDiagnostic(diagnostic);
+        }
+    }
+
+    private static bool IsInsideQueryableLinqContext(
+        SyntaxNode node,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        // Path 1: method-syntax (e.g. `q.Where(x => x.M.Equals(...))`). The call sits inside
+        // a LambdaExpressionSyntax whose enclosing argument's owning invocation must bind to
+        // a System.Linq.Queryable method.
+        var lambda = node.FirstAncestorOrSelf<LambdaExpressionSyntax>();
+        if (lambda is not null)
+        {
+            for (SyntaxNode? current = lambda; current is not null; current = current.Parent)
+            {
+                if (current is ArgumentSyntax { Parent.Parent: InvocationExpressionSyntax invocation }
+                    && IsQueryableLinqInvocation(invocation, semanticModel, cancellationToken))
+                    return true;
+            }
+        }
+
+        // Path 2: query-syntax (e.g. `from x in q where x.M.Equals(...) select x`). The call has
+        // no LambdaExpressionSyntax ancestor; instead, look for an enclosing QueryExpressionSyntax
+        // whose source ('q' in the FROM clause) is IQueryable<T>. The compiler lowers each query
+        // clause into the same System.Linq.Queryable method calls, so the EF-translation failure
+        // mode is identical.
+        var queryExpression = node.FirstAncestorOrSelf<QueryExpressionSyntax>();
+        if (queryExpression?.FromClause.Expression is { } fromSource)
+        {
+            var fromType = semanticModel.GetTypeInfo(fromSource, cancellationToken).Type;
+            if (IsIQueryable(fromType))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsIQueryable(ITypeSymbol? type)
+    {
+        if (type is null)
+            return false;
+
+        if (type is INamedTypeSymbol named
+            && named.ConstructedFrom?.ToDisplayString() == "System.Linq.IQueryable<T>")
+            return true;
+
+        foreach (var iface in type.AllInterfaces)
+        {
+            if (iface.ConstructedFrom?.ToDisplayString() == "System.Linq.IQueryable<T>")
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsQueryableLinqInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
+        var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+
+        if (methodSymbol is null)
+            return false;
+
+        var originalMethod = methodSymbol.ReducedFrom ?? methodSymbol;
+        return originalMethod.ContainingType?.ToDisplayString() == "System.Linq.Queryable";
+    }
+
+    private static bool IsMaybeEqualsInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        if (invocation.Expression is MemberAccessExpressionSyntax memberAccess
+            && memberAccess.Name.Identifier.Text == nameof(object.Equals)
+            && semanticModel.GetTypeInfo(memberAccess.Expression, cancellationToken).Type.IsMaybeType())
+            return true;
+
+        var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
+        var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+
+        return IsObjectEqualsMaybeInvocation(invocation, methodSymbol, semanticModel, cancellationToken);
+    }
+
+    private static bool IsObjectEqualsMaybeInvocation(
+        InvocationExpressionSyntax invocation,
+        IMethodSymbol? methodSymbol,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        if (methodSymbol is null || methodSymbol.Name != nameof(object.Equals) || !methodSymbol.IsStatic)
+            return false;
+
+        if (methodSymbol.ContainingType?.SpecialType != SpecialType.System_Object)
+            return false;
+
+        if (invocation.ArgumentList.Arguments.Count != 2)
+            return false;
+
+        return invocation.ArgumentList.Arguments
+            .Any(argument => semanticModel.GetTypeInfo(argument.Expression, cancellationToken).Type.IsMaybeType());
+    }
+
+    private static bool IsNonInlineHasValueWhereInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess
+            || memberAccess.Name.Identifier.Text != "HasValueWhere")
+            return false;
+
+        if (!semanticModel.GetTypeInfo(memberAccess.Expression, cancellationToken).Type.IsMaybeType())
+            return false;
+
+        if (invocation.ArgumentList.Arguments.Count != 1)
+            return false;
+
+        return invocation.ArgumentList.Arguments[0].Expression is not LambdaExpressionSyntax;
+    }
+
+    private static Location GetInvocationNameLocation(InvocationExpressionSyntax invocation) =>
+        invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.GetLocation(),
+            IdentifierNameSyntax identifier => identifier.GetLocation(),
+            _ => invocation.GetLocation()
+        };
 
     private static bool HasPriorFilterClause(
         InvocationExpressionSyntax currentInvocation,

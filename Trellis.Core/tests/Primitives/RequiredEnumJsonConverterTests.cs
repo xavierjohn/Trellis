@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Primitives;
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 public sealed class RequiredEnumJsonConverterTests
 {
@@ -8,6 +9,34 @@ public sealed class RequiredEnumJsonConverterTests
     {
         Converters = { new RequiredEnumJsonConverter<RequiredEnumJsonConverterTestState>() }
     };
+
+    [Fact]
+    public void Read_NullToken_ThrowsJsonException()
+    {
+        var act = () => JsonSerializer.Deserialize<RequiredEnumJsonConverterTestState>("null", _jsonOptions);
+
+        act.Should().Throw<JsonException>()
+            .WithMessage("Cannot deserialize null into RequiredEnum<RequiredEnumJsonConverterTestState>*");
+    }
+
+    [Fact]
+    public void Read_NullInProperty_ThrowsJsonException()
+    {
+        var act = () => JsonSerializer.Deserialize<RequiredEnumJsonConverterTestOwner>("{\"value\":null}", _jsonOptions);
+
+        act.Should().Throw<JsonException>()
+            .WithMessage("Cannot deserialize null into RequiredEnum<RequiredEnumJsonConverterTestState>*");
+    }
+
+    [Fact]
+    public void Read_AfterFix_RoundTripStillWorks()
+    {
+        var json = JsonSerializer.Serialize(RequiredEnumJsonConverterTestState.Active, _jsonOptions);
+
+        var result = JsonSerializer.Deserialize<RequiredEnumJsonConverterTestState>(json, _jsonOptions);
+
+        result.Should().BeSameAs(RequiredEnumJsonConverterTestState.Active);
+    }
 
     [Fact]
     public void Read_InvalidName_ThrowsJsonExceptionWithTruncatedValue()
@@ -35,6 +64,12 @@ public sealed class RequiredEnumJsonConverterTests
                 "newlines must be escaped to prevent log injection")
             .And.Message.Should().Contain("\\u000A");
     }
+}
+
+public sealed class RequiredEnumJsonConverterTestOwner
+{
+    [JsonPropertyName("value")]
+    public RequiredEnumJsonConverterTestState Value { get; set; } = null!;
 }
 
 public sealed class RequiredEnumJsonConverterTestState :
