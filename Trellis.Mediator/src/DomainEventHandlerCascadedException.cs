@@ -1,8 +1,13 @@
 ﻿namespace Trellis.Mediator;
 
 /// <summary>
-/// Thrown by the domain event dispatch behaviors when a domain event handler raises new
-/// events on the same aggregate during dispatch. Handlers MUST be side-effect-only.
+/// Thrown by the domain event dispatch behaviors and helper when the aggregate's
+/// pending-event list no longer matches the entry snapshot at the end of dispatch.
+/// The validation is strict: length must match AND each position must be reference-equal
+/// to the snapshot, so any handler-caused mutation (raising new events, clearing via
+/// <c>AcceptChanges</c>, replacing, reordering) triggers this exception. Handlers MUST
+/// be side-effect-only. In the multi-aggregate tracked-dispatch variant, every aggregate
+/// in the snapshot is validated and offenders are reported together in <see cref="Offenders"/>.
 /// <para>
 /// Note: this exception fires AFTER the inner <c>TransactionalCommandBehavior</c> commits.
 /// The database state is durable, but the dispatch-stage response is failure-shaped.

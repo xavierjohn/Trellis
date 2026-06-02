@@ -27,8 +27,10 @@
 /// </para>
 /// <para>
 /// Handlers should treat themselves as side-effect-only. The dispatcher publishes only
-/// the entry snapshot and then validates that handlers did not raise more events on a
-/// participating aggregate. If a handler cascades events, dispatch throws
+/// the entry snapshot and then validates by length + reference equality that handlers
+/// did not change the participating aggregate's pending-event list — raising new events,
+/// clearing via <c>AcceptChanges</c>, replacing, or reordering all trip cascade detection.
+/// If a handler changes the pending list, dispatch throws
 /// <see cref="DomainEventHandlerCascadedException"/> and does not call <c>AcceptChanges()</c>.
 /// The originating command's transaction has already committed, so persist-and-emit chains
 /// belong inside command handlers or separate top-level commands, not domain-event handlers.

@@ -25,9 +25,12 @@ public static class DomainEventPublisherExtensions
     /// <returns>A <see cref="Task"/> that completes once every snapshotted event has been published and
     /// <see cref="IChangeTracking.AcceptChanges"/> has cleared the aggregate's pending list.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="publisher"/> or <paramref name="aggregate"/> is null.</exception>
-    /// <exception cref="DomainEventHandlerCascadedException">Thrown when a handler raises additional
-    /// events on the aggregate during dispatch. <see cref="IChangeTracking.AcceptChanges"/> is not
-    /// called in this case so the caller can inspect the aggregate's current pending events.</exception>
+    /// <exception cref="DomainEventHandlerCascadedException">Thrown when the aggregate's pending-event
+    /// list no longer matches the entry snapshot at the end of dispatch — i.e. a handler raised,
+    /// cleared, replaced, or reordered events on the aggregate. Validation is strict (length +
+    /// reference equality), so any mutation of the pending list during dispatch trips it.
+    /// <see cref="IChangeTracking.AcceptChanges"/> is not called in this case so the caller can
+    /// inspect the aggregate's current pending events.</exception>
     /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/>
     /// is canceled. Dispatched events stay dispatched (handlers must be idempotent for retry);
     /// <see cref="IChangeTracking.AcceptChanges"/> is not called so undispatched events remain on
@@ -57,8 +60,10 @@ public static class DomainEventPublisherExtensions
     /// <para>
     /// Strict snapshot semantics match <see cref="DomainEventDispatchBehavior{TMessage, TResponse}"/>:
     /// events are dispatched sequentially from the entry snapshot only. Handlers must be
-    /// side-effect-only and must not raise additional events on the same aggregate. If the
-    /// pending-event list changes during dispatch, the helper throws
+    /// side-effect-only and must not change the aggregate's pending-event list during dispatch —
+    /// no raising new events, no clearing via <c>AcceptChanges</c>, no replacing or reordering.
+    /// If the pending-event list differs from the entry snapshot at the end of dispatch (length
+    /// or reference equality), the helper throws
     /// <see cref="DomainEventHandlerCascadedException"/> and leaves the aggregate unchanged.
     /// </para>
     /// <para>
