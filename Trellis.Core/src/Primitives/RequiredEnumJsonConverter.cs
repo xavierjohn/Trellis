@@ -1,6 +1,8 @@
 ﻿namespace Trellis;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -51,6 +53,40 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
         var name = reader.GetString();
         return RequiredEnum<TRequiredEnum>.TryFromName(name).Match(
             onSuccess: value => value,
-            onFailure: error => throw new JsonException($"Invalid {typeof(TRequiredEnum).Name} value: '{name}'. {error.GetDisplayMessage()}"));
+            onFailure: _ =>
+            {
+                var validValues = string.Join(", ", RequiredEnum<TRequiredEnum>.GetAll()
+                    .Select(value => value.Value)
+                    .OrderBy(value => value, StringComparer.Ordinal));
+
+                throw new JsonException(
+                    $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'. " +
+                    $"Valid values are: {validValues}.");
+            });
+    }
+
+    private static string SanitizeForExceptionMessage(string? value, int maxLength = 64)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "<empty>";
+
+        var sanitized = new StringBuilder(maxLength + 3);
+        for (var i = 0; i < value.Length; i++)
+        {
+            var c = value[i];
+            var encodedLength = char.IsControl(c) ? 6 : 1;
+            if (sanitized.Length + encodedLength > maxLength)
+            {
+                sanitized.Append("...");
+                return sanitized.ToString();
+            }
+
+            if (char.IsControl(c))
+                sanitized.Append("\\u").Append(((int)c).ToString("X4", CultureInfo.InvariantCulture));
+            else
+                sanitized.Append(c);
+        }
+
+        return sanitized.ToString();
     }
 }

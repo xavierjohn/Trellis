@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Trellis;
 using Trellis.Asp;
 using Xunit;
@@ -42,6 +43,30 @@ public sealed class ResponseFailureWriterResourceRefInstanceTests
 #pragma warning disable CA1822
         public bool TryWrite(ProblemDetailsContext c) => false;
 #pragma warning restore CA1822
+    }
+
+    private sealed class FakeLogger : ILogger
+    {
+        public int WarningCount { get; private set; }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == LogLevel.Warning)
+                WarningCount++;
+        }
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    }
+
+    private sealed class FakeLoggerProvider(FakeLogger logger) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => logger;
+
+        public void Dispose()
+        {
+        }
     }
 
     private sealed record T(int Id);
@@ -325,6 +350,45 @@ public sealed class ResponseFailureWriterResourceRefInstanceTests
         using var body = await ReadBody(ctx);
         body.RootElement.GetProperty("instance").GetString().Should().Be("/api/orders");
         body.RootElement.TryGetProperty("request", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TrySynthesizeInstance_RegistryThrows_FallsBackAndLogsOnce()
+    {
+        ResponseFailureWriter.ResetDiagnosticThrottlesForTests();
+        var fakeLogger = new FakeLogger();
+
+        using var firstBody = await ExecuteWithThrowingRegistryAsync(fakeLogger);
+        firstBody.RootElement.GetProperty("instance").GetString().Should().Be("/api/orders");
+        firstBody.RootElement.TryGetProperty("request", out _).Should().BeFalse();
+        fakeLogger.WarningCount.Should().Be(1);
+
+        using var secondBody = await ExecuteWithThrowingRegistryAsync(fakeLogger);
+        secondBody.RootElement.GetProperty("instance").GetString().Should().Be("/api/orders");
+        secondBody.RootElement.TryGetProperty("request", out _).Should().BeFalse();
+        fakeLogger.WarningCount.Should().Be(1, "second call must NOT log again");
+    }
+
+    private static async Task<JsonDocument> ExecuteWithThrowingRegistryAsync(FakeLogger fakeLogger)
+    {
+        var ctx = NewContext(
+            path: "/api/orders",
+            configureServices: s =>
+            {
+                s.AddSingleton<ResourceCollectionNameRegistry>(_ =>
+                    throw new InvalidOperationException("Simulated registry activation failure."));
+                s.AddLogging(builder =>
+                {
+                    builder.ClearProviders();
+                    builder.AddProvider(new FakeLoggerProvider(fakeLogger));
+                });
+            });
+        var r = Result.Fail<T>(new Error.NotFound(ResourceRef.For("Customer", "abc-123")));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(404);
+        return await ReadBody(ctx);
     }
 
     [Fact]

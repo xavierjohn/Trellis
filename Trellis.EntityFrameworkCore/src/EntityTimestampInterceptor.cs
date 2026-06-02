@@ -60,6 +60,8 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         SetTimestamps(eventData.Context);
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }

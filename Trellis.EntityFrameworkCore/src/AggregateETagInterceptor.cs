@@ -42,6 +42,8 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         GenerateETags(eventData.Context);
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
@@ -59,6 +61,8 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
         int result,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         SyncETagOriginalValues(eventData.Context);
         return base.SavedChangesAsync(eventData, result, cancellationToken);
     }

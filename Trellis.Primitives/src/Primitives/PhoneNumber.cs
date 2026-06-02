@@ -93,6 +93,12 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         "992", "993", "994", "995", "996", "998"
     }.ToFrozenSet(StringComparer.Ordinal);
 
+    // E.164 max is "+" + 15 digits = 16 chars; allow generous formatting margin
+    // (dashes, spaces, parentheses) up to 32 chars before rejecting. Adversarial
+    // inputs above this length can't represent a valid phone number even with the
+    // most permissive formatting, so reject up-front before regex runs.
+    private const int MaxInputLength = 32;
+
     private PhoneNumber(string value) : base(value) { }
 
     /// <summary>
@@ -111,6 +117,9 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
 
         if (string.IsNullOrWhiteSpace(value))
             return Result.Fail<PhoneNumber>(Error.InvalidInput.ForField(field, "validation.error", "Phone number is required."));
+
+        if (value.Length > MaxInputLength)
+            return Result.Fail<PhoneNumber>(Error.InvalidInput.ForField(field, "validation.error", "Phone number must be in E.164 format (e.g., +14155551234)."));
 
         // Normalize: remove spaces, dashes, and parentheses for validation
         var normalized = NormalizeRegex().Replace(value.Trim(), "");

@@ -1358,9 +1358,9 @@ public static class CursorCodec
 | Member | Description |
 | --- | --- |
 | `Encode<TKey>(TKey)` | Single-key cursor: URL-safe base64 of the key's invariant-culture string form. Supported keys include `Guid`, `long`, `int`, and `string`. Project Trellis value-object IDs to their underlying primitive (`.Value`) before calling. |
-| `TryDecode<TKey>(Cursor, string?)` | Inverse of the single-key `Encode`. Returns `Error.InvalidInput` (reason code `cursor.malformed`, field `fieldName ?? "cursor"`) on malformed base64 or unparseable payload. |
+| `TryDecode<TKey>(Cursor, string?)` | Inverse of the single-key `Encode`. Returns `Error.InvalidInput` (reason code `cursor.malformed`, field `fieldName ?? "cursor"`) on malformed base64, oversized tokens, invalid UTF-8, or unparseable payload. |
 | `Encode<TKey>(DateTimeOffset, TKey)` | Composite cursor for stable time-ordered seek: URL-safe base64 of `"{createdAt:O}&#124;{id}"` in invariant culture. |
-| `TryDecodeComposite<TKey>` | Inverse of the composite `Encode`. Splits at the **first** `&#124;` only, so an Id that happens to contain a pipe is still unambiguous. |
+| `TryDecodeComposite<TKey>` | Inverse of the composite `Encode`. Returns `Error.InvalidInput` (reason code `cursor.malformed`, field `fieldName ?? "cursor"`) on malformed base64, oversized tokens, invalid UTF-8, missing separator, or unparseable segments. Splits at the **first** `&#124;` only, so an Id that happens to contain a pipe is still unambiguous. |
 
 **Opacity, not anti-tamper.** Cursors are server-opaque so that clients don't reverse-engineer the sort key, but the encoding is **not** signed. Services that need to defend against tampering must wrap or replace this codec with a signed variant; authorization filtering must always apply to the underlying query.
 

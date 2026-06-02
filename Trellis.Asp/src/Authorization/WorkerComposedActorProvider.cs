@@ -1,10 +1,12 @@
 ﻿namespace Trellis.Asp.Authorization;
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Trellis.Authorization;
 
 /// <summary>
@@ -63,17 +65,21 @@ using Trellis.Authorization;
 /// </remarks>
 internal sealed class WorkerComposedActorProvider : IActorProvider, IProvideActorVaryHeaders, IDecoratingActorProvider, IAsyncDisposable, IDisposable
 {
+    private static readonly ConcurrentDictionary<Type, byte> _loggedAsyncOnlyTypes = new();
+
     private readonly bool _ownsInner;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly Actor _systemActor;
     private readonly Lazy<IActorProvider> _inner;
+    private readonly ILogger<WorkerComposedActorProvider>? _logger;
     private bool _disposed;
 
     public WorkerComposedActorProvider(
         Func<IActorProvider> innerFactory,
         bool ownsInner,
         IHttpContextAccessor httpContextAccessor,
-        Actor systemActor)
+        Actor systemActor,
+        ILogger<WorkerComposedActorProvider>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(innerFactory);
         ArgumentNullException.ThrowIfNull(httpContextAccessor);
@@ -82,6 +88,7 @@ internal sealed class WorkerComposedActorProvider : IActorProvider, IProvideActo
         _ownsInner = ownsInner;
         _httpContextAccessor = httpContextAccessor;
         _systemActor = systemActor;
+        _logger = logger;
         // ExecutionAndPublication: one winning IActorProvider instance across concurrent
         // VaryByHeaders / GetCurrentActorAsync calls in the same wrapper scope, so the
         // ownership/disposal accounting matches reality.
@@ -114,6 +121,14 @@ internal sealed class WorkerComposedActorProvider : IActorProvider, IProvideActo
 
     IActorProvider IDecoratingActorProvider.Inner => Inner;
 
+    /// <summary>
+    /// Synchronously disposes inner providers that implement <see cref="IDisposable"/>.
+    /// Inner providers that ONLY implement <see cref="IAsyncDisposable"/> are SKIPPED with a
+    /// throttled warning — sync-bridging async disposal can deadlock under captured sync
+    /// contexts. Callers with async-only inner providers must use <see cref="DisposeAsync"/>
+    /// (e.g., via 'await using' or <see cref="IAsyncDisposable.DisposeAsync"/>) for correct
+    /// cleanup.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed) return;
@@ -127,9 +142,11 @@ internal sealed class WorkerComposedActorProvider : IActorProvider, IProvideActo
                 d.Dispose();
                 break;
             case IAsyncDisposable ad:
-                // Bridge to sync: scope.Dispose() callers (i.e. CreateScope, not
-                // CreateAsyncScope) would otherwise leak an async-only inner.
-                ad.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                // Inner is async-only. Bridging via .GetAwaiter().GetResult() can deadlock
+                // under captured sync contexts. Skip sync dispose and emit a one-time warning
+                // pointing consumers at IAsyncDisposable / DisposeAsync.
+                if (_loggedAsyncOnlyTypes.TryAdd(ad.GetType(), 0))
+                    LogSkippedAsyncOnlyDispose(_logger, ad.GetType());
                 break;
         }
     }
@@ -150,6 +167,22 @@ internal sealed class WorkerComposedActorProvider : IActorProvider, IProvideActo
                 d.Dispose();
                 break;
         }
+    }
+
+    private static readonly Action<ILogger, string, Exception?> _logSkippedAsyncOnlyDispose =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(1, nameof(WorkerComposedActorProvider)),
+            "WorkerComposedActorProvider.Dispose was called but inner provider " +
+            "of type {InnerType} only implements IAsyncDisposable. Sync disposal " +
+            "was SKIPPED to avoid deadlock; use DisposeAsync or 'await using' to " +
+            "reliably dispose async-only resources. Suppressing further warnings " +
+            "for this type for the application lifetime.");
+
+    private static void LogSkippedAsyncOnlyDispose(ILogger<WorkerComposedActorProvider>? logger, Type innerType)
+    {
+        if (logger is not null)
+            _logSkippedAsyncOnlyDispose(logger, innerType.FullName ?? innerType.Name, null);
     }
 }
 

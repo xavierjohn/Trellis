@@ -84,6 +84,43 @@ public class PhoneNumberTests
     }
 
     [Fact]
+    public void TryCreate_VeryLongInput_FailsQuicklyWithFormatError()
+    {
+        var oversized = "+" + new string('1', 100);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = PhoneNumber.TryCreate(oversized);
+
+        sw.Stop();
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
+        sw.ElapsedMilliseconds.Should().BeLessThan(100);
+    }
+
+    [Fact]
+    public void TryCreate_InputAtBoundary_DoesNotPreemptivelyReject()
+    {
+        var atBoundary = new string('a', 32);
+
+        var result = PhoneNumber.TryCreate(atBoundary);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TryCreate_InputOverBoundaryThatNormalizesToE164_FailsWithFormatError()
+    {
+        var oversized = "+1 (415) 555-1234 () () () () () ()";
+
+        var result = PhoneNumber.TryCreate(oversized);
+
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
+    }
+
+    [Fact]
     public void Create_returns_PhoneNumber_for_valid_input()
     {
         // Act

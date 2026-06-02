@@ -79,7 +79,7 @@ public class FakeRepository<TAggregate, TId>
             return Task.FromResult(Result.Ok(aggregate));
 
         return Task.FromResult(Result.Fail<TAggregate>(
-            new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID {id} not found" }));
+            new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID '{id}' not found." }));
     }
 
     /// <summary>
@@ -202,7 +202,7 @@ public class FakeRepository<TAggregate, TId>
 
             if (conflict is not null)
                 return Task.FromResult(Result.Fail(
-                    new Error.Conflict(Resource: ResourceRef.For<TAggregate>(id), ReasonCode: "duplicate.unique.constraint") { Detail = $"A {ResourceRef.FormatTypeName(typeof(TAggregate))} with the same value already exists." }));
+                    new Error.Conflict(Resource: ResourceRef.For<TAggregate>(id), ReasonCode: "duplicate.key") { Detail = $"A {ResourceRef.FormatTypeName(typeof(TAggregate))} with the same value already exists." }));
         }
 
         _store[id] = aggregate;
@@ -234,7 +234,7 @@ public class FakeRepository<TAggregate, TId>
         }
 
         return Task.FromResult(Result.Fail(
-            new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID {id} not found" }));
+            new Error.NotFound(ResourceRef.For<TAggregate>(id)) { Detail = $"{ResourceRef.FormatTypeName(typeof(TAggregate))} with ID '{id}' not found." }));
     }
 
     /// <summary>

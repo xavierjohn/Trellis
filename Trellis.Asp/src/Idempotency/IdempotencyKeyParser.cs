@@ -9,6 +9,10 @@ using System;
 /// </summary>
 public static class IdempotencyKeyParser
 {
+    // Hard upper bound applied before any allocation or scanning. IdempotencyOptions.MaxKeyLength
+    // remains the consumer-facing parsed-key limit; this guard rejects malformed raw headers first.
+    private const int AbsoluteMaxRawLength = 4 * 1024;
+
     /// <summary>Attempts to parse a header value into a normalized idempotency key.</summary>
     /// <param name="raw">The raw header value as received from the request.</param>
     /// <param name="headerName">The configured header name, used in diagnostic messages.</param>
@@ -23,6 +27,12 @@ public static class IdempotencyKeyParser
         if (string.IsNullOrEmpty(raw))
         {
             error = $"{headerName} header value is empty.";
+            return false;
+        }
+
+        if (raw.Length > AbsoluteMaxRawLength)
+        {
+            error = $"{headerName} header value is invalid.";
             return false;
         }
 
