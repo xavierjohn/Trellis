@@ -352,13 +352,13 @@ public static class DiagnosticDescriptors
     /// </summary>
     public static readonly DiagnosticDescriptor MaybeEqualsInQueryable = new(
         id: TrellisDiagnosticIds.MaybeEqualsInQueryable,
-        title: "Use operators instead of Maybe.Equals in IQueryable expressions",
-        messageFormat: "Maybe<T>.Equals is not translatable by EF Core. Use == or != operators for IQueryable comparisons.",
+        title: "Use operators instead of Maybe.Equals/object.Equals in IQueryable expressions",
+        messageFormat: "Maybe<T>.Equals and object.Equals on Maybe<T> are not translatable by EF Core. Use == or != operators for IQueryable comparisons.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "MaybeExpressionRewriter handles Maybe<T> == / != operator comparisons in IQueryable expression trees, " +
-                     "but Maybe<T>.Equals(...) and object.Equals(...) remain opaque method calls to EF Core. " +
+                     "but Maybe<T>.Equals(other) and object.Equals(maybe, other) remain opaque method calls to EF Core. " +
                      "Use the == or != operators for natural-form comparisons, or use Trellis.EntityFrameworkCore.MaybeQueryableExtensions.WhereEquals.",
         helpLinkUri: HelpLinkBase + "TRLS054");
 

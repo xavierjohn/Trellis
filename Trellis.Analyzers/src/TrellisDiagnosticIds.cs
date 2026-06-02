@@ -15,8 +15,8 @@
 /// </code>
 /// <para>
 /// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges are emitted by the
-/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS056</c>
-/// range are emitted by the bundled source generators
+/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS053</c> and <c>TRLS056</c>
+/// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
 /// and <c>Trellis.AspSourceGenerator</c>).
 /// Analyzer IDs were renumbered to be contiguous in v3-alpha; prior IDs
