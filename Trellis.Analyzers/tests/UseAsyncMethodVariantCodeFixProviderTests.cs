@@ -16,7 +16,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public async Task TestMethod()
                 {
-                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                     await Task.CompletedTask;
                 }
 
@@ -42,7 +42,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 39));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -55,7 +55,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public Task<Result<int>> TestMethod()
                 {
-                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                     throw new NotImplementedException();
                 }
 
@@ -81,7 +81,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 39));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -94,7 +94,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public async Task<Result<Task<int>>> TestMethod()
                 {
-                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                     await Task.CompletedTask;
                     return result;
                 }
@@ -108,7 +108,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 39));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -121,7 +121,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public async Task TestMethod()
                 {
-                    var result = Result.Ok(1).Map(x => ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(x => ProcessAsync(x));
                     await Task.CompletedTask;
                 }
 
@@ -134,7 +134,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 39));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -148,7 +148,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
                 public async Task TestMethod()
                 {
                     var result = Result.Ok(1)
-                        .Map(async x => await ProcessAsync(x))
+                        .{|#0:Map|}(async x => await ProcessAsync(x))
                         .Bind(x => Result.Ok(x));
                     await Task.CompletedTask;
                 }
@@ -162,7 +162,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(12, 18));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -175,7 +175,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public Task<Result<int>> TestMethod(in int value)
                 {
-                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                     throw new NotImplementedException();
                 }
 
@@ -188,7 +188,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 39));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -202,7 +202,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
                 public async Task<Result<Task<int>>> TestMethod()
                 {
                     await Task.CompletedTask;
-                    return Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    return Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -214,7 +214,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(12, 33));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -228,7 +228,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
                 public async Task<int> TestMethod()
                 {
                     await Task.CompletedTask;
-                    return Wrap(Result.Ok(1).Map(async x => await ProcessAsync(x)));
+                    return Wrap(Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x)));
                 }
 
                 private int Wrap(Result<Task<int>> result) => 1;
@@ -241,7 +241,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(12, 38));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -254,7 +254,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public Task<Result<int>> TestMethod()
                 {
-                    return Wrap(Result.Ok(1).Map(async x => await ProcessAsync(x)));
+                    return Wrap(Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x)));
                 }
 
                 private Task<Result<int>> Wrap(Result<Task<int>> result) => throw new NotImplementedException();
@@ -267,7 +267,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 38));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -283,7 +283,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
                     if (cached)
                         return GetCachedAsync();
 
-                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                     throw new NotImplementedException();
                 }
 
@@ -297,7 +297,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(14, 39));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -310,7 +310,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -322,7 +322,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 39));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -335,7 +335,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             {
                 public Result<Task<int>> TestMethod()
                 {
-                    return Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    return Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -347,7 +347,7 @@ public class UseAsyncMethodVariantCodeFixProviderTests
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 33));
+                .WithLocation(0));
 
         await test.RunAsync();
     }

@@ -13,7 +13,7 @@ public class UseBindInsteadOfMapAnalyzerTests
             {
                 public void TestMethod(Result<int> result)
                 {
-                    var nested = result.Map(x => Validate(x));
+                    var nested = result.{|#0:Map|}(x => Validate(x));
                 }
 
                 private Result<int> Validate(int x) => x > 0 ? x : Error.Validation("Must be positive");
@@ -23,7 +23,7 @@ public class UseBindInsteadOfMapAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UseBindInsteadOfMapAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap)
-                .WithLocation(11, 29));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -72,7 +72,7 @@ public class UseBindInsteadOfMapAnalyzerTests
             {
                 public void TestMethod(Result<int> result)
                 {
-                    var nested = result.Map(Validate);
+                    var nested = result.{|#0:Map|}(Validate);
                 }
 
                 private Result<int> Validate(int x) => x > 0 ? x : Error.Validation("Must be positive");
@@ -82,7 +82,7 @@ public class UseBindInsteadOfMapAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UseBindInsteadOfMapAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap)
-                .WithLocation(11, 29));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -95,7 +95,7 @@ public class UseBindInsteadOfMapAnalyzerTests
             {
                 public async Task TestMethod(Result<int> result)
                 {
-                    var nested = await result.MapAsync(x => ValidateAsync(x));
+                    var nested = await result.{|#0:MapAsync|}(x => ValidateAsync(x));
                 }
 
                 private Task<Result<int>> ValidateAsync(int x) =>
@@ -106,7 +106,7 @@ public class UseBindInsteadOfMapAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UseBindInsteadOfMapAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap)
-                .WithLocation(11, 35));
+                .WithLocation(0));
 
         await test.RunAsync();
     }

@@ -36,15 +36,55 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
     {
         var param = Expression.Parameter(typeof(TModel), "v");
         var valueProp = typeof(TModel).GetProperty("Value")
-            ?? throw new InvalidOperationException(
-                $"{typeof(TModel).Name} must have a Value property.");
+            ?? throw new InvalidOperationException(BuildInvalidValuePropertyMessage("missing public 'Value' property"));
 
         if (!typeof(TProvider).IsAssignableFrom(valueProp.PropertyType))
-            throw new InvalidOperationException(
-                $"Property 'Value' on {typeof(TModel).Name} returns {valueProp.PropertyType.Name}, expected {typeof(TProvider).Name}");
+            throw new InvalidOperationException(BuildInvalidValuePropertyMessage(
+                $"public 'Value' property has type '{valueProp.PropertyType.FullName}', expected '{typeof(TProvider).FullName}'"));
 
         var body = Expression.Property(param, valueProp);
         return Expression.Lambda<Func<TModel, TProvider>>(body, param);
+    }
+
+    private static string BuildInvalidValuePropertyMessage(string reason) =>
+        $"Type '{typeof(TModel).FullName}' is not a valid Trellis value object for {ConverterDisplayName()}: {reason}. " +
+        $"Expected shape: IScalarValue<{typeof(TModel).Name}, {typeof(TProvider).Name}> (or the symbolic equivalent) with property signature " +
+        $"'public {typeof(TProvider).FullName} Value {{ get; }}'. " +
+        $"Use ScalarValueObject<{typeof(TModel).Name}, {typeof(TProvider).Name}>, {RequiredBaseHint()}, " +
+        "or expose the public property on the model type.";
+
+    private static string ConverterDisplayName() =>
+        $"TrellisScalarConverter<{typeof(TModel).Name}, {typeof(TProvider).Name}>";
+
+    private static string RequiredBaseHint()
+    {
+        var modelName = typeof(TModel).Name;
+
+        if (typeof(TProvider) == typeof(string))
+            return $"RequiredString<{modelName}> or RequiredEnum<{modelName}>";
+
+        if (typeof(TProvider) == typeof(Guid))
+            return $"RequiredGuid<{modelName}>";
+
+        if (typeof(TProvider) == typeof(int))
+            return $"RequiredInt<{modelName}>";
+
+        if (typeof(TProvider) == typeof(long))
+            return $"RequiredLong<{modelName}>";
+
+        if (typeof(TProvider) == typeof(decimal))
+            return $"RequiredDecimal<{modelName}>";
+
+        if (typeof(TProvider) == typeof(bool))
+            return $"RequiredBool<{modelName}>";
+
+        if (typeof(TProvider) == typeof(DateTime))
+            return $"RequiredDateTime<{modelName}>";
+
+        if (typeof(TProvider) == typeof(DateTimeOffset))
+            return $"RequiredDateTimeOffset<{modelName}>";
+
+        return $"a matching Required*<{modelName}> base";
     }
 
     private static Expression<Func<TProvider, TModel>> BuildToModelExpression()

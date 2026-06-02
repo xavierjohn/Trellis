@@ -159,6 +159,30 @@ public class TracingBehaviorTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_HandlerThrows_ExceptionEvent_ContainsTypeMessageAndStacktraceTags()
+    {
+        var exception = new InvalidOperationException("Something broke");
+        var behavior = new TracingBehavior<TestCommand, Result<string>>();
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.Throwing<TestCommand, Result<string>>(exception);
+
+        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        var activity = _activities.Should().ContainSingle().Subject;
+        var exceptionEvent = activity.Events.Should().ContainSingle(e => e.Name == "exception").Subject;
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value);
+
+        exceptionTags.TryGetValue("exception.type", out var exceptionType).Should().BeTrue();
+        exceptionType.Should().Be(typeof(InvalidOperationException).FullName);
+        exceptionTags.TryGetValue("exception.message", out var exceptionMessage).Should().BeTrue();
+        exceptionMessage.Should().Be(exception.Message);
+        exceptionTags.TryGetValue("exception.stacktrace", out var exceptionStacktrace).Should().BeTrue();
+        exceptionStacktrace.Should().BeOfType<string>()
+            .Which.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
     public async Task Handle_HandlerThrows_DoesNotLeakExceptionMessageInActivityStatus()
     {
         var behavior = new TracingBehavior<TestCommand, Result<string>>();

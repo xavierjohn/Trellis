@@ -34,7 +34,7 @@ public class UnsafeValueInLinqAnalyzerTests
             {
                 public void TestMethod(List<Maybe<int>> maybes)
                 {
-                    var values = maybes.Select(m => m.Value);
+                    var values = maybes.Select(m => m.{|#0:Value|});
                 }
             }
             """;
@@ -43,7 +43,7 @@ public class UnsafeValueInLinqAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueInLinq)
                 .WithArguments("Maybe.Value", "HasValue")
-                .WithLocation(14, 43));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -104,7 +104,7 @@ public class UnsafeValueInLinqAnalyzerTests
             {
                 public void TestMethod(List<Customer> customers)
                 {
-                    var addresses = customers.Select(c => c.Address.Value);
+                    var addresses = customers.Select(c => c.Address.{|#0:Value|});
                 }
             }
 
@@ -118,7 +118,7 @@ public class UnsafeValueInLinqAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueInLinq)
                 .WithArguments("Maybe.Value", "HasValue")
-                .WithLocation(14, 57));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -134,7 +134,7 @@ public class UnsafeValueInLinqAnalyzerTests
             {
                 public void TestMethod(List<string> values)
                 {
-                    var lengths = values.Select(v => GetMaybe(v).Value);
+                    var lengths = values.Select(v => GetMaybe(v).{|#0:Value|});
                 }
 
                 private Maybe<int> GetMaybe(string value) => Maybe<int>.None;
@@ -145,7 +145,7 @@ public class UnsafeValueInLinqAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueInLinq)
                 .WithArguments("Maybe.Value", "HasValue")
-                .WithLocation(14, 54));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -160,7 +160,7 @@ public class UnsafeValueInLinqAnalyzerTests
             {
                 public void TestMethod(IQueryable<TestEntity> query)
                 {
-                    var matches = query.Where(e => e.OptionalNumber.Equals(Maybe<int>.From(42)));
+                    var matches = query.Where(e => e.OptionalNumber.{|#0:Equals|}(Maybe<int>.From(42)));
                 }
             }
 
@@ -173,7 +173,7 @@ public class UnsafeValueInLinqAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeEqualsInQueryable)
-                .WithLocation(13, 57));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -188,7 +188,7 @@ public class UnsafeValueInLinqAnalyzerTests
             {
                 public void TestMethod(IQueryable<TestEntity> query)
                 {
-                    var matches = query.Where(e => object.Equals(e.OptionalNumber, Maybe<int>.From(42)));
+                    var matches = query.Where(e => object.{|#0:Equals|}(e.OptionalNumber, Maybe<int>.From(42)));
                 }
             }
 
@@ -201,7 +201,7 @@ public class UnsafeValueInLinqAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeEqualsInQueryable)
-                .WithLocation(13, 47));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -221,7 +221,7 @@ public class UnsafeValueInLinqAnalyzerTests
                 public void TestMethod(IQueryable<TestEntity> query)
                 {
                     var matches = from e in query
-                                  where e.OptionalNumber.Equals(Maybe<int>.From(42))
+                                  where e.OptionalNumber.{|#0:Equals|}(Maybe<int>.From(42))
                                   select e;
                 }
             }
@@ -235,7 +235,7 @@ public class UnsafeValueInLinqAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeEqualsInQueryable)
-                .WithLocation(14, 46));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -330,7 +330,7 @@ public class UnsafeValueInLinqAnalyzerTests
                 public void TestMethod(IQueryable<TestEntity> query)
                 {
                     Func<int, bool> predicate = value => value > 0;
-                    var matches = query.Where(e => e.OptionalNumber.HasValueWhere(predicate));
+                    var matches = query.Where(e => e.OptionalNumber.{|#0:HasValueWhere|}(predicate));
                 }
             }
 
@@ -343,7 +343,7 @@ public class UnsafeValueInLinqAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueInLinqAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.NonInlineHasValueWhereInQueryable)
-                .WithLocation(15, 57));
+                .WithLocation(0));
 
         await test.RunAsync();
     }

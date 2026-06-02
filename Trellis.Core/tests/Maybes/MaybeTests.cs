@@ -45,6 +45,17 @@ public class MaybeTests
     }
 
     [Fact]
+    public void GetValueOrThrow_None_DefaultMessageIncludesTypeAndHasValueGuidance()
+    {
+        var maybe = Maybe<MyType>.None;
+
+        var exception = Assert.Throws<InvalidOperationException>(() => maybe.GetValueOrThrow());
+
+        exception.Message.Should().Contain(nameof(MyType));
+        exception.Message.Should().Contain("HasValue");
+    }
+
+    [Fact]
     public void Can_create_a_non_nullable_maybe()
     {
         var instance = new MyClass();
@@ -234,5 +245,9 @@ public class MaybeTests
     private class MyClass
     {
         public override string ToString() => "My custom class";
+    }
+
+    private sealed class MyType
+    {
     }
 }

@@ -28,10 +28,17 @@ public static partial class Result
     // ----- Generic factories -----------------------------------------------------------------
 
     /// <summary>Creates a successful result wrapping the provided <paramref name="value"/>.</summary>
+    /// <typeparam name="TValue">The success value type.</typeparam>
+    /// <param name="value">The value to wrap in the successful result.</param>
+    /// <returns>A successful <see cref="Result{TValue}"/> containing <paramref name="value"/>.</returns>
     public static Result<TValue> Ok<TValue>(TValue value) =>
         new(false, value, default);
 
     /// <summary>Creates a failed result with the specified <paramref name="error"/>.</summary>
+    /// <typeparam name="TValue">The success value type for the failed result envelope.</typeparam>
+    /// <param name="error">The error describing the failure.</param>
+    /// <returns>A failed <see cref="Result{TValue}"/> containing <paramref name="error"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="error"/> is null.</exception>
     public static Result<TValue> Fail<TValue>(Error error) =>
         new(true, default, error);
 
@@ -114,11 +121,15 @@ public static partial class Result
     /// <c>default(Result&lt;Unit&gt;)</c>: <c>default</c> represents <em>failure</em> with the
     /// <see cref="Trellis.Error.Unexpected"/> sentinel, not success.
     /// </remarks>
+    /// <returns>A successful <see cref="Result{Unit}"/> containing <see cref="Unit.Default"/>.</returns>
     public static Result<Unit> Ok() => new(false, Unit.Default, default);
 
     /// <summary>
     /// Creates a failed no-payload result (<c>Result&lt;Unit&gt;</c>) with the specified <paramref name="error"/>.
     /// </summary>
+    /// <param name="error">The error describing the failure.</param>
+    /// <returns>A failed <see cref="Result{Unit}"/> containing <paramref name="error"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="error"/> is null.</exception>
     public static Result<Unit> Fail(Error error) => new(true, default, error);
 
     /// <summary>

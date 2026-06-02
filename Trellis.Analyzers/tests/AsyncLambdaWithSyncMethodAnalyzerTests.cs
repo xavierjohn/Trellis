@@ -16,7 +16,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Ok(1).Map(async x => await ProcessAsync(x));
+                    var result = Result.Ok(1).{|#0:Map|}(async x => await ProcessAsync(x));
                 }
 
                 private Task<int> ProcessAsync(int x) => Task.FromResult(x * 2);
@@ -27,7 +27,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("MapAsync", "Map")
-                .WithLocation(11, 35));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -40,7 +40,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    var result = Result.Ok(1).Tap(async x => await LogAsync(x));
+                    var result = Result.Ok(1).{|#0:Tap|}(async x => await LogAsync(x));
                 }
 
                 private Task LogAsync(int x) => Task.CompletedTask;
@@ -51,7 +51,7 @@ public class AsyncLambdaWithSyncMethodAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseAsyncMethodVariant)
                 .WithArguments("TapAsync", "Tap")
-                .WithLocation(11, 35));
+                .WithLocation(0));
 
         await test.RunAsync();
     }

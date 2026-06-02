@@ -14,7 +14,7 @@ public class UnsafeResultDeconstructionAnalyzerTests
                 public int TestMethod()
                 {
                     Result<int> result = Result.Ok(42);
-                    var (_, value, _) = result;
+                    var (_, {|#0:value|}, _) = result;
                     return value;
                 }
             }
@@ -23,7 +23,7 @@ public class UnsafeResultDeconstructionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeResultDeconstructionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultDeconstruction)
-                .WithLocation(12, 17)
+                .WithLocation(0)
                 .WithArguments("value"));
 
         await test.RunAsync();
@@ -143,7 +143,7 @@ public class UnsafeResultDeconstructionAnalyzerTests
                 public int TestMethod(bool other)
                 {
                     Result<int> result = Result.Ok(42);
-                    var (success, value, _) = result;
+                    var (success, {|#0:value|}, _) = result;
                     if (other)
                     {
                         return value;
@@ -156,7 +156,7 @@ public class UnsafeResultDeconstructionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeResultDeconstructionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultDeconstruction)
-                .WithLocation(12, 23)
+                .WithLocation(0)
                 .WithArguments("value"));
 
         await test.RunAsync();
@@ -219,7 +219,7 @@ public class UnsafeResultDeconstructionAnalyzerTests
 
                     if (!success) return -1; // stale guard for an unrelated boolean
 
-                    (success, value, error) = result;
+                    (success, {|#0:value|}, error) = result;
                     return value;
                 }
             }
@@ -228,7 +228,7 @@ public class UnsafeResultDeconstructionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeResultDeconstructionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeResultDeconstruction)
-                .WithLocation(17, 19)
+                .WithLocation(0)
                 .WithArguments("value"));
 
         await test.RunAsync();

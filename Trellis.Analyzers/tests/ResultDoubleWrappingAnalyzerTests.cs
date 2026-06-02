@@ -13,7 +13,7 @@ public class ResultDoubleWrappingAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Result<Result<string>> doubleWrapped;
+                    {|#0:Result<Result<string>>|} doubleWrapped;
                 }
             }
             """;
@@ -21,7 +21,7 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(11, 9)
+                .WithLocation(0)
                 .WithArguments("string"));
 
         await test.RunAsync();
@@ -33,14 +33,14 @@ public class ResultDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Result<Result<int>> DoubleWrapped { get; set; }
+                public {|#0:Result<Result<int>>|} DoubleWrapped { get; set; }
             }
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("int"));
 
         await test.RunAsync();
@@ -52,7 +52,7 @@ public class ResultDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Result<Result<User>> GetUser()
+                public {|#0:Result<Result<User>>|} GetUser()
                 {
                     return default;
                 }
@@ -64,7 +64,7 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("User"));
 
         await test.RunAsync();
@@ -76,7 +76,7 @@ public class ResultDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public void ProcessResult(Result<Result<string>> result)
+                public void ProcessResult({|#0:Result<Result<string>>|} result)
                 {
                 }
             }
@@ -85,7 +85,7 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(9, 31)
+                .WithLocation(0)
                 .WithArguments("string"));
 
         await test.RunAsync();
@@ -100,20 +100,20 @@ public class ResultDoubleWrappingAnalyzerTests
                 public void TestMethod()
                 {
                     Result<int> existingResult = Result.Ok(42);
-                    ProcessResult(Result.Ok(existingResult));
+                    ProcessResult(Result.Ok({|#0:existingResult|}));
                 }
                 
-                private void ProcessResult(Result<Result<int>> result) { }
+                private void ProcessResult({|#1:Result<Result<int>>|} result) { }
             }
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(12, 33)
+                .WithLocation(0)
                 .WithArguments("int"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(15, 32)
+                .WithLocation(1)
                 .WithArguments("int"));
 
         await test.RunAsync();
@@ -132,20 +132,20 @@ public class ResultDoubleWrappingAnalyzerTests
                     var result = Result.Fail<string>(error);
                     
                     // Now wrapping it creates Result<Result<Result<string>>> which contains Result<Result<string>>
-                    ProcessResult(Result.Ok(result));
+                    ProcessResult(Result.Ok({|#0:result|}));
                 }
                 
-                private void ProcessResult(Result<Result<string>> doubleWrapped) { }
+                private void ProcessResult({|#1:Result<Result<string>>|} doubleWrapped) { }
             }
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(16, 33)
+                .WithLocation(0)
                 .WithArguments("string"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(19, 32)
+                .WithLocation(1)
                 .WithArguments("string"));
 
         await test.RunAsync();
@@ -216,7 +216,7 @@ public class ResultDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Result<Result<User>> GetUser() => default;
+                public {|#0:Result<Result<User>>|} GetUser() => default;
             }
 
             public class User
@@ -228,7 +228,7 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("User"));
 
         await test.RunAsync();
@@ -243,7 +243,7 @@ public class ResultDoubleWrappingAnalyzerTests
                 public void TestMethod()
                 {
                     Result<Result<int>> GetDoubleWrapped() => default;
-                    var result = GetDoubleWrapped();
+                    {|#0:var|} result = GetDoubleWrapped();
                 }
             }
             """;
@@ -251,7 +251,7 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(12, 9)
+                .WithLocation(0)
                 .WithArguments("int"));
 
         await test.RunAsync();
@@ -263,13 +263,13 @@ public class ResultDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Result<Result<string>> Property { get; set; }
+                public {|#0:Result<Result<string>>|} Property { get; set; }
                 
-                public Result<Result<int>> GetValue() => default;
+                public {|#1:Result<Result<int>>|} GetValue() => default;
                 
-                public void TestMethod(Result<Result<bool>> parameter)
+                public void TestMethod({|#2:Result<Result<bool>>|} parameter)
                 {
-                    Result<Result<double>> local;
+                    {|#3:Result<Result<double>>|} local;
                 }
             }
             """;
@@ -277,16 +277,16 @@ public class ResultDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("string"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(11, 12)
+                .WithLocation(1)
                 .WithArguments("int"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(13, 28)
+                .WithLocation(2)
                 .WithArguments("bool"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultDoubleWrapping)
-                .WithLocation(15, 9)
+                .WithLocation(3)
                 .WithArguments("double"));
 
         await test.RunAsync();

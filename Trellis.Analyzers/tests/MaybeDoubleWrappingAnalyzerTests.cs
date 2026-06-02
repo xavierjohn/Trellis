@@ -13,7 +13,7 @@ public class MaybeDoubleWrappingAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    Maybe<Maybe<string>> doubleWrapped;
+                    {|#0:Maybe<Maybe<string>>|} doubleWrapped;
                 }
             }
             """;
@@ -21,7 +21,7 @@ public class MaybeDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<MaybeDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(11, 9)
+                .WithLocation(0)
                 .WithArguments("string"));
 
         await test.RunAsync();
@@ -33,14 +33,14 @@ public class MaybeDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Maybe<Maybe<int>> DoubleWrapped { get; set; }
+                public {|#0:Maybe<Maybe<int>>|} DoubleWrapped { get; set; }
             }
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<MaybeDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("int"));
 
         await test.RunAsync();
@@ -52,7 +52,7 @@ public class MaybeDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Maybe<Maybe<User>> GetUser()
+                public {|#0:Maybe<Maybe<User>>|} GetUser()
                 {
                     return default;
                 }
@@ -64,7 +64,7 @@ public class MaybeDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<MaybeDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("User"));
 
         await test.RunAsync();
@@ -76,7 +76,7 @@ public class MaybeDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public void ProcessMaybe(Maybe<Maybe<string>> maybe)
+                public void ProcessMaybe({|#0:Maybe<Maybe<string>>|} maybe)
                 {
                 }
             }
@@ -85,7 +85,7 @@ public class MaybeDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<MaybeDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(9, 30)
+                .WithLocation(0)
                 .WithArguments("string"));
 
         await test.RunAsync();
@@ -138,7 +138,7 @@ public class MaybeDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Maybe<Maybe<User>> GetUser() => default;
+                public {|#0:Maybe<Maybe<User>>|} GetUser() => default;
             }
 
             public class User
@@ -150,7 +150,7 @@ public class MaybeDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<MaybeDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("User"));
 
         await test.RunAsync();
@@ -162,13 +162,13 @@ public class MaybeDoubleWrappingAnalyzerTests
         const string source = """
             public class TestClass
             {
-                public Maybe<Maybe<string>> Property { get; set; }
+                public {|#0:Maybe<Maybe<string>>|} Property { get; set; }
                 
-                public Maybe<Maybe<int>> GetValue() => default;
+                public {|#1:Maybe<Maybe<int>>|} GetValue() => default;
                 
-                public void TestMethod(Maybe<Maybe<bool>> parameter)
+                public void TestMethod({|#2:Maybe<Maybe<bool>>|} parameter)
                 {
-                    Maybe<Maybe<double>> local;
+                    {|#3:Maybe<Maybe<double>>|} local;
                 }
             }
             """;
@@ -176,16 +176,16 @@ public class MaybeDoubleWrappingAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<MaybeDoubleWrappingAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(9, 12)
+                .WithLocation(0)
                 .WithArguments("string"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(11, 12)
+                .WithLocation(1)
                 .WithArguments("int"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(13, 28)
+                .WithLocation(2)
                 .WithArguments("bool"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(15, 9)
+                .WithLocation(3)
                 .WithArguments("double"));
 
         await test.RunAsync();

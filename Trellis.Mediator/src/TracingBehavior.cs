@@ -54,6 +54,7 @@ public sealed class TracingBehavior<TMessage, TResponse>
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             activity?.SetTag("error.type", ex.GetType().Name);
+            activity?.AddException(ex);
             throw;
         }
 

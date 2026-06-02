@@ -2,6 +2,7 @@
 
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
@@ -134,6 +135,7 @@ using System.Reflection;
 /// </remarks>
 #pragma warning disable CA1000 // Do not declare static members on generic types - required for factory pattern
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix - RequiredEnum is a valid DDD pattern name
+[DebuggerDisplay("{Value}")]
 public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf>
     : IEquatable<RequiredEnum<TSelf>>
     where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>

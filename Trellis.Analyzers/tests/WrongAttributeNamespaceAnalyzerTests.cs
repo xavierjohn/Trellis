@@ -76,14 +76,14 @@ public class WrongAttributeNamespaceAnalyzerTests
 
             namespace TestNamespace
             {
-                [System.ComponentModel.DataAnnotations.StringLength(100)]
+                [{|#0:System.ComponentModel.DataAnnotations.StringLength(100)|}]
                 public partial class ProductName : RequiredString<ProductName> { }
             }
             """;
 
         var test = CreateTest(source,
             new DiagnosticResult(DiagnosticDescriptors.WrongAttributeNamespace)
-                .WithLocation(5, 6)
+                .WithLocation(0)
                 .WithArguments("ProductName", "StringLength"));
 
         await test.RunAsync();
@@ -101,14 +101,14 @@ public class WrongAttributeNamespaceAnalyzerTests
 
             namespace TestNamespace
             {
-                [System.ComponentModel.DataAnnotations.Range(1, 1000)]
+                [{|#0:System.ComponentModel.DataAnnotations.Range(1, 1000)|}]
                 public partial class Quantity : RequiredInt<Quantity> { }
             }
             """;
 
         var test = CreateTest(source,
             new DiagnosticResult(DiagnosticDescriptors.WrongAttributeNamespace)
-                .WithLocation(5, 6)
+                .WithLocation(0)
                 .WithArguments("Quantity", "Range"));
 
         await test.RunAsync();
@@ -126,14 +126,14 @@ public class WrongAttributeNamespaceAnalyzerTests
 
             namespace TestNamespace
             {
-                [System.ComponentModel.DataAnnotations.Range(0.0, 100.0)]
+                [{|#0:System.ComponentModel.DataAnnotations.Range(0.0, 100.0)|}]
                 public partial class Percentage : RequiredDecimal<Percentage> { }
             }
             """;
 
         var test = CreateTest(source,
             new DiagnosticResult(DiagnosticDescriptors.WrongAttributeNamespace)
-                .WithLocation(5, 6)
+                .WithLocation(0)
                 .WithArguments("Percentage", "Range"));
 
         await test.RunAsync();

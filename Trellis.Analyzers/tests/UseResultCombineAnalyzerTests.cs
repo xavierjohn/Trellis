@@ -16,10 +16,10 @@ public class UseResultCombineAnalyzerTests
                     Result<int> result1 = Result.Ok(1);
                     Result<int> result2 = Result.Ok(2);
                     
-                    if (result1.IsSuccess && result2.IsSuccess)
+                    {|#0:if (result1.IsSuccess && result2.IsSuccess)
                     {
                         var combined = (result1.GetValueOrDefault(0), result2.GetValueOrDefault(0));
-                    }
+                    }|}
                 }
             }
             """;
@@ -27,7 +27,7 @@ public class UseResultCombineAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UseResultCombineAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseResultCombine)
-                .WithLocation(14, 9));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -44,10 +44,10 @@ public class UseResultCombineAnalyzerTests
                     Result<int> result2 = Result.Ok(2);
                     Result<int> result3 = Result.Ok(3);
                     
-                    if (result1.IsSuccess && result2.IsSuccess && result3.IsSuccess)
+                    {|#0:if (result1.IsSuccess && result2.IsSuccess && result3.IsSuccess)
                     {
                         var combined = (result1.GetValueOrDefault(0), result2.GetValueOrDefault(0), result3.GetValueOrDefault(0));
-                    }
+                    }|}
                 }
             }
             """;
@@ -55,7 +55,7 @@ public class UseResultCombineAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UseResultCombineAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseResultCombine)
-                .WithLocation(15, 9));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -71,10 +71,10 @@ public class UseResultCombineAnalyzerTests
                     Result<int> result1 = Result.Ok(1);
                     Result<int> result2 = Result.Ok(2);
 
-                    if (result1.IsFailure || result2.IsFailure)
+                    {|#0:if (result1.IsFailure || result2.IsFailure)
                     {
                         var error = result1.IsFailure ? result1.Error : result2.Error;
-                    }
+                    }|}
                 }
             }
             """;
@@ -82,7 +82,7 @@ public class UseResultCombineAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UseResultCombineAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UseResultCombine)
-                .WithLocation(14, 9));
+                .WithLocation(0));
 
         await test.RunAsync();
     }

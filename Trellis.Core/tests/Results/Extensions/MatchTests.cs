@@ -43,6 +43,20 @@ public class MatchTests : TestBase
     }
 
     [Fact]
+    public void Match_OnSuccessCallbackThrows_StackTraceHidesInvokeAndTraceFrames()
+    {
+        var result = Result.Ok(42);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            result.Match<int, string>(ThrowFromOnSuccess, _ => "failure"));
+
+        var frames = new StackTrace(exception, false).GetFrames();
+        frames.Should().NotBeNullOrEmpty();
+        frames![0].GetMethod()?.Name.Should().Be(nameof(ThrowFromOnSuccess));
+        exception.StackTrace.Should().NotContain("MatchExtensions.InvokeAndTrace");
+    }
+
+    [Fact]
     public void Match_Failure_InvokesFailureHandler()
     {
         var result = Result.Fail<int>(Error1);
@@ -139,4 +153,6 @@ public class MatchTests : TestBase
         ReferenceEquals(failureError, null).Should().BeFalse();
         ReferenceEquals(failureError, Error1).Should().BeTrue();
     }
+
+    private static string ThrowFromOnSuccess(int _) => throw new InvalidOperationException("boom");
 }

@@ -18,7 +18,7 @@ public class DefaultResultOrMaybeAnalyzerTests
             {
                 public Result<int> Run()
                 {
-                    return default(Result<int>);
+                    return {|#0:default(Result<int>)|};
                 }
             }
             """;
@@ -26,7 +26,7 @@ public class DefaultResultOrMaybeAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<DefaultResultOrMaybeAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.DefaultResultOrMaybe)
-                .WithLocation(11, 16)
+                .WithLocation(0)
                 .WithArguments("Result<int>", "Result.Ok(...) or Result.Fail<T>(...)"));
 
         await test.RunAsync();
@@ -40,7 +40,7 @@ public class DefaultResultOrMaybeAnalyzerTests
             {
                 public Maybe<int> Run()
                 {
-                    return default(Maybe<int>);
+                    return {|#0:default(Maybe<int>)|};
                 }
             }
             """;
@@ -48,7 +48,7 @@ public class DefaultResultOrMaybeAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<DefaultResultOrMaybeAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.DefaultResultOrMaybe)
-                .WithLocation(11, 16)
+                .WithLocation(0)
                 .WithArguments("Maybe<int>", "Maybe<T>.None or Maybe.From(...)"));
 
         await test.RunAsync();
@@ -63,7 +63,7 @@ public class DefaultResultOrMaybeAnalyzerTests
             {
                 public Result<int> Run()
                 {
-                    return default;
+                    return {|#0:default|};
                 }
             }
             """;
@@ -71,7 +71,7 @@ public class DefaultResultOrMaybeAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<DefaultResultOrMaybeAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.DefaultResultOrMaybe)
-                .WithLocation(11, 16)
+                .WithLocation(0)
                 .WithArguments("Result<int>", "Result.Ok(...) or Result.Fail<T>(...)"));
 
         await test.RunAsync();
@@ -86,7 +86,7 @@ public class DefaultResultOrMaybeAnalyzerTests
             {
                 public Result<string> Run()
                 {
-                    return default!;
+                    return {|#0:default|}!;
                 }
             }
             """;
@@ -94,7 +94,7 @@ public class DefaultResultOrMaybeAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<DefaultResultOrMaybeAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.DefaultResultOrMaybe)
-                .WithLocation(11, 16)
+                .WithLocation(0)
                 .WithArguments("Result<string>", "Result.Ok(...) or Result.Fail<T>(...)"));
 
         await test.RunAsync();
@@ -108,7 +108,7 @@ public class DefaultResultOrMaybeAnalyzerTests
             {
                 public int Run()
                 {
-                    Result<int> r = default;
+                    Result<int> r = {|#0:default|};
                     return r.GetValueOrDefault(0);
                 }
             }
@@ -117,7 +117,7 @@ public class DefaultResultOrMaybeAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<DefaultResultOrMaybeAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.DefaultResultOrMaybe)
-                .WithLocation(11, 25)
+                .WithLocation(0)
                 .WithArguments("Result<int>", "Result.Ok(...) or Result.Fail<T>(...)"));
 
         await test.RunAsync();

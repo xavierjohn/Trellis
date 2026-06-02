@@ -17,7 +17,7 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
             [OwnedEntity]
             public partial class Address
             {
-                public string Street { get; init; } = "";
+                public string Street { get; {|#0:init|}; } = "";
             }
             """;
 
@@ -25,7 +25,7 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.OwnedEntityInitOnlyProperty)
                 .WithArguments("Street", "Address")
-                .WithLocation(12, 33));
+                .WithLocation(0));
         test.TestState.Sources.Add(("OwnedEntityStubs.cs", OwnedEntityTestStubs.Source));
 
         await test.RunAsync();
@@ -141,8 +141,8 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
             [OwnedEntity]
             public partial class Address
             {
-                public string Street { get; init; } = "";
-                public string City { get; init; } = "";
+                public string Street { get; {|#0:init|}; } = "";
+                public string City { get; {|#1:init|}; } = "";
                 public string State { get; private set; } = "";
             }
             """;
@@ -151,10 +151,10 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.OwnedEntityInitOnlyProperty)
                 .WithArguments("Street", "Address")
-                .WithLocation(12, 33),
+                .WithLocation(0),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.OwnedEntityInitOnlyProperty)
                 .WithArguments("City", "Address")
-                .WithLocation(13, 31));
+                .WithLocation(1));
         test.TestState.Sources.Add(("OwnedEntityStubs.cs", OwnedEntityTestStubs.Source));
 
         await test.RunAsync();
@@ -169,7 +169,7 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
             [OwnedEntity]
             public partial record class Address
             {
-                public string Street { get; init; } = "";
+                public string Street { get; {|#0:init|}; } = "";
             }
             """;
 
@@ -177,7 +177,7 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.OwnedEntityInitOnlyProperty)
                 .WithArguments("Street", "Address")
-                .WithLocation(12, 33));
+                .WithLocation(0));
         test.TestState.Sources.Add(("OwnedEntityStubs.cs", OwnedEntityTestStubs.Source));
 
         await test.RunAsync();
@@ -191,7 +191,7 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
 
             public class BaseAddress
             {
-                public string Country { get; init; } = "";
+                public string Country { get; {|#0:init|}; } = "";
             }
 
             [OwnedEntity]
@@ -205,7 +205,7 @@ public class OwnedEntityInitOnlyPropertyAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.OwnedEntityInitOnlyProperty)
                 .WithArguments("Country", "Address")
-                .WithLocation(11, 34));
+                .WithLocation(0));
         test.TestState.Sources.Add(("OwnedEntityStubs.cs", OwnedEntityTestStubs.Source));
 
         await test.RunAsync();

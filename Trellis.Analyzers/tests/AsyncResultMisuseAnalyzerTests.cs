@@ -16,7 +16,7 @@ public class AsyncResultMisuseAnalyzerTests
                 public async Task TestMethod()
                 {
                     Task<Result<int>> task = GetValueAsync();
-                    var result = task.Result;
+                    var result = task.{|#0:Result|};
                 }
 
                 private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Ok(42));
@@ -26,7 +26,7 @@ public class AsyncResultMisuseAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<AsyncResultMisuseAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
-                .WithLocation(14, 27)
+                .WithLocation(0)
                 .WithArguments("int"));
 
         await test.RunAsync();
@@ -43,7 +43,7 @@ public class AsyncResultMisuseAnalyzerTests
                 public void TestMethod()
                 {
                     Task<Result<string>> task = GetValueAsync();
-                    task.Wait();
+                    task.{|#0:Wait|}();
                 }
 
                 private Task<Result<string>> GetValueAsync() => Task.FromResult(Result.Ok("test"));
@@ -53,7 +53,7 @@ public class AsyncResultMisuseAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<AsyncResultMisuseAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
-                .WithLocation(14, 14)
+                .WithLocation(0)
                 .WithArguments("string"));
 
         await test.RunAsync();
@@ -70,7 +70,7 @@ public class AsyncResultMisuseAnalyzerTests
                 public void TestMethod()
                 {
                     ValueTask<Result<User>> task = GetUserAsync();
-                    var result = task.Result;
+                    var result = task.{|#0:Result|};
                 }
 
                 private ValueTask<Result<User>> GetUserAsync() => new(Result.Ok(new User()));
@@ -82,7 +82,7 @@ public class AsyncResultMisuseAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<AsyncResultMisuseAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
-                .WithLocation(14, 27)
+                .WithLocation(0)
                 .WithArguments("User"));
 
         await test.RunAsync();
@@ -158,7 +158,7 @@ public class AsyncResultMisuseAnalyzerTests
             {
                 public void ProcessUser()
                 {
-                    var userResult = GetUserAsync().Result;
+                    var userResult = GetUserAsync().{|#0:Result|};
                 }
 
                 private Task<Result<User>> GetUserAsync() => Task.FromResult(Result.Ok(new User()));
@@ -170,7 +170,7 @@ public class AsyncResultMisuseAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<AsyncResultMisuseAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
-                .WithLocation(13, 41)
+                .WithLocation(0)
                 .WithArguments("User"));
 
         await test.RunAsync();
@@ -189,8 +189,8 @@ public class AsyncResultMisuseAnalyzerTests
                     Task<Result<int>> task1 = GetIntAsync();
                     Task<Result<string>> task2 = GetStringAsync();
                     
-                    var result1 = task1.Result;
-                    task2.Wait();
+                    var result1 = task1.{|#0:Result|};
+                    task2.{|#1:Wait|}();
                 }
 
                 private Task<Result<int>> GetIntAsync() => Task.FromResult(Result.Ok(42));
@@ -201,10 +201,10 @@ public class AsyncResultMisuseAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<AsyncResultMisuseAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
-                .WithLocation(16, 29)
+                .WithLocation(0)
                 .WithArguments("int"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
-                .WithLocation(17, 15)
+                .WithLocation(1)
                 .WithArguments("string"));
 
         await test.RunAsync();
@@ -221,7 +221,7 @@ public class AsyncResultMisuseAnalyzerTests
                 public void TestMethod()
                 {
                     Task<Result<int>> task = GetValueAsync();
-                    var result = task.GetAwaiter().GetResult();
+                    var result = {|#0:task.GetAwaiter().GetResult()|};
                 }
 
                 private Task<Result<int>> GetValueAsync() => Task.FromResult(Result.Ok(42));
@@ -231,7 +231,7 @@ public class AsyncResultMisuseAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<AsyncResultMisuseAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.AsyncResultMisuse)
-                .WithLocation(14, 22)
+                .WithLocation(0)
                 .WithArguments("int"));
 
         await test.RunAsync();

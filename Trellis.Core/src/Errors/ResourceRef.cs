@@ -1,5 +1,6 @@
 ﻿namespace Trellis;
 
+using System.Diagnostics;
 using System.Globalization;
 
 /// <summary>
@@ -16,6 +17,7 @@ using System.Globalization;
 /// Optional identifier of the specific resource instance. May be null when the error
 /// applies to the resource collection rather than a specific instance.
 /// </param>
+[DebuggerDisplay("{Type,nq}:{Id,nq}")]
 public readonly record struct ResourceRef(string Type, string? Id = null)
 {
     /// <summary>

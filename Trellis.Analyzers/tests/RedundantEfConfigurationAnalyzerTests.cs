@@ -99,7 +99,7 @@ public class RedundantEfConfigurationAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.Property(e => e.PhoneNumber).HasConversion<string>();
+                    builder.Property(e => e.PhoneNumber).{|#0:HasConversion<string>|}();
                 }
             }
 
@@ -115,7 +115,7 @@ public class RedundantEfConfigurationAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
-                .WithLocation(21, 46)
+                .WithLocation(0)
                 .WithArguments("HasConversion", "Order.PhoneNumber"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -146,7 +146,7 @@ public class RedundantEfConfigurationAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.OwnsOne(e => e.Total);
+                    builder.{|#0:OwnsOne|}(e => e.Total);
                 }
             }
 
@@ -162,7 +162,7 @@ public class RedundantEfConfigurationAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
-                .WithLocation(27, 17)
+                .WithLocation(0)
                 .WithArguments("OwnsOne", "Order.Total"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -187,7 +187,7 @@ public class RedundantEfConfigurationAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.Ignore(e => e.PhoneNumber);
+                    builder.{|#0:Ignore|}(e => e.PhoneNumber);
                 }
             }
 
@@ -203,7 +203,7 @@ public class RedundantEfConfigurationAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
-                .WithLocation(21, 17)
+                .WithLocation(0)
                 .WithArguments("Ignore", "Order.PhoneNumber"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -302,7 +302,7 @@ public class RedundantEfConfigurationAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.Property(e => e.PhoneNumber).HasMaxLength(20).HasConversion<string>();
+                    builder.Property(e => e.PhoneNumber).HasMaxLength(20).{|#0:HasConversion<string>|}();
                 }
             }
 
@@ -318,7 +318,7 @@ public class RedundantEfConfigurationAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
-                .WithLocation(21, 63)
+                .WithLocation(0)
                 .WithArguments("HasConversion", "Order.PhoneNumber"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -543,7 +543,7 @@ public class RedundantEfConfigurationAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.Ignore(e => e.PhoneNumber);
+                    builder.{|#0:Ignore|}(e => e.PhoneNumber);
                 }
             }
 
@@ -576,7 +576,7 @@ public class RedundantEfConfigurationAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
-                .WithLocation(22, 17)
+                .WithLocation(0)
                 .WithArguments("Ignore", "Order.PhoneNumber"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
         test.TestState.Sources.Add(("UserConventionsStub.cs", userConventionsStub));

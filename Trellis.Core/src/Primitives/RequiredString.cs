@@ -1,5 +1,7 @@
 ﻿namespace Trellis;
 
+using System.Diagnostics;
+
 /// <summary>
 /// Base class for creating strongly-typed string value objects. Rejects only <c>null</c> by
 /// default; per-type sentinel rejection ("cannot be empty") and trimming are opt-in via the
@@ -253,6 +255,7 @@
 /// <seealso cref="ScalarValueObject{TSelf, T}"/>
 /// <seealso cref="RequiredGuid{TSelf}"/>
 /// <seealso href="xref:Trellis.Primitives.EmailAddress"/>
+[DebuggerDisplay("{Value}")]
 public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     where TSelf : RequiredString<TSelf>, IScalarValue<TSelf, string>
 {

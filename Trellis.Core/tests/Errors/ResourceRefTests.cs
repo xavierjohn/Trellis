@@ -1,12 +1,23 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
+using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 
 /// <summary>
 /// Tests for <see cref="ResourceRef"/> helper factories.
 /// </summary>
 public class ResourceRefTests
 {
+    [Fact]
+    public void Type_HasDebuggerDisplayAttribute()
+    {
+        var attribute = typeof(ResourceRef).GetCustomAttribute<DebuggerDisplayAttribute>();
+
+        attribute.Should().NotBeNull();
+        attribute!.Value.Should().Be("{Type,nq}:{Id,nq}");
+    }
+
     [Fact]
     public void For_with_explicit_type_and_id_creates_resource_ref()
     {
