@@ -294,7 +294,11 @@ public sealed partial class IdempotencyMiddleware
 
     private async Task ExecuteAndCaptureAsync(HttpContext context, IIdempotencyStore store, string scope, string key, string reservationId, string fingerprint)
     {
-        var keyHash = RedactKeyForLogs(key);
+        // Lazy: hash only the requests that actually take an abandon/log path (the happy path
+        // pays zero SHA-256 cost). The cached string is reused if multiple log sites fire.
+        string? cachedKeyHash = null;
+        string GetKeyHash() => cachedKeyHash ??= RedactKeyForLogs(key);
+
         var originalBodyFeature = context.Features.Get<IHttpResponseBodyFeature>();
         if (originalBodyFeature is null)
         {
@@ -305,11 +309,11 @@ public sealed partial class IdempotencyMiddleware
             }
             catch
             {
-                await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
+                await SafeAbandonAsync(store, _logger, scope, key, reservationId, GetKeyHash()).ConfigureAwait(false);
                 throw;
             }
 
-            await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, GetKeyHash()).ConfigureAwait(false);
             return;
         }
 
@@ -342,7 +346,7 @@ public sealed partial class IdempotencyMiddleware
         catch
         {
             context.Features.Set<IHttpResponseBodyFeature>(originalBodyFeature);
-            await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, GetKeyHash()).ConfigureAwait(false);
             throw;
         }
 
@@ -360,6 +364,7 @@ public sealed partial class IdempotencyMiddleware
             }
             catch (Exception ex)
             {
+                var keyHash = GetKeyHash();
                 LogCaptureFlushFailed(_logger, ex, keyHash);
                 context.Features.Set<IHttpResponseBodyFeature>(originalBodyFeature);
                 await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
@@ -374,6 +379,7 @@ public sealed partial class IdempotencyMiddleware
         {
             // Capture aborted (response too large, SendFileAsync, or explicit abort) — abandon
             // the reservation so the next retry can re-execute.
+            var keyHash = GetKeyHash();
             LogCaptureAbandoned(_logger, keyHash);
             await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             return;
@@ -401,6 +407,7 @@ public sealed partial class IdempotencyMiddleware
             // Response trailers cannot be replayed by the snapshot writer (which only restores
             // status + headers + body), so any response that wrote trailers is treated as
             // non-cacheable and the reservation is released for retry.
+            var keyHash = GetKeyHash();
             LogTrailersAbandoned(_logger, keyHash);
             await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             return;
@@ -410,6 +417,7 @@ public sealed partial class IdempotencyMiddleware
         {
             // 5xx responses are treated as transient per the IIdempotencyStore.AbandonAsync
             // contract: caching them would deny the client a real retry that might succeed.
+            var keyHash = GetKeyHash();
             LogServerErrorAbandoned(_logger, keyHash, headerSnapshot.StatusCode);
             await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             return;
@@ -428,11 +436,11 @@ public sealed partial class IdempotencyMiddleware
         }
         catch (OperationCanceledException)
         {
-            LogCompleteTimedOut(_logger, keyHash);
+            LogCompleteTimedOut(_logger, GetKeyHash());
         }
         catch (Exception ex)
         {
-            LogCompleteFailed(_logger, ex, keyHash);
+            LogCompleteFailed(_logger, ex, GetKeyHash());
         }
     }
 
