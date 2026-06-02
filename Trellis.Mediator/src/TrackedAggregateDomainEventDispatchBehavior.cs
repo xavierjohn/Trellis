@@ -48,9 +48,12 @@ using Microsoft.Extensions.Logging;
 /// <para>
 /// <b>Cascade detection.</b> The behavior snapshots every tracked aggregate's pending events at
 /// entry, dispatches only those snapshotted events, and then validates that each aggregate's
-/// pending-event list still exactly matches its snapshot. If any handler raised additional
-/// events, <see cref="DomainEventHandlerCascadedException"/> is thrown with every offending
-/// aggregate and <c>AcceptChanges()</c> is not called on any aggregate.
+/// pending-event list still exactly matches its snapshot by length AND per-position reference
+/// equality. If any handler changed the pending list (raised new events, cleared via
+/// <c>AcceptChanges</c>, replaced, or reordered) on the originating aggregate or on any other
+/// aggregate participating in the snapshot, <see cref="DomainEventHandlerCascadedException"/>
+/// is thrown with every offending aggregate and <c>AcceptChanges()</c> is not called on any
+/// aggregate.
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The command type. Must implement <see cref="ICommand{TResponse}"/>.</typeparam>

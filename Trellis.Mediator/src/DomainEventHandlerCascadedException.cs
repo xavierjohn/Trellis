@@ -46,7 +46,8 @@ public sealed class DomainEventHandlerCascadedException : InvalidOperationExcept
     /// <summary>
     /// Initializes a new instance of the <see cref="DomainEventHandlerCascadedException"/> class.
     /// </summary>
-    /// <param name="offenders">The aggregates whose handlers raised additional events during dispatch.</param>
+    /// <param name="offenders">The aggregates whose pending-event list changed during dispatch
+    /// (handlers raised new events, cleared via <c>AcceptChanges</c>, replaced, or reordered).</param>
     public DomainEventHandlerCascadedException(IReadOnlyList<CascadeOffender> offenders)
         : base(BuildMessage(offenders))
         => Offenders = offenders.ToArray();
@@ -55,7 +56,8 @@ public sealed class DomainEventHandlerCascadedException : InvalidOperationExcept
     /// Initializes a new instance of the <see cref="DomainEventHandlerCascadedException"/> class for one aggregate.
     /// </summary>
     /// <param name="aggregateType">The offending aggregate type.</param>
-    /// <param name="cascadedEventTypeNames">The cascaded event type names detected after dispatch.</param>
+    /// <param name="cascadedEventTypeNames">The event type names still present at the first changed
+    /// position after dispatch.</param>
     public DomainEventHandlerCascadedException(Type aggregateType, IReadOnlyList<string> cascadedEventTypeNames)
         : this([new CascadeOffender(aggregateType, cascadedEventTypeNames)])
     {
@@ -70,7 +72,8 @@ public sealed class DomainEventHandlerCascadedException : InvalidOperationExcept
     {
         ArgumentNullException.ThrowIfNull(offenders);
 
-        return $"Domain event handler(s) raised additional events on {offenders.Count} aggregate(s) during dispatch. " +
+        return $"Domain event handler(s) changed the pending-event list on {offenders.Count} aggregate(s) during dispatch " +
+            "(raised new events, cleared via AcceptChanges, replaced, or reordered). " +
             "Handlers must be side-effect-only. " +
             $"Offenders: {string.Join("; ", offenders.Select(o => $"{o.AggregateType.FullName}[{string.Join(',', o.CascadedEventTypeNames)}]"))}";
     }
