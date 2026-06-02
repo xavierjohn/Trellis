@@ -28,7 +28,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 |---|---|---|
 | Fire a Stateless trigger and get a Trellis result | `stateMachine.FireResult(trigger)` | [`StateMachineExtensions`](#statemachineextensions) |
 | Store a state machine inside an aggregate | `LazyStateMachine<TState,TTrigger>` with state accessor/mutator delegates | [`LazyStateMachine<TState, TTrigger>`](#lazystatemachinetstate-ttrigger) |
-| Treat invalid transitions as validation failures | Let `FireResult` map default unhandled-trigger `InvalidOperationException` to `Error.InvalidInput` | [Behavioral notes](#behavioral-notes) |
+| Treat invalid transitions as validation failures | Let `FireResult` short-circuit when `CanFire` returns `false` and return `Error.InvalidInput` | [Behavioral notes](#behavioral-notes) |
 | Apply business mutations after successful transition | Call `.FireResult(...)`, then mutate/domain-event in a `.Tap(...)` or explicit success branch | [Code examples](#code-examples), [Cookbook Recipe 9](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
 
 ## Common traps
@@ -61,7 +61,7 @@ public static class StateMachineExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<TState> FireResult<TState, TTrigger>(this StateMachine<TState, TTrigger> stateMachine, TTrigger trigger) where TState : notnull where TTrigger : notnull` | `Result<TState>` | Pre-checks with `stateMachine.CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards). When permitted, calls `stateMachine.Fire(trigger)` and returns `Result.Ok(stateMachine.State)`. When not permitted, still invokes `Fire(trigger)` so any user-configured `OnUnhandledTrigger` callback runs: an `InvalidOperationException` from that path is translated to `Error.InvalidInput.ForRule("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422 — invalid transitions are semantic rule violations, not concurrent-modification conflicts). If a custom unhandled-trigger handler swallows the trigger, returns `Result.Ok(stateMachine.State)` — the state read AFTER the callback runs (normally unchanged unless the callback itself mutates or reroutes state). Other exception types from user entry/exit/transition actions propagate untouched. Independent of Stateless's exception message format. |
+| `public static Result<TState> FireResult<TState, TTrigger>(this StateMachine<TState, TTrigger> stateMachine, TTrigger trigger) where TState : notnull where TTrigger : notnull` | `Result<TState>` | Pre-checks with `stateMachine.CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards). When permitted, calls `stateMachine.Fire(trigger)` and returns `Result.Ok(stateMachine.State)`. When not permitted, returns `Error.InvalidInput.ForRule("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422) without invoking `Fire(trigger)`, so user-configured `OnUnhandledTrigger` callbacks do not run through `FireResult`. Consumers who need those callbacks must call Stateless `Fire` directly. `InvalidOperationException` thrown while evaluating a guard is translated to `Error.InvalidInput` with the exception message; other exception types and exceptions from user entry/exit/transition actions propagate untouched. Independent of Stateless's exception message format. |
 
 ### `LazyStateMachine<TState, TTrigger>`
 
@@ -105,11 +105,11 @@ public static Result<TState> FireResult<TState, TTrigger>(
 ## Behavioral notes
 
 - `StateMachineExtensions.FireResult` does **not** make Stateless thread-safe. Concurrent use of the same `StateMachine<TState, TTrigger>` instance still requires external synchronization. Because Stateless is single-threaded by contract, the `CanFire`+`Fire` pre-check pattern is race-free when used as documented.
-- `StateMachineExtensions.FireResult` does not null-check `stateMachine`; a `null` receiver will fail before any Trellis error conversion occurs.
+- `StateMachineExtensions.FireResult` null-checks `stateMachine` and throws `ArgumentNullException` for a `null` receiver before any Trellis error conversion occurs.
 - `LazyStateMachine<TState, TTrigger>` is also **not** thread-safe. Its lazy initialization uses `_machine ??= CreateMachine()` with no locking.
 - Invalid-transition detection uses `StateMachine.CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards) — no message-string parsing, so it is resilient to Stateless library upgrades.
-- When `CanFire` returns `false`, `Fire` is still invoked so any user-configured `OnUnhandledTrigger` callback runs. If the default unhandled-trigger handler throws `InvalidOperationException`, that path is translated to `Error.InvalidInput.ForRule("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422). A custom handler that swallows the trigger results in `Result.Ok(stateMachine.State)` — the state is read AFTER the callback runs (normally unchanged unless the callback itself mutates or reroutes state).
-- Exceptions thrown by user entry, exit, transition, guard, accessor, mutator, or configuration code are not swallowed.
+- When `CanFire` returns `false`, `FireResult` returns `Error.InvalidInput.ForRule("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422) without invoking `Fire`, so user-configured `OnUnhandledTrigger` callbacks do not run. Call Stateless `Fire` directly when that callback policy is desired.
+- `InvalidOperationException` thrown while evaluating a guard is translated to `Error.InvalidInput` with the guard exception message. Other exception types and exceptions thrown by user entry, exit, transition, accessor, mutator, or configuration code are not swallowed.
 - `LazyStateMachine<TState, TTrigger>` exists to defer state-machine construction until after entity state is available, which is useful when ORMs materialize an object before populating its state properties.
 
 ## Scope boundary — async and parameterized triggers
@@ -119,7 +119,7 @@ public static Result<TState> FireResult<TState, TTrigger>(
 - `FireAsync(TTrigger)` and the parameterized async overloads for state machines with `OnEntryAsync`/`OnExitAsync`/`OnActivateAsync` callbacks.
 - Parameterized triggers via `SetTriggerParameters<TArg>(...)` (returning a `TriggerWithParameters<TArg>` token) and `Fire(triggerWithParameters, arg)` / `FireAsync(triggerWithParameters, arg)` for passing context (timestamps, cancellation reasons, etc.) into transition actions.
 
-These shapes are **not** wrapped today. Consumers who need them must call the underlying Stateless APIs directly and translate exceptions themselves; the Trellis `Result<TState>` pipeline ends at the sync, no-arg boundary. If a future Trellis version adds `FireResultAsync` / parameterized overloads, they will follow the same `CanFire` pre-check + `OnUnhandledTrigger`-policy-preserving design and will use library-source `ConfigureAwait(false)` on awaited Stateless operations.
+These shapes are **not** wrapped today. Consumers who need them must call the underlying Stateless APIs directly and translate exceptions themselves; the Trellis `Result<TState>` pipeline ends at the sync, no-arg boundary. If a future Trellis version adds `FireResultAsync` / parameterized overloads, they will follow the same `CanFire` short-circuit design and will use library-source `ConfigureAwait(false)` on awaited Stateless operations.
 
 ## Code examples
 

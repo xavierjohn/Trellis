@@ -37,7 +37,13 @@ using Trellis;
 public static class StateMachineExtensions
 {
     /// <summary>
-    /// Fires the specified trigger on the state machine and returns the new state as a <see cref="Result{TState}"/>.
+    /// Fires the trigger and returns the outcome as a <see cref="Result{TState}"/>. Short-circuits
+    /// with <see cref="Error.InvalidInput"/> when the transition is not permitted in the current
+    /// state (i.e., <c>CanFire</c> returns <see langword="false"/>), without invoking any
+    /// consumer-registered <c>OnUnhandledTrigger</c> callback. Consumers who want their
+    /// <c>OnUnhandledTrigger</c> callback to run must call <c>Fire</c> directly — <c>FireResult</c>
+    /// is the guarded entry point that prefers a typed <see cref="Error.InvalidInput"/> over
+    /// running side-effect code.
     /// </summary>
     /// <typeparam name="TState">The type representing the states of the state machine.</typeparam>
     /// <typeparam name="TTrigger">The type representing the triggers/events of the state machine.</typeparam>
@@ -47,15 +53,16 @@ public static class StateMachineExtensions
     /// A <see cref="Result{TState}"/> containing the new state if the transition is valid,
     /// or an <see cref="Error.InvalidInput"/> carrying a single
     /// <see cref="RuleViolation"/> with reason code <c>state.machine.invalid.transition</c>
-    /// if the trigger cannot be fired from the current state (including when blocked by a guard).
+    /// if the trigger cannot be fired from the current state or a guard throws
+    /// <see cref="InvalidOperationException"/>.
     /// </returns>
     /// <remarks>
     /// <para>
     /// Pre-checks with <see cref="StateMachine{TState, TTrigger}.CanFire(TTrigger)"/> — which
     /// honors <c>PermitIf</c>/<c>IgnoreIf</c> guards — and only invokes
     /// <see cref="StateMachine{TState, TTrigger}.Fire(TTrigger)"/> when the transition is permitted.
-    /// This avoids any dependency on Stateless's exception message format and is therefore
-    /// resilient to library upgrades.
+    /// This avoids both Stateless exception-message parsing and invoking consumer
+    /// <c>OnUnhandledTrigger</c> callbacks from the typed-result path.
     /// </para>
     /// <para>
     /// <b>HTTP semantics.</b> An invalid state-machine transition is a semantic rule violation
@@ -66,9 +73,9 @@ public static class StateMachineExtensions
     /// matching on the <see cref="RuleViolation.ReasonCode"/> value <c>state.machine.invalid.transition</c>.
     /// </para>
     /// <para>
-    /// Exceptions thrown by user entry, exit, or transition actions are not swallowed —
-    /// they propagate to the caller as <see cref="InvalidOperationException"/> or whatever
-    /// type the user code threw.
+    /// <see cref="InvalidOperationException"/> thrown while evaluating a guard is converted to
+    /// <see cref="Error.InvalidInput"/>. Exceptions thrown by user entry, exit, or transition
+    /// actions are not swallowed — they propagate to the caller.
     /// </para>
     /// <para>
     /// The underlying <see cref="StateMachine{TState, TTrigger}"/> remains not thread-safe,
@@ -96,45 +103,39 @@ public static class StateMachineExtensions
         where TState : notnull
         where TTrigger : notnull
     {
-        if (stateMachine.CanFire(trigger))
-        {
-            stateMachine.Fire(trigger);
-            return Result.Ok(stateMachine.State);
-        }
+        ArgumentNullException.ThrowIfNull(stateMachine);
 
-        // Trigger is not permitted from the current state. Still invoke Fire so any
-        // user-configured OnUnhandledTrigger callback runs and can apply its own policy
-        // (silent suppression, custom exception, logging, etc.). If Stateless's default
-        // unhandled-trigger handler is in effect it throws InvalidOperationException —
-        // because we already know CanFire returned false, any InvalidOperationException
-        // from this Fire call is by definition the unhandled-trigger path, so we translate
-        // it to Error.InvalidInput (HTTP 422) — invalid state-machine transitions
-        // are semantic rule violations, not concurrent-modification conflicts. Other
-        // exception types (custom user handlers throwing typed exceptions) propagate untouched.
         try
         {
-            stateMachine.Fire(trigger);
+            if (!stateMachine.CanFire(trigger))
+            {
+                var detail = $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.";
+                // Do not invoke Fire here: that would run consumer OnUnhandledTrigger callbacks
+                // inside the typed-result path and make their exceptions indistinguishable from
+                // Stateless's default unhandled-trigger exception.
+                return InvalidTransition<TState>(detail);
+            }
         }
-        catch (InvalidOperationException)
+        // CanFire evaluates guards. Convert only exceptions that unwind through Stateless's
+        // guard-evaluation frame; accessor and Stateless configuration failures propagate.
+        catch (InvalidOperationException ex) when (WasThrownByGuardEvaluation(ex))
         {
-            var detail = $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.";
-            // Populate Detail on BOTH the outer Error.Detail AND the single RuleViolation.Detail
-            // so HTTP-422 rendering surfaces the same message in both Problem Details.detail
-            // (top-level, read from Error.Detail) and per-rule context (read from
-            // RuleViolation.Detail). Error.InvalidInput.ForRule(reasonCode, detail)
-            // sets RuleViolation.Detail only; the `with { Detail = detail }` lifts it to
-            // Error.Detail. Trellis.Asp.ResponseFailureWriter consumes both surfaces.
-            return Result.Fail<TState>(
-                Error.InvalidInput.ForRule(
-                    reasonCode: "state.machine.invalid.transition",
-                    detail: detail) with
-                { Detail = detail });
+            return InvalidTransition<TState>(ex.Message);
         }
 
-        // Custom OnUnhandledTrigger swallowed the trigger — surface the current state as
-        // success. The state is read AFTER the callback runs; it is normally unchanged but
-        // a callback that mutates or reroutes state will surface the resulting state, not
-        // a snapshot of the pre-call state.
+        stateMachine.Fire(trigger);
         return Result.Ok(stateMachine.State);
     }
+
+    private static bool WasThrownByGuardEvaluation(InvalidOperationException exception) =>
+        exception.Source != typeof(StateMachine<,>).Assembly.GetName().Name
+        && exception.StackTrace?.Contains("Stateless.StateMachine", StringComparison.Ordinal) == true
+        && exception.StackTrace.Contains("GuardCondition", StringComparison.Ordinal);
+
+    private static Result<TState> InvalidTransition<TState>(string detail) =>
+        Result.Fail<TState>(
+            Error.InvalidInput.ForRule(
+                reasonCode: "state.machine.invalid.transition",
+                detail: detail) with
+            { Detail = detail });
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>Convert fluent validation errors to Trellis Validation errors.</Description>
@@ -13,6 +13,7 @@
 	<ItemGroup>
 		<PackageReference Include="FluentValidation" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
 	</ItemGroup>
 
 	<ItemGroup>

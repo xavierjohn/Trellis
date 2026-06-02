@@ -34,7 +34,9 @@ public static class DbContextOptionsBuilderExtensions
     /// <c>optionsBuilder.AddInterceptors(new MaybeQueryInterceptor())</c> is insufficient for
     /// <c>Maybe.From(value)</c> equality translation; the
     /// <see cref="MaybeEvaluatableExpressionFilterPlugin"/> must also be installed in the per-context
-    /// internal service provider.
+    /// internal service provider. Repeated calls on the same options builder are idempotent: each
+    /// Trellis interceptor is registered at most once, while consumer interceptors registered
+    /// separately through <c>AddInterceptors</c> are preserved.
     /// </remarks>
     /// <example>
     /// <code>
@@ -47,6 +49,9 @@ public static class DbContextOptionsBuilderExtensions
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+            return optionsBuilder;
+
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_entityTimestampInterceptor);
         AddMaybeEvaluatableExpressionFilterExtension(optionsBuilder);
         return optionsBuilder;
@@ -62,6 +67,9 @@ public static class DbContextOptionsBuilderExtensions
         this DbContextOptionsBuilder optionsBuilder)
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+            return optionsBuilder;
+
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_entityTimestampInterceptor);
         AddMaybeEvaluatableExpressionFilterExtension(optionsBuilder);
         return optionsBuilder;
@@ -82,6 +90,9 @@ public static class DbContextOptionsBuilderExtensions
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+            return optionsBuilder;
+
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new EntityTimestampInterceptor(timeProvider));
         AddMaybeEvaluatableExpressionFilterExtension(optionsBuilder);
         return optionsBuilder;
@@ -101,9 +112,23 @@ public static class DbContextOptionsBuilderExtensions
         this DbContextOptionsBuilder optionsBuilder, TimeProvider? timeProvider)
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+            return optionsBuilder;
+
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new EntityTimestampInterceptor(timeProvider));
         AddMaybeEvaluatableExpressionFilterExtension(optionsBuilder);
         return optionsBuilder;
+    }
+
+    private static bool TryAddTrellisInterceptorsMarkerExtension(DbContextOptionsBuilder optionsBuilder)
+    {
+        var extension = optionsBuilder.Options.FindExtension<TrellisInterceptorsMarkerExtension>();
+        if (extension is not null)
+            return false;
+
+        ((IDbContextOptionsBuilderInfrastructure)optionsBuilder)
+            .AddOrUpdateExtension(new TrellisInterceptorsMarkerExtension());
+        return true;
     }
 
     private static void AddMaybeEvaluatableExpressionFilterExtension(DbContextOptionsBuilder optionsBuilder)

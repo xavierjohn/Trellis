@@ -214,7 +214,7 @@ Result<CreateUserRequest> result = validation.ToResult(request);
 | Overload | AOT/trim | Behavior |
 |---|---|---|
 | `AddTrellisFluentValidation()` | Safe | Registers the open-generic adapter once. Idempotent. You register each `IValidator<T>` explicitly. |
-| `AddTrellisFluentValidation(params Assembly[])` | **Not safe** (`[RequiresUnreferencedCode]`, `[RequiresDynamicCode]`) | Calls the parameterless overload, then scans the supplied assemblies for concrete `IValidator<T>` types and registers them as scoped. Deduplicates `(serviceType, implementationType)` pairs against existing registrations. Tolerates `ReflectionTypeLoadException`. |
+| `AddTrellisFluentValidation(params Assembly[])` | **Not safe** (`[RequiresUnreferencedCode]`, `[RequiresDynamicCode]`) | Calls the parameterless overload, then scans the supplied assemblies for concrete `IValidator<T>` types and registers them as scoped. Deduplicates `(serviceType, implementationType)` pairs against existing registrations. Tolerates `ReflectionTypeLoadException` by using only loadable types and emits a single Warning per affected assembly via `ILoggerFactory` when one is registered. |
 
 ```csharp
 using FluentValidation;

@@ -25,7 +25,7 @@ audience: [developer]
 - The order of operations is part of the business rule (orders, approvals, publishing, fulfillment).
 - You want invalid transitions to flow through the same `Result<T>` pipeline as validation errors and HTTP failures.
 - An ORM (e.g., EF Core) materializes your aggregate before populating its state property, and an eagerly-constructed Stateless machine would read the wrong initial state.
-- You need invalid-transition detection that survives Stateless library upgrades (no exception-message parsing).
+- You need invalid-transition detection that does not parse Stateless exception messages.
 
 ## Surface at a glance
 
@@ -84,11 +84,11 @@ Result<OrderState> invalid = machine.FireResult(OrderTrigger.Submit);  // Fail (
 | Outcome | Result |
 |---|---|
 | `CanFire(trigger)` is `true` | Calls `Fire(trigger)`, returns `Result.Ok(stateMachine.State)`. |
-| `CanFire(trigger)` is `false`, default unhandled-trigger handler throws | Returns `Error.InvalidInput` (HTTP 422) carrying a `RuleViolation` with reason code `state.machine.invalid.transition`. |
-| `CanFire(trigger)` is `false`, custom `OnUnhandledTrigger` swallows the trigger | Returns `Result.Ok(stateMachine.State)` — state read AFTER the callback runs (normally unchanged unless the callback itself mutates or reroutes state). |
-| User entry/exit/transition/guard/accessor/mutator code throws | Exception propagates untouched. |
+| `CanFire(trigger)` is `false` | Returns `Error.InvalidInput` (HTTP 422) carrying a `RuleViolation` with reason code `state.machine.invalid.transition`, without invoking `Fire(trigger)` or any `OnUnhandledTrigger` callback. |
+| A guard throws `InvalidOperationException` while `CanFire` evaluates it | Returns `Error.InvalidInput` with the guard exception message. |
+| User entry/exit/transition/accessor/mutator code throws, or a guard throws another exception type | Exception propagates untouched. |
 
-Invalid-transition detection uses `CanFire` (which honors `PermitIf` / `IgnoreIf` guards) — there is no Stateless message-string parsing, so the failure shape is independent of Stateless's exception text.
+Invalid-transition detection uses `CanFire` (which honors `PermitIf` / `IgnoreIf` guards) — there is no Stateless message-string parsing, so the failure shape is independent of Stateless's exception text. Consumers who want a configured `OnUnhandledTrigger` callback to run must call Stateless `Fire` directly.
 
 > [!NOTE]
 > Because `FireResult` evaluates the guard once via `CanFire` and (when permitted) again via `Fire`, transition guards must be **idempotent and side-effect-free** — already a Stateless requirement. Guards run at most twice per call.
