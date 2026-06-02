@@ -59,6 +59,23 @@ public class CursorCodecTests
     }
 
     [Fact]
+    public void TryDecode_OversizedToken_FailsQuicklyWithMalformedError()
+    {
+        var oversized = new string('A', 4096);
+        var cursor = new Cursor(oversized);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var decoded = CursorCodec.TryDecode<string>(cursor, fieldName: "cursor");
+        sw.Stop();
+
+        decoded.IsFailure.Should().BeTrue();
+        var invalid = decoded.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        invalid.Fields.Length.Should().Be(1);
+        invalid.Fields[0].ReasonCode.Should().Be("cursor.malformed");
+        sw.ElapsedMilliseconds.Should().BeLessThan(100);
+    }
+
+    [Fact]
     public void Single_key_fails_when_payload_unparseable_for_target_key()
     {
         var bogus = CursorCodec.Encode("not-a-guid");

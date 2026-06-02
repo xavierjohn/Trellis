@@ -3,6 +3,7 @@ namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 
 /// <summary>
@@ -57,6 +58,23 @@ public class AggregateETagTests : IDisposable
         await _context.SaveChangesResultAsync(ct);
 
         aggregate.ETag.Should().NotBeNullOrEmpty("ETag should be generated on first save");
+    }
+
+    [Fact]
+    public async Task SavingChangesAsync_CanceledToken_ThrowsWithoutMutation()
+    {
+        var interceptor = new AggregateETagInterceptor();
+        var aggregate = TestAggregate.Create("cancel-save-1", "Initial");
+        _context.TestAggregates.Add(aggregate);
+        var eventData = new DbContextEventData(null!, (_, _) => string.Empty, _context);
+        var result = InterceptionResult<int>.SuppressWithResult(0);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var act = () => interceptor.SavingChangesAsync(eventData, result, cts.Token).AsTask();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        aggregate.ETag.Should().BeEmpty("the pre-canceled async hook must not generate an ETag");
     }
 
     [Fact]
@@ -129,6 +147,29 @@ public class AggregateETagTests : IDisposable
         var result2 = await _context.SaveChangesResultAsync(ct);
         result2.IsSuccess.Should().BeTrue("second save should succeed — OriginalValue was synced by SavedChanges hook");
         aggregate.ETag.Should().NotBe(firstSaveETag, "ETag should change again");
+    }
+
+    [Fact]
+    public async Task SavedChangesAsync_CanceledToken_ThrowsWithoutOriginalValueSync()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var interceptor = new AggregateETagInterceptor();
+        var aggregate = TestAggregate.Create("cancel-saved-1", "Initial");
+        _context.TestAggregates.Add(aggregate);
+        await _context.SaveChangesResultAsync(ct);
+        var entry = _context.Entry(aggregate);
+        var etagProperty = entry.Property(nameof(IAggregate.ETag));
+        var originalETag = etagProperty.OriginalValue;
+        etagProperty.CurrentValue = "pending-etag";
+        etagProperty.IsModified = true;
+        var eventData = new SaveChangesCompletedEventData(null!, (_, _) => string.Empty, _context, 1);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var act = () => interceptor.SavedChangesAsync(eventData, 1, cts.Token).AsTask();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        etagProperty.OriginalValue.Should().Be(originalETag, "the pre-canceled async hook must not sync the current ETag");
     }
 
     #endregion

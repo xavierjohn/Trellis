@@ -62,6 +62,12 @@ public static class CursorCodec
     private const char Separator = '|';
     private const string SeparatorString = "|";
 
+    // A valid cursor encodes a single seek key — typically <128 bytes raw, ~170
+    // chars base64. 1 KiB is a generous cap that accommodates any realistic key
+    // type while rejecting adversarial inputs before allocation. The cap is a
+    // belt-and-suspenders DoS guard, not a normative cursor-length rule.
+    private const int MaxEncodedTokenLength = 1024;
+
     // ───── Single-key ──────────────────────────────────────────────────────────
 
     /// <summary>
@@ -194,6 +200,9 @@ public static class CursorCodec
     {
         payload = string.Empty;
         if (string.IsNullOrEmpty(token))
+            return false;
+
+        if (token.Length > MaxEncodedTokenLength)
             return false;
 
         var standard = token.Replace('-', '+').Replace('_', '/');

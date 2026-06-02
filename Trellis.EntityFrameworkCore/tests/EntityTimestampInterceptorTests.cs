@@ -2,6 +2,7 @@
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Trellis;
 
 /// <summary>
@@ -39,6 +40,24 @@ public class EntityTimestampInterceptorTests : IDisposable
 
         entity.CreatedAt.Should().Be(_timeProvider.GetUtcNow());
         entity.LastModified.Should().Be(_timeProvider.GetUtcNow());
+    }
+
+    [Fact]
+    public async Task SavingChangesAsync_CanceledToken_ThrowsWithoutMutation()
+    {
+        var interceptor = new EntityTimestampInterceptor(timeProvider: null);
+        var entity = new TimestampTestEntity { Id = "cancel-save-1", Name = "Test" };
+        _context.TimestampEntities.Add(entity);
+        var eventData = new DbContextEventData(null!, (_, _) => string.Empty, _context);
+        var result = InterceptionResult<int>.SuppressWithResult(0);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var act = () => interceptor.SavingChangesAsync(eventData, result, cts.Token).AsTask();
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        entity.CreatedAt.Should().Be(default(DateTimeOffset));
+        entity.LastModified.Should().Be(default(DateTimeOffset));
     }
 
     [Fact]

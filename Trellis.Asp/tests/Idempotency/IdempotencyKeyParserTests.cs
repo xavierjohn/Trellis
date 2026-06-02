@@ -49,6 +49,18 @@ public sealed class IdempotencyKeyParserTests
     }
 
     [Fact]
+    public void TryParse_OversizedInput_ReturnsFalseQuickly()
+    {
+        var oversized = new string('a', 8 * 1024);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var ok = IdempotencyKeyParser.TryParse(oversized, "Idempotency-Key", out _, out _);
+        sw.Stop();
+
+        ok.Should().BeFalse();
+        sw.ElapsedMilliseconds.Should().BeLessThan(100, "rejection must be O(1)-ish, not proportional to input length");
+    }
+
+    [Fact]
     public void Diagnostic_message_uses_configured_header_name()
     {
         IdempotencyKeyParser.TryParse("bad key with space", "X-Custom-Idem-Key", out _, out var error).Should().BeFalse();

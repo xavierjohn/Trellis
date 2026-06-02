@@ -1,6 +1,7 @@
 ﻿﻿namespace Trellis.Asp;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Trellis;
 
 /// <summary>
@@ -18,6 +20,25 @@ using Trellis;
 /// </summary>
 internal static class ResponseFailureWriter
 {
+    private const string LoggerCategoryName = "Trellis.Asp.ResponseFailureWriter";
+
+    private static readonly ConcurrentDictionary<Type, byte> _loggedExceptionTypes = new();
+
+    private static readonly Action<ILogger, string, Exception?> _logInstanceSynthesisFailure =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(1, nameof(ResponseFailureWriter)),
+            "ResponseFailureWriter could not synthesize ProblemDetails.Instance from " +
+            "ResourceRef; falling back to request URL. Suppressing further logs for " +
+            "exceptions of type {ExceptionType} for this application lifetime. Verify " +
+            "ResourceCollectionNameRegistry registration and any AddResourceCollectionName " +
+            "configurations.");
+
+    /// <summary>
+    /// Test-only hook for resetting the static diagnostic throttle.
+    /// </summary>
+    internal static void ResetDiagnosticThrottlesForTests() => _loggedExceptionTypes.Clear();
+
     public static async Task WriteAsync(HttpContext httpContext, Error error, int statusCode)
     {
         EmitCompanionHeaders(httpContext.Response, error);
@@ -145,11 +166,12 @@ internal static class ResponseFailureWriter
                 ?? s_defaultRegistry;
             collection = registry.Resolve(@ref.Type);
         }
-        catch
+        catch (Exception ex)
         {
             // Best-effort: a DI activation failure (e.g., the registry ctor throws on
             // misconfigured overrides) or a resolver fault must never turn a legitimate
             // 404/409 into a 500. Fall back to the request URL.
+            LogInstanceSynthesisFailure(httpContext.RequestServices, ex);
             return (requestPath, null);
         }
 
@@ -281,6 +303,26 @@ internal static class ResponseFailureWriter
     }
 
     private static readonly ResourceCollectionNameRegistry s_defaultRegistry = new();
+
+    private static void LogInstanceSynthesisFailure(IServiceProvider? requestServices, Exception exception)
+    {
+        try
+        {
+            var logger = requestServices?.GetService<ILoggerFactory>()?.CreateLogger(LoggerCategoryName);
+            if (logger is null)
+                return;
+
+            var exceptionType = exception.GetType();
+            if (!_loggedExceptionTypes.TryAdd(exceptionType, 0))
+                return;
+
+            _logInstanceSynthesisFailure(logger, exceptionType.FullName ?? exceptionType.Name, exception);
+        }
+        catch
+        {
+            // Diagnostic logging must remain best-effort and never change the HTTP outcome.
+        }
+    }
 
     private static void EmitCompanionHeaders(HttpResponse response, Error error)
     {

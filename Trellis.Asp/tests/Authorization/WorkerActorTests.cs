@@ -475,11 +475,11 @@ public class WorkerActorTests
     }
 
     [Fact]
-    public async Task Wrapper_bridges_sync_Dispose_to_async_only_inner()
+    public async Task Wrapper_sync_Dispose_skips_async_only_inner()
     {
-        // Sync scope disposal (CreateScope, not CreateAsyncScope) must still tear down an
-        // inner that only implements IAsyncDisposable, not IDisposable. Otherwise such
-        // resources would silently leak in any code path using sync DI scopes.
+        // Sync scope disposal (CreateScope, not CreateAsyncScope) must not bridge to
+        // DisposeAsync for async-only inners because that can deadlock under a captured sync
+        // context. Consumers with async-only resources must dispose the scope asynchronously.
         var services = new ServiceCollection();
         var asyncOnlyInner = new AsyncOnlyDisposableInnerProvider();
         services.AddScoped<IActorProvider>(_ => asyncOnlyInner);
@@ -493,8 +493,8 @@ public class WorkerActorTests
                 .GetCurrentActorAsync(TestContext.Current.CancellationToken);
         }
 
-        asyncOnlyInner.DisposeAsyncCount.Should().Be(1,
-            "sync Dispose must bridge to DisposeAsync for async-only IAsyncDisposable inners");
+        asyncOnlyInner.DisposeAsyncCount.Should().Be(0,
+            "sync Dispose skips async-only IAsyncDisposable inners to avoid deadlock");
     }
 
     [Fact]

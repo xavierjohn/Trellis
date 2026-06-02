@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Trellis.Authorization;
 
 /// <summary>
@@ -470,7 +471,8 @@ public static class ServiceCollectionExtensions
         services.Add(ServiceDescriptor.Scoped<IActorProvider>(sp =>
         {
             var http = sp.GetRequiredService<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
-            return new WorkerComposedActorProvider(() => innerFactory(sp), ownsInner, http, systemActor);
+            var logger = sp.GetService<ILogger<WorkerComposedActorProvider>>();
+            return new WorkerComposedActorProvider(() => innerFactory(sp), ownsInner, http, systemActor, logger);
         }));
 
         services.AddSingleton<WorkerActorRegistrationMarker>();

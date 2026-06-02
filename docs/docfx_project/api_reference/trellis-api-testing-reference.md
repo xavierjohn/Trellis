@@ -493,9 +493,9 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
   - `Task<Result<Unit>> DeleteAsync(TId)` — returns `Error.NotFound` on missing. Use to test not-found handling. (`RemoveByIdAsync` is the staging-API-named alias.)
 - `WithUniqueConstraint(Func<TAggregate, object?> propertySelector)` — fluent constraint registration; checked eagerly by `Add` (throws) and at-call by `SaveAsync` (returns `Result`).
 - `Clear()`, `Exists(TId id)`, `Get(TId id)`, `GetAll()`, `Count` — direct inspection helpers
-- `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` return `Error.NotFound` details in the format:
-  - `"{AggregateTypeName} with ID {id} not found"`
-- Unique-constraint conflicts return:
+- `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` return `Error.NotFound` details in the EF-runtime format:
+  - `"{AggregateTypeName} with ID '{id}' not found."`
+- Unique-constraint conflicts return `Error.Conflict` with `ReasonCode` `"duplicate.key"` and detail:
   - `"A {AggregateTypeName} with the same value already exists."`
 
 > See cookbook **Recipe 16 — Unit of work in handlers** for guidance on which surface to use from where, and the pitfall of accidentally calling `SaveAsync` from a production-shaped repository contract.
