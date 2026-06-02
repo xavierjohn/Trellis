@@ -9,30 +9,28 @@ using System.ComponentModel;
 /// </summary>
 public static class DomainEventPublisherExtensions
 {
-    // Use the shared dispatch cap so the manual helper, the response-shape behavior, and the
-    // tracked-aggregate behavior never drift apart.
-    private const int MaxDispatchWaves = DomainEventDispatchDefaults.MaxDispatchWaves;
-
     /// <summary>
-    /// <b>POST-COMMIT ONLY.</b> Publishes <paramref name="aggregate"/>'s uncommitted domain events in
-    /// wave order and then calls <see cref="IChangeTracking.AcceptChanges"/> when the dispatch fully
-    /// drains. Provided as the manual counterpart to
-    /// <see cref="DomainEventDispatchBehavior{TMessage, TResponse}"/> for handlers whose response type
-    /// is not an aggregate-valued result (e.g., <c>Result&lt;Unit&gt;</c>, <c>Result&lt;TDto&gt;</c>,
-    /// <c>Result&lt;(A,B)&gt;</c>) and for non-Mediator call sites such as <c>BackgroundService</c> workers.
+    /// <b>POST-COMMIT ONLY.</b> Publishes a defensive snapshot of <paramref name="aggregate"/>'s
+    /// uncommitted domain events and then calls <see cref="IChangeTracking.AcceptChanges"/> when
+    /// the aggregate's pending-event list still exactly matches that snapshot after dispatch.
+    /// Provided as the manual counterpart to <see cref="DomainEventDispatchBehavior{TMessage, TResponse}"/>
+    /// for handlers whose response type is not an aggregate-valued result (e.g., <c>Result&lt;Unit&gt;</c>,
+    /// <c>Result&lt;TDto&gt;</c>, <c>Result&lt;(A,B)&gt;</c>) and for non-Mediator call sites such as
+    /// <c>BackgroundService</c> workers.
     /// </summary>
     /// <param name="publisher">The publisher used to fan out each event to its registered handlers.</param>
     /// <param name="aggregate">The aggregate whose <see cref="IAggregate.UncommittedEvents"/> are dispatched.</param>
     /// <param name="cancellationToken">A token to observe. Cancellation propagates before
     /// <see cref="IChangeTracking.AcceptChanges"/> so undispatched events stay on the aggregate.</param>
-    /// <returns>A <see cref="Task"/> that completes once every event has been published and
+    /// <returns>A <see cref="Task"/> that completes once every snapshotted event has been published and
     /// <see cref="IChangeTracking.AcceptChanges"/> has cleared the aggregate's pending list.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="publisher"/> or <paramref name="aggregate"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when more than
-    /// <see cref="DomainEventDispatchBehavior{TMessage, TResponse}.MaxDispatchWaves"/> waves of events
-    /// are raised on the aggregate during dispatch (typically caused by a handler raising new events
-    /// on the same aggregate). <see cref="IChangeTracking.AcceptChanges"/> is not called in this case
-    /// so the caller can inspect the still-undispatched events.</exception>
+    /// <exception cref="DomainEventHandlerCascadedException">Thrown when the aggregate's pending-event
+    /// list no longer matches the entry snapshot at the end of dispatch — i.e. a handler raised,
+    /// cleared, replaced, or reordered events on the aggregate. Validation is strict (length +
+    /// reference equality), so any mutation of the pending list during dispatch trips it.
+    /// <see cref="IChangeTracking.AcceptChanges"/> is not called in this case so the caller can
+    /// inspect the aggregate's current pending events.</exception>
     /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/>
     /// is canceled. Dispatched events stay dispatched (handlers must be idempotent for retry);
     /// <see cref="IChangeTracking.AcceptChanges"/> is not called so undispatched events remain on
@@ -60,27 +58,17 @@ public static class DomainEventPublisherExtensions
     /// </list>
     /// </para>
     /// <para>
-    /// Wave-loop semantics match <see cref="DomainEventDispatchBehavior{TMessage, TResponse}"/>:
-    /// events are dispatched sequentially by index, so events raised by a handler on the same
-    /// aggregate are picked up on the next wave. After
-    /// <see cref="DomainEventDispatchBehavior{TMessage, TResponse}.MaxDispatchWaves"/> waves the
-    /// helper throws <see cref="InvalidOperationException"/> (handlers should be side-effect-only
-    /// and not raise additional events on the same aggregate).
+    /// Strict snapshot semantics match <see cref="DomainEventDispatchBehavior{TMessage, TResponse}"/>:
+    /// events are dispatched sequentially from the entry snapshot only. Handlers must be
+    /// side-effect-only and must not change the aggregate's pending-event list during dispatch —
+    /// no raising new events, no clearing via <c>AcceptChanges</c>, no replacing or reordering.
+    /// If the pending-event list differs from the entry snapshot at the end of dispatch (length
+    /// or reference equality), the helper throws
+    /// <see cref="DomainEventHandlerCascadedException"/> and leaves the aggregate unchanged.
     /// </para>
     /// <para>
-    /// Re-entrant calls on the same aggregate are not supported. Calling this helper from inside an
-    /// <see cref="IDomainEventHandler{TEvent}"/> that is currently draining the same
-    /// <paramref name="aggregate"/> will republish the in-flight event (its index has not yet
-    /// advanced, and <see cref="IChangeTracking.AcceptChanges"/> has not yet run); each nested
-    /// invocation also starts with its own wave counter, so the wave cap does not prevent runaway
-    /// recursion. Treat domain event handlers as side-effect-only and dispatch is owned by exactly
-    /// one outer call.
-    /// </para>
-    /// <para>
-    /// An opt-in companion pipeline behavior is planned (issue #537) to automate this dispatch for
-    /// handlers that mutate aggregates the EF change tracker tracks instead of returning them through
-    /// <c>Result&lt;TAggregate&gt;</c>; until that ships, this helper is the supported path for the
-    /// non-aggregate-response and worker cases.
+    /// Re-entrant calls on the same aggregate are not supported. Treat domain event handlers as
+    /// side-effect-only and dispatch is owned by exactly one outer call.
     /// </para>
     /// </remarks>
     public static async Task DispatchAggregateEventsAsync(
@@ -91,43 +79,17 @@ public static class DomainEventPublisherExtensions
         ArgumentNullException.ThrowIfNull(publisher);
         ArgumentNullException.ThrowIfNull(aggregate);
 
-        // Track how many events have been published. UncommittedEvents() returns a fresh
-        // snapshot each call; the underlying DomainEvents list is append-only until
-        // AcceptChanges() runs, so handler-raised events appear at successive indices.
-        // Holding off AcceptChanges() until the loop completes preserves not-yet-dispatched
-        // events on the aggregate when cancellation propagates mid-loop.
-        var dispatched = 0;
-        for (var wave = 0; wave < MaxDispatchWaves; wave++)
+        var snapshot = aggregate.UncommittedEvents().ToArray();
+        foreach (var domainEvent in snapshot)
         {
-            var events = aggregate.UncommittedEvents();
-            if (events.Count <= dispatched)
-                break;
-
-            for (var i = dispatched; i < events.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await publisher.PublishAsync(events[i], cancellationToken).ConfigureAwait(false);
-                dispatched = i + 1;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            await publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
         }
 
-        var pendingAfterLoop = aggregate.UncommittedEvents().Count - dispatched;
-        if (pendingAfterLoop > 0)
-        {
-            // Surface accidental re-entry instead of silently abandoning events. The caller invoked
-            // this helper explicitly, so failing loud is more useful than the pipeline behavior's
-            // log-and-abandon stance (which exists there to avoid throwing mid-request).
-            // AcceptChanges is intentionally NOT called: undispatched events stay on the aggregate
-            // so the caller can inspect them.
-            throw new InvalidOperationException(
-                $"Domain event dispatch exceeded {MaxDispatchWaves} waves for " +
-                $"{aggregate.GetType().FullName ?? aggregate.GetType().Name}; {pendingAfterLoop} event(s) remain " +
-                "undispatched on the aggregate. Domain event handlers should be side-effect-only and not raise " +
-                "additional events on the same aggregate.");
-        }
+        var offender = DomainEventCascadeDetector.Detect(aggregate, snapshot);
+        if (offender is { } cascadeOffender)
+            throw new DomainEventHandlerCascadedException([cascadeOffender]);
 
-        // Only reach here on the full-success path: cancellation propagates above and skips this
-        // clear, leaving undispatched events on the aggregate.
         aggregate.AcceptChanges();
     }
 }

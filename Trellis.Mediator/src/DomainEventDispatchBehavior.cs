@@ -1,4 +1,4 @@
-namespace Trellis.Mediator;
+﻿namespace Trellis.Mediator;
 
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -22,13 +22,13 @@ using Microsoft.Extensions.Logging;
 /// passed through untouched in v1; manual dispatch remains the option for those flows.
 /// </para>
 /// <para>
-/// Events are dispatched sequentially by index, so events raised by a handler on
-/// the same aggregate are picked up on the next wave. The wave count is capped to
-/// prevent runaway loops; if the cap is exceeded an error is logged and the remaining
-/// events are abandoned. <see cref="IChangeTracking.AcceptChanges"/> runs once after
-/// the loop returns (whether the dispatch fully drained or the cap was exceeded);
-/// cancellation propagates above the <see cref="IChangeTracking.AcceptChanges"/> call
-/// so undispatched events stay on the aggregate.
+/// Events are dispatched sequentially from a defensive snapshot captured before the first
+/// publish. v1 expects single-wave dispatch: handlers should be side-effect-only and must
+/// not raise additional events on the same aggregate. If the aggregate's pending-event list
+/// no longer exactly matches the snapshot after dispatch, <see cref="DomainEventHandlerCascadedException"/>
+/// is thrown and <see cref="IChangeTracking.AcceptChanges"/> is not called so the current
+/// aggregate state remains available for inspection. Cancellation propagates above the
+/// <see cref="IChangeTracking.AcceptChanges"/> call so undispatched events stay on the aggregate.
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The command type. Must implement <see cref="ICommand{TResponse}"/>.</typeparam>
@@ -38,13 +38,6 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     where TMessage : ICommand<TResponse>
     where TResponse : IResult
 {
-    /// <summary>
-    /// Maximum number of dispatch waves. Caps cascading event scenarios where a handler
-    /// raises new events on the same aggregate. v1 expects single-wave dispatch; this
-    /// cap exists to surface accidental re-entry without hanging the pipeline.
-    /// </summary>
-    public const int MaxDispatchWaves = DomainEventDispatchDefaults.MaxDispatchWaves;
-
     /// <summary>
     /// Per-closed-generic extractor. Computed once per <c>(TMessage, TResponse)</c> instantiation
     /// using <c>typeof(TResponse)</c> so the hot path avoids <see cref="object.GetType"/> on
@@ -62,13 +55,12 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     private static Func<TResponse, IAggregate?> CreateExtractor() => BuildExtractorOrNoop(typeof(TResponse));
 
     private readonly IDomainEventPublisher _publisher;
-    private readonly ILogger<DomainEventDispatchBehavior<TMessage, TResponse>> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DomainEventDispatchBehavior{TMessage, TResponse}"/> class.
     /// </summary>
     /// <param name="publisher">The publisher used to fan out events to registered handlers.</param>
-    /// <param name="logger">The logger used to record dispatch diagnostics.</param>
+    /// <param name="logger">A logger parameter retained for constructor compatibility with the mediator behavior registrations.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="publisher"/> or <paramref name="logger"/> is null.</exception>
     public DomainEventDispatchBehavior(
         IDomainEventPublisher publisher,
@@ -77,7 +69,6 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
         ArgumentNullException.ThrowIfNull(publisher);
         ArgumentNullException.ThrowIfNull(logger);
         _publisher = publisher;
-        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -101,40 +92,20 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
         if (aggregate is null)
             return response;
 
-        // Track how many events have been published. UncommittedEvents() returns a fresh
-        // snapshot each call; the underlying DomainEvents list is append-only until
-        // AcceptChanges() runs, so handler-raised events appear at successive indices.
-        // Holding off AcceptChanges() until the loop completes preserves not-yet-dispatched
-        // events on the aggregate when cancellation propagates mid-loop.
-        var dispatched = 0;
-        for (var wave = 0; wave < MaxDispatchWaves; wave++)
+        var snapshot = aggregate.UncommittedEvents().ToArray();
+        foreach (var domainEvent in snapshot)
         {
-            var events = aggregate.UncommittedEvents();
-            if (events.Count <= dispatched)
-                break;
-
-            for (var i = dispatched; i < events.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await _publisher.PublishAsync(events[i], cancellationToken).ConfigureAwait(false);
-                dispatched = i + 1;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            await _publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
         }
 
-        var pendingAfterLoop = aggregate.UncommittedEvents().Count - dispatched;
-        if (pendingAfterLoop > 0)
-        {
-            LogDispatchCapExceeded(_logger, MaxDispatchWaves, aggregate.GetType().FullName ?? aggregate.GetType().Name, pendingAfterLoop);
-        }
+        var offender = DomainEventCascadeDetector.Detect(aggregate, snapshot);
+        if (offender is { } cascadeOffender)
+            throw new DomainEventHandlerCascadedException([cascadeOffender]);
 
-        // Only reach here on the full-success path: cancellation propagates above and
-        // skips this clear, leaving undispatched events on the aggregate.
         aggregate.AcceptChanges();
         return response;
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Domain event dispatch exceeded {MaxWaves} waves for {AggregateType}; abandoning {Remaining} event(s). Domain event handlers should be side-effect-only and not raise additional events on the same aggregate.")]
-    private static partial void LogDispatchCapExceeded(ILogger logger, int maxWaves, string aggregateType, int remaining);
 
     [RequiresUnreferencedCode("Reflects on IResult<T>.TryGetValue to extract the aggregate. Use explicit handler registration for AOT.")]
     [RequiresDynamicCode("Reflects on IResult<T>.TryGetValue to extract the aggregate.")]

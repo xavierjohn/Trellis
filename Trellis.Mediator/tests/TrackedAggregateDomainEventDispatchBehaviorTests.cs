@@ -134,10 +134,10 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
     }
 
     [Fact]
-    public async Task Cross_aggregate_cascading_events_dispatched_in_wave()
+    public async Task Cross_aggregate_cascade_throws_with_offending_aggregate_only()
     {
-        // Handler running for aggregateA raises an event on aggregateB. The wave loop
-        // must pick up B's event in a subsequent pass.
+        // Handler running for aggregateA raises an event on aggregateB. Strict snapshot dispatch
+        // publishes only the entry snapshots, then reports B as the only aggregate whose list changed.
         var aggregateA = new TestAggregate(Id1);
         var aggregateB = new TestAggregate(Id2);
 
@@ -156,42 +156,96 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
         };
         var behavior = NewBehavior<OutcomeDtoCommand, Result<OutcomeDto>>(source, publisher);
 
-        var response = await behavior.Handle(
+        var act = async () => await behavior.Handle(
             new OutcomeDtoCommand("x"),
             (_, _) => new ValueTask<Result<OutcomeDto>>(Result.Ok(new OutcomeDto("done"))),
             CancellationToken.None);
 
-        response.IsSuccess.Should().BeTrue();
-        publisher.Published.Should().Equal(triggerEvent, cascadedEvent);
-        aggregateA.UncommittedEvents().Should().BeEmpty();
-        aggregateB.UncommittedEvents().Should().BeEmpty();
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventB).FullName!]);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(triggerEvent);
+        aggregateA.UncommittedEvents().Should().ContainSingle().Which.Should().BeSameAs(triggerEvent);
+        aggregateB.UncommittedEvents().Should().ContainSingle().Which.Should().BeSameAs(cascadedEvent);
     }
 
     [Fact]
-    public async Task Cap_exceeded_logs_and_calls_accept_changes_per_aggregate()
+    public async Task Cascades_on_multiple_aggregates_throw_with_all_offenders()
     {
-        // A handler that re-raises an event on the SAME aggregate it just observed is an
-        // infinite-loop risk. The behavior caps at MaxDispatchWaves and AcceptChanges() runs
-        // on every snapshotted aggregate so undispatched events do not bleed into the next request.
-        var aggregate = new TestAggregate(Id1);
-        aggregate.RaiseEvent(new TestEventA("seed", DateTimeOffset.UtcNow));
+        var aggregateA = new TestAggregate(Id1);
+        var aggregateB = new TestAggregate(Id2);
+        var eventFromA = new TestEventA("from-A", DateTimeOffset.UtcNow);
+        var eventFromB = new TestEventB(99, DateTimeOffset.UtcNow);
+        var cascadeFromA = new TestEventB(100, DateTimeOffset.UtcNow);
+        var cascadeFromB = new TestEventA("from-B-cascade", DateTimeOffset.UtcNow);
+        aggregateA.RaiseEvent(eventFromA);
+        aggregateB.RaiseEvent(eventFromB);
 
-        var source = new FakeTrackedAggregateSource(aggregate);
+        var source = new FakeTrackedAggregateSource(aggregateA, aggregateB);
         var publisher = new RecordingPublisher
         {
-            OnPublishing = _ => aggregate.RaiseEvent(new TestEventA("cascade", DateTimeOffset.UtcNow)),
+            OnPublishing = published =>
+            {
+                if (ReferenceEquals(published, eventFromA))
+                    aggregateA.RaiseEvent(cascadeFromA);
+                if (ReferenceEquals(published, eventFromB))
+                    aggregateB.RaiseEvent(cascadeFromB);
+            },
         };
         var behavior = NewBehavior<OutcomeDtoCommand, Result<OutcomeDto>>(source, publisher);
 
-        var response = await behavior.Handle(
+        var act = async () => await behavior.Handle(
             new OutcomeDtoCommand("x"),
             (_, _) => new ValueTask<Result<OutcomeDto>>(Result.Ok(new OutcomeDto("done"))),
             CancellationToken.None);
 
-        response.IsSuccess.Should().BeTrue();
-        publisher.Published.Should().HaveCount(TrackedAggregateDomainEventDispatchBehavior<OutcomeDtoCommand, Result<OutcomeDto>>.MaxDispatchWaves);
-        aggregate.UncommittedEvents().Should().BeEmpty(
-            "the cap-exceeded path still calls AcceptChanges on every snapshotted aggregate so undispatched events do not bleed into the next request.");
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        ex.Which.Offenders.Should().HaveCount(2);
+        ex.Which.Offenders[0].CascadedEventTypeNames.Should().Equal([typeof(TestEventB).FullName!]);
+        ex.Which.Offenders[1].CascadedEventTypeNames.Should().Equal([typeof(TestEventA).FullName!]);
+        publisher.Published.Should().Equal(eventFromA, eventFromB);
+        aggregateA.UncommittedEvents().Should().Equal(new IDomainEvent[] { eventFromA, cascadeFromA });
+        aggregateB.UncommittedEvents().Should().Equal(new IDomainEvent[] { eventFromB, cascadeFromB });
+    }
+
+    [Fact]
+    public async Task Same_aggregate_cascade_throws_and_skips_accept_changes_for_all_aggregates()
+    {
+        var aggregateA = new TestAggregate(Id1);
+        var aggregateB = new TestAggregate(Id2);
+        var seed = new TestEventA("seed", DateTimeOffset.UtcNow);
+        var untouched = new TestEventB(7, DateTimeOffset.UtcNow);
+        TestEventA? cascaded = null;
+        aggregateA.RaiseEvent(seed);
+        aggregateB.RaiseEvent(untouched);
+
+        var source = new FakeTrackedAggregateSource(aggregateA, aggregateB);
+        var publisher = new RecordingPublisher
+        {
+            OnPublishing = published =>
+            {
+                if (!ReferenceEquals(published, seed)) return;
+
+                cascaded = new TestEventA("cascade", DateTimeOffset.UtcNow);
+                aggregateA.RaiseEvent(cascaded);
+            },
+        };
+        var behavior = NewBehavior<OutcomeDtoCommand, Result<OutcomeDto>>(source, publisher);
+
+        var act = async () => await behavior.Handle(
+            new OutcomeDtoCommand("x"),
+            (_, _) => new ValueTask<Result<OutcomeDto>>(Result.Ok(new OutcomeDto("done"))),
+            CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventA).FullName!]);
+        publisher.Published.Should().Equal(seed, untouched);
+        aggregateA.UncommittedEvents().Should().Equal(new IDomainEvent[] { seed, cascaded! });
+        aggregateB.UncommittedEvents().Should().ContainSingle().Which.Should().BeSameAs(untouched,
+            "no aggregate is cleared when any aggregate cascades");
     }
 
     [Fact]
@@ -376,17 +430,6 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
         r1.IsSuccess.Should().BeTrue();
         r2.IsSuccess.Should().BeTrue();
         publisher.Published.Should().Equal(event1, event2);
-    }
-
-    [Fact]
-    public void Cap_matches_shared_default_constant()
-    {
-        // Drift guard: tracked + response-shape dispatchers + the manual helper all read
-        // from DomainEventDispatchDefaults.MaxDispatchWaves so the cap stays in sync.
-        TrackedAggregateDomainEventDispatchBehavior<OutcomeDtoCommand, Result<OutcomeDto>>.MaxDispatchWaves
-            .Should().Be(DomainEventDispatchDefaults.MaxDispatchWaves);
-        DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>.MaxDispatchWaves
-            .Should().Be(DomainEventDispatchDefaults.MaxDispatchWaves);
     }
 
     [Fact]

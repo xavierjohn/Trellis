@@ -377,3 +377,42 @@ public async Task<Result<OrderOutcome>> Handle(ProcessOrderCommand cmd, Cancella
 
 > Severity: Documentation only — no analyzer fires. The intent of `FailAfterCommit` is durable persistence of a permanent-failure state on a single aggregate; aggregating it across legs reaches outside that intent and produces partial commits the consumer rarely wants.
 
+## (No analyzer) — Domain event handler raises more domain events during dispatch
+
+Domain-event handlers are side-effect-only. The dispatch behaviors snapshot `UncommittedEvents()` at entry and publish only that snapshot. If a handler appends events to the same aggregate, or mutates another aggregate in a tracked-dispatch snapshot, post-dispatch validation throws `DomainEventHandlerCascadedException`; `AcceptChanges()` is not called, so operators can inspect the original and cascaded events.
+
+```csharp
+// WRONG — handler mutates the source aggregate and raises another event during dispatch.
+public sealed class AutoAdvanceOrderHandler(IOrderRepository orders)
+    : IDomainEventHandler<OrderCreatedEvent>
+{
+    public async ValueTask HandleAsync(OrderCreatedEvent domainEvent, CancellationToken cancellationToken)
+    {
+        Order order = await orders.GetAsync(domainEvent.OrderId, cancellationToken);
+        order.RaiseStatusChanged(OrderStatus.ReadyForFulfillment);
+        // ↑ Raises OrderStatusChanged while OrderCreatedEvent is being dispatched.
+        //   Post-dispatch validation throws DomainEventHandlerCascadedException.
+    }
+}
+
+// FIX — follow-up domain mutation is a separate top-level command issued after the
+// originating command completes. This is application-layer orchestration, not handler re-entry.
+public sealed class OrderWorkflow(IMediator mediator)
+{
+    public async ValueTask<Result<Unit>> CreateAndAdvanceAsync(CreateOrderCommand command, CancellationToken cancellationToken)
+    {
+        Result<Order> created = await mediator.Send(command, cancellationToken);
+        if (!created.TryGetValue(out var order))
+            return Result.Fail<Unit>(created.Error!);
+
+        return await mediator.Send(
+            new ChangeOrderStatusCommand(order.Id, OrderStatus.ReadyForFulfillment),
+            cancellationToken);
+    }
+}
+```
+
+> Do not move the `mediator.Send(new ChangeOrderStatusCommand(...))` call into the `IDomainEventHandler<TEvent>`. The tracked-dispatch reentrancy guard skips nested tracked dispatch, so events raised by the nested command can be stranded. Queue post-commit work or issue the follow-up command from the application layer after the originating command completes.
+
+Default handler exceptions are still **logged and swallowed** by `MediatorDomainEventPublisher`; cascade detection only catches handler-raised events. Durable side effects and durable at-least-once retry require the outbox pattern — planned for a future release, not shipped today.
+

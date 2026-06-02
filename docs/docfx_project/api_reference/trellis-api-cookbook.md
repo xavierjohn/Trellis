@@ -803,6 +803,8 @@ public static class CompositionRoot
 | `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
 | `UseClaimsActorProvider()` / `UseEntraActorProvider()` / `UseDevelopmentActorProvider()` | One ASP actor provider | The builder rejects multiple actor providers. |
 | `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
+| `UseDomainEvents(...)` | `AddDomainEventDispatch(...)` | Implies `UseMediator()`. Response-shape dispatch uses strict snapshot validation; handlers must be side-effect-only. Mutually exclusive with tracked dispatch. |
+| `UseTrackedAggregateDomainEvents(...)` | `AddTrackedAggregateDomainEventDispatch(...)` | Implies `UseMediator()`. Dispatches committed aggregate snapshots for outcome-DTO commands and throws on same-aggregate or cross-aggregate cascade. Mutually exclusive with response-shape dispatch. |
 | `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()` and is always applied last. |
 
 **Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
@@ -1323,6 +1325,9 @@ public Result<Order> Submit(TimeProvider clock)
 }
 ```
 
+> [!IMPORTANT]
+> Domain-event handlers are side-effect-only. The mediator dispatch behaviors snapshot `UncommittedEvents()` at dispatch entry and publish only that snapshot. If a handler raises an event on the same aggregate, post-dispatch validation throws `DomainEventHandlerCascadedException` and the aggregate's events are not cleared. If a side effect needs more domain mutation, send a separate Mediator command after the originating command completes, or queue post-commit work that runs as its own top-level command — not from inside the handler.
+
 **On the aggregate.** If your aggregate also exposes a public `SubmittedAt` property (e.g., to drive UI sort order or read-model projections), source it from the event timestamp at write time — don't track it independently:
 
 ```csharp
@@ -1343,7 +1348,7 @@ public Result<Order> Submit(TimeProvider clock)
 
 **Why `DateTimeOffset`.** `OccurredAt` is `DateTimeOffset` (not `DateTime`) so the explicit offset is a part of the value and round-trips unambiguously through serialization. `TimeProvider.GetUtcNow()` returns `DateTimeOffset` directly — events stored in outbox tables, integration buses, and audit projections retain their authored instant without timezone-loss bugs.
 
-**See also.** The XML doc on `IDomainEvent.OccurredAt` (in `Trellis.Core`) calls this out explicitly. If your IDE shows the doc on hover, the rule is right there before you hit the compile error.
+**See also.** The XML doc on `IDomainEvent.OccurredAt` (in `Trellis.Core`) calls this out explicitly. If your IDE shows the doc on hover, the rule is right there before you hit the compile error. For dispatch-handler cascade traps, see [`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md#no-analyzer--domain-event-handler-raises-more-domain-events-during-dispatch).
 
 ---
 

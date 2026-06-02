@@ -1,4 +1,4 @@
-namespace Trellis.Mediator;
+﻿namespace Trellis.Mediator;
 
 /// <summary>
 /// Handles a domain event raised by an <see cref="IAggregate"/>. Implementations are
@@ -26,13 +26,14 @@ namespace Trellis.Mediator;
 /// handler instead.
 /// </para>
 /// <para>
-/// Handlers should treat themselves as side-effect-only. Although the dispatcher
-/// drains handler-raised events on the same aggregate across subsequent waves
-/// (capped at 8), those re-entered events are dispatched <b>without being persisted</b> —
-/// the originating command's transaction has already committed. The drain-in-waves
-/// loop exists to avoid silently dropping events from accidental re-entry, not as
-/// a supported pattern for cascading domain mutations; persist-and-emit chains
-/// belong inside command handlers, not domain-event handlers.
+/// Handlers should treat themselves as side-effect-only. The dispatcher publishes only
+/// the entry snapshot and then validates by length + reference equality that handlers
+/// did not change the participating aggregate's pending-event list — raising new events,
+/// clearing via <c>AcceptChanges</c>, replacing, or reordering all trip cascade detection.
+/// If a handler changes the pending list, dispatch throws
+/// <see cref="DomainEventHandlerCascadedException"/> and does not call <c>AcceptChanges()</c>.
+/// The originating command's transaction has already committed, so persist-and-emit chains
+/// belong inside command handlers or separate top-level commands, not domain-event handlers.
 /// </para>
 /// </remarks>
 /// <example>

@@ -154,7 +154,7 @@ public class GptReviewRegressionTests
         publisher.PublishedEvents.Should().HaveCount(1);
         publisher.PublishedEvents[0].Should().BeOfType<TestEventA>();
         aggregate.UncommittedEvents().Should().BeEmpty(
-            "AcceptChanges() should run after the wave loop drains, regardless of the response shape");
+            "AcceptChanges() should run after strict snapshot dispatch validates cleanly, regardless of the response shape");
     }
 
     #endregion
