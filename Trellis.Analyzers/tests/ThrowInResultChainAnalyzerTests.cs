@@ -18,7 +18,7 @@ public class ThrowInResultChainAnalyzerTests
                 {
                     var result = Result.Ok(1).Bind(x =>
                     {
-                        if (x < 0) throw new ArgumentException("Must be positive");
+                        if (x < 0) {|#0:throw new ArgumentException("Must be positive");|}
                         return Result.Ok(x);
                     });
                 }
@@ -29,7 +29,7 @@ public class ThrowInResultChainAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ThrowInResultChain)
                 .WithArguments("Bind")
-                .WithLocation(13, 24));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -44,7 +44,7 @@ public class ThrowInResultChainAnalyzerTests
                 {
                     var result = Result.Ok(1).Map(x =>
                     {
-                        if (x < 0) throw new InvalidOperationException();
+                        if (x < 0) {|#0:throw new InvalidOperationException();|}
                         return x * 2;
                     });
                 }
@@ -55,7 +55,7 @@ public class ThrowInResultChainAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ThrowInResultChain)
                 .WithArguments("Map")
-                .WithLocation(13, 24));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -70,7 +70,7 @@ public class ThrowInResultChainAnalyzerTests
                 {
                     var result = Result.Ok(1).Tap(x =>
                     {
-                        if (x < 0) throw new Exception("Error");
+                        if (x < 0) {|#0:throw new Exception("Error");|}
                     });
                 }
             }
@@ -80,7 +80,7 @@ public class ThrowInResultChainAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ThrowInResultChain)
                 .WithArguments("Tap")
-                .WithLocation(13, 24));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -94,7 +94,7 @@ public class ThrowInResultChainAnalyzerTests
                 public void TestMethod()
                 {
                     var result = Result.Ok(1).Bind(x =>
-                        x < 0 ? throw new ArgumentException() : Result.Ok(x));
+                        x < 0 ? {|#0:throw new ArgumentException()|} : Result.Ok(x));
                 }
             }
             """;
@@ -103,7 +103,7 @@ public class ThrowInResultChainAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ThrowInResultChain)
                 .WithArguments("Bind")
-                .WithLocation(12, 21));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -157,7 +157,7 @@ public class ThrowInResultChainAnalyzerTests
                 {
                     var error = Error.Validation("Invalid");
                     var result = Result.Fail<int>(error)
-                        .TapOnFailure(err => throw new ApplicationException(err.Detail));
+                        .TapOnFailure(err => {|#0:throw new ApplicationException(err.Detail)|});
                 }
             }
             """;
@@ -166,7 +166,7 @@ public class ThrowInResultChainAnalyzerTests
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ThrowInResultChain)
                 .WithArguments("TapOnFailure")
-                .WithLocation(13, 34));
+                .WithLocation(0));
 
         await test.RunAsync();
     }

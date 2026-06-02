@@ -79,7 +79,7 @@ public class MaybeEdgeCaseTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Maybe has no value*");
+            .WithMessage("Maybe<String>.Value was accessed when HasValue is false. Check HasValue first or use TryGetValue/GetValueOrDefault.");
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class MaybeEdgeCaseTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Maybe has no value*");
+            .WithMessage("Maybe<String>.Value was accessed when HasValue is false. Check HasValue first or use TryGetValue/GetValueOrDefault.");
     }
 
     #endregion

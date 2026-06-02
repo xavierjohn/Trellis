@@ -74,7 +74,7 @@ public class HasIndexMaybePropertyAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.HasIndex(e => new { e.Status, e.SubmittedAt });
+                    builder.HasIndex(e => new { e.Status, e.{|#0:SubmittedAt|} });
                 }
             }
             """;
@@ -82,7 +82,7 @@ public class HasIndexMaybePropertyAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(20, 49)
+                .WithLocation(0)
                 .WithArguments("SubmittedAt", "_submittedAt"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -105,7 +105,7 @@ public class HasIndexMaybePropertyAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.HasIndex(e => e.SubmittedAt);
+                    builder.HasIndex(e => e.{|#0:SubmittedAt|});
                 }
             }
             """;
@@ -113,7 +113,7 @@ public class HasIndexMaybePropertyAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(19, 33)
+                .WithLocation(0)
                 .WithArguments("SubmittedAt", "_submittedAt"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -136,7 +136,7 @@ public class HasIndexMaybePropertyAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.HasIndex((e) => e.SubmittedAt);
+                    builder.HasIndex((e) => e.{|#0:SubmittedAt|});
                 }
             }
             """;
@@ -144,7 +144,7 @@ public class HasIndexMaybePropertyAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(19, 35)
+                .WithLocation(0)
                 .WithArguments("SubmittedAt", "_submittedAt"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -167,7 +167,7 @@ public class HasIndexMaybePropertyAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.HasIndex(e => e.XMLData);
+                    builder.HasIndex(e => e.{|#0:XMLData|});
                 }
             }
             """;
@@ -175,7 +175,7 @@ public class HasIndexMaybePropertyAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(19, 33)
+                .WithLocation(0)
                 .WithArguments("XMLData", "_xmlData"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -203,7 +203,7 @@ public class HasIndexMaybePropertyAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.HasIndex(e => new { e.SubmittedAt, e.CompletedAt });
+                    builder.HasIndex(e => new { e.{|#0:SubmittedAt|}, e.{|#1:CompletedAt|} });
                 }
             }
             """;
@@ -211,10 +211,10 @@ public class HasIndexMaybePropertyAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(20, 39)
+                .WithLocation(0)
                 .WithArguments("SubmittedAt", "_submittedAt"),
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(20, 54)
+                .WithLocation(1)
                 .WithArguments("CompletedAt", "_completedAt"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -279,7 +279,7 @@ public class HasIndexMaybePropertyAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.HasIndex(e => e.Customer.SubmittedAt);
+                    builder.HasIndex(e => e.Customer.{|#0:SubmittedAt|});
                 }
             }
             """;
@@ -287,7 +287,7 @@ public class HasIndexMaybePropertyAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(25, 42)
+                .WithLocation(0)
                 .WithArguments("SubmittedAt", "_submittedAt"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 
@@ -316,7 +316,7 @@ public class HasIndexMaybePropertyAnalyzerTests
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
-                    builder.HasIndex(e => GetCustomer(e).SubmittedAt);
+                    builder.HasIndex(e => GetCustomer(e).{|#0:SubmittedAt|});
                 }
 
                 private static Customer GetCustomer(Order order) => order.Customer;
@@ -326,7 +326,7 @@ public class HasIndexMaybePropertyAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<HasIndexMaybePropertyAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.HasIndexMaybeProperty)
-                .WithLocation(25, 46)
+                .WithLocation(0)
                 .WithArguments("SubmittedAt", "_submittedAt"));
         test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
 

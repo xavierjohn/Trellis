@@ -50,6 +50,7 @@ public static class MatchExtensions
             InvokeAndTrace(activity, () => onFailure(result.Error), ActivityStatusCode.Error);
     }
 
+    [StackTraceHidden]
     private static TOut InvokeAndTrace<TOut>(Activity? activity, Func<TOut> handler, ActivityStatusCode successStatus)
     {
         try
@@ -65,6 +66,7 @@ public static class MatchExtensions
         }
     }
 
+    [StackTraceHidden]
     private static void InvokeAndTrace(Activity? activity, Action handler, ActivityStatusCode successStatus)
     {
         try
@@ -295,6 +297,7 @@ public static class MatchExtensionsAsync
             await InvokeAndTraceValueTaskAsync(activity, () => onFailure(result.Error), ActivityStatusCode.Error).ConfigureAwait(false);
     }
 
+    [StackTraceHidden]
     private static async Task<TOut> InvokeAndTraceAsync<TOut>(Activity? activity, Func<Task<TOut>> handler, ActivityStatusCode successStatus)
     {
         try
@@ -310,6 +313,7 @@ public static class MatchExtensionsAsync
         }
     }
 
+    [StackTraceHidden]
     private static async Task InvokeAndTraceAsync(Activity? activity, Func<Task> handler, ActivityStatusCode successStatus)
     {
         try
@@ -324,6 +328,7 @@ public static class MatchExtensionsAsync
         }
     }
 
+    [StackTraceHidden]
     private static async ValueTask<TOut> InvokeAndTraceValueTaskAsync<TOut>(Activity? activity, Func<ValueTask<TOut>> handler, ActivityStatusCode successStatus)
     {
         try
@@ -339,6 +344,7 @@ public static class MatchExtensionsAsync
         }
     }
 
+    [StackTraceHidden]
     private static async ValueTask InvokeAndTraceValueTaskAsync(Activity? activity, Func<ValueTask> handler, ActivityStatusCode successStatus)
     {
         try

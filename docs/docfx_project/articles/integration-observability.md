@@ -125,7 +125,7 @@ Trellis ships three independent `ActivitySource`s. Subscribe to each on its own 
 |---|---|---|
 | Handler returns success | `ActivityStatusCode.Ok` | (none) |
 | Handler returns `Result.Fail(error)` | `ActivityStatusCode.Error` | `error.code` = `error.Code`; `error.type` = stable error class name (e.g. `Error.NotFound`); `StatusDescription` left empty unless `IncludeErrorDetail = true` |
-| Handler throws | `ActivityStatusCode.Error` | `error.type` = exception type name; the exception is **rethrown**; the exception message is **not** copied into telemetry |
+| Handler throws | `ActivityStatusCode.Error` | `error.type` = exception type name; standard exception event tags (`exception.type`, `exception.message`, `exception.stacktrace`); the exception is **rethrown**; the exception message is **not** copied into `Activity.StatusDescription` |
 
 ```csharp
 using Mediator;

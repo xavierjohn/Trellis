@@ -1,5 +1,7 @@
 ﻿namespace Trellis;
 
+using System.Diagnostics;
+
 /// <summary>
 /// Base class for creating strongly-typed GUID value objects. Rejects only <c>null</c> by
 /// default; <see cref="System.Guid.Empty"/> rejection is opt-in via the
@@ -195,6 +197,7 @@
 /// </example>
 /// <seealso cref="ScalarValueObject{TSelf, T}"/>
 /// <seealso cref="RequiredString{TSelf}"/>
+[DebuggerDisplay("{Value}")]
 public abstract class RequiredGuid<TSelf> : ScalarValueObject<TSelf, Guid>
     where TSelf : RequiredGuid<TSelf>, IScalarValue<TSelf, Guid>
 {

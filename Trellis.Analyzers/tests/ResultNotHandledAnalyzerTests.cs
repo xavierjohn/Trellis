@@ -13,7 +13,7 @@ public class ResultNotHandledAnalyzerTests
             {
                 public void TestMethod()
                 {
-                    GetResult();
+                    {|#0:GetResult()|};
                 }
 
                 private Result<int> GetResult() => 42;
@@ -23,7 +23,7 @@ public class ResultNotHandledAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
-                .WithLocation(11, 9)
+                .WithLocation(0)
                 .WithArguments("GetResult"));
 
         await test.RunAsync();
@@ -94,7 +94,7 @@ public class ResultNotHandledAnalyzerTests
             {
                 public async Task TestMethod()
                 {
-                    await GetResultAsync();
+                    await {|#0:GetResultAsync()|};
                 }
 
                 private Task<Result<int>> GetResultAsync() => Task.FromResult<Result<int>>(42);
@@ -104,7 +104,7 @@ public class ResultNotHandledAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
-                .WithLocation(11, 15)
+                .WithLocation(0)
                 .WithArguments("GetResultAsync"));
 
         await test.RunAsync();
@@ -137,7 +137,7 @@ public class ResultNotHandledAnalyzerTests
             {
                 public async Task TestMethod()
                 {
-                    await GetResultAsync().ConfigureAwait(false);
+                    await {|#0:GetResultAsync()|}.ConfigureAwait(false);
                 }
 
                 private Task<Result<int>> GetResultAsync() => Task.FromResult<Result<int>>(42);
@@ -147,7 +147,7 @@ public class ResultNotHandledAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
-                .WithLocation(11, 15)
+                .WithLocation(0)
                 .WithArguments("GetResultAsync"));
 
         await test.RunAsync();
@@ -164,7 +164,7 @@ public class ResultNotHandledAnalyzerTests
                 public async Task TestMethod()
                 {
                     var resultTask = GetResultAsync();
-                    await resultTask.ConfigureAwait(false);
+                    await {|#0:resultTask|}.ConfigureAwait(false);
                 }
 
                 private Task<Result<int>> GetResultAsync() => Task.FromResult<Result<int>>(42);
@@ -174,7 +174,7 @@ public class ResultNotHandledAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
-                .WithLocation(14, 15)
+                .WithLocation(0)
                 .WithArguments("resultTask"));
 
         await test.RunAsync();

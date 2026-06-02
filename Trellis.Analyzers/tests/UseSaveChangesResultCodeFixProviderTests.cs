@@ -26,7 +26,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public async Task DoWork(CancellationToken ct)
                 {
-                    await _dbContext.SaveChangesAsync(ct);
+                    await _dbContext.{|#0:SaveChangesAsync|}(ct);
                 }
             }
             """;
@@ -53,7 +53,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(19, 30)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -77,7 +77,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public async Task DoWork(CancellationToken ct)
                 {
-                    await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+                    await _dbContext.{|#0:SaveChangesAsync|}(ct).ConfigureAwait(false);
                 }
             }
             """;
@@ -104,7 +104,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(19, 30)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -128,7 +128,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public async Task DoWork(CancellationToken ct)
                 {
-                    var count = await _dbContext.SaveChangesAsync(ct);
+                    var count = await _dbContext.{|#0:SaveChangesAsync|}(ct);
                 }
             }
             """;
@@ -155,7 +155,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(19, 42)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -179,7 +179,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public async Task DoWork(CancellationToken ct)
                 {
-                    var count = await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+                    var count = await _dbContext.{|#0:SaveChangesAsync|}(ct).ConfigureAwait(false);
                 }
             }
             """;
@@ -206,7 +206,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(19, 42)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -228,7 +228,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public void DoWork()
                 {
-                    _dbContext.SaveChanges();
+                    _dbContext.{|#0:SaveChanges|}();
                 }
             }
             """;
@@ -253,7 +253,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(17, 24)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -275,7 +275,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public void DoWork()
                 {
-                    var count = _dbContext.SaveChanges();
+                    var count = _dbContext.{|#0:SaveChanges|}();
                 }
             }
             """;
@@ -285,7 +285,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(17, 36)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -307,7 +307,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public int DoWork()
                 {
-                    _dbContext.SaveChanges();
+                    _dbContext.{|#0:SaveChanges|}();
                     return 42;
                 }
             }
@@ -318,7 +318,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(17, 24)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -340,7 +340,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public int DoWork()
                 {
-                    return _dbContext.SaveChanges();
+                    return _dbContext.{|#0:SaveChanges|}();
                 }
             }
             """;
@@ -350,7 +350,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(17, 31)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -374,7 +374,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public async Task<int> DoWork(CancellationToken ct)
                 {
-                    return await _dbContext.SaveChangesAsync(ct);
+                    return await _dbContext.{|#0:SaveChangesAsync|}(ct);
                 }
             }
             """;
@@ -384,7 +384,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             source,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(19, 37)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -408,7 +408,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public async Task DoWork(CancellationToken ct)
                 {
-                    await _dbContext.SaveChangesAsync(false, ct);
+                    await _dbContext.{|#0:SaveChangesAsync|}(false, ct);
                 }
             }
             """;
@@ -435,7 +435,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(19, 30)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -459,7 +459,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public async Task DoWork(CancellationToken ct)
                 {
-                    var count = await _dbContext.SaveChangesAsync(false, ct);
+                    var count = await _dbContext.{|#0:SaveChangesAsync|}(false, ct);
                 }
             }
             """;
@@ -486,7 +486,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(19, 42)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -508,7 +508,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                 public void DoWork()
                 {
-                    _dbContext.SaveChanges(false);
+                    _dbContext.{|#0:SaveChanges|}(false);
                 }
             }
             """;
@@ -533,7 +533,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(17, 24)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
@@ -558,7 +558,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                     public void DoWork()
                     {
-                        _dbContext.SaveChanges();
+                        _dbContext.{|#0:SaveChanges|}();
                     }
                 }
             }
@@ -593,7 +593,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(13, 24)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.TestState.Sources.Add(("TrellisStubs.cs", TrellisResultStubSource));
@@ -645,7 +645,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
                     public async Task DoWork(CancellationToken ct)
                     {
-                        await _dbContext.SaveChangesAsync(ct);
+                        await _dbContext.{|#0:SaveChangesAsync|}(ct);
                     }
                 }
             }
@@ -681,7 +681,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(14, 30)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.TestState.Sources.Add(("TrellisStubs.cs", TrellisResultStubSource));
@@ -704,7 +704,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             {
                 public async Task DoSomething(CancellationToken ct)
                 {
-                    await SaveChangesAsync(ct);
+                    await {|#0:SaveChangesAsync|}(ct);
                 }
             }
             """;
@@ -733,7 +733,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(10, 15)
+                .WithLocation(0)
                 .WithArguments("SaveChangesAsync"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.TestState.Sources.Add(("TrellisStubs.cs", TrellisResultStubSource));
@@ -754,7 +754,7 @@ public class UseSaveChangesResultCodeFixProviderTests
             {
                 public void DoSomething()
                 {
-                    SaveChanges();
+                    {|#0:SaveChanges|}();
                 }
             }
             """;
@@ -782,7 +782,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(8, 9)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.TestState.Sources.Add(("TrellisStubs.cs", TrellisResultStubSource));
@@ -810,7 +810,7 @@ public class UseSaveChangesResultCodeFixProviderTests
                 {
                     int LocalSave()
                     {
-                        _dbContext.SaveChanges();
+                        _dbContext.{|#0:SaveChanges|}();
                         return 42;
                     }
                     LocalSave();
@@ -827,7 +827,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(13, 24)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.TestState.Sources.Add(("TrellisStubs.cs", TrellisResultStubSource));
@@ -854,7 +854,7 @@ public class UseSaveChangesResultCodeFixProviderTests
                 {
                     void LocalSave()
                     {
-                        _dbContext.SaveChanges();
+                        _dbContext.{|#0:SaveChanges|}();
                     }
                     LocalSave();
                 }
@@ -891,7 +891,7 @@ public class UseSaveChangesResultCodeFixProviderTests
 
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
-                .WithLocation(13, 24)
+                .WithLocation(0)
                 .WithArguments("SaveChanges"));
         test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
         test.TestState.Sources.Add(("TrellisStubs.cs", TrellisResultStubSource));

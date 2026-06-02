@@ -47,6 +47,7 @@ public static class Maybe
     /// var result = Maybe.Optional(zipCode, ZipCode.TryCreate);
     /// </code>
     /// </example>
+    /// <exception cref="ArgumentNullException"><paramref name="function"/> is null.</exception>
     public static Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> function)
         where TIn : class
         where TOut : notnull
@@ -92,6 +93,7 @@ public static class Maybe
     /// var result = Maybe.Optional(quantity, Quantity.TryCreate);
     /// </code>
     /// </example>
+    /// <exception cref="ArgumentNullException"><paramref name="function"/> is null.</exception>
     public static Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> function)
         where TIn : struct
         where TOut : notnull

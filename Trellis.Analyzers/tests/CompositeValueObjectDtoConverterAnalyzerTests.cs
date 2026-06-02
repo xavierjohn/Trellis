@@ -64,7 +64,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CreateCustomerRequest(ShippingAddress ShippingAddress);
+            public sealed record CreateCustomerRequest(ShippingAddress {|#0:ShippingAddress|});
 
             [ApiController]
             [Route("customers")]
@@ -78,7 +78,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(24, 60)
+                .WithLocation(0)
                 .WithArguments("ShippingAddress", "CreateCustomerRequest.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -106,7 +106,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CustomerResponse(ShippingAddress ShippingAddress);
+            public sealed record CustomerResponse(ShippingAddress {|#0:ShippingAddress|});
 
             [ApiController]
             [Route("customers")]
@@ -119,7 +119,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(24, 55)
+                .WithLocation(0)
                 .WithArguments("ShippingAddress", "CustomerResponse.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -157,7 +157,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CreateCustomerRequest(ShippingAddress ShippingAddress);
+            public sealed record CreateCustomerRequest(ShippingAddress {|#0:ShippingAddress|});
 
             public static class CustomerEndpoints
             {
@@ -169,7 +169,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(34, 60)
+                .WithLocation(0)
                 .WithArguments("ShippingAddress", "CreateCustomerRequest.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -207,7 +207,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CreateCustomerRequest(ShippingAddress ShippingAddress);
+            public sealed record CreateCustomerRequest(ShippingAddress {|#0:ShippingAddress|});
 
             public static class CustomerEndpoints
             {
@@ -221,7 +221,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(34, 60)
+                .WithLocation(0)
                 .WithArguments("ShippingAddress", "CreateCustomerRequest.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -255,13 +255,13 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
             }
 
             // Result<int> is a placeholder because the analyzer test stubs do not include Unit.
-            public sealed record CreateCustomerCommand(ShippingAddress ShippingAddress) : ICommand<Result<int>>;
+            public sealed record CreateCustomerCommand(ShippingAddress {|#0:ShippingAddress|}) : ICommand<Result<int>>;
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(30, 60)
+                .WithLocation(0)
                 .WithArguments("ShippingAddress", "CreateCustomerCommand.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -416,7 +416,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CreateCustomerRequest(Maybe<ShippingAddress> ShippingAddress);
+            public sealed record CreateCustomerRequest(Maybe<ShippingAddress> {|#0:ShippingAddress|});
 
             [ApiController]
             [Route("customers")]
@@ -430,7 +430,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(24, 67)
+                .WithLocation(0)
                 .WithArguments("ShippingAddress", "CreateCustomerRequest.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 
@@ -466,7 +466,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
                 }
             }
 
-            public sealed record CreateCustomerRequest(Maybe<ShippingAddress> ShippingAddress);
+            public sealed record CreateCustomerRequest(Maybe<ShippingAddress> {|#0:ShippingAddress|});
 
             [ApiController]
             [Route("customers")]
@@ -480,7 +480,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
-                .WithLocation(27, 67)
+                .WithLocation(0)
                 .WithArguments("ShippingAddress", "CreateCustomerRequest.ShippingAddress"));
         test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
 

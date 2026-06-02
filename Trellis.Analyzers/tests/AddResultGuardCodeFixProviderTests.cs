@@ -20,7 +20,7 @@ public class AddResultGuardCodeFixProviderTests
             {
                 public void TestMethod(Maybe<int> maybe)
                 {
-                    var value = maybe.Value;
+                    var value = maybe.{|#0:Value|};
                 }
             }
             """;
@@ -42,7 +42,7 @@ public class AddResultGuardCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(11, 31));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -55,7 +55,7 @@ public class AddResultGuardCodeFixProviderTests
             {
                 public void TestMethod(Maybe<int> maybe)
                 {
-                    var value = maybe.Value;
+                    var value = maybe.{|#0:Value|};
                     var doubled = value * 2;
                     Console.WriteLine(doubled);
                 }
@@ -81,7 +81,7 @@ public class AddResultGuardCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(11, 31));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -94,7 +94,7 @@ public class AddResultGuardCodeFixProviderTests
             {
                 public int TestMethod(Maybe<int> maybe)
                 {
-                    return maybe.Value;
+                    return maybe.{|#0:Value|};
                 }
             }
             """;
@@ -118,7 +118,7 @@ public class AddResultGuardCodeFixProviderTests
             source,
             fixedSource,
             CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(11, 26));
+                .WithLocation(0));
 
         await test.RunAsync();
     }

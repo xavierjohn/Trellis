@@ -113,7 +113,7 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 | # | Behavior | Runs for | What it does |
 |---|---|---|---|
 | 1 | `ExceptionBehavior` | all messages | Catches everything except `OperationCanceledException`; returns `Error.Unexpected`. |
-| 2 | `TracingBehavior` | all messages | Opens an `Activity` under `"Trellis.Mediator"`; tags `error.code` / `error.type` on failure. |
+| 2 | `TracingBehavior` | all messages | Opens an `Activity` under `"Trellis.Mediator"`; tags `error.code` / `error.type` on failure and records an exception event when a handler throws. |
 | 3 | `LoggingBehavior` | all messages | Structured start/end with elapsed ms; emits `Error.Code` on failure. |
 | 4 | `AuthorizationBehavior` | `IAuthorize` messages | Resolves the actor and checks `RequiredPermissions`. |
 | 5 | `ResourceAuthorizationBehavior` *(opt-in)* | `IAuthorizeResource<T>` messages | Loads the resource and calls `Authorize(actor, resource)`. Inserted by `AddResourceAuthorization(...)` immediately before `ValidationBehavior`. |
@@ -753,7 +753,7 @@ On a failed result, both `LoggingBehavior` and `TracingBehavior` always emit:
 - `Error.Code` (operator-defined identifier, e.g., `"orders.cancel"`).
 - The stable `Error` type name (e.g., `Error.Forbidden`) on the activity as `error.type`.
 
-`LoggingBehavior` writes Debug on success and Warning on failure; `TracingBehavior` sets `ActivityStatusCode.Error` on the failure path. Per-call timing is at Debug to keep production logs quiet at the default `Information` minimum; raise via `"Trellis.Mediator": "Debug"` in logging configuration to surface every dispatch.
+`LoggingBehavior` writes Debug on success and Warning on failure; `TracingBehavior` sets `ActivityStatusCode.Error` on the failure path and records standard exception-event tags when a handler throws. Per-call timing is at Debug to keep production logs quiet at the default `Information` minimum; raise via `"Trellis.Mediator": "Debug"` in logging configuration to surface every dispatch.
 
 ### Telemetry redaction
 

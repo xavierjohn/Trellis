@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Trellis.Asp.Idempotency;
 
 /// <summary>
@@ -29,9 +31,11 @@ public sealed class IdempotencyMiddlewareTests
 
     private static async Task<IHost> BuildHost(
         Action<IEndpointRouteBuilder>? configureEndpoints = null,
-        Action<IdempotencyOptions>? configureOptions = null)
+        Action<IdempotencyOptions>? configureOptions = null,
+        Action<ILoggingBuilder>? configureLogging = null)
     {
         var builder = Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging => configureLogging?.Invoke(logging))
             .ConfigureWebHostDefaults(web => web
                 .UseTestServer()
                 .ConfigureServices(s =>
@@ -410,6 +414,40 @@ public sealed class IdempotencyMiddlewareTests
 
         secondResp.Headers.GetValues("X-Trellis-Replayed").Should().Contain("true");
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ServerErrorAbandonLog_SensitiveKey_RedactsRawKeyAndEmitsKeyHash()
+    {
+        const string rawKey = "acct-123-user-456-correlation";
+        var expectedKeyHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey)))[..12].ToLowerInvariant();
+        using var loggerProvider = new CapturingLoggerProvider();
+        using var host = await BuildHost(
+            configureEndpoints: endpoints =>
+                endpoints.MapPost("/server-error-log", ctx =>
+                {
+                    ctx.Response.StatusCode = 503;
+                    return Task.CompletedTask;
+                }).WithMetadata(new IdempotentAttribute()),
+            configureLogging: logging =>
+            {
+                logging.ClearProviders();
+                logging.AddProvider(loggerProvider);
+                logging.SetMinimumLevel(LogLevel.Trace);
+            });
+        var client = host.GetTestClient();
+
+        var request = JsonBody("{}");
+        request.Headers.Add(KeyHeader, rawKey);
+        var response = await client.PostAsync("/server-error-log", request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        var messages = loggerProvider.Messages;
+        messages.Should().NotBeEmpty("the 5xx abandonment path logs the idempotency key correlation token");
+        messages.Should().OnlyContain(message => !message.Contains(rawKey, StringComparison.Ordinal),
+            "caller-supplied Idempotency-Key values can contain PII and must never be written to logs");
+        messages.Should().Contain(message => message.Contains(expectedKeyHash, StringComparison.Ordinal),
+            "operators still need a stable short hash to correlate idempotency log lines");
     }
 
     [Fact]
@@ -944,6 +982,58 @@ public sealed class IdempotencyMiddlewareTests
             {
                 try { (await firstTask).Dispose(); }
                 catch { /* ignored */ }
+            }
+        }
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly Lock _lock = new();
+        private readonly List<string> _messages = [];
+
+        public string[] Messages
+        {
+            get
+            {
+                lock (_lock)
+                    return [.. _messages];
+            }
+        }
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(this);
+
+        public void Dispose()
+        {
+        }
+
+        private void Capture(string message)
+        {
+            lock (_lock)
+                _messages.Add(message);
+        }
+
+        private sealed class CapturingLogger(CapturingLoggerProvider provider) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => NullScope.Instance;
+
+            public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter) =>
+                provider.Capture(formatter(state, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
             }
         }
     }

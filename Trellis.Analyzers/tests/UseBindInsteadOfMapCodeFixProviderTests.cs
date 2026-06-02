@@ -16,7 +16,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
             {
                 public void TestMethod(Result<int> result)
                 {
-                    var nested = result.Map(x => Validate(x));
+                    var nested = result.{|#0:Map|}(x => Validate(x));
                 }
 
                 private Result<int> Validate(int x) =>
@@ -40,7 +40,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
         var test = CodeFixTestHelper.CreateCodeFixTest<UseBindInsteadOfMapAnalyzer, UseBindInsteadOfMapCodeFixProvider>(
             source,
             fixedSource,
-            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(11, 33));
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(0));
 
         await test.RunAsync();
     }
@@ -53,7 +53,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
             {
                 public async Task TestMethod(Result<int> result)
                 {
-                    var nested = await result.MapAsync(x => ValidateAsync(x));
+                    var nested = await result.{|#0:MapAsync|}(x => ValidateAsync(x));
                 }
 
                 private Task<Result<int>> ValidateAsync(int x) =>
@@ -77,7 +77,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
         var test = CodeFixTestHelper.CreateCodeFixTest<UseBindInsteadOfMapAnalyzer, UseBindInsteadOfMapCodeFixProvider>(
             source,
             fixedSource,
-            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(11, 39));
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(0));
 
         await test.RunAsync();
     }
@@ -90,7 +90,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
             {
                 public void TestMethod(Result<int> result)
                 {
-                    var nested = result.Map(Validate);
+                    var nested = result.{|#0:Map|}(Validate);
                 }
 
                 private Result<int> Validate(int x) =>
@@ -114,7 +114,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
         var test = CodeFixTestHelper.CreateCodeFixTest<UseBindInsteadOfMapAnalyzer, UseBindInsteadOfMapCodeFixProvider>(
             source,
             fixedSource,
-            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(11, 33));
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(0));
 
         await test.RunAsync();
     }
@@ -128,7 +128,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
                 public void TestMethod(Result<int> result)
                 {
                     // Validate the result
-                    var nested = result.Map(x => Validate(x)); // Should use Bind
+                    var nested = result.{|#0:Map|}(x => Validate(x)); // Should use Bind
                 }
 
                 private Result<int> Validate(int x) =>
@@ -153,7 +153,7 @@ public class UseBindInsteadOfMapCodeFixProviderTests
         var test = CodeFixTestHelper.CreateCodeFixTest<UseBindInsteadOfMapAnalyzer, UseBindInsteadOfMapCodeFixProvider>(
             source,
             fixedSource,
-            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(12, 33));
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseBindInsteadOfMap).WithLocation(0));
 
         await test.RunAsync();
     }

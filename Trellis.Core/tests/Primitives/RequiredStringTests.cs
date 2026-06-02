@@ -1,5 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Primitives;
 
+using System.Diagnostics;
+using System.Reflection;
+
 public sealed class ComparableString : RequiredString<ComparableString>, IScalarValue<ComparableString, string>
 {
     private ComparableString(string value) : base(value)
@@ -12,6 +15,33 @@ public sealed class ComparableString : RequiredString<ComparableString>, IScalar
 
 public class RequiredStringTests
 {
+    [Fact]
+    public void RequiredString_Type_HasDebuggerDisplayAttribute()
+    {
+        var attribute = typeof(RequiredString<>).GetCustomAttribute<DebuggerDisplayAttribute>();
+
+        attribute.Should().NotBeNull();
+        attribute!.Value.Should().Be("{Value}");
+    }
+
+    [Fact]
+    public void RequiredGuid_Type_HasDebuggerDisplayAttribute()
+    {
+        var attribute = typeof(RequiredGuid<>).GetCustomAttribute<DebuggerDisplayAttribute>();
+
+        attribute.Should().NotBeNull();
+        attribute!.Value.Should().Be("{Value}");
+    }
+
+    [Fact]
+    public void RequiredEnum_Type_HasDebuggerDisplayAttribute()
+    {
+        var attribute = typeof(RequiredEnum<>).GetCustomAttribute<DebuggerDisplayAttribute>();
+
+        attribute.Should().NotBeNull();
+        attribute!.Value.Should().Be("{Value}");
+    }
+
     [Fact]
     public void StartsWith_WithOrdinalIgnoreCase_MatchesCaseInsensitively()
     {

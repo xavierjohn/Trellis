@@ -1,6 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Reflection;
 
 /// <summary>
 /// Focused tests for <see cref="EquatableArray{T}"/>. End-to-end use is covered indirectly by
@@ -10,6 +12,35 @@ using System.Collections.Immutable;
 /// </summary>
 public class EquatableArrayTests
 {
+    [Fact]
+    public void Type_HasDebuggerDisplayAttribute()
+    {
+        var attribute = typeof(EquatableArray<>).GetCustomAttribute<DebuggerDisplayAttribute>();
+
+        attribute.Should().NotBeNull();
+        attribute!.Value.Should().Be("Length = {Length}");
+    }
+
+    [Fact]
+    public void Type_HasDebuggerTypeProxyAttribute()
+    {
+        var attribute = typeof(EquatableArray<>).GetCustomAttribute<DebuggerTypeProxyAttribute>();
+        var proxyDefinition = typeof(EquatableArray<>).GetNestedType("EquatableArrayDebugView", BindingFlags.NonPublic);
+
+        attribute.Should().NotBeNull();
+        proxyDefinition.Should().NotBeNull();
+        var proxyType = proxyDefinition!.MakeGenericType(typeof(int));
+        var proxy = Activator.CreateInstance(
+            proxyType,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            args: [EquatableArray.Create(1, 2)],
+            culture: null);
+        var items = proxyType.GetProperty("Items")!.GetValue(proxy);
+        items.Should().BeAssignableTo<int[]>();
+        ((int[])items!).Should().Equal(1, 2);
+    }
+
     [Fact]
     public void Default_and_Empty_compare_equal()
     {

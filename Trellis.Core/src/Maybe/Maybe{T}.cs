@@ -73,7 +73,7 @@ public readonly struct Maybe<T> :
     private readonly bool _isValueSet;
     private readonly T? _value;
 
-    private const string NoValue = "Maybe has no value.";
+    private static readonly string NoValue = $"Maybe<{typeof(T).Name}>.Value was accessed when HasValue is false. Check HasValue first or use TryGetValue/GetValueOrDefault.";
 
     /// <summary>
     /// Gets a <see cref="Maybe{T}"/> instance with no value.

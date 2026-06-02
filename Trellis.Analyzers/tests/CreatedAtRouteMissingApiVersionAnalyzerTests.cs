@@ -123,9 +123,9 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
             {
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.CreatedAtRoute(
+                    {|#0:opts.CreatedAtRoute(
                         "Customers_GetById",
-                        c => new RouteValueDictionary { ["id"] = c.Id })
+                        c => new RouteValueDictionary { ["id"] = c.Id })|}
                         .WithVersionedRoute();
                 }
             }
@@ -148,7 +148,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(19, 9)
+                .WithLocation(0)
                 .WithArguments("CreatedAtRoute"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.TestState.Sources.Add(("ForeignExtension.cs", foreignStub));
@@ -171,9 +171,9 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
             {
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.CreatedAtRoute(
+                    {|#0:opts.CreatedAtRoute(
                         "Customers_GetById",
-                        c => new RouteValueDictionary { ["id"] = c.Id });
+                        c => new RouteValueDictionary { ["id"] = c.Id })|};
                 }
             }
             """;
@@ -181,7 +181,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(18, 9)
+                .WithLocation(0)
                 .WithArguments("CreatedAtRoute"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
 
@@ -384,9 +384,9 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
             {
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.CreatedAtRoute(
+                    {|#0:opts.CreatedAtRoute(
                         "Customers_GetById",
-                        c => new RouteValueDictionary(new { id = c.Id }));
+                        c => new RouteValueDictionary(new { id = c.Id }))|};
                 }
             }
             """;
@@ -394,7 +394,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(18, 9)
+                .WithLocation(0)
                 .WithArguments("CreatedAtRoute"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
 
@@ -497,9 +497,9 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
             {
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.WithLocation(
+                    {|#0:opts.WithLocation(
                         "Customers_GetById",
-                        c => new RouteValueDictionary { ["id"] = c.Id });
+                        c => new RouteValueDictionary { ["id"] = c.Id })|};
                 }
             }
             """;
@@ -507,7 +507,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(18, 9)
+                .WithLocation(0)
                 .WithArguments("WithLocation"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
 
@@ -576,7 +576,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
             {
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.WithLocation("Customers_GetById", c => (object)c.Id);
+                    {|#0:opts.WithLocation("Customers_GetById", c => (object)c.Id)|};
                 }
             }
             """;
@@ -584,7 +584,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(18, 9)
+                .WithLocation(0)
                 .WithArguments("WithLocation"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
 
@@ -614,7 +614,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
 
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.CreatedAtRoute("Customers_GetById", GetId);
+                    {|#0:opts.CreatedAtRoute("Customers_GetById", GetId)|};
                 }
             }
             """;
@@ -622,7 +622,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(21, 9)
+                .WithLocation(0)
                 .WithArguments("CreatedAtRoute"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
 
@@ -644,10 +644,10 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
             {
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.CreatedAtAction(
+                    {|#0:opts.CreatedAtAction(
                         "GetById",
                         c => new RouteValueDictionary { ["id"] = c.Id },
-                        "Customers");
+                        "Customers")|};
                 }
             }
             """;
@@ -655,7 +655,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(18, 9)
+                .WithLocation(0)
                 .WithArguments("CreatedAtAction"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
 
@@ -846,9 +846,9 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
             {
                 public void DoIt(HttpResponseOptionsBuilder<Customer> opts)
                 {
-                    opts.CreatedAtRoute(
+                    {|#0:opts.CreatedAtRoute(
                         "Customers_GetById",
-                        c => new RouteValueDictionary { ["id"] = c.Id })
+                        c => new RouteValueDictionary { ["id"] = c.Id })|}
                         .WithRouteValueResolver("tenant-id", _ => "acme");
                 }
             }
@@ -857,7 +857,7 @@ public sealed class CreatedAtRouteMissingApiVersionAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CreatedAtRouteMissingApiVersionAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MissingApiVersionRouteValue)
-                .WithLocation(18, 9)
+                .WithLocation(0)
                 .WithArguments("CreatedAtRoute"));
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
 

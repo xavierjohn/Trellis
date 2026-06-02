@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -292,6 +294,7 @@ public sealed partial class IdempotencyMiddleware
 
     private async Task ExecuteAndCaptureAsync(HttpContext context, IIdempotencyStore store, string scope, string key, string reservationId, string fingerprint)
     {
+        var keyHash = RedactKeyForLogs(key);
         var originalBodyFeature = context.Features.Get<IHttpResponseBodyFeature>();
         if (originalBodyFeature is null)
         {
@@ -302,11 +305,11 @@ public sealed partial class IdempotencyMiddleware
             }
             catch
             {
-                await SafeAbandonAsync(store, _logger, scope, key, reservationId).ConfigureAwait(false);
+                await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
                 throw;
             }
 
-            await SafeAbandonAsync(store, _logger, scope, key, reservationId).ConfigureAwait(false);
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             return;
         }
 
@@ -339,7 +342,7 @@ public sealed partial class IdempotencyMiddleware
         catch
         {
             context.Features.Set<IHttpResponseBodyFeature>(originalBodyFeature);
-            await SafeAbandonAsync(store, _logger, scope, key, reservationId).ConfigureAwait(false);
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             throw;
         }
 
@@ -357,9 +360,9 @@ public sealed partial class IdempotencyMiddleware
             }
             catch (Exception ex)
             {
-                LogCaptureFlushFailed(_logger, ex, key);
+                LogCaptureFlushFailed(_logger, ex, keyHash);
                 context.Features.Set<IHttpResponseBodyFeature>(originalBodyFeature);
-                await SafeAbandonAsync(store, _logger, scope, key, reservationId).ConfigureAwait(false);
+                await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
                 return;
             }
         }
@@ -371,8 +374,8 @@ public sealed partial class IdempotencyMiddleware
         {
             // Capture aborted (response too large, SendFileAsync, or explicit abort) — abandon
             // the reservation so the next retry can re-execute.
-            LogCaptureAbandoned(_logger, key);
-            await SafeAbandonAsync(store, _logger, scope, key, reservationId).ConfigureAwait(false);
+            LogCaptureAbandoned(_logger, keyHash);
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             return;
         }
 
@@ -398,8 +401,8 @@ public sealed partial class IdempotencyMiddleware
             // Response trailers cannot be replayed by the snapshot writer (which only restores
             // status + headers + body), so any response that wrote trailers is treated as
             // non-cacheable and the reservation is released for retry.
-            LogTrailersAbandoned(_logger, key);
-            await SafeAbandonAsync(store, _logger, scope, key, reservationId).ConfigureAwait(false);
+            LogTrailersAbandoned(_logger, keyHash);
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             return;
         }
 
@@ -407,8 +410,8 @@ public sealed partial class IdempotencyMiddleware
         {
             // 5xx responses are treated as transient per the IIdempotencyStore.AbandonAsync
             // contract: caching them would deny the client a real retry that might succeed.
-            LogServerErrorAbandoned(_logger, key, headerSnapshot.StatusCode);
-            await SafeAbandonAsync(store, _logger, scope, key, reservationId).ConfigureAwait(false);
+            LogServerErrorAbandoned(_logger, keyHash, headerSnapshot.StatusCode);
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, keyHash).ConfigureAwait(false);
             return;
         }
 
@@ -425,15 +428,15 @@ public sealed partial class IdempotencyMiddleware
         }
         catch (OperationCanceledException)
         {
-            LogCompleteTimedOut(_logger, key);
+            LogCompleteTimedOut(_logger, keyHash);
         }
         catch (Exception ex)
         {
-            LogCompleteFailed(_logger, ex, key);
+            LogCompleteFailed(_logger, ex, keyHash);
         }
     }
 
-    private static async Task SafeAbandonAsync(IIdempotencyStore store, ILogger<IdempotencyMiddleware> logger, string scope, string key, string reservationId)
+    private static async Task SafeAbandonAsync(IIdempotencyStore store, ILogger<IdempotencyMiddleware> logger, string scope, string key, string reservationId, string keyHash)
     {
         using var cts = new CancellationTokenSource(FinalizationTimeout);
         try
@@ -442,9 +445,19 @@ public sealed partial class IdempotencyMiddleware
         }
         catch (Exception ex)
         {
-            LogAbandonFailed(logger, ex, key);
+            LogAbandonFailed(logger, ex, keyHash);
         }
     }
+
+    // 12 hex chars = 48 bits of entropy. With 1M distinct keys/day, the birthday-paradox
+    // collision probability is ~0.18% per day — low enough that hash collisions in operator
+    // logs are vanishingly rare. 8 chars (32 bits) was too short (~100% collision/day at that
+    // volume). The raw key is still used at the IIdempotencyStore layer; this redaction only
+    // affects log templates.
+    private static string RedactKeyForLogs(string key) =>
+        string.IsNullOrEmpty(key)
+            ? "<empty>"
+            : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..12].ToLowerInvariant();
 
     private static string ReasonPhrase(int statusCode) => statusCode switch
     {
@@ -458,26 +471,26 @@ public sealed partial class IdempotencyMiddleware
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "Idempotency capture skipped: no IHttpResponseBodyFeature on request {Path}")]
     static partial void LogCaptureSkippedNoFeature(ILogger logger, string path);
 
-    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Idempotency snapshot not persisted (response capture aborted: response body too large, SendFileAsync used, or explicit abort) for key {Key}")]
-    static partial void LogCaptureAbandoned(ILogger logger, string key);
+    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "Idempotency snapshot not persisted (response capture aborted: response body too large, SendFileAsync used, or explicit abort) for key hash {KeyHash}")]
+    static partial void LogCaptureAbandoned(ILogger logger, string keyHash);
 
-    [LoggerMessage(EventId = 3, Level = LogLevel.Warning, Message = "Idempotency store CompleteAsync timed out for key {Key}")]
-    static partial void LogCompleteTimedOut(ILogger logger, string key);
+    [LoggerMessage(EventId = 3, Level = LogLevel.Warning, Message = "Idempotency store CompleteAsync timed out for key hash {KeyHash}")]
+    static partial void LogCompleteTimedOut(ILogger logger, string keyHash);
 
-    [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "Idempotency store CompleteAsync failed for key {Key}")]
-    static partial void LogCompleteFailed(ILogger logger, Exception ex, string key);
+    [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "Idempotency store CompleteAsync failed for key hash {KeyHash}")]
+    static partial void LogCompleteFailed(ILogger logger, Exception ex, string keyHash);
 
-    [LoggerMessage(EventId = 5, Level = LogLevel.Warning, Message = "Idempotency store AbandonAsync failed for key {Key}")]
-    static partial void LogAbandonFailed(ILogger logger, Exception ex, string key);
+    [LoggerMessage(EventId = 5, Level = LogLevel.Warning, Message = "Idempotency store AbandonAsync failed for key hash {KeyHash}")]
+    static partial void LogAbandonFailed(ILogger logger, Exception ex, string keyHash);
 
-    [LoggerMessage(EventId = 6, Level = LogLevel.Information, Message = "Idempotency reservation abandoned for key {Key}: response wrote trailers, which cannot be replayed")]
-    static partial void LogTrailersAbandoned(ILogger logger, string key);
+    [LoggerMessage(EventId = 6, Level = LogLevel.Information, Message = "Idempotency reservation abandoned for key hash {KeyHash}: response wrote trailers, which cannot be replayed")]
+    static partial void LogTrailersAbandoned(ILogger logger, string keyHash);
 
-    [LoggerMessage(EventId = 7, Level = LogLevel.Information, Message = "Idempotency reservation abandoned for key {Key}: handler returned status {StatusCode} (5xx responses are treated as transient)")]
-    static partial void LogServerErrorAbandoned(ILogger logger, string key, int statusCode);
+    [LoggerMessage(EventId = 7, Level = LogLevel.Information, Message = "Idempotency reservation abandoned for key hash {KeyHash}: handler returned status {StatusCode} (5xx responses are treated as transient)")]
+    static partial void LogServerErrorAbandoned(ILogger logger, string keyHash, int statusCode);
 
-    [LoggerMessage(EventId = 8, Level = LogLevel.Warning, Message = "Idempotency reservation abandoned for key {Key}: flushing the captured response body writer failed")]
-    static partial void LogCaptureFlushFailed(ILogger logger, Exception ex, string key);
+    [LoggerMessage(EventId = 8, Level = LogLevel.Warning, Message = "Idempotency reservation abandoned for key hash {KeyHash}: flushing the captured response body writer failed")]
+    static partial void LogCaptureFlushFailed(ILogger logger, Exception ex, string keyHash);
 
     private sealed class HeaderSnapshot
     {

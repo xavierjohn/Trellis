@@ -69,6 +69,7 @@ public static class HttpResponseExtensions
     /// A <see cref="Task{T}"/> that completes with <see cref="Result.Ok{T}(T)"/>
     /// or <see cref="Result.Fail{T}(Error)"/> per the contract above.
     /// </returns>
+    /// <exception cref="ArgumentNullException">response is null</exception>
     public static async Task<Result<HttpResponseMessage>> ToResultAsync(
         this Task<HttpResponseMessage> response,
         Func<HttpStatusCode, Error?>? statusMap = null)
@@ -117,6 +118,7 @@ public static class HttpResponseExtensions
     /// A result containing <see cref="Maybe{T}.None"/> for 404, a populated maybe for a
     /// successful JSON body, or a failure for other non-success statuses.
     /// </returns>
+    /// <exception cref="ArgumentNullException">response or jsonTypeInfo is null</exception>
     public static async Task<Result<Maybe<T>>> ReadJsonOrNoneOn404Async<T>(
         this Task<HttpResponseMessage> response,
         JsonTypeInfo<T> jsonTypeInfo,

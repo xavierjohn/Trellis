@@ -1,6 +1,7 @@
 ﻿namespace Trellis;
 
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 /// <summary>
 /// Wraps an <see cref="ImmutableArray{T}"/> to provide structural (sequence) equality.
@@ -24,6 +25,8 @@ using System.Collections.Immutable;
 /// </para>
 /// </remarks>
 /// <typeparam name="T">The element type.</typeparam>
+[DebuggerDisplay("Length = {Length}")]
+[DebuggerTypeProxy(typeof(EquatableArray<>.EquatableArrayDebugView))]
 public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>
 {
     private readonly ImmutableArray<T> _items;
@@ -129,6 +132,16 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>
     /// </summary>
     /// <param name="items">The items.</param>
     public static implicit operator EquatableArray<T>(ImmutableArray<T> items) => new(items);
+
+    private sealed class EquatableArrayDebugView
+    {
+        private readonly EquatableArray<T> _array;
+
+        public EquatableArrayDebugView(EquatableArray<T> array) => _array = array;
+
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public T[] Items => _array.Items.ToArray();
+    }
 }
 
 /// <summary>

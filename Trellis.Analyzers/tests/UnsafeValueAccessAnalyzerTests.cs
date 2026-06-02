@@ -17,7 +17,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public void TestMethod(Maybe<int> maybe)
                 {
-                    var value = maybe.Value;
+                    var value = maybe.{|#0:Value|};
                 }
             }
             """;
@@ -25,7 +25,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(11, 27));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -126,7 +126,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public int TestMethod(Maybe<int> maybe)
                 {
-                    return maybe.HasValue ? 0 : maybe.Value;
+                    return maybe.HasValue ? 0 : maybe.{|#0:Value|};
                 }
             }
             """;
@@ -134,7 +134,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(11, 43));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -171,7 +171,7 @@ public class UnsafeValueAccessAnalyzerTests
 
                 public void TestMethod()
                 {
-                    var value = Timestamp.Value;
+                    var value = Timestamp.{|#0:Value|};
                 }
             }
             """;
@@ -179,7 +179,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(13, 31));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -196,7 +196,7 @@ public class UnsafeValueAccessAnalyzerTests
                 public void TestMethod(string? input)
                 {
                     Name = Maybe<string>.From(input);
-                    var value = Name.Value;
+                    var value = Name.{|#0:Value|};
                 }
             }
             """;
@@ -204,7 +204,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(14, 26));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -226,7 +226,7 @@ public class UnsafeValueAccessAnalyzerTests
                 public void TestMethod()
                 {
                     Timestamp = SomeFactory.From(DateTime.UtcNow);
-                    var value = Timestamp.Value;
+                    var value = Timestamp.{|#0:Value|};
                 }
             }
             """;
@@ -234,7 +234,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(19, 31));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -279,7 +279,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public Expression<Func<TestEntity, bool>> GetFilter(DateTime cutoff)
                 {
-                    return e => e.SubmittedAt.Value < cutoff;
+                    return e => e.SubmittedAt.{|#0:Value|} < cutoff;
                 }
             }
 
@@ -292,7 +292,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(14, 35));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -309,7 +309,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public Expression<Func<TestEntity, bool>> GetFilter(DateTime cutoff)
                 {
-                    return e => e.SubmittedAt.HasValue && e.ShippedAt.Value < cutoff;
+                    return e => e.SubmittedAt.HasValue && e.ShippedAt.{|#0:Value|} < cutoff;
                 }
             }
 
@@ -323,7 +323,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(14, 59));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -433,7 +433,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public Expression<Func<TestEntity, bool>> GetFilter(DateTime cutoff)
                 {
-                    return e => e.SubmittedAt.Value < cutoff && e.SubmittedAt.HasValue;
+                    return e => e.SubmittedAt.{|#0:Value|} < cutoff && e.SubmittedAt.HasValue;
                 }
             }
 
@@ -446,7 +446,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(14, 35));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -466,7 +466,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public Expression<Func<TestEntity, bool>> GetFilter(DateTime cutoff)
                 {
-                    return e => e.SubmittedAt.HasValue || e.SubmittedAt.Value < cutoff;
+                    return e => e.SubmittedAt.HasValue || e.SubmittedAt.{|#0:Value|} < cutoff;
                 }
             }
 
@@ -479,7 +479,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(14, 61));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -499,7 +499,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public Expression<Func<TestEntity, bool>> GetFilter()
                 {
-                    return e => e.Primary.Phone.HasValue && e.Secondary.Phone.Value.Length > 0;
+                    return e => e.Primary.Phone.HasValue && e.Secondary.Phone.{|#0:Value|}.Length > 0;
                 }
             }
 
@@ -518,7 +518,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(14, 67));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -563,7 +563,7 @@ public class UnsafeValueAccessAnalyzerTests
             {
                 public Expression<Func<TestEntity, bool>> GetFilter()
                 {
-                    return e => e.Primary.GetPhone().HasValue && e.Secondary.GetPhone().Value.Length > 0;
+                    return e => e.Primary.GetPhone().HasValue && e.Secondary.GetPhone().{|#0:Value|}.Length > 0;
                 }
             }
 
@@ -582,7 +582,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(14, 77));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
@@ -604,7 +604,7 @@ public class UnsafeValueAccessAnalyzerTests
                 {
                     Timestamp = Maybe<DateTime>.From(DateTime.UtcNow);
                     Timestamp = other;
-                    var value = Timestamp.Value;
+                    var value = Timestamp.{|#0:Value|};
                 }
             }
             """;
@@ -612,7 +612,7 @@ public class UnsafeValueAccessAnalyzerTests
         var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
             source,
             AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
-                .WithLocation(15, 31));
+                .WithLocation(0));
 
         await test.RunAsync();
     }
