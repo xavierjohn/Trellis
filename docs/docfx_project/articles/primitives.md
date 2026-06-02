@@ -170,7 +170,7 @@ The generator emits the same factory shape on every `Required*<TSelf>` derivatio
 | `Parse(s, provider)` | `TSelf` | `IParsable<TSelf>` integration. Throws `FormatException` on failure. |
 | `TryParse(s, provider, out result)` | `bool` | `IParsable<TSelf>` integration. Non-throwing. |
 | `(TSelf)value` (explicit cast) | `TSelf` | Conversion via `Create(...)` — same throwing semantics. |
-| `NewUniqueV4()` / `NewUniqueV7()` | `TSelf` | `RequiredGuid<TSelf>` only. Time-ordered v7 GUIDs are recommended for new IDs. |
+| `NewUniqueV4()` / `NewUniqueV7()` / `NewUniqueV7(TimeProvider)` | `TSelf` | `RequiredGuid<TSelf>` only. Time-ordered v7 GUIDs are recommended for new IDs; pass a `TimeProvider` when tests need deterministic timestamps. |
 
 Stay on the railway at boundaries:
 

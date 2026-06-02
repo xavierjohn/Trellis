@@ -17,7 +17,7 @@ using System.Linq;
 /// <para>
 /// The generator uses this information to create:
 /// <list type="bullet">
-/// <item>Static factory methods (<c>NewUniqueV4()</c>/<c>NewUniqueV7()</c> for GUIDs, <c>TryCreate</c> for all types)</item>
+/// <item>Static factory methods (<c>NewUniqueV4()</c>/<c>NewUniqueV7()</c>/<c>NewUniqueV7(TimeProvider)</c> for GUIDs, <c>TryCreate</c> for all types)</item>
 /// <item>Validation logic ensuring non-empty values</item>
 /// <item>IParsable implementation for parsing support</item>
 /// <item>JSON serialization attributes</item>
@@ -52,7 +52,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// </value>
     /// <remarks>
     /// <list type="bullet">
-    /// <item><c>RequiredGuid</c>: Generates NewUniqueV4(), NewUniqueV7(), TryCreate(Guid?), TryParse(string?)</item>
+    /// <item><c>RequiredGuid</c>: Generates NewUniqueV4(), NewUniqueV7(), NewUniqueV7(TimeProvider), TryCreate(Guid?), TryParse(string?)</item>
     /// <item><c>RequiredString</c>: Generates TryCreate(string?)</item>
     /// <item><c>RequiredInt</c>: Generates TryCreate(int?), TryParse(string?)</item>
     /// <item><c>RequiredDecimal</c>: Generates TryCreate(decimal?), TryParse(string?)</item>

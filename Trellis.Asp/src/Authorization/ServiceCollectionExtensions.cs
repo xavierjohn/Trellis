@@ -73,8 +73,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">
-    /// Delegate to customize <see cref="NestedJsonPathClaimsActorOptions"/>. Set
-    /// <c>ContainerClaim</c> to the top-level claim that carries the JSON document,
+    /// Optional delegate to customize <see cref="NestedJsonPathClaimsActorOptions"/>.
+    /// Set <c>ContainerClaim</c> to the top-level claim that carries the JSON document,
     /// <c>ActorIdPath</c> / <c>PermissionsPath</c> to the dotted JSON paths inside it, and
     /// optionally the inherited flat <c>ActorIdClaim</c> / <c>PermissionsClaim</c> for the
     /// fallback when the container claim is absent or malformed.
@@ -98,12 +98,15 @@ public static class ServiceCollectionExtensions
     /// </example>
     public static IServiceCollection AddNestedJsonPathClaimsActorProvider(
         this IServiceCollection services,
-        Action<NestedJsonPathClaimsActorOptions> configure)
+        Action<NestedJsonPathClaimsActorOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(configure);
-
         services.AddHttpContextAccessor();
-        services.Configure(configure);
+
+        if (configure is not null)
+            services.Configure(configure);
+        else
+            services.Configure<NestedJsonPathClaimsActorOptions>(_ => { });
+
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, NestedJsonPathClaimsActorProvider>());
 
         return services;

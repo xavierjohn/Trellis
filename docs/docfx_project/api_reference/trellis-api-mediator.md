@@ -104,7 +104,7 @@ public sealed partial class ExceptionBehavior<TMessage, TResponse> : IPipelineBe
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Catches unhandled exceptions except `OperationCanceledException`, logs them, and returns `TResponse.CreateFailure(new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." })`. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Catches unhandled exceptions except `OperationCanceledException`, logs them with a per-incident fault id, and returns `TResponse.CreateFailure(new Error.Unexpected("unhandled_exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. |
 
 ### IValidate
 **Declaration**
@@ -152,7 +152,7 @@ public sealed partial class LoggingBehavior<TMessage, TResponse> : IPipelineBeha
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Logs start (Debug), end with elapsed milliseconds (Debug on success, Warning on failure). Per-call timing is at Debug so production at the default `Information` minimum stays quiet; raise via `"Trellis.Mediator": "Debug"` in logging configuration to opt back in. On failure emits `error.Code` only by default; the free-text `Error.Detail` is included only when `TrellisMediatorTelemetryOptions.IncludeErrorDetail` is `true`. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Logs start (Debug), end with elapsed milliseconds (Debug on success, Information for expected caller/domain failures, Warning for unexpected/dependency/opaque transport failures). Per-call timing is at Debug so production at the default `Information` minimum stays quiet; raise via `"Trellis.Mediator": "Debug"` in logging configuration to opt back in. On failure emits `error.Code` only by default; the free-text `Error.Detail` is included only when `TrellisMediatorTelemetryOptions.IncludeErrorDetail` is `true`. |
 
 ### ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>
 **Declaration**
@@ -607,7 +607,7 @@ public interface IDomainEventPublisher
 
 The Trellis pipeline executes outermost → innermost in this order. The first five are registered by `AddTrellisBehaviors()`; the last two are opt-in.
 
-1. **`ExceptionBehavior<,>`** — catches unhandled exceptions (except `OperationCanceledException`), logs them, and converts them to a typed `TResponse.CreateFailure(new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." })`. Sits outermost so every other layer is wrapped.
+1. **`ExceptionBehavior<,>`** — catches unhandled exceptions (except `OperationCanceledException`), logs them with a per-incident fault id, and converts them to a typed `TResponse.CreateFailure(new Error.Unexpected("unhandled_exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Sits outermost so every other layer is wrapped.
 2. **`TracingBehavior<,>`** — opens an OpenTelemetry `Activity` per message under the `"Trellis.Mediator"` activity source. On failure tags `error.code` / `error.type` and sets `ActivityStatusCode.Error`. `Error.Detail` is redacted from `StatusDescription` unless `TrellisMediatorTelemetryOptions.IncludeErrorDetail` is `true`.
 3. **`LoggingBehavior<,>`** — structured logging with start/end and elapsed-ms entries; emits the stable `Error.Code` on failure. Inherits the same correlation context propagated by the surrounding `Activity`. `Error.Detail` is redacted unless `IncludeErrorDetail` is `true`.
 4. **`AuthorizationBehavior<,>`** — runs for `IAuthorize` messages; resolves the actor and rejects with `new Error.Forbidden("authorization.insufficient.permissions")` when `RequiredPermissions` are not satisfied. No I/O.

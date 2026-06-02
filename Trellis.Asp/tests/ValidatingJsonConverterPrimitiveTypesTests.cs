@@ -840,6 +840,34 @@ public class ValidatingJsonConverterPrimitiveTypesTests
 
     #endregion
 
+    #region Malformed Primitive Read Tests
+
+    [Fact]
+    public void Read_SupportedPrimitiveMalformedOrWrongToken_CollectsInvalidValueError()
+    {
+        AssertMalformedJsonCollectsInvalidValueError<StringVO, string>("123");
+        AssertMalformedJsonCollectsInvalidValueError<GuidVO, Guid>("\"not-a-guid\"");
+        AssertMalformedJsonCollectsInvalidValueError<IntVO, int>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<LongVO, long>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<ShortVO, short>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<ByteVO, byte>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<SByteVO, sbyte>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<UShortVO, ushort>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<UIntVO, uint>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<ULongVO, ulong>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<DoubleVO, double>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<FloatVO, float>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<DecimalVO, decimal>("\"not-a-number\"");
+        AssertMalformedJsonCollectsInvalidValueError<BoolVO, bool>("0");
+        AssertMalformedJsonCollectsInvalidValueError<DateTimeVO, DateTime>("\"not-a-date\"");
+        AssertMalformedJsonCollectsInvalidValueError<DateTimeOffsetVO, DateTimeOffset>("\"not-a-date\"");
+        AssertMalformedJsonCollectsInvalidValueError<DateOnlyVO, DateOnly>("\"not-a-date\"");
+        AssertMalformedJsonCollectsInvalidValueError<TimeOnlyVO, TimeOnly>("\"not-a-time\"");
+        AssertMalformedJsonCollectsInvalidValueError<TimeSpanVO, TimeSpan>("\"not-a-duration\"");
+    }
+
+    #endregion
+
     #region Unsupported Primitive Tests
 
     [Fact]
@@ -867,6 +895,30 @@ public class ValidatingJsonConverterPrimitiveTypesTests
     #endregion
 
     #region Helper Methods
+
+    private static void AssertMalformedJsonCollectsInvalidValueError<TValueObject, TPrimitive>(string json)
+        where TValueObject : class, IScalarValue<TValueObject, TPrimitive>
+        where TPrimitive : IComparable
+    {
+        var converter = new ValidatingJsonConverter<TValueObject, TPrimitive>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "Field";
+
+            var result = converter.Read(ref reader, typeof(TValueObject), new JsonSerializerOptions());
+
+            result.Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields
+                .Items
+                .Should().ContainSingle(v =>
+                    v.Field.Path == "/Field"
+                    && v.Detail == $"'Field' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+        }
+    }
 
     private static string Serialize<TValueObject, TPrimitive>(TValueObject? vo, ValidatingJsonConverter<TValueObject, TPrimitive> converter)
         where TValueObject : class, IScalarValue<TValueObject, TPrimitive>

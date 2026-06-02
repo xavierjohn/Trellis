@@ -6,11 +6,14 @@ using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Pipeline behavior that logs command/query execution with duration and Result outcome.
-/// Logs at <see cref="LogLevel.Debug"/> for the per-message start/end pair (cross-cutting
-/// observability noise belongs at Debug, not Information; consumers who want per-call timing
-/// in production raise the level via <c>"Trellis.Mediator": "Debug"</c> in their logging
-/// configuration). Failures are logged at <see cref="LogLevel.Warning"/> regardless of
-/// configured minimum level so production logs surface them by default.
+/// The per-message start entry is logged at <see cref="LogLevel.Debug"/>; the matching end
+/// entry is at <see cref="LogLevel.Debug"/> on success, <see cref="LogLevel.Information"/> for
+/// expected caller/domain failures (validation, authentication, authorization, not-found,
+/// conflict, rate-limited, invariant-violation, gone, and aggregates whose inner errors are all
+/// expected), and <see cref="LogLevel.Warning"/> for unexpected, dependency, or opaque transport
+/// failures. Cross-cutting per-message observability noise belongs at Debug, not Information;
+/// consumers who want per-call timing in production raise the level via
+/// <c>"Trellis.Mediator": "Debug"</c> in their logging configuration.
 /// </summary>
 /// <typeparam name="TMessage">The message type.</typeparam>
 /// <typeparam name="TResponse">The response type, constrained to <see cref="IResult"/>.</typeparam>
@@ -65,7 +68,16 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
             var summary = _options.IncludeErrorDetail
                 ? error.GetDisplayMessage()
                 : error.Code;
-            LogHandledWithFailure(_logger, messageName, elapsed.TotalMilliseconds, summary);
+            var logLevel = ClassifyFailureLogLevel(error);
+
+            if (logLevel == LogLevel.Warning)
+            {
+                LogHandledWithUnexpectedFailure(_logger, messageName, elapsed.TotalMilliseconds, summary);
+            }
+            else
+            {
+                LogHandledWithExpectedFailure(_logger, messageName, elapsed.TotalMilliseconds, summary);
+            }
         }
         else
         {
@@ -75,12 +87,39 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
         return response;
     }
 
+    private static LogLevel ClassifyFailureLogLevel(Error error) =>
+        error switch
+        {
+            // Expected caller/domain outcomes are normal control flow; internal, dependency,
+            // and opaque transport failures stay at Warning so operators see actionable signals.
+            Error.InvalidInput or Error.InvariantViolation or Error.NotFound or Error.Gone
+                or Error.Conflict or Error.AuthenticationRequired or Error.Forbidden
+                or Error.RateLimited => LogLevel.Information,
+            Error.Aggregate aggregate => ClassifyAggregateFailureLogLevel(aggregate),
+            Error.Unavailable or Error.Unexpected or Error.TransportFault => LogLevel.Warning,
+            _ => LogLevel.Warning,
+        };
+
+    private static LogLevel ClassifyAggregateFailureLogLevel(Error.Aggregate aggregate)
+    {
+        foreach (var error in aggregate.Errors.Items)
+        {
+            if (ClassifyFailureLogLevel(error) >= LogLevel.Warning)
+                return LogLevel.Warning;
+        }
+
+        return LogLevel.Information;
+    }
+
     [LoggerMessage(Level = LogLevel.Debug, Message = "Handling {MessageName}")]
     private static partial void LogHandling(ILogger logger, string messageName);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms")]
     private static partial void LogHandled(ILogger logger, string messageName, double elapsedMs);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}")]
+    private static partial void LogHandledWithExpectedFailure(ILogger logger, string messageName, double elapsedMs, string errorSummary);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}")]
-    private static partial void LogHandledWithFailure(ILogger logger, string messageName, double elapsedMs, string errorSummary);
+    private static partial void LogHandledWithUnexpectedFailure(ILogger logger, string messageName, double elapsedMs, string errorSummary);
 }

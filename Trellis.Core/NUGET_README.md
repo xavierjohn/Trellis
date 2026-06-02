@@ -31,7 +31,7 @@ Result<string> email = Result.Ok("ada@example.com")
 
 ## `Result<T>` is not directly JSON-serializable
 
-`Result<T>` carries a default `[JsonConverter]` that throws `NotSupportedException` on direct `JsonSerializer.Serialize` / `Deserialize`. Returning a raw `Result<T>` from a controller would otherwise silently produce `{"IsSuccess": true, "Value": ..., "Error": null}` with no HTTP status-code mapping for `Error.*` cases (an `Error.NotFound` would render as 200 OK instead of 404). The throw fires at the first request with an actionable message. Fix paths:
+`Result<T>` carries a default `[JsonConverter]` that throws `NotSupportedException` on direct `JsonSerializer.Serialize` / `Deserialize`. Returning a raw `Result<T>` from a controller would otherwise hand MVC a domain disposition whose public JSON surface is only status/error metadata such as `{"IsSuccess": true, "IsFailure": false, "Error": null}`; the success value stays private, and `Error.*` cases still get no HTTP status-code mapping (an `Error.NotFound` would render as 200 OK instead of 404). The throw fires at the first request with an actionable message. Fix paths:
 
 - **HTTP** — call `.ToHttpResponse()` (Trellis.Asp). The returned `Microsoft.AspNetCore.Http.IResult` writes the body itself; the struct never reaches STJ.
 - **Non-HTTP** — unwrap with `Match` / `TryGetValue` before serialization.

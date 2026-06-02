@@ -115,6 +115,26 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddNestedJsonPathClaimsActorProvider_NoConfigure_DefaultOptions_AreRegistered()
+    {
+        var services = new ServiceCollection();
+
+        services.AddNestedJsonPathClaimsActorProvider();
+        var provider = services.BuildServiceProvider();
+
+        var descriptor = services.Single(d => d.ServiceType == typeof(IActorProvider));
+        descriptor.ImplementationType.Should().Be<NestedJsonPathClaimsActorProvider>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+
+        var options = provider.GetRequiredService<IOptions<NestedJsonPathClaimsActorOptions>>();
+        options.Value.ActorIdClaim.Should().Be("sub");
+        options.Value.PermissionsClaim.Should().Be("permissions");
+        options.Value.ContainerClaim.Should().BeEmpty();
+        options.Value.ActorIdPath.Should().BeEmpty();
+        options.Value.PermissionsPath.Should().BeEmpty();
+    }
+
+    [Fact]
     public void AddCachingActorProvider_RegistersIActorProviderAsCachingDecorator()
     {
         var services = new ServiceCollection();

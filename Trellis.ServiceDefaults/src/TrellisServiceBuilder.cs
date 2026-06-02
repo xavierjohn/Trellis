@@ -369,8 +369,8 @@ public sealed class TrellisServiceBuilder
     /// <c>app_metadata.roles</c>, Azure B2C <c>extension_*</c>, Okta nested claims).
     /// </summary>
     /// <param name="configure">
-    /// Delegate to customize <see cref="NestedJsonPathClaimsActorOptions"/>. Set
-    /// <c>ContainerClaim</c> to the top-level claim that carries the JSON document,
+    /// Optional delegate to customize <see cref="NestedJsonPathClaimsActorOptions"/>.
+    /// Set <c>ContainerClaim</c> to the top-level claim that carries the JSON document,
     /// <c>ActorIdPath</c> / <c>PermissionsPath</c> to the dotted JSON paths inside it,
     /// and the inherited flat <c>ActorIdClaim</c> / <c>PermissionsClaim</c> for the fallback
     /// when the container claim is absent or malformed.
@@ -378,9 +378,8 @@ public sealed class TrellisServiceBuilder
     /// <remarks>
     /// Mutually exclusive with the other actor-provider selectors.
     /// </remarks>
-    public TrellisServiceBuilder UseNestedJsonPathClaimsActorProvider(Action<NestedJsonPathClaimsActorOptions> configure)
+    public TrellisServiceBuilder UseNestedJsonPathClaimsActorProvider(Action<NestedJsonPathClaimsActorOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(configure);
         SetActorProvider(ActorProviderKind.NestedJsonPathClaims, services => services.AddNestedJsonPathClaimsActorProvider(configure));
         return this;
     }
