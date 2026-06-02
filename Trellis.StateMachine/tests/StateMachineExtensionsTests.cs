@@ -140,41 +140,59 @@ public class StateMachineExtensionsTests
     }
 
     [Fact]
-    public void FireResult_CustomOnUnhandledTriggerThatSuppresses_ReturnsSuccessWithCurrentState()
+    public void FireResult_TransitionNotPermitted_ReturnsFailureWithoutInvokingOnUnhandledTrigger()
     {
-        // ga-18 regression: a custom OnUnhandledTrigger callback may intentionally
-        // suppress invalid-trigger exceptions (e.g. log + ignore). FireResult must
-        // honor that policy by invoking Fire even on the !CanFire path — the user's
-        // handler runs, no exception escapes, and we surface the (unchanged) state
-        // as success rather than synthesizing an Error.InvalidInput the user opted out of.
-        var unhandledCalls = 0;
+        var unhandledCallbackInvoked = false;
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
-        machine.OnUnhandledTrigger((_, _) => unhandledCalls++); // swallow, do not throw
+        machine.OnUnhandledTrigger((_, _) => unhandledCallbackInvoked = true);
 
         var result = machine.FireResult(Trigger.Pause);
 
-        result.IsSuccess.Should().BeTrue();
-        result.TryGetValue(out var v).Should().BeTrue();
-        v.Should().Be(State.Idle);
-        unhandledCalls.Should().Be(1, "the user's OnUnhandledTrigger callback must run");
+        result.IsFailure.Should().BeTrue();
+        unhandledCallbackInvoked.Should().BeFalse();
         machine.State.Should().Be(State.Idle);
     }
 
     [Fact]
-    public void FireResult_CustomOnUnhandledTriggerThatThrowsTypedException_PropagatesException()
+    public void FireResult_TransitionNotPermitted_ReturnsErrorWithCurrentStateAndTriggerInfo()
     {
-        // ga-18 regression: when a custom OnUnhandledTrigger callback throws a non-
-        // InvalidOperationException, FireResult must propagate it untouched (we only
-        // translate InvalidOperationException since that is what Stateless's default
-        // handler throws, and CanFire == false guarantees we are on the unhandled path).
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
-        machine.OnUnhandledTrigger((_, _) => throw new NotSupportedException("custom"));
 
-        var exception = Assert.Throws<NotSupportedException>(() => machine.FireResult(Trigger.Pause));
+        var result = machine.FireResult(Trigger.Pause);
 
-        exception.Message.Should().Be("custom");
+        result.TryGetError(out var err).Should().BeTrue();
+        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Detail.Should().Contain("Pause");
+        err!.Detail.Should().Contain("Idle");
+        var invalidInput = err!.Should().BeOfType<Error.InvalidInput>().Subject;
+        var rule = invalidInput.Rules.Items.Should().ContainSingle().Which;
+        rule.Detail.Should().Contain("Pause");
+        rule.Detail.Should().Contain("Idle");
+    }
+
+    [Fact]
+    public void FireResult_OnUnhandledTriggerWithInvalidOperationException_NotInvoked()
+    {
+        var unhandledCallbackInvoked = false;
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+        machine.OnUnhandledTrigger((_, _) =>
+        {
+            unhandledCallbackInvoked = true;
+            throw new InvalidOperationException("custom");
+        });
+
+        var result = machine.FireResult(Trigger.Pause);
+
+        result.IsFailure.Should().BeTrue();
+        unhandledCallbackInvoked.Should().BeFalse();
+        result.TryGetError(out var err).Should().BeTrue();
+        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Detail.Should().Contain("Pause");
+        err!.Detail.Should().Contain("Idle");
+        err!.Detail.Should().NotContain("custom");
     }
 
     #endregion
@@ -233,6 +251,56 @@ public class StateMachineExtensionsTests
 
         // Assert
         machine.State.Should().Be(State.Idle);
+    }
+
+    [Fact]
+    public void FireResult_GuardThrowsInvalidOperationException_ReturnsFailure()
+    {
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle)
+            .PermitIf(Trigger.Start, State.Running, () => throw new InvalidOperationException("guard blocked"));
+
+        var result = machine.FireResult(Trigger.Start);
+
+        result.IsFailure.Should().BeTrue();
+        result.TryGetError(out var err).Should().BeTrue();
+        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Detail.Should().Be("guard blocked");
+        var invalidInput = err!.Should().BeOfType<Error.InvalidInput>().Subject;
+        invalidInput.Rules.Items.Should().ContainSingle().Which.Detail.Should().Be("guard blocked");
+        machine.State.Should().Be(State.Idle);
+    }
+
+    [Fact]
+    public void FireResult_StateAccessorThrowsInvalidOperationException_PropagatesException()
+    {
+        var stateReadCount = 0;
+        var machine = new StateMachine<State, Trigger>(
+            () => stateReadCount++ switch
+            {
+                0 => State.Idle,
+                1 => throw new InvalidOperationException("state accessor failed"),
+                _ => State.Idle,
+            },
+            _ => { });
+        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => machine.FireResult(Trigger.Start));
+
+        exception.Message.Should().Be("state accessor failed");
+    }
+
+    [Fact]
+    public void FireResult_MultiplePermittedGuardedTransitions_PropagatesConfigurationException()
+    {
+        var machine = new StateMachine<State, Trigger>(State.Idle);
+        machine.Configure(State.Idle)
+            .PermitIf(Trigger.Start, State.Running, () => true)
+            .PermitIf(Trigger.Start, State.Paused, () => true);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => machine.FireResult(Trigger.Start));
+
+        exception.Message.Should().Contain("Guard");
     }
 
     [Fact]

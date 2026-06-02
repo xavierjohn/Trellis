@@ -6,13 +6,16 @@ using System.Reflection;
 using global::FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Trellis.Mediator;
 
 /// <summary>
 /// Extension methods for plugging FluentValidation into the Trellis Mediator validation stage.
 /// </summary>
-public static class FluentValidationServiceCollectionExtensions
+public static partial class FluentValidationServiceCollectionExtensions
 {
+    private const string LoggerCategory = "Trellis.FluentValidation";
+
     /// <summary>
     /// Registers <see cref="FluentValidationMessageValidatorAdapter{TMessage}"/> as the
     /// open-generic <see cref="IMessageValidator{TMessage}"/> implementation. Every
@@ -66,10 +69,17 @@ public static class FluentValidationServiceCollectionExtensions
     /// <param name="assemblies">The assemblies to scan for validator implementations.</param>
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
+    /// <para>
     /// Uses reflection over <see cref="Assembly.GetTypes"/> and constructs closed
     /// <see cref="IValidator{T}"/> service types at runtime, so this overload is not AOT or
     /// trimming compatible. For AOT scenarios, call the parameterless overload and register
     /// validators explicitly.
+    /// </para>
+    /// <para>
+    /// If <see cref="Assembly.GetTypes"/> throws <see cref="ReflectionTypeLoadException"/>,
+    /// scanning continues with loadable types and emits a warning through any singleton
+    /// <see cref="ILoggerFactory"/> instance already registered in <paramref name="services"/>.
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code>
@@ -110,7 +120,7 @@ public static class FluentValidationServiceCollectionExtensions
 
         foreach (var assembly in assemblies)
         {
-            foreach (var type in GetLoadableTypes(assembly))
+            foreach (var type in GetLoadableTypesWithDiagnostics(assembly, services))
             {
                 if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                     continue;
@@ -133,7 +143,7 @@ public static class FluentValidationServiceCollectionExtensions
     }
 
     [RequiresUnreferencedCode("Calls Assembly.GetTypes().")]
-    private static Type[] GetLoadableTypes(Assembly assembly)
+    private static Type[] GetLoadableTypesWithDiagnostics(Assembly assembly, IServiceCollection services)
     {
         try
         {
@@ -141,7 +151,74 @@ public static class FluentValidationServiceCollectionExtensions
         }
         catch (ReflectionTypeLoadException ex)
         {
-            return [.. ex.Types.Where(t => t is not null)!];
+            var loadedCount = ex.Types.Count(static type => type is not null);
+            var droppedCount = ex.Types.Length - loadedCount;
+            var firstReasons = ex.LoaderExceptions
+                .Where(static exception => exception is not null)
+                .Take(3)
+                .Select(static exception => exception!.Message)
+                .ToArray();
+
+            TryEmitWarning(
+                services,
+                $"Trellis.FluentValidation scanner could not load {droppedCount} of " +
+                $"{ex.Types.Length} types from assembly '{assembly.FullName}'. " +
+                "Validators in the dropped types will NOT be registered. " +
+                $"First loader exceptions: {string.Join(" | ", firstReasons)}");
+
+            return [.. ex.Types.Where(static type => type is not null).Select(static type => type!)];
         }
     }
+
+    private static void TryEmitWarning(IServiceCollection services, string message)
+    {
+        // ILoggerFactory is normally registered via AddLogging() which uses
+        // ImplementationType / ImplementationFactory, not ImplementationInstance.
+        // Walk the descriptors so we recognize all three registration shapes.
+        var loggerFactoryDescriptor = services.FirstOrDefault(static descriptor =>
+            descriptor.ServiceType == typeof(ILoggerFactory));
+
+        if (loggerFactoryDescriptor is null)
+        {
+            // No logging registered at all — fall through to Debug.
+            System.Diagnostics.Debug.WriteLine(message);
+            return;
+        }
+
+        // Fast path: an instance is already available, no provider build needed.
+        if (loggerFactoryDescriptor.ImplementationInstance is ILoggerFactory directInstance)
+        {
+            LogScannerTypeLoadFailure(directInstance.CreateLogger(LoggerCategory), message);
+            return;
+        }
+
+        // ImplementationType / ImplementationFactory shape: build a one-off provider so
+        // the registered factory can run. validateScopes=false is safe here because we
+        // only resolve a singleton (ILoggerFactory) and dispose immediately. Cost is a
+        // one-time scan-warning emission, not per-request.
+        try
+        {
+            using var tempProvider = services.BuildServiceProvider(validateScopes: false);
+            var resolved = tempProvider.GetService<ILoggerFactory>();
+            if (resolved is not null)
+            {
+                LogScannerTypeLoadFailure(resolved.CreateLogger(LoggerCategory), message);
+                return;
+            }
+        }
+        catch
+        {
+            // Building the temp provider can throw if other registrations are malformed.
+            // Diagnostics are best-effort — fall through to Debug rather than rethrow.
+        }
+
+        System.Diagnostics.Debug.WriteLine(message);
+    }
+
+    [LoggerMessage(
+        EventId = 1,
+        EventName = "FluentValidationScannerTypeLoadFailure",
+        Level = LogLevel.Warning,
+        Message = "{Message}")]
+    private static partial void LogScannerTypeLoadFailure(ILogger logger, string message);
 }

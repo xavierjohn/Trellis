@@ -80,6 +80,8 @@ public static class DbContextOptionsBuilderExtensions
 | `public static DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder, TimeProvider? timeProvider) where TContext : DbContext` | `DbContextOptionsBuilder<TContext>` | Registers the same interceptor set, but creates a **new** `EntityTimestampInterceptor(timeProvider)` for this call. |
 | `public static DbContextOptionsBuilder AddTrellisInterceptors(this DbContextOptionsBuilder optionsBuilder, TimeProvider? timeProvider)` | `DbContextOptionsBuilder` | Non-generic overload that creates a new `EntityTimestampInterceptor(timeProvider)` for this call. |
 
+Idempotent: calling `AddTrellisInterceptors` multiple times on the same options builder registers each Trellis interceptor exactly once. Consumer-supplied interceptors registered separately via `optionsBuilder.AddInterceptors(...)` are preserved.
+
 ### `ModelConfigurationBuilderExtensions`
 
 ```csharp
