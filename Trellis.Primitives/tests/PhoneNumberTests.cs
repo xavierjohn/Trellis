@@ -99,6 +99,22 @@ public class PhoneNumberTests
     }
 
     [Fact]
+    public void TryCreate_VeryLongAllWhitespaceInput_FailsQuicklyWithoutFullScan()
+    {
+        // The length cap MUST run before IsNullOrWhiteSpace so adversarial all-whitespace
+        // inputs don't force IsNullOrWhiteSpace to walk the full string.
+        var oversizedWhitespace = new string(' ', 10_000);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = PhoneNumber.TryCreate(oversizedWhitespace);
+
+        sw.Stop();
+        result.IsFailure.Should().BeTrue();
+        sw.ElapsedMilliseconds.Should().BeLessThan(100,
+            "the length cap must reject before IsNullOrWhiteSpace scans the full input");
+    }
+
+    [Fact]
     public void TryCreate_InputAtBoundary_DoesNotPreemptivelyReject()
     {
         var atBoundary = new string('a', 32);

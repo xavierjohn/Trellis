@@ -115,11 +115,16 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
 
         var field = fieldName.NormalizeFieldName("phoneNumber");
 
-        if (string.IsNullOrWhiteSpace(value))
+        if (value is null || value.Length == 0)
             return Result.Fail<PhoneNumber>(Error.InvalidInput.ForField(field, "validation.error", "Phone number is required."));
 
+        // Length cap MUST come before any O(n) scan so adversarial all-whitespace inputs
+        // don't force IsNullOrWhiteSpace to walk the full string.
         if (value.Length > MaxInputLength)
             return Result.Fail<PhoneNumber>(Error.InvalidInput.ForField(field, "validation.error", "Phone number must be in E.164 format (e.g., +14155551234)."));
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Result.Fail<PhoneNumber>(Error.InvalidInput.ForField(field, "validation.error", "Phone number is required."));
 
         // Normalize: remove spaces, dashes, and parentheses for validation
         var normalized = NormalizeRegex().Replace(value.Trim(), "");
