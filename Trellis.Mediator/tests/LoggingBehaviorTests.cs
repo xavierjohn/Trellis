@@ -8,6 +8,14 @@ using Trellis.Mediator.Tests.Helpers;
 /// </summary>
 public class LoggingBehaviorTests
 {
+    public static TheoryData<Error, LogLevel> FailureLogLevelCases => new()
+    {
+        { Error.InvalidInput.ForField("field", "validation.error", "Something failed."), LogLevel.Information },
+        { new Error.AuthenticationRequired(), LogLevel.Information },
+        { new Error.Forbidden("authorization.insufficient.permissions"), LogLevel.Information },
+        { new Error.Unexpected("unhandled_exception"), LogLevel.Warning },
+    };
+
     #region Successful handler — logs at Debug level
 
     [Fact]
@@ -36,31 +44,30 @@ public class LoggingBehaviorTests
 
     #endregion
 
-    #region Failed Result — start at Debug, failure exit at Warning
+    #region Failed Result — start at Debug, failure exit at classified level
 
-    [Fact]
-    public async Task Handle_FailedResult_LogsAtWarningLevel()
+    [Theory]
+    [MemberData(nameof(FailureLogLevelCases))]
+    public async Task Handle_FailedResult_ErrorKind_LogsAtExpectedLevel(Error error, LogLevel expectedLevel)
     {
         var logEntries = new List<(LogLevel Level, string Message)>();
         var logger = new FakeLogger<LoggingBehavior<TestCommand, Result<string>>>(logEntries);
         var behavior = new LoggingBehavior<TestCommand, Result<string>>(logger);
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Something failed." }))));
+            Result.Fail<string>(error));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         logEntries.Should().HaveCount(2);
-        // Start line is Debug (cross-cutting), failure exit stays Warning so it surfaces
-        // at the default minimum level even when Trellis.Mediator is filtered to Information.
         logEntries[0].Level.Should().Be(LogLevel.Debug);
-        logEntries[1].Level.Should().Be(LogLevel.Warning);
+        logEntries[1].Level.Should().Be(expectedLevel);
         logEntries[1].Message.Should().Contain("TestCommand");
         // ga-12: Detail is redacted by default (it can contain user input/PII). Only the
         // stable error Code is emitted unless TrellisMediatorTelemetryOptions.IncludeErrorDetail
         // is opted in.
-        logEntries[1].Message.Should().Contain("invalid-input");
+        logEntries[1].Message.Should().Contain(error.Code);
         logEntries[1].Message.Should().NotContain("Something failed.");
     }
 

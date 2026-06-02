@@ -35,7 +35,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// <para>
 /// Type-specific behavior:
 /// <list type="bullet">
-/// <item><c>RequiredGuid</c> — rejects <c>Guid.Empty</c>; generates <c>NewUniqueV4()</c> and <c>NewUniqueV7()</c></item>
+/// <item><c>RequiredGuid</c> — rejects <c>Guid.Empty</c>; generates <c>NewUniqueV4()</c>, <c>NewUniqueV7()</c>, and <c>NewUniqueV7(TimeProvider)</c></item>
 /// <item><c>RequiredString</c> — rejects null/empty/whitespace; trims; supports <c>[StringLength]</c></item>
 /// <item><c>RequiredInt</c> — supports <c>[Range(int, int)]</c></item>
 /// <item><c>RequiredLong</c> — supports <c>[Range(long, long)]</c></item>
@@ -101,6 +101,11 @@ using Trellis.PrimitiveValueObjectGenerator;
 ///
 ///     public static CustomerId NewUniqueV4() =&gt; new(Guid.NewGuid());
 ///     public static CustomerId NewUniqueV7() =&gt; new(Guid.CreateVersion7());
+///     public static CustomerId NewUniqueV7(TimeProvider timeProvider)
+///     {
+///         ArgumentNullException.ThrowIfNull(timeProvider);
+///         return new(Guid.CreateVersion7(timeProvider.GetUtcNow()));
+///     }
 ///
 ///     // Required by IScalarValue - enables automatic ASP.NET Core validation
 ///     public static Result&lt;CustomerId&gt; TryCreate(Guid value)
@@ -501,6 +506,18 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         /// with millisecond precision, followed by random data for uniqueness.
         /// </remarks>
         public static {g.ClassName} NewUniqueV7() => new(Guid.CreateVersion7());
+
+        /// <summary>
+        /// Creates a new instance with a unique Version 7 (time-ordered) GUID using the specified time provider.
+        /// </summary>
+        /// <param name=""timeProvider"">The time provider used to supply the GUID timestamp.</param>
+        /// <returns>A new instance with a time-ordered GUID.</returns>
+        /// <exception cref=""ArgumentNullException"">Thrown when <paramref name=""timeProvider""/> is <see langword=""null""/>.</exception>
+        public static {g.ClassName} NewUniqueV7(TimeProvider timeProvider)
+        {{
+            ArgumentNullException.ThrowIfNull(timeProvider);
+            return new(Guid.CreateVersion7(timeProvider.GetUtcNow()));
+        }}
 
         /// <summary>
         /// Creates a validated instance from a Guid.

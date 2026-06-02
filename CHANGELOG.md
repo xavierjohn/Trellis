@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Round-3 audit cleanup
+
+- **`Trellis.Asp` `PrimitiveJsonReader` boxing eliminated** — `TryReadKnownPrimitive<TPrimitive>` no longer routes value-type primitives through an `object? boxed` temp before casting back to `TPrimitive`. The refactor uses typed branches with a `JitCast<TActual>` helper backed by `Unsafe.As`, removing the per-deserialize box on every primitive scalar value object (`Guid`, `int`, `long`, `decimal`, `DateTime`, `DateTimeOffset`, `bool`, etc.). Reference-type primitives (`string`) are unaffected. Public behavior, error shapes, and `Maybe<TPrimitive>` semantics are unchanged.
+- **`Trellis.Mediator` `LoggingBehavior` log-level discipline** — expected client / domain failures (`Error.InvalidInput`, `InvariantViolation`, `NotFound`, `Gone`, `Conflict`, `AuthenticationRequired`, `Forbidden`, `RateLimited`, and `Aggregate` instances containing only expected inner errors) now log at `Information`. `Unexpected`, `Unavailable`, `TransportFault`, and unknown / future kinds still log at `Warning`. Operators no longer get warning-level noise from normal validation, authentication, and authorization rejections. The `[LoggerMessage]` source-gen shape is preserved.
+- **`Trellis.Mediator` `ExceptionBehavior` reason code is now stable** — unhandled exceptions now return `new Error.Unexpected("unhandled_exception", faultId)` with the fault GUID in the dedicated `FaultId` correlation slot instead of `new Error.Unexpected(Guid.NewGuid().ToString("N"))`, which had been putting the per-incident GUID into the stable `ReasonCode` slot. Consumers can now filter / route on `ReasonCode == "unhandled_exception"`; correlation IDs remain available via `FaultId`. The mapper shape now matches `Result.cs`'s own default exception mapping.
+- **`Trellis.EntityFrameworkCore` `AddTrellisUnitOfWork<TContext>()` fail-fast on conflicting closed-generic transactional registrations** — the method's own comments promised that the dedup check recognized both open-generic and closed-generic `TransactionalCommandBehavior<,>` pre-registrations. The actual implementation only matched the open generic; users who pre-registered a closed `IPipelineBehavior<MyCmd, MyRes> → TransactionalCommandBehavior<MyCmd, MyRes>` (with or without a later open-generic registration) ended up with two transactional behaviors firing on matching commands and double commits. The helper now throws `InvalidOperationException` with an actionable message naming both supported resolutions (remove the closed registration and let the helper install the open generic, or call `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` to keep explicit closed registrations and skip open-generic installation). The open-generic-only idempotent path is unchanged.
+- **`Trellis.ServiceDefaults` / `Trellis.Asp` nested-JSON-path actor-provider configure is now optional** — `UseNestedJsonPathClaimsActorProvider(...)` and `AddNestedJsonPathClaimsActorProvider(...)` now accept `Action<NestedJsonPathClaimsActorOptions>? configure = null`, matching the sibling claims / Entra / development actor-provider helpers. Default options (flat claims) are applied when `configure` is omitted.
+- **`Trellis.Primitives` `RequiredGuid<TSelf>.NewUniqueV7(TimeProvider)`** — new overload accepts an explicit `TimeProvider` so tests can use `FakeTimeProvider` for deterministic v7 GUID timestamps. The previously flaky V7-ordering test in `RequiredGuidTests` (which relied on `Thread.Sleep(2)` and Windows millisecond-clock granularity) now uses the new overload and is deterministic. The generator emits the new overload for every `RequiredGuid<TSelf>` derivation; no migration is required.
+- **`Trellis.Core` `Result<T>` raw-JSON example drift** — the `README.md`, `NUGET_README.md`, and `ResultRequiresExplicitHttpMappingConverter` XML doc all showed a stale `{"IsSuccess": true, "Value": ..., "Error": null}` example for raw `Result<T>` serialization. `Result<T>` has no public `Value` property; the example now reflects what raw serialization could actually produce (`{"IsSuccess": true, "IsFailure": false, "Error": null}` — public state only, no success value) and reinforces that consumers should use `Match` / `TryGetValue` / `Deconstruct` or the HTTP-mapping path via `Trellis.Asp`.
+
 ### Fixed — Round-2 audit cleanup
 
 - **Input-size caps** — `Trellis.Asp` idempotency keys, `Trellis.Primitives` phone numbers, and `Trellis.Core` cursor tokens now reject oversized inputs before parsing, normalization, or decoding: idempotency header values above 4 KiB, phone-number input above 32 characters, and cursor tokens above 1024 characters. Rejections preserve the existing invalid-key / invalid-input / `cursor.malformed` failure shapes while hardening DoS paths. No migration is required.
@@ -281,10 +291,11 @@ The migration guide covers the mechanical replacements.
 `Result<T>` (and the `IResult` / `IResult<T>` interfaces) now carry a
 default `[JsonConverter]` that throws `NotSupportedException` on any direct
 JSON serialize / deserialize attempt. Previously, returning a raw
-`Result<T>` from a controller silently produced a struct-dump JSON shape
-(`{"IsSuccess": true, "Value": ..., "Error": null}`) with no HTTP
-status-code mapping. The new converter fires on the first request and
-names the canonical fix: call `.ToHttpResponse()` (Trellis.Asp) or unwrap
+`Result<T>` from a controller silently produced a public-state JSON dump
+(for example, `{"IsSuccess": true, "IsFailure": false, "Error": null}` for
+a success, with no success value) and still had no HTTP status-code mapping.
+The new converter fires on the first request and names the canonical fix:
+call `.ToHttpResponse()` (Trellis.Asp) or unwrap
 via `Match` / `TryGetValue` before serialization. Option-registered
 converters take precedence and let consumers opt back in for logging /
 IPC / storage scenarios.

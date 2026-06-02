@@ -27,6 +27,85 @@ public class UnitOfWorkServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddTrellisUnitOfWork_ClosedTransactionalBehaviorPreRegistered_ThrowsWithActionableMessage()
+    {
+        // Adding the open generic alongside a pre-existing closed-generic
+        // TransactionalCommandBehavior<TMessage,TResponse> would resolve both descriptors for
+        // matching commands, producing two commits per command. The helper fails fast and tells
+        // the consumer the two supported resolutions.
+        var services = CreateServices();
+        services.AddScoped<
+            IPipelineBehavior<ClosedTransactionalCommand, Result<Unit>>,
+            TransactionalCommandBehavior<ClosedTransactionalCommand, Result<Unit>>>();
+
+        var act = () => services.AddTrellisUnitOfWork<RepoTestDbContext>();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*TransactionalCommandBehavior*closed*generic*")
+            .WithMessage("*AddTrellisUnitOfWorkWithoutBehavior*");
+    }
+
+    [Fact]
+    public void AddTrellisUnitOfWork_OpenTransactionalBehaviorPreRegistered_SkipsDuplicateRegistration()
+    {
+        var services = CreateServices();
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
+
+        services.AddTrellisUnitOfWork<RepoTestDbContext>();
+
+        TransactionalBehaviorDescriptorsFor<ClosedTransactionalCommand, Result<Unit>>(services)
+            .Should().ContainSingle()
+            .Which.ServiceType.Should().Be(typeof(IPipelineBehavior<,>));
+    }
+
+    [Fact]
+    public void AddTrellisUnitOfWork_OpenAndClosedTransactionalBehaviorsPreRegistered_ThrowsBecauseClosedConflictsWithOpen()
+    {
+        // The open + closed pair was already a double-fire bug before the helper was called;
+        // surface it instead of silently leaving the broken pair in place.
+        var services = CreateServices();
+        services.AddScoped<
+            IPipelineBehavior<ClosedTransactionalCommand, Result<Unit>>,
+            TransactionalCommandBehavior<ClosedTransactionalCommand, Result<Unit>>>();
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
+
+        var act = () => services.AddTrellisUnitOfWork<RepoTestDbContext>();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*TransactionalCommandBehavior*closed*generic*");
+    }
+
+    [Fact]
+    public void AddTrellisUnitOfWorkWithoutBehavior_ClosedTransactionalBehaviorPreRegistered_DoesNotThrow()
+    {
+        // The without-behavior helper explicitly opts out of open-generic installation, so the
+        // consumer's closed registration is intentional and not in conflict.
+        var services = CreateServices();
+        services.AddScoped<
+            IPipelineBehavior<ClosedTransactionalCommand, Result<Unit>>,
+            TransactionalCommandBehavior<ClosedTransactionalCommand, Result<Unit>>>();
+
+        var act = () => services.AddTrellisUnitOfWorkWithoutBehavior<RepoTestDbContext>();
+
+        act.Should().NotThrow();
+        services.Should().NotContain(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>)
+            && d.ImplementationType == typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void AddTrellisUnitOfWork_NoTransactionalBehaviorPreRegistered_AddsOneOpenGenericRegistration()
+    {
+        var services = CreateServices();
+
+        services.AddTrellisUnitOfWork<RepoTestDbContext>();
+
+        TransactionalBehaviorDescriptorsFor<ClosedTransactionalCommand, Result<Unit>>(services)
+            .Should().ContainSingle()
+            .Which.ServiceType.Should().Be(typeof(IPipelineBehavior<,>));
+    }
+
+    [Fact]
     public void AddTrellisUnitOfWork_registers_IUnitOfWork_and_behavior()
     {
         // Arrange
@@ -121,6 +200,34 @@ public class UnitOfWorkServiceCollectionExtensionsTests
     }
 
     #region Test Infrastructure
+
+    private static ServiceCollection CreateServices()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<RepoTestDbContext>(o => o.UseSqlite("DataSource=:memory:").IgnoreManyServiceProvidersCreatedWarning());
+        return services;
+    }
+
+    private static List<ServiceDescriptor> TransactionalBehaviorDescriptorsFor<TMessage, TResponse>(
+        IServiceCollection services)
+        where TMessage : ICommand<TResponse>
+        where TResponse : IResult, IFailureFactory<TResponse> =>
+        services.Where(IsTransactionalBehaviorDescriptorFor<TMessage, TResponse>).ToList();
+
+    private static bool IsTransactionalBehaviorDescriptorFor<TMessage, TResponse>(ServiceDescriptor descriptor)
+        where TMessage : ICommand<TResponse>
+        where TResponse : IResult, IFailureFactory<TResponse>
+    {
+        var serviceType = descriptor.ServiceType;
+        var implementationType = descriptor.ImplementationType;
+
+        return (serviceType == typeof(IPipelineBehavior<,>)
+                && implementationType == typeof(TransactionalCommandBehavior<,>))
+            || (serviceType == typeof(IPipelineBehavior<TMessage, TResponse>)
+                && implementationType == typeof(TransactionalCommandBehavior<TMessage, TResponse>));
+    }
+
+    private sealed record ClosedTransactionalCommand : ICommand<Result<Unit>>;
 
     private sealed class FakeBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, TResponse>
         where TMessage : IMessage

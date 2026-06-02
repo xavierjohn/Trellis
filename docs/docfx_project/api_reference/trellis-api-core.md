@@ -1775,7 +1775,7 @@ Default `[JsonConverter]` factory attached to `Result<T>`, `IResult`, and `IResu
 2. **Non-HTTP path** — unwrap the value with `Match` / `TryGetValue` before serialization.
 3. **Explicit override** — register a converter (or a `JsonConverterFactory`) in `JsonSerializerOptions.Converters`. Option-registered converters take precedence over the type-level `[JsonConverter]` attribute. **The override must match the declared static type:** a `JsonConverter<Result<T>>` only covers `Result<T>`-declared values; `IResult<T>`-declared values need `JsonConverter<IResult<T>>`; `IResult`-declared values need `JsonConverter<IResult>`. Use a `JsonConverterFactory` whose `CanConvert` matches every shape to cover the mixed case in one registration.
 
-The attribute lives on both the struct AND the interfaces because STJ resolves `[JsonConverter]` against the static declared type: an endpoint declared as `Task<IResult<int>> GetAsync()` would otherwise bypass a converter attached only to the struct, silently producing the same struct-dump JSON shape (`{"IsSuccess": true, "Value": ..., "Error": null}`) the converter exists to prevent.
+The attribute lives on both the struct AND the interfaces because STJ resolves `[JsonConverter]` against the static declared type: an endpoint declared as `Task<IResult<int>> GetAsync()` would otherwise bypass a converter attached only to the struct, silently producing a public-state dump (for example, `{"IsSuccess": true, "IsFailure": false, "Error": null}` for a success, with no success value) instead of using the explicit HTTP mapping the converter exists to enforce.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -2179,6 +2179,7 @@ static partial void ValidateAdditional(string value, string fieldName, ref strin
 [JsonConverter(typeof(ParsableJsonConverter<TSelf>))]
 public static TSelf NewUniqueV4()
 public static TSelf NewUniqueV7()
+public static TSelf NewUniqueV7(TimeProvider timeProvider)
 public static Result<TSelf> TryCreate(Guid value, string? fieldName = null)
 public static Result<TSelf> TryCreate(Guid? requiredGuidOrNothing, string? fieldName = null)
 public static Result<TSelf> TryCreate(string? stringOrNull, string? fieldName = null)
@@ -2191,6 +2192,7 @@ static partial void ValidateAdditional(Guid value, string fieldName, ref string?
 ```
 
 - Built-in validation: rejects `null` and `Guid.Empty`. Use `[AllowEmpty]` only when the all-zero GUID is legitimate persisted domain state.
+- `NewUniqueV7(TimeProvider timeProvider)` uses `timeProvider.GetUtcNow()` as the Version 7 timestamp and throws `ArgumentNullException` when `timeProvider` is `null`.
 
 #### `RequiredInt<TSelf>`
 

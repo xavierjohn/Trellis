@@ -9,9 +9,10 @@ using System.Text.Json.Serialization;
 /// <see cref="IResult"/>, and <see cref="IResult{TValue}"/> that fails fast when a result is
 /// JSON-serialized without going through Trellis's HTTP-mapping path
 /// (<c>Result&lt;T&gt;.ToHttpResponse()</c> in <c>Trellis.Asp</c>) or an explicit consumer
-/// converter. Directly serializing <see cref="Result{TValue}"/> would emit
-/// <c>{"IsSuccess": bool, "Value": …, "Error": …}</c> — a struct dump, not a stable wire shape
-/// and not the HTTP problem-details / status-code mapping consumers expect from Trellis.
+/// converter. Without this converter, direct serialization could only emit public status/error
+/// metadata such as <c>{"IsSuccess": bool, "IsFailure": bool, "Error": …}</c> — a struct dump
+/// with no success value, not a stable wire shape, and not the HTTP problem-details / status-code
+/// mapping consumers expect from Trellis.
 /// </summary>
 /// <remarks>
 /// <para>

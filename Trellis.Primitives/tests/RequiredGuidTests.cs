@@ -3,6 +3,7 @@
 using System;
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Time.Testing;
 using Trellis.Testing;
 using Xunit;
 
@@ -278,21 +279,21 @@ public class RequiredGuidTests
     }
 
     [Fact]
-    public void NewUniqueV7_creates_time_ordered_guids()
+    public void NewUniqueV7_TimeProvider_ClockAdvances_GuidsSortChronologically()
     {
-        // Act - create GUIDs with time delay to ensure different timestamps
-        var id1 = EmployeeId.NewUniqueV7();
-        Thread.Sleep(2); // Small delay to ensure different millisecond timestamp
-        var id2 = EmployeeId.NewUniqueV7();
-        Thread.Sleep(2);
-        var id3 = EmployeeId.NewUniqueV7();
+        // Arrange
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
-        // Assert - they should be in ascending order when sorted
-        // (Version 7 GUIDs are time-sortable by their timestamp prefix)
+        // Act
+        var id1 = EmployeeId.NewUniqueV7(clock);
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        var id2 = EmployeeId.NewUniqueV7(clock);
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        var id3 = EmployeeId.NewUniqueV7(clock);
+
+        // Assert
         var sorted = new[] { id3, id1, id2 }.OrderBy(x => x.Value).ToArray();
-        sorted[0].Should().Be(id1);
-        sorted[1].Should().Be(id2);
-        sorted[2].Should().Be(id3);
+        sorted.Should().Equal([id1, id2, id3]);
     }
 
     [Fact]

@@ -30,6 +30,24 @@ public class ExceptionBehaviorTests
     }
 
     [Fact]
+    public async Task Handle_HandlerThrows_UnexpectedErrorUsesStableReasonCodeAndFaultId()
+    {
+        var logEntries = new List<(LogLevel Level, string Message, Exception? Ex)>();
+        var logger = new FakeLogger<ExceptionBehavior<TestCommand, Result<string>>>(logEntries);
+        var behavior = new ExceptionBehavior<TestCommand, Result<string>>(logger);
+        var command = new TestCommand("Alice");
+        var next = NextDelegate.Throwing<TestCommand, Result<string>>(
+            new InvalidOperationException("Something went wrong"));
+
+        var result = await behavior.Handle(command, next, CancellationToken.None);
+
+        var error = result.UnwrapError().Should().BeOfType<Error.Unexpected>().Subject;
+        error.ReasonCode.Should().Be("unhandled_exception");
+        error.FaultId.Should().NotBeNullOrWhiteSpace();
+        Guid.TryParseExact(error.FaultId!, "N", out _).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Handle_HandlerThrows_DoesNotLeakExceptionMessage()
     {
         var logEntries = new List<(LogLevel Level, string Message, Exception? Ex)>();

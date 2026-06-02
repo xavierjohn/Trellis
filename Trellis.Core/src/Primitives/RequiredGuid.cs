@@ -16,7 +16,7 @@
 /// <list type="bullet">
 /// <item><c>IScalarValue&lt;TSelf, Guid&gt;</c> implementation for ASP.NET Core automatic validation</item>
 /// <item><c>NewUniqueV4()</c> - Factory method for generating new unique Version 4 (random) identifiers</item>
-/// <item><c>NewUniqueV7()</c> - Factory method for generating new unique Version 7 (time-ordered) identifiers</item>
+/// <item><c>NewUniqueV7()</c> / <c>NewUniqueV7(TimeProvider)</c> - Factory methods for generating new unique Version 7 (time-ordered) identifiers</item>
 /// <item><c>TryCreate(Guid)</c> - Factory method for non-nullable GUIDs (required by IScalarValue)</item>
 /// <item><c>TryCreate(Guid?, string?)</c> - Factory method with null-only rejection by default (add <see cref="NotDefaultAttribute"/> for <see cref="Guid.Empty"/> rejection) and custom field name</item>
 /// <item><c>TryCreate(string?, string?)</c> - Factory method for parsing strings with validation</item>
@@ -58,6 +58,7 @@
 /// // - IScalarValue&lt;CustomerId, Guid&gt; interface implementation
 /// // - public static CustomerId NewUniqueV4() => new(Guid.NewGuid());        // Version 4 (random)
 /// // - public static CustomerId NewUniqueV7() => new(Guid.CreateVersion7()); // Version 7 (time-ordered)
+/// // - public static CustomerId NewUniqueV7(TimeProvider timeProvider) => new(Guid.CreateVersion7(timeProvider.GetUtcNow()));
 /// // - public static Result&lt;CustomerId&gt; TryCreate(Guid value)
 /// // - public static Result&lt;CustomerId&gt; TryCreate(Guid? value, string? fieldName = null)
 /// // - public static Result&lt;CustomerId&gt; TryCreate(string? value, string? fieldName = null)
@@ -211,7 +212,7 @@ public abstract class RequiredGuid<TSelf> : ScalarValueObject<TSelf, Guid>
     /// Direct instantiation should be avoided. Instead, use the generated factory methods:
     /// <list type="bullet">
     /// <item><c>NewUniqueV4()</c> - Generate a new random version 4 GUID</item>
-    /// <item><c>NewUniqueV7()</c> - Generate a new time-ordered version 7 GUID</item>
+    /// <item><c>NewUniqueV7()</c> / <c>NewUniqueV7(TimeProvider)</c> - Generate a new time-ordered version 7 GUID</item>
     /// <item><c>TryCreate(Guid?, string?)</c> - Create from GUID with validation</item>
     /// <item><c>TryCreate(string?, string?)</c> - Create from string with validation</item>
     /// </list>

@@ -41,14 +41,15 @@ public sealed partial class ExceptionBehavior<TMessage, TResponse>
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            var faultId = Guid.NewGuid().ToString("N");
             var messageName = typeof(TMessage).Name;
-            LogUnhandledException(_logger, ex, messageName);
+            LogUnhandledException(_logger, ex, messageName, faultId);
 
-            var error = new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." };
+            var error = new Error.Unexpected("unhandled_exception", faultId) { Detail = "An unexpected error occurred while processing the request." };
             return TResponse.CreateFailure(error);
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception in {MessageName}")]
-    private static partial void LogUnhandledException(ILogger logger, Exception ex, string messageName);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception in {MessageName} with fault id {FaultId}")]
+    private static partial void LogUnhandledException(ILogger logger, Exception ex, string messageName, string faultId);
 }

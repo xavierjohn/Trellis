@@ -81,36 +81,59 @@ public static class UnitOfWorkServiceCollectionExtensions
         });
 
     /// <summary>
-    /// Inserts <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> after the last
-    /// <see cref="IPipelineBehavior{TMessage,TResponse}"/> registration to ensure it runs
+    /// Inserts the open-generic <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/>
+    /// after the last <see cref="IPipelineBehavior{TMessage,TResponse}"/> registration so it runs
     /// innermost (closest to the handler). If no behaviors are registered yet, appends at the end.
-    /// Detects both open-generic and closed-generic behavior registrations. Idempotent: a
-    /// second call is a no-op when the behavior is already registered.
     /// </summary>
+    /// <remarks>
+    /// <para>Idempotent for the open-generic case: a second call is a no-op when the open-generic
+    /// <c>TransactionalCommandBehavior&lt;,&gt;</c> is already registered.</para>
+    /// <para>Throws <see cref="InvalidOperationException"/> when a closed-generic
+    /// <c>TransactionalCommandBehavior&lt;TMessage,TResponse&gt;</c> is already registered. The
+    /// open generic added here would resolve alongside the closed registration on matching
+    /// commands and cause <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> to run
+    /// twice (two commits per command). The actionable resolution is to remove the closed
+    /// registration (so this method installs the open generic that covers every command), or to
+    /// use <c>AddTrellisUnitOfWorkWithoutBehavior&lt;TContext&gt;()</c> and keep the explicit
+    /// closed registrations.</para>
+    /// </remarks>
     private static void InsertTransactionalBehavior(IServiceCollection services)
     {
-        // Single-pass scan: simultaneously detect an existing TransactionalCommandBehavior
-        // registration (idempotency) and track the index of the last open-or-closed
-        // IPipelineBehavior<,> registration so the new behavior can be inserted innermost.
+        // Single-pass scan: detect an existing open-generic TransactionalCommandBehavior
+        // registration (idempotency), detect any closed-generic TransactionalCommandBehavior
+        // registrations (conflict — must throw), and track the index of the last open-or-closed
+        // IPipelineBehavior<,> registration so the new behavior is inserted innermost.
         var lastBehaviorIndex = -1;
+        var openTransactionalAlreadyRegistered = false;
+        string? closedConflictDisplay = null;
         for (var i = 0; i < services.Count; i++)
         {
-            var serviceType = services[i].ServiceType;
-            var implementationType = services[i].ImplementationType;
+            var existingDescriptor = services[i];
+            if (!IsPipelineBehaviorRegistration(existingDescriptor.ServiceType))
+                continue;
 
-            if (serviceType == typeof(IPipelineBehavior<,>)
-                && implementationType == typeof(TransactionalCommandBehavior<,>))
-            {
-                return;
-            }
+            if (IsOpenTransactionalCommandBehaviorRegistration(existingDescriptor))
+                openTransactionalAlreadyRegistered = true;
+            else if (IsClosedTransactionalCommandBehaviorRegistration(existingDescriptor))
+                closedConflictDisplay ??= FormatDescriptor(existingDescriptor);
 
-            if (serviceType == typeof(IPipelineBehavior<,>)
-                || (serviceType.IsGenericType
-                    && serviceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
-            {
-                lastBehaviorIndex = i;
-            }
+            lastBehaviorIndex = i;
         }
+
+        if (closedConflictDisplay is not null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot register the open-generic TransactionalCommandBehavior<,> alongside the " +
+                $"pre-existing closed-generic registration '{closedConflictDisplay}'. Both would " +
+                $"run on matching commands, producing two commits per command. Either remove the " +
+                $"closed registration so AddTrellisUnitOfWork<TContext>() can install the open " +
+                $"generic that covers every command, or call " +
+                $"AddTrellisUnitOfWorkWithoutBehavior<TContext>() to keep the explicit closed " +
+                $"registrations and skip open-generic installation.");
+        }
+
+        if (openTransactionalAlreadyRegistered)
+            return;
 
         var descriptor = ServiceDescriptor.Scoped(
             typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
@@ -120,4 +143,27 @@ public static class UnitOfWorkServiceCollectionExtensions
         else
             services.Add(descriptor);
     }
+
+    private static bool IsPipelineBehaviorRegistration(Type serviceType) =>
+        serviceType == typeof(IPipelineBehavior<,>)
+        || (serviceType.IsGenericType
+            && serviceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>));
+
+    private static bool IsOpenTransactionalCommandBehaviorRegistration(ServiceDescriptor descriptor) =>
+        descriptor.ServiceType == typeof(IPipelineBehavior<,>)
+        && descriptor.ImplementationType == typeof(TransactionalCommandBehavior<,>);
+
+    private static bool IsClosedTransactionalCommandBehaviorRegistration(ServiceDescriptor descriptor)
+    {
+        if (descriptor.ServiceType is not { IsGenericType: true } serviceType
+            || serviceType.GetGenericTypeDefinition() != typeof(IPipelineBehavior<,>))
+            return false;
+
+        var implementationType = descriptor.ImplementationType;
+        return implementationType is { IsGenericType: true } impl
+            && impl.GetGenericTypeDefinition() == typeof(TransactionalCommandBehavior<,>);
+    }
+
+    private static string FormatDescriptor(ServiceDescriptor descriptor) =>
+        $"{descriptor.ServiceType.FullName} -> {descriptor.ImplementationType?.FullName}";
 }

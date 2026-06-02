@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
-types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, ClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency]
+types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency]
 version: v3
 last_verified: 2026-05-01
 audience: [llm]
@@ -38,7 +38,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | Add `Cache-Control` directive (per endpoint) | `.WithCacheControl(CacheControl.NoStore())` / `.WithCacheControl(CacheControl.Public(TimeSpan.FromMinutes(5)))` / `.WithCacheControl(t => …)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`CacheControl`](#cachecontrol) |
 | Honor `Prefer: return=minimal` | `.HonorPrefer()` on write responses | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
 | Return paginated list responses | `Result<Page<T>>.ToHttpResponse(nextUrlBuilder, bodySelector, ...)` | [`PagedResponse<TResponse>`](#pagedresponsetresponse) |
-| Resolve actors from requests | `AddClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
+| Resolve actors from requests | `AddClaimsActorProvider`, `AddNestedJsonPathClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Compose a system actor for background workers | `AddTrellisWorkerActor` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Bind scalar value objects from routes/query/body | `AddTrellisAspWithScalarValidation()` (or `AddTrellisAsp()` + `AddScalarValueValidation()`), plus route constraints / validation middleware as needed | [`Trellis.Asp.ModelBinding`](#namespace-trellisaspmodelbinding), [`Trellis.Asp.Validation`](#namespace-trellisaspvalidation) |
 | Add Trellis ProblemDetails recipe (trace id from `Activity.Current`, friendly 500 detail, `allow` extension on 405) | `services.AddTrellisProblemDetails()` plus `app.UseTrellisProblemDetails()` (or `options.UseProblemDetails()` via [`Trellis.ServiceDefaults`](trellis-api-servicedefaults.md#trellisservicebuilder)) | [`ServiceCollectionExtensions`](#servicecollectionextensions), [`ApplicationBuilderExtensions`](#applicationbuilderextensions) |
@@ -574,6 +574,7 @@ public static class ServiceCollectionExtensions
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IServiceCollection AddClaimsActorProvider(this IServiceCollection services, Action<ClaimsActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `ClaimsActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `ClaimsActorProvider`. |
+| `public static IServiceCollection AddNestedJsonPathClaimsActorProvider(this IServiceCollection services, Action<NestedJsonPathClaimsActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `NestedJsonPathClaimsActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `NestedJsonPathClaimsActorProvider`. When `configure` is omitted, the default empty JSON paths make the provider behave like `ClaimsActorProvider`. |
 | `public static IServiceCollection AddEntraActorProvider(this IServiceCollection services, Action<EntraActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `EntraActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `EntraActorProvider`. |
 | `public static IServiceCollection AddDevelopmentActorProvider(this IServiceCollection services, Action<DevelopmentActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor` + logging, configures `DevelopmentActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `DevelopmentActorProvider`. The provider itself throws outside the Development environment. |
 | `public static IServiceCollection AddCachingActorProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(this IServiceCollection services) where T : class, IActorProvider` | `IServiceCollection` | Registers concrete provider `T` as scoped, then **replaces** the `IActorProvider` registration with a scoped `CachingActorProvider` wrapping `T`. |
@@ -600,6 +601,22 @@ public class ClaimsActorOptions
 | `ActorIdClaim` | `string` | Claim type used for `Actor.Id`. Default: `"sub"` (RFC 7519 / OIDC subject claim). Matched against `Claim.Type` literally first; if the configured name is not found, falls back to its counterpart in a curated short↔long mapping table maintained by the provider. Covers the OAuth2 / OIDC / Microsoft identity-platform claims that consumers realistically configure as an actor id: `"sub"`/`"nameid"` ↔ `ClaimTypes.NameIdentifier`, `"oid"` ↔ `http://schemas.microsoft.com/identity/claims/objectidentifier`, `"upn"` ↔ `ClaimTypes.Upn`, `"email"` ↔ `ClaimTypes.Email`, `"role"`/`"roles"` ↔ `ClaimTypes.Role`, `"name"`/`"unique_name"` ↔ `ClaimTypes.Name`, `"tid"` ↔ `http://schemas.microsoft.com/identity/claims/tenantid`, `"idp"`/`"acr"`/`"amr"` ↔ their Microsoft long forms. The bidirectional fallback makes typical configurations just-work against both `JwtBearerOptions.MapInboundClaims = true` (ASP.NET default) and `false`. Emits a debug-level log entry when the fallback fires. No dotted/JSON-path traversal. The curated table is a subset of `JwtSecurityTokenHandler.DefaultInboundClaimTypeMap`; the space-delimited OAuth scope claim `"scp"`, AD FS 1.x legacy aliases, and device / certificate / request-transport / password-policy claims are intentionally not covered (see the `PermissionsClaim` row for the `scp` rationale). |
 | `PermissionsClaim` | `string` | Claim type used for permissions. Default: `"permissions"`. Multi-valued JWT claims arrive as repeated `Claim` instances and are aggregated via `FindAll`. Matched against `Claim.Type` literally first; the resolver also queries every counterpart in the provider's curated short↔long mapping table (notably `"role"`/`"roles"` ↔ `ClaimTypes.Role`) and merges all matches into a single deduplicated set. This makes `PermissionsClaim = "roles"` and `PermissionsClaim = ClaimTypes.Role` both just-work against `JwtBearerOptions.MapInboundClaims = true` (ASP.NET default) and `false`. The default `"permissions"` is not in the mapping table, so it resolves by literal match only (regression-safe). The fallback emits a debug-level log entry when the configured claim resolves nothing but a counterpart does. The OAuth scope claim `"scp"` is intentionally NOT covered by the fallback: its value is space-delimited (RFC 6749 §3.3, e.g. `"orders.read orders.write"`) and `ClaimsActorProvider` snapshots claim values verbatim into the permission set, so wiring the fallback would still leave `Actor.HasPermission("orders.read")` returning `false`. OAuth scope-as-permission requires a custom subclass that splits the value. See the `ActorIdClaim` row above for the full covered subset. |
 
+### `NestedJsonPathClaimsActorOptions`
+
+**Declaration**
+
+```csharp
+public sealed class NestedJsonPathClaimsActorOptions : ClaimsActorOptions
+```
+
+Inherits the flat `ActorIdClaim` / `PermissionsClaim` defaults from `ClaimsActorOptions`. A default `new NestedJsonPathClaimsActorOptions()` is valid: `ContainerClaim`, `ActorIdPath`, and `PermissionsPath` are empty, so the provider delegates to flat-claim resolution.
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `ContainerClaim` | `string` | Claim type whose value carries the JSON payload. Default: empty. Required only when `ActorIdPath` or `PermissionsPath` is non-empty. |
+| `ActorIdPath` | `string` | Dotted JSON path inside `ContainerClaim` used for `Actor.Id`. Default: empty, which falls back to inherited flat `ActorIdClaim` resolution. |
+| `PermissionsPath` | `string` | Dotted JSON path inside `ContainerClaim` used for permissions. Default: empty, which falls back to inherited flat `PermissionsClaim` resolution. Terminal values may be a string, an array of strings, or an object whose property names become permissions. |
+
 ### `ClaimsActorProvider`
 
 **Declaration**
@@ -621,6 +638,20 @@ Hydrates an `Actor` from the current `HttpContext.User` using flat JWT/OIDC clai
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public virtual Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Returns `Maybe<Actor>.None` when no authenticated identity exists or the configured `ActorIdClaim` is missing from the authenticated identity — the mediator pipeline maps `Maybe.None` to `Error.AuthenticationRequired` (HTTP 401). Throws `InvalidOperationException` only when `HttpContext` is missing (configuration bug, surfaces as HTTP 500). On success, permissions come from `FindAll(PermissionsClaim)` plus every counterpart in the provider's curated short↔long mapping table (see `PermissionsClaim` above), merged and snapshotted into a `FrozenSet<string>`; the result is wrapped via `Maybe.From(Actor.Create(actorId, permissions))` so forbidden permissions and attributes default to empty. |
+
+### `NestedJsonPathClaimsActorProvider`
+
+**Declaration**
+
+```csharp
+public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
+```
+
+Maps nested JSON claim payloads to actor ids or permissions via `NestedJsonPathClaimsActorOptions`. If `ActorIdPath` and `PermissionsPath` are both empty, it delegates to `ClaimsActorProvider`, making the no-config registration safe for flat-claim tokens. The constructor throws `InvalidOperationException` only when a nested path is configured without `ContainerClaim`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public override Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Traverses the configured JSON paths when present, falls back to inherited flat-claim resolution when the container claim is absent, malformed, or a path misses, and emits the same silent-empty-permissions diagnostics as `ClaimsActorProvider`. |
 
 ### `EntraActorOptions`
 

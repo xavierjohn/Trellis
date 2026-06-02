@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp.Validation;
 
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 /// <summary>
@@ -43,93 +44,127 @@ internal static class PrimitiveJsonReader
         out TPrimitive? value)
         where TPrimitive : IComparable
     {
-        object? boxed;
         var primitiveType = typeof(TPrimitive);
 
         if (primitiveType == typeof(string))
         {
-            boxed = reader.GetString();
-        }
-        else if (primitiveType == typeof(Guid))
-        {
-            boxed = reader.GetGuid();
-        }
-        else if (primitiveType == typeof(int))
-        {
-            boxed = reader.GetInt32();
-        }
-        else if (primitiveType == typeof(long))
-        {
-            boxed = reader.GetInt64();
-        }
-        else if (primitiveType == typeof(short))
-        {
-            boxed = reader.GetInt16();
-        }
-        else if (primitiveType == typeof(byte))
-        {
-            boxed = reader.GetByte();
-        }
-        else if (primitiveType == typeof(sbyte))
-        {
-            boxed = reader.GetSByte();
-        }
-        else if (primitiveType == typeof(ushort))
-        {
-            boxed = reader.GetUInt16();
-        }
-        else if (primitiveType == typeof(uint))
-        {
-            boxed = reader.GetUInt32();
-        }
-        else if (primitiveType == typeof(ulong))
-        {
-            boxed = reader.GetUInt64();
-        }
-        else if (primitiveType == typeof(double))
-        {
-            boxed = reader.GetDouble();
-        }
-        else if (primitiveType == typeof(float))
-        {
-            boxed = reader.GetSingle();
-        }
-        else if (primitiveType == typeof(decimal))
-        {
-            boxed = reader.GetDecimal();
-        }
-        else if (primitiveType == typeof(bool))
-        {
-            boxed = reader.GetBoolean();
-        }
-        else if (primitiveType == typeof(DateTime))
-        {
-            boxed = reader.GetDateTime();
-        }
-        else if (primitiveType == typeof(DateTimeOffset))
-        {
-            boxed = reader.GetDateTimeOffset();
-        }
-        else if (primitiveType == typeof(DateOnly))
-        {
-            boxed = ReadDateOnly(ref reader);
-        }
-        else if (primitiveType == typeof(TimeOnly))
-        {
-            boxed = ReadTimeOnly(ref reader);
-        }
-        else if (primitiveType == typeof(TimeSpan))
-        {
-            boxed = ReadTimeSpan(ref reader);
-        }
-        else
-        {
-            value = default;
-            return false;
+            value = (TPrimitive?)(object?)reader.GetString();
+            return true;
         }
 
-        value = boxed is null ? default : (TPrimitive)boxed;
-        return boxed is not null || primitiveType == typeof(string);
+        if (primitiveType == typeof(Guid))
+        {
+            value = JitCast<Guid>(reader.GetGuid());
+            return true;
+        }
+
+        if (primitiveType == typeof(int))
+        {
+            value = JitCast<int>(reader.GetInt32());
+            return true;
+        }
+
+        if (primitiveType == typeof(long))
+        {
+            value = JitCast<long>(reader.GetInt64());
+            return true;
+        }
+
+        if (primitiveType == typeof(short))
+        {
+            value = JitCast<short>(reader.GetInt16());
+            return true;
+        }
+
+        if (primitiveType == typeof(byte))
+        {
+            value = JitCast<byte>(reader.GetByte());
+            return true;
+        }
+
+        if (primitiveType == typeof(sbyte))
+        {
+            value = JitCast<sbyte>(reader.GetSByte());
+            return true;
+        }
+
+        if (primitiveType == typeof(ushort))
+        {
+            value = JitCast<ushort>(reader.GetUInt16());
+            return true;
+        }
+
+        if (primitiveType == typeof(uint))
+        {
+            value = JitCast<uint>(reader.GetUInt32());
+            return true;
+        }
+
+        if (primitiveType == typeof(ulong))
+        {
+            value = JitCast<ulong>(reader.GetUInt64());
+            return true;
+        }
+
+        if (primitiveType == typeof(double))
+        {
+            value = JitCast<double>(reader.GetDouble());
+            return true;
+        }
+
+        if (primitiveType == typeof(float))
+        {
+            value = JitCast<float>(reader.GetSingle());
+            return true;
+        }
+
+        if (primitiveType == typeof(decimal))
+        {
+            value = JitCast<decimal>(reader.GetDecimal());
+            return true;
+        }
+
+        if (primitiveType == typeof(bool))
+        {
+            value = JitCast<bool>(reader.GetBoolean());
+            return true;
+        }
+
+        if (primitiveType == typeof(DateTime))
+        {
+            value = JitCast<DateTime>(reader.GetDateTime());
+            return true;
+        }
+
+        if (primitiveType == typeof(DateTimeOffset))
+        {
+            value = JitCast<DateTimeOffset>(reader.GetDateTimeOffset());
+            return true;
+        }
+
+        if (primitiveType == typeof(DateOnly))
+        {
+            value = JitCast<DateOnly>(ReadDateOnly(ref reader));
+            return true;
+        }
+
+        if (primitiveType == typeof(TimeOnly))
+        {
+            value = JitCast<TimeOnly>(ReadTimeOnly(ref reader));
+            return true;
+        }
+
+        if (primitiveType == typeof(TimeSpan))
+        {
+            value = JitCast<TimeSpan>(ReadTimeSpan(ref reader));
+            return true;
+        }
+
+        value = default;
+        return false;
+
+        static TPrimitive JitCast<TActual>(TActual actual)
+            where TActual : IComparable => Unsafe.As<TActual, TPrimitive>(ref actual);
     }
 
     private static DateOnly ReadDateOnly(ref Utf8JsonReader reader)
