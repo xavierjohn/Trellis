@@ -97,7 +97,9 @@ public class UnitOfWorkServiceCollectionExtensionsTests
     public void AddTrellisUnitOfWork_ClosedTransactionalBehaviorPreRegisteredViaInstance_ThrowsWithActionableMessage()
     {
         // Singleton-style closed registration via ImplementationInstance must also be detected
-        // (Copilot pre-merge review caught this gap in PR #563).
+        // (Copilot pre-merge review caught this gap in PR #563), AND the error must name the
+        // concrete implementation type even though ImplementationType is null for instance
+        // registrations (a second Copilot review round called out the empty implementation slot).
         var services = CreateServices();
         var preBuiltBehavior = new TransactionalCommandBehavior<ClosedTransactionalCommand, Result<Unit>>(
             new NoopUnitOfWork());
@@ -106,7 +108,9 @@ public class UnitOfWorkServiceCollectionExtensionsTests
         var act = () => services.AddTrellisUnitOfWork<RepoTestDbContext>();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*TransactionalCommandBehavior*closed*generic*");
+            .WithMessage("*TransactionalCommandBehavior*closed*generic*")
+            .WithMessage("*TransactionalCommandBehavior`2*")
+            .WithMessage("*AddTrellisUnitOfWorkWithoutBehavior*");
     }
 
     private sealed class NoopUnitOfWork : IUnitOfWork

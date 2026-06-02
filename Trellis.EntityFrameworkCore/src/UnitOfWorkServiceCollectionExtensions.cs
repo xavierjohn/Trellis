@@ -185,6 +185,12 @@ public static class UnitOfWorkServiceCollectionExtensions
         return false;
     }
 
-    private static string FormatDescriptor(ServiceDescriptor descriptor) =>
-        $"{descriptor.ServiceType.FullName} -> {descriptor.ImplementationType?.FullName}";
+    private static string FormatDescriptor(ServiceDescriptor descriptor)
+    {
+        var implementationDisplay = descriptor.ImplementationType?.FullName
+            ?? descriptor.ImplementationInstance?.GetType().FullName
+            ?? descriptor.ImplementationFactory?.GetType().FullName
+            ?? "<unknown>";
+        return $"{descriptor.ServiceType.FullName} -> {implementationDisplay}";
+    }
 }
