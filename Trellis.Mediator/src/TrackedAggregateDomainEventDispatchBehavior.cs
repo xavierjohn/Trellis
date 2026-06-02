@@ -42,16 +42,15 @@ using Microsoft.Extensions.Logging;
 /// <b>Re-entrant nested commands.</b> A domain-event handler dispatched from this behavior is
 /// free to call <c>IMediator.Send</c>. The nested command runs its own pipeline (including its
 /// own <c>TransactionalCommandBehavior</c>) but the nested invocation of this behavior detects
-/// re-entrancy and short-circuits — events raised on aggregates the nested command tracked are
-/// NOT auto-dispatched by the outer wave loop. Callers that need fan-out from nested commands
-/// must dispatch manually via
-/// <see cref="DomainEventPublisherExtensions.DispatchAggregateEventsAsync"/>.
+/// re-entrancy and short-circuits. Callers that need fan-out from nested commands must dispatch
+/// manually via <see cref="DomainEventPublisherExtensions.DispatchAggregateEventsAsync"/>.
 /// </para>
 /// <para>
-/// <b>Cap.</b> The multi-aggregate wave loop is capped at
-/// <see cref="DomainEventDispatchDefaults.MaxDispatchWaves"/>. Exceeding the cap logs an error
-/// and abandons the remaining events; <see cref="System.ComponentModel.IChangeTracking.AcceptChanges"/>
-/// still runs on every snapshotted aggregate so undispatched events do not bleed into the next request.
+/// <b>Cascade detection.</b> The behavior snapshots every tracked aggregate's pending events at
+/// entry, dispatches only those snapshotted events, and then validates that each aggregate's
+/// pending-event list still exactly matches its snapshot. If any handler raised additional
+/// events, <see cref="DomainEventHandlerCascadedException"/> is thrown with every offending
+/// aggregate and <c>AcceptChanges()</c> is not called on any aggregate.
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The command type. Must implement <see cref="ICommand{TResponse}"/>.</typeparam>
@@ -61,12 +60,6 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
     where TMessage : ICommand<TResponse>
     where TResponse : IResult
 {
-    /// <summary>
-    /// Maximum number of dispatch waves (matches
-    /// <see cref="DomainEventDispatchBehavior{TMessage, TResponse}.MaxDispatchWaves"/>).
-    /// </summary>
-    public const int MaxDispatchWaves = DomainEventDispatchDefaults.MaxDispatchWaves;
-
     private readonly ITrackedAggregateSource _trackedAggregateSource;
     private readonly IDomainEventPublisher _publisher;
     private readonly ILogger<TrackedAggregateDomainEventDispatchBehavior<TMessage, TResponse>> _logger;
@@ -138,54 +131,36 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
 
     private async Task DispatchAllAsync(IAggregate[] aggregates, CancellationToken cancellationToken)
     {
-        // Per-aggregate dispatched counters so a multi-aggregate wave loop picks up events raised
-        // on aggregate A by a handler firing during aggregate B's dispatch, matching the
-        // single-aggregate behavior's "events raised mid-loop are picked up on the next wave".
-        var dispatchedPerAggregate = new int[aggregates.Length];
+        var snapshots = new (IAggregate Aggregate, IDomainEvent[] Events)[aggregates.Length];
+        for (var i = 0; i < aggregates.Length; i++)
+            snapshots[i] = (aggregates[i], aggregates[i].UncommittedEvents().ToArray());
 
-        for (var wave = 0; wave < MaxDispatchWaves; wave++)
+        foreach (var (_, events) in snapshots)
         {
-            var anyDispatched = false;
-
-            for (var ai = 0; ai < aggregates.Length; ai++)
+            foreach (var domainEvent in events)
             {
-                var aggregate = aggregates[ai];
-                var events = aggregate.UncommittedEvents();
-                var dispatched = dispatchedPerAggregate[ai];
-                if (events.Count <= dispatched)
-                    continue;
-
-                anyDispatched = true;
-                for (var i = dispatched; i < events.Count; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await _publisher.PublishAsync(events[i], cancellationToken).ConfigureAwait(false);
-                    dispatched = i + 1;
-                }
-
-                dispatchedPerAggregate[ai] = dispatched;
+                cancellationToken.ThrowIfCancellationRequested();
+                await _publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
             }
-
-            if (!anyDispatched)
-                break;
         }
 
-        // Only reach here on the full-success path (cancellation throws above). Log any
-        // per-aggregate cap overflow, then AcceptChanges on every aggregate so undispatched
-        // events do not bleed into the next request that re-tracks the same aggregate.
-        for (var ai = 0; ai < aggregates.Length; ai++)
+        List<CascadeOffender>? offenders = null;
+        foreach (var (aggregate, events) in snapshots)
         {
-            var aggregate = aggregates[ai];
-            var pending = aggregate.UncommittedEvents().Count - dispatchedPerAggregate[ai];
-            if (pending > 0)
-                LogDispatchCapExceeded(_logger, MaxDispatchWaves, aggregate.GetType().FullName ?? aggregate.GetType().Name, pending);
+            var offender = DomainEventCascadeDetector.Detect(aggregate, events);
+            if (offender is not { } cascadeOffender)
+                continue;
 
-            aggregate.AcceptChanges();
+            offenders ??= [];
+            offenders.Add(cascadeOffender);
         }
-    }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Domain event dispatch exceeded {MaxWaves} waves for {AggregateType}; abandoning {Remaining} event(s). Domain event handlers should be side-effect-only and not raise additional events on the same aggregate.")]
-    private static partial void LogDispatchCapExceeded(ILogger logger, int maxWaves, string aggregateType, int remaining);
+        if (offenders is not null)
+            throw new DomainEventHandlerCascadedException(offenders);
+
+        foreach (var (aggregate, _) in snapshots)
+            aggregate.AcceptChanges();
+    }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Skipping nested tracked-aggregate domain event dispatch (re-entrant invocation). Outer dispatch retains ownership of the snapshot; nested commands must dispatch manually if their aggregates raise events.")]
     private static partial void LogNestedDispatchSkipped(ILogger logger);

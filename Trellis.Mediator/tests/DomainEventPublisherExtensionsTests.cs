@@ -4,7 +4,7 @@ using Trellis.Mediator.Tests.Helpers;
 
 /// <summary>
 /// Tests for <see cref="DomainEventPublisherExtensions.DispatchAggregateEventsAsync"/>.
-/// Mirrors the wave-loop and cancellation contracts already covered by
+/// Mirrors the snapshot and cancellation contracts already covered by
 /// <see cref="DomainEventDispatchBehavior{TMessage, TResponse}"/> but for the standalone helper.
 /// </summary>
 public class DomainEventPublisherExtensionsTests
@@ -44,7 +44,7 @@ public class DomainEventPublisherExtensionsTests
     }
 
     [Fact]
-    public async Task Events_raised_during_dispatch_are_picked_up_on_next_wave()
+    public async Task Events_raised_during_dispatch_throw_and_preserve_events()
     {
         var aggregate = new TestAggregate(Id1);
         var first = new TestEventA("first", DateTimeOffset.UtcNow);
@@ -60,37 +60,72 @@ public class DomainEventPublisherExtensionsTests
             },
         };
 
-        await publisher.DispatchAggregateEventsAsync(aggregate, TestContext.Current.CancellationToken);
+        var act = async () => await publisher.DispatchAggregateEventsAsync(aggregate, TestContext.Current.CancellationToken);
 
-        publisher.Published.Should().Equal(first, cascaded);
-        aggregate.UncommittedEvents().Should().BeEmpty();
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventB).FullName!]);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(first);
+        aggregate.UncommittedEvents().Should().Equal(new IDomainEvent[] { first, cascaded });
     }
 
     [Fact]
-    public async Task Exceeding_wave_cap_throws_and_leaves_undispatched_events_on_aggregate()
+    public async Task Repeated_cascade_throws_and_leaves_events_on_aggregate()
     {
         var aggregate = new TestAggregate(Id1);
-        // Seed with one event; have the publisher re-raise on every publish so each wave keeps
-        // producing new events that exceed the 8-wave cap.
-        aggregate.RaiseEvent(new TestEventA("wave-0", DateTimeOffset.UtcNow));
+        var seed = new TestEventA("seed", DateTimeOffset.UtcNow);
+        TestEventA? cascaded = null;
+        aggregate.RaiseEvent(seed);
 
         var publisher = new RecordingPublisher
         {
-            OnPublishing = _ => aggregate.RaiseEvent(new TestEventA("cascade", DateTimeOffset.UtcNow)),
+            OnPublishing = _ =>
+            {
+                cascaded = new TestEventA("cascade", DateTimeOffset.UtcNow);
+                aggregate.RaiseEvent(cascaded);
+            },
         };
 
         var act = async () => await publisher.DispatchAggregateEventsAsync(aggregate, TestContext.Current.CancellationToken);
 
-        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
-        ex.Which.Message.Should().Contain("exceeded");
-        ex.Which.Message.Should().Contain(typeof(TestAggregate).FullName);
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventA).FullName!]);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(seed);
+        aggregate.UncommittedEvents().Should().Equal(new IDomainEvent[] { seed, cascaded! },
+            "the helper leaves cascaded events on the aggregate so the caller can inspect them");
+        aggregate.IsChanged.Should().BeTrue("AcceptChanges is not called when cascade detection fails");
+    }
 
-        // 8 waves of 1 event each = 8 published; the next-wave event raised by the last publish
-        // pushes one undispatched event onto the aggregate.
-        publisher.Published.Should().HaveCount(8);
-        aggregate.UncommittedEvents().Should().NotBeEmpty(
-            "the helper leaves undispatched events on the aggregate when the cap is exceeded so the caller can inspect them");
-        aggregate.IsChanged.Should().BeTrue("AcceptChanges is not called when the cap is exceeded");
+    [Fact]
+    public async Task Handler_accepts_changes_then_raises_new_event_throws_and_preserves_new_event()
+    {
+        var aggregate = new TestAggregate(Id1);
+        var seed = new TestEventA("seed", DateTimeOffset.UtcNow);
+        var replacement = new TestEventB(42, DateTimeOffset.UtcNow);
+        aggregate.RaiseEvent(seed);
+
+        var publisher = new RecordingPublisher
+        {
+            OnPublishing = evt =>
+            {
+                if (!ReferenceEquals(evt, seed)) return;
+
+                aggregate.AcceptChanges();
+                aggregate.RaiseEvent(replacement);
+            },
+        };
+
+        var act = async () => await publisher.DispatchAggregateEventsAsync(aggregate, TestContext.Current.CancellationToken);
+
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventB).FullName!]);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(seed);
+        aggregate.UncommittedEvents().Should().ContainSingle().Which.Should().BeSameAs(replacement);
     }
 
     [Fact]
@@ -182,27 +217,6 @@ public class DomainEventPublisherExtensionsTests
         var act = async () => await publisher.DispatchAggregateEventsAsync(null!, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ArgumentNullException>().Where(e => e.ParamName == "aggregate");
-    }
-
-    [Fact]
-    public async Task Cap_matches_pipeline_behavior_constant()
-    {
-        // Guardrail: the helper's local MaxDispatchWaves constant MUST match the pipeline
-        // behavior's public constant. This test fails loudly if they drift apart so reviewers
-        // notice during a refactor.
-        var aggregate = new TestAggregate(Id1);
-        aggregate.RaiseEvent(new TestEventA("seed", DateTimeOffset.UtcNow));
-
-        var publisher = new RecordingPublisher
-        {
-            OnPublishing = _ => aggregate.RaiseEvent(new TestEventA("cascade", DateTimeOffset.UtcNow)),
-        };
-
-        var act = async () => await publisher.DispatchAggregateEventsAsync(aggregate, TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<InvalidOperationException>();
-
-        // After cap exceeded, exactly the cap's worth of events were published.
-        publisher.Published.Should().HaveCount(DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>.MaxDispatchWaves);
     }
 
     [Fact]

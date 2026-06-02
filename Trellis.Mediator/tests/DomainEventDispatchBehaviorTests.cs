@@ -152,62 +152,113 @@ public class DomainEventDispatchBehaviorTests
     }
 
     [Fact]
-    public async Task Handle_HandlerRaisesNewEvent_DrainedOnNextWave_AndAccepted()
+    public async Task Handle_HandlerRaisesNewEvent_ThrowsCascadedException_AndPreservesEvents()
     {
         var aggregate = new TestAggregate(Id1);
         var firstEvent = new TestEventA("first", DateTimeOffset.UtcNow);
         var followUp = new TestEventB(99, DateTimeOffset.UtcNow);
         aggregate.RaiseEvent(firstEvent);
 
-        var publisher = new RecordingPublisher();
-        // First-wave handler for TestEventA raises a follow-up TestEventB on the same aggregate.
-        publisher.OnPublishing = e =>
+        var publisher = new RecordingPublisher
         {
-            if (ReferenceEquals(e, firstEvent))
-                aggregate.RaiseEvent(followUp);
+            OnPublishing = e =>
+            {
+                if (ReferenceEquals(e, firstEvent))
+                    aggregate.RaiseEvent(followUp);
+            },
         };
 
         var behavior = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
             publisher,
             NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance);
 
-        var response = await behavior.Handle(
+        var act = async () => await behavior.Handle(
             new AggregateCommand(aggregate),
             (_, _) => new ValueTask<Result<TestAggregate>>(Result.Ok(aggregate)),
             CancellationToken.None);
 
-        response.IsSuccess.Should().BeTrue();
-        publisher.Published.Should().Equal(firstEvent, followUp);
-        aggregate.UncommittedEvents().Should().BeEmpty();
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventB).FullName!]);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(firstEvent);
+        aggregate.UncommittedEvents().Should().Equal(new IDomainEvent[] { firstEvent, followUp },
+            "AcceptChanges must not run when a handler cascades events");
+        aggregate.IsChanged.Should().BeTrue();
     }
 
     [Fact]
-    public async Task Handle_RunawayHandler_CapsAtMaxWaves_AndLogsAndClears()
+    public async Task Handle_RunawayHandler_ThrowsCascadedException_AndDoesNotClearEvents()
     {
         var aggregate = new TestAggregate(Id1);
         var seed = new TestEventA("seed", DateTimeOffset.UtcNow);
+        TestEventA? cascaded = null;
         aggregate.RaiseEvent(seed);
 
-        var publisher = new RecordingPublisher();
-        // Every publish of a TestEventA raises another TestEventA — runaway.
-        publisher.OnPublishing = e =>
+        var publisher = new RecordingPublisher
         {
-            if (e is TestEventA)
-                aggregate.RaiseEvent(new TestEventA("cascade", DateTimeOffset.UtcNow));
+            OnPublishing = e =>
+            {
+                if (e is not TestEventA) return;
+
+                cascaded = new TestEventA("cascade", DateTimeOffset.UtcNow);
+                aggregate.RaiseEvent(cascaded);
+            },
         };
 
         var behavior = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
             publisher,
             NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance);
 
-        var response = await behavior.Handle(
+        var act = async () => await behavior.Handle(
             new AggregateCommand(aggregate),
             (_, _) => new ValueTask<Result<TestAggregate>>(Result.Ok(aggregate)),
             CancellationToken.None);
 
-        response.IsSuccess.Should().BeTrue();
-        publisher.Published.Should().HaveCount(DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>.MaxDispatchWaves);
-        aggregate.UncommittedEvents().Should().BeEmpty("the cap-exceeded path defensively clears the aggregate so it does not stay dirty across requests");
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventA).FullName!]);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(seed);
+        aggregate.UncommittedEvents().Should().Equal(new IDomainEvent[] { seed, cascaded! },
+            "cascade detection leaves the aggregate dirty so an operator can inspect the undispatched event");
+    }
+
+    [Fact]
+    public async Task Handle_HandlerAcceptsChangesThenRaisesNewEvent_ThrowsCascadedException_AndPreservesNewEvent()
+    {
+        var aggregate = new TestAggregate(Id1);
+        var seed = new TestEventA("seed", DateTimeOffset.UtcNow);
+        var replacement = new TestEventB(42, DateTimeOffset.UtcNow);
+        aggregate.RaiseEvent(seed);
+
+        var publisher = new RecordingPublisher
+        {
+            OnPublishing = e =>
+            {
+                if (!ReferenceEquals(e, seed)) return;
+
+                aggregate.AcceptChanges();
+                aggregate.RaiseEvent(replacement);
+            },
+        };
+
+        var behavior = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
+            publisher,
+            NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance);
+
+        var act = async () => await behavior.Handle(
+            new AggregateCommand(aggregate),
+            (_, _) => new ValueTask<Result<TestAggregate>>(Result.Ok(aggregate)),
+            CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<DomainEventHandlerCascadedException>();
+        var offender = ex.Which.Offenders.Should().ContainSingle().Which;
+        offender.AggregateType.Should().Be<TestAggregate>();
+        offender.CascadedEventTypeNames.Should().Equal([typeof(TestEventB).FullName!]);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(seed);
+        aggregate.UncommittedEvents().Should().ContainSingle().Which.Should().BeSameAs(replacement,
+            "reference-equality validation catches handlers that clear the original snapshot before raising a replacement event");
     }
 
     [Fact]

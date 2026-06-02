@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
-types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", ServiceCollectionExtensions, IDomainEventHandler<TEvent>, IDomainEventPublisher, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
+types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", ServiceCollectionExtensions, IDomainEventHandler<TEvent>, IDomainEventPublisher, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
 last_verified: 2026-05-02
 audience: [llm]
@@ -429,9 +429,11 @@ public interface IDomainEventHandler<in TEvent>
     where TEvent : IDomainEvent
 ```
 
-Handles a domain event raised by an `IAggregate`. Implementations are resolved via DI by [`DomainEventDispatchBehavior`](#domaineventdispatchbehavior) after a successful command and invoked once per matching event.
+Handles a domain event raised by an `IAggregate`. Implementations are resolved via DI by [`DomainEventDispatchBehavior`](#domaineventdispatchbehavior) after a successful command and invoked once per matching event in the dispatch snapshot.
 
-Dispatch matches the runtime type of the event **exactly**; base-type and interface-type handlers are not resolved automatically. Handlers must be **idempotent** and treat their work as a best-effort side effect — non-cancellation exceptions thrown by a handler are logged at error level and swallowed so that other handlers, other events, and the originating command still complete. `OperationCanceledException` matching the request's cancellation token is the one exception that propagates so the request can abort. Handlers should treat themselves as side-effect-only: although the dispatcher drains handler-raised events on the same aggregate across subsequent waves (capped at 8), those re-entered events are dispatched *without being persisted* — the originating command's transaction has already committed. The drain-in-waves loop exists to avoid silently dropping events from accidental re-entry, not as a supported pattern for cascading domain mutations; persist-and-emit chains belong inside command handlers, not domain-event handlers.
+Dispatch matches the runtime type of the event **exactly**; base-type and interface-type handlers are not resolved automatically. Handlers must be **idempotent** and **side-effect-only**: send email, publish to a bus, update a projection, or enqueue external work, but do not mutate aggregates or raise more domain events from inside the dispatch loop. If a handler raises a new event on the same aggregate, or mutates another aggregate participating in tracked dispatch, post-dispatch validation throws [`DomainEventHandlerCascadedException`](#domaineventhandlercascadedexception). To perform more domain mutation, issue a follow-up Mediator command from the application layer after the originating command completes, or queue post-commit work that runs as a separate top-level command.
+
+Non-cancellation exceptions thrown by a handler are logged at error level and swallowed by the default publisher so that other handlers, other events, and the originating command still complete. `OperationCanceledException` matching the request's cancellation token is the one exception that propagates so the request can abort. Cascade detection does not make handler-side failures durable; durable at-least-once side effects require an outbox pattern (planned for a future release, not shipped today).
 
 **Methods**
 
@@ -454,6 +456,47 @@ Publishes a single `IDomainEvent` by resolving and invoking all `IDomainEventHan
 | --- | --- | --- |
 | `ValueTask PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)` | `ValueTask` | Publishes to all matching handlers. Resolution uses `domainEvent.GetType()`. Non-cancellation handler exceptions are logged and swallowed; `OperationCanceledException` matching the supplied token propagates so the caller can abort. Default implementation (`MediatorDomainEventPublisher`) is `internal` and registered by `AddDomainEventDispatch()`. |
 
+### DomainEventHandlerCascadedException
+**Declaration**
+
+```csharp
+public sealed class DomainEventHandlerCascadedException : InvalidOperationException
+```
+
+Thrown when domain-event dispatch detects that a handler cascaded new domain events during a strict single-wave snapshot dispatch. The exception is raised after the original snapshot has been published but before `AcceptChanges()` clears the aggregate event queues, so operators can inspect the still-uncommitted events.
+
+**Constructors**
+
+| Signature | Description |
+| --- | --- |
+| `public DomainEventHandlerCascadedException()` | Standard exception constructor. `Offenders` is empty. |
+| `public DomainEventHandlerCascadedException(string message)` | Standard exception constructor with a custom message. `Offenders` is empty. |
+| `public DomainEventHandlerCascadedException(string message, Exception innerException)` | Standard exception constructor with an inner exception. `Offenders` is empty. |
+| `public DomainEventHandlerCascadedException(IReadOnlyList<CascadeOffender> offenders)` | Builds the exception from all offending aggregates. The supplied list is copied. |
+| `public DomainEventHandlerCascadedException(Type aggregateType, IReadOnlyList<string> cascadedEventTypeNames)` | Convenience overload for a single offending aggregate. |
+
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Offenders` | `IReadOnlyList<CascadeOffender>` | Aggregates whose post-dispatch event queue changed from the entry snapshot. The tracked-aggregate behavior can report multiple offenders from one dispatch pass. |
+
+### CascadeOffender
+**Declaration**
+
+```csharp
+public readonly record struct CascadeOffender(Type AggregateType, IReadOnlyList<string> CascadedEventTypeNames);
+```
+
+Identifies one aggregate type whose pending-event list changed during dispatch.
+
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `AggregateType` | `Type` | The offending aggregate type. |
+| `CascadedEventTypeNames` | `IReadOnlyList<string>` | The event type names still present from the first changed position after the entry snapshot was published. |
+
 ### DomainEventDispatchBehavior
 **Declaration**
 
@@ -468,13 +511,12 @@ Pipeline behavior that dispatches domain events accumulated on the success-value
 
 > **Persist-on-failure outcomes.** A `Result.FailAfterCommit<TAggregate>(error)` outcome is **still a failure** — `IsFailure` is `true` — so dispatch is skipped exactly as for any other failure. Any events the handler raised on aggregates remain on those in-memory instances and are discarded with the request scope; they are not a durable retry buffer. If the persist-on-failure scenario needs to drive downstream side effects, model them explicitly via an outbox row or a dedicated follow-up command instead of relying on event re-dispatch. The commit (when `TransactionalCommandBehavior` is also registered) happens upstream and is independent of dispatch.
 
-When `TransactionalCommandBehavior` is also registered, dispatch fires after the transaction commits — handlers see committed state. Events are dispatched in waves with index tracking: each wave snapshots `aggregate.UncommittedEvents()` and dispatches events at indices the previous wave didn't reach, so events raised by a handler on the same aggregate accumulate at the next index and are picked up on the next wave. `IChangeTracking.AcceptChanges()` is called **once after the loop returns** (whether the dispatch fully drained or the cap was exceeded); cancellation propagates above this call so undispatched (and dispatched) events stay on the aggregate, and handlers must be idempotent because a retry will re-publish events that already fired. The wave count is capped (`MaxDispatchWaves = 8`); if the cap is exceeded the remaining events are abandoned and an error is logged.
+When `TransactionalCommandBehavior` is also registered, dispatch fires after the transaction commits — handlers see committed state. On a successful `IResult<TAggregate>` response, the behavior snapshots `aggregate.UncommittedEvents()` once at dispatch entry and publishes **only that snapshot** sequentially. Handler-raised events are never picked up by a later loop. After the snapshot has been published, the behavior validates the aggregate's event queue; if any new events were appended during dispatch, it throws [`DomainEventHandlerCascadedException`](#domaineventhandlercascadedexception). `IChangeTracking.AcceptChanges()` is called only after validation proves the dispatch was clean.
 
-**Constants**
+On cascade or cancellation, `AcceptChanges()` is not called. The aggregate retains the original events and any cascaded events so operators can inspect the in-memory state. Mid-dispatch cancellation still propagates immediately; handlers that already ran are not rolled back, so handlers must remain idempotent for at-least-once retry. Non-cancellation handler exceptions are still swallowed by the default `MediatorDomainEventPublisher`; cascade detection is about handler-raised events, not handler-side failures.
 
-| Name | Type | Description |
-| --- | --- | --- |
-| `MaxDispatchWaves` | `int` (8) | Maximum number of dispatch waves before the loop bails. v1 expects single-wave dispatch; this cap exists to surface accidental re-entry. |
+> [!WARNING]
+> **Post-commit throw caveat.** With `TransactionalCommandBehavior` registered, the database commit is already durable before domain-event dispatch starts. If cascade detection throws, the caller receives a failure-shaped response (via the outer exception behavior in the standard pipeline) even though the write committed; a retry may therefore hit normal "already committed" semantics. Durable at-least-once delivery requires an outbox pattern — planned for a future release, not shipped today.
 
 **Constructors**
 
@@ -486,7 +528,7 @@ When `TransactionalCommandBehavior` is also registered, dispatch fires after the
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits `next`, returns immediately on failure or when the response is not an `IResult<TAggregate>` (typically `Result<TAggregate>`). On success, drains `aggregate.UncommittedEvents()` in waves with index tracking; calls `AcceptChanges()` **once after the loop returns** (whether fully drained or cap exceeded). Cancellation propagates above the `AcceptChanges()` call so undispatched events remain on the aggregate. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits `next`, returns immediately on failure or when the response is not an `IResult<TAggregate>` (typically `Result<TAggregate>`). On success, snapshots `aggregate.UncommittedEvents()`, publishes only that snapshot, validates that no handler appended new events, and calls `AcceptChanges()` only on clean dispatch. Throws `DomainEventHandlerCascadedException` on cascade; cancellation propagates before `AcceptChanges()` so undispatched events remain on the aggregate. |
 
 ### DomainEventDispatchServiceCollectionExtensions
 **Declaration**
@@ -517,17 +559,13 @@ public sealed class TrackedAggregateDomainEventDispatchBehavior<TMessage, TRespo
 
 Opt-in alternative to [`DomainEventDispatchBehavior<,>`](#domaineventdispatchbehavior). Instead of extracting an aggregate from the response, it reads the unit-of-work's [`ITrackedAggregateSource`](trellis-api-core.md#itrackedaggregatesource) and dispatches events from every aggregate that participated in the most recent successful commit. Use this when handlers return outcome DTOs (`Result<DoneDto>`, `Result<Unit>`, `Result<(A, B)>`) but mutate aggregates via the EF change tracker.
 
-**Constants**
-
-| Name | Type | Value | Description |
-| --- | --- | --- | --- |
-| `MaxDispatchWaves` | `int` | `DomainEventDispatchDefaults.MaxDispatchWaves` (currently `8`) | Per-aggregate cap on cascading-event waves. Matches `DomainEventDispatchBehavior<,>` and `DispatchAggregateEventsAsync`. |
+The tracked behavior snapshots the committed aggregate set and each aggregate's `UncommittedEvents()` at dispatch entry, publishes only those snapshots, then validates every snapshot aggregate before clearing anything. If dispatching aggregate A's events causes a handler to append events to aggregate B that was also in the snapshot, aggregate B is reported as a cascade offender too; the thrown [`DomainEventHandlerCascadedException`](#domaineventhandlercascadedexception) lists every offending aggregate. `AcceptChanges()` is called on the snapshot aggregates only after the entire pass validates cleanly. The `TrackedAggregateDispatchReentrancyGuard` skips nested tracked dispatch; Mediator commands sent from inside a domain-event handler can therefore leave their own aggregate events stranded. Queue follow-up commands outside the handler instead.
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits `next`. Skips dispatch on `IsFailure` (including `Result.FailAfterCommit<T>(...)`), on cancellation, when re-entered (`AsyncLocal` guard shared across all closed-generic instantiations), and when `ITrackedAggregateSource.CommittedAggregates` is empty. Otherwise iterates the snapshot in waves, draining each aggregate's events via the registered `IDomainEventPublisher`. When the per-aggregate wave loop drains every event, calls `IChangeTracking.AcceptChanges()` on every snapshot aggregate. If any single aggregate exceeds `MaxDispatchWaves`, logs an error with the remaining count and the aggregate type and still calls `AcceptChanges()` on every aggregate (so undispatched events do not bleed into the next request that re-tracks the same aggregate). Cancellation propagates above `AcceptChanges()` so undispatched events remain on every snapshot aggregate. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits `next`. Skips dispatch on `IsFailure` (including `Result.FailAfterCommit<T>(...)`), on cancellation, when re-entered (`AsyncLocal` guard shared across all closed-generic instantiations), and when `ITrackedAggregateSource.CommittedAggregates` is empty. Otherwise snapshots every committed aggregate's events, publishes only those snapshots, validates that no snapshot aggregate accumulated additional events, and calls `IChangeTracking.AcceptChanges()` on every snapshot aggregate only after clean validation. Throws `DomainEventHandlerCascadedException` with all offending aggregates on same-aggregate or cross-aggregate cascade. Cancellation propagates above `AcceptChanges()` so undispatched events remain on every snapshot aggregate. |
 
 ### TrackedAggregateDomainEventDispatchServiceCollectionExtensions
 **Declaration**
@@ -542,7 +580,7 @@ DI registration helper for the tracked dispatch behavior.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddTrackedAggregateDomainEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers `TrackedAggregateDomainEventDispatchBehavior<,>` (open generic, scoped) and the default `IDomainEventPublisher`. Removes any prior `DomainEventDispatchBehavior<,>` registration (mutually exclusive). Yanks any prior `TransactionalCommandBehavior<,>` registration and re-appends it last so tracked dispatch lands between the handler and the transaction commit. **Idempotent**. Subsequent `AddDomainEventDispatch()` / `AddDomainEventHandler<,>()` calls register handlers only — they do not reintroduce the response-shape behavior. |
+| `public static IServiceCollection AddTrackedAggregateDomainEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers `TrackedAggregateDomainEventDispatchBehavior<,>` (open generic, scoped) and the default `IDomainEventPublisher`. Removes any prior `DomainEventDispatchBehavior<,>` registration (mutually exclusive). Yanks any prior `TransactionalCommandBehavior<,>` registration and re-appends it last so tracked dispatch sits just outside the transaction behavior and runs after commit. **Idempotent**. Subsequent `AddDomainEventDispatch()` / `AddDomainEventHandler<,>()` calls register handlers only — they do not reintroduce the response-shape behavior. |
 
 
 ## Extension methods
@@ -582,7 +620,7 @@ public static Task DispatchAggregateEventsAsync(
     CancellationToken cancellationToken = default)
 ```
 
-**POST-COMMIT ONLY.** Mirrors [`DomainEventDispatchBehavior<,>`](#domaineventdispatchbehavior)'s wave loop for handlers whose `TResponse` is not an `IResult<TAggregate>` shape (`Result<Unit>`, `Result<TDto>`, `Result<(A,B)>`) and for non-Mediator call sites such as `BackgroundService` workers. Publishes each event from `aggregate.UncommittedEvents()` sequentially, picks up handler-raised events on subsequent waves (capped at `MaxDispatchWaves = 8`, matching the pipeline behavior), and calls `IChangeTracking.AcceptChanges()` once on the full-success path. Throws `InvalidOperationException` if the cap is exceeded (`AcceptChanges()` is not called — undispatched events remain on the aggregate). Cancellation propagates above `AcceptChanges()` so undispatched events remain on the aggregate; dispatched events stay dispatched (handlers must be idempotent for retry). Handler exceptions follow the publisher's contract: the default `MediatorDomainEventPublisher` logs and swallows non-cancellation handler exceptions so the helper continues; a custom publisher that propagates handler exceptions causes the helper to rethrow without calling `AcceptChanges()`. **Must only be called after the underlying unit of work has committed** — calling it inside a handler that relies on `TransactionalCommandBehavior` for its commit publishes events before the database transaction is durable. See [Dispatching events from non-aggregate response shapes](../articles/integration-mediator.md#dispatching-events-from-non-aggregate-response-shapes-post-commit-safe) for the cookbook recipe.
+**POST-COMMIT ONLY.** Uses the same strict snapshot contract as [`DomainEventDispatchBehavior<,>`](#domaineventdispatchbehavior) for handlers whose `TResponse` is not an `IResult<TAggregate>` shape (`Result<Unit>`, `Result<TDto>`, `Result<(A,B)>`) and for non-Mediator call sites such as `BackgroundService` workers. Snapshots `aggregate.UncommittedEvents()` once, publishes only that snapshot sequentially, validates that no handler appended new events, and calls `IChangeTracking.AcceptChanges()` only after clean validation. Throws [`DomainEventHandlerCascadedException`](#domaineventhandlercascadedexception) on cascade (`AcceptChanges()` is not called — original and cascaded events remain on the aggregate). Cancellation propagates above `AcceptChanges()` so undispatched events remain on the aggregate; dispatched events stay dispatched and handlers must be idempotent for retry. Handler exceptions follow the publisher's contract: the default `MediatorDomainEventPublisher` logs and swallows non-cancellation handler exceptions so the helper continues; a custom publisher that propagates handler exceptions causes the helper to rethrow without calling `AcceptChanges()`. **Must only be called after the underlying unit of work has committed** — calling it inside a handler that relies on `TransactionalCommandBehavior` for its commit publishes events before the database transaction is durable. Durable at-least-once dispatch requires an outbox pattern, planned for a future release. See [Dispatching events from non-aggregate response shapes](../articles/integration-mediator.md#dispatching-events-from-non-aggregate-response-shapes-post-commit-safe) for the cookbook recipe.
 
 ### Trellis.Mediator.TrackedAggregateDomainEventDispatchServiceCollectionExtensions
 
@@ -590,7 +628,7 @@ public static Task DispatchAggregateEventsAsync(
 public static IServiceCollection AddTrackedAggregateDomainEventDispatch(this IServiceCollection services)
 ```
 
-Registers the tracked-aggregate pipeline behavior + default publisher. Mutually exclusive with `AddDomainEventDispatch()`: removes any prior response-shape `DomainEventDispatchBehavior<,>` registration so calling both no longer double-dispatches. Re-orders any prior `Trellis.EntityFrameworkCore.TransactionalCommandBehavior<,>` registration so tracked dispatch lands between the handler and the transaction commit (events are read from the unit-of-work's snapshot, taken at commit time). Idempotent. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior) for the behavior contract and [Auto-dispatching from outcome-DTO commands](../articles/integration-mediator.md#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) for the cookbook recipe.
+Registers the tracked-aggregate pipeline behavior + default publisher. Mutually exclusive with `AddDomainEventDispatch()`: removes any prior response-shape `DomainEventDispatchBehavior<,>` registration so calling both no longer double-dispatches. Re-orders any prior `Trellis.EntityFrameworkCore.TransactionalCommandBehavior<,>` registration so tracked dispatch sits just outside the transaction behavior and runs after commit (events are read from the unit-of-work's snapshot, taken at commit time). Idempotent. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior) for the behavior contract and [Auto-dispatching from outcome-DTO commands](../articles/integration-mediator.md#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) for the cookbook recipe.
 
 ## Interfaces
 
@@ -613,8 +651,8 @@ The Trellis pipeline executes outermost → innermost in this order. The first f
 4. **`AuthorizationBehavior<,>`** — runs for `IAuthorize` messages; resolves the actor and rejects with `new Error.Forbidden("authorization.insufficient.permissions")` when `RequiredPermissions` are not satisfied. No I/O.
 5. **`ResourceAuthorizationBehavior<,,>`** *(opt-in via `AddResourceAuthorization(...)`)* — runs for `IAuthorizeResource<TResource>` messages. Inserted **immediately before `ValidationBehavior<,>`** so a 403 short-circuits before a 422 is computed; duplicate closed behavior registrations are ignored so the same behavior does not run twice per request. Resolves the actor first (fail-fast, no I/O when null), then loads the resource via `IResourceLoader<TMessage, TResource>` and calls `message.Authorize(actor, resource)`.
 6. **`ValidationBehavior<,>`** — unified validation stage. Runs `IValidate.Validate()` if implemented, then every `IMessageValidator<TMessage>` resolved from DI; aggregates all `Error.InvalidInput` failures into a single response. External validation sources (e.g., the `Trellis.FluentValidation` adapter) participate here without occupying their own pipeline slot.
-7. **`DomainEventDispatchBehavior<,>`** *(opt-in via `AddDomainEventDispatch(...)`)* — runs for `ICommand<TResponse>` messages where `TResponse` is `IResult<TAggregate>` (typically `Result<TAggregate>`) and `TAggregate : IAggregate`. After the inner pipeline returns success, dispatches each event from `aggregate.UncommittedEvents()` to its registered `IDomainEventHandler<TEvent>` instances and calls `AcceptChanges()`. When `TransactionalCommandBehavior` is registered innermost, dispatch fires after the transaction commits — handlers see committed state. Non-cancellation handler exceptions are logged and swallowed; the command still succeeds. `OperationCanceledException` matching the request's token is the one exception that propagates so cancellation aborts the dispatch loop and skips `AcceptChanges()`. **Mutually exclusive** with `TrackedAggregateDomainEventDispatchBehavior<,>` (the tracked extension removes this registration and vice versa).
-   - **Or** `TrackedAggregateDomainEventDispatchBehavior<,>` *(opt-in via `AddTrackedAggregateDomainEventDispatch(...)`)* — sits at the same slot but reads the aggregates from `ITrackedAggregateSource.CommittedAggregates` (populated by the unit-of-work at commit time). Fires for any response shape, including outcome DTOs. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior).
+7. **`DomainEventDispatchBehavior<,>`** *(opt-in via `AddDomainEventDispatch(...)`)* — runs for `ICommand<TResponse>` messages where `TResponse` is `IResult<TAggregate>` (typically `Result<TAggregate>`) and `TAggregate : IAggregate`. After the inner pipeline returns success, snapshots `aggregate.UncommittedEvents()`, dispatches only that snapshot to registered `IDomainEventHandler<TEvent>` instances, validates that handlers did not append events, and calls `AcceptChanges()` only on clean dispatch. When `TransactionalCommandBehavior` is registered innermost, dispatch fires after the transaction commits — handlers see committed state, and a later cascade exception cannot roll back the database write. Non-cancellation handler exceptions are logged and swallowed; `OperationCanceledException` matching the request's token is the one exception that propagates and skips `AcceptChanges()`. **Mutually exclusive** with `TrackedAggregateDomainEventDispatchBehavior<,>` (the tracked extension removes this registration and vice versa).
+   - **Or** `TrackedAggregateDomainEventDispatchBehavior<,>` *(opt-in via `AddTrackedAggregateDomainEventDispatch(...)`)* — sits at the same slot but reads the aggregates from `ITrackedAggregateSource.CommittedAggregates` (populated by the unit-of-work at commit time), snapshots each aggregate's events, and throws `DomainEventHandlerCascadedException` when same-aggregate or cross-aggregate cascade is detected. Fires for any response shape, including outcome DTOs. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior).
 8. **`TransactionalCommandBehavior<,>`** *(opt-in, lives in `Trellis.EntityFrameworkCore`, not registered by `AddTrellisBehaviors()`)* — wraps the handler for `ICommand<TResponse>` messages and calls `IUnitOfWork.CommitAsync` on success. Register via `AddTrellisUnitOfWork<TContext>()` from the EFCore package **after** `AddTrellisBehaviors()` and `AddDomainEventDispatch(...)` so it lands innermost (closest to the handler) and commit failures remain visible to outer logging/tracing/dispatch. Queries are skipped.
 
 ## Code examples
