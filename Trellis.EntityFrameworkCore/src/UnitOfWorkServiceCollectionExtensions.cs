@@ -95,7 +95,12 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// twice (two commits per command). The actionable resolution is to remove the closed
     /// registration (so this method installs the open generic that covers every command), or to
     /// use <c>AddTrellisUnitOfWorkWithoutBehavior&lt;TContext&gt;()</c> and keep the explicit
-    /// closed registrations.</para>
+    /// closed registrations. Detection covers <see cref="ServiceDescriptor.ImplementationType"/>
+    /// and <see cref="ServiceDescriptor.ImplementationInstance"/>; factory-registered closed
+    /// transactional behaviors (via <see cref="ServiceDescriptor.ImplementationFactory"/>) are
+    /// not detectable without invoking the factory and are not caught here — consumers using
+    /// factory registrations should call
+    /// <c>AddTrellisUnitOfWorkWithoutBehavior&lt;TContext&gt;()</c> and own behavior wiring.</para>
     /// </remarks>
     private static void InsertTransactionalBehavior(IServiceCollection services)
     {
@@ -159,9 +164,25 @@ public static class UnitOfWorkServiceCollectionExtensions
             || serviceType.GetGenericTypeDefinition() != typeof(IPipelineBehavior<,>))
             return false;
 
-        var implementationType = descriptor.ImplementationType;
-        return implementationType is { IsGenericType: true } impl
-            && impl.GetGenericTypeDefinition() == typeof(TransactionalCommandBehavior<,>);
+        // ImplementationType: covered explicitly.
+        if (descriptor.ImplementationType is { IsGenericType: true } impl
+            && impl.GetGenericTypeDefinition() == typeof(TransactionalCommandBehavior<,>))
+            return true;
+
+        // ImplementationInstance: inspect the concrete instance's runtime type. This catches
+        // singleton-style closed registrations like
+        //   services.AddSingleton<IPipelineBehavior<C, R>>(new TransactionalCommandBehavior<C, R>(...))
+        if (descriptor.ImplementationInstance is { } instance
+            && instance.GetType() is { IsGenericType: true } instanceType
+            && instanceType.GetGenericTypeDefinition() == typeof(TransactionalCommandBehavior<,>))
+            return true;
+
+        // ImplementationFactory: not detectable without invoking the factory. Documented in the
+        // remarks on InsertTransactionalBehavior — a factory-registered closed transactional
+        // behavior alongside the open-generic registration this helper installs will still
+        // produce two commits per matching command. Consumers using factory registrations should
+        // call AddTrellisUnitOfWorkWithoutBehavior<TContext>() and own behavior wiring.
+        return false;
     }
 
     private static string FormatDescriptor(ServiceDescriptor descriptor) =>

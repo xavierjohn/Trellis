@@ -6,11 +6,14 @@ using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Pipeline behavior that logs command/query execution with duration and Result outcome.
-/// Logs at <see cref="LogLevel.Debug"/> for the per-message start/end pair (cross-cutting
-/// observability noise belongs at Debug, not Information; consumers who want per-call timing
-/// in production raise the level via <c>"Trellis.Mediator": "Debug"</c> in their logging
-/// configuration). Expected caller/domain failures are logged at <see cref="LogLevel.Information"/>;
-/// unexpected, dependency, or opaque transport failures are logged at <see cref="LogLevel.Warning"/>.
+/// The per-message start entry is logged at <see cref="LogLevel.Debug"/>; the matching end
+/// entry is at <see cref="LogLevel.Debug"/> on success, <see cref="LogLevel.Information"/> for
+/// expected caller/domain failures (validation, authentication, authorization, not-found,
+/// conflict, rate-limited, invariant-violation, gone, and aggregates whose inner errors are all
+/// expected), and <see cref="LogLevel.Warning"/> for unexpected, dependency, or opaque transport
+/// failures. Cross-cutting per-message observability noise belongs at Debug, not Information;
+/// consumers who want per-call timing in production raise the level via
+/// <c>"Trellis.Mediator": "Debug"</c> in their logging configuration.
 /// </summary>
 /// <typeparam name="TMessage">The message type.</typeparam>
 /// <typeparam name="TResponse">The response type, constrained to <see cref="IResult"/>.</typeparam>

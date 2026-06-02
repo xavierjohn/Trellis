@@ -94,6 +94,32 @@ public class UnitOfWorkServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddTrellisUnitOfWork_ClosedTransactionalBehaviorPreRegisteredViaInstance_ThrowsWithActionableMessage()
+    {
+        // Singleton-style closed registration via ImplementationInstance must also be detected
+        // (Copilot pre-merge review caught this gap in PR #563).
+        var services = CreateServices();
+        var preBuiltBehavior = new TransactionalCommandBehavior<ClosedTransactionalCommand, Result<Unit>>(
+            new NoopUnitOfWork());
+        services.AddSingleton<IPipelineBehavior<ClosedTransactionalCommand, Result<Unit>>>(preBuiltBehavior);
+
+        var act = () => services.AddTrellisUnitOfWork<RepoTestDbContext>();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*TransactionalCommandBehavior*closed*generic*");
+    }
+
+    private sealed class NoopUnitOfWork : IUnitOfWork
+    {
+        public Task<global::Trellis.Result<global::Trellis.Unit>> CommitAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(global::Trellis.Result.Ok());
+
+        public IDisposable BeginScope() => new NoopScope();
+
+        private sealed class NoopScope : IDisposable { public void Dispose() { } }
+    }
+
+    [Fact]
     public void AddTrellisUnitOfWork_NoTransactionalBehaviorPreRegistered_AddsOneOpenGenericRegistration()
     {
         var services = CreateServices();
