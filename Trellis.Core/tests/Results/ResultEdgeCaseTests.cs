@@ -405,8 +405,25 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error!.Should().BeOfType<Error.Unexpected>();
-        result.Error!.Detail.Should().Be("Test exception");
+        var error = result.Error.Should().BeOfType<Error.Unexpected>().Subject;
+        error.ReasonCode.Should().Be("unhandled_exception");
+        error.FaultId.Should().NotBeNullOrWhiteSpace();
+        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+    }
+
+    [Fact]
+    public void DefaultMapper_DoesNotLeakExceptionMessage()
+    {
+        // Arrange
+        const string exceptionMessage = "Server=prod-db;Password=hunter2;Schema=internal.customers;";
+
+        // Act
+        var result = Result.Try<int>(() => throw new InvalidOperationException(exceptionMessage));
+
+        // Assert
+        var error = result.Error.Should().BeOfType<Error.Unexpected>().Subject;
+        error.Detail.Should().NotBeNull();
+        error.Detail.Should().NotContain(exceptionMessage);
     }
 
     [Fact]
@@ -439,8 +456,10 @@ public class ResultEdgeCaseTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error!.Should().BeOfType<Error.Unexpected>();
-        result.Error!.Detail.Should().Be("Async test exception");
+        var error = result.Error.Should().BeOfType<Error.Unexpected>().Subject;
+        error.ReasonCode.Should().Be("unhandled_exception");
+        error.FaultId.Should().NotBeNullOrWhiteSpace();
+        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
     }
 
     [Fact]

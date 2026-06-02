@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, WrongAttributeNamespaceAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider]
+types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, WrongAttributeNamespaceAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS054, TRLS055]
 version: v3
 last_verified: 2026-05-06
 audience: [llm]
@@ -30,6 +30,8 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using t
 | `Result<Result<T>>` or `Maybe<Maybe<T>>` appears | Use `Bind` / flatten the operation | `TRLS004`, `TRLS007` |
 | Sync ROP method receives async lambda | Use the `*Async` variant | `TRLS009` |
 | EF query over `Maybe<T>` uses unsafe value/sentinel access | Use `MaybeQueryableExtensions.WhereXxx` or register `AddTrellisInterceptors()` | `TRLS013` |
+| EF query compares `Maybe<T>` via `.Equals(...)` / `object.Equals(...)` | Use `==` / `!=` operators or `MaybeQueryableExtensions.WhereEquals` | `TRLS054` |
+| EF query calls `HasValueWhere` with a captured delegate or method group | Inline the lambda or materialize before applying the delegate | `TRLS055` |
 | Direct `SaveChangesAsync` in non-UoW repository code | Use `SaveChangesResultAsync` / `SaveChangesResultUnitAsync`, or let `AddTrellisUnitOfWork<TContext>()` own commits | `TRLS015` |
 | EF index points at a `Maybe<T>` CLR property | Use `HasTrellisIndex(...)` | `TRLS016` |
 | Value object uses `System.ComponentModel.DataAnnotations.StringLength` / `Range` | Use Trellis attributes from `namespace Trellis` | `TRLS017` |
@@ -63,6 +65,8 @@ Prefer fixing the code over suppressing diagnostics. When a suppression is genui
 | `TRLS021` | Warning | EF configuration duplicates Trellis conventions | Flags `HasConversion`, `OwnsOne`, and `Ignore` calls on `Maybe<T>` or `[OwnedEntity]` properties when `ApplyTrellisConventions(...)` / `ApplyTrellisConventionsFor<TContext>()` is wired. Remove the manual mapping and let Trellis conventions own the property. |
 | `TRLS022` | Warning | `[OwnedEntity]` property uses init-only setter | Flags `{ get; init; }` properties on classes annotated with `[OwnedEntity]`. EF Core materializes owned entities through a generator-emitted private parameterless constructor; init-only setters are not covered by Trellis tests today and round-trip behavior is not guaranteed. Use `{ get; private set; }`. |
 | `TRLS023` | Warning | `CreatedAtRoute` / `CreatedAtAction` / `WithLocation` on a versioned controller is missing the `api-version` route value | Flags `HttpResponseOptionsBuilder<T>.CreatedAtRoute(...)`, `HttpResponseOptionsBuilder<T>.CreatedAtAction(...)`, and `HttpResponseOptionsBuilder<T>.WithLocation(...)` calls inside `[ApiVersion]`-decorated controllers when the chain is not followed by `.WithVersionedRoute(...)` (or the underlying primitive `.WithRouteValueResolver("api-version", httpContext => ...)` on `HttpResponseOptionsBuilder<T>`, matched case-insensitively) and the route values dictionary literal does not include an `"api-version"` key. Without that key, the generated `Location` header omits the version under query/header API versioning and a follow-up `GET` to the dereferenced URL returns 404. The code fix appends `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning` and adds `using Trellis.Asp.ApiVersioning;` when missing. The analyzer matches `["api-version"]` keys case-insensitively (matching `RouteValueDictionary`'s runtime semantics) and resolves const-string identifiers via the semantic model. Recognises and warns on the anonymous-object ctor shape (`new RouteValueDictionary(new { id = ... })`) since C# property names cannot contain `"-"`, and on the single-id overloads (`CreatedAtRoute(routeName, idSelector)` / `WithLocation(routeName, idSelector)`) which construct a single-key dictionary internally. Does not walk attribute base-type chains (`[ApiVersion]` is `Inherited = false`). |
+| `TRLS054` | Warning | Use operators instead of `Maybe<T>.Equals` in `IQueryable` expressions | Flags `Maybe<T>.Equals(...)` and `object.Equals(...)` over `Maybe<T>` values inside `System.Linq.Queryable` LINQ lambdas. `MaybeExpressionRewriter` supports `==` / `!=` operator comparisons but cannot translate these opaque method-call shapes, so use operators or `MaybeQueryableExtensions.WhereEquals(...)`. In-memory `IEnumerable<T>` LINQ is not flagged. |
+| `TRLS055` | Warning | Inline `HasValueWhere` predicates in `IQueryable` expressions | Flags `maybe.HasValueWhere(predicate)` inside `System.Linq.Queryable` LINQ lambdas when `predicate` is not an inline lambda expression. Captured `Func<T, bool>` variables, method groups, and member delegates are opaque to `MaybeExpressionRewriter`; inline the lambda (`maybe.HasValueWhere(x => ...)`) or materialize first. In-memory `IEnumerable<T>` LINQ is not flagged. |
 | `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
 | `TRLS032` | Error | `MinimumLength` exceeds `MaximumLength` | Emitted by the Primitives source generator when a `[StringLength]` attribute has `MinimumLength > MaximumLength`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN002`)* |
 | `TRLS033` | Error | `Range` minimum exceeds maximum | Emitted by the Primitives source generator when a `[Range]` attribute on `int`/`long`/`decimal` has `Min > Max`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN003`)* |
@@ -72,6 +76,7 @@ Prefer fixing the code over suppressing diagnostics. When a suppression is genui
 | `TRLS037` | Warning | `[OwnedEntity]` type already has a parameterless constructor | Emitted by the EF Core generator when `[OwnedEntity]` is applied to a type that already has a parameterless constructor. Remove the existing constructor or remove `[OwnedEntity]`. *(formerly `TRLSGEN102`)* |
 | `TRLS038` | Error | `[OwnedEntity]` type must inherit from `ValueObject` | Emitted by the EF Core generator when `[OwnedEntity]` is applied to a type that does not inherit from `Trellis.ValueObject`. *(formerly `TRLSGEN103`)* |
 | `TRLS039` | Warning | Unsupported scalar value primitive for AOT-safe JSON converter | Emitted by `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) when a value object inherits from `ScalarValueObject<TSelf, TPrimitive>` with a `TPrimitive` outside the AOT-safe set (`string`, `int`, `long`, `short`, `byte`, `bool`, `float`, `double`, `decimal`, `Guid`, `DateTime`, `DateTimeOffset`). The generator skips the converter for that type to avoid emitting reflection-based `JsonSerializer.Deserialize`/`Serialize` calls (IL2026/IL3050 under `PublishAot=true`); provide a custom `JsonConverter<TSelf>` or pick a supported primitive. |
+| `TRLS056` | Error | Required generated member conflicts with user declaration | Emitted by `RequiredPartialClassGenerator` when a `Required*<TSelf>` partial class declares a member that Trellis would generate (`TryCreate`, `Create`, `Parse`, `TryParse`, GUID factories, conversion operator, constructor, or validation hook). The generator skips the conflicting member so the user declaration wins and reports this diagnostic at the user member declaration. Remove the redundant member, or change the base class if custom semantics are required. |
 
 ## Constants — `TrellisDiagnosticIds`
 
@@ -83,7 +88,7 @@ The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzer
 public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
-Generator IDs (`TRLS031`–`TRLS039`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
+Generator IDs (`TRLS031`–`TRLS056`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
 
 ### Constant → diagnostic ID → emitter
 
@@ -111,6 +116,8 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `RedundantEfConfiguration` | `TRLS021` | `RedundantEfConfigurationAnalyzer` |
 | `OwnedEntityInitOnlyProperty` | `TRLS022` | `OwnedEntityInitOnlyPropertyAnalyzer` |
 | `MissingApiVersionRouteValue` | `TRLS023` | `CreatedAtRouteMissingApiVersionAnalyzer` |
+| `MaybeEqualsInQueryable` | `TRLS054` | `UnsafeValueInLinqAnalyzer` |
+| `NonInlineHasValueWhereInQueryable` | `TRLS055` | `UnsafeValueInLinqAnalyzer` |
 | `UnsupportedRequiredBaseType` | `TRLS031` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `InvalidStringLengthRange` | `TRLS032` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `InvalidRangeMinExceedsMax` | `TRLS033` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
@@ -120,6 +127,7 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `OwnedEntityAlreadyHasParameterlessCtor` | `TRLS037` | `OwnedEntityGenerator` (Trellis.EntityFrameworkCore.Generator) |
 | `OwnedEntityMustInheritValueObject` | `TRLS038` | `OwnedEntityGenerator` (Trellis.EntityFrameworkCore.Generator) |
 | `UnsupportedScalarValuePrimitiveForAotJson` | `TRLS039` | `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) |
+| `GeneratedRequiredMemberCollision` | `TRLS056` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 
 ## Descriptors — `DiagnosticDescriptors`
 
@@ -149,6 +157,8 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 | `RedundantEfConfiguration` | `TRLS021` | Warning |
 | `OwnedEntityInitOnlyProperty` | `TRLS022` | Warning |
 | `MissingApiVersionRouteValue` | `TRLS023` | Warning |
+| `MaybeEqualsInQueryable` | `TRLS054` | Warning |
+| `NonInlineHasValueWhereInQueryable` | `TRLS055` | Warning |
 
 > **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
@@ -270,7 +280,7 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
   - `DebugOnFailure`, `DebugOnFailureAsync`
 - No code fix.
 
-#### `UnsafeValueInLinqAnalyzer` — `TRLS013`
+#### `UnsafeValueInLinqAnalyzer` — `TRLS013`, `TRLS054`, `TRLS055`
 - Flags `.Value` inside LINQ projection/order/grouping lambdas for:
   - `Select`
   - `SelectMany`
@@ -284,6 +294,8 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
 - Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed along with `Result<T>.Value`.
 - Suppresses the diagnostic when an earlier `.Where(...)` clause **mentions** `HasValue` anywhere in its lambda body. This is **keyword-presence detection**, not predicate-shape verification: `.Where(x => !x.HasValue).Select(x => x.Value)` (filtering down to None elements before reading their value) silences the diagnostic but still throws at runtime. Tightening the suppression to only honor `Where(x => x.HasValue)`-shaped predicates is a known limitation tracked separately.
 - For EF Core IQueryable predicates over a `Maybe<T>` property, either register `AddTrellisInterceptors()` (which rewrites `.HasValue`/`.Value`/`GetValueOrDefault(d)` into `EF.Property`/null-checks/`COALESCE`) or use `Trellis.EntityFrameworkCore.MaybeQueryableExtensions` (`WhereHasValue`/`WhereNone`/`WhereEquals`/`WhereLessThan`/`WhereLessThanOrEqual`/`WhereGreaterThan`/`WhereGreaterThanOrEqual`) explicitly. Note: this analyzer only fires on Select-family methods today; coverage of `.Where`/`.Any`/`.First` etc. is tracked as a follow-up.
+- `TRLS054`: inside `System.Linq.Queryable` lambdas, flags `Maybe<T>.Equals(...)` and `object.Equals(...)` when a `Maybe<T>` operand is involved. Use the natural `==` / `!=` operators (which `MaybeExpressionRewriter` understands) or `MaybeQueryableExtensions.WhereEquals(...)`.
+- `TRLS055`: inside `System.Linq.Queryable` lambdas, flags `HasValueWhere(...)` when the predicate argument is not an inline lambda. Captured `Func<T, bool>` variables, method groups, and member delegates cannot be inspected by the EF Core rewriter.
 - No code fix.
 
 #### `CombineLimitAnalyzer` — `TRLS014`
@@ -369,6 +381,12 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
 - Flags property declarations with an `init` accessor whose containing class is annotated with `[OwnedEntity]`.
 - Diagnostic anchors at the `init` keyword and includes the property name and class name.
 - Recommends `{ get; private set; }`, the supported and tested shape for owned-entity properties materialized through the generator-emitted parameterless constructor.
+- No code fix.
+
+#### `RequiredPartialClassGenerator` member collision — `TRLS056`
+- Flags user-declared members on `Required*<TSelf>` partial classes that collide with members generated by `RequiredPartialClassGenerator`.
+- Severity: Error. The generator suppresses only the conflicting generated member and reports at the user member location, replacing generic `CS0111` / `CS0102` duplicate-member failures with a Trellis-specific message.
+- Fix: delete the redundant declaration and rely on the generated member, or stop deriving from the Required base if the type needs fully custom semantics.
 - No code fix.
 
 #### `CreatedAtRouteMissingApiVersionAnalyzer` — `TRLS023`

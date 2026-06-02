@@ -14,9 +14,9 @@
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS022</c> range are emitted by the
-/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS039</c>
-/// range are emitted by the bundled source generators
+/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges are emitted by the
+/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS053</c> and <c>TRLS056</c>
+/// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
 /// and <c>Trellis.AspSourceGenerator</c>).
 /// Analyzer IDs were renumbered to be contiguous in v3-alpha; prior IDs
@@ -171,4 +171,13 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS053 — Contradictory Required attribute combination.</summary>
     public const string ContradictoryRequiredAttributeCombination = "TRLS053";
+
+    /// <summary>TRLS054 — <c>Maybe&lt;T&gt;.Equals</c> is used inside an <c>IQueryable</c> expression.</summary>
+    public const string MaybeEqualsInQueryable = "TRLS054";
+
+    /// <summary>TRLS055 — <c>HasValueWhere</c> uses a non-inline predicate inside an <c>IQueryable</c> expression.</summary>
+    public const string NonInlineHasValueWhereInQueryable = "TRLS055";
+
+    /// <summary>TRLS056 — User-declared member conflicts with a Required value object generated member.</summary>
+    public const string GeneratedRequiredMemberCollision = "TRLS056";
 }

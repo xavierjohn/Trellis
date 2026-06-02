@@ -112,7 +112,7 @@ return (await predicate()) ? Result.Ok(value) : Result.Fail<T>(error);
 
 // Exception → result: use Try / TryAsync, or build the error explicitly
 return Result.Try(() => DoWork());
-return Result.Fail<T>(new Error.Unexpected("unhandled_exception", faultId) { Detail = ex.Message, Cause = ex });
+return Result.Fail<T>(new Error.Unexpected("unhandled_exception", faultId) { Detail = "An unexpected error occurred while processing the request." });
 ```
 
 `OperationCanceledException` is always rethrown by `Try` / `TryAsync` rather than mapped.

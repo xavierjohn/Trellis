@@ -34,11 +34,12 @@ public class RequiredPartialClassInfoEqualityTests
         bool hasAllowWhitespace = false,
         bool hasNoTrim = false,
         bool hasAllowZero = false,
-        bool hasAllowMinValue = false) =>
+        bool hasAllowMinValue = false,
+        GeneratedMemberDeclaration[]? userDeclaredMembers = null) =>
         new(@namespace, className, classBase, accessibility, maxLength, minLength,
             rangeMin, rangeMax, rangeLongMin, rangeLongMax, rangeDoubleMin, rangeDoubleMax,
             nestingParents, typePath, hasNotDefault, hasTrim, hasAllowEmpty, hasAllowWhitespace,
-            hasNoTrim, hasAllowZero, hasAllowMinValue);
+            hasNoTrim, hasAllowZero, hasAllowMinValue, userDeclaredMembers: userDeclaredMembers);
 
     [Fact]
     public void Identical_infos_are_equal_and_have_same_hash()
@@ -215,6 +216,17 @@ public class RequiredPartialClassInfoEqualityTests
         var ref1 = Make(nestingParents: ["public partial class Outer", "public partial class Mid"]);
         var ref2 = Make(nestingParents: ["public partial class Outer", "public partial class Mid"]);
         ref1.Equals(ref2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Differing_UserDeclaredMembers_makes_infos_unequal()
+    {
+        var clean = Make(userDeclaredMembers: []);
+        var withTryParse = Make(userDeclaredMembers:
+            [new GeneratedMemberDeclaration("TryParse", "TryParse(string, IFormatProvider, out OrderId)", matchesByNameOnly: false, location: null)]);
+
+        clean.Equals(withTryParse).Should().BeFalse();
+        clean.GetHashCode().Should().NotBe(withTryParse.GetHashCode());
     }
 
     [Fact]

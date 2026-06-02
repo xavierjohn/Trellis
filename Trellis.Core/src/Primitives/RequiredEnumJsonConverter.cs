@@ -31,13 +31,22 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     where TRequiredEnum : RequiredEnum<TRequiredEnum>, IScalarValue<TRequiredEnum, string>
 {
     /// <inheritdoc />
-    public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-        reader.TokenType switch
+    public override bool HandleNull => true;
+
+    /// <inheritdoc />
+    public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            throw new JsonException(
+                $"Cannot deserialize null into RequiredEnum<{typeof(TRequiredEnum).Name}>. " +
+                "A required enum value must be a non-null string.");
+
+        return reader.TokenType switch
         {
             JsonTokenType.String => ReadFromString(ref reader),
-            JsonTokenType.Null => null,
             _ => throw new JsonException($"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
         };
+    }
 
     /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, TRequiredEnum value, JsonSerializerOptions options)
