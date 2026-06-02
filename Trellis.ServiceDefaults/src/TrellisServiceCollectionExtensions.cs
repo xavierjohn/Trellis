@@ -14,8 +14,8 @@ public static class TrellisServiceCollectionExtensions
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Configures the Trellis service modules to apply.</param>
     /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
-    /// <exception cref="ArgumentNullException">services is null</exception>
-    /// <exception cref="ArgumentNullException">configure is null</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="services"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure"/> is <see langword="null"/>.</exception>
     /// <remarks>
     /// This method only wires Trellis integration services. Application-owned services such as
     /// <c>AddDbContext&lt;TContext&gt;(...)</c> and <c>AddMediator(...)</c> stay explicit.
