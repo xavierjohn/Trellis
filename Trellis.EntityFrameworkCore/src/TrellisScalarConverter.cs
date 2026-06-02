@@ -47,8 +47,8 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
     }
 
     private static string BuildInvalidValuePropertyMessage(string reason) =>
-        $"Type '{typeof(TModel).FullName}' is not a valid scalar value object for {ConverterDisplayName()}: {reason}. " +
-        $"Expected shape: IScalarValue<{typeof(TModel).Name}, {typeof(TProvider).Name}> with property signature " +
+        $"Type '{typeof(TModel).FullName}' is not a valid Trellis value object for {ConverterDisplayName()}: {reason}. " +
+        $"Expected shape: IScalarValue<{typeof(TModel).Name}, {typeof(TProvider).Name}> (or the symbolic equivalent) with property signature " +
         $"'public {typeof(TProvider).FullName} Value {{ get; }}'. " +
         $"Use ScalarValueObject<{typeof(TModel).Name}, {typeof(TProvider).Name}>, {RequiredBaseHint()}, " +
         "or expose the public property on the model type.";
