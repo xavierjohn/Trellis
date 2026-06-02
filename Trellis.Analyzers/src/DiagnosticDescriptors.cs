@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 public static class DiagnosticDescriptors
 {
     private const string Category = "Trellis";
-    private const string HelpLinkBase = "https://xavierjohn.github.io/Trellis/analyzers/";
+    private const string HelpLinkBase = "https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html";
 
     /// <summary>
     /// TRLS001: Result return value is not handled.
@@ -23,7 +23,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Result<T> return values should be handled to ensure errors are not silently ignored. " +
                      "Use Bind, Map, Match, or assign to a variable.",
-        helpLinkUri: HelpLinkBase + "TRLS001");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS002: Use Bind instead of Map when the lambda returns a Result.
@@ -37,7 +37,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "When the transformation function returns a Result<T>, use Bind (flatMap) instead of Map. " +
                      "Map will produce Result<Result<T>> which is likely not intended.",
-        helpLinkUri: HelpLinkBase + "TRLS002");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS003: Accessing Maybe.Value without checking HasValue.
@@ -51,7 +51,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Maybe.Value throws an InvalidOperationException if the Maybe has no value. " +
                       "Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult.",
-        helpLinkUri: HelpLinkBase + "TRLS003");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS004: Result is double-wrapped as Result&lt;Result&lt;T&gt;&gt;.
@@ -65,7 +65,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Result should not be wrapped inside another Result. This creates Result<Result<T>> which is almost always unintended. " +
                      "If combining Results, use Bind instead of Map. If wrapping a value, ensure it's not already a Result.",
-        helpLinkUri: HelpLinkBase + "TRLS004");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS005: Blocking on async Result or accessing properties incorrectly.
@@ -79,7 +79,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Task<Result<T>> should be awaited, not blocked with .Result or .Wait(). " +
                      "Blocking can cause deadlocks and prevents proper async execution. Use await instead.",
-        helpLinkUri: HelpLinkBase + "TRLS005");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS007: Maybe is double-wrapped as Maybe&lt;Maybe&lt;T&gt;&gt;.
@@ -94,7 +94,7 @@ public static class DiagnosticDescriptors
         description: "Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. " +
                      "Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. " +
                      "Consider converting to Result with ToResult() for better composability.",
-        helpLinkUri: HelpLinkBase + "TRLS007");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS008: Consider using Result.Combine for multiple Result checks.
@@ -108,7 +108,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "When combining multiple Result<T> values, Result.Combine() or .Combine() chaining provides a cleaner and more maintainable approach " +
                      "than manually checking IsSuccess on each result.",
-        helpLinkUri: HelpLinkBase + "TRLS008");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS009: Using async lambda with synchronous Map/Bind instead of async variant.
@@ -123,7 +123,7 @@ public static class DiagnosticDescriptors
         description: "When using async work with Map, Bind, Tap, or Ensure, use the async variant (MapAsync, BindAsync, etc.) " +
                      "and await the returned async pipeline. The code fix is only offered for simple, locally safe await insertions; " +
                      "convert synchronous void, value-returning, chained, nested, or delegate-changing scopes manually before applying it.",
-        helpLinkUri: HelpLinkBase + "TRLS009");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS010: Throwing exception inside Result chain instead of returning failure.
@@ -137,7 +137,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Throwing exceptions inside Bind, Map, Tap, or Ensure lambdas defeats the purpose of Railway Oriented Programming. " +
                      "Return Result.Fail<T>() to signal errors and keep the error on the failure track.",
-        helpLinkUri: HelpLinkBase + "TRLS010");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS013: Using <c>Maybe&lt;T&gt;.Value</c> in LINQ without checking HasValue.
@@ -168,7 +168,7 @@ public static class DiagnosticDescriptors
                      "or use Trellis.EntityFrameworkCore.MaybeQueryableExtensions " +
                      "(WhereHasValue/WhereNone/WhereEquals/WhereLessThan/WhereLessThanOrEqual/WhereGreaterThan/WhereGreaterThanOrEqual) " +
                      "explicitly.",
-        helpLinkUri: HelpLinkBase + "TRLS013");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS013: Backwards-compatible alias for <see cref="UnsafeMaybeValueInLinq"/>.
@@ -192,7 +192,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. " +
                      "Group related fields into intermediate value objects or sub-results, then combine those groups.",
-        helpLinkUri: HelpLinkBase + "TRLS014");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS015: Use SaveChangesResultAsync instead of SaveChangesAsync.
@@ -210,7 +210,7 @@ public static class DiagnosticDescriptors
                      "In non-UoW contexts, use SaveChangesResultAsync (returns Result<int>) or SaveChangesResultUnitAsync (returns Result<Unit>). " +
                      "Under AddTrellisUnitOfWork<TContext> the TransactionalCommandBehavior owns commit; repositories should stage changes via " +
                      "DbContext APIs (Add/Update/Remove) and not invoke SaveChanges/SaveChangesAsync at all.",
-        helpLinkUri: HelpLinkBase + "TRLS015");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS016: HasIndex references a Maybe&lt;T&gt; property.
@@ -227,7 +227,7 @@ public static class DiagnosticDescriptors
                  "Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. " +
                  "If needed, you can also use string-based HasIndex with the storage member name directly. " +
                  "Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex(\"Status\", \"_submittedAt\").",
-        helpLinkUri: HelpLinkBase + "TRLS016");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS017: Wrong attribute namespace — System.ComponentModel.DataAnnotations instead of Trellis.
@@ -243,7 +243,7 @@ public static class DiagnosticDescriptors
                  "Using the wrong namespace compiles silently but the Trellis source generator ignores them, " +
                  "resulting in value objects without the expected validation constraints. " +
                  "Use the Trellis versions (namespace Trellis) instead.",
-        helpLinkUri: HelpLinkBase + "TRLS017");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS018: Result&lt;T&gt; deconstruction reads the value slot without a success/error gate.
@@ -258,7 +258,7 @@ public static class DiagnosticDescriptors
         description: "Deconstructing Result<T> as 'var (_, value, _) = result;' (or any tuple form) returns default(T) when the result is a failure. " +
                      "For struct values like int/Guid this silently propagates a fake value rather than surfacing the error. " +
                      "Either capture the success/error component and gate the value read with an if-check, or use Match/IsSuccess/TryGetValue instead.",
-        helpLinkUri: HelpLinkBase + "TRLS018");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS019: Explicit default(Result), default(Result&lt;T&gt;), or default(Maybe&lt;T&gt;) at a use site.
@@ -276,7 +276,7 @@ public static class DiagnosticDescriptors
                      "Always construct via Result.Ok(...)/Result.Fail(...) or Maybe<T>.None / Maybe.From(...). " +
                      "Suppress with [SuppressMessage(\"Trellis\", \"TRLS019\")] or '#pragma warning disable TRLS019' " +
                      "for sanctioned sentinel/test-helper sites.",
-        helpLinkUri: HelpLinkBase + "TRLS019");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS020: Composite value object DTO property is not safely deserializable.
@@ -295,7 +295,7 @@ public static class DiagnosticDescriptors
                      "at the endpoint/API seam instead — applicable to controller actions, Minimal API handlers, and Mediator " +
                      "message-construction sites (cookbook Recipe 14). Otherwise System.Text.Json may fall back to default " +
                      "construction and silently bypass TryCreate validation.",
-        helpLinkUri: HelpLinkBase + "TRLS020");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS021: EF configuration duplicates Trellis conventions for Maybe&lt;T&gt; or [OwnedEntity].
@@ -309,7 +309,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "When ApplyTrellisConventions or ApplyTrellisConventionsFor<TContext>() is wired, manual HasConversion, OwnsOne, or Ignore configuration for Maybe<T> and [OwnedEntity] properties can override or conflict with Trellis EF conventions. " +
                      "Remove the redundant mapping so the convention-generated storage and ownership model stay authoritative.",
-        helpLinkUri: HelpLinkBase + "TRLS021");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS022: [OwnedEntity] property uses init-only setter; use { get; private set; } instead.
@@ -324,7 +324,7 @@ public static class DiagnosticDescriptors
         description: "[OwnedEntity] types are materialized by EF Core through a generator-emitted private parameterless constructor. " +
                      "Init-only setters on [OwnedEntity] properties are not covered by Trellis tests today and round-trip behavior is not guaranteed. " +
                      "Use '{ get; private set; }' as the supported, tested shape.",
-        helpLinkUri: HelpLinkBase + "TRLS022");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS023: A Location-emitting builder call on a versioned controller is missing the api-version route value.
@@ -345,7 +345,7 @@ public static class DiagnosticDescriptors
                      "the framework inject the version from the per-request ApiVersionReader chain (with sensible " +
                      "declared/default fallbacks). Endpoints that are [ApiVersionNeutral] or use URL-segment versioning " +
                      "are exempt from this warning.",
-        helpLinkUri: HelpLinkBase + "TRLS023");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS054: Maybe.Equals is not translatable in IQueryable expressions.
@@ -360,7 +360,7 @@ public static class DiagnosticDescriptors
         description: "MaybeExpressionRewriter handles Maybe<T> == / != operator comparisons in IQueryable expression trees, " +
                      "but Maybe<T>.Equals(other) and object.Equals(maybe, other) remain opaque method calls to EF Core. " +
                      "Use the == or != operators for natural-form comparisons, or use Trellis.EntityFrameworkCore.MaybeQueryableExtensions.WhereEquals.",
-        helpLinkUri: HelpLinkBase + "TRLS054");
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// TRLS055: HasValueWhere uses a captured predicate inside an IQueryable expression.
@@ -374,5 +374,5 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "MaybeExpressionRewriter can inspect and inline HasValueWhere(t => ...) predicate bodies in IQueryable expression trees. " +
                      "Captured Func<T, bool> variables, method groups, and other non-inline delegate shapes are opaque to the rewriter and fall through to EF Core translation failures.",
-        helpLinkUri: HelpLinkBase + "TRLS055");
+        helpLinkUri: HelpLinkBase);
 }

@@ -43,6 +43,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 {
+    private const string HelpLinkBase = "https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html";
+
     /// <summary>
     /// Diagnostic reported when a non-partial property of type <c>Maybe&lt;T&gt;</c> is found.
     /// </summary>
@@ -52,7 +54,10 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
         messageFormat: "Property '{0}' of type Maybe<{1}> should be declared 'partial' so the source generator can emit the backing field and implementation",
         category: "Trellis",
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        description: "Non-partial Maybe<T> auto-properties on partial entity types cannot be implemented by the EF Core source generator. " +
+                     "Without the generated backing field, Trellis conventions cannot map the optional value correctly for persistence.",
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// Canonical IDs for diagnostics emitted by this generator. See

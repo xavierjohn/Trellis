@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Trellis.Authorization;
 
 /// <summary>
@@ -84,6 +85,7 @@ public static class ServiceCollectionExtensions
     /// <b>Replaces</b> any prior <see cref="IActorProvider"/> registration — actor-provider
     /// helpers do not stack. Pick one provider per environment (or wrap with
     /// <see cref="AddCachingActorProvider{T}"/>); the last <c>AddXxxActorProvider</c> call wins.
+    /// Options validation fails host startup when a nested path is configured without a container claim.
     /// </remarks>
     /// <example>
     /// <code>
@@ -102,10 +104,11 @@ public static class ServiceCollectionExtensions
     {
         services.AddHttpContextAccessor();
 
-        if (configure is not null)
-            services.Configure(configure);
-        else
-            services.Configure<NestedJsonPathClaimsActorOptions>(_ => { });
+        services
+            .AddOptions<NestedJsonPathClaimsActorOptions>()
+            .Configure(configure ?? (_ => { }))
+            .ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<NestedJsonPathClaimsActorOptions>, NestedJsonPathClaimsActorOptionsValidator>());
 
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, NestedJsonPathClaimsActorProvider>());
 

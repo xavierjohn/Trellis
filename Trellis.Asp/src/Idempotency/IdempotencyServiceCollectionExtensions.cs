@@ -3,6 +3,7 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Service-registration extensions for the Trellis Idempotency-Key middleware.
@@ -10,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 public static class IdempotencyServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the idempotency middleware, its options, and the default
+    /// Registers the idempotency middleware, its startup-validated options, and the default
     /// <see cref="DefaultIdempotencyScopeResolver"/> (per-actor scope, falling back to
     /// anonymous when no actor provider is registered). A store registration is required
     /// — call <see cref="AddInMemoryIdempotencyStore"/> for in-process scenarios, or supply
@@ -25,14 +26,11 @@ public static class IdempotencyServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        if (configure is not null)
-        {
-            services.Configure(configure);
-        }
-        else
-        {
-            services.AddOptions<IdempotencyOptions>();
-        }
+        services
+            .AddOptions<IdempotencyOptions>()
+            .Configure(configure ?? (_ => { }))
+            .ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<IdempotencyOptions>, IdempotencyOptionsValidator>());
 
         services.TryAddSingleton<IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver>();
         services.TryAddSingleton<IdempotencyMarker>();
