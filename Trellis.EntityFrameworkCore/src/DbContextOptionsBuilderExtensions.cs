@@ -49,7 +49,7 @@ public static class DbContextOptionsBuilderExtensions
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
-        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder, timeProvider: null))
             return optionsBuilder;
 
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_entityTimestampInterceptor);
@@ -67,7 +67,7 @@ public static class DbContextOptionsBuilderExtensions
         this DbContextOptionsBuilder optionsBuilder)
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
-        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder, timeProvider: null))
             return optionsBuilder;
 
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, s_entityTimestampInterceptor);
@@ -85,12 +85,19 @@ public static class DbContextOptionsBuilderExtensions
     /// Defaults to <see cref="TimeProvider.System"/> if <c>null</c>.
     /// </param>
     /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <c>AddTrellisInterceptors</c> has already been called on this builder with
+    /// a different <see cref="TimeProvider"/>. Library + application composition must agree
+    /// on the time-provider choice; a silent no-op would let a library's parameterless
+    /// registration shadow the application's later custom-clock registration without
+    /// diagnostic. Resolve by consolidating to a single composition-root call.
+    /// </exception>
     public static DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(
         this DbContextOptionsBuilder<TContext> optionsBuilder, TimeProvider? timeProvider)
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
-        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder, timeProvider))
             return optionsBuilder;
 
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new EntityTimestampInterceptor(timeProvider));
@@ -108,11 +115,16 @@ public static class DbContextOptionsBuilderExtensions
     /// Defaults to <see cref="TimeProvider.System"/> if <c>null</c>.
     /// </param>
     /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <c>AddTrellisInterceptors</c> has already been called on this builder with
+    /// a different <see cref="TimeProvider"/>. Library + application composition must agree
+    /// on the time-provider choice.
+    /// </exception>
     public static DbContextOptionsBuilder AddTrellisInterceptors(
         this DbContextOptionsBuilder optionsBuilder, TimeProvider? timeProvider)
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
-        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder))
+        if (!TryAddTrellisInterceptorsMarkerExtension(optionsBuilder, timeProvider))
             return optionsBuilder;
 
         optionsBuilder.AddInterceptors(s_maybeQueryInterceptor, s_scalarValueQueryInterceptor, s_aggregateETagInterceptor, new EntityTimestampInterceptor(timeProvider));
@@ -120,14 +132,40 @@ public static class DbContextOptionsBuilderExtensions
         return optionsBuilder;
     }
 
-    private static bool TryAddTrellisInterceptorsMarkerExtension(DbContextOptionsBuilder optionsBuilder)
+    /// <summary>
+    /// Records the marker extension on the builder when this is the first
+    /// <c>AddTrellisInterceptors</c> call. Skips (returns <c>false</c>) when the marker is
+    /// already present AND the requested <c>TimeProvider</c> matches the recorded one.
+    /// Throws when the requested <c>TimeProvider</c> conflicts with the recorded one, so
+    /// the consumer's TimeProvider choice cannot be silently shadowed by a prior call.
+    /// </summary>
+    private static bool TryAddTrellisInterceptorsMarkerExtension(
+        DbContextOptionsBuilder optionsBuilder,
+        TimeProvider? timeProvider)
     {
         var extension = optionsBuilder.Options.FindExtension<TrellisInterceptorsMarkerExtension>();
         if (extension is not null)
-            return false;
+        {
+            // Both calls supplied no TimeProvider — same default; idempotent skip.
+            if (extension.RecordedTimeProvider is null && timeProvider is null)
+                return false;
+
+            // Same TimeProvider reference — idempotent skip.
+            if (ReferenceEquals(extension.RecordedTimeProvider, timeProvider))
+                return false;
+
+            // Conflict: prior call recorded one TimeProvider, this call supplies another.
+            // Fail fast rather than silently dropping the consumer's choice.
+            var recorded = extension.RecordedTimeProvider?.GetType().FullName ?? "<default (System)>";
+            var requested = timeProvider?.GetType().FullName ?? "<default (System)>";
+            throw new InvalidOperationException(
+                $"AddTrellisInterceptors was already called on this DbContextOptionsBuilder with TimeProvider '{recorded}'. " +
+                $"The current call requests TimeProvider '{requested}', which would be silently ignored. " +
+                "Consolidate to a single AddTrellisInterceptors call at your composition root with the intended TimeProvider.");
+        }
 
         ((IDbContextOptionsBuilderInfrastructure)optionsBuilder)
-            .AddOrUpdateExtension(new TrellisInterceptorsMarkerExtension());
+            .AddOrUpdateExtension(new TrellisInterceptorsMarkerExtension(timeProvider));
         return true;
     }
 

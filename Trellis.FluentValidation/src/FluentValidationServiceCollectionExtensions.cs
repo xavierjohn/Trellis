@@ -172,16 +172,44 @@ public static partial class FluentValidationServiceCollectionExtensions
 
     private static void TryEmitWarning(IServiceCollection services, string message)
     {
+        // ILoggerFactory is normally registered via AddLogging() which uses
+        // ImplementationType / ImplementationFactory, not ImplementationInstance.
+        // Walk the descriptors so we recognize all three registration shapes.
         var loggerFactoryDescriptor = services.FirstOrDefault(static descriptor =>
-            descriptor.ServiceType == typeof(ILoggerFactory)
-            && descriptor.Lifetime == ServiceLifetime.Singleton
-            && descriptor.ImplementationInstance is ILoggerFactory);
+            descriptor.ServiceType == typeof(ILoggerFactory));
 
-        if (loggerFactoryDescriptor?.ImplementationInstance is ILoggerFactory loggerFactory)
+        if (loggerFactoryDescriptor is null)
         {
-            var logger = loggerFactory.CreateLogger(LoggerCategory);
-            LogScannerTypeLoadFailure(logger, message);
+            // No logging registered at all — fall through to Debug.
+            System.Diagnostics.Debug.WriteLine(message);
             return;
+        }
+
+        // Fast path: an instance is already available, no provider build needed.
+        if (loggerFactoryDescriptor.ImplementationInstance is ILoggerFactory directInstance)
+        {
+            LogScannerTypeLoadFailure(directInstance.CreateLogger(LoggerCategory), message);
+            return;
+        }
+
+        // ImplementationType / ImplementationFactory shape: build a one-off provider so
+        // the registered factory can run. validateScopes=false is safe here because we
+        // only resolve a singleton (ILoggerFactory) and dispose immediately. Cost is a
+        // one-time scan-warning emission, not per-request.
+        try
+        {
+            using var tempProvider = services.BuildServiceProvider(validateScopes: false);
+            var resolved = tempProvider.GetService<ILoggerFactory>();
+            if (resolved is not null)
+            {
+                LogScannerTypeLoadFailure(resolved.CreateLogger(LoggerCategory), message);
+                return;
+            }
+        }
+        catch
+        {
+            // Building the temp provider can throw if other registrations are malformed.
+            // Diagnostics are best-effort — fall through to Debug rather than rethrow.
         }
 
         System.Diagnostics.Debug.WriteLine(message);

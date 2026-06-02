@@ -70,6 +70,66 @@ public class AddTrellisInterceptorsIdempotencyTests
         AssertTrellisInterceptorsRegisteredExactlyOnce(interceptors);
     }
 
+    [Fact]
+    public void AddTrellisInterceptors_calledTwiceWithSameTimeProvider_remainsIdempotent()
+    {
+        var timeProvider = TimeProvider.System;
+        var options = new DbContextOptionsBuilder<TestDbContext>()
+            .AddTrellisInterceptors(timeProvider)
+            .AddTrellisInterceptors(timeProvider)
+            .Options;
+
+        var interceptors = GetInterceptors(options);
+
+        AssertTrellisInterceptorsRegisteredExactlyOnce(interceptors);
+    }
+
+    [Fact]
+    public void AddTrellisInterceptors_conflictingTimeProviders_throws()
+    {
+        var firstClock = new FakeTimeProvider();
+        var secondClock = new FakeTimeProvider();
+        var builder = new DbContextOptionsBuilder<TestDbContext>()
+            .AddTrellisInterceptors(firstClock);
+
+        var act = () => builder.AddTrellisInterceptors(secondClock);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already called*TimeProvider*Consolidate*");
+    }
+
+    [Fact]
+    public void AddTrellisInterceptors_parameterlessAfterCustomTimeProvider_throws()
+    {
+        // The parameterless overload implies TimeProvider.System; following a custom-clock
+        // registration this is still a conflict (the consumer's custom clock would be
+        // silently shadowed). Better to fail fast.
+        var customClock = new FakeTimeProvider();
+        var builder = new DbContextOptionsBuilder<TestDbContext>()
+            .AddTrellisInterceptors(customClock);
+
+        var act = () => builder.AddTrellisInterceptors();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already called*TimeProvider*");
+    }
+
+    [Fact]
+    public void AddTrellisInterceptors_customTimeProviderAfterParameterless_throws()
+    {
+        // The reverse of the previous test — library calls parameterless first, then app
+        // tries to supply a custom clock. Without the fail-fast the app's clock is silently
+        // dropped.
+        var customClock = new FakeTimeProvider();
+        var builder = new DbContextOptionsBuilder<TestDbContext>()
+            .AddTrellisInterceptors();
+
+        var act = () => builder.AddTrellisInterceptors(customClock);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already called*TimeProvider*");
+    }
+
     private static List<IInterceptor> GetInterceptors(DbContextOptions options)
     {
         var coreOptions = options.FindExtension<CoreOptionsExtension>();
@@ -87,4 +147,6 @@ public class AddTrellisInterceptorsIdempotencyTests
     }
 
     private sealed class ConsumerInterceptor : IInterceptor;
+
+    private sealed class FakeTimeProvider : TimeProvider;
 }
