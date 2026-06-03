@@ -22,7 +22,7 @@ runtime application — it is a sample of *how to test* code that uses Trellis.
 ## Run it
 
 ```pwsh
-dotnet test Examples/TestingPatterns/TestingPatterns.Tests.csproj
+dotnet test --project Examples/TestingPatterns/TestingPatterns.Tests.csproj
 ```
 
 ## Why this lives in `Examples/`
