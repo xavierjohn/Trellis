@@ -36,7 +36,7 @@ The Entra E2E surface is three types in `Trellis.Testing.AspNetCore` plus one ex
 |---|---|---|---|
 | `MsalTestOptions` | `sealed class` | — | `TenantId`, `ClientId`, `Scopes`, `TestUsers` (named credentials). Bind from `IConfiguration`. |
 | `TestUserCredentials` | `sealed class` | — | `Username`, `Password`, `ExpectedPermissions` for one named test user. |
-| `MsalTestTokenProvider(MsalTestOptions options)` | ctor | — | Builds a public-client MSAL app for `ClientId`/`TenantId` on `AzureCloudInstance.AzurePublic`. Throws `InvalidOperationException` when `TenantId`, `ClientId`, or `Scopes` is missing. |
+| `MsalTestTokenProvider(MsalTestOptions options)` | ctor | — | Builds a public-client MSAL app for `ClientId`/`TenantId` on `AzureCloudInstance.AzurePublic`. Throws `InvalidOperationException` when `TenantId`/`ClientId` is missing, when `Scopes` is empty, or when any entry in `Scopes` is blank. |
 | `MsalTestTokenProvider.AcquireTokenAsync(string testUserName, CancellationToken)` | instance | `Task<string>` | ROPC token acquisition. MSAL caches results per provider instance. Throws `KeyNotFoundException` if the user is not configured, `MsalException` on acquisition failure. |
 | `WebApplicationFactoryExtensions.CreateClientWithEntraTokenAsync<TEntryPoint>(factory, tokenProvider, testUserName, ct)` | extension | `Task<HttpClient>` | Acquires a token via the provider and sets `Authorization: Bearer <token>` on a fresh client. |
 
@@ -191,7 +191,7 @@ var tokenProvider = new MsalTestTokenProvider(options);
 
 ## Token provider
 
-`MsalTestTokenProvider` wraps an MSAL `IPublicClientApplication`. The constructor validates `TenantId`, `ClientId`, and `Scopes`, then builds the MSAL app once for the configured `ClientId`/`TenantId`; `AcquireTokenAsync` performs ROPC against the named user.
+`MsalTestTokenProvider` wraps an MSAL `IPublicClientApplication`. The constructor validates `TenantId`, `ClientId`, and every entry in `Scopes` (no blank URIs), then builds the MSAL app once for the configured `ClientId`/`TenantId`; `AcquireTokenAsync` performs ROPC against the named user.
 
 | Concern | Behavior |
 |---|---|

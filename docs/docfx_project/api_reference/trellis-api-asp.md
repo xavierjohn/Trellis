@@ -649,7 +649,7 @@ Hydrates an `Actor` from the current `HttpContext.User` using flat JWT/OIDC clai
 public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
 ```
 
-Maps nested JSON claim payloads to actor ids or permissions via `NestedJsonPathClaimsActorOptions`. If `ActorIdPath` and `PermissionsPath` are both empty, it delegates to `ClaimsActorProvider`, making the no-config registration safe for flat-claim tokens. The DI registration validates at host startup that a nested path is not configured without `ContainerClaim`; the constructor keeps the same `InvalidOperationException` guard as defense-in-depth for manual construction.
+Maps nested JSON claim payloads to actor ids or permissions via `NestedJsonPathClaimsActorOptions`. If `ActorIdPath` and `PermissionsPath` are both empty, it delegates to `ClaimsActorProvider`, making the no-config registration safe for flat-claim tokens. The DI registration validates at host startup via `IValidateOptions<NestedJsonPathClaimsActorOptions>` + `ValidateOnStart()` that a nested path is not configured without `ContainerClaim` (empty and whitespace-only both count as missing — they would otherwise silently fall back to flat-claim resolution and reintroduce the misconfiguration footgun). The constructor keeps the same `InvalidOperationException` guard as defense-in-depth for manual construction. `ValidateOnStart()` fires regardless of whether a later `AddXxxActorProvider` call replaces `IActorProvider`; see the [authorization integration article](trellis-api-authorization.md#identity-provider-coverage) for the "register-then-replace" caveat.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

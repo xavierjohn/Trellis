@@ -95,6 +95,11 @@ The default `ClaimsActorProvider` (in `Trellis.Asp.Authorization`) maps a flat c
 
 **Silent-403 diagnostics.** When `ClaimsActorProvider` resolves zero permissions on an authenticated identity that does carry other claims, it emits one warning per application lifetime (`EventId 2`). When the configured `PermissionsClaim` resolves to a single value that parses as a JSON object or array, it emits one error per application lifetime (`EventId 3`) recommending `NestedJsonPathClaimsActorProvider`. Set `ClaimsActorOptions.ValidateClaimShapeOnFirstUse = false` to suppress both.
 
+**Startup validation of `NestedJsonPathClaimsActorOptions`.** `AddNestedJsonPathClaimsActorProvider(...)` registers an `IValidateOptions<NestedJsonPathClaimsActorOptions>` with `ValidateOnStart()`. If `ActorIdPath` or `PermissionsPath` is configured without a non-blank `ContainerClaim` (empty or whitespace-only both count as missing), host startup fails with `OptionsValidationException` — much earlier than the first-request `InvalidOperationException` that the provider's constructor would otherwise produce. The constructor guard is kept as defense-in-depth for manual (non-DI) construction. Two caveats:
+
+- The validator is permissive when the options are at defaults (paths empty) so a registered-but-unconfigured provider doesn't block startup.
+- `ValidateOnStart()` fires regardless of whether a later `AddXxxActorProvider` call replaces `IActorProvider`. A consumer that calls `AddNestedJsonPathClaimsActorProvider(opts => { ... invalid ... })` and then `AddClaimsActorProvider()` will still see startup fail on the nested options. Pick one provider per host; if you must replace one already-registered, remove the earlier call rather than chaining.
+
 ## Types
 
 ### Namespace `Trellis.Authorization`
