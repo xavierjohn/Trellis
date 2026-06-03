@@ -160,7 +160,9 @@ public class TracingBehaviorTests : IDisposable
         activity.Status.Should().Be(ActivityStatusCode.Unset,
             "consumer-initiated cancellations should not be reported as OpenTelemetry errors");
         activity.StatusDescription.Should().BeNullOrEmpty(
-            "Activity.SetStatus(Unset, ...) does not preserve description per BCL semantics; the exception event with exception.type=OperationCanceledException is the canonical cancellation signal");
+            "Activity.SetStatus(Unset, ...) does not preserve description per BCL semantics; the otel.status_description tag is the stable queryable cancellation marker");
+        activity.GetTagItem("otel.status_description").Should().Be("canceled",
+            "consumer-initiated cancellations must emit a stable queryable marker so backends can aggregate canceled spans without special-casing the exception event");
         activity.GetTagItem("error.type").Should().BeNull();
 
         var exceptionEvent = activity.Events.Should().ContainSingle(e => e.Name == "exception").Subject;
