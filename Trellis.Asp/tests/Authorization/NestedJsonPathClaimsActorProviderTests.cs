@@ -226,6 +226,13 @@ public class NestedJsonPathClaimsActorProviderTests
     {
         { nameof(NestedJsonPathClaimsActorOptions.ActorIdPath), o => o.ActorIdPath = "user_id" },
         { nameof(NestedJsonPathClaimsActorOptions.PermissionsPath), o => o.PermissionsPath = "roles" },
+        // Whitespace-only ContainerClaim is functionally the same as missing — the provider
+        // would silently fall back to flat-claim resolution. Validation must treat it as missing
+        // (regression test for the IsNullOrEmpty → IsNullOrWhiteSpace fix in PR #567 review).
+        {
+            nameof(NestedJsonPathClaimsActorOptions.ActorIdPath),
+            o => { o.ContainerClaim = "   "; o.ActorIdPath = "user_id"; }
+        },
     };
 
     [Fact]

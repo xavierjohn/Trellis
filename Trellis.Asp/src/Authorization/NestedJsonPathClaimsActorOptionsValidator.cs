@@ -9,8 +9,8 @@ internal sealed class NestedJsonPathClaimsActorOptionsValidator : IValidateOptio
     {
         var errors = new List<string>();
 
-        if (string.IsNullOrEmpty(options.ContainerClaim)
-            && (!string.IsNullOrEmpty(options.ActorIdPath) || !string.IsNullOrEmpty(options.PermissionsPath)))
+        if (string.IsNullOrWhiteSpace(options.ContainerClaim)
+            && (!string.IsNullOrWhiteSpace(options.ActorIdPath) || !string.IsNullOrWhiteSpace(options.PermissionsPath)))
         {
             errors.Add(
                 "NestedJsonPathClaimsActorOptions.ContainerClaim must be set when " +
