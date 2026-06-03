@@ -11,6 +11,84 @@ using Trellis.Testing.AspNetCore;
 /// </summary>
 public sealed class MsalTestTokenProviderTests
 {
+    private const string TenantIdRequiredMessage = "MsalTestOptions.TenantId must be set to a non-empty Azure AD tenant id (GUID or directory name). MSAL cannot acquire tokens without it.";
+    private const string ClientIdRequiredMessage = "MsalTestOptions.ClientId must be set to the application/client id (GUID) of the registered AAD application. MSAL cannot acquire tokens without it.";
+    private const string ScopesRequiredMessage = "MsalTestOptions.Scopes must contain at least one scope URI.";
+
+    [Fact]
+    public void Constructor_DefaultTenantId_MissingRequiredField_ThrowsInvalidOperationException()
+    {
+        var options = CreateValidOptions();
+        options.TenantId = string.Empty;
+
+#pragma warning disable IL2026 // RequiresUnreferencedCode propagation — test exercises options validation, not the MSAL reflection path.
+        var act = () => new MsalTestTokenProvider(options);
+#pragma warning restore IL2026
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage(TenantIdRequiredMessage);
+    }
+
+    [Fact]
+    public void Constructor_DefaultClientId_MissingRequiredField_ThrowsInvalidOperationException()
+    {
+        var options = CreateValidOptions();
+        options.ClientId = string.Empty;
+
+#pragma warning disable IL2026 // RequiresUnreferencedCode propagation — test exercises options validation, not the MSAL reflection path.
+        var act = () => new MsalTestTokenProvider(options);
+#pragma warning restore IL2026
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage(ClientIdRequiredMessage);
+    }
+
+    [Fact]
+    public void Constructor_EmptyScopes_MissingRequiredField_ThrowsInvalidOperationException()
+    {
+        var options = CreateValidOptions();
+        options.Scopes = [];
+
+#pragma warning disable IL2026 // RequiresUnreferencedCode propagation — test exercises options validation, not the MSAL reflection path.
+        var act = () => new MsalTestTokenProvider(options);
+#pragma warning restore IL2026
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage(ScopesRequiredMessage);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public void Constructor_ScopesContainsBlankEntry_ThrowsInvalidOperationException(string blankScope)
+    {
+        // Regression: PR #567 round-5 review caught the "at least one non-empty" check would
+        // accept arrays like ["api://valid/.default", ""] where MSAL still produces opaque
+        // errors downstream. Every configured scope must be non-blank.
+        var options = CreateValidOptions();
+        options.Scopes = ["api://valid/.default", blankScope];
+
+#pragma warning disable IL2026 // RequiresUnreferencedCode propagation — test exercises options validation, not the MSAL reflection path.
+        var act = () => new MsalTestTokenProvider(options);
+#pragma warning restore IL2026
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*empty or whitespace-only entry*");
+    }
+
+    [Fact]
+    public void Constructor_ValidOptions_AllRequiredFieldsSet_DoesNotThrow()
+    {
+        var options = CreateValidOptions();
+
+#pragma warning disable IL2026 // RequiresUnreferencedCode propagation — test exercises options validation, not the MSAL reflection path.
+        var act = () => new MsalTestTokenProvider(options);
+#pragma warning restore IL2026
+
+        act.Should().NotThrow();
+    }
+
     [Fact]
     public async Task AcquireTokenAsync_NullTestUserName_Throws_ArgumentNullException()
     {
@@ -34,4 +112,20 @@ public sealed class MsalTestTokenProviderTests
             .WithParameterName("testUserName");
 #pragma warning restore IL2026
     }
+
+    private static MsalTestOptions CreateValidOptions() => new()
+    {
+        TenantId = "fake-tenant",
+        ClientId = Guid.NewGuid().ToString(),
+        Scopes = ["api://fake/.default"],
+        TestUsers =
+        {
+            ["salesRep"] = new TestUserCredentials
+            {
+                Username = "salesrep@contoso.onmicrosoft.com",
+                Password = "fake-password",
+                ExpectedPermissions = ["orders:read"],
+            },
+        },
+    };
 }

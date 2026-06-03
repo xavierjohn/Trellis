@@ -127,8 +127,10 @@ public sealed class MsalTestTokenProvider
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public MsalTestTokenProvider(MsalTestOptions options)` | — | Creates a public MSAL client for `options.ClientId` and `options.TenantId`. |
+| `public MsalTestTokenProvider(MsalTestOptions options)` | — | Creates a public MSAL client for `options.ClientId` and `options.TenantId`. Throws `InvalidOperationException` when `TenantId`, `ClientId`, or `Scopes` is missing. |
 | `public Task<string> AcquireTokenAsync(string testUserName, CancellationToken cancellationToken = default)` | `Task<string>` | Acquires an access token for the named user via MSAL ROPC. Throws `KeyNotFoundException` if `testUserName` is not configured and `MsalException` when token acquisition fails. |
+
+The constructor validates required MSAL configuration before calling MSAL: `TenantId` and `ClientId` must be non-empty strings, and `Scopes` must contain at least one scope URI.
 
 ROPC is deprecated for production use. Use this helper only for gated E2E tests against a dedicated test tenant with MFA disabled for test users.
 

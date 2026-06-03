@@ -156,14 +156,14 @@ public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
         Options = options.Value;
         _logger = logger;
 
-        if (string.IsNullOrEmpty(Options.ContainerClaim)
-            && (!string.IsNullOrEmpty(Options.ActorIdPath) || !string.IsNullOrEmpty(Options.PermissionsPath)))
+        if (string.IsNullOrWhiteSpace(Options.ContainerClaim)
+            && (!string.IsNullOrWhiteSpace(Options.ActorIdPath) || !string.IsNullOrWhiteSpace(Options.PermissionsPath)))
         {
             throw new InvalidOperationException(
                 "NestedJsonPathClaimsActorOptions.ContainerClaim must be set when ActorIdPath or " +
-                "PermissionsPath is configured. Leaving the container claim empty would silently " +
-                "ignore the configured nested-JSON paths and fall back to flat-claim resolution, " +
-                "reintroducing the silent-403 footgun this provider exists to prevent.");
+                "PermissionsPath is configured. Leaving the container claim empty (or whitespace-only) " +
+                "would silently ignore the configured nested-JSON paths and fall back to flat-claim " +
+                "resolution, reintroducing the silent-403 footgun this provider exists to prevent.");
         }
     }
 

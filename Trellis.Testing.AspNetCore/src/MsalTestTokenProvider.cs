@@ -45,9 +45,29 @@ public sealed class MsalTestTokenProvider
     /// Initializes a new <see cref="MsalTestTokenProvider"/> with the specified options.
     /// </summary>
     /// <param name="options">MSAL configuration including tenant, client, and test user credentials.</param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <see cref="MsalTestOptions.TenantId"/>, <see cref="MsalTestOptions.ClientId"/>,
+    /// or <see cref="MsalTestOptions.Scopes"/> is missing.
+    /// </exception>
     public MsalTestTokenProvider(MsalTestOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        if (string.IsNullOrWhiteSpace(options.TenantId))
+            throw new InvalidOperationException(
+                "MsalTestOptions.TenantId must be set to a non-empty Azure AD tenant id (GUID or directory name). MSAL cannot acquire tokens without it.");
+
+        if (string.IsNullOrWhiteSpace(options.ClientId))
+            throw new InvalidOperationException(
+                "MsalTestOptions.ClientId must be set to the application/client id (GUID) of the registered AAD application. MSAL cannot acquire tokens without it.");
+
+        if (options.Scopes is null || options.Scopes.Length == 0)
+            throw new InvalidOperationException("MsalTestOptions.Scopes must contain at least one scope URI.");
+
+        if (options.Scopes.Any(scope => string.IsNullOrWhiteSpace(scope)))
+            throw new InvalidOperationException(
+                "MsalTestOptions.Scopes contains an empty or whitespace-only entry. Every configured scope must be a non-empty URI; MSAL cannot acquire tokens with blank scopes.");
+
         _options = options;
 
         _app = PublicClientApplicationBuilder

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Trellis.Authorization;
 
 /// <summary>
@@ -84,6 +85,17 @@ public static class ServiceCollectionExtensions
     /// <b>Replaces</b> any prior <see cref="IActorProvider"/> registration — actor-provider
     /// helpers do not stack. Pick one provider per environment (or wrap with
     /// <see cref="AddCachingActorProvider{T}"/>); the last <c>AddXxxActorProvider</c> call wins.
+    /// <para>
+    /// <b>Startup validation caveat.</b> The matching <c>IValidateOptions&lt;NestedJsonPathClaimsActorOptions&gt;</c>
+    /// runs at host startup (via <c>ValidateOnStart</c>) regardless of whether a later
+    /// <c>AddXxxActorProvider</c> call replaces <see cref="IActorProvider"/>. If a consumer
+    /// configures invalid nested-path options (e.g. sets <c>ActorIdPath</c> or
+    /// <c>PermissionsPath</c> without <c>ContainerClaim</c>) and then registers a different
+    /// actor-provider, host startup still fails with
+    /// <see cref="Microsoft.Extensions.Options.OptionsValidationException"/>. Either fix the
+    /// invalid options or remove the call entirely; the validator is permissive of default
+    /// (unconfigured) options to avoid blocking the common "register then replace" pattern.
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code>
@@ -102,10 +114,11 @@ public static class ServiceCollectionExtensions
     {
         services.AddHttpContextAccessor();
 
-        if (configure is not null)
-            services.Configure(configure);
-        else
-            services.Configure<NestedJsonPathClaimsActorOptions>(_ => { });
+        services
+            .AddOptions<NestedJsonPathClaimsActorOptions>()
+            .Configure(configure ?? (_ => { }))
+            .ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<NestedJsonPathClaimsActorOptions>, NestedJsonPathClaimsActorOptionsValidator>());
 
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, NestedJsonPathClaimsActorProvider>());
 

@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Trellis.Asp.Idempotency;
 
 /// <summary>
@@ -76,6 +77,10 @@ public sealed class IdempotencyMiddlewareTests
         var host = await builder.StartAsync();
         return host;
     }
+
+    private static IHostBuilder CreateIdempotencyOptionsHost(Action<IdempotencyOptions>? configureOptions = null) =>
+        Host.CreateDefaultBuilder()
+            .ConfigureServices(s => s.AddTrellisIdempotency(configureOptions));
 
     private static StringContent JsonBody(string json) =>
         new(json, Encoding.UTF8, "application/json");
@@ -260,6 +265,78 @@ public sealed class IdempotencyMiddlewareTests
                 }));
 
         using var host = await builder.StartAsync(TestContext.Current.CancellationToken);
+    }
+
+    public static TheoryData<string, Action<IdempotencyOptions>, string> InvalidIdempotencyOptions() => new()
+    {
+        { nameof(IdempotencyOptions.HeaderName), o => o.HeaderName = "", "must be set to a non-empty header name" },
+        { nameof(IdempotencyOptions.HeaderName), o => o.HeaderName = "Bad Header", "must be a valid HTTP header name" },
+        { nameof(IdempotencyOptions.ReplayHeaderName), o => o.ReplayHeaderName = "", "must be set to a non-empty header name" },
+        { nameof(IdempotencyOptions.ReplayHeaderName), o => o.ReplayHeaderName = "Bad Header", "must be a valid HTTP header name" },
+        { nameof(IdempotencyOptions.Ttl), o => o.Ttl = TimeSpan.Zero, "must be greater than TimeSpan.Zero" },
+        { nameof(IdempotencyOptions.ReservationTimeout), o => o.ReservationTimeout = TimeSpan.Zero, "must be greater than TimeSpan.Zero" },
+        { nameof(IdempotencyOptions.MaxKeyLength), o => o.MaxKeyLength = 0, "must be greater than 0" },
+        { nameof(IdempotencyOptions.MaxRequestBodyBytes), o => o.MaxRequestBodyBytes = 0, "must be greater than 0" },
+        { nameof(IdempotencyOptions.MaxResponseBodyBytes), o => o.MaxResponseBodyBytes = 0, "must be greater than 0" },
+        { nameof(IdempotencyOptions.MismatchStatusCode), o => o.MismatchStatusCode = 200, "must be between 400 and 599" },
+        { nameof(IdempotencyOptions.Methods), o => o.Methods.Clear(), "must contain at least one HTTP method" },
+        { nameof(IdempotencyOptions.Methods), o => o.Methods.Add("BAD METHOD"), "must contain only valid HTTP method tokens" },
+        { nameof(IdempotencyOptions.AdditionalFingerprintHeaders), o => o.AdditionalFingerprintHeaders.Add("Bad Header"), "must contain only valid HTTP header names" },
+    };
+
+    [Fact]
+    public async Task AddTrellisIdempotency_DefaultOptions_HostStartsSuccessfully()
+    {
+        using var host = CreateIdempotencyOptionsHost().Build();
+
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var options = host.Services.GetRequiredService<IOptions<IdempotencyOptions>>().Value;
+        options.HeaderName.Should().Be(KeyHeader);
+    }
+
+    [Fact]
+    public async Task AddTrellisIdempotency_ValidOptions_HostStartsSuccessfully()
+    {
+        using var host = CreateIdempotencyOptionsHost(o =>
+        {
+            o.HeaderName = "X-Idempotency-Key";
+            o.ReplayHeaderName = "X-Idempotency-Replayed";
+            o.Ttl = TimeSpan.FromMinutes(5);
+            o.ReservationTimeout = TimeSpan.FromSeconds(1);
+            o.MaxKeyLength = 64;
+            o.MaxRequestBodyBytes = 1024;
+            o.MaxResponseBodyBytes = 2048;
+            o.MismatchStatusCode = 409;
+            o.RequireKeyOnOptedInEndpoints = false;
+            o.IncludeSetCookieInSnapshot = true;
+            o.Methods.Add(HttpMethod.Put.Method);
+            o.AdditionalFingerprintHeaders.Add("Accept-Language");
+        }).Build();
+
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var options = host.Services.GetRequiredService<IOptions<IdempotencyOptions>>().Value;
+        options.HeaderName.Should().Be("X-Idempotency-Key");
+        options.ReplayHeaderName.Should().Be("X-Idempotency-Replayed");
+        options.AdditionalFingerprintHeaders.Should().Contain("Accept-Language");
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidIdempotencyOptions))]
+    public async Task AddTrellisIdempotency_InvalidOptions_ThrowsOptionsValidationException(
+        string propertyName,
+        Action<IdempotencyOptions> configureOptions,
+        string messageFragment)
+    {
+        var act = async () =>
+        {
+            using var host = CreateIdempotencyOptionsHost(configureOptions).Build();
+            await host.StartAsync(TestContext.Current.CancellationToken);
+        };
+
+        await act.Should().ThrowAsync<OptionsValidationException>()
+            .WithMessage($"*{propertyName}*{messageFragment}*");
     }
 
     [Fact]

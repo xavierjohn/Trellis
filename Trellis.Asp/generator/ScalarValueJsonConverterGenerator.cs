@@ -57,6 +57,7 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
     private const string GenerateAttributeName = "GenerateScalarValueConvertersAttribute";
     private const string GenerateAttributeFullName = "Trellis.Asp.GenerateScalarValueConvertersAttribute";
     private const string ScalarValueInterfaceName = "IScalarValue";
+    private const string HelpLinkBase = "https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html";
 
     /// <summary>
     /// Canonical IDs for diagnostics emitted by this generator. See
@@ -111,7 +112,10 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
         messageFormat: "Value object '{0}' wraps primitive '{1}', which is not supported by the AOT-safe Trellis JSON converter generator. Provide a custom JsonConverter<{0}> or use a supported primitive (string, int, long, short, byte, bool, float, double, decimal, Guid, DateTime, DateTimeOffset).",
         category: "Trellis",
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        description: "The AOT JSON converter generator found a scalar value object whose primitive type is outside the supported direct reader/writer set. " +
+                     "It skips converter generation to avoid reflection-based serialization calls that produce trim/AOT warnings, so consumers must provide a custom converter or use a supported primitive.",
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// Initializes the incremental generator pipeline.

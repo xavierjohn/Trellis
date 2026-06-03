@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS017, TRLS018, TRLS019, TRLS020, TRLS036, TRLS037, TRLS038, TRLS054, TRLS055]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS017, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-05-11
@@ -252,6 +252,26 @@ public sealed partial class Money : ValueObject
 
 > The current TRLS020 analyzer checks the composite value object **type** for the converter attribute, not the DTO property. A property-level `JsonConverter` may be a valid `System.Text.Json` technique, but it is not the analyzer-clean shape in the current source/tests.
 
+## TRLS035 — `Maybe<T>` property should be `partial`
+
+Severity: Warning.
+
+A non-partial `Maybe<T>` auto-property on a `partial` entity type prevents the EF Core source generator from emitting the nullable backing field that Trellis conventions map.
+
+```csharp
+// WRONG — generator cannot emit the mapped backing field for a non-partial property
+public partial class Customer
+{
+    public Maybe<PhoneNumber> Phone { get; set; } // TRLS035
+}
+
+// FIX — make the property partial so the generator can provide the implementation
+public partial class Customer
+{
+    public partial Maybe<PhoneNumber> Phone { get; set; }
+}
+```
+
 ## TRLS036 — `[OwnedEntity]` type must be `partial`
 
 Type is decorated with `[OwnedEntity]` but is not declared `partial`, so the source generator cannot emit the private parameterless constructor.
@@ -312,6 +332,26 @@ public sealed partial class Address : ValueObject
 ```
 
 > Severity: Error. When TRLS038 fires, the generator skips source generation for that type.
+
+## TRLS039 — Unsupported scalar value primitive for AOT-safe JSON converter
+
+Severity: Warning.
+
+The ASP source generator can emit reflection-free JSON converters only for its supported primitive set. When a scalar value object wraps another primitive, the generator skips converter emission so AOT builds do not inherit reflection-based `JsonSerializer` calls.
+
+```csharp
+// WRONG — TimeSpan is outside the AOT-safe primitive set, so no converter is generated
+public sealed class Duration : ScalarValueObject<Duration, TimeSpan>, IScalarValue<Duration, TimeSpan>
+{
+    // TryCreate implementation omitted for brevity. // TRLS039
+}
+
+// FIX 1 — model the value with a supported primitive so the generator can emit a converter
+public sealed partial class DurationTicks : RequiredLong<DurationTicks>;
+
+// FIX 2 — keep the unsupported primitive only with an explicit custom JsonConverter<T>
+// and a local suppression documenting that the custom converter owns serialization.
+```
 
 ## TRLS056 — Required value object redeclares a generated member
 

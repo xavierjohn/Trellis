@@ -20,6 +20,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 public sealed class OwnedEntityGenerator : IIncrementalGenerator
 {
     private const string OwnedEntityAttributeName = "Trellis.EntityFrameworkCore.OwnedEntityAttribute";
+    private const string HelpLinkBase = "https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html";
 
     /// <summary>
     /// Diagnostic reported when [OwnedEntity] is applied to a non-partial type.
@@ -30,7 +31,10 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         messageFormat: "Type '{0}' is decorated with [OwnedEntity] but is not declared 'partial'. The source generator cannot emit the private parameterless constructor.",
         category: "Trellis",
         DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        description: "A type annotated with [OwnedEntity] must be partial so the generator can add EF Core's private parameterless constructor. " +
+                     "Without that generated constructor, Trellis owned value-object materialization is not wired and generation is skipped.",
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// Diagnostic reported when [OwnedEntity] is applied to a type that already has
@@ -42,7 +46,10 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         messageFormat: "Type '{0}' already has a parameterless constructor. Remove it to let the [OwnedEntity] source generator emit one, or remove the [OwnedEntity] attribute.",
         category: "Trellis",
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        description: "A handwritten parameterless constructor already occupies the member the [OwnedEntity] generator would emit for EF Core materialization. " +
+                     "The generator skips emission, so the type no longer receives the Trellis-managed private constructor and initialization shape.",
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// Diagnostic reported when [OwnedEntity] is applied to a type that does not
@@ -54,7 +61,10 @@ public sealed class OwnedEntityGenerator : IIncrementalGenerator
         messageFormat: "Type '{0}' is decorated with [OwnedEntity] but does not inherit from 'Trellis.ValueObject'. [OwnedEntity] is only supported on ValueObject-derived types.",
         category: "Trellis",
         DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        description: "The [OwnedEntity] generator only supports composite value objects derived from Trellis.ValueObject. " +
+                     "Applying it to a plain type skips generation and prevents the EF ownership pattern from matching Trellis value-object semantics.",
+        helpLinkUri: HelpLinkBase);
 
     /// <summary>
     /// Canonical IDs for diagnostics emitted by this generator. See

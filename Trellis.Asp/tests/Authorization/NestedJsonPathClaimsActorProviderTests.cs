@@ -2,6 +2,8 @@
 
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Trellis.Testing;
@@ -25,6 +27,11 @@ public class NestedJsonPathClaimsActorProviderTests
         var opts = Options.Create(options);
         return new NestedJsonPathClaimsActorProvider(accessor, opts, logger);
     }
+
+    private static IHostBuilder CreateNestedJsonPathClaimsActorProviderHost(
+        Action<NestedJsonPathClaimsActorOptions>? configureOptions = null) =>
+        Host.CreateDefaultBuilder()
+            .ConfigureServices(s => s.AddNestedJsonPathClaimsActorProvider(configureOptions));
 
     private static ClaimsPrincipal AuthenticatedUser(params Claim[] claims) =>
         new(new ClaimsIdentity(claims, "Bearer"));
@@ -213,6 +220,65 @@ public class NestedJsonPathClaimsActorProviderTests
 
         actor.Id.Value.Should().Be("user-1");
         actor.Permissions.Should().BeEquivalentTo(["orders:read"]);
+    }
+
+    public static TheoryData<string, Action<NestedJsonPathClaimsActorOptions>> NestedPathOptionsWithoutContainerClaim() => new()
+    {
+        { nameof(NestedJsonPathClaimsActorOptions.ActorIdPath), o => o.ActorIdPath = "user_id" },
+        { nameof(NestedJsonPathClaimsActorOptions.PermissionsPath), o => o.PermissionsPath = "roles" },
+        // Whitespace-only ContainerClaim is functionally the same as missing — the provider
+        // would silently fall back to flat-claim resolution. Validation must treat it as missing
+        // (regression test for the IsNullOrEmpty → IsNullOrWhiteSpace fix in PR #567 review).
+        {
+            nameof(NestedJsonPathClaimsActorOptions.ActorIdPath),
+            o => { o.ContainerClaim = "   "; o.ActorIdPath = "user_id"; }
+        },
+    };
+
+    [Fact]
+    public async Task AddNestedJsonPathClaimsActorProvider_DefaultOptions_HostStartsSuccessfully()
+    {
+        using var host = CreateNestedJsonPathClaimsActorProviderHost().Build();
+
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var options = host.Services.GetRequiredService<IOptions<NestedJsonPathClaimsActorOptions>>().Value;
+        options.ContainerClaim.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AddNestedJsonPathClaimsActorProvider_ValidNestedOptions_HostStartsSuccessfully()
+    {
+        using var host = CreateNestedJsonPathClaimsActorProviderHost(o =>
+        {
+            o.ActorIdClaim = "sub";
+            o.ContainerClaim = "app_metadata";
+            o.ActorIdPath = "user_id";
+            o.PermissionsPath = "roles";
+        }).Build();
+
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var options = host.Services.GetRequiredService<IOptions<NestedJsonPathClaimsActorOptions>>().Value;
+        options.ContainerClaim.Should().Be("app_metadata");
+        options.ActorIdPath.Should().Be("user_id");
+        options.PermissionsPath.Should().Be("roles");
+    }
+
+    [Theory]
+    [MemberData(nameof(NestedPathOptionsWithoutContainerClaim))]
+    public async Task AddNestedJsonPathClaimsActorProvider_PathConfiguredWithoutContainerClaim_ThrowsOptionsValidationException(
+        string pathPropertyName,
+        Action<NestedJsonPathClaimsActorOptions> configureOptions)
+    {
+        var act = async () =>
+        {
+            using var host = CreateNestedJsonPathClaimsActorProviderHost(configureOptions).Build();
+            await host.StartAsync(TestContext.Current.CancellationToken);
+        };
+
+        await act.Should().ThrowAsync<OptionsValidationException>()
+            .WithMessage($"*{nameof(NestedJsonPathClaimsActorOptions.ContainerClaim)}*must be set*{pathPropertyName}*");
     }
 
     [Fact]
