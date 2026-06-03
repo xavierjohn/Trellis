@@ -1,4 +1,4 @@
-# Trellis.ServiceDefaults
+﻿# Trellis.ServiceDefaults
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.ServiceDefaults.svg)](https://www.nuget.org/packages/Trellis.ServiceDefaults)
 
@@ -38,9 +38,13 @@ builder.Services.AddTrellis(options => options
 
 ## AOT compatibility
 
-`Trellis.ServiceDefaults` is **not** AOT- or trim-compatible. The fluent assembly-scanning methods (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`) wrap underlying `[RequiresUnreferencedCode]` + `[RequiresDynamicCode]` APIs without propagating the attributes. For AOT consumers, use the per-package direct APIs (`services.AddTrellisFluentValidation()` + explicit validator registrations, `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`, `services.AddDomainEventDispatch()` + `services.AddDomainEventHandler<TEvent, THandler>()`).
+`Trellis.ServiceDefaults` is **AOT- and trim-compatible**. The package enables the AOT and trim analyzers (`IsAotCompatible`, `IsTrimmable`, `EnableAotAnalyzer`, `EnableTrimAnalyzer`) and keeps the default composition slots safe when you choose explicit overloads.
 
-The parameterless `o.UseFluentValidation()` / `o.UseResourceAuthorization()` / `o.UseDomainEvents()` overloads are AOT-compatible — they only register the adapter / pipeline behaviors and rely on the consumer's explicit per-type registrations.
+AOT-safe builder shapes are `UseFluentValidation()` plus `UseFluentValidation<TValidator, TMessage>()` per validator, `UseResourceAuthorization()` plus `UseResourceAuthorization<TMessage, TResource, TResponse>()` per command, and `UseDomainEvents()` or `UseTrackedAggregateDomainEvents()` plus their `<TEvent, THandler>()` per-handler overloads.
+
+The assembly-scanning overloads (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`, `UseTrackedAggregateDomainEvents(asm)`) remain convenience APIs for non-AOT consumers. They are annotated with `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`, so trimmed/AOT applications must either switch to explicit registrations or make that choice visible at the consumer call site, for example by annotating the composition method or suppressing the analyzer warning.
+
+`UseEntityFrameworkUnitOfWork<TContext>()` is also annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` because the EF Core integration depends on runtime reflection and is excluded from the Trellis AOT publish gate. AOT consumers can still use the ASP, Mediator, FluentValidation, and authorization slots through this builder, but should compose data access separately.
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

@@ -34,7 +34,7 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 
 | Surface | Type / API | Emits | Subscribed via |
 |---|---|---|---|
-| Mediator tracing | `TracingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | One `Activity` per mediator message; tags `error.code`, `error.type`; `ActivityStatusCode.Ok` / `Error` | Registered by `AddTrellisBehaviors()`; subscribe with `tracing.AddSource(TracingBehavior<,>.ActivitySourceName)` (value: `"Trellis.Mediator"`) |
+| Mediator tracing | `TracingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | One `Activity` per mediator message; tags `error.code`, `error.type`; `ActivityStatusCode.Ok` / `Error` (request cancellations stay `Unset`) | Registered by `AddTrellisBehaviors()`; subscribe with `tracing.AddSource(TracingBehavior<,>.ActivitySourceName)` (value: `"Trellis.Mediator"`) |
 | Mediator logging | `LoggingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | `Debug` start, `Debug` end (with elapsed ms), `Warning` on failure (with `Error.Code`) | Registered by `AddTrellisBehaviors()`; consumed by any `ILogger` provider. Per-call timing is at Debug so production at the default `Information` minimum is quiet; raise via `"Trellis.Mediator": "Debug"` in logging configuration to opt back in. |
 | Redaction | `TrellisMediatorTelemetryOptions` (`Trellis.Mediator`) | Controls whether `Error.Detail` flows into the activity status description and log message | DI singleton, configured via `o.UseMediator(t => ...)` or `AddTrellisBehaviors(t => ...)` |
 | Primitive value-object tracing | `Trellis.Primitives` `ActivitySource` | One `Activity` per `TryCreate` / `Parse` on a `Required*<TSelf>` value object | `tracing.AddPrimitiveValueObjectInstrumentation()` |
@@ -125,7 +125,8 @@ Trellis ships three independent `ActivitySource`s. Subscribe to each on its own 
 |---|---|---|
 | Handler returns success | `ActivityStatusCode.Ok` | (none) |
 | Handler returns `Result.Fail(error)` | `ActivityStatusCode.Error` | `error.code` = `error.Code`; `error.type` = stable error class name (e.g. `Error.NotFound`); `StatusDescription` left empty unless `IncludeErrorDetail = true` |
-| Handler throws | `ActivityStatusCode.Error` | `error.type` = exception type name; standard exception event tags (`exception.type`, `exception.message`, `exception.stacktrace`); the exception is **rethrown**; the exception message is **not** copied into `Activity.StatusDescription` |
+| Handler throws `OperationCanceledException` carrying the canceled request `CancellationToken` | `ActivityStatusCode.Unset` | `otel.status_description` = `canceled`; standard exception event tags (`exception.type`, `exception.message`, `exception.stacktrace`); the exception is **rethrown** |
+| Handler throws any other exception (including `OperationCanceledException` from a non-request token) | `ActivityStatusCode.Error` | `error.type` = exception type name; standard exception event tags (`exception.type`, `exception.message`, `exception.stacktrace`); the exception is **rethrown**; the exception message is **not** copied into `Activity.StatusDescription` |
 
 ```csharp
 using Mediator;

@@ -50,6 +50,13 @@ public sealed class TracingBehavior<TMessage, TResponse>
         {
             response = await next(message, cancellationToken).ConfigureAwait(false);
         }
+        catch (OperationCanceledException oce)
+            when (cancellationToken.IsCancellationRequested && oce.CancellationToken.Equals(cancellationToken))
+        {
+            activity?.AddException(oce);
+            activity?.SetTag("otel.status_description", "canceled");
+            throw;
+        }
         catch (Exception ex)
         {
             activity?.SetStatus(ActivityStatusCode.Error);

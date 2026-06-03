@@ -58,9 +58,25 @@ public interface IIdempotencyStore
 
     /// <summary>
     /// Releases the reservation identified by <paramref name="reservationId"/> without storing
-    /// a snapshot. Used when the handler throws or returns a 5xx response. Silently ignored if
-    /// the reservation has since been taken over.
+    /// a snapshot. Used when the handler throws, returns a 5xx response, or the post-handler
+    /// finalization (snapshot capture or <see cref="CompleteAsync"/> call) fails.
     /// </summary>
+    /// <remarks>
+    /// <para>Silently ignored if the reservation has since been taken over by another request
+    /// (because <see cref="IdempotencyOptions.ReservationTimeout"/> elapsed).</para>
+    /// <para><b>Idempotency with <see cref="CompleteAsync"/>.</b> <see cref="IdempotencyMiddleware"/>
+    /// may invoke this method <i>after</i> <see cref="CompleteAsync"/> partially succeeded — for
+    /// example, a durable store that wrote the snapshot to the database but then threw during a
+    /// secondary acknowledgement step. Implementations MUST NOT delete a snapshot that
+    /// <see cref="CompleteAsync"/> already persisted under the same <paramref name="reservationId"/>;
+    /// only an in-flight reservation may be released. A safe pattern is to short-circuit when the
+    /// store-level record already has a non-null snapshot, leaving the completed entry intact for
+    /// replay.</para>
+    /// </remarks>
+    /// <param name="scope">Same scope passed to <see cref="TryReserveAsync"/>.</param>
+    /// <param name="key">Same key passed to <see cref="TryReserveAsync"/>.</param>
+    /// <param name="reservationId">Token returned in <see cref="IdempotencyReservationOutcome.Reserved"/>.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask AbandonAsync(
         string scope,
         string key,

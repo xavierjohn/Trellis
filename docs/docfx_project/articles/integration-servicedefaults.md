@@ -78,17 +78,18 @@ builder.Services.AddTrellis(options => options.UseResourceAuthorization());
 
 ## AOT compatibility
 
-`Trellis.ServiceDefaults` itself is **not** AOT- or trim-compatible. The fluent assembly-scanning methods wrap underlying `[RequiresUnreferencedCode]` + `[RequiresDynamicCode]` APIs without propagating the attributes, and the package opts out of AOT/trim analyzers (`<IsAotCompatible>false</IsAotCompatible>`).
+`Trellis.ServiceDefaults` itself is **AOT- and trim-compatible** (`<IsAotCompatible>true</IsAotCompatible>`, `<IsTrimmable>true</IsTrimmable>`, `<EnableAotAnalyzer>true</EnableAotAnalyzer>`, `<EnableTrimAnalyzer>true</EnableTrimAnalyzer>`). The compatibility surface is split between explicit AOT-safe overloads and annotated convenience overloads:
 
-For AOT/trim consumers, use the per-package direct APIs that DO propagate the attributes:
+| Slot | AOT-safe builder shape | Scanning overload (`[RequiresUnreferencedCode]` + `[RequiresDynamicCode]`) |
+|---|---|---|
+| FluentValidation | `o.UseFluentValidation()` plus `o.UseFluentValidation<TValidator, TMessage>()` per validator | `o.UseFluentValidation(asm)` |
+| Resource authorization | `o.UseResourceAuthorization()` plus `o.UseResourceAuthorization<TMessage, TResource, TResponse>()` per command | `o.UseResourceAuthorization(asm)` |
+| Domain events (response-shape) | `o.UseDomainEvents()` plus `o.UseDomainEvents<TEvent, THandler>()` per handler | `o.UseDomainEvents(asm)` |
+| Domain events (tracked-aggregate) | `o.UseTrackedAggregateDomainEvents()` plus `o.UseTrackedAggregateDomainEvents<TEvent, THandler>()` per handler | `o.UseTrackedAggregateDomainEvents(asm)` |
 
-| Builder method | AOT-friendly direct call |
-|---|---|
-| `o.UseFluentValidation(asm)` | `services.AddTrellisFluentValidation()` plus per-validator `services.AddScoped<IValidator<T>, TValidator>()` |
-| `o.UseResourceAuthorization(asm)` | `services.AddResourceAuthorization<TMessage, TResource, TResponse>()` plus `services.AddScoped<IResourceLoader<TMessage, TResource>, TLoader>()` |
-| `o.UseDomainEvents(asm)` | `services.AddDomainEventDispatch()` plus `services.AddDomainEventHandler<TEvent, THandler>()` |
+The AOT-safe overloads use open-generic DI registrations and explicit closed-type method calls — no reflection over assemblies. The scanning overloads remain available for non-AOT consumers and surface IL2026 / IL3050 at the consumer's call site; trimmed/AOT applications must either switch to explicit registrations or make that choice visible on their own composition code, for example with `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` or an intentional suppression.
 
-The parameterless `o.UseFluentValidation()` / `o.UseResourceAuthorization()` / `o.UseDomainEvents()` overloads are AOT-compatible — they only register the adapter / pipeline behaviors and rely on the consumer's explicit per-type registrations, which is the same pattern AOT consumers already use directly.
+`UseEntityFrameworkUnitOfWork<TContext>()` is also annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` because the EF Core integration depends on runtime reflection and is excluded from the Trellis AOT publish gate. AOT consumers can still use the ASP, Mediator, FluentValidation, authorization, and domain-event slots through this builder, but should compose data access separately.
 
 ## Layered configuration via repeated calls
 
