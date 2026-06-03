@@ -1,5 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Explicit even though Directory.Build.props sets the same TFM globally:
+         makes this project self-documenting and protects against accidental
+         exclusion from Directory.Build.props inheritance. -->
+    <TargetFramework>net10.0</TargetFramework>
     <TrellisEnableApiReferenceLint>true</TrellisEnableApiReferenceLint>
     <IsPackable>false</IsPackable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -9,5 +13,9 @@
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
     <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <!-- CS2008: no source files specified. This project intentionally has no C# sources;
+         it exists only to host the LintApiReference MSBuild target. Suppress so the empty
+         compile list does not interact with the repo-wide TreatWarningsAsErrors=true. -->
+    <NoWarn>$(NoWarn);CS2008</NoWarn>
   </PropertyGroup>
 </Project>
