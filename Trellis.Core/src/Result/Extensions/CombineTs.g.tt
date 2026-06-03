@@ -12,6 +12,7 @@
 // </auto-generated>
 
 namespace Trellis;
+
 #nullable enable
 
 /// <summary>

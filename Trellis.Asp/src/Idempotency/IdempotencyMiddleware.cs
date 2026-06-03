@@ -437,10 +437,12 @@ public sealed partial class IdempotencyMiddleware
         catch (OperationCanceledException)
         {
             LogCompleteTimedOut(_logger, GetKeyHash());
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, GetKeyHash()).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             LogCompleteFailed(_logger, ex, GetKeyHash());
+            await SafeAbandonAsync(store, _logger, scope, key, reservationId, GetKeyHash()).ConfigureAwait(false);
         }
     }
 

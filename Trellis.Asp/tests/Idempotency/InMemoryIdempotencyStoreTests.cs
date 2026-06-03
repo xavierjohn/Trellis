@@ -248,6 +248,31 @@ public sealed class InMemoryIdempotencyStoreTests
     }
 
     [Fact]
+    public async Task Abandon_after_Complete_persisted_snapshot_does_not_delete_the_snapshot()
+    {
+        // Round-8 contract regression: the middleware now calls AbandonAsync from the
+        // CompleteAsync catch branches (AV2). A custom durable store that persisted the
+        // snapshot but then threw during a secondary acknowledgement step would otherwise
+        // delete the successfully-written snapshot when the middleware abandons. The
+        // IIdempotencyStore.AbandonAsync contract says "MUST NOT delete a snapshot that
+        // CompleteAsync already persisted under the same reservationId" — verify the
+        // in-memory implementation honours that.
+        var (store, _) = BuildStore();
+        var reserved = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
+            "anon", "key-1", "fp-1", CancellationToken.None);
+
+        await store.CompleteAsync("anon", "key-1", reserved.ReservationId, SampleSnapshot, CancellationToken.None);
+
+        // Middleware calls AbandonAsync (as it now does in the CompleteAsync catch branches).
+        // The snapshot must remain replayable.
+        await store.AbandonAsync("anon", "key-1", reserved.ReservationId, CancellationToken.None);
+
+        var replay = await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
+        replay.Should().BeOfType<IdempotencyReservationOutcome.Replay>(
+            "AbandonAsync must not delete a snapshot that CompleteAsync already persisted");
+    }
+
+    [Fact]
     public async Task Concurrent_first_reservations_collide_so_exactly_one_wins()
     {
         var (store, _) = BuildStore();

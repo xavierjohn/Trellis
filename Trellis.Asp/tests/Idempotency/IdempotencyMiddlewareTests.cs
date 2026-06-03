@@ -33,7 +33,8 @@ public sealed class IdempotencyMiddlewareTests
     private static async Task<IHost> BuildHost(
         Action<IEndpointRouteBuilder>? configureEndpoints = null,
         Action<IdempotencyOptions>? configureOptions = null,
-        Action<ILoggingBuilder>? configureLogging = null)
+        Action<ILoggingBuilder>? configureLogging = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         var builder = Host.CreateDefaultBuilder()
             .ConfigureLogging(logging => configureLogging?.Invoke(logging))
@@ -44,6 +45,7 @@ public sealed class IdempotencyMiddlewareTests
                     s.AddRouting();
                     s.AddTrellisIdempotency(configureOptions);
                     s.AddInMemoryIdempotencyStore();
+                    configureServices?.Invoke(s);
                 })
                 .Configure(app =>
                 {
@@ -526,6 +528,18 @@ public sealed class IdempotencyMiddlewareTests
         messages.Should().Contain(message => message.Contains(expectedKeyHash, StringComparison.Ordinal),
             "operators still need a stable short hash to correlate idempotency log lines");
     }
+
+    [Fact]
+    public Task InvokeAsync_CompleteAsyncException_AbandonsReservationAndImmediateRetryReExecutes() =>
+        AssertCompleteFailureAbandonsAndRetryReExecutes(
+            () => new InvalidOperationException("complete failed"),
+            "CompleteAsync failed");
+
+    [Fact]
+    public Task InvokeAsync_CompleteAsyncTimeout_AbandonsReservationAndImmediateRetryReExecutes() =>
+        AssertCompleteFailureAbandonsAndRetryReExecutes(
+            () => new OperationCanceledException("complete timed out"),
+            "CompleteAsync timed out");
 
     [Fact]
     public async Task Server_error_response_is_abandoned_and_retry_re_executes_handler()
@@ -1063,6 +1077,54 @@ public sealed class IdempotencyMiddlewareTests
         }
     }
 
+    private static async Task AssertCompleteFailureAbandonsAndRetryReExecutes(
+        Func<Exception> completeExceptionFactory,
+        string expectedLogMessage)
+    {
+        var executions = 0;
+        var store = new ThrowingCompleteIdempotencyStore(completeExceptionFactory);
+        using var loggerProvider = new CapturingLoggerProvider();
+        using var host = await BuildHost(
+            configureEndpoints: endpoints =>
+                endpoints.MapPost("/complete-failure", async ctx =>
+                {
+                    Interlocked.Increment(ref executions);
+                    ctx.Response.StatusCode = 201;
+                    ctx.Response.ContentType = "application/json";
+                    await ctx.Response.WriteAsync("{\"created\":true}", ctx.RequestAborted);
+                }).WithMetadata(new IdempotentAttribute()),
+            configureLogging: logging =>
+            {
+                logging.ClearProviders();
+                logging.AddProvider(loggerProvider);
+                logging.SetMinimumLevel(LogLevel.Trace);
+            },
+            configureServices: services => services.AddSingleton<IIdempotencyStore>(store));
+        var client = host.GetTestClient();
+        var key = Guid.NewGuid().ToString();
+
+        var first = JsonBody("{}");
+        first.Headers.Add(KeyHeader, key);
+        var firstResp = await client.PostAsync("/complete-failure", first, TestContext.Current.CancellationToken);
+
+        firstResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        store.CompleteCallCount.Should().Be(1);
+        store.AbandonCallCount.Should().Be(1,
+            "a CompleteAsync failure must promptly release the in-flight reservation instead of waiting for ReservationTimeout");
+        loggerProvider.Messages.Should().Contain(message => message.Contains(expectedLogMessage, StringComparison.Ordinal),
+            "the original CompleteAsync failure cause must be logged before the best-effort abandon attempt");
+
+        var second = JsonBody("{}");
+        second.Headers.Add(KeyHeader, key);
+        var secondResp = await client.PostAsync("/complete-failure", second, TestContext.Current.CancellationToken);
+
+        secondResp.StatusCode.Should().Be(HttpStatusCode.Created,
+            "the immediate retry must be able to re-reserve the abandoned key instead of receiving idempotency.in_flight");
+        secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
+            "CompleteAsync failed, so there is no persisted snapshot to replay");
+        executions.Should().Be(2, "the retry must execute the handler after the first reservation is abandoned");
+    }
+
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
         private readonly Lock _lock = new();
@@ -1112,6 +1174,39 @@ public sealed class IdempotencyMiddlewareTests
             public void Dispose()
             {
             }
+        }
+    }
+
+    private sealed class ThrowingCompleteIdempotencyStore : IIdempotencyStore
+    {
+        private readonly InMemoryIdempotencyStore _inner = new(new IdempotencyOptions(), TimeProvider.System);
+        private readonly Func<Exception> _completeExceptionFactory;
+        private int _completeCallCount;
+        private int _abandonCallCount;
+
+        public ThrowingCompleteIdempotencyStore(Func<Exception> completeExceptionFactory)
+        {
+            ArgumentNullException.ThrowIfNull(completeExceptionFactory);
+            _completeExceptionFactory = completeExceptionFactory;
+        }
+
+        public int CompleteCallCount => Volatile.Read(ref _completeCallCount);
+
+        public int AbandonCallCount => Volatile.Read(ref _abandonCallCount);
+
+        public ValueTask<IdempotencyReservationOutcome> TryReserveAsync(string scope, string key, string fingerprint, CancellationToken cancellationToken) =>
+            _inner.TryReserveAsync(scope, key, fingerprint, cancellationToken);
+
+        public ValueTask CompleteAsync(string scope, string key, string reservationId, IdempotencyResponseSnapshot snapshot, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _completeCallCount);
+            throw _completeExceptionFactory();
+        }
+
+        public ValueTask AbandonAsync(string scope, string key, string reservationId, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _abandonCallCount);
+            return _inner.AbandonAsync(scope, key, reservationId, cancellationToken);
         }
     }
 

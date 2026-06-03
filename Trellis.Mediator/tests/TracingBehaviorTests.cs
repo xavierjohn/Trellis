@@ -139,6 +139,66 @@ public class TracingBehaviorTests : IDisposable
 
     #endregion
 
+    #region Handler cancellation — Activity status
+
+    [Fact]
+    public async Task Handle_RequestCancellation_WhenRequestTokenIsCanceled_RecordsExceptionEventWithoutErrorStatus()
+    {
+        var behavior = new TracingBehavior<TestCommand, Result<string>>();
+        var command = new TestCommand("Alice");
+        using var cts = new CancellationTokenSource();
+        global::Mediator.MessageHandlerDelegate<TestCommand, Result<string>> next = (_, cancellationToken) =>
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cancellationToken);
+        };
+
+        var act = async () => await behavior.Handle(command, next, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var activity = _activities.Should().ContainSingle().Subject;
+        activity.Status.Should().Be(ActivityStatusCode.Unset,
+            "consumer-initiated cancellations should not be reported as OpenTelemetry errors");
+        activity.StatusDescription.Should().BeNullOrEmpty(
+            "Activity.SetStatus(Unset, ...) does not preserve description per BCL semantics; the otel.status_description tag is the stable queryable cancellation marker");
+        activity.GetTagItem("otel.status_description").Should().Be("canceled",
+            "consumer-initiated cancellations must emit a stable queryable marker so backends can aggregate canceled spans without special-casing the exception event");
+        activity.GetTagItem("error.type").Should().BeNull();
+
+        var exceptionEvent = activity.Events.Should().ContainSingle(e => e.Name == "exception").Subject;
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value);
+        exceptionTags.TryGetValue("exception.type", out var exceptionType).Should().BeTrue();
+        exceptionType.Should().Be(typeof(OperationCanceledException).FullName);
+    }
+
+    [Fact]
+    public async Task Handle_InternalCancellation_WhenRequestTokenIsAlsoCanceled_SetsActivityStatusError()
+    {
+        var behavior = new TracingBehavior<TestCommand, Result<string>>();
+        var command = new TestCommand("Alice");
+        using var requestCts = new CancellationTokenSource();
+        using var internalCts = new CancellationTokenSource();
+        requestCts.Cancel();
+        internalCts.Cancel();
+        var next = NextDelegate.Throwing<TestCommand, Result<string>>(
+            new OperationCanceledException(internalCts.Token));
+
+        var act = async () => await behavior.Handle(command, next, requestCts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var activity = _activities.Should().ContainSingle().Subject;
+        activity.Status.Should().Be(ActivityStatusCode.Error,
+            "OperationCanceledException from a non-request token should preserve exception telemetry even when the request token is also canceled");
+        activity.GetTagItem("error.type").Should().Be(nameof(OperationCanceledException));
+
+        var exceptionEvent = activity.Events.Should().ContainSingle(e => e.Name == "exception").Subject;
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value);
+        exceptionTags.TryGetValue("exception.type", out var exceptionType).Should().BeTrue();
+        exceptionType.Should().Be(typeof(OperationCanceledException).FullName);
+    }
+
+    #endregion
+
     #region Handler throws — Activity status Error
 
     [Fact]
@@ -170,6 +230,7 @@ public class TracingBehaviorTests : IDisposable
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         var activity = _activities.Should().ContainSingle().Subject;
+        activity.Status.Should().Be(ActivityStatusCode.Error);
         var exceptionEvent = activity.Events.Should().ContainSingle(e => e.Name == "exception").Subject;
         var exceptionTags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value);
 
