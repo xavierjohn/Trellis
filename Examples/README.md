@@ -37,7 +37,7 @@ dotnet run --project SsoExample/SsoExample.csproj --launch-profile Development
 ## Run all sample tests
 
 ```bash
-dotnet test Trellis.slnx -c Release --filter "FullyQualifiedName~Examples"
+dotnet test --solution Trellis.slnx -c Release --filter "FullyQualifiedName~Examples"
 ```
 
 ## Conventions enforced across every sample
