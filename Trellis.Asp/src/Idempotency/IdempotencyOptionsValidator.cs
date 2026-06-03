@@ -9,6 +9,12 @@ internal sealed class IdempotencyOptionsValidator : IValidateOptions<Idempotency
 {
     public ValidateOptionsResult Validate(string? name, IdempotencyOptions options)
     {
+        // IValidateOptions<T> is global across all named instances of T. AddTrellisIdempotency
+        // only registers + consumes the default options instance, so any other named instance
+        // belongs to the consumer and we must not impose Trellis-specific invariants on it.
+        if (name != Options.DefaultName)
+            return ValidateOptionsResult.Skip;
+
         var errors = new List<string>();
 
         ValidateHeaderName(options.HeaderName, nameof(IdempotencyOptions.HeaderName), errors);
