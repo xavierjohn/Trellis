@@ -127,10 +127,10 @@ public sealed class MsalTestTokenProvider
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public MsalTestTokenProvider(MsalTestOptions options)` | — | Creates a public MSAL client for `options.ClientId` and `options.TenantId`. Throws `InvalidOperationException` when `TenantId`, `ClientId`, or `Scopes` is missing. |
+| `public MsalTestTokenProvider(MsalTestOptions options)` | — | Creates a public MSAL client for `options.ClientId` and `options.TenantId`. Throws `InvalidOperationException` when `TenantId` or `ClientId` is missing, when `Scopes` is empty, or when any entry inside `Scopes` is blank (empty or whitespace-only). |
 | `public Task<string> AcquireTokenAsync(string testUserName, CancellationToken cancellationToken = default)` | `Task<string>` | Acquires an access token for the named user via MSAL ROPC. Throws `KeyNotFoundException` if `testUserName` is not configured and `MsalException` when token acquisition fails. |
 
-The constructor validates required MSAL configuration before calling MSAL: `TenantId` and `ClientId` must be non-empty strings, and `Scopes` must contain at least one scope URI.
+The constructor validates required MSAL configuration before calling MSAL: `TenantId` and `ClientId` must be non-empty (and non-whitespace) strings, `Scopes` must contain at least one entry, and every entry in `Scopes` must itself be a non-empty, non-whitespace scope URI. A blank entry in the middle of an otherwise-valid array (e.g. `["api://valid/.default", ""]`) is rejected because MSAL would otherwise surface its own opaque downstream error.
 
 ROPC is deprecated for production use. Use this helper only for gated E2E tests against a dedicated test tenant with MFA disabled for test users.
 
