@@ -53,8 +53,13 @@ public sealed class TracingBehavior<TMessage, TResponse>
         catch (OperationCanceledException oce)
             when (cancellationToken.IsCancellationRequested && oce.CancellationToken.Equals(cancellationToken))
         {
+            // OTel convention for consumer-initiated cancellation: leave ActivityStatusCode
+            // at Unset (NOT Error — cancellations are not errors). The AddException event
+            // carries exception.type = OperationCanceledException, so exporters and
+            // dashboards can distinguish cancellations from real failures via the event.
+            // (Activity.SetStatus(Unset, ...) does not preserve the description, so the
+            // exception event is the canonical signal.)
             activity?.AddException(oce);
-            activity?.SetTag("otel.status_description", "canceled");
             throw;
         }
         catch (Exception ex)
