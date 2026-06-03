@@ -52,6 +52,8 @@
     href: integration.md
   - name: ASP.NET Core
     href: integration-aspnet.md
+  - name: ASP.NET Core ToHttpResponse
+    href: asp-tohttpresponse.md
   - name: Pagination
     href: pagination.md
   - name: Single Sign-On (Google, Microsoft, OIDC)

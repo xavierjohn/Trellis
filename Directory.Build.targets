@@ -23,4 +23,9 @@
           Pack="true" PackagePath="trellis\" />
   </ItemGroup>
 
+  <Target Name="LintApiReference"
+          BeforeTargets="Build"
+          Condition="'$(TrellisEnableApiReferenceLint)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)docs/lint-api-reference.ps1&quot;" />
+  </Target>
 </Project>

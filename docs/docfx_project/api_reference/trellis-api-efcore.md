@@ -12,7 +12,14 @@ audience: [llm]
 **Namespace:** `Trellis.EntityFrameworkCore`  
 **Purpose:** EF Core conventions, interceptors, converters, and query/update helpers for Trellis aggregates, value objects, and `Maybe<T>`.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package.
+
+## Use this file when
+
+- You are persisting aggregates with `RepositoryBase<TAggregate, TId>`.
+- You are querying `Maybe<T>` properties with `MaybeQueryableExtensions` or raw expressions that require `MaybeQueryInterceptor`.
+- You are applying EF Core conventions with `ApplyTrellisConventions` or registering transactional command behavior with `AddTrellisUnitOfWork<TContext>`.
+- You need idempotent inserts via `DbContextIdempotencyExtensions` or retry-on-collision helpers via `DbContextRetryExtensions`.
 
 ## Patterns Index
 
@@ -69,10 +76,6 @@ Never write a different predicate for `FakeRepository` than for EF. If a reusabl
 public static class DbContextOptionsBuilderExtensions
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder) where TContext : DbContext` | `DbContextOptionsBuilder<TContext>` | Registers singleton `MaybeQueryInterceptor`, `ScalarValueQueryInterceptor`, internal `AggregateETagInterceptor`, and singleton `EntityTimestampInterceptor`. |
@@ -80,17 +83,13 @@ public static class DbContextOptionsBuilderExtensions
 | `public static DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder, TimeProvider? timeProvider) where TContext : DbContext` | `DbContextOptionsBuilder<TContext>` | Registers the same interceptor set, but creates a **new** `EntityTimestampInterceptor(timeProvider)` for this call. |
 | `public static DbContextOptionsBuilder AddTrellisInterceptors(this DbContextOptionsBuilder optionsBuilder, TimeProvider? timeProvider)` | `DbContextOptionsBuilder` | Non-generic overload that creates a new `EntityTimestampInterceptor(timeProvider)` for this call. |
 
-Idempotent: calling `AddTrellisInterceptors` multiple times on the same options builder registers each Trellis interceptor exactly once. Consumer-supplied interceptors registered separately via `optionsBuilder.AddInterceptors(...)` are preserved.
+Repeated calls with the same (or default) `TimeProvider` are idempotent; a subsequent call with a conflicting `TimeProvider` throws `InvalidOperationException`. Calling `AddTrellisInterceptors` multiple times on the same options builder registers each Trellis interceptor exactly once. Consumer-supplied interceptors registered separately via `optionsBuilder.AddInterceptors(...)` are preserved.
 
 ### `ModelConfigurationBuilderExtensions`
 
 ```csharp
 public static class ModelConfigurationBuilderExtensions
 ```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -136,10 +135,6 @@ Scope limits:
 public static class DbContextExtensions
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Task<Result<int>> SaveChangesResultAsync(this DbContext context, CancellationToken cancellationToken = default)` | `Task<Result<int>>` | Convenience overload for `SaveChangesResultAsync(context, true, cancellationToken)`. |
@@ -153,10 +148,6 @@ public static class DbContextExtensions
 public static class DbContextRetryExtensions
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Task<Result<Unit>> SaveChangesWithRetryAsync(this DbContext db, Func<DbUpdateException, bool> shouldRetry, Func<IReadOnlyList<EntityEntry>, int, CancellationToken, ValueTask<bool>> regenerate, int maxAttempts = 3, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Saves changes. On `DbUpdateException` classified retryable by `shouldRetry`, detaches **only** the entries reported by `DbUpdateException.Entries` (never the full change tracker — sibling aggregates pending in the change tracker, including entries promoted via `entry.State = Added`, are preserved), invokes `regenerate(entries, attempt, ct)` so the caller can mutate the conflicting entities' natural keys in place, re-`Add`s them, and retries up to `maxAttempts` total attempts (initial + retries). `DbUpdateConcurrencyException` is mapped to `new Error.Conflict(null, "concurrent_modification")` **without** calling `shouldRetry` (regenerating a natural key cannot resolve a stale rowversion). When `shouldRetry` returns false, non-retryable `DbUpdateException`s are mapped exactly like `SaveChangesResultAsync`: duplicate → `"duplicate.key"`, FK → `"referential.integrity"`, unrecognised → rethrown. Only `Added` entries are supported — if `ex.Entries` contains a non-`Added` entry, throws `InvalidOperationException` (Modified retries lose original values, `IsModified` flags, and temporary-value metadata across the detach/re-attach cycle). When `regenerate` returns false, conflicting entries remain detached and the method returns `Error.Conflict` with reason code `"retry.aborted"`. When `maxAttempts` is exhausted, no detach is performed on the final attempt and the method returns `Error.Conflict` with reason code `"retry.exhausted"`. The helper's exhaust/abort paths use these neutral reason codes (distinct from the caller-classifier-related `"duplicate.key"` / `"referential.integrity"` codes) so a broader `shouldRetry` classifier does not surface a misleading `duplicate.key` code on exhaust/abort. `attempt` is 1-based and equals the regenerate-call number. The `duplicate.key` / `referential.integrity` `Error.Conflict` values returned by this helper carry `ConstraintName` / `ConstraintTableName` telemetry fields populated by `DbExceptionClassifier.ExtractConstraintIdentity` (see [`DbExceptionClassifier`](#dbexceptionclassifier)). |
@@ -167,10 +158,6 @@ public static class DbContextRetryExtensions
 public static class DbContextIdempotencyExtensions
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Task<Result<TEntity>> TryInsertUniqueAsync<TEntity>(this DbContext context, TEntity entity, CancellationToken cancellationToken = default) where TEntity : class` | `Task<Result<TEntity>>` | Adds `entity` to `context` and persists it; converts a unique-constraint violation into `Result.Fail<TEntity>(new Error.Conflict(null, "duplicate.key") { Detail = "A record with the same unique value already exists.", ConstraintName, ConstraintTableName })`. On the duplicate path, every entry the call newly attached as `Added` (root plus any owned / dependent entries from the navigation graph) is detached, and any already-tracked entry that `context.Add` flipped to `Added` (e.g., a row the context loaded earlier) is restored to its prior state — so the change tracker is left exactly as the caller saw it on entry. On success, returns `Result.Ok(entity)` with EF-populated generated values (PK, row version, sequence columns) in place on the same instance. Foreign-key violations, `DbUpdateConcurrencyException`, connection-level exceptions, and `OperationCanceledException` propagate so retry policies see them. The helper requires a clean `DbContext` on entry: throws `InvalidOperationException` when `context.ChangeTracker.HasChanges()` is `true` so a duplicate-key violation cannot be mis-attributed to the inserted entity. Constraint identity comes from `DbExceptionClassifier.ExtractConstraintIdentity`. |
@@ -180,10 +167,6 @@ public static class DbContextIdempotencyExtensions
 ```csharp
 public static class QueryableExtensions
 ```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -202,10 +185,6 @@ public static class PaginationQueryableExtensions
 ```
 
 EF Core seek-pagination helper that composes with the storage-agnostic `Trellis.Core` primitives (`PageSize`, `Cursor`, `CursorCodec`, `PageBuilder`, `Page<T>`). The method owns the `OrderBy(keySelector)`, the cursor decoding, the seek `WHERE` predicate, the `Take(Applied + 1)` over-fetch, and the slice — callers supply a pre-filtered `IQueryable<T>` and the sort-key projection.
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -334,18 +313,18 @@ public static class UnitOfWorkServiceCollectionExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` as `IUnitOfWork` (and forwards it as `ITrackedAggregateSource` for `Trellis.Mediator.TrackedAggregateDomainEventDispatchBehavior<,>`) and adds the open-generic `TransactionalCommandBehavior<,>` pipeline behavior. The behavior is inserted after the last existing `IPipelineBehavior<,>` registration (innermost position). Idempotent for an existing open-generic `TransactionalCommandBehavior<,>`: a second call is a no-op. **Throws `InvalidOperationException`** when a closed-generic `IPipelineBehavior<TMessage,TResponse> → TransactionalCommandBehavior<TMessage,TResponse>` is already registered (with or without an open-generic registration), because installing the open generic alongside would resolve both descriptors for matching commands and produce two commits per command. The exception message names the supported resolutions: remove the closed registration and let the helper install the open generic, or call `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` to keep the explicit closed registrations and skip open-generic installation. Call this **after** `AddTrellisBehaviors()` so that commit failures are visible to outer behaviors (logging, tracing). |
+| `public static IServiceCollection AddTrellisUnitOfWork<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` as `IUnitOfWork` (and forwards it as `ITrackedAggregateSource` for `Trellis.Mediator.TrackedAggregateDomainEventDispatchBehavior<,>`) and adds the open-generic `TransactionalCommandBehavior<,>` pipeline behavior. See *Behavioral notes: AddTrellisUnitOfWork<TContext>* below. |
 | `public static IServiceCollection AddTrellisUnitOfWorkWithoutBehavior<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers `EfUnitOfWork<TContext>` without the pipeline behavior (also forwarded as `ITrackedAggregateSource`). Use for manual commit control or non-Mediator scenarios. |
+
+### Behavioral notes: `AddTrellisUnitOfWork<TContext>`
+
+`AddTrellisUnitOfWork<TContext>()` inserts `TransactionalCommandBehavior<,>` after the last existing `IPipelineBehavior<,>` registration, making it innermost in the mediator pipeline. It is idempotent for an existing open-generic `TransactionalCommandBehavior<,>`: a second call is a no-op. Call it **after** `AddTrellisBehaviors()` so that commit failures are visible to outer behaviors such as logging and tracing. It **throws `InvalidOperationException`** when a closed-generic `IPipelineBehavior<TMessage,TResponse> → TransactionalCommandBehavior<TMessage,TResponse>` is already registered, with or without an open-generic registration, because installing the open generic alongside would resolve both descriptors for matching commands and produce two commits per command. The exception message names the supported resolutions: remove the closed registration and let the helper install the open generic, or call `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` to keep the explicit closed registrations and skip open-generic installation.
 
 ### `EntityTimestampInterceptor`
 
 ```csharp
 public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
 ```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -360,10 +339,6 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
 ```csharp
 public static class MaybeQueryableExtensions
 ```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -385,10 +360,6 @@ public static class MaybeQueryableExtensions
 public static class MaybeUpdateExtensions
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static UpdateSettersBuilder<TEntity> SetMaybeValue<TEntity, TInner>(this UpdateSettersBuilder<TEntity> updateSettersBuilder, Expression<Func<TEntity, Maybe<TInner>>> propertySelector, TInner value) where TEntity : class where TInner : notnull` | `UpdateSettersBuilder<TEntity>` | Sets a mapped scalar `Maybe<TInner>` property inside `ExecuteUpdate`; throws for composite owned types. |
@@ -400,10 +371,6 @@ public static class MaybeUpdateExtensions
 public static class MaybeEntityTypeBuilderExtensions
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IndexBuilder<TEntity> HasTrellisIndex<TEntity>(this EntityTypeBuilder<TEntity> entityTypeBuilder, Expression<Func<TEntity, object?>> propertySelector) where TEntity : class` | `IndexBuilder<TEntity>` | Creates an index using CLR selectors and resolves any `Maybe<T>` selectors to the actual generated storage-member mapping. |
@@ -413,10 +380,6 @@ public static class MaybeEntityTypeBuilderExtensions
 ```csharp
 public static class MaybeModelExtensions
 ```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -467,10 +430,6 @@ Diagnostic record describing how a `Maybe<T>` property resolved to an EF Core ma
 public static class DbExceptionClassifier
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static bool IsDuplicateKey(DbUpdateException ex)` | `bool` | Detects duplicate-key violations across SQL Server (errors 2601/2627), PostgreSQL (SQLSTATE 23505), SQLite (`UNIQUE constraint failed` / `PRIMARY KEY constraint failed`), MySQL/MariaDB (error 1062 or `Duplicate entry` message — works with both `MySql.Data.MySqlClient` and `MySqlConnector`), and generic message-based fallbacks. Provider exception types are detected by name, so consumers do not take a transitive dependency on any particular driver. SQLSTATE 23000 is intentionally **not** trusted on its own for MySQL because that code is reused for foreign-key violations. |
@@ -505,10 +464,6 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
 where TModel : class
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public TrellisScalarConverter()` | — | Builds expressions that persist `Value` and materialize via `TryCreate` or `TryFromName`; invalid persisted data throws `TrellisPersistenceMappingException`. |
@@ -520,37 +475,21 @@ where TModel : class
 public sealed class OwnedEntityAttribute : Attribute;
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| — | — | No methods. |
-
 ### `MaybeQueryInterceptor`
 
 ```csharp
 public sealed class MaybeQueryInterceptor : IQueryExpressionInterceptor
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. Supported patterns inside `Where`/`Select`/`Specification.ToExpression()`: `o.X.HasValue`, `o.X.HasNoValue`, `o.X.Value`, `o.X.GetValueOrDefault(d)`, `o.X == Maybe<T>.None`, and `o.X.HasValueWhere(t => ...predicate-body-on-t...)`. `HasValueWhere` requires an inline expression-bodied lambda; captured `Func<T,bool>` variables and method-group conversions fall through and EF Core reports the translation failure. See cookbook [Recipe 8](trellis-api-cookbook.md#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects) for the Specification walkthrough. |
+| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. Supported patterns inside `Where`/`Select`/`Specification.ToExpression()`: `o.X.HasValue`, `o.X.HasNoValue`, `o.X.Value`, `o.X.GetValueOrDefault(d)`, `o.X == Maybe<T>.None` / `o.X != Maybe<T>.None` (and converse operand order), `o.X == Maybe.From(value)` / `o.X != Maybe.From(value)` (and converse operand order), `o.X == default(Maybe<T>)`, and `o.X.HasValueWhere(t => ...predicate-body-on-t...)`. `HasValueWhere` requires an inline expression-bodied lambda; captured `Func<T,bool>` variables and method-group conversions fall through and EF Core reports the translation failure. See cookbook [Recipe 8](trellis-api-cookbook.md#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects) for the Specification walkthrough. |
 
 ### `ScalarValueQueryInterceptor`
 
 ```csharp
 public sealed class ScalarValueQueryInterceptor : IQueryExpressionInterceptor
 ```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -631,19 +570,7 @@ public static Task<Result<Page<T>>> ToPageAsync<T, TKey>(
 
 ### `MaybeQueryableExtensions`
 
-```csharp
-public static IQueryable<TEntity> WhereNone<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull
-public static IQueryable<TEntity> WhereHasValue<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull
-public static IQueryable<TEntity> WhereEquals<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector, TInner value) where TEntity : class where TInner : notnull
-public static IQueryable<TEntity> WhereLessThan<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector, TInner value) where TEntity : class where TInner : notnull, IComparable<TInner>
-public static IQueryable<TEntity> WhereLessThanOrEqual<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector, TInner value) where TEntity : class where TInner : notnull, IComparable<TInner>
-public static IQueryable<TEntity> WhereGreaterThan<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector, TInner value) where TEntity : class where TInner : notnull, IComparable<TInner>
-public static IQueryable<TEntity> WhereGreaterThanOrEqual<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector, TInner value) where TEntity : class where TInner : notnull, IComparable<TInner>
-public static IOrderedQueryable<TEntity> OrderByMaybe<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull
-public static IOrderedQueryable<TEntity> OrderByMaybeDescending<TEntity, TInner>(this IQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull
-public static IOrderedQueryable<TEntity> ThenByMaybe<TEntity, TInner>(this IOrderedQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull
-public static IOrderedQueryable<TEntity> ThenByMaybeDescending<TEntity, TInner>(this IOrderedQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull
-```
+See [`MaybeQueryableExtensions`](#maybequeryableextensions) above for the full type reference.
 
 ### `MaybeUpdateExtensions`
 
@@ -876,6 +803,6 @@ The same Acl boundary applies to [`PaginationQueryableExtensions.ToPageAsync`](#
 
 ## Cross-references
 
-- [Trellis DDD primitives in `Trellis.Core` (API reference)](trellis-api-core.md) — `IEntity`, `IAggregate`, `Aggregate<TId>`, `Entity<TId>`, `ValueObject`, `ScalarValueObject<TSelf, T>`, and `Specification<T>`
-- [Trellis.Core API reference](trellis-api-core.md) — `Result`, `Result<T>`, `Maybe<T>`, `Error`, `IScalarValue<TSelf, TPrimitive>`, and `EntityTagValue`
-- [Trellis.Primitives API reference](trellis-api-primitives.md) — `Money`, `RequiredEnum<T>`, and built-in value objects commonly scanned by `ApplyTrellisConventions`
+- [Trellis DDD primitives in `Trellis.Core` (API reference)](trellis-api-core.md#domain-driven-design) — `IEntity`, `IAggregate`, `Aggregate<TId>`, `Entity<TId>`, `ValueObject`, `ScalarValueObject<TSelf, T>`, and `Specification<T>`
+- [Trellis.Core API reference](trellis-api-core.md#patterns-index) — `Result`, `Result<T>`, `Maybe<T>`, `Error`, `IScalarValue<TSelf, TPrimitive>`, and `EntityTagValue`
+- [Trellis.Primitives API reference](trellis-api-primitives.md#built-in-primitives-table) — `Money`, `RequiredEnum<T>`, and built-in value objects commonly scanned by `ApplyTrellisConventions`

@@ -3,7 +3,7 @@ package: Trellis.Core
 namespaces: [Trellis]
 types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IEntity, "Entity<TId>", IDomainEvent, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, AllowEmptyAttribute, AllowWhitespaceAttribute, NoTrimAttribute, AllowZeroAttribute, AllowMinValueAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
-last_verified: 2026-05-06
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Core API Reference
@@ -12,7 +12,7 @@ audience: [llm]
 **Namespace:** `Trellis`  
 **Purpose:** Provides Trellis result, maybe, scalar-value, and transport-agnostic error primitives for railway-oriented application flows.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md), [trellis-api-asp.md](trellis-api-asp.md), [trellis-api-primitives.md](trellis-api-primitives.md).
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md#package-role), [trellis-api-asp.md](trellis-api-asp.md#use-this-file-when), [trellis-api-primitives.md](trellis-api-primitives.md#trellis-api-primitives).
 
 ---
 
@@ -534,7 +534,7 @@ The catalog is closed to these 12 cases: `InvalidInput`, `InvariantViolation`, `
 
 #### Error.TransportFault envelope
 
-Domain code treats `ITransportFault` as opaque and does not inspect concrete transport payloads. Boundary layers such as `Trellis.Asp` unwrap `HttpError` to synthesize HTTP status codes, companion headers, and problem-details extensions. The built-in HTTP transport payload union lives in [Trellis.Http.Abstractions](trellis-api-http-abstractions.md).
+Domain code treats `ITransportFault` as opaque and does not inspect concrete transport payloads. Boundary layers such as `Trellis.Asp` unwrap `HttpError` to synthesize HTTP status codes, companion headers, and problem-details extensions. The built-in HTTP transport payload union lives in [Trellis.Http.Abstractions](trellis-api-http-abstractions.md#httperror).
 
 #### RetryAdvice
 
@@ -566,7 +566,7 @@ HTTP-specific status codes, headers, and problem-details `type` tokens are not t
 
 **`GetRetryAdvice` for `Error.Aggregate` always returns `null`.** Two reasons: (1) returning the first transient inner's advice would contradict `Classify` whenever the aggregate is `Permanent` or `FailFast`, and (2) under-waiting is order-dependent (a `RateLimited(1s)` followed by a `RateLimited(60s)` would suggest 1 s). Callers that want a merged hint must define their own policy over the inner errors.
 
-**Conflict and eventually-consistent reads.** `Error.Conflict` defaults to `Permanent` because a generic outer retry loop cannot perform the conflict-specific work (rowversion reload, natural-key regeneration) that 409-shaped failures usually require. Domains with a meaningful conflict retry strategy should override locally — branch on the concrete shape first and only call `Classify()` in the fallback arm — or use a dedicated primitive such as `DbContext.SaveChangesWithRetryAsync` (see [trellis-api-efcore.md](trellis-api-efcore.md)). `Error.NotFound` and `Error.Gone` default to `Permanent`; services whose reads are eventually consistent should override the mapping locally rather than expect the framework default to infer their consistency model.
+**Conflict and eventually-consistent reads.** `Error.Conflict` defaults to `Permanent` because a generic outer retry loop cannot perform the conflict-specific work (rowversion reload, natural-key regeneration) that 409-shaped failures usually require. Domains with a meaningful conflict retry strategy should override locally — branch on the concrete shape first and only call `Classify()` in the fallback arm — or use a dedicated primitive such as `DbContext.SaveChangesWithRetryAsync` (see [trellis-api-efcore.md](trellis-api-efcore.md#dbcontextretryextensions)). `Error.NotFound` and `Error.Gone` default to `Permanent`; services whose reads are eventually consistent should override the mapping locally rather than expect the framework default to infer their consistency model.
 
 **Why `Error.Unexpected` is `Transient`.** `Error.Unexpected` wraps unhandled exceptions and "this should not have happened" conditions. A retry can hide a deterministic bug or recover a momentary failure; the default favours availability. Producers should reserve `Error.Unexpected` for unknown internal faults and surface deterministic failures as `Error.InvariantViolation`, `Error.InvalidInput`, or `Error.Conflict` instead. Consumers must still cap retries.
 
@@ -574,7 +574,7 @@ HTTP-specific status codes, headers, and problem-details `type` tokens are not t
 
 #### Supporting types
 
-HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterValue`, `PreconditionKind`, `RepresentationMetadata`, `WriteOutcome<T>`, and `AggregateETagExtensions`) now live in [Trellis.Http.Abstractions](trellis-api-http-abstractions.md).
+HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterValue`, `PreconditionKind`, `RepresentationMetadata`, `WriteOutcome<T>`, and `AggregateETagExtensions`) now live in [Trellis.Http.Abstractions](trellis-api-http-abstractions.md#use-this-file-when).
 
 | Type | Shape | Purpose |
 | --- | --- | --- |
@@ -591,7 +591,7 @@ HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterVa
 ### Moved HTTP transport types
 
 `AuthChallenge`, `EntityTagValue`, `RetryAfterValue`, `PreconditionKind`, `RepresentationMetadata`, `WriteOutcome<T>`, and `AggregateETagExtensions` are no longer part of `Trellis.Core`.
-Use [Trellis.Http.Abstractions](trellis-api-http-abstractions.md) when you need header-aware HTTP payloads, conditional-request helpers, representation metadata, or HTTP-shaped write outcomes.
+Use [Trellis.Http.Abstractions](trellis-api-http-abstractions.md#use-this-file-when) when you need header-aware HTTP payloads, conditional-request helpers, representation metadata, or HTTP-shaped write outcomes.
 
 The base record's constructor is `private`; new cases cannot be added by consumers.
 
@@ -1525,10 +1525,6 @@ public interface IEntity
 | `CreatedAt` | `DateTimeOffset` | UTC timestamp for the first successful persistence of the entity. |
 | `LastModified` | `DateTimeOffset` | UTC timestamp for the latest successful persistence update. |
 
-| Signature | Returns | Description |
-| --- | --- | --- |
-| — | — | No methods. |
-
 ### `Entity<TId>`
 
 ```csharp
@@ -1593,10 +1589,6 @@ public interface IDomainEvent
 | --- | --- | --- |
 | `OccurredAt` | `DateTimeOffset` | Timestamp (with explicit UTC offset) for when the domain event occurred. |
 
-| Signature | Returns | Description |
-| --- | --- | --- |
-| — | — | No methods. |
-
 ### `ITrackedAggregateSource`
 
 ```csharp
@@ -1608,10 +1600,6 @@ Sidecar contract for a unit-of-work that snapshots the aggregates it persisted d
 | Name | Type | Description |
 | --- | --- | --- |
 | `CommittedAggregates` | `IReadOnlyList<IAggregate>` | The aggregates the unit-of-work persisted on its most recent successful commit. Empty before any commit, empty after a failed or thrown commit (cleared before save and only repopulated on success), and unchanged during deferred nested commits — only the outermost commit owns the snapshot. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| — | — | No methods. |
 
 ### `ValueObject`
 
@@ -1684,10 +1672,6 @@ Defined in `Trellis.Http.Abstractions`; listed here because the extension method
 public static class AggregateETagExtensions
 ```
 
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | No public properties. |
-
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Result<T> OptionalETag<T>(this Result<T> result, EntityTagValue[]? expectedETags) where T : IAggregate` | `Result<T>` | If `expectedETags` is `null`, returns the original result unchanged; otherwise enforces strong ETag matching. Failure modes wrap `HttpError.PreconditionFailed` in `Error.TransportFault`; `EntityTagValue.Wildcard()` short-circuits to success. |
@@ -1739,7 +1723,7 @@ Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON conve
 
 ## Primitive value object base classes
 
-These types ship in `Trellis.Core`. They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), strict-default opt-out attributes (`AllowEmptyAttribute`, `AllowWhitespaceAttribute`, `NoTrimAttribute`, `AllowZeroAttribute`, `AllowMinValueAttribute`), numeric sign attributes (`PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, `NonPositiveAttribute`), and vestigial compatibility attributes (`NotDefaultAttribute`, `TrimAttribute`) attach declarative metadata that the generator wires into validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md).
+These types ship in `Trellis.Core`. They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), strict-default opt-out attributes (`AllowEmptyAttribute`, `AllowWhitespaceAttribute`, `NoTrimAttribute`, `AllowZeroAttribute`, `AllowMinValueAttribute`), numeric sign attributes (`PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, `NonPositiveAttribute`), and vestigial compatibility attributes (`NotDefaultAttribute`, `TrimAttribute`) attach declarative metadata that the generator wires into validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md#types).
 
 #### `Required*<TSelf>` default behavior and opt-outs
 
@@ -2454,8 +2438,8 @@ var spec = new ExpiredSubscriptionSpec(DateTimeOffset.UtcNow)
 
 ## Cross-references
 
-- [Trellis.Core API reference](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Error`, `ITransportFault`, `IScalarValue<TSelf, TPrimitive>`, and `IFormattableScalarValue<TSelf, TPrimitive>`
-- [Trellis.Http.Abstractions API reference](trellis-api-http-abstractions.md) — `HttpError`, `EntityTagValue`, `RetryAfterValue`, `RepresentationMetadata`, `WriteOutcome<T>`, and `AggregateETagExtensions`
-- [Trellis.Primitives API reference](trellis-api-primitives.md) — built-in scalar and composite value objects that build on these DDD primitives
-- [Trellis.EntityFrameworkCore API reference](trellis-api-efcore.md) — EF Core conventions and interceptors for `IEntity`, `IAggregate`, `ValueObject`, and `Maybe<T>`
+- [Trellis.Core API reference](trellis-api-core.md#trelliscore-api-reference) — `Result<T>`, `Maybe<T>`, `Error`, `ITransportFault`, `IScalarValue<TSelf, TPrimitive>`, and `IFormattableScalarValue<TSelf, TPrimitive>`
+- [Trellis.Http.Abstractions API reference](trellis-api-http-abstractions.md#use-this-file-when) — `HttpError`, `EntityTagValue`, `RetryAfterValue`, `RepresentationMetadata`, `WriteOutcome<T>`, and `AggregateETagExtensions`
+- [Trellis.Primitives API reference](trellis-api-primitives.md#trellis-api-primitives) — built-in scalar and composite value objects that build on these DDD primitives
+- [Trellis.EntityFrameworkCore API reference](trellis-api-efcore.md#trellisentityframeworkcore) — EF Core conventions and interceptors for `IEntity`, `IAggregate`, `ValueObject`, and `Maybe<T>`
 

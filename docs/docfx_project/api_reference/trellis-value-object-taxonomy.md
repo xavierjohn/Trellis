@@ -3,7 +3,7 @@ package: Trellis.Core, Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredLong<TSelf>, RequiredDecimal<TSelf>, RequiredBool<TSelf>, RequiredDateTime<TSelf>, RequiredDateTimeOffset<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
 version: v3
-last_verified: 2026-05-01
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis Value Object Taxonomy
@@ -23,7 +23,7 @@ Use this table to pick the right base class before reading the per-type signatur
 | Wrap a consistency boundary with domain events | `Aggregate<TId>` | See [trellis-api-core.md → Domain-Driven Design](trellis-api-core.md#domain-driven-design) |
 | Express expected absence of a value | `Maybe<T>` | See [trellis-api-core.md → Maybe](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
 | Move a query predicate out of a repository | `Specification<T>` | See [trellis-api-core.md → Domain-Driven Design](trellis-api-core.md#domain-driven-design) |
-| Pick a built-in concrete value object instead of writing your own | `EmailAddress`, `Money`, `CountryCode`, `Url`, etc. | See [trellis-api-primitives.md](trellis-api-primitives.md) |
+| Pick a built-in concrete value object instead of writing your own | `EmailAddress`, `Money`, `CountryCode`, `Url`, etc. | See [trellis-api-primitives.md](trellis-api-primitives.md#built-in-primitives-table) |
 
 
 ## Required base defaults
@@ -53,6 +53,8 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
 | Signature | Returns | Description |
 | --- | --- | --- |
+| `protected abstract IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Derived types override this to define structural identity. |
+| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Helper for optional equality components: returns the contained value when present, otherwise `null`. |
 | `public override bool Equals(object? obj)` | `bool` | Structural equality. |
 | `public bool Equals(ValueObject? other)` | `bool` | Strongly typed structural equality. |
 | `public override int GetHashCode()` | `int` | Cached structural hash. |
@@ -450,6 +452,6 @@ public static class Example
 
 ## Cross-references
 
-- [trellis-api-primitives.md](trellis-api-primitives.md)
-- [trellis-api-core.md](trellis-api-core.md)
-- [trellis-api-efcore.md](trellis-api-efcore.md)
+- [trellis-api-primitives.md](trellis-api-primitives.md#base-class-hierarchy)
+- [trellis-api-core.md](trellis-api-core.md#domain-driven-design)
+- [trellis-api-efcore.md](trellis-api-efcore.md#maybet-storage-owned-types-and-migrations)

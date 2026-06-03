@@ -3,7 +3,7 @@ package: Trellis.Http
 namespaces: [Trellis.Http]
 types: [HttpResponseExtensions]
 version: v3
-last_verified: 2026-05-05
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Http &mdash; API Reference
@@ -12,7 +12,7 @@ audience: [llm]
 **Namespace:** `Trellis.Http`
 **Purpose:** Bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>` pipelines and deserialize JSON payloads into `Result<T>` / `Result<Maybe<T>>`.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md) for the wrapped `HttpError` and moved HTTP value types.
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-19--http-client-result-safety-and-optional-reads) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md#package-role) for the wrapped `HttpError` and moved HTTP value types.
 
 > Bare `ToResultAsync()` is strict by default: non-2xx responses become typed Trellis failures instead of remaining on the success track.
 

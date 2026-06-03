@@ -1,21 +1,21 @@
 ﻿---
 package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
-types: [IActorProvider, ActorContext, Actor, ActorId, Permission, AuthorizeAttribute, IAuthorizationRequirement, IResourceAuthorizationHandler]
+types: [Actor, ActorAttributes, ActorId, IActorProvider, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
-last_verified: 2026-05-17
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Authorization — API Reference
 
 **Package:** `Trellis.Authorization`
 **Namespace:** `Trellis.Authorization`
-**Purpose:** Domain-layer authorization primitives — actor identity / permission / attribute model and the contracts used by the mediator's authorization behavior to perform static (permission) and resource-based authorization. This package contains no ASP.NET Core dependencies; the `IActorProvider` implementations and DI helpers ship in `Trellis.Asp` (see [`trellis-api-asp.md`](trellis-api-asp.md), namespace `Trellis.Asp.Authorization`).
+**Purpose:** Domain-layer authorization primitives — actor identity / permission / attribute model and the contracts used by the mediator's authorization behavior to perform static (permission) and resource-based authorization. This package contains no ASP.NET Core dependencies; the `IActorProvider` implementations and DI helpers ship in `Trellis.Asp` (see [`trellis-api-asp.md`](trellis-api-asp.md#namespace-trellisaspauthorization), namespace `Trellis.Asp.Authorization`).
 
 > [!TIP]
 > For the end-to-end mental model — JWT → JwtBearer → `IActorProvider` → mediator behaviors → 401/403 — plus decision trees and Mermaid diagrams, read [Mental model](../articles/integration-asp-authorization.md#mental-model) in the integration article first. This file is the type-by-type reference.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) — recipes using this package.
 
 ## Use this file when
 
@@ -131,7 +131,7 @@ public sealed class Actor : IEquatable<Actor>
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `Id` | `ActorId` | Strongly-typed principal identifier (e.g. JWT `sub`). Wraps the raw claim string in a [`RequiredString<ActorId>`](trellis-api-core.md) so the identity flows through authorization-layer APIs and consumer aggregate fields as a domain type rather than an untyped `string`. |
+| `Id` | `ActorId` | Strongly-typed principal identifier (e.g. JWT `sub`). Wraps the raw claim string in a [`RequiredString<ActorId>`](trellis-api-core.md#requiredstringtself) so the identity flows through authorization-layer APIs and consumer aggregate fields as a domain type rather than an untyped `string`. |
 | `Permissions` | `IReadOnlySet<string>` | Granted permissions. Ordinal comparison; setter snapshots into a `FrozenSet<string>`. |
 | `ForbiddenPermissions` | `IReadOnlySet<string>` | Explicit deny-list. Deny always overrides allow. Snapshotted into a `FrozenSet<string>`. |
 | `Attributes` | `IReadOnlyDictionary<string, string>` | ABAC attributes. Snapshotted into a `FrozenDictionary<string, string>` with ordinal comparer. |
@@ -156,11 +156,10 @@ public sealed class Actor : IEquatable<Actor>
 **Declaration**
 
 ```csharp
-[Trim, NotDefault]
 public sealed partial class ActorId : RequiredString<ActorId>;
 ```
 
-Strongly-typed wrapper around the raw principal id (typically the JWT `sub` or AAD `oid` claim) so the authorization layer exposes a domain type instead of an untyped `string`. Decorated with `[Trim, NotDefault]`: the value is trimmed on construction and an empty / whitespace-only id is rejected. Generated factories `ActorId.Create(string)` / `ActorId.TryCreate(string?)` come from the bundled source generator (see [`trellis-api-core.md`](trellis-api-core.md)).
+Strongly-typed wrapper around the raw principal id (typically the JWT `sub` or AAD `oid` claim) so the authorization layer exposes a domain type instead of an untyped `string`. It uses the strict `RequiredString<ActorId>` defaults: the value is trimmed on construction and an empty / whitespace-only id is rejected. Generated factories `ActorId.Create(string)` / `ActorId.TryCreate(string?)` come from the bundled source generator (see [`trellis-api-core.md`](trellis-api-core.md#primitive-value-object-base-classes)).
 
 Consumers that store the principal id at aggregate boundaries — audit-style fields like `Order.CreatedByActorId` or `Document.LastModifiedByActorId` — should reuse `ActorId` for those fields so cross-aggregate comparisons (`actor.IsOwner(order.CreatedByActorId)`) are type-checked end-to-end. Domain identifiers that are conceptually different from the principal id (a customer aggregate id, a tenant member id, a domain user aggregate's primary key) remain whatever VO the domain models and are resolved to / from the principal at the application service boundary.
 
@@ -482,7 +481,7 @@ string? tenant = actor.GetAttribute(ActorAttributes.TenantId);
 
 ## Cross-references
 
-- [trellis-api-asp.md](trellis-api-asp.md) — `Trellis.Asp.Authorization` actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`) and the matching `AddClaimsActorProvider` / `AddEntraActorProvider` / `AddDevelopmentActorProvider` / `AddCachingActorProvider<T>` registration helpers.
-- [trellis-api-mediator.md](trellis-api-mediator.md) — `AuthorizationBehavior<TMessage, TResponse>` pipeline behavior.
-- [trellis-api-core.md](trellis-api-core.md) — `Result`, `Error.Forbidden`, `Error.NotFound`.
-- [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md) — `WebApplicationFactoryExtensions.CreateClientWithActor` (writes the `X-Test-Actor` header consumed by `DevelopmentActorProvider`).
+- [trellis-api-asp.md](trellis-api-asp.md#namespace-trellisaspauthorization) — `Trellis.Asp.Authorization` actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`) and the matching `AddClaimsActorProvider` / `AddEntraActorProvider` / `AddDevelopmentActorProvider` / `AddCachingActorProvider<T>` registration helpers.
+- [trellis-api-mediator.md](trellis-api-mediator.md#authorizationbehaviortmessage-tresponse) — `AuthorizationBehavior<TMessage, TResponse>` pipeline behavior.
+- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Result`, `Error.Forbidden`, `Error.NotFound`.
+- [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#webapplicationfactoryextensions) — `WebApplicationFactoryExtensions.CreateClientWithActor` (writes the `X-Test-Actor` header consumed by `DevelopmentActorProvider`).

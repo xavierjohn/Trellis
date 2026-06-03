@@ -54,7 +54,7 @@ This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For rele
 
 ## Use this guide when
 
-- You are upgrading a service from a v1 `Trellis.*` surface (`Trellis.Results`, `Trellis.DomainDrivenDesign`, `Trellis.Stateless`, `Trellis.Asp.Authorization`, `Trellis.AspSourceGenerator`, `Trellis.EntityFrameworkCore.Generator`, `Trellis.Primitives.Generator`) to the consolidated v2 packages.
+- You are upgrading a service from a v1 `Trellis.*` surface (`Trellis.Results`, `Trellis.DomainDrivenDesign`, `Trellis.Stateless`, `Trellis.Asp.Authorization`, `Trellis.AspSourceGenerator`, `Trellis.EntityFrameworkCore.Generator`, `Trellis.Primitives.Generator`) to the Trellis 3.0 packages.
 - You hit `CS0029` after pulling v2 because implicit `T → Result<T>` and `Error → Result<T>` operators were removed.
 - You hit `CS1061` reading `result.Value` — the throwing getter was deleted.
 - You hit `CS0117` calling `Result.Success(...)` / `Result.Failure(...)` / `Result.SuccessIf(...)` / `Result.FromException(...)`.

@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Analyzers]
 types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS017, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
-last_verified: 2026-05-11
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis Anti-Pattern → Fix Gallery
@@ -212,12 +212,12 @@ Result<int> result = await db.SaveChangesResultAsync(ct);
 
 > Under `AddTrellisUnitOfWork<TContext>`, repositories should stage changes only and not call `SaveChanges`/`SaveChangesAsync` at all. `TransactionalCommandBehavior` owns commit.
 
-## TRLS020 — Composite value object DTO property missing `CompositeValueObjectJsonConverter`
+## TRLS020 — Composite value object DTO property is not safely deserializable
 
-Composite value objects exposed through request/response DTOs must carry `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type so JSON binding round-trips through `TryCreate`. The analyzer only inspects DTOs that are visible through a controller `[FromBody]` parameter or response type, a minimal API endpoint handler parameter, or a Mediator message type — the DTO type alone is not enough to trip the rule.
+Composite value objects exposed through request/response DTOs need a supported JSON transport so binding round-trips through `TryCreate`. A bare composite DTO property must use `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type. A `Maybe<TComposite>` DTO property is not analyzer-clean even when the inner composite type has that converter; use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam instead. The analyzer only inspects DTOs that are visible through a controller `[FromBody]` parameter or response type, a minimal API endpoint handler parameter, or a Mediator message type — the DTO type alone is not enough to trip the rule.
 
 ```csharp
-// WRONG — composite [OwnedEntity] value object exposed as a [FromBody] DTO property without the converter
+// WRONG — bare composite [OwnedEntity] value object exposed as a [FromBody] DTO property without the converter
 [OwnedEntity]
 public sealed partial class Money : ValueObject
 {
@@ -250,7 +250,7 @@ public sealed partial class Money : ValueObject
 }
 ```
 
-> The current TRLS020 analyzer checks the composite value object **type** for the converter attribute, not the DTO property. A property-level `JsonConverter` may be a valid `System.Text.Json` technique, but it is not the analyzer-clean shape in the current source/tests.
+> The current TRLS020 analyzer checks bare composite value-object DTO properties by looking for the converter on the composite **type**, not the DTO property. It also flags `Maybe<TComposite>` DTO properties because Trellis does not provide a `MaybeCompositeValueObjectJsonConverterFactory`; use `TComposite?` on the wire and convert to/from `Maybe<TComposite>` at the API seam.
 
 ## TRLS035 — `Maybe<T>` property should be `partial`
 
