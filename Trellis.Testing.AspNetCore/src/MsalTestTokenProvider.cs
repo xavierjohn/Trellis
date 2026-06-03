@@ -61,8 +61,12 @@ public sealed class MsalTestTokenProvider
             throw new InvalidOperationException(
                 "MsalTestOptions.ClientId must be set to the application/client id (GUID) of the registered AAD application. MSAL cannot acquire tokens without it.");
 
-        if (options.Scopes is null || !options.Scopes.Any(scope => !string.IsNullOrWhiteSpace(scope)))
+        if (options.Scopes is null || options.Scopes.Length == 0)
             throw new InvalidOperationException("MsalTestOptions.Scopes must contain at least one scope URI.");
+
+        if (options.Scopes.Any(scope => string.IsNullOrWhiteSpace(scope)))
+            throw new InvalidOperationException(
+                "MsalTestOptions.Scopes contains an empty or whitespace-only entry. Every configured scope must be a non-empty URI; MSAL cannot acquire tokens with blank scopes.");
 
         _options = options;
 

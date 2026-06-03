@@ -57,6 +57,26 @@ public sealed class MsalTestTokenProviderTests
             .WithMessage(ScopesRequiredMessage);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public void Constructor_ScopesContainsBlankEntry_ThrowsInvalidOperationException(string blankScope)
+    {
+        // Regression: PR #567 round-5 review caught the "at least one non-empty" check would
+        // accept arrays like ["api://valid/.default", ""] where MSAL still produces opaque
+        // errors downstream. Every configured scope must be non-blank.
+        var options = CreateValidOptions();
+        options.Scopes = ["api://valid/.default", blankScope];
+
+#pragma warning disable IL2026 // RequiresUnreferencedCode propagation — test exercises options validation, not the MSAL reflection path.
+        var act = () => new MsalTestTokenProvider(options);
+#pragma warning restore IL2026
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*empty or whitespace-only entry*");
+    }
+
     [Fact]
     public void Constructor_ValidOptions_AllRequiredFieldsSet_DoesNotThrow()
     {
