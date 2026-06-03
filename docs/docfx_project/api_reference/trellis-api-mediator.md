@@ -637,13 +637,13 @@ public static Task DispatchAggregateEventsAsync(
 
 **POST-COMMIT ONLY.** Uses the same strict snapshot contract as [`DomainEventDispatchBehavior<,>`](#domaineventdispatchbehavior) for handlers whose `TResponse` is not an `IResult<TAggregate>` shape (`Result<Unit>`, `Result<TDto>`, `Result<(A,B)>`) and for non-Mediator call sites such as `BackgroundService` workers, and returns after the aggregate's current event snapshot has been published and accepted. See *Behavioral notes: DispatchAggregateEventsAsync* below.
 
-#### Behavioral notes: DispatchAggregateEventsAsync
+### Behavioral notes: DispatchAggregateEventsAsync
 
 - **Snapshot + cascade semantics:** Snapshots `aggregate.UncommittedEvents()` once, publishes only that snapshot sequentially, validates that no handler appended new events, and calls `IChangeTracking.AcceptChanges()` only after clean validation. Throws [`DomainEventHandlerCascadedException`](#domaineventhandlercascadedexception) on cascade (`AcceptChanges()` is not called — original and cascaded events remain on the aggregate).
 - **Cancellation:** Cancellation propagates above `AcceptChanges()` so undispatched events remain on the aggregate; dispatched events stay dispatched and handlers must be idempotent for retry.
 - **Handler exceptions (publisher contract):** Handler exceptions follow the publisher's contract: the default `MediatorDomainEventPublisher` logs and swallows non-cancellation handler exceptions so the helper continues; a custom publisher that propagates handler exceptions causes the helper to rethrow without calling `AcceptChanges()`.
 - **When to call:** **Must only be called after the underlying unit of work has committed** — calling it inside a handler that relies on `TransactionalCommandBehavior` for its commit publishes events before the database transaction is durable. Durable at-least-once dispatch requires an outbox pattern, planned for a future release.
-- **Cross-doc link:** See [Dispatching events from non-aggregate response shapes](../articles/integration-mediator.md#dispatching-events-from-non-aggregate-response-shapes-post-commit-safe) for the cookbook recipe.
+- **Cross-doc link:** See [Dispatching events from non-aggregate response shapes](../articles/integration-mediator.md#dispatching-events-from-non-aggregate-response-shapes-post-commit-safe) for the integration article.
 
 ### Trellis.Mediator.TrackedAggregateDomainEventDispatchServiceCollectionExtensions
 
@@ -651,7 +651,7 @@ public static Task DispatchAggregateEventsAsync(
 public static IServiceCollection AddTrackedAggregateDomainEventDispatch(this IServiceCollection services)
 ```
 
-Registers the tracked-aggregate pipeline behavior + default publisher. Mutually exclusive with `AddDomainEventDispatch()`: removes any prior response-shape `DomainEventDispatchBehavior<,>` registration so calling both no longer double-dispatches. Re-orders any prior `Trellis.EntityFrameworkCore.TransactionalCommandBehavior<,>` registration so tracked dispatch sits just outside the transaction behavior and runs after commit (events are read from the unit-of-work's snapshot, taken at commit time). Idempotent. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior) for the behavior contract and [Auto-dispatching from outcome-DTO commands](../articles/integration-mediator.md#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) for the cookbook recipe.
+Registers the tracked-aggregate pipeline behavior + default publisher. Mutually exclusive with `AddDomainEventDispatch()`: removes any prior response-shape `DomainEventDispatchBehavior<,>` registration so calling both no longer double-dispatches. Re-orders any prior `Trellis.EntityFrameworkCore.TransactionalCommandBehavior<,>` registration so tracked dispatch sits just outside the transaction behavior and runs after commit (events are read from the unit-of-work's snapshot, taken at commit time). Idempotent. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior) for the behavior contract and [Auto-dispatching from outcome-DTO commands](../articles/integration-mediator.md#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) for the integration article.
 
 ## Interfaces
 

@@ -143,8 +143,8 @@ public sealed record TodoView(Guid Id, string Title, string ETag);
 
 app.MapGet("/todos/{id:guid}", async (Guid id, ITodoService svc, CancellationToken ct) =>
     await svc.GetAsync(id, ct).ToHttpResponseAsync(
-        body: t => new TodoView(t.Id, t.Title, $""{t.Version}""),
-        configure: opts => opts.WithETag(t => $""{t.Version}"")));
+        body: t => new TodoView(t.Id, t.Title, $"{t.Version}"),
+        configure: opts => opts.WithETag(t => $"{t.Version}")));
 ```
 
 Selectors (`WithETag`, `WithLastModified`, `Created(Func<T, string>)`, etc.) always receive the **domain** value, not the projected body.
@@ -156,7 +156,7 @@ Selectors (`WithETag`, `WithLastModified`, `Created(Func<T, string>)`, etc.) alw
 ```csharp
 app.MapGet("/todos/{id:guid}", async (Guid id, ITodoService svc, CancellationToken ct) =>
     await svc.GetAsync(id, ct).ToHttpResponseAsync(opts => opts
-        .WithETag(t => $""{t.Version}"")
+        .WithETag(t => $"{t.Version}")
         .WithLastModified(t => t.UpdatedAt)
         .EvaluatePreconditions()));
 ```
@@ -209,7 +209,7 @@ opts.WithCacheControl(new CacheControlHeaderValue
 ```csharp
 app.MapPut("/todos/{id:guid}", async (Guid id, UpdateTodo cmd, ITodoService svc, CancellationToken ct) =>
     await svc.UpdateAsync(id, cmd, ct).ToHttpResponseAsync(opts => opts
-        .WithETag(t => $""{t.Version}"")
+        .WithETag(t => $"{t.Version}")
         .HonorPrefer()));
 ```
 
@@ -308,14 +308,14 @@ app.MapPut("/todos/{id:guid}/title", async (Guid id, RenameTodo cmd, ITodoServic
                           new Error.Forbidden("todos.rename"))
              .BindAsync((t, token) => svc.RenameAsync(t.Id, cmd.NewTitle, token), ct)
              .ToHttpResponseAsync(opts => opts
-                 .WithETag(t => $""{t.Version}"")
+                 .WithETag(t => $"{t.Version}")
                  .HonorPrefer()));
 ```
 
 Test the produced `IResult` directly without spinning up the host:
 
 ```csharp
-var http = (await result).ToHttpResponse(opts => opts.WithETag(t => $""{t.Version}""));
+var http = (await result).ToHttpResponse(opts => opts.WithETag(t => $"{t.Version}"));
 await http.ExecuteAsync(httpContext);
 // Assert on httpContext.Response.StatusCode and headers.
 ```

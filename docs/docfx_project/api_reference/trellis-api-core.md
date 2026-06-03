@@ -2441,5 +2441,5 @@ var spec = new ExpiredSubscriptionSpec(DateTimeOffset.UtcNow)
 - [Trellis.Core API reference](trellis-api-core.md#trelliscore-api-reference) — `Result<T>`, `Maybe<T>`, `Error`, `ITransportFault`, `IScalarValue<TSelf, TPrimitive>`, and `IFormattableScalarValue<TSelf, TPrimitive>`
 - [Trellis.Http.Abstractions API reference](trellis-api-http-abstractions.md#use-this-file-when) — `HttpError`, `EntityTagValue`, `RetryAfterValue`, `RepresentationMetadata`, `WriteOutcome<T>`, and `AggregateETagExtensions`
 - [Trellis.Primitives API reference](trellis-api-primitives.md#trellis-api-primitives) — built-in scalar and composite value objects that build on these DDD primitives
-- [Trellis.EntityFrameworkCore API reference](trellis-api-efcore.md#trellisentframeworkcore) — EF Core conventions and interceptors for `IEntity`, `IAggregate`, `ValueObject`, and `Maybe<T>`
+- [Trellis.EntityFrameworkCore API reference](trellis-api-efcore.md#trellisentityframeworkcore) — EF Core conventions and interceptors for `IEntity`, `IAggregate`, `ValueObject`, and `Maybe<T>`
 

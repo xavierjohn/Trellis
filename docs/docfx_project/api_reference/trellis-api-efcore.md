@@ -14,6 +14,13 @@ audience: [llm]
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package.
 
+## Use this file when
+
+- You are persisting aggregates with `RepositoryBase<TAggregate, TId>`.
+- You are querying `Maybe<T>` properties with `MaybeQueryableExtensions` or raw expressions that require `MaybeQueryInterceptor`.
+- You are applying EF Core conventions with `ApplyTrellisConventions` or registering transactional command behavior with `AddTrellisUnitOfWork<TContext>`.
+- You need idempotent inserts via `DbContextIdempotencyExtensions` or retry-on-collision helpers via `DbContextRetryExtensions`.
+
 ## Patterns Index
 
 Use this table to find the canonical Trellis API for the most common EF Core tasks. Search this section first before writing custom expressions over `Maybe<T>` properties or hand-rolled `SaveChangesAsync` wrappers — the helpers below are interceptor-aware and analyzer-checked.
@@ -76,7 +83,7 @@ public static class DbContextOptionsBuilderExtensions
 | `public static DbContextOptionsBuilder<TContext> AddTrellisInterceptors<TContext>(this DbContextOptionsBuilder<TContext> optionsBuilder, TimeProvider? timeProvider) where TContext : DbContext` | `DbContextOptionsBuilder<TContext>` | Registers the same interceptor set, but creates a **new** `EntityTimestampInterceptor(timeProvider)` for this call. |
 | `public static DbContextOptionsBuilder AddTrellisInterceptors(this DbContextOptionsBuilder optionsBuilder, TimeProvider? timeProvider)` | `DbContextOptionsBuilder` | Non-generic overload that creates a new `EntityTimestampInterceptor(timeProvider)` for this call. |
 
-Idempotent: calling `AddTrellisInterceptors` multiple times on the same options builder registers each Trellis interceptor exactly once. Consumer-supplied interceptors registered separately via `optionsBuilder.AddInterceptors(...)` are preserved.
+Repeated calls with the same (or default) `TimeProvider` are idempotent; a subsequent call with a conflicting `TimeProvider` throws `InvalidOperationException`. Calling `AddTrellisInterceptors` multiple times on the same options builder registers each Trellis interceptor exactly once. Consumer-supplied interceptors registered separately via `optionsBuilder.AddInterceptors(...)` are preserved.
 
 ### `ModelConfigurationBuilderExtensions`
 
@@ -476,7 +483,7 @@ public sealed class MaybeQueryInterceptor : IQueryExpressionInterceptor
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. Supported patterns inside `Where`/`Select`/`Specification.ToExpression()`: `o.X.HasValue`, `o.X.HasNoValue`, `o.X.Value`, `o.X.GetValueOrDefault(d)`, `o.X == Maybe<T>.None`, and `o.X.HasValueWhere(t => ...predicate-body-on-t...)`. `HasValueWhere` requires an inline expression-bodied lambda; captured `Func<T,bool>` variables and method-group conversions fall through and EF Core reports the translation failure. See cookbook [Recipe 8](trellis-api-cookbook.md#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects) for the Specification walkthrough. |
+| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. Supported patterns inside `Where`/`Select`/`Specification.ToExpression()`: `o.X.HasValue`, `o.X.HasNoValue`, `o.X.Value`, `o.X.GetValueOrDefault(d)`, `o.X == Maybe<T>.None` / `o.X != Maybe<T>.None` (and converse operand order), `o.X == Maybe.From(value)` / `o.X != Maybe.From(value)` (and converse operand order), `o.X == default(Maybe<T>)`, and `o.X.HasValueWhere(t => ...predicate-body-on-t...)`. `HasValueWhere` requires an inline expression-bodied lambda; captured `Func<T,bool>` variables and method-group conversions fall through and EF Core reports the translation failure. See cookbook [Recipe 8](trellis-api-cookbook.md#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects) for the Specification walkthrough. |
 
 ### `ScalarValueQueryInterceptor`
 

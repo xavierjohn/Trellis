@@ -164,7 +164,7 @@ The generator emits `[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]` 
 
 | Direction | Behavior |
 |---|---|
-| Read | Accepts JSON `string` and `null`; resolves the string through `TryFromName`. Other token types (number, object, array, bool) throw `JsonException`. |
+| Read | Accepts JSON `string`; resolves the string through `TryFromName`. JSON `null` and other token types (number, object, array, bool) throw `JsonException`. |
 | Write | Emits `value.Value` as a JSON string. |
 
 ```csharp

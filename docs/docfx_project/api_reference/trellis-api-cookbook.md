@@ -285,7 +285,7 @@ public static class OrdersDi
 {
     public static IServiceCollection AddOrdersFeature(this IServiceCollection services) =>
         services
-            .AddTrellisBehaviors()                              // Validation + logging + tracing
+            .AddTrellisBehaviors()                              // canonical mediator behaviors (exception, tracing, logging, authorization, validation)
             .AddTrellisFluentValidation(typeof(PlaceOrderValidator).Assembly)
             .AddTrellisUnitOfWork<AppDbContext>()               // Innermost: commits on success
             .AddScoped<IOrderRepository, EfOrderRepository>();
@@ -489,8 +489,10 @@ services.AddClaimsActorProvider();               // ClaimsActorProvider for ASP.
 // ACL assembly, not the Application assembly — passing only the Application assembly will
 // register ResourceAuthorizationBehavior<,,> without discovering the shared loader and the
 // pipeline will fail at runtime when it cannot resolve IResourceLoader<TMessage, TResource>.
-// Note: the scanner does not de-duplicate assemblies; if the two layers happen to collapse
-// to one assembly, pass it once (or .Distinct() the array) to avoid registering the behavior twice.
+// Note: the scanner de-duplicates the `assemblies` parameter with a first-seen-order
+// HashSet, and closed pipeline-behavior registrations are idempotent across repeated
+// scans and explicit-plus-scanned overlap when service type and implementation type match.
+// Passing the same assembly twice is safe.
 services.AddResourceAuthorization(
     typeof(UpdateOrderCommand).Assembly,        // Application assembly (commands + IAuthorizeResource)
     typeof(OrderResourceLoader).Assembly);      // ACL assembly (IResourceLoader<,> implementations)

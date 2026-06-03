@@ -222,7 +222,7 @@ error.Should().HaveFieldCount(1);
 
 Detail strings:
 
-- `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` not-found: `"{AggregateTypeName} with ID {id} not found"`.
+- `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` not-found: `"{AggregateTypeName} with ID '{id}' not found."`.
 - Unique-constraint conflict from `SaveAsync`: `"A {AggregateTypeName} with the same value already exists."`
 
 ```csharp
