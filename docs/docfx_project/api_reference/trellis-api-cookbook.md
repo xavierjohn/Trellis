@@ -12,19 +12,19 @@ audience: [llm]
 - **Audience:** AI coding agents (and humans) writing Trellis code from documentation alone.
 - **Purpose:** End-to-end recipes that cross package boundaries — DDD, Mediator, FluentValidation, EF Core, ASP.NET Core, Authorization, State Machine, Testing, Analyzers — using the *exact* public surface listed in the per-package API references.
 - **Companion docs:**
-  - [trellis-api-core.md](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, errors, primitives, pagination
-  - [trellis-api-primitives.md](trellis-api-primitives.md) — `RequiredString`, `RequiredGuid`, `[Range]`, `[StringLength]`
-  - [trellis-api-mediator.md](trellis-api-mediator.md) — `ICommand<T>`, `IQuery<T>`, `IPipelineBehavior<,>`, `AddTrellisBehaviors`
-  - [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md) — `AddTrellisFluentValidation`
-  - [trellis-api-efcore.md](trellis-api-efcore.md) — `SaveChangesResultAsync`, `MaybePropertyMapping`, `RepositoryBase<TAggregate,TId>`
-  - [trellis-api-asp.md](trellis-api-asp.md) — `ToHttpResponse`, `HttpResponseOptionsBuilder<T>`, `AddTrellisAsp`, `AsActionResult`
-  - [trellis-api-http.md](trellis-api-http.md) — `ToResultAsync`, `ReadJsonAsync`, `ReadJsonOrNoneOn404Async`
-  - [trellis-api-authorization.md](trellis-api-authorization.md) — `IActorProvider`, `IAuthorize`, `IAuthorizeResource<>`
-  - [trellis-api-servicedefaults.md](trellis-api-servicedefaults.md) — `AddTrellis`, `TrellisServiceBuilder`
-  - [trellis-api-statemachine.md](trellis-api-statemachine.md) — `FireResult`, `LazyStateMachine<,>`
-  - [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — `Should().Be(...)`, `UnwrapError()`
-  - [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md) — `WebApplicationFactoryExtensions`, `.http` replay helpers
-  - [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS001`-`TRLS039`, `TrellisDiagnosticIds`
+  - [trellis-api-core.md](trellis-api-core.md#use-this-file-when) — `Result<T>`, `Maybe<T>`, errors, primitives, pagination
+  - [trellis-api-primitives.md](trellis-api-primitives.md#use-this-file-when) — `RequiredString`, `RequiredGuid`, `[Range]`, `[StringLength]`
+  - [trellis-api-mediator.md](trellis-api-mediator.md#use-this-file-when) — `ICommand<T>`, `IQuery<T>`, `IPipelineBehavior<,>`, `AddTrellisBehaviors`
+  - [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md#use-this-file-when) — `AddTrellisFluentValidation`
+  - [trellis-api-efcore.md](trellis-api-efcore.md#use-this-file-when) — `SaveChangesResultAsync`, `MaybePropertyMapping`, `RepositoryBase<TAggregate,TId>`
+  - [trellis-api-asp.md](trellis-api-asp.md#use-this-file-when) — `ToHttpResponse`, `HttpResponseOptionsBuilder<T>`, `AddTrellisAsp`, `AsActionResult`
+  - [trellis-api-http.md](trellis-api-http.md#use-this-file-when) — `ToResultAsync`, `ReadJsonAsync`, `ReadJsonOrNoneOn404Async`
+  - [trellis-api-authorization.md](trellis-api-authorization.md#use-this-file-when) — `IActorProvider`, `IAuthorize`, `IAuthorizeResource<>`
+  - [trellis-api-servicedefaults.md](trellis-api-servicedefaults.md#use-this-file-when) — `AddTrellis`, `TrellisServiceBuilder`
+  - [trellis-api-statemachine.md](trellis-api-statemachine.md#use-this-file-when) — `FireResult`, `LazyStateMachine<,>`
+  - [trellis-api-testing-reference.md](trellis-api-testing-reference.md#use-this-file-when) — `Should().Be(...)`, `UnwrapError()`
+  - [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#use-this-file-when) — `WebApplicationFactoryExtensions`, `.http` replay helpers
+  - [trellis-api-analyzers.md](trellis-api-analyzers.md#use-this-file-when) — `TRLS001`-`TRLS039`, `TrellisDiagnosticIds`
 
 ## How to read these recipes
 
@@ -94,8 +94,8 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Add optional request/response fields | [Recipe 14](#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport) |
 | Read optional HTTP resources where 404 means absent | [Recipe 19](#recipe-19--http-client-result-safety-and-optional-reads) |
 | Choose between fail-fast and accumulating-error collection ops | [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) |
-| Return synchronous `Result` chains from `Task`/`ValueTask` APIs | [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), then `AsTask()` / `AsValueTask()` in [trellis-api-core.md](trellis-api-core.md) |
-| Create HTTP-oriented resource errors | Use `ResourceRef.For<TResource>(id)` from [trellis-api-core.md](trellis-api-core.md) |
+| Return synchronous `Result` chains from `Task`/`ValueTask` APIs | [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), then `AsTask()` / `AsValueTask()` in [trellis-api-core.md](trellis-api-core.md#task-adapter-family--resulttaskadapterextensions) |
+| Create HTTP-oriented resource errors | Use `ResourceRef.For<TResource>(id)` from [trellis-api-core.md](trellis-api-core.md#supporting-types) |
 | Add a state transition | [Recipe 9](#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
 | Write handler/domain tests | [Recipe 10](#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) |
 | Write integration tests for a `BackgroundService` worker | [Recipe 26](#recipe-26--test-a-backgroundservice-with-workerharnesstworker) |
@@ -749,7 +749,7 @@ public class PlaceOrderHandlerTests
 
 ## Recipe 11 — Anti-pattern → fix gallery (the analyzers in action)
 
-The anti-pattern catalog moved to its own file so that AI sessions and human readers can load it independently when debugging an analyzer warning. See **[`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md)** for each common analyzer trigger and its idiomatic Trellis fix (TRLS001, TRLS003, TRLS010, TRLS016, TRLS017, TRLS018, TRLS019).
+The anti-pattern catalog moved to its own file so that AI sessions and human readers can load it independently when debugging an analyzer warning. See **[`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md)** <!-- trellis-doc-lint: allow-bare-cross-doc-link --> for each common analyzer trigger and its idiomatic Trellis fix (TRLS001, TRLS003, TRLS010, TRLS016, TRLS017, TRLS018, TRLS019).
 
 If you are looking up a specific analyzer by ID, the standalone file is faster than scanning this cookbook. The cookbook recipes still link to the relevant sections of that file where they apply.
 
@@ -929,7 +929,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 | Aggregate property | Storage |
 |---|---|
 | Required `ShippingAddress` (non-nullable) | Table-split: 5 columns on the `Customers` table — `ShippingAddress_Street`, `ShippingAddress_City`, `ShippingAddress_State`, `ShippingAddress_PostalCode`, `ShippingAddress_Country` (all `NOT NULL`). |
-| Optional `Maybe<ShippingAddress>` | Because the inner properties are non-nullable, `CompositeValueObjectConvention` switches to a **separate table** named `{Owner}_{Property}` (e.g., `Customer_BillingAddress`) with a `1:0..1` FK back to `Customers`. See the storage rules in [trellis-api-efcore.md](trellis-api-efcore.md) for the full decision matrix. |
+| Optional `Maybe<ShippingAddress>` | Because the inner properties are non-nullable, `CompositeValueObjectConvention` switches to a **separate table** named `{Owner}_{Property}` (e.g., `Customer_BillingAddress`) with a `1:0..1` FK back to `Customers`. See the storage rules in [trellis-api-efcore.md](trellis-api-efcore.md#maybet-storage-owned-types-and-migrations) for the full decision matrix. |
 
 **JSON wire shape.**
 
@@ -1203,7 +1203,7 @@ o => o.Status == OrderStatus.Submitted
      && o.SubmittedAt.Value < _threshold;
 ```
 
-is now both readable AND analyzer-clean inside any expression tree (specifications, FluentValidation, EF). The residual EF-Core/`FakeRepository` parity guidance — `AddTrellisInterceptors()`, `ApplyTrellisConventions`, and "share the same `Specification<T>` between EF and `FakeRepository` — never duplicate the predicate" — has moved into [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects). Ad-hoc query operators (`WhereLessThan`, `WhereHasValue`, etc.) live in [trellis-api-efcore.md](trellis-api-efcore.md).
+is now both readable AND analyzer-clean inside any expression tree (specifications, FluentValidation, EF). The residual EF-Core/`FakeRepository` parity guidance — `AddTrellisInterceptors()`, `ApplyTrellisConventions`, and "share the same `Specification<T>` between EF and `FakeRepository` — never duplicate the predicate" — has moved into [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects). Ad-hoc query operators (`WhereLessThan`, `WhereHasValue`, etc.) live in [trellis-api-efcore.md](trellis-api-efcore.md#maybequeryableextensions).
 
 The recipe number is preserved as a stub so existing bookmark and search-index entries remain stable; future content should renumber from Recipe 24 rather than reusing 15.
 
@@ -2499,6 +2499,6 @@ app.MapPost("/payments", CreatePaymentAsync).WithMetadata(new IdempotentAttribut
 
 - [trellis-api-core.md](trellis-api-core.md#extension-class-catalog-full-signatures) — every `Result*Extensions(Async)` family with full signatures.
 - [trellis-api-core.md](trellis-api-core.md#pagination) — `Cursor`, `Page<T>`, `Page.Empty<T>`.
-- [trellis-api-asp.md](trellis-api-asp.md) — `HttpResponseOptionsBuilder<TDomain>` member-by-member.
+- [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdomain) — `HttpResponseOptionsBuilder<TDomain>` member-by-member.
 - [trellis-api-mediator.md](trellis-api-mediator.md#canonical-pipeline-order) — exact behavior ordering.
 - [trellis-api-analyzers.md](trellis-api-analyzers.md#constants--trellisdiagnosticids) — every `TrellisDiagnosticIds` constant + emitting analyzer.

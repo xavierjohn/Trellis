@@ -3,7 +3,7 @@ package: Trellis.StateMachine
 namespaces: [Trellis.StateMachine]
 types: [StateMachineExtensions, "LazyStateMachine<TState, TTrigger>"]
 version: v3
-last_verified: 2026-05-05
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.StateMachine — API Reference
@@ -14,7 +14,7 @@ audience: [llm]
 - **Namespace:** `Trellis.StateMachine`
 - **Purpose:** Wraps Stateless state transitions in Trellis `Result<TState>` APIs and provides lazy state-machine construction for aggregate materialization scenarios.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) — recipes using this package.
 
 ## Use this file when
 
@@ -166,9 +166,9 @@ StateMachine<DocumentState, DocumentTrigger> machine = lazyMachine.Machine;
 
 ## Cross-references
 
-- [trellis-api-core.md](trellis-api-core.md) — `Result<T>`, `Error.InvalidInput`, `RuleViolation`.
-- [trellis-api-cookbook.md](trellis-api-cookbook.md) — Recipe 9: state-machine `CanFire` + `Fire` pattern with `FireResult`.
-- [trellis-api-asp.md](trellis-api-asp.md) — how `Error.InvalidInput` renders as HTTP 422 (top-level `detail` reads `Error.Detail`; per-rule context reads `RuleViolation.Detail`).
+- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Result<T>`, `Error.InvalidInput`, `RuleViolation`.
+- [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) — Recipe 9: state-machine `CanFire` + `Fire` pattern with `FireResult`.
+- [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvalidInput` renders as HTTP 422 (top-level `detail` reads `Error.Detail`; per-rule context reads `RuleViolation.Detail`).
 
 ## Breaking changes from v1
 

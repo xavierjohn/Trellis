@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Analyzers
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, WrongAttributeNamespaceAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS054, TRLS055]
+types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, WrongAttributeNamespaceAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS046, TRLS047, TRLS048, TRLS049, TRLS050, TRLS051, TRLS052, TRLS053, TRLS054, TRLS055]
 version: v3
-last_verified: 2026-05-06
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Analyzers — API Reference
@@ -12,7 +12,7 @@ audience: [llm]
 - **Namespace:** `Trellis.Analyzers`
 - **Purpose:** Roslyn analyzers and code fixes that enforce correct Trellis `Result<T>`, `Maybe<T>`, EF Core, and value-object usage.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) — recipes using this package.
 
 ## Use this file when
 
@@ -61,11 +61,11 @@ Prefer fixing the code over suppressing diagnostics. When a suppression is genui
 | `TRLS017` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Using the wrong namespace compiles silently but the Trellis source generator ignores them, resulting in value objects without the expected validation constraints. Use the Trellis versions (namespace Trellis) instead. |
 | `TRLS018` | Warning | Result<T> deconstruction reads value without success gate | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
 | `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
-| `TRLS020` | Warning | Composite value object DTO property is missing JSON converter | Composite `[OwnedEntity]` value objects exposed through request/response DTO surfaces must carry `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` so JSON binding round-trips through `TryCreate`. |
+| `TRLS020` | Warning | Composite value object DTO property is not safely deserializable | Composite `[OwnedEntity]` value objects exposed through request/response DTO surfaces need a supported transport. Bare composite properties require `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type; `Maybe<TComposite>` DTO properties are not supported and should use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam. |
 | `TRLS021` | Warning | EF configuration duplicates Trellis conventions | Flags `HasConversion`, `OwnsOne`, and `Ignore` calls on `Maybe<T>` or `[OwnedEntity]` properties when `ApplyTrellisConventions(...)` / `ApplyTrellisConventionsFor<TContext>()` is wired. Remove the manual mapping and let Trellis conventions own the property. |
 | `TRLS022` | Warning | `[OwnedEntity]` property uses init-only setter | Flags `{ get; init; }` properties on classes annotated with `[OwnedEntity]`. EF Core materializes owned entities through a generator-emitted private parameterless constructor; init-only setters are not covered by Trellis tests today and round-trip behavior is not guaranteed. Use `{ get; private set; }`. |
-| `TRLS023` | Warning | `CreatedAtRoute` / `CreatedAtAction` / `WithLocation` on a versioned controller is missing the `api-version` route value | Flags `HttpResponseOptionsBuilder<T>.CreatedAtRoute(...)`, `HttpResponseOptionsBuilder<T>.CreatedAtAction(...)`, and `HttpResponseOptionsBuilder<T>.WithLocation(...)` calls inside `[ApiVersion]`-decorated controllers when the chain is not followed by `.WithVersionedRoute(...)` (or the underlying primitive `.WithRouteValueResolver("api-version", httpContext => ...)` on `HttpResponseOptionsBuilder<T>`, matched case-insensitively) and the route values dictionary literal does not include an `"api-version"` key. Without that key, the generated `Location` header omits the version under query/header API versioning and a follow-up `GET` to the dereferenced URL returns 404. The code fix appends `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning` and adds `using Trellis.Asp.ApiVersioning;` when missing. The analyzer matches `["api-version"]` keys case-insensitively (matching `RouteValueDictionary`'s runtime semantics) and resolves const-string identifiers via the semantic model. Recognises and warns on the anonymous-object ctor shape (`new RouteValueDictionary(new { id = ... })`) since C# property names cannot contain `"-"`, and on the single-id overloads (`CreatedAtRoute(routeName, idSelector)` / `WithLocation(routeName, idSelector)`) which construct a single-key dictionary internally. Does not walk attribute base-type chains (`[ApiVersion]` is `Inherited = false`). |
-| `TRLS054` | Warning | Use operators instead of `Maybe<T>.Equals` in `IQueryable` expressions | Flags `Maybe<T>.Equals(...)` and `object.Equals(...)` over `Maybe<T>` values inside `System.Linq.Queryable` LINQ lambdas. `MaybeExpressionRewriter` supports `==` / `!=` operator comparisons but cannot translate these opaque method-call shapes, so use operators or `MaybeQueryableExtensions.WhereEquals(...)`. In-memory `IEnumerable<T>` LINQ is not flagged. |
+| `TRLS023` | Warning | Location route is missing the api-version route value | Flags `HttpResponseOptionsBuilder<T>.CreatedAtRoute(...)`, `HttpResponseOptionsBuilder<T>.CreatedAtAction(...)`, and `HttpResponseOptionsBuilder<T>.WithLocation(...)` calls inside `[ApiVersion]`-decorated controllers when the chain is not followed by `.WithVersionedRoute(...)` (or the underlying primitive `.WithRouteValueResolver("api-version", httpContext => ...)` on `HttpResponseOptionsBuilder<T>`, matched case-insensitively) and the route values dictionary literal does not include an `"api-version"` key. Without that key, the generated `Location` header omits the version under query/header API versioning and a follow-up `GET` to the dereferenced URL returns 404. The code fix appends `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning` and adds `using Trellis.Asp.ApiVersioning;` when missing. The analyzer matches `["api-version"]` keys case-insensitively (matching `RouteValueDictionary`'s runtime semantics) and resolves const-string identifiers via the semantic model. Recognises and warns on the anonymous-object ctor shape (`new RouteValueDictionary(new { id = ... })`) since C# property names cannot contain `"-"`, and on the single-id overloads (`CreatedAtRoute(routeName, idSelector)` / `WithLocation(routeName, idSelector)`) which construct a single-key dictionary internally. Does not walk attribute base-type chains (`[ApiVersion]` is `Inherited = false`). |
+| `TRLS054` | Warning | Use operators instead of Maybe.Equals/object.Equals in IQueryable expressions | Flags `Maybe<T>.Equals(...)` and `object.Equals(...)` over `Maybe<T>` values inside `System.Linq.Queryable` LINQ lambdas. `MaybeExpressionRewriter` supports `==` / `!=` operator comparisons but cannot translate these opaque method-call shapes, so use operators or `MaybeQueryableExtensions.WhereEquals(...)`. In-memory `IEnumerable<T>` LINQ is not flagged. |
 | `TRLS055` | Warning | Inline `HasValueWhere` predicates in `IQueryable` expressions | Flags `maybe.HasValueWhere(predicate)` inside `System.Linq.Queryable` LINQ lambdas when `predicate` is not an inline lambda expression. Captured `Func<T, bool>` variables, method groups, and member delegates are opaque to `MaybeExpressionRewriter`; inline the lambda (`maybe.HasValueWhere(x => ...)`) or materialize first. In-memory `IEnumerable<T>` LINQ is not flagged. |
 | `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
 | `TRLS032` | Error | `MinimumLength` exceeds `MaximumLength` | Emitted by the Primitives source generator when a `[StringLength]` attribute has `MinimumLength > MaximumLength`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN002`)* |
@@ -76,6 +76,17 @@ Prefer fixing the code over suppressing diagnostics. When a suppression is genui
 | `TRLS037` | Warning | `[OwnedEntity]` type already has a parameterless constructor | Emitted by the EF Core generator when `[OwnedEntity]` is applied to a type that already has a parameterless constructor. Remove the existing constructor or remove `[OwnedEntity]`. *(formerly `TRLSGEN102`)* |
 | `TRLS038` | Error | `[OwnedEntity]` type must inherit from `ValueObject` | Emitted by the EF Core generator when `[OwnedEntity]` is applied to a type that does not inherit from `Trellis.ValueObject`. *(formerly `TRLSGEN103`)* |
 | `TRLS039` | Warning | Unsupported scalar value primitive for AOT-safe JSON converter | Emitted by `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) when a value object inherits from `ScalarValueObject<TSelf, TPrimitive>` with a `TPrimitive` outside the AOT-safe set (`string`, `int`, `long`, `short`, `byte`, `bool`, `float`, `double`, `decimal`, `Guid`, `DateTime`, `DateTimeOffset`). The generator skips the converter for that type to avoid emitting reflection-based `JsonSerializer.Deserialize`/`Serialize` calls (IL2026/IL3050 under `PublishAot=true`); provide a custom `JsonConverter<TSelf>` or pick a supported primitive. |
+| `TRLS043` | Error | Numeric convenience attribute on non-numeric Required base | Emitted by `RequiredPartialClassGenerator` when `[Positive]`, `[NonNegative]`, `[Negative]`, or `[NonPositive]` is applied to a Required base other than `RequiredInt`, `RequiredLong`, or `RequiredDecimal`. |
+| `TRLS044` | Error | Conflicting numeric convenience attributes | Emitted by `RequiredPartialClassGenerator` when a class carries more than one of `[Positive]`, `[NonNegative]`, `[Negative]`, and `[NonPositive]`. Pick exactly one sign constraint. |
+| `TRLS045` | Error | Numeric convenience attribute combined with explicit `[Range]` | Emitted by `RequiredPartialClassGenerator` when a numeric convenience sign attribute is combined with an explicit `[Range]` on a numeric Required base. Use `[Range]` alone for bounded values, or the convenience attribute alone for an unbounded sign constraint. |
+| `TRLS046` | Info | `[NotDefault]` is vestigial | Emitted by `RequiredPartialClassGenerator` when `[NotDefault]` is present. Strict behavior is now the v3 default; remove the attribute and use `[AllowEmpty]`, `[AllowZero]`, or `[AllowMinValue]` only when opting out. |
+| `TRLS047` | Info | `[Trim]` is vestigial | Emitted by `RequiredPartialClassGenerator` when `[Trim]` is present. `RequiredString<TSelf>` trims by default; remove `[Trim]` and use `[NoTrim]` only when opting out. |
+| `TRLS048` | Error | `[AllowZero]` is only valid on numeric Required bases | Emitted by `RequiredPartialClassGenerator` when `[AllowZero]` is applied to a Required base other than `RequiredInt`, `RequiredLong`, or `RequiredDecimal`. |
+| `TRLS049` | Error | `[AllowEmpty]` is only valid on `RequiredString` and `RequiredGuid` | Emitted by `RequiredPartialClassGenerator` when `[AllowEmpty]` is applied to another Required base. Use `[AllowZero]` for numeric Required bases or `[AllowMinValue]` for date Required bases. |
+| `TRLS050` | Error | `[AllowMinValue]` is only valid on date Required bases | Emitted by `RequiredPartialClassGenerator` when `[AllowMinValue]` is applied to a Required base other than `RequiredDateTime` or `RequiredDateTimeOffset`. |
+| `TRLS051` | Error | `[AllowWhitespace]` is only valid on `RequiredString` | Emitted by `RequiredPartialClassGenerator` when `[AllowWhitespace]` is applied to a non-string Required base. |
+| `TRLS052` | Error | `[NoTrim]` is only valid on `RequiredString` | Emitted by `RequiredPartialClassGenerator` when `[NoTrim]` is applied to a non-string Required base. |
+| `TRLS053` | Error | Contradictory Required attribute combination | Emitted by `RequiredPartialClassGenerator` when attributes contradict each other, for example `[AllowZero]` with `[Positive]` or `[Negative]`. |
 | `TRLS056` | Error | Required generated member conflicts with user declaration | Emitted by `RequiredPartialClassGenerator` when a `Required*<TSelf>` partial class declares a member that Trellis would generate (`TryCreate`, `Create`, `Parse`, `TryParse`, GUID factories, conversion operator, constructor, or validation hook). The generator skips the conflicting member so the user declaration wins and reports this diagnostic at the user member declaration. Remove the redundant member, or change the base class if custom semantics are required. |
 
 ## Constants — `TrellisDiagnosticIds`
@@ -127,6 +138,17 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `OwnedEntityAlreadyHasParameterlessCtor` | `TRLS037` | `OwnedEntityGenerator` (Trellis.EntityFrameworkCore.Generator) |
 | `OwnedEntityMustInheritValueObject` | `TRLS038` | `OwnedEntityGenerator` (Trellis.EntityFrameworkCore.Generator) |
 | `UnsupportedScalarValuePrimitiveForAotJson` | `TRLS039` | `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) |
+| `NumericConvenienceOnNonNumeric` | `TRLS043` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `NumericConvenienceConflict` | `TRLS044` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `NumericConvenienceWithExplicitRange` | `TRLS045` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `NotDefaultIsVestigial` | `TRLS046` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `TrimIsVestigial` | `TRLS047` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `AllowZeroOnNonNumericRequired` | `TRLS048` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `AllowEmptyOnNumericOrDateRequired` | `TRLS049` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `AllowMinValueOnNonDateRequired` | `TRLS050` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `AllowWhitespaceOnNonStringRequired` | `TRLS051` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `NoTrimOnNonStringRequired` | `TRLS052` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `ContradictoryRequiredAttributeCombination` | `TRLS053` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `GeneratedRequiredMemberCollision` | `TRLS056` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 
 ## Descriptors — `DiagnosticDescriptors`
@@ -162,7 +184,7 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 
 > **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
-> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS039`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
+> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS053` and `TRLS056`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
 
 ```csharp
 // Re-exporting an analyzer rule in a custom analyzer:
@@ -383,6 +405,20 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
 - Recommends `{ get; private set; }`, the supported and tested shape for owned-entity properties materialized through the generator-emitted parameterless constructor.
 - No code fix.
 
+#### `RequiredPartialClassGenerator` Required-attribute diagnostics — `TRLS043`–`TRLS053`
+- `TRLS043` (Error): numeric convenience attribute (`[Positive]`, `[NonNegative]`, `[Negative]`, `[NonPositive]`) applied to a non-numeric Required base.
+- `TRLS044` (Error): more than one numeric convenience attribute is present on the same Required type.
+- `TRLS045` (Error): a numeric convenience attribute is combined with an explicit `[Range]`; pick one shape.
+- `TRLS046` (Info): `[NotDefault]` is vestigial under v3 strict-by-default Required semantics; remove it.
+- `TRLS047` (Info): `[Trim]` is vestigial because `RequiredString<TSelf>` trims by default; remove it or use `[NoTrim]` to opt out.
+- `TRLS048` (Error): `[AllowZero]` applied to a non-numeric Required base.
+- `TRLS049` (Error): `[AllowEmpty]` applied outside `RequiredString` / `RequiredGuid`.
+- `TRLS050` (Error): `[AllowMinValue]` applied outside date Required bases.
+- `TRLS051` (Error): `[AllowWhitespace]` applied outside `RequiredString`.
+- `TRLS052` (Error): `[NoTrim]` applied outside `RequiredString`.
+- `TRLS053` (Error): contradictory Required attribute combination such as `[AllowZero]` plus `[Positive]` or `[Negative]`.
+- No code fix.
+
 #### `RequiredPartialClassGenerator` member collision — `TRLS056`
 - Flags user-declared members on `Required*<TSelf>` partial classes that collide with members generated by `RequiredPartialClassGenerator`.
 - Severity: Error. The generator suppresses only the conflicting generated member and reports at the user member location, replacing generic `CS0111` / `CS0102` duplicate-member failures with a Trellis-specific message.
@@ -455,7 +491,7 @@ public static class EfExample
 
 ## Cross-references
 
-- [trellis-api-core.md](trellis-api-core.md) — `Result<T>`, `Maybe<T>`, `Bind`, `Map`, `Match`, `Combine`
-- [trellis-api-efcore.md](trellis-api-efcore.md) — `SaveChangesResultAsync`, `SaveChangesResultUnitAsync`, `HasTrellisIndex`
-- [trellis-api-primitives.md](trellis-api-primitives.md) — Trellis `[StringLength]` and `[Range]`
-- [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — testing helpers that intentionally work with analyzer rules
+- [trellis-api-core.md](trellis-api-core.md#result-pipeline-extension-families) — `Result<T>`, `Maybe<T>`, `Bind`, `Map`, `Match`, `Combine`
+- [trellis-api-efcore.md](trellis-api-efcore.md#extension-methods) — `SaveChangesResultAsync`, `SaveChangesResultUnitAsync`, `HasTrellisIndex`
+- [trellis-api-primitives.md](trellis-api-primitives.md#trellis-validation-attributes-vs-systemcomponentmodeldataannotations) — Trellis `[StringLength]` and `[Range]`
+- [trellis-api-testing-reference.md](trellis-api-testing-reference.md#common-traps) — testing helpers that intentionally work with analyzer rules

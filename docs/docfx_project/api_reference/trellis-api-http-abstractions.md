@@ -3,7 +3,7 @@ package: Trellis.Http.Abstractions
 namespaces: [Trellis]
 types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "WriteOutcome<T>", AggregateETagExtensions]
 version: v3
-last_verified: 2026-05-21
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Http.Abstractions &mdash; API Reference
@@ -12,7 +12,7 @@ audience: [llm]
 **Namespace:** `Trellis`
 **Purpose:** Shared HTTP transport abstractions used by `Trellis.Http` and `Trellis.Asp` without pulling HTTP-specific payload types into `Trellis.Core`.
 
-See also: [trellis-api-core.md](trellis-api-core.md), [trellis-api-http.md](trellis-api-http.md), [trellis-api-asp.md](trellis-api-asp.md).
+See also: [trellis-api-core.md](trellis-api-core.md#moved-http-transport-types), [trellis-api-http.md](trellis-api-http.md#use-this-file-when), [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping).
 
 ## Use this file when
 
@@ -38,7 +38,7 @@ Construct it only in HTTP-aware boundaries and wrap it in `new Error.TransportFa
 | `HttpError.MethodNotAllowed` | `(EquatableArray<string> Allow)` | 405 | Preserves the `Allow` header payload. |
 | `HttpError.NotAcceptable` | `(EquatableArray<string> Available)` | 406 | Available representations/media types. |
 | `HttpError.UnsupportedMediaType` | `(EquatableArray<string> Supported)` | 415 | Supported request media types. |
-| `HttpError.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | 416 | Drives `Content-Range: {Unit} */{CompleteLength}` emission. |
+| `HttpError.RangeNotSatisfiable` | `(long CompleteLength, string Unit = "bytes")` | 416 | Preserves the unsatisfied-range payload (complete length and unit) for HTTP-aware boundaries. |
 | `HttpError.ContentTooLarge` | `(long? MaxBytes = null)` | 413 | Optional request-size limit payload. |
 | `HttpError.PreconditionFailed` | `(ResourceRef Resource, PreconditionKind Condition)` | 412 | Typed conditional-request failure. |
 | `HttpError.PreconditionRequired` | `(PreconditionKind Condition)` | 428 | Missing required precondition. |

@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/.github/">
     <File Path=".github/codecov.yml" />
     <File Path=".github/copilot-instructions.md" />
@@ -11,6 +11,7 @@
     <File Path=".github/workflows/publish.yml" />
   </Folder>
   <Folder Name="/Docs/">
+    <Project Path="docs/Trellis.DocsLint.csproj" />
     <File Path="docs/docfx_project/index.md" />
     <File Path="docs/docfx_project/toc.yml" />
   </Folder>

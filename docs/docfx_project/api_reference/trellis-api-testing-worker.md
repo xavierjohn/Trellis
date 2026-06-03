@@ -1,9 +1,9 @@
----
+﻿---
 package: Trellis.Testing.Worker
 namespaces: [Trellis.Testing.Worker]
 types: [WorkerHarness`1, WorkerHarnessOptions, IWorkerTickSignal, WorkerHarnessTimeoutException]
 version: v3
-last_verified: 2026-05-06
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Testing.Worker &mdash; API Reference
@@ -223,8 +223,8 @@ cursor = await harness.WaitForTickAsync("probe", after: cursor, TimeSpan.FromSec
 
 ## See also
 
-- [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md) — `WebApplicationFactory<TEntryPoint>` helpers, fake time, and `.http` file replay for HTTP integration tests.
-- [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — core Trellis testing assertions, fake repositories, and `TestActorProvider`.
-- [trellis-api-authorization.md](trellis-api-authorization.md) — `Actor` and `IActorProvider`.
-- [trellis-api-asp.md](trellis-api-asp.md) — `AddTrellisWorkerActor` composition helper for the worker's production host.
-- [trellis-api-mediator.md](trellis-api-mediator.md) — `AddDomainEventDispatch`, `IDomainEventHandler<T>`, and the mediator pipeline the harness captures from.
+- [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#use-this-file-when) — `WebApplicationFactory<TEntryPoint>` helpers, fake time, and `.http` file replay for HTTP integration tests.
+- [trellis-api-testing-reference.md](trellis-api-testing-reference.md#use-this-file-when) — core Trellis testing assertions, fake repositories, and `TestActorProvider`.
+- [trellis-api-authorization.md](trellis-api-authorization.md#types) — `Actor` and `IActorProvider`.
+- [trellis-api-asp.md](trellis-api-asp.md#namespace-trellisaspauthorization) — `AddTrellisWorkerActor` composition helper for the worker's production host.
+- [trellis-api-mediator.md](trellis-api-mediator.md#domaineventdispatchservicecollectionextensions) — `AddDomainEventDispatch`, `IDomainEventHandler<T>`, and the mediator pipeline the harness captures from.

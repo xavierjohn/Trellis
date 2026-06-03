@@ -3,7 +3,7 @@ package: Trellis.FluentValidation
 namespaces: [Trellis.FluentValidation]
 types: [FluentValidationServiceCollectionExtensions, FluentValidationMessageValidatorAdapter<TMessage>, FluentValidationResultExtensions]
 version: v3
-last_verified: 2026-05-05
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.FluentValidation — API Reference
@@ -16,7 +16,7 @@ audience: [llm]
   1. **Mediator integration** — `AddTrellisFluentValidation()` plugs FluentValidation validators into the existing `ValidationBehavior<TMessage,TResponse>` via the open-generic `IMessageValidator<TMessage>` adapter. No additional pipeline behavior is added.
   2. **Standalone helpers** — `FluentValidationResultExtensions` converts a `ValidationResult` (or runs an `IValidator<T>` synchronously/asynchronously) into a `Result<T>` failure backed by `Error.InvalidInput`.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md) — recipes using this package.
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence) — recipes using this package.
 
 ## Use this file when
 
@@ -242,6 +242,6 @@ Result<string?> result = validator.ValidateToResult(alias, message: "Alias is re
 
 ## Cross-references
 
-- [trellis-api-core.md](trellis-api-core.md)
-- [trellis-api-asp.md](trellis-api-asp.md)
-- [trellis-api-mediator.md](trellis-api-mediator.md)
+- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error)
+- [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping)
+- [trellis-api-mediator.md](trellis-api-mediator.md#validationbehaviortmessage-tresponse)

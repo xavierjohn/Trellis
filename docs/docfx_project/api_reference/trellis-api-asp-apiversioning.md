@@ -3,7 +3,7 @@ package: Trellis.Asp.ApiVersioning
 namespaces: [Trellis.Asp.ApiVersioning]
 types: [HttpResponseOptionsBuilderApiVersioningExtensions, HttpContextPageUrlExtensions]
 version: v1
-last_verified: 2026-05-28
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Asp.ApiVersioning — API Reference
@@ -14,7 +14,7 @@ audience: [llm]
 - **Namespace:** `Trellis.Asp.ApiVersioning`
 - **Purpose:** API-versioning helpers that auto-inject the `api-version` route value into URLs emitted by `Trellis.Asp` builders. `HttpResponseOptionsBuilderApiVersioningExtensions` covers `Location` headers from `CreatedAtRoute(...)` / `CreatedAtAction(...)` (201 Created) and `WithLocation(...)` (200 OK on existing resources). `HttpContextPageUrlExtensions` covers paginated-list next-page URLs supplied to the `nextUrlBuilder` parameter of `ToHttpResponse(Async)` for `Result<Page<T>>`. All helpers skip injection on `[ApiVersionNeutral]` endpoints and on endpoints with no `ApiVersionMetadata` (hosts that never called `AddApiVersioning(...)`). For URL-segment versioning the per-request overloads and explicit `WithVersionedRoute(ApiVersion)` skip query injection and let ambient route data fill the path segment; explicit `PageUrl(routeName, version, ...)` throws instead, because silently dropping the pin would let `LinkGenerator` emit the wrong versioned path.
 
-See also: [trellis-api-asp.md](trellis-api-asp.md) — the underlying `HttpResponseOptionsBuilder<T>`, `CreatedAtRoute`, `CreatedAtAction`, `WithLocation`, and `WithRouteValueResolver` hook this package builds on. [trellis-api-analyzers.md](trellis-api-analyzers.md) — `TRLS023` warns on `CreatedAtRoute` / `CreatedAtAction` / `WithLocation` calls in versioned controllers that omit the `api-version` route value, and offers a code fix that chains `.WithVersionedRoute()`.
+See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdomain) — the underlying `HttpResponseOptionsBuilder<T>`, `CreatedAtRoute`, `CreatedAtAction`, `WithLocation`, and `WithRouteValueResolver` hook this package builds on. [trellis-api-analyzers.md](trellis-api-analyzers.md#error-ef-core-and-value-object-rules) — `TRLS023` warns on `CreatedAtRoute` / `CreatedAtAction` / `WithLocation` calls in versioned controllers that omit the `api-version` route value, and offers a code fix that chains `.WithVersionedRoute()`.
 
 ## Use this file when
 

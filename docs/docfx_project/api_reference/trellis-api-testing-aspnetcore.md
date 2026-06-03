@@ -3,7 +3,7 @@ package: Trellis.Testing.AspNetCore
 namespaces: [Trellis.Testing.AspNetCore, Trellis.Testing.AspNetCore.Http]
 types: [WebApplicationFactoryExtensions, WebApplicationFactoryTimeExtensions, ServiceCollectionExtensions, ServiceCollectionDbProviderExtensions, MsalTestTokenProvider, MsalTestOptions, TestUserCredentials, HttpFileParser, HttpFileRunner, HttpFileAssertions, HttpFileTheoryData, HttpFileRequest, HttpFileResult, ExpectedOutcome, HttpFileAssertionException, ScenarioContext]
 version: v3
-last_verified: 2026-05-06
+last_verified: 2026-06-03
 audience: [llm]
 ---
 # Trellis.Testing.AspNetCore &mdash; API Reference
@@ -228,6 +228,6 @@ foreach (var result in results)
 
 ## See also
 
-- [trellis-api-testing-reference.md](trellis-api-testing-reference.md) — core Trellis testing assertions, fake repositories, and test actors.
-- [trellis-api-authorization.md](trellis-api-authorization.md) — `Actor`, `IActorProvider`, resource authorization contracts.
-- [trellis-api-asp.md](trellis-api-asp.md) — ASP.NET Core response mapping and actor providers.
+- [trellis-api-testing-reference.md](trellis-api-testing-reference.md#use-this-file-when) — core Trellis testing assertions, fake repositories, and test actors.
+- [trellis-api-authorization.md](trellis-api-authorization.md#types) — `Actor`, `IActorProvider`, resource authorization contracts.
+- [trellis-api-asp.md](trellis-api-asp.md#types) — ASP.NET Core response mapping and actor providers.
