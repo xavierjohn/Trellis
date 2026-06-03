@@ -12,13 +12,13 @@ The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, 
 
 ## Rules
 
-- **TRLDOC001**: Bare cross-doc links such as `](trellis-api-core.md)` must point at a specific anchor, for example `](trellis-api-core.md#some-section)`.
-- **TRLDOC002**: Filler table rows such as `| — | — | No public properties.` are not allowed.
-- **TRLDOC003**: Anchored cross-doc links such as `](trellis-api-core.md#some-section)` and same-file anchors such as `](#some-section)` must resolve to an existing heading in the target API reference file.
+- **TRLDOC001**: Bare cross-doc links such as `](trellis-api-core.md)` must point at a specific anchor, for example `](trellis-api-core.md#some-section)`. Lines inside fenced code blocks are skipped.
+- **TRLDOC002**: Filler table rows such as `| — | — | No public properties.` are not allowed. Lines inside fenced code blocks are skipped.
+- **TRLDOC003**: Anchored same-file links such as `](#some-section)` and sibling API-reference Markdown links such as `](trellis-api-core.md#some-section)` or `](completeness-report.md#some-section)` must resolve to an existing heading in the target file. Links may include query strings before anchors, such as `](completeness-report.md?v=2#some-section)`. The gate skips absolute URI links and cross-surface relative paths such as `](../articles/example.md#some-section)`.
 
 ## Anchor slug rule
 
-TRLDOC003 uses the DocFX/Markdig slug rule verified against the live Trellis site:
+TRLDOC003 builds its heading index from real Markdown headings outside CommonMark fenced code blocks (up to three leading literal spaces), then applies the DocFX/Markdig slug rule verified against the live Trellis site. If a file has an unterminated fenced code block, the script emits a warning because subsequent headings may have been skipped during indexing:
 
 1. Strip backticks from heading text.
 2. Lowercase the heading text.

@@ -20,9 +20,34 @@ $ErrorActionPreference = 'Stop'
 $apiReferenceDir = Join-Path $RepositoryRoot 'docs' | Join-Path -ChildPath 'docfx_project' | Join-Path -ChildPath 'api_reference'
 $bareCrossDocLinkPattern = '\]\(trellis-api-[a-z-]+\.md\)'
 $fillerTableRowPattern = '\| — \| — \| No (public properties|methods|public methods|properties)\.'
-$anchoredLinkPattern = '\]\((?<targetFile>trellis-api-[a-z-]+\.md)?#(?<anchor>[^)\s]+)\)'
+$anchoredLinkPattern = '\]\((?:(?<targetFile>[^#?)\s]+\.md)(?:\?[^#)\s]*)?)?#(?<anchor>[^)\s]+)\)'
+# CommonMark fences allow at most three leading literal spaces; four spaces start indented code.
+$fencedCodeBlockOpeningPattern = '^( {0,3})(?<fence>`{3,}|~{3,})(?<info>.*)$'
+$fencedCodeBlockClosingPattern = '^( {0,3})(?<fence>`{3,}|~{3,}) *$'
 $bareCrossDocLinkAllowlistMarker = 'trellis-doc-lint: allow-bare-cross-doc-link'
 $brokenAnchorAllowlistMarker = 'trellis-doc-lint: allow-broken-anchor'
+
+function Get-FencedCodeBlockOpeningMarker {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string] $Line
+    )
+
+    $fenceMatch = [regex]::Match($Line, $fencedCodeBlockOpeningPattern)
+
+    if (-not $fenceMatch.Success) {
+        return $null
+    }
+
+    $currentFenceMarker = $fenceMatch.Groups['fence'].Value
+
+    if ($currentFenceMarker[0] -eq '`' -and $fenceMatch.Groups['info'].Value.Contains('`')) {
+        return $null
+    }
+
+    return $currentFenceMarker
+}
 
 function Get-TrellisDocSlug {
     param(
@@ -146,8 +171,37 @@ function New-HeadingIndex {
         $slugs = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $orderedSlugs = [System.Collections.Generic.List[string]]::new()
         $lines = @(Get-Content -LiteralPath $file.FullName)
+        $inFence = $false
+        $fenceMarkerCharacter = $null
+        $fenceMarkerLength = 0
 
         foreach ($line in $lines) {
+            if ($inFence) {
+                $fenceMatch = [regex]::Match($line, $fencedCodeBlockClosingPattern)
+
+                if ($fenceMatch.Success) {
+                    $currentFenceMarker = $fenceMatch.Groups['fence'].Value
+                    $currentFenceMarkerCharacter = $currentFenceMarker[0]
+
+                    if ($currentFenceMarkerCharacter -eq $fenceMarkerCharacter -and $currentFenceMarker.Length -ge $fenceMarkerLength) {
+                        $inFence = $false
+                        $fenceMarkerCharacter = $null
+                        $fenceMarkerLength = 0
+                    }
+                }
+
+                continue
+            }
+
+            $currentFenceMarker = Get-FencedCodeBlockOpeningMarker -Line $line
+
+            if ($null -ne $currentFenceMarker) {
+                $inFence = $true
+                $fenceMarkerCharacter = $currentFenceMarker[0]
+                $fenceMarkerLength = $currentFenceMarker.Length
+                continue
+            }
+
             $headingMatch = [regex]::Match($line, '^#{1,6}\s+(.+)$')
 
             if (-not $headingMatch.Success) {
@@ -167,6 +221,10 @@ function New-HeadingIndex {
 
             [void] $slugs.Add($slug)
             [void] $orderedSlugs.Add($slug)
+        }
+
+        if ($inFence) {
+            Write-Warning "Unterminated fenced code block in $($file.FullName); some headings may have been skipped during indexing."
         }
 
         $indexByPath[$file.FullName] = [pscustomobject] @{
@@ -189,23 +247,55 @@ $headingIndexByPath = New-HeadingIndex -MarkdownFiles $markdownFiles
 
 foreach ($file in $markdownFiles) {
     $lines = @(Get-Content -LiteralPath $file.FullName)
+    $inFence = $false
+    $fenceMarkerCharacter = $null
+    $fenceMarkerLength = 0
 
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         $lineNumber = $i + 1
+        $isFenceLine = $false
 
-        if ($line -notmatch $bareCrossDocLinkAllowlistMarker) {
-            foreach ($match in [regex]::Matches($line, $bareCrossDocLinkPattern)) {
-                $column = $match.Index + 1
-                Write-Host "$($file.FullName)($lineNumber,$column): error TRLDOC001: Bare cross-doc trellis-api link must include an anchor. Add a #section anchor or append '<!-- $bareCrossDocLinkAllowlistMarker -->' for an intentional exception."
-                $failed = $true
+        if ($inFence) {
+            $fenceMatch = [regex]::Match($line, $fencedCodeBlockClosingPattern)
+
+            if ($fenceMatch.Success) {
+                $currentFenceMarker = $fenceMatch.Groups['fence'].Value
+                $currentFenceMarkerCharacter = $currentFenceMarker[0]
+
+                if ($currentFenceMarkerCharacter -eq $fenceMarkerCharacter -and $currentFenceMarker.Length -ge $fenceMarkerLength) {
+                    $isFenceLine = $true
+                    $inFence = $false
+                    $fenceMarkerCharacter = $null
+                    $fenceMarkerLength = 0
+                }
+            }
+        }
+        else {
+            $currentFenceMarker = Get-FencedCodeBlockOpeningMarker -Line $line
+
+            if ($null -ne $currentFenceMarker) {
+                $isFenceLine = $true
+                $inFence = $true
+                $fenceMarkerCharacter = $currentFenceMarker[0]
+                $fenceMarkerLength = $currentFenceMarker.Length
             }
         }
 
-        foreach ($match in [regex]::Matches($line, $fillerTableRowPattern)) {
-            $column = $match.Index + 1
-            Write-Host "$($file.FullName)($lineNumber,$column): error TRLDOC002: Filler table rows like '| — | — | No public properties.' are not allowed in API reference docs. Remove the row or document real public surface."
-            $failed = $true
+        if (-not $inFence -and -not $isFenceLine) {
+            if ($line -notmatch $bareCrossDocLinkAllowlistMarker) {
+                foreach ($match in [regex]::Matches($line, $bareCrossDocLinkPattern)) {
+                    $column = $match.Index + 1
+                    Write-Host "$($file.FullName)($lineNumber,$column): error TRLDOC001: Bare cross-doc trellis-api link must include an anchor. Add a #section anchor or append '<!-- $bareCrossDocLinkAllowlistMarker -->' for an intentional exception."
+                    $failed = $true
+                }
+            }
+
+            foreach ($match in [regex]::Matches($line, $fillerTableRowPattern)) {
+                $column = $match.Index + 1
+                Write-Host "$($file.FullName)($lineNumber,$column): error TRLDOC002: Filler table rows like '| — | — | No public properties.' are not allowed in API reference docs. Remove the row or document real public surface."
+                $failed = $true
+            }
         }
 
         if ($line -match $brokenAnchorAllowlistMarker) {
@@ -215,6 +305,23 @@ foreach ($file in $markdownFiles) {
         foreach ($match in [regex]::Matches($line, $anchoredLinkPattern)) {
             $anchor = $match.Groups['anchor'].Value
             $targetFile = $match.Groups['targetFile'].Value
+
+            if (-not [string]::IsNullOrEmpty($targetFile)) {
+                $queryIndex = $targetFile.IndexOf('?')
+
+                if ($queryIndex -ge 0) {
+                    $targetFile = $targetFile.Substring(0, $queryIndex)
+                }
+
+                if ($targetFile.Contains('://') -or $targetFile -match '^[A-Za-z][A-Za-z0-9+.-]*:') {
+                    continue
+                }
+
+                if ($targetFile -notmatch '^[A-Za-z0-9._-]+\.md$') {
+                    continue
+                }
+            }
+
             $isSameFileLink = [string]::IsNullOrEmpty($targetFile)
             $targetPath = if ($isSameFileLink) { $file.FullName } else { [System.IO.Path]::GetFullPath((Join-Path $file.DirectoryName $targetFile)) }
             $targetDisplay = if ($isSameFileLink) { '(self)' } else { $targetFile }
