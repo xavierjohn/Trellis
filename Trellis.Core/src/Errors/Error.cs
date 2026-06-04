@@ -326,10 +326,20 @@ public abstract record Error
 
     /// <summary>The operation requires authentication that was not supplied or could not be validated.</summary>
     /// <param name="Scheme">Optional authentication scheme name (e.g. <c>"Bearer"</c>) when the producer knows which scheme is expected.</param>
-    public sealed record AuthenticationRequired(string? Scheme = null) : Error
+    /// <param name="ReasonCode">
+    /// Optional machine-readable code distinguishing causes that share the 401 surface
+    /// (e.g. <c>"Authentication.InvalidCredentials"</c>, <c>"Authentication.MissingCredentials"</c>,
+    /// <c>"Authentication.TokenExpired"</c>). When supplied, <see cref="Code"/> returns this value
+    /// instead of <see cref="Kind"/> so telemetry, dashboards, and client branching can distinguish
+    /// the cases without parsing <see cref="Error.Detail"/>.
+    /// </param>
+    public sealed record AuthenticationRequired(string? Scheme = null, string? ReasonCode = null) : Error
     {
         /// <inheritdoc />
         public override string Kind => "authentication-required";
+
+        /// <inheritdoc />
+        public override string Code => ReasonCode ?? Kind;
     }
 
     /// <summary>Authorization policy refused the request.</summary>

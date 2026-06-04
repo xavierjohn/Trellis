@@ -521,7 +521,7 @@ Nested `sealed record` cases under `Error`. The base constructor is `private`, s
 | `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | The caller is authenticated but not allowed by the named policy. |
 | `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | The request collides with current state (for example duplicate keys or concurrent modification). |
 | `Error.Gone` | `(ResourceRef Resource)` | The resource previously existed but has been permanently removed (tombstone). |
-| `Error.AuthenticationRequired` | `(string? Scheme = null)` | Authentication is missing or could not be established. |
+| `Error.AuthenticationRequired` | `(string? Scheme = null, string? ReasonCode = null)` | Authentication is missing or could not be established. `ReasonCode` (when supplied) distinguishes causes that share the 401 surface — e.g. `"Authentication.InvalidCredentials"` vs `"Authentication.MissingCredentials"` vs `"Authentication.TokenExpired"` — so telemetry, dashboards, and client branching don't have to parse `Detail`. |
 | `Error.Unavailable` | `(string? ReasonCode = null, RetryAdvice? Retry = null)` | A dependency or subsystem is temporarily unavailable; retry may succeed later. |
 | `Error.RateLimited` | `(RetryAdvice? Retry = null)` | The caller exceeded a quota or rate limit. |
 | `Error.Unexpected` | `(string ReasonCode, string? FaultId = null)` | Unhandled internal failure or “shouldn't happen” condition. `FaultId`, when supplied, correlates to telemetry. |
@@ -1438,7 +1438,7 @@ public async Task<Result<Page<OrderListItem>>> Handle(ListOrdersQuery query, Can
 | `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | `PolicyId` | `forbidden` |
 | `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | `ReasonCode` | `conflict` |
 | `Error.Gone` | `(ResourceRef Resource)` | `gone` | `gone` |
-| `Error.AuthenticationRequired` | `(string? Scheme = null)` | `authentication-required` | `authentication-required` |
+| `Error.AuthenticationRequired` | `(string? Scheme = null, string? ReasonCode = null)` | `ReasonCode ?? "authentication-required"` | `authentication-required` |
 | `Error.Unavailable` | `(string? ReasonCode = null, RetryAdvice? Retry = null)` | `ReasonCode ?? "unavailable"` | `unavailable` |
 | `Error.RateLimited` | `(RetryAdvice? Retry = null)` | `rate-limited` | `rate-limited` |
 | `Error.Unexpected` | `(string ReasonCode, string? FaultId = null)` | `ReasonCode` | `unexpected` |
