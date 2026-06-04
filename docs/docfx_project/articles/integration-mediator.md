@@ -349,7 +349,7 @@ public static class Composition
 
 ### FluentValidation adapter
 
-Add the optional `Trellis.FluentValidation` package and call `AddTrellisFluentValidation()` to surface every registered `IValidator<TMessage>` through `IMessageValidator<TMessage>`. The adapter normalizes FluentValidation property paths (e.g., `Lines[0].Memo`) into RFC 6901 JSON Pointers (`/Lines/0/Memo`) so `Error.InvalidInput.Fields` has a consistent pointer shape regardless of which source produced each violation.
+Add the optional `Trellis.Mediator.FluentValidation` package and call `AddTrellisFluentValidation()` to surface every registered `IValidator<TMessage>` through `IMessageValidator<TMessage>`. The adapter normalizes FluentValidation property paths (e.g., `Lines[0].Memo`) into RFC 6901 JSON Pointers (`/Lines/0/Memo`) so `Error.InvalidInput.Fields` has a consistent pointer shape regardless of which source produced each violation.
 
 ```csharp
 using System.Collections.Generic;
@@ -358,8 +358,8 @@ using Mediator;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
-using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 
 public sealed record TransferLine(string TargetAccount, decimal Amount, string? Memo);
 
@@ -785,8 +785,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Trellis.Asp.Authorization;
 using Trellis.EntityFrameworkCore;
-using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 

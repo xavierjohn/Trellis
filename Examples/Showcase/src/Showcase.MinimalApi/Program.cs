@@ -7,6 +7,7 @@ using Trellis.Asp.Idempotency;
 using Trellis.Asp.Routing;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 using Trellis.Showcase.Application;
 using Trellis.Showcase.Application.Features.SubmitBatchTransfers;
 using Trellis.Showcase.Application.Persistence;

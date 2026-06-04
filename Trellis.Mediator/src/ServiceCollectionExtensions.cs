@@ -27,8 +27,8 @@ public static class ServiceCollectionExtensions
     ///   validation stage. Runs <see cref="IValidate.Validate"/> when the message implements it
     ///   AND every <see cref="IMessageValidator{TMessage}"/> registered in DI for the message,
     ///   aggregating <see cref="Error.InvalidInput"/> failures into a single response.
-    ///   External validation sources (e.g., the optional <c>Trellis.FluentValidation</c> package
-    ///   contributes <c>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</c> via
+    ///   External validation sources (e.g., the optional <c>Trellis.Mediator.FluentValidation</c>
+    ///   package contributes <c>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</c> via
     ///   <c>AddTrellisFluentValidation()</c>) plug in here without an extra pipeline behavior.</description></item>
     ///   <item><description><c>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</c>
     ///   (in the optional <c>Trellis.EntityFrameworkCore</c> package) — runs the handler then

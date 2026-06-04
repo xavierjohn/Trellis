@@ -16,7 +16,7 @@ using Trellis.Mediator.Tests.Helpers;
 /// TransactionalCommand (opt-in, <c>Trellis.EntityFrameworkCore</c>).
 /// </para>
 /// <para>
-/// FluentValidation (opt-in, <c>Trellis.FluentValidation</c>) does <b>not</b> occupy a
+/// FluentValidation (opt-in, <c>Trellis.Mediator.FluentValidation</c>) does <b>not</b> occupy a
 /// pipeline slot; it contributes <c>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</c>
 /// to the existing <see cref="ValidationBehavior{TMessage, TResponse}"/> via the
 /// <see cref="IMessageValidator{TMessage}"/> abstraction. It is covered by

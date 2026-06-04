@@ -1,10 +1,11 @@
-﻿namespace Trellis.FluentValidation;
+﻿namespace Trellis.Mediator.FluentValidation;
 
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using global::FluentValidation;
 using Trellis;
+using Trellis.FluentValidation;
 using Trellis.Mediator;
 
 /// <summary>
@@ -23,8 +24,11 @@ using Trellis.Mediator;
 /// <para>
 /// FluentValidation property names that include member chains (<c>Address.PostCode</c>) or
 /// indexers (<c>Items[0].Sku</c>) are translated to RFC 6901 JSON Pointers
-/// (<c>/Address/PostCode</c>, <c>/Items/0/Sku</c>) so they round-trip correctly through
-/// <see cref="InputPointer"/>.
+/// (<c>/Address/PostCode</c>, <c>/Items/0/Sku</c>) via
+/// <see cref="JsonPointerNormalizer.ToJsonPointer(string?)"/> so they round-trip correctly
+/// through <see cref="InputPointer"/>. The normalizer lives in the sister
+/// <c>Trellis.FluentValidation</c> package so that domain-layer FluentValidation conversion
+/// helpers can share the same RFC 6901 implementation without a Mediator dependency.
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The message type the contained validators target.</typeparam>

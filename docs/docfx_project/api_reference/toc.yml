@@ -1,4 +1,4 @@
-- name: Cookbook (start here)
+﻿- name: Cookbook (start here)
   href: trellis-api-cookbook.md
 - name: Anti-pattern gallery
   href: trellis-api-anti-patterns.md
@@ -16,6 +16,8 @@
       href: trellis-api-authorization.md
     - name: Trellis.Mediator
       href: trellis-api-mediator.md
+    - name: Trellis.Mediator.FluentValidation
+      href: trellis-api-mediator-fluentvalidation.md
     - name: Trellis.EntityFrameworkCore
       href: trellis-api-efcore.md
     - name: Trellis.FluentValidation

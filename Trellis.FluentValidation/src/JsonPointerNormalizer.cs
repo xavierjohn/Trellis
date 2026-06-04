@@ -8,7 +8,17 @@ using System.Text;
 /// <c>/Items/0/Sku</c>) so they can be carried through Trellis <see cref="InputPointer"/>
 /// values without losing structure.
 /// </summary>
-internal static class JsonPointerNormalizer
+/// <remarks>
+/// <para>
+/// <b>Public surface.</b> Promoted from internal in the v3 package split so the
+/// <c>Trellis.Mediator.FluentValidation</c> adapter (which lives in a separate assembly
+/// after the split) can call <see cref="ToJsonPointer(string?)"/> across the package boundary
+/// without forcing every consumer of <c>Trellis.FluentValidation</c> to take the Mediator
+/// dependency. Third-party FluentValidation adapters that need to project FluentValidation
+/// property names into <see cref="InputPointer"/> values can also use this helper directly.
+/// </para>
+/// </remarks>
+public static class JsonPointerNormalizer
 {
     /// <summary>
     /// Converts a FluentValidation <c>PropertyName</c> to an RFC 6901 JSON Pointer string.

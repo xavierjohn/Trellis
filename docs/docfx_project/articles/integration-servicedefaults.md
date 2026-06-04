@@ -10,7 +10,7 @@ audience: [developer]
 
 `Trellis.ServiceDefaults` provides one fluent builder — `services.AddTrellis(o => ...)` — that wires the Trellis integration modules in the canonical order so the mediator pipeline ends up with the right behaviors at the right positions.
 
-It is **not** a mandatory dependency. If you only need one integration package, calling that package's direct registration helper (`AddTrellisAsp`, `AddTrellisBehaviors`, `AddTrellisFluentValidation`, etc.) remains a valid choice. The builder exists to make composition-root code easier to read when several integrations are combined.
+It is **not** a mandatory dependency. If you only need one integration package, calling that package's direct registration helper (`AddTrellisAsp`, `AddTrellisBehaviors`, `AddTrellisFluentValidation` from `Trellis.Mediator.FluentValidation`, etc.) remains a valid choice. The builder exists to make composition-root code easier to read when several integrations are combined.
 
 ## Quick start
 

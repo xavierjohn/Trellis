@@ -83,7 +83,7 @@ return new Error.NotFound(ResourceRef.For<User>(userId));
 return Error.InvalidInput.ForField("email", "invalid_format", "Email is not a valid address.");
 ```
 
-The full case set and slug-change table is in the [Error union DDD realignment](#error-union-ddd-realignment) section below. The pre-v3 `FieldError(name, [details])` shape now uses RFC 6901 JSON Pointers (`InputPointer`) for field paths. The shortcut `Error.InvalidInput.ForField("email", ...)` calls `InputPointer.ForProperty("email")` which produces `"/email"` (RFC 6901 escapes for `~` and `/` are applied, but `.` is preserved as-is — so `ForField("Address.City", ...)` produces `"/Address.City"`, a single token). For nested paths build the pointer explicitly via `new InputPointer("/Address/City")` or the `InputPointer` overload of `ForField`. FluentValidation member chains (`Address.City`, `Items[0].Sku`) ARE auto-normalized to JSON Pointers (`"/Address/City"`, `"/Items/0/Sku"`) by the `Trellis.FluentValidation` adapter's `JsonPointerNormalizer`. Tests asserting on field-error shape need updating; see [`Trellis.Testing` `Error.InvalidInput` assertions](docs/docfx_project/api_reference/trellis-api-testing-reference.md#validationerrorassertions) (`HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`) for the v3 shape.
+The full case set and slug-change table is in the [Error union DDD realignment](#error-union-ddd-realignment) section below. The pre-v3 `FieldError(name, [details])` shape now uses RFC 6901 JSON Pointers (`InputPointer`) for field paths. The shortcut `Error.InvalidInput.ForField("email", ...)` calls `InputPointer.ForProperty("email")` which produces `"/email"` (RFC 6901 escapes for `~` and `/` are applied, but `.` is preserved as-is — so `ForField("Address.City", ...)` produces `"/Address.City"`, a single token). For nested paths build the pointer explicitly via `new InputPointer("/Address/City")` or the `InputPointer` overload of `ForField`. FluentValidation member chains (`Address.City`, `Items[0].Sku`) ARE auto-normalized to JSON Pointers (`"/Address/City"`, `"/Items/0/Sku"`) by the `Trellis.Mediator.FluentValidation` adapter using `JsonPointerNormalizer` from `Trellis.FluentValidation`. Tests asserting on field-error shape need updating; see [`Trellis.Testing` `Error.InvalidInput` assertions](docs/docfx_project/api_reference/trellis-api-testing-reference.md#validationerrorassertions) (`HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`) for the v3 shape.
 
 ### Step 5 — DTO and test cleanup (`Result<T>.Value` removed)
 
@@ -856,6 +856,84 @@ services.AddTrellis(options => options
 **How to spot affected sites in your repo:** search for `AddTrellisAsp(` or `.UseAsp(` and audit each call. If the host binds endpoints that receive Trellis value objects from JSON / route / query (or the `Maybe<T>` of those), use the `AddTrellisAspWithScalarValidation()` / `.UseScalarValueValidation()` form. If the host only uses error-to-status mapping (e.g. raw `string` / `int` parameters), `AddTrellisAsp()` alone is sufficient.
 
 **Mechanical fix.** A grep-and-replace of the form `s/services\.AddTrellisAsp\(/services\.AddTrellisAspWithScalarValidation(/g` (and the same for `options.UseAsp()` → `options.UseAsp().UseScalarValueValidation()`) is a safe no-behavior-change migration; tighten individual call sites later.
+
+---
+
+## Trellis.FluentValidation — Mediator integration moved to `Trellis.Mediator.FluentValidation`
+
+In v3, the Mediator adapter (`AddTrellisFluentValidation()` + `FluentValidationMessageValidatorAdapter<TMessage>`) moved to a new dedicated package — `Trellis.Mediator.FluentValidation` — so that Domain projects can take a dependency on the standalone `Trellis.FluentValidation` helpers (`ValidationResult → Result<T>`, `JsonPointerNormalizer`) without transitively pulling in `Trellis.Mediator`. The helpers themselves and their behavior are unchanged; only the package and namespace for the adapter moved.
+
+### What stays in `Trellis.FluentValidation`
+
+- `FluentValidationResultExtensions` — `ToResult<T>(...)`, `ValidateToResult<T>(...)`, `ValidateToResultAsync<T>(...)` and all their behavior (null-input short-circuit, cancellation observation, RFC 6901 pointer normalization).
+- `JsonPointerNormalizer` — **promoted from `internal` to `public`** so the new package can call across the boundary. Third-party FluentValidation adapters can also use `JsonPointerNormalizer.ToJsonPointer(...)` directly. Its behavior is unchanged.
+
+### What moved to `Trellis.Mediator.FluentValidation`
+
+| Member | v2.x location | v3 location |
+|---|---|---|
+| `AddTrellisFluentValidation()` (and assembly-scanning overload) | `Trellis.FluentValidation` namespace / package | `Trellis.Mediator.FluentValidation` namespace / package |
+| `FluentValidationMessageValidatorAdapter<TMessage>` | `Trellis.FluentValidation` namespace / package | `Trellis.Mediator.FluentValidation` namespace / package |
+| `FluentValidationServiceCollectionExtensions` | `Trellis.FluentValidation` namespace / package | `Trellis.Mediator.FluentValidation` namespace / package |
+
+Behavior is preserved bit-for-bit. The diagnostic log category emitted by the scanning overload is still `"Trellis.FluentValidation"`, so existing logging filters keep working without change.
+
+### Migration steps
+
+For each Application / composition-root project that previously called `services.AddTrellisFluentValidation()`:
+
+1. Add the new package reference (the old `Trellis.FluentValidation` reference can stay if the project also uses the standalone helpers; otherwise replace it):
+
+   ```bash
+   dotnet add package Trellis.Mediator.FluentValidation
+   ```
+
+2. Update the `using` directive for the Mediator wire-up:
+
+   ```diff
+   - using Trellis.FluentValidation;
+   + using Trellis.Mediator.FluentValidation;
+   ```
+
+3. Leave `using Trellis.FluentValidation;` in place anywhere the project also calls `ValidateToResult`, `ValidateToResultAsync`, `ToResult`, or `JsonPointerNormalizer.ToJsonPointer`. Those helpers stay in their original namespace and package.
+
+### Examples
+
+**Before (v2.x):**
+
+```csharp
+using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.FluentValidation;
+using Trellis.Mediator;
+
+services.AddTrellisBehaviors();
+services.AddTrellisFluentValidation();
+services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderCommandValidator>();
+```
+
+**After (v3):**
+
+```csharp
+using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
+
+services.AddTrellisBehaviors();
+services.AddTrellisFluentValidation();
+services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderCommandValidator>();
+```
+
+For a project that uses both — Domain helpers + Mediator adapter — both `using` directives appear at the same call site, mirroring the split between the packages.
+
+### `TrellisServiceBuilder` consumers
+
+If your composition root uses `services.AddTrellis(o => o.UseFluentValidation(...))`, no changes are needed — `TrellisServiceBuilder` now depends on `Trellis.Mediator.FluentValidation` instead of `Trellis.FluentValidation` for the adapter, and `UseFluentValidation(...)` forwards to the same `AddTrellisFluentValidation(...)` method at the same call site shape.
+
+### `JsonPointerNormalizer` promotion to `public`
+
+`JsonPointerNormalizer.ToJsonPointer(string?)` previously sat behind `internal`. Promoting it has no consumer-breaking effect on its own (no existing consumer could reach it). The promotion makes it usable from third-party FluentValidation adapters that need to project property names into `InputPointer` values without re-implementing the RFC 6901 escape + dotted-chain segmentation rules. See [`trellis-api-fluentvalidation.md`](docs/docfx_project/api_reference/trellis-api-fluentvalidation.md#jsonpointernormalizer) for the public signature.
 
 ---
 

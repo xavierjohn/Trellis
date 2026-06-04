@@ -15,8 +15,8 @@ using Trellis.Asp.Authorization;
 using Trellis.Asp.Idempotency;
 using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
-using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 
 /// <summary>
 /// Collects requested Trellis integration modules and applies them in canonical order.

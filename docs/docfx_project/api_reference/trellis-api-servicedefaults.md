@@ -29,7 +29,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 | Enable Trellis ProblemDetails customization | `.UseProblemDetails()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [ASP `AddTrellisProblemDetails`](trellis-api-asp.md#servicecollectionextensions) |
 | Enable the IETF `Idempotency-Key` middleware for opted-in `POST` / `PATCH` endpoints | `.UseIdempotency(opt => ...)` plus `services.AddInMemoryIdempotencyStore()` (or an EF-backed store) and `app.UseTrellisIdempotency()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [ASP `Trellis.Asp.Idempotency`](trellis-api-asp.md#namespace-trellisaspidempotency), Cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
 | Add standard mediator behaviors | `.UseMediator()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator](trellis-api-mediator.md#trellismediatorservicecollectionextensions) |
-| Add FluentValidation adapter/scanning | `.UseFluentValidation(typeof(Program).Assembly)` or `.UseFluentValidation()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [FluentValidation](trellis-api-fluentvalidation.md#fluentvalidationservicecollectionextensions) |
+| Add FluentValidation adapter/scanning | `.UseFluentValidation(typeof(Program).Assembly)` or `.UseFluentValidation()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [FluentValidation](trellis-api-mediator-fluentvalidation.md#fluentvalidationservicecollectionextensions) |
 | Add resource authorization | `.UseResourceAuthorization(...)` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator resource authorization](trellis-api-mediator.md#resourceauthorizationbehaviortmessage-tresource-tresponse) |
 | Register an actor provider | `.UseClaimsActorProvider()`, `.UseNestedJsonPathClaimsActorProvider()`, `.UseEntraActorProvider()`, or `.UseDevelopmentActorProvider()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [ASP actor providers](trellis-api-asp.md#namespace-trellisaspauthorization) |
 | Add EF unit-of-work behavior | `.UseEntityFrameworkUnitOfWork<TContext>()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator UoW](trellis-api-mediator.md#cross-package-preflight-for-pipeline-changes) |
@@ -56,7 +56,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 
 The AOT-safe overloads use only open-generic DI registrations and explicit closed-type method calls — no reflection over assemblies. The scanning overloads remain available for fast iteration in non-AOT consumers and surface the IL2026 / IL3050 warnings at the consumer's call site so the choice between AOT and convenience is explicit, never silent.
 
-Direct per-package registrations (`services.AddTrellisFluentValidation()`, `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`, `services.AddDomainEventHandler<TEvent, THandler>()`) remain valid as an escape hatch — call them outside the builder when you need to register a type the builder does not yet model.
+Direct per-package registrations (`services.AddTrellisFluentValidation()` from `Trellis.Mediator.FluentValidation`, `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`, `services.AddDomainEventHandler<TEvent, THandler>()`) remain valid as an escape hatch — call them outside the builder when you need to register a type the builder does not yet model.
 
 ## Types
 

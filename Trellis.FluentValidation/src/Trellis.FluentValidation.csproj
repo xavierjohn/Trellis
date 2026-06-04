@@ -18,6 +18,5 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
-	  <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
 	</ItemGroup>
 </Project>

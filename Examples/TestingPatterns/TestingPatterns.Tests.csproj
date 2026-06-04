@@ -8,6 +8,7 @@
       <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
       <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
       <ProjectReference Include="..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
+      <ProjectReference Include="..\..\Trellis.Mediator.FluentValidation\src\Trellis.Mediator.FluentValidation.csproj" />
       <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
    </ItemGroup>
   <ItemGroup>

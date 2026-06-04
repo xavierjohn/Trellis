@@ -98,7 +98,8 @@ Each integration has its own namespace and pulls in the relevant third-party dep
 | [`Trellis.Asp`](xref:Trellis.Asp) | `Result<T>` → HTTP responses for MVC and Minimal APIs; ASP.NET actor providers (Claims, Entra, Development) | [ASP.NET Core](~/articles/integration-aspnet.md) · [Authorization](~/articles/integration-asp-authorization.md) |
 | [`Trellis.Authorization`](xref:Trellis.Authorization) | `Actor`, permission checks, resource authorization | [Authorization](~/articles/integration-asp-authorization.md) |
 | [`Trellis.Http`](xref:Trellis.Http) | `HttpClient` extensions that stay inside the Result pipeline | [HTTP Client](~/articles/integration-http.md) |
-| [`Trellis.FluentValidation`](xref:Trellis.FluentValidation) | FluentValidation output → Trellis `Result` | [FluentValidation](~/articles/integration-fluentvalidation.md) |
+| [`Trellis.FluentValidation`](xref:Trellis.FluentValidation) | FluentValidation output → Trellis `Result` (standalone helpers + `JsonPointerNormalizer`) | [FluentValidation](~/articles/integration-fluentvalidation.md) |
+| [`Trellis.Mediator.FluentValidation`](xref:Trellis.Mediator.FluentValidation) | FluentValidation adapter for the Trellis Mediator validation stage | [FluentValidation](~/articles/integration-fluentvalidation.md#mediator-integration) |
 | [`Trellis.EntityFrameworkCore`](xref:Trellis.EntityFrameworkCore) | Value object converters, `Maybe<T>` queries, safe save | [EF Core](~/articles/integration-ef.md) |
 | [`Trellis.Mediator`](xref:Trellis.Mediator) | Result-aware pipeline behaviors for Mediator | [Mediator](~/articles/integration-mediator.md) |
 | [`Trellis.StateMachine`](xref:Trellis.StateMachine) | State machine transitions returning `Result<TState>` | [State Machines](~/articles/state-machines.md) |

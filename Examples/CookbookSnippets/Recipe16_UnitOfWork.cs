@@ -11,6 +11,7 @@ using Trellis;
 using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 using Trellis.Testing;
 
 public sealed partial class OrderId : RequiredGuid<OrderId>;

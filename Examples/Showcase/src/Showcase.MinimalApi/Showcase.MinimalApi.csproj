@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -34,6 +34,7 @@
     <ProjectReference Include="..\..\..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Mediator.FluentValidation\src\Trellis.Mediator.FluentValidation.csproj" />
   </ItemGroup>
 
 </Project>
