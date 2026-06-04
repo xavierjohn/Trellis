@@ -249,6 +249,44 @@ public sealed class ResponseFailureWriterPhase3Tests
         ctx.Response.Headers["WWW-Authenticate"].ToString().Should().Be("Bearer realm=\"api\"");
     }
 
+    [Fact]
+    public async Task AuthenticationRequired_with_ReasonCode_projects_it_to_wire_code()
+    {
+        // ReasonCode lets consumers distinguish causes that share the 401 surface
+        // (invalid credentials vs missing credentials vs token expired) without
+        // parsing Detail. Error.Code overrides to ReasonCode; ResponseFailureWriter
+        // projects Error.Code into the ProblemDetails `code` extension verbatim.
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.AuthenticationRequired(
+            Scheme: "Bearer",
+            ReasonCode: "Authentication.InvalidCredentials"));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(401);
+        using var body = await ReadBody(ctx);
+        body.RootElement.GetProperty("code").GetString().Should().Be("Authentication.InvalidCredentials");
+        // Scheme still flows through to WWW-Authenticate independently of ReasonCode.
+        ctx.Response.Headers["WWW-Authenticate"].ToString().Should().Be("Bearer");
+    }
+
+    [Fact]
+    public async Task AuthenticationRequired_without_ReasonCode_keeps_kind_in_wire_code()
+    {
+        // Backward-compat: pre-ReasonCode call sites (`new Error.AuthenticationRequired()`,
+        // `new Error.AuthenticationRequired("Bearer")`) must continue to emit the same
+        // `code` value they did before the override was added. `Code => ReasonCode ?? Kind`
+        // falls through to "authentication-required" when ReasonCode is null.
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.AuthenticationRequired("Bearer"));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(401);
+        using var body = await ReadBody(ctx);
+        body.RootElement.GetProperty("code").GetString().Should().Be("authentication-required");
+    }
+
     private sealed class ProviderStub(string name) : IAuthenticationSchemeProvider
     {
         private readonly AuthenticationScheme _scheme = new(name, name, typeof(IAuthenticationHandler));

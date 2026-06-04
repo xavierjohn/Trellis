@@ -77,6 +77,29 @@ return new Error.AuthenticationRequired(Scheme: "Bearer");
 
 The boundary still emits `WWW-Authenticate` (from `Error.AuthenticationRequired.Scheme` or the registered `IAuthenticationSchemeProvider` fallback).
 
+**Preserving v2 `UnauthorizedError(message, code)` semantics.** FunctionalDdd v2 callers that distinguished invalid-credentials from missing-credentials via the `code` argument (`new UnauthorizedError("Invalid credentials.", "Authentication.InvalidCredentials")`) should carry the machine-readable code forward via the optional `ReasonCode` parameter on `Error.AuthenticationRequired`:
+
+```csharp
+// V2
+return new UnauthorizedError("Invalid credentials.", "Authentication.InvalidCredentials");
+
+// V3 — ReasonCode preserves the per-cause machine code; Code returns it instead of Kind.
+return new Error.AuthenticationRequired(Scheme: "Bearer", ReasonCode: "Authentication.InvalidCredentials")
+    { Detail = "Invalid credentials." };
+```
+
+The boundary renderer (`Trellis.Asp.ResponseFailureWriter`) projects `Code` into `ProblemDetails.Extensions["code"]`, which ASP.NET Core serializes as the top-level Problem Details extension member `code` (alongside `type`, `title`, `status`, `detail`, and `instance` — RFC 9457 §3.2). Dashboards and client-side branching that previously keyed off the v2 `code` argument can continue to key off the same top-level field:
+
+```json
+{
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Invalid credentials.",
+  "code": "Authentication.InvalidCredentials",
+  "kind": "unauthorized"
+}
+```
+
 ### Rate limiting / dependency unavailable
 
 ```csharp
