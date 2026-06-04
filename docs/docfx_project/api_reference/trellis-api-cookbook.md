@@ -2542,7 +2542,7 @@ public sealed class UserRepository(AppDbContext db) : IUserRepository
 }
 ```
 
-`GetValueOrThrow` throws `InvalidOperationException` whose message names the offending row. The exception bubbles through `ExceptionBehavior` and surfaces as `Error.Unexpected("unhandled_exception", faultId)` to the wire (HTTP 500), with the full message in operator-side logs — exactly the shape for "this should never have happened."
+`GetValueOrThrow` throws `InvalidOperationException` whose message names the offending row. The exception bubbles through `ExceptionBehavior` and surfaces as `new Error.Unexpected("unhandled_exception", faultId)` to the wire (HTTP 500), with the full message in operator-side logs — exactly the shape for "this should never have happened."
 
 **Why not `Trellis.Testing.Unwrap()`?** `Unwrap()` is a test-only helper (see [Recipe 18](#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap)). Production code that uses it mixes test and production seams and is harder to grep for than a named-verb extractor. `GetValueOrThrow` ships in `Trellis.Core` and the verb in the name makes the failure mode explicit at every call site.
 
