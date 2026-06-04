@@ -1107,6 +1107,8 @@ The answer depends on whether the inner type is a **scalar** (single-primitive) 
 
 > **The same DTO pattern applies inside a composite VO.** If a *composite value object's interior* contains `Maybe<TPrimitive>` / arrays / collections, `CompositeValueObjectJsonConverter` rejects them too (see Recipe 13 §"Supported property shapes inside a composite VO"). Keep the composite VO clean as a domain type and declare a wire-shape DTO with nullable transports, then lift on inbound (`.AsMaybe()` / `Maybe.From(...)`) and project on outbound (`.AsNullable()`).
 
+> **Nested collections in DTOs need `TraverseAll`, not inline `.Match`.** When a DTO carries a list of items each of which becomes a value object — for example `IReadOnlyList<MenuSectionDto>` → `IReadOnlyList<MenuSection>` — use [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) (`TraverseAll` / `SequenceAll`) to accumulate per-item validation failures into one `Error.InvalidInput`. Inlining `.Select(s => s.ToDomain().Match(c => c, e => throw …))` throws on the first invalid row and surfaces as HTTP 500 instead of HTTP 422 with per-field violations.
+
 ### Pattern A — scalar `Maybe<T>` directly on the DTO
 
 ```csharp
@@ -1420,6 +1422,8 @@ var command = Result.Combine(
         CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
     .Map((email, customerName) => new CreateCustomerCommand(email, customerName));
 ```
+
+**Nested collections.** When `CreateCustomerRequest` carries a `List<AddressDto>` whose items each need to become value objects, the `Result.Combine` shape above doesn't generalize to the collection — use [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) (`TraverseAll`) to validate every row and accumulate per-item failures into one `Error.InvalidInput`. Inlining `.Select(item => item.ToCommand().Match(c => c, e => throw …))` throws on the first invalid row and surfaces as HTTP 500 instead of HTTP 422 with field violations.
 
 ---
 
