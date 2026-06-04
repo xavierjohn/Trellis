@@ -104,7 +104,6 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
 | Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
-| Audit a Trellis package upgrade for behavior changes | [Recipe 30](#recipe-30--auditing-your-trellis-upgrade-against-the-deposited-api-refs) |
 
 ### Mistake-regression routing
 
@@ -2499,55 +2498,6 @@ app.MapPost("/payments", CreatePaymentAsync).WithMetadata(new IdempotentAttribut
 **Composition rules.** `services.AddTrellisIdempotency(...)` (or the builder slot `t.UseIdempotency(...)`) registers options + scope resolver + an internal marker; `services.AddInMemoryIdempotencyStore()` is a separate, explicit call so a dev-only in-memory store is never silently inherited into production. `app.UseTrellisIdempotency()` throws at startup if `AddTrellisIdempotency(...)` was not called. The `IIdempotencyStore` registration is also validated at startup when the container exposes `IServiceProviderIsService` (the default Microsoft.Extensions.DependencyInjection container does); on containers that do not expose it the missing-store failure surfaces as a per-request resolution error on the first opted-in request. The in-memory store is single-process only; multi-instance hosts need an EF-backed store (per-tenant table or shared with `Scope` as a discriminator column) that implements the same CAS contract. `MaxRequestBodyBytes` and `MaxResponseBodyBytes` are hard caps: exceeding the request cap returns `413 Payload Too Large` before any handler runs; exceeding the response cap aborts capture and records no snapshot (the next retry re-executes), so the cap should be set high enough to envelop the largest legitimate response from any opted-in endpoint. Endpoints that stream via `SendFileAsync` cannot be captured and are equivalent to exceeding the response cap — model those as non-idempotent or convert them to a buffered response.
 
 **Tests.** Use `Microsoft.AspNetCore.TestHost.TestServer` (the same harness pattern as Recipe 26) plus an `IIdempotencyStore` registered as a singleton (`InMemoryIdempotencyStore`) plus `TimeProvider` swapped for `Microsoft.Extensions.Time.Testing.FakeTimeProvider` (from the `Microsoft.Extensions.TimeProvider.Testing` NuGet package). Drive the same `(key, body)` twice — assert the second call returns the captured status code, headers, and body byte-for-byte. Drive `(key, mutated-body)` — assert `422` and the original snapshot is still replayable. Advance `FakeTimeProvider` past `ReservationTimeout` to exercise the sweep + re-reserve path. The NuGet package is `Microsoft.Extensions.TimeProvider.Testing` (the namespace containing `FakeTimeProvider` is `Microsoft.Extensions.Time.Testing`); the test project should reference the package the same way `Trellis.Testing.Worker`'s harness does.
-
----
-
-## Recipe 30 — Auditing your Trellis upgrade against the deposited API refs
-
-**Problem.** You bumped `Trellis.Core` from `3.0.0-alpha.310` to `3.0.0-alpha.337` and need to know what behavior changed before re-running the suite blind. The published nuspec gives versions, not semantics. A local `git clone` of the framework source tree can lag the published package, especially during alpha development. A search-engine answer is two flips behind. What's the authoritative source to trust, in what order?
-
-**Cross-check order — use the highest tier first; fall through only when a tier leaves the question unanswered.**
-
-1. **Published nuspec on nuget.org** — confirms what version of what package is actually installed. The lock for "what's in the binary you just restored."
-2. **Auto-deposited API ref docs in `.github/`** — every Trellis package packs a `trellis-api-<name>.md` reference file (declared via `<TrellisApiRefName>` in the .csproj). `Trellis.ApiReference.targets` copies the files into the consuming project's `.github/` directory at restore time. **This is the canonical surface that ships with the binary.** When a deposited doc and a source-tree snapshot disagree, the deposited doc is right.
-3. **Behavior probe via a one-off test** — write a single test that exercises the API in the shape your code uses it. Compiles against the actually-installed package; behavior is observable directly. Faster than reading source; conclusive when the doc reads ambiguously.
-4. **Framework source** — only when (1)–(3) leave a question unanswered. Local clones can lag the published package; treat as the source of last resort during alpha development.
-
-**Concrete example.** From a real `FunctionalDdd 2.x → Trellis 3.0.0-alpha.337` migration:
-
-- **Mistake 1 — false-positive correctness regression**, caught at step (2). The author wrote up a "`RequiredString<T>` silently accepts empty strings — silent semantic change from v2.x" finding, drafted a GitHub issue, and added `[NotDefault, Trim]` to six value objects to "preserve v2.x semantics." An audit pass against `.github/trellis-api-core.md` proved strict-by-default ships in alpha.337 — the attributes were vestigial no-ops (`TRLS046`, `TRLS047`). Issue retracted before filing. Without the auto-deposited docs this would have shipped as a public framework-team report carrying a false tier-1 correctness claim.
-- **Mistake 2 — real correctness bug**, also caught at step (2). Porting removed `Result<T>.Value` to inline `.Match(v => v, e => throw …)` for nested DTO conversion preserved the throwing semantic locally but surfaced as HTTP 500 instead of HTTP 422 with field violations. The cookbook audit found [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) (`TraverseAll`) — the canonical accumulating combinator for exactly this pattern.
-
-```csharp
-// Step 3 — behavior probes. One test per behavior, executed against the actually-installed package.
-[Fact]
-public void RequiredString_rejects_empty_string_by_default()
-{
-    // No [AllowEmpty] attribute — verifies the strict-by-default contract
-    // documented at .github/trellis-api-core.md.
-    var result = MySku.TryCreate(string.Empty);
-    result.Should().BeFailureOfType<Error.InvalidInput>();
-}
-
-[Fact]
-public void Nested_DTO_validation_accumulates_field_failures_via_TraverseAll()
-{
-    var rows = new[]
-    {
-        new CreateContactRow(Email: "bad-1", Name: "A"),
-        new CreateContactRow(Email: "bad-2", Name: "B"),
-    };
-
-    var result = rows.TraverseAll(row => EmailAddress.TryCreate(row.Email));
-
-    var failure = result.Should().BeFailureOfType<Error.InvalidInput>().Subject;
-    failure.Fields.Items.Should().HaveCount(2); // both rows surface, not just the first
-}
-```
-
-**Why this order works.** The published nuspec is the lock. The deposited refs are the framework's own claim about its current surface — shipped alongside the binary, versioned together, never out of sync with the installed package. A behavior probe verifies the binary directly without trusting any doc. The framework source is the last resort because it can drift from the published package during alpha development. Trellis ships `trellis-api-*.md` files with every package precisely so consumers don't need to clone the framework source to audit upgrades — the authoritative surface travels with the package.
-
-**AI tooling angle.** When an AI assistant proposes a Trellis pattern, point it at the `.github/trellis-api-*.md` files first. The deposited docs are the source of truth your AI tools and your CI both verify against — keeping consumer-side AI audits grounded against the framework's shipped surface rather than a search-engine cached generic answer.
 
 ---
 
