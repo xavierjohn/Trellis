@@ -5,6 +5,130 @@
 >
 > **Trellis V2 (the current major release) introduces a separate, larger breaking change**: the `Error` type is now a closed discriminated-union ADT. The current case set is documented in [`docs/docfx_project/articles/error-handling.md`](docs/docfx_project/articles/error-handling.md). The section [Error union DDD realignment](#error-union-ddd-realignment) below covers the latest rename pass; the [CHANGELOG](CHANGELOG.md#breaking-changes--trelliscoreerror-union-ddd-realignment) carries the canonical rename and slug-change tables.
 
+## End-to-end migration playbook (FunctionalDdd 2.x → Trellis 3.0)
+
+The detail sections in this file each cover one piece of the migration. For consumers upgrading a real codebase from `FunctionalDdd 2.1.x` to `Trellis 3.0`, the **order** below minimizes churn. In practice the mechanical work (Steps 1–4) usually lands as one commit — production code builds clean after Step 4; test code typically stays red until Step 5 handles the `Result<T>.Value` removal. Step 6 is an optional opt-in commit on top.
+
+**Real-world reference.** [`xavierjohn/BuberDinner` `upgrade/trellis-v3`](https://github.com/xavierjohn/BuberDinner/tree/upgrade/trellis-v3) migrated from `FunctionalDdd 2.1.10` to `Trellis 3.0.0-alpha.337` (net8 → net10) in 4 commits, 32 files changed, +1,478 / −165 LoC, zero net test regression. Each step below corresponds to a discrete commit on that branch you can read in isolation.
+
+### Step 1 — Package mapping
+
+Swap every `FunctionalDdd.*` package for the Trellis equivalent. This is the single biggest mechanical change in the migration.
+
+| FunctionalDdd 2.x | Trellis 3.0 |
+|---|---|
+| `FunctionalDdd.DomainDrivenDesign` | `Trellis.Core` (DDD primitives collapsed in) |
+| `FunctionalDdd.RailwayOrientedProgramming` | `Trellis.Core` (ROP operators collapsed in) |
+| `FunctionalDdd.CommonValueObjectGenerator` | `Trellis.Core` (bundled at `analyzers/dotnet/cs/` — no separate generator package) |
+| `FunctionalDdd.CommonValueObjects` | `Trellis.Primitives` |
+| `FunctionalDdd.FluentValidation` | `Trellis.FluentValidation` |
+| `FunctionalDdd.Asp` | `Trellis.Asp` |
+| (not previously available) | `Trellis.Mediator` — optional, see Step 6 |
+
+Update `Directory.Build.props`'s global `<Using>` entries (`FunctionalDdd` → `Trellis`) and `Directory.Packages.props` package versions. Every `.csproj` `<PackageReference>` updates accordingly.
+
+**One-time housekeeping with Central Package Management.** If you use CPM (`<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>`) and your dev machines have multiple package sources configured in the user-level `NuGet.Config`, `dotnet restore` may fail with `NU1507: There are X package sources defined in your configuration`. Add a project-local `nuget.config` pinning `nuget.org` as the only source. One file, no source code touched. Independent of the framework swap but typically needed before it.
+
+### Step 2 — Mechanical renames
+
+After the package swap, the compiler surfaces several mechanical renames. None carry semantic risk:
+
+| FunctionalDdd 2.x | Trellis 3.0 | Notes |
+|---|---|---|
+| `Result.Success(...)` / `Result.Success<T>(...)` | `Result.Ok(...)` / `Result.Ok<T>(...)` | Mechanical find-and-replace |
+| `Result.Failure(...)` / `Result.Failure<T>(...)` | `Result.Fail(...)` / `Result.Fail<T>(...)` | Mechanical find-and-replace |
+| `.TapError(...)` | `.TapOnFailure(...)` | See [Renamed Operations](#renamed-operations) for the full failure-track rename table |
+| `.MapError(...)` | `.MapOnFailure(...)` | Same |
+| `.Compensate(...)` | `.RecoverOnFailure(...)` | Same |
+| `.ToActionResultAsync(this)` | `.ToHttpResponseAsync().AsActionResultAsync<T>()` | See [Trellis.Asp v3 - legacy response verbs removed](#trellisasp-v3---legacy-response-verbs-removed) |
+| `MyId.NewUnique()` | `MyId.NewUniqueV4()` or `MyId.NewUniqueV7()` | Explicit choice forced — `NewUniqueV7()` is the right default for primary keys (time-ordered, monotonic, index-friendly) |
+
+The `Result.Success` / `Failure` → `Ok` / `Fail` renames are simple find-and-replace; the failure-track operator renames (`TapError`, `MapError`, `Compensate`) are covered by the [Automated Migration](#automated-migration) PowerShell script below.
+
+### Step 3 — CRTP primitives
+
+Every `Required*` base now takes the derived type as a generic parameter:
+
+```csharp
+// v2.x
+public sealed class UserId : RequiredString { }
+
+// v3
+public sealed partial class UserId : RequiredString<UserId> { }
+```
+
+Apply this shape to every `RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredBool`, `RequiredDateTime`, `RequiredDateTimeOffset`, and `RequiredEnum` derivative. Add the `partial` keyword if it isn't already present — the source generator now emits `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` into the partial class.
+
+The generator is bundled inside `Trellis.Core.nupkg` at `analyzers/dotnet/cs/`, so the `FunctionalDdd.CommonValueObjectGenerator` package reference can be dropped — installing `Trellis.Core` attaches the generator automatically.
+
+**Strict-by-default attributes.** `Required*<TSelf>` is now strict-by-default in v3 — `null`, sentinel values, and (for `RequiredString`) `""` / whitespace-only input are rejected without any opt-in attribute. The pre-v3 `[NotDefault]` and `[Trim]` attributes are now vestigial no-ops (the generator emits informational diagnostics `TRLS046` / `TRLS047`). See [`Required<T>` defaults flip](#requiredt-defaults-flip-strict-by-default-with-per-type-opt-outs) for the full strict-default rules and the per-type opt-outs (`[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, `[AllowMinValue]`).
+
+### Step 4 — Closed Error ADT port
+
+The open `Error` hierarchy (`UnauthorizedError`, `ConflictError`, `NotFoundError`, `ValidationError`, etc.) is gone. v3 ships a closed 12-case discriminated union under `Trellis.Error`. Replace the open subclass references with the closed-ADT case constructors:
+
+```csharp
+// v2.x
+return new UnauthorizedError("Invalid credentials.", "Authentication.InvalidCredentials");
+return new ConflictError("Email already in use.", "Email", "user@example.com");
+return new NotFoundError("User", userId);
+return new ValidationError(new[] { new FieldError("email", "invalid format") });
+
+// v3
+return new Error.AuthenticationRequired(Scheme: "Bearer", ReasonCode: "Authentication.InvalidCredentials")
+    { Detail = "Invalid credentials." };
+return new Error.Conflict(ResourceRef.For<User>(userId), "duplicate_email")
+    { Detail = "Email already in use." };
+return new Error.NotFound(ResourceRef.For<User>(userId));
+return Error.InvalidInput.ForField("email", "invalid_format", "Email is not a valid address.");
+```
+
+The full case set and slug-change table is in the [Error union DDD realignment](#error-union-ddd-realignment) section below. The pre-v3 `FieldError(name, [details])` shape now uses RFC 6901 JSON Pointers (`InputPointer`) for field paths. The shortcut `Error.InvalidInput.ForField("email", ...)` calls `InputPointer.ForProperty("email")` which produces `"/email"` (RFC 6901 escapes for `~` and `/` are applied, but `.` is preserved as-is — so `ForField("Address.City", ...)` produces `"/Address.City"`, a single token). For nested paths build the pointer explicitly via `new InputPointer("/Address/City")` or the `InputPointer` overload of `ForField`. FluentValidation member chains (`Address.City`, `Items[0].Sku`) ARE auto-normalized to JSON Pointers (`"/Address/City"`, `"/Items/0/Sku"`) by the `Trellis.FluentValidation` adapter's `JsonPointerNormalizer`. Tests asserting on field-error shape need updating; see [`Trellis.Testing` `Error.InvalidInput` assertions](docs/docfx_project/api_reference/trellis-api-testing-reference.md#validationerrorassertions) (`HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`) for the v3 shape.
+
+### Step 5 — DTO and test cleanup (`Result<T>.Value` removed)
+
+`Result<T>.Value` was removed in v3 because the ambient throwing accessor was the primary cause of unsafe value access. Replace the v2.x access patterns:
+
+| v2.x access | v3 replacement |
+|---|---|
+| `result.Value` (after explicit `IsSuccess` check) | `result.TryGetValue(out var value)` or `var (ok, value, error) = result;` |
+| `result.Value` inside a chain | `.Map(value => ...)` / `.Bind(value => ...)` |
+| `result.Value` at a persistence DTO → entity rehydration seam | `result.GetValueOrThrow("context message")` — see [cookbook Recipe 30](docs/docfx_project/api_reference/trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
+| `result.Value` in test arrangement | `result.Unwrap()` (from `Trellis.Testing`, test-only) |
+
+`GetValueOrThrow(string? errorMessage = null)` ships in `Trellis.Core` and mirrors the existing `Maybe<T>.GetValueOrThrow(string? errorMessage = null)` precedent. It throws `InvalidOperationException` on failure, which bubbles through `ExceptionBehavior` to a wire `new Error.Unexpected("unhandled_exception", faultId)` (HTTP 500) with the row-identifying message in operator-side logs.
+
+Implicit `T → Result<T>` is also gone. Factory methods that previously returned a bare value now require an explicit `Result.Ok(...)` wrap:
+
+```csharp
+// v2.x — implicit lift
+public static Result<UserId> TryCreate(Guid id) => new UserId(id);
+
+// v3 — explicit lift
+public static Result<UserId> TryCreate(Guid id) => Result.Ok(new UserId(id));
+```
+
+### Step 6 — Wire `AddTrellisBehaviors` (optional, recommended)
+
+The final step opts into the Trellis Mediator pipeline behaviors (Exception, Tracing, Logging — plus optional Authorization and Validation):
+
+```csharp
+// In your composition root
+using Trellis.Mediator;
+
+services.AddTrellisBehaviors();
+```
+
+Authorization and Validation behaviors register too but pay no per-request cost until their pre-conditions are met. The Validation behavior runs for every message but no-ops when no `IMessageValidator<T>` is registered (the open-generic `IEnumerable<IMessageValidator<TMessage>>` injection resolves to empty). The Authorization behavior runs only for messages that implement `IAuthorize` — projects without any such message yet pay no cost; the first `IAuthorize` message you ship then requires an `IActorProvider` registration (the provider can return `Maybe<Actor>.None` to surface a typed `Error.AuthenticationRequired` on the wire). Lets a project consume Exception + Tracing + Logging immediately without committing to actor-provider scaffolding or moving validation from the DTO layer to the command boundary. Adopt incrementally.
+
+The [`AddTrellisBehaviors` reference](docs/docfx_project/api_reference/trellis-api-mediator.md#trellismediatorservicecollectionextensions) covers the full set of registered behaviors and pipeline order; the [canonical pipeline order](docs/docfx_project/api_reference/trellis-api-mediator.md#canonical-pipeline-order) documents how the behaviors compose.
+
+### After the playbook
+
+The rest of this file is reference material organized by change area: error-ADT realignment, the operator-rename table from v2.9 → v3.0, `Maybe<T>` notnull constraint, Trellis.Asp response-verb removal, `Required<T>` strict-flip details, and (in the appendix) a methodology for [verifying behavior after upgrade](#appendix--verifying-behavior-after-upgrade) using the auto-deposited API ref docs in `.github/`.
+
+---
+
 ## Error union DDD realignment
 
 The `Trellis.Core.Error` discriminated union is now transport-neutral. HTTP-specific failures (`405`, `406`, `412`, `413`, `415`, `416`, `428`) live in the closed `HttpError` union in the new `Trellis.Http.Abstractions` package and flow through `Result<T>` via the `Error.TransportFault(ITransportFault Fault)` envelope.
