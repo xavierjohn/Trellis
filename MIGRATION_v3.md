@@ -835,3 +835,29 @@ If the comment body should accept `""` after trimming but still reject whitespac
 | TRLS051 | Error | `[AllowWhitespace]` on a non-string Required base |
 | TRLS052 | Error | `[NoTrim]` on a non-string Required base |
 | TRLS053 | Error | Contradictory combination, for example `[AllowZero]` + `[Positive]` |
+
+---
+
+## Appendix — Verifying behavior after upgrade
+
+After upgrading a Trellis package, several authoritative sources can answer "what does this version of the API actually do?" They are not equally trustworthy at any given moment. Use the highest tier first; fall through only when a tier leaves the question unanswered.
+
+1. **Published nuspec on nuget.org** — confirms what version of what package is actually installed. The lock for "what's in the binary you just restored."
+2. **Auto-deposited API ref docs in `.github/`** — every Trellis package packs a `trellis-api-<name>.md` reference file (declared via `<TrellisApiRefName>` in the `.csproj`). `Trellis.ApiReference.targets` copies the files into the consuming project's `.github/` directory at restore time. **This is the canonical surface that ships with the binary.** When a deposited doc and a source-tree snapshot disagree, the deposited doc is right.
+3. **Behavior probe via a one-off test** — write a single test that exercises the API in the shape your code uses it. Compiles against the actually-installed package; behavior is observable directly. Faster than reading source; conclusive when the doc reads ambiguously.
+4. **Framework source** — only when (1)–(3) leave a question unanswered. Local clones can lag the published package, especially during alpha development; treat as the source of last resort.
+
+### Concrete example — caught mistakes
+
+The methodology emerged from a real `FunctionalDdd 2.x → Trellis 3.0.0-alpha.337` migration where it caught two mistakes before they shipped:
+
+- **False-positive correctness regression**, caught at step (2). The author wrote up a "`RequiredString<T>` silently accepts empty strings — silent semantic change from v2.x" finding, drafted an upstream issue, and added `[NotDefault, Trim]` to six value objects to "preserve v2.x semantics." An audit pass against `.github/trellis-api-core.md` proved strict-by-default ships in alpha.337 — the attributes were vestigial no-ops (`TRLS046`, `TRLS047`). Issue retracted before filing. Without the auto-deposited docs this would have shipped as a public framework-team report carrying a false correctness claim.
+- **Real correctness bug**, also caught at step (2). Porting removed `Result<T>.Value` to inline `.Match(v => v, e => throw …)` for nested DTO conversion preserved the throwing semantic locally but surfaced as HTTP 500 instead of HTTP 422 with field violations. An audit of the cookbook against the actual API behavior found `TraverseAll` — the canonical accumulating combinator for exactly this pattern.
+
+### Why this order
+
+The published nuspec is the lock. The deposited refs are the framework's own claim about its current surface — shipped alongside the binary, versioned together, never out of sync with the installed package. A behavior probe verifies the binary directly without trusting any doc. The framework source is the last resort because it can drift from the published package during alpha development. Trellis ships `trellis-api-*.md` files with every package precisely so consumers don't need to clone the framework source to audit upgrades.
+
+### AI tooling note
+
+When an AI assistant proposes a Trellis pattern after an upgrade, point it at the `.github/trellis-api-*.md` files first. The deposited docs are the source of truth your AI tools and your CI both verify against — keeping consumer-side AI audits grounded against the framework's shipped surface rather than a search-engine cached generic answer.
