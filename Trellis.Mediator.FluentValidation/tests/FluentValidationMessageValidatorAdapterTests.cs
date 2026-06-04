@@ -1,11 +1,11 @@
-﻿namespace Trellis.FluentValidation.Tests;
+﻿namespace Trellis.Mediator.FluentValidation.Tests;
 
 using global::FluentValidation;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
-using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 using Trellis.Testing;
 
 /// <summary>

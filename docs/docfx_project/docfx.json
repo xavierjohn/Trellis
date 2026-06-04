@@ -19,6 +19,7 @@
             "Trellis.StateMachine/src/Trellis.StateMachine.csproj",
             "Trellis.Authorization/src/Trellis.Authorization.csproj",
             "Trellis.Mediator/src/Trellis.Mediator.csproj",
+            "Trellis.Mediator.FluentValidation/src/Trellis.Mediator.FluentValidation.csproj",
             "Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj"
           ]
         }

@@ -13,6 +13,7 @@ using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 
 public sealed record PlaceOrderCommand(System.Guid OrderId, decimal Amount, string Currency, string OwnerId)
     : ICommand<Result<OrderId>>;

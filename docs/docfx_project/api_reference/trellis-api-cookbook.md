@@ -15,7 +15,8 @@ audience: [llm]
   - [trellis-api-core.md](trellis-api-core.md#use-this-file-when) — `Result<T>`, `Maybe<T>`, errors, primitives, pagination
   - [trellis-api-primitives.md](trellis-api-primitives.md#use-this-file-when) — `RequiredString`, `RequiredGuid`, `[Range]`, `[StringLength]`
   - [trellis-api-mediator.md](trellis-api-mediator.md#use-this-file-when) — `ICommand<T>`, `IQuery<T>`, `IPipelineBehavior<,>`, `AddTrellisBehaviors`
-  - [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md#use-this-file-when) — `AddTrellisFluentValidation`
+  - [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md#use-this-file-when) — `ValidateToResult`, `JsonPointerNormalizer`
+  - [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#use-this-file-when) — `AddTrellisFluentValidation`
   - [trellis-api-efcore.md](trellis-api-efcore.md#use-this-file-when) — `SaveChangesResultAsync`, `MaybePropertyMapping`, `RepositoryBase<TAggregate,TId>`
   - [trellis-api-asp.md](trellis-api-asp.md#use-this-file-when) — `ToHttpResponse`, `HttpResponseOptionsBuilder<T>`, `AddTrellisAsp`, `AsActionResult`
   - [trellis-api-http.md](trellis-api-http.md#use-this-file-when) — `ToResultAsync`, `ReadJsonAsync`, `ReadJsonOrNoneOn404Async`
@@ -230,8 +231,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
 using Trellis.EntityFrameworkCore;
-using Trellis.FluentValidation;
 using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
 using Trellis.Primitives;
 
 public sealed record PlaceOrderRequest(Guid OrderId, decimal Amount, string Currency, string OwnerId);
@@ -803,7 +804,7 @@ public static class CompositionRoot
 | `UseAsp()` | `AddTrellisAsp()` | Error → status mapping and `ResourceCollectionNameRegistry`. **Does NOT register scalar-value JSON / model-binding validation** — compose with `UseScalarValueValidation()` when binding value-object DTOs. |
 | `UseScalarValueValidation()` | `AddScalarValueValidation()` | Configures both MVC and Minimal API JSON pipelines (model binders + JSON converters + `SuppressModelStateInvalidFilter` toggle). Independent of `UseAsp()`. Minimal API hosts must still call `app.UseScalarValueValidation()` middleware and chain `.WithScalarValueValidation()` per endpoint. |
 | `UseMediator()` | `AddTrellisBehaviors()` | Registers the canonical Result-aware pipeline behaviors. |
-| `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
+| `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` (from `Trellis.Mediator.FluentValidation`) | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
 | `UseClaimsActorProvider()` / `UseEntraActorProvider()` / `UseDevelopmentActorProvider()` | One ASP actor provider | The builder rejects multiple actor providers. |
 | `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
 | `UseDomainEvents(...)` | `AddDomainEventDispatch(...)` | Implies `UseMediator()`. Response-shape dispatch uses strict snapshot validation; handlers must be side-effect-only. Mutually exclusive with tracked dispatch. |

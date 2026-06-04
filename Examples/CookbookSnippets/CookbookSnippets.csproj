@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
     <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
     <ProjectReference Include="..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
+    <ProjectReference Include="..\..\Trellis.Mediator.FluentValidation\src\Trellis.Mediator.FluentValidation.csproj" />
     <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
     <ProjectReference Include="..\..\Trellis.Asp\generator\Trellis.AspSourceGenerator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

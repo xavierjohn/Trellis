@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.FluentValidation
 namespaces: [Trellis.FluentValidation]
-types: [FluentValidationServiceCollectionExtensions, FluentValidationMessageValidatorAdapter<TMessage>, FluentValidationResultExtensions]
+types: [FluentValidationResultExtensions, JsonPointerNormalizer]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-06-04
 audience: [llm]
 ---
 # Trellis.FluentValidation — API Reference
@@ -12,78 +12,39 @@ audience: [llm]
 
 - **Package:** `Trellis.FluentValidation`
 - **Namespace:** `Trellis.FluentValidation`
-- **Purpose:** Two integration paths for FluentValidation in Trellis:
-  1. **Mediator integration** — `AddTrellisFluentValidation()` plugs FluentValidation validators into the existing `ValidationBehavior<TMessage,TResponse>` via the open-generic `IMessageValidator<TMessage>` adapter. No additional pipeline behavior is added.
-  2. **Standalone helpers** — `FluentValidationResultExtensions` converts a `ValidationResult` (or runs an `IValidator<T>` synchronously/asynchronously) into a `Result<T>` failure backed by `Error.InvalidInput`.
+- **Purpose:** Mediator-agnostic FluentValidation helpers for Trellis:
+  1. **Standalone helpers** — `FluentValidationResultExtensions` converts a `ValidationResult` (or runs an `IValidator<T>` synchronously/asynchronously) into a `Result<T>` failure backed by `Error.InvalidInput`.
+  2. **Pointer normalization** — `JsonPointerNormalizer.ToJsonPointer(...)` projects FluentValidation member-chain property names (`Address.PostCode`, `Items[0].Sku`) into RFC 6901 JSON Pointers (`/Address/PostCode`, `/Items/0/Sku`) so they round-trip through Trellis `InputPointer` values.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence) — recipes using this package.
+> **v3 package split.** The Mediator integration (`AddTrellisFluentValidation()` + `FluentValidationMessageValidatorAdapter<TMessage>`) moved to the new `Trellis.Mediator.FluentValidation` package so consumers of these standalone helpers do not have to take a Mediator dependency. See [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#header) for the adapter API, and `MIGRATION_v3.md` for the migration recipe.
+
+See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence) — recipes using these helpers.
 
 ## Use this file when
 
-- You want FluentValidation validators to run inside the Trellis Mediator validation behavior.
-- You need to convert a FluentValidation `ValidationResult` into `Result<T>` / `Error.InvalidInput`.
-- You need exact JSON Pointer normalization behavior for FluentValidation property names.
+- You need to convert a FluentValidation `ValidationResult` into `Result<T>` / `Error.InvalidInput` outside the Mediator pipeline.
+- You need the exact JSON Pointer normalization rules for FluentValidation property names (e.g., for a custom adapter that produces `InputPointer` values from FluentValidation failures).
+- You want to use FluentValidation in a domain or worker project that does not reference `Trellis.Mediator`.
+
+For wiring FluentValidation validators into the Trellis Mediator validation stage, see [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#use-this-file-when).
 
 ## Patterns Index
 
 | Goal | Canonical API / pattern | See |
 |---|---|---|
-| Add the FluentValidation adapter without scanning | `services.AddTrellisFluentValidation()` plus explicit `IValidator<T>` registrations | [`FluentValidationServiceCollectionExtensions`](#fluentvalidationservicecollectionextensions) |
-| Add the adapter and scan assemblies | `services.AddTrellisFluentValidation(typeof(SomeType).Assembly)` | [`FluentValidationServiceCollectionExtensions`](#fluentvalidationservicecollectionextensions) |
-| Keep AOT/trim safety | Use the parameterless adapter overload and register validators explicitly | [`FluentValidationServiceCollectionExtensions`](#fluentvalidationservicecollectionextensions) |
 | Convert `ValidationResult` to `Result<T>` | `validationResult.ToResult(value)` | [`FluentValidationResultExtensions`](#fluentvalidationresultextensions) |
 | Validate a value outside Mediator | `validator.ValidateToResult(value)` / `ValidateToResultAsync(...)` | [`FluentValidationResultExtensions`](#fluentvalidationresultextensions) |
-| Understand nested/indexed field paths | FluentValidation names are normalized to RFC 6901 JSON Pointers | [Pointer normalization](#pointer-normalization-rfc-6901) |
+| Normalize a FluentValidation property name into a JSON pointer | `JsonPointerNormalizer.ToJsonPointer(propertyName)` | [`JsonPointerNormalizer`](#jsonpointernormalizer) |
+| Wire FluentValidation into the Mediator pipeline | `services.AddTrellisFluentValidation()` from `Trellis.Mediator.FluentValidation` | [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#fluentvalidationservicecollectionextensions) |
 
 ## Common traps
 
-- `AddTrellisFluentValidation()` does not add a second mediator pipeline behavior; it registers `IMessageValidator<TMessage>` so the existing `ValidationBehavior` can aggregate failures.
-- The assembly-scanning overload is intentionally not AOT/trim-safe. Use explicit registrations for AOT-sensitive apps.
 - Keep primitive-to-value-object parsing at the transport seam; validators should normally validate already-shaped command/value-object inputs.
+- `ToResult<T>` only null-checks `validationResult`; it does not independently reject a `null` `value`.
+- `ValidateToResultAsync<T>` observes `cancellationToken` BEFORE the null-value short-circuit, so a cancelled token always wins over the synchronous null-input fallback.
+- `JsonPointerNormalizer.ToJsonPointer` splits FluentValidation dotted chains (`Address.City` → `/Address/City`). The general-purpose `InputPointer.ForProperty(string)` does **not** split on `.` (it only escapes `~` → `~0` and `/` → `~1` per RFC 6901 §3). The dotted-chain normalization is FluentValidation-specific.
 
 ## Types
-
-### `FluentValidationServiceCollectionExtensions`
-
-**Declaration**
-
-```csharp
-public static class FluentValidationServiceCollectionExtensions
-```
-
-**Methods**
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static IServiceCollection AddTrellisFluentValidation(this IServiceCollection services)` | `IServiceCollection` | Registers `FluentValidationMessageValidatorAdapter<TMessage>` as the open-generic `IMessageValidator<TMessage>` implementation. Every `IValidator<T>` registered for the message in DI then runs inside the existing `ValidationBehavior<TMessage,TResponse>` and contributes its failures to an aggregated `Error.InvalidInput`. **AOT/trim-safe**; uses open-generic DI registration with no reflection. Idempotent — repeated calls do not duplicate the adapter. Throws `ArgumentNullException` when `services` is `null`. Validators must be registered explicitly (e.g., `services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderCommandValidator>()`). |
-| `public static IServiceCollection AddTrellisFluentValidation(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Calls the parameterless overload, then scans the supplied assemblies for concrete `IValidator<T>` implementations and registers each as a scoped service. **Not AOT or trim-compatible** — annotated `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`. Skips abstract/interface/open-generic types. Deduplicates so repeated calls (or overlapping assemblies) do not register the same validator twice. Throws `ArgumentNullException` for null `services`/`assemblies`, and `ArgumentException` when `assemblies` is empty or contains a `null` element. Tolerates `ReflectionTypeLoadException` by using only loadable types and emits a single Warning per affected assembly via `ILoggerFactory` (when one is registered). |
-
-### `FluentValidationMessageValidatorAdapter<TMessage>`
-
-**Declaration**
-
-```csharp
-public sealed class FluentValidationMessageValidatorAdapter<TMessage>(
-    IEnumerable<IValidator<TMessage>> validators)
-    : IMessageValidator<TMessage>
-    where TMessage : Mediator.IMessage
-```
-
-**Methods**
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)` | `ValueTask<IResult>` | Runs every injected `IValidator<TMessage>` against `message`. Returns `Result.Ok()` when all validators pass (or none are registered — the empty injected sequence allocates no violations). Otherwise aggregates every `ValidationFailure` into a single `new Error.InvalidInput(EquatableArray.Create(violations))`, where `violations` is the collected `FieldViolation` set. Each FluentValidation failure becomes a `FieldViolation(new InputPointer(pointerPath), reasonCode) { Detail = failure.ErrorMessage }`. `pointerPath` is derived by `JsonPointerNormalizer.ToJsonPointer` from the FV property name; `reasonCode` defaults to `"validation.error"` when `failure.ErrorCode` is null/whitespace. Root-level failures (whitespace `PropertyName`) use `typeof(TMessage).Name`. |
-
-### Pointer normalization (RFC 6901)
-
-FluentValidation property names are converted to JSON Pointers so they round-trip through `InputPointer`:
-
-| FluentValidation `PropertyName` | Resulting `InputPointer.RawValue` |
-| --- | --- |
-| `Email` | `/Email` |
-| `Address.PostCode` | `/Address/PostCode` |
-| `Items[0].Sku` | `/Items/0/Sku` |
 
 ### `FluentValidationResultExtensions`
 
@@ -111,6 +72,32 @@ public static class FluentValidationResultExtensions
 | `public static Result<T> ValidateToResult<T>(this IValidator<T> validator, T value, [CallerArgumentExpression(nameof(value))] string paramName = "value", string? message = null)` | `Result<T>` | Throws `ArgumentNullException` when `validator` is `null`. If `value is null`, does **not** call `validator.Validate`; instead returns a validation failure for `paramName` using `message ?? $"'{paramName}' must not be empty."`. Otherwise calls `validator.Validate(value)` and forwards to `ToResult(value, paramName)`. |
 | `public static async Task<Result<T>> ValidateToResultAsync<T>(this IValidator<T> validator, T value, [CallerArgumentExpression(nameof(value))] string paramName = "value", string? message = null, CancellationToken cancellationToken = default)` | `Task<Result<T>>` | Throws `ArgumentNullException` when `validator` is `null`. Observes `cancellationToken` BEFORE the null-value short-circuit, so a cancelled token always wins over the synchronous fallback path. If `value is null`, does **not** call `validator.ValidateAsync`; instead returns the same validation failure shape as `ValidateToResult`. Otherwise awaits `validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false)` and forwards to `ToResult(value, paramName)`. |
 
+### `JsonPointerNormalizer`
+
+**Declaration**
+
+```csharp
+public static class JsonPointerNormalizer
+```
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static string ToJsonPointer(string? propertyName)` | `string` | Converts a FluentValidation `PropertyName` (e.g., `Address.PostCode`, `Items[0].Sku`) into an RFC 6901 JSON Pointer (`/Address/PostCode`, `/Items/0/Sku`). Returns `""` for `null` or empty input. Inputs that already start with `/` are assumed to already be pointers and are returned unchanged. Inside each segment, `~` is escaped to `~0` and `/` to `~1` per RFC 6901 §3. Indexer contents (`[...]`) are treated as standalone segments — `Items[0]` becomes `/Items/0`. |
+
+**Pointer normalization (RFC 6901) — examples**
+
+| FluentValidation `PropertyName` | `ToJsonPointer` result |
+| --- | --- |
+| `""` or `null` | `""` |
+| `Email` | `/Email` |
+| `Address.PostCode` | `/Address/PostCode` |
+| `Items[0].Sku` | `/Items/0/Sku` |
+| `/already/a/pointer` | `/already/a/pointer` (returned unchanged) |
+| `Field~Name` | `/Field~0Name` |
+| `Path/With/Slash` | `/Path~1With~1Slash` |
+
 ## Extension methods
 
 ### `FluentValidationResultExtensions`
@@ -137,16 +124,6 @@ public static async Task<Result<T>> ValidateToResultAsync<T>(
 
 ## Behavioral notes
 
-### Mediator integration (`AddTrellisFluentValidation` + adapter)
-
-- FluentValidation does **not** add an additional pipeline behavior. It plugs into the existing `ValidationBehavior<TMessage,TResponse>` via the open-generic `IMessageValidator<TMessage>` extension point.
-- The adapter is registered scoped, matching the typical scoped lifetime of FluentValidation validators.
-- When no `IValidator<TMessage>` is registered for a message type, `IEnumerable<IValidator<TMessage>>` is empty, the adapter returns `Result.Ok()`, and no allocations are performed.
-- All validators are awaited sequentially; failures from every validator are aggregated into a single `Error.InvalidInput` rather than short-circuiting on the first failure.
-- The adapter forwards the ambient `CancellationToken` to `validator.ValidateAsync`.
-- `AddTrellisFluentValidation()` is **idempotent** — calling it multiple times (directly, or via the scanning overload) only registers the open-generic adapter once.
-- The assembly-scan overload deduplicates `(serviceType, implementationType)` pairs against existing registrations, so calling it twice with overlapping assemblies will not register a validator more than once.
-
 ### Standalone helpers (`FluentValidationResultExtensions`)
 
 - The extension methods are stateless; they do not keep shared mutable state or add synchronization.
@@ -159,32 +136,12 @@ public static async Task<Result<T>> ValidateToResultAsync<T>(
 - `ValidateToResultAsync<T>` observes `cancellationToken` BEFORE the null-value short-circuit (so a cancelled token always wins over the synchronous fallback) AND propagates cancellation through `validator.ValidateAsync(value, cancellationToken)`.
 - Exceptions from FluentValidation itself are not caught, except for the explicit `ArgumentNullException.ThrowIfNull(...)` guards on `validationResult` and `validator`.
 
+### `JsonPointerNormalizer`
+
+- `ToJsonPointer` is a pure, allocation-light projection. It does not validate that the input is a syntactically well-formed FluentValidation property chain — malformed inputs simply produce the most permissive segmentation the loop can derive.
+- For inputs that already look like JSON pointers (start with `/`), the method short-circuits and returns the input unchanged so a pre-formed pointer (e.g., one produced by `InputPointer.ForProperty(...)`) is preserved verbatim.
+
 ## Code examples
-
-### Wire FluentValidation into the Mediator pipeline (AOT-safe)
-
-```csharp
-using FluentValidation;
-using Microsoft.Extensions.DependencyInjection;
-using Trellis.FluentValidation;
-using Trellis.Mediator;
-
-services.AddTrellisBehaviors();
-services.AddTrellisFluentValidation();
-
-// Register validators explicitly so the call site is AOT/trim-friendly.
-services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderCommandValidator>();
-services.AddScoped<IValidator<UpdateOrderCommand>, UpdateOrderCommandValidator>();
-```
-
-### Wire FluentValidation with assembly scanning (not AOT-compatible)
-
-```csharp
-using Trellis.FluentValidation;
-
-services.AddTrellisBehaviors();
-services.AddTrellisFluentValidation(typeof(CreateOrderCommandValidator).Assembly);
-```
 
 ### Convert an existing `ValidationResult`
 
@@ -240,8 +197,21 @@ validator.RuleFor(x => x).NotEmpty();
 Result<string?> result = validator.ValidateToResult(alias, message: "Alias is required.");
 ```
 
+### Project a FluentValidation property name into an `InputPointer`
+
+```csharp
+using Trellis;
+using Trellis.FluentValidation;
+
+// Custom FluentValidation projection that needs to build an InputPointer
+// without going through the Mediator adapter.
+var pointer = new InputPointer(JsonPointerNormalizer.ToJsonPointer("Items[0].Sku"));
+// pointer.RawValue == "/Items/0/Sku"
+```
+
 ## Cross-references
 
-- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error)
-- [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping)
-- [trellis-api-mediator.md](trellis-api-mediator.md#validationbehaviortmessage-tresponse)
+- [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#header) — the Mediator integration (`AddTrellisFluentValidation` + adapter) that builds on `JsonPointerNormalizer`.
+- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Error.InvalidInput` shape and `InputPointer` semantics.
+- [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvalidInput` lands on the wire.
+- [trellis-api-mediator.md](trellis-api-mediator.md#validationbehaviortmessage-tresponse) — the pipeline stage the Mediator adapter participates in.

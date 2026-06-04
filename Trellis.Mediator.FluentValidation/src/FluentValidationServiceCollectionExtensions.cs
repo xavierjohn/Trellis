@@ -1,4 +1,4 @@
-﻿namespace Trellis.FluentValidation;
+﻿namespace Trellis.Mediator.FluentValidation;
 
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -14,6 +14,10 @@ using Trellis.Mediator;
 /// </summary>
 public static partial class FluentValidationServiceCollectionExtensions
 {
+    // Logger category is preserved across the v3 package split (Trellis.FluentValidation →
+    // Trellis.Mediator.FluentValidation) so that consumer log filters keyed on
+    // "Trellis.FluentValidation" continue to fire unchanged. This is the only consumer-facing
+    // log category emitted by the scanner overload.
     private const string LoggerCategory = "Trellis.FluentValidation";
 
     /// <summary>

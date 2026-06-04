@@ -1,4 +1,4 @@
-﻿namespace Trellis.FluentValidation.Tests;
+﻿namespace Trellis.Mediator.FluentValidation.Tests;
 
 using System.Reflection;
 using global::FluentValidation;
@@ -6,6 +6,7 @@ using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Trellis;
+using Trellis.Mediator.FluentValidation;
 
 public sealed class FluentValidationLoaderDiagnosticsTests
 {
@@ -21,6 +22,9 @@ public sealed class FluentValidationLoaderDiagnosticsTests
 
         var warning = loggerFactory.Logs.Should().ContainSingle().Which;
         warning.Level.Should().Be(LogLevel.Warning);
+        // Log category is intentionally preserved across the v3 package split
+        // (Trellis.FluentValidation → Trellis.Mediator.FluentValidation) so that
+        // consumer log filters keyed on "Trellis.FluentValidation" continue to fire.
         warning.Category.Should().Be("Trellis.FluentValidation");
         warning.Message.Should().Contain(ThrowingAssembly.AssemblyName);
         warning.Message.Should().Contain(MissingDependencyMessage);

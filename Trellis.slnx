@@ -108,6 +108,10 @@
     <Project Path="Trellis.Mediator/src/Trellis.Mediator.csproj" />
     <Project Path="Trellis.Mediator/tests/Trellis.Mediator.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Mediator.FluentValidation/">
+    <Project Path="Trellis.Mediator.FluentValidation/src/Trellis.Mediator.FluentValidation.csproj" />
+    <Project Path="Trellis.Mediator.FluentValidation/tests/Trellis.Mediator.FluentValidation.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.Primitives/">
     <File Path="Trellis.Primitives/SAMPLES.md" />
     <Project Path="Trellis.Primitives/src/Trellis.Primitives.csproj" />
