@@ -88,7 +88,17 @@ return new Error.AuthenticationRequired(Scheme: "Bearer", ReasonCode: "Authentic
     { Detail = "Invalid credentials." };
 ```
 
-The boundary renderer (`Trellis.Asp.ResponseFailureWriter`) projects `Code` into the ProblemDetails `extensions.code` field, so dashboards and client-side branching that previously keyed off the v2 `code` argument keep working without changes.
+The boundary renderer (`Trellis.Asp.ResponseFailureWriter`) projects `Code` into `ProblemDetails.Extensions["code"]`, which ASP.NET Core serializes as the top-level Problem Details extension member `code` (alongside `type`, `title`, `status`, `detail`, and `instance` — RFC 9457 §3.2). Dashboards and client-side branching that previously keyed off the v2 `code` argument can continue to key off the same top-level field:
+
+```json
+{
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Invalid credentials.",
+  "code": "Authentication.InvalidCredentials",
+  "kind": "unauthorized"
+}
+```
 
 ### Rate limiting / dependency unavailable
 
