@@ -2747,6 +2747,30 @@ public sealed record GetIncidentQuery(IncidentId Id)
 
 **On the wire.** Unauthorized request → `404 Not Found` with `ResourceRef` `{ "Type": "Incident", "Id": "inc-42" }`. The synthetic `NotFound` is indistinguishable from the real 404 a missing incident would produce.
 
+**Multiple resources.** `HideExistence<T>()` returns the options for fluent chaining, and repeated `UseResourceAuthorization(Action<>)` calls compose (each delegate runs against the same options instance in registration order — verified by `UseResourceAuthorization_ConfigureDelegate_CalledTwice_ComposesBothConfigurations`). All four styles below produce the same merged policy; pick the one that reads best for your composition root.
+
+```csharp
+// Style 1 — fluent chain in one configure delegate (small fixed list).
+.UseResourceAuthorization(o => o
+    .HideExistence<Incident>()
+    .HideExistence<SecurityFinding>()
+    .HideExistence<PrivateProfile>())
+
+// Style 2 — statement body when each entry warrants its own line / comment.
+.UseResourceAuthorization(o =>
+{
+    o.HideExistence<Incident>();
+    o.HideExistence<SecurityFinding>();          // SOC 2 — existence itself is sensitive
+    o.HideExistence<PrivateProfile>();
+    o.HideExistence<AccessKey, KeyPublicView>(); // projection-loader overload
+})
+
+// Style 3 — separate calls (each module contributes its own resources).
+.UseResourceAuthorization(o => o.HideExistence<Incident>())          // Incidents module
+.UseResourceAuthorization(o => o.HideExistence<SecurityFinding>())   // Security module
+.UseResourceAuthorization(o => o.HideExistence<PrivateProfile>())    // Profile module
+```
+
 **Default is `Propagate`.** No behavior changes for resources that don't opt in. Existing consumers continue to see `Forbidden` and `AuthenticationRequired` verbatim. Set `DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound` to flip the default for an entire service, then use `Propagate<TResource>()` to mark individual resources as safe-to-disclose.
 
 ```csharp
