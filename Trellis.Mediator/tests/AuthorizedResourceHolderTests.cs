@@ -244,6 +244,69 @@ public class AuthorizedResourceHolderTests
 
     #endregion
 
+    #region Orphan child task — GPT-5.5 PR review finding
+
+    [Fact]
+    public async Task OrphanChildTask_CapturesFrameAtFork_ButReadsNothingAfterParentDispose()
+    {
+        // GPT-5.5 code review on PR #578: AsyncLocal flows the frame reference into
+        // child execution contexts. An orphan task that captures the frame at fork
+        // time but outlives the parent dispatch must NOT retain access to the
+        // resource. The frame-based design uses an IsActive flag that the parent's
+        // dispose flips to false; the volatile false-write is visible to readers on
+        // other cores, so orphans correctly report "no resource in scope" even when
+        // their AsyncLocal slot still points at the captured frame.
+        var holder = new AuthorizedResourceHolder<HolderTestCommand, TestResource>();
+        var resource = new TestResource("parent", "owner");
+        var ct = TestContext.Current.CancellationToken;
+        var afterParentDisposed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var orphanFinished = new TaskCompletionSource<(bool found, TestResource? captured, bool getRequiredThrew)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task orphan;
+        using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(resource))
+        {
+            // Inside the using-block, an orphan can see the resource — the captured frame is active.
+            holder.TryGet(out var sanityCheck).Should().BeTrue();
+            sanityCheck.Should().BeSameAs(resource);
+
+            // Fork while the resource is in scope; the child captures the AsyncLocal value
+            // (the Frame reference). At fork time the captured frame is IsActive=true.
+            orphan = Task.Run(async () =>
+            {
+                await afterParentDisposed.Task;
+                var found = holder.TryGet(out var r);
+                var threw = false;
+                try
+                {
+                    holder.GetRequired();
+                }
+                catch (InvalidOperationException)
+                {
+                    threw = true;
+                }
+
+                orphanFinished.SetResult((found, r, threw));
+            }, ct);
+        }
+
+        // Parent has disposed — frame.IsActive=false, parent's AsyncLocal slot restored to previous.
+        // Signal the orphan to read now.
+        afterParentDisposed.SetResult();
+
+        var (found, captured, getRequiredThrew) = await orphanFinished.Task;
+        await orphan;
+
+        found.Should().BeFalse(
+            "the orphan task captured the frame at fork time, but parent dispatch has ended; " +
+            "the IsActive flag must make the dispose visible across async flows");
+        captured.Should().BeNull();
+        getRequiredThrew.Should().BeTrue(
+            "GetRequired must throw rather than return a stale resource the orphan should not have access to");
+    }
+
+    #endregion
+
     #region Test fixtures
 
     private sealed record HolderTestCommand(string ResourceId)
