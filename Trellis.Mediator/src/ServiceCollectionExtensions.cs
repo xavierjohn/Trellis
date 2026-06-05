@@ -273,6 +273,7 @@ public static class ServiceCollectionExtensions
         TResponse>(
         this IServiceCollection services)
         where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage
+        where TResource : class
         where TResponse : IResult, IFailureFactory<TResponse>
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -289,6 +290,14 @@ public static class ServiceCollectionExtensions
             ServiceDescriptor.Scoped<
                 IPipelineBehavior<TMessage, TResponse>,
                 ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>());
+
+        // v4 typed accessor — register IAuthorizedResource<TMessage, TResource> so handlers
+        // can inject the loaded resource and avoid a duplicate load. The holder is stateless
+        // (per-closed-pair static AsyncLocal); Scoped lifetime matches surrounding pipeline
+        // components. TryAddScoped is idempotent on repeat registration.
+        services.TryAddScoped<
+            IAuthorizedResource<TMessage, TResource>,
+            AuthorizedResourceHolder<TMessage, TResource>>();
 
         return services;
     }
@@ -484,6 +493,15 @@ public static class ServiceCollectionExtensions
                 {
                     var commandResource = authIface.GetGenericArguments()[0];
 
+                    // v4 accessor requires reference-typed resources (the AsyncLocal frame
+                    // holds the instance by reference and the IAuthorizedResource<,> interface
+                    // is constrained `where TResource : class`). Pre-check here so the user
+                    // gets a Trellis-shaped diagnostic naming the offending command and resource
+                    // type, rather than the cryptic ArgumentException MakeGenericType emits when
+                    // a value-typed argument violates the generic constraint.
+                    EnsureResourceTypeIsReferenceType(type, commandResource,
+                        markerInterfaceName: "IAuthorizeResource");
+
                     // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>.
                     // Fail fast on misconfigured security-marked commands rather than silently
                     // skipping them — IAuthorizeResource<TResource> is a security marker and a
@@ -498,6 +516,11 @@ public static class ServiceCollectionExtensions
                     InsertResourceAuthorizationBehavior(
                         services,
                         ServiceDescriptor.Scoped(closedPipeline, closedBehavior));
+
+                    // v4 typed accessor — register IAuthorizedResource<type, commandResource> so
+                    // handlers can inject the loaded resource and avoid a duplicate load. Mirrors
+                    // the explicit AddResourceAuthorization<,,>() helper above.
+                    RegisterAuthorizedResourceAccessor(services, type, commandResource);
 
                     var identifyIfaceForAuth = type.GetInterfaces()
                         .FirstOrDefault(i => i.IsGenericType
@@ -530,6 +553,13 @@ public static class ServiceCollectionExtensions
                     var identifyIfaceForVia = identifyIfacesForVia[0];
                     var tLeaf = identifyIfaceForVia.GetGenericArguments()[0];
 
+                    // Same reason as the direct path: the v4 accessor requires reference-typed
+                    // leaves and via-pipeline closed generics constrain `where TLeaf : class`.
+                    // Friendly diagnostic before MakeGenericType would otherwise emit a cryptic
+                    // ArgumentException naming a synthesised generic-arg position.
+                    EnsureResourceTypeIsReferenceType(type, tLeaf,
+                        markerInterfaceName: "IIdentifyResource");
+
                     // Same TResponse constraint as IAuthorizeResource<T>: IResult + IFailureFactory<TResponse>.
                     ValidateResourceAuthorizationResponseType(type, tOwner, tResponse,
                         markerInterfaceName: "IAuthorizeResourceVia",
@@ -538,6 +568,12 @@ public static class ServiceCollectionExtensions
                     viaCommands.Add((type, tLeaf, tOwner, tResponse, identifyIfaceForVia));
                     // Leaf-loader bridging shares the same machinery as IAuthorizeResource<T>.
                     commandsNeedingBridging.Add((type, tLeaf, tResponse, identifyIfaceForVia));
+
+                    // v4 typed accessor — register IAuthorizedResource<type, tLeaf>. For via
+                    // commands the accessor exposes the LEAF (the typical mutation target),
+                    // not the owner. The owner accessor is intentionally not exposed; handlers
+                    // needing owner state reload via their repository.
+                    RegisterAuthorizedResourceAccessor(services, type, tLeaf);
                 }
             }
 
@@ -715,6 +751,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         ResolvedAuthorizationPath path)
         where TMessage : IAuthorizeResourceVia<TOwner>, global::Mediator.IMessage
+        where TLeaf : class
         where TResponse : IResult, IFailureFactory<TResponse>
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -742,6 +779,13 @@ public static class ServiceCollectionExtensions
                 IPipelineBehavior<TMessage, TResponse>,
                 ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>());
 
+        // v4 typed accessor — register IAuthorizedResource<TMessage, TLeaf> so handlers
+        // can inject the LEAF (the mutation target). Mirrors the scan-path registration
+        // for via commands; ensures AOT/explicit registration users also get the accessor.
+        services.TryAddScoped<
+            IAuthorizedResource<TMessage, TLeaf>,
+            AuthorizedResourceHolder<TMessage, TLeaf>>();
+
         return services;
     }
 
@@ -766,6 +810,29 @@ public static class ServiceCollectionExtensions
         }
 
         services.Add(descriptor);
+    }
+
+    /// <summary>
+    /// Registers <c>IAuthorizedResource&lt;TMessage, TResource&gt;</c> implemented by
+    /// <c>AuthorizedResourceHolder&lt;TMessage, TResource&gt;</c> as scoped for the closed pair,
+    /// so handlers can inject the v4 accessor and avoid a duplicate load of the
+    /// pipeline-loaded resource. Called from the scan path for each discovered
+    /// <see cref="IAuthorizeResource{TResource}"/> command (with the resource type) and for each
+    /// discovered <see cref="IAuthorizeResourceVia{TOwner}"/> command (with the LEAF type).
+    /// The explicit AOT registration helpers register the accessor inline via the typed overload
+    /// of <c>TryAddScoped&lt;TService, TImplementation&gt;</c>; this helper covers the scan path
+    /// where the types are only known at runtime.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
+        Justification = "Caller is itself annotated [RequiresDynamicCode] — the entire scan path is AOT-incompatible by design; AOT consumers use the typed AddResourceAuthorization<,,>() / AddRelatedResourceAuthorization<,,,>() overloads which register the accessor without MakeGenericType.")]
+    private static void RegisterAuthorizedResourceAccessor(
+        IServiceCollection services,
+        Type messageType,
+        Type resourceType)
+    {
+        var holderType = typeof(AuthorizedResourceHolder<,>).MakeGenericType(messageType, resourceType);
+        var accessorType = typeof(IAuthorizedResource<,>).MakeGenericType(messageType, resourceType);
+        services.TryAddScoped(accessorType, holderType);
     }
 
     /// <summary>
@@ -1052,5 +1119,36 @@ public static class ServiceCollectionExtensions
                 $"Use a result type that satisfies both constraints — e.g. Result<{resourceType.Name}>, Result<string>, Result<Unit>, " +
                 $"or any other Result<T> the message handler can return; alternatively, remove {markerInterfaceName}<{resourceType.Name}> " +
                 $"from the message.");
+    }
+
+    /// <summary>
+    /// Throws <see cref="InvalidOperationException"/> with a Trellis-shaped diagnostic when
+    /// <paramref name="resourceType"/> is a value type. Resource-authorization closed
+    /// generics (<c>ResourceAuthorizationBehavior&lt;,,&gt;</c>,
+    /// <c>ResourceAuthorizationViaBehavior&lt;,,,&gt;</c>,
+    /// <c>AuthorizedResourceHolder&lt;,&gt;</c>) all require <c>where TResource : class</c> /
+    /// <c>where TLeaf : class</c>; without this pre-check the user would get a cryptic
+    /// <c>ArgumentException</c> from <c>MakeGenericType</c> ("violates the constraint of
+    /// type 'TResource'") that does not name the offending command.
+    /// </summary>
+    /// <param name="messageType">The discovered mediator-message command type.</param>
+    /// <param name="resourceType">The closed resource (or leaf) type extracted from
+    /// <see cref="IAuthorizeResource{TResource}"/> / <see cref="IIdentifyResource{TResource, TId}"/>.</param>
+    /// <param name="markerInterfaceName">Display name of the marker interface for the diagnostic
+    /// (<c>"IAuthorizeResource"</c> for the direct path, <c>"IIdentifyResource"</c> for the via leaf).</param>
+    internal static void EnsureResourceTypeIsReferenceType(
+        Type messageType,
+        Type resourceType,
+        string markerInterfaceName)
+    {
+        if (!resourceType.IsValueType) return;
+
+        throw new InvalidOperationException(
+            $"{messageType.FullName ?? messageType.Name} declares {markerInterfaceName}<{resourceType.Name}>, " +
+            $"but {resourceType.FullName ?? resourceType.Name} is a value type. Resource-authorization " +
+            "requires reference-typed resources because the framework's v4 typed accessor " +
+            "(IAuthorizedResource<TMessage, TResource>) holds the loaded instance by reference and " +
+            "is constrained `where TResource : class`. Define the resource as a class (or record class) " +
+            "instead — domain aggregates and entities should be reference types anyway.");
     }
 }

@@ -346,6 +346,46 @@ A single loader shared across every command that authorizes against the same `TR
 | --- | --- | --- |
 | `public abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken)` | `Task<Result<TResource>>` | Load the resource by ID; return `Result.Fail` with `Error.NotFound` when missing. |
 
+### `IAuthorizedResource<TMessage, TResource>`
+
+**Declaration**
+
+```csharp
+namespace Trellis.Authorization;
+
+public interface IAuthorizedResource<TMessage, TResource>
+    where TResource : class
+{
+    TResource GetRequiredResource();
+    bool TryGetResource([MaybeNullWhen(false)] out TResource resource);
+}
+```
+
+**Purpose.** v4 typed accessor that gives a handler the **same instance** of the resource that `ResourceAuthorizationBehavior` (or `ResourceAuthorizationViaBehavior`) loaded for the current dispatch — eliminating a duplicate load when the handler would otherwise re-fetch by id from its repository. For non-EF stores (CosmosDB / Dapper / HTTP-backed loaders) this is a measurable performance win; for EF it skips the second LINQ query while preserving change-tracker identity.
+
+**Auto-registration.** Every public entry that registers resource authorization also registers the closed `IAuthorizedResource<TMessage, TResource>` as scoped. Handlers inject it via constructor injection; no additional composition-root call is required.
+
+- For `IAuthorizeResource<TResource>` commands: `TResource` is the same `TResource`.
+- For `IAuthorizeResourceVia<TOwner>` commands: `TResource` is the **leaf** (the resource identified via `IIdentifyResource<TLeaf, TLeafId>`), which is the typical mutation target. The owner accessor is intentionally not exposed in v4; handlers needing owner state read it from their repository.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `TResource GetRequiredResource()` | `TResource` | Returns the resource loaded and authorized for the current pipeline dispatch. Throws `InvalidOperationException` outside a populated dispatch — typical causes: the handler was invoked directly (e.g. from a unit test) without going through the mediator pipeline; the message lacks resource-authorization registration; authentication failed, the loader failed, or `Authorize` was denied (none of which populate the accessor). The exception message names the closed pair so misconfiguration is easy to diagnose. |
+| `bool TryGetResource(out TResource? resource)` | `bool` | Returns `true` with the resource when populated; `false` and `null` otherwise. Provided for genuinely optional reads (e.g., diagnostic logging that runs both inside and outside the pipeline). Production handlers should prefer `GetRequiredResource()` so a misconfigured pipeline fails loudly instead of silently skipping work. |
+
+**Identity, not mutation-readiness.** The accessor returns the SAME instance the loader returned. The framework does not validate that the instance is a canonical mutation-ready aggregate. **Do not inject the accessor** for commands whose loader returns:
+
+- A projection type (e.g. `OrderHeader` for cheap authorization, not the full `Order` aggregate).
+- A no-tracking EF entity that the handler must mutate (the mutation will not persist).
+- A stale read-replica POCO when the handler needs strong consistency.
+- An HTTP DTO that cannot be persisted back through any local repository.
+
+In those cases the handler reloads via the repository. The loader's job is to decide who owns the resource for the authorization check; the handler's job is to fetch the canonical mutation-ready aggregate. These are different shapes and the accessor would couple them incorrectly.
+
+**Concurrency.** Safe across nested `mediator.Send` and concurrent `Task.WhenAll` dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow linked frame list with a volatile `IsActive` flag — each push allocates a new frame (no shared mutable state between sibling forks), and dispose flips the frame's `IsActive` flag (visible to orphan child tasks that captured the frame at fork time but outlived the parent dispatch). The framework guarantees an orphan task cannot read the resource after the parent's dispatch ends.
+
+See [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) in the cookbook for the WRONG/FIX shape and a full end-to-end example.
+
 ## Behavioral notes
 
 - **Deny overrides allow.** A permission listed in both `Permissions` and `ForbiddenPermissions` is denied. `HasPermission`, `HasAllPermissions`, `HasAnyPermission`, and `HasPermission(permission, scope)` all observe this rule.

@@ -1,6 +1,7 @@
 ﻿using Trellis.Testing;
 namespace Trellis.Mediator.Tests;
 
+using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
 using Trellis.Mediator.Tests.Helpers;
@@ -260,6 +261,142 @@ public class ResourceAuthorizationBehaviorTests
         await behavior.Handle(command, next, cts.Token);
 
         capturingProvider.LastCancellationToken.Should().Be(cts.Token);
+    }
+
+    #endregion
+
+    #region Accessor populated for handler during next() — v4 typed accessor
+
+    [Fact]
+    public async Task Handle_AuthorizeSucceeds_AccessorPopulatedDuringNextWithSameInstance()
+    {
+        var resource = new TestResource("res-1", "owner-1");
+        var behavior = CreateBehavior<ResourceOwnerCommand>("owner-1", resource);
+        var command = new ResourceOwnerCommand("res-1");
+
+        TestResource? observedDuringNext = null;
+        bool observedSameInstance = false;
+        var holder = new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>();
+        MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> next = (_, _) =>
+        {
+            holder.TryGetResource(out observedDuringNext).Should().BeTrue(
+                "the accessor must be populated by ResourceAuthorizationBehavior before invoking next");
+            observedSameInstance = ReferenceEquals(observedDuringNext, resource);
+            return new ValueTask<Result<string>>(Result.Ok("Done"));
+        };
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        observedDuringNext.Should().NotBeNull();
+        observedSameInstance.Should().BeTrue(
+            "the accessor must return the SAME instance the loader returned — that is the whole point");
+        // After Handle returns, the using-block has disposed and the accessor is empty again.
+        holder.TryGetResource(out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_AuthorizeFails_AccessorNotPopulatedDuringDownstreamObservation()
+    {
+        // Denied authorizations must NOT expose the loaded resource. The pipeline returns
+        // a Forbidden failure before any push happens; observers running in the same async
+        // flow (e.g., the calling test code) must see the accessor as empty.
+        var resource = new TestResource("res-1", "owner-1");
+        var behavior = CreateBehavior<ResourceOwnerCommand>("other-user", resource);
+        var command = new ResourceOwnerCommand("res-1");
+        var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Ok("should not reach"));
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsFailure.Should().BeTrue();
+        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        tracker.WasInvoked.Should().BeFalse();
+
+        new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
+            .TryGetResource(out _).Should().BeFalse(
+                "denied authorizations must not leak the loaded resource through the accessor");
+    }
+
+    [Fact]
+    public async Task Handle_LoaderFails_AccessorNotPopulated()
+    {
+        var behavior = CreateBehavior<ResourceOwnerCommand>("owner-1", resource: null);
+        var command = new ResourceOwnerCommand("nonexistent");
+        var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
+            Result.Ok("should not reach"));
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsFailure.Should().BeTrue();
+        tracker.WasInvoked.Should().BeFalse();
+        new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
+            .TryGetResource(out _).Should().BeFalse(
+                "load failures must not populate the accessor");
+    }
+
+    [Fact]
+    public async Task Handle_AccessorPoppedAfterHandlerEvenOnHandlerFailure()
+    {
+        // The using-block guarantees pop even when next returns a failure result.
+        // After Handle returns the accessor must be empty in the caller's async flow.
+        var resource = new TestResource("res-1", "owner-1");
+        var behavior = CreateBehavior<ResourceOwnerCommand>("owner-1", resource);
+        var command = new ResourceOwnerCommand("res-1");
+        MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> next = (_, _) =>
+            new ValueTask<Result<string>>(Result.Fail<string>(
+                new Error.Conflict(null, "test.conflict") { Detail = "Handler-level failure" }));
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsFailure.Should().BeTrue();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
+            .TryGetResource(out _).Should().BeFalse(
+                "the using-block must pop the accessor even when the handler returns a failure result");
+    }
+
+    [Fact]
+    public async Task Handle_NestedSends_OuterAccessorRestoredAfterInner()
+    {
+        // Simulates the nested-mediator.Send case: an outer dispatch's handler invokes
+        // a SECOND ResourceAuthorizationBehavior dispatch (for a different message but the
+        // same closed pair shape). The outer handler must see its own resource before AND
+        // after the nested dispatch completes.
+        var outerResource = new TestResource("outer-res", "owner-1");
+        var innerResource = new TestResource("inner-res", "owner-1");
+
+        var outerBehavior = CreateBehavior<ResourceOwnerCommand>("owner-1", outerResource);
+        var innerBehavior = CreateBehavior<ResourceOwnerCommand>("owner-1", innerResource);
+
+        var outerCommand = new ResourceOwnerCommand("outer-res");
+        var innerCommand = new ResourceOwnerCommand("inner-res");
+
+        var observations = new List<string>();
+        var holder = new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>();
+
+        MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> innerNext = (_, _) =>
+        {
+            observations.Add($"inner-next:{holder.GetRequiredResource().Id}");
+            return new ValueTask<Result<string>>(Result.Ok("inner-done"));
+        };
+
+        MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> outerNext = async (_, ct) =>
+        {
+            observations.Add($"outer-next-before-nested:{holder.GetRequiredResource().Id}");
+            var innerResult = await innerBehavior.Handle(innerCommand, innerNext, ct);
+            innerResult.IsSuccess.Should().BeTrue();
+            observations.Add($"outer-next-after-nested:{holder.GetRequiredResource().Id}");
+            return Result.Ok("outer-done");
+        };
+
+        var result = await outerBehavior.Handle(outerCommand, outerNext, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        observations.Should().Equal(
+            "outer-next-before-nested:outer-res",
+            "inner-next:inner-res",
+            "outer-next-after-nested:outer-res");
     }
 
     #endregion

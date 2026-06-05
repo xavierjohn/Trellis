@@ -888,6 +888,41 @@ The current explicit resource-authorization model is load-bearing and AI-correct
 
 **`Trellis.FluentValidation` stays as a separate, opt-in package** (consistent with §2 row 9 and the "no forced third-party transitive dependencies" principle). The `ValidationBehavior` in `Trellis.Mediator` discovers FluentValidation validators *only when* `Trellis.FluentValidation` is referenced — the discovery happens via a typed extension method on `IServiceCollection` that the FluentValidation package contributes (`AddTrellisFluentValidation()`). Consumers who do not install `Trellis.FluentValidation` get the `IValidate.Validate()` path only. The 3 standalone extension methods (`ToResult`, `ValidateToResult`, `ValidateToResultAsync`) remain in `Trellis.FluentValidation` for use outside the pipeline. **No folding.**
 
+### 5.3 Resource handoff via `IAuthorizedResource<TMessage, TResource>` (v4)
+
+`ResourceAuthorizationBehavior` and `ResourceAuthorizationViaBehavior` load a resource to run `message.Authorize(actor, resource)` and then discard it. Without a handoff, the handler must reload the same resource via its repository — a measurable perf hit for non-EF stores (doubled CosmosDB RU billing, doubled Dapper roundtrip, doubled outbound HTTP call) and a wasted SQL query even for EF (the identity map dedupes the entity instance but the LINQ query still fires).
+
+**The contract.** A new public interface in `Trellis.Authorization`:
+
+```csharp
+public interface IAuthorizedResource<TMessage, TResource> where TResource : class
+{
+    TResource GetRequiredResource();   // throws InvalidOperationException outside a populated dispatch
+    bool TryGetResource([MaybeNullWhen(false)] out TResource resource);
+}
+```
+
+For `IAuthorizeResource<TResource>` commands, the accessor exposes the loaded `TResource`. For `IAuthorizeResourceVia<TOwner>` commands, the accessor exposes the **leaf** (the resource the message identifies via `IIdentifyResource<TLeaf, TLeafId>`), not the owner — the leaf is the typical mutation target. **The owner accessor is intentionally not in scope for v4**; handlers needing owner state read it from their repository. Adding an owner accessor is a follow-up if real demand surfaces.
+
+**Implementation.** A static `AsyncLocal<Frame?>` per closed `(TMessage, TResource)` pair, where `Frame` is a single-link node holding the resource and a volatile `IsActive` flag. Each `Push` allocates a new frame; `Dispose` flips the frame's `IsActive` to false AND restores the AsyncLocal slot to the previous frame in the disposing async flow. The pipeline behavior pushes inside a `using` block around `await next(...)` only after `Authorize` returns success — denied authorizations cannot expose the loaded resource via the accessor. Two correctness properties this design buys:
+
+- **Sibling fork isolation.** Concurrent `Task.WhenAll` branches that each call `Push` allocate independent frames; there is no mutation of shared state between siblings, so the cross-contamination scenario from GPT-5.5 round-2 finding 1 (mutating a shared `Stack<T>` reference flowed by AsyncLocal) cannot occur.
+- **Orphan task containment.** An orphan child task that captured the frame reference at fork time but outlives the parent dispatch reads `IsActive == false` (the parent's dispose flipped it; the volatile write is visible across cores) and correctly reports "no resource in scope." Without the flag, the orphan would retain access to the resource long after the dispatch ended — a violation of the "populated only during an active dispatch" contract caught by the GPT-5.5 code review on the implementation PR.
+
+**Identity guarantee, not mutation-readiness.** The accessor returns the SAME instance the loader returned. The framework does not validate that the instance is a canonical mutation-ready aggregate. Loaders that return projections, no-tracking entities, stale read-replica reads, or HTTP DTOs that cannot be persisted back through any local repository are valid loaders — but handlers in those cases should NOT inject the accessor; they reload via the repository. This is documented as a cookbook caution (Recipe 31) rather than a framework-enforced contract because: (a) the framework cannot verify the claim, (b) every loader-shape guard considered in earlier design rounds added significant surface (`IMutationReadyResourceLoader<,>` marker, analyzer, escape-hatch attribute) for a check the user already knows the answer to.
+
+**Constraint tightening.** `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>`, `ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>`, and their typed registration helpers gained `where TResource : class` / `where TLeaf : class` to permit the holder generic instantiation. No existing consumer in the codebase used a value-type resource (verified by grep across all `IAuthorizeResource<>` declarations) so this is a v2 constraint tightening with zero practical impact.
+
+**Auto-registration in all four entry points.** `IAuthorizedResource<TMessage, TResource>` is registered as scoped (backed by `AuthorizedResourceHolder<,>`) at every public entry that registers resource authorization: the explicit `AddResourceAuthorization<TMessage, TResource, TResponse>()`, the scan-based `AddResourceAuthorization(Assembly[])` (for each direct and via command discovered), the explicit `AddRelatedResourceAuthorization<TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse>(extractOwnerId)`, and the explicit `AddRelatedResourceAuthorization<TMessage, TLeaf, TOwner, TResponse>(path)`. Idempotent via `TryAddScoped`. AOT consumers use the typed overloads; the scan path is `[RequiresDynamicCode]` as before.
+
+**Out of scope** (deferred / rejected during design):
+- An `IMutationReadyResourceLoader<,>` marker that loaders opt into to assert "I return canonical mutation-ready instances" — rejected as ceremony the framework cannot enforce.
+- A plural `IAuthorizationOwners<TMessage, TOwner>` accessor for via-fan-out owners — deferred as not the typical mutation target.
+- A `TRLS0xx` analyzer that flags handlers reloading the authorized resource via repository — judged premature; revisit after real-world usage data.
+- A `[SkipMutationReadyAccessor]` escape attribute — unnecessary now that there is no marker to skip.
+
+See Recipe 31 in `trellis-api-cookbook.md` for the WRONG/FIX shape and the cookbook caution. See `IAuthorizedResource<TMessage, TResource>` in `trellis-api-authorization.md` for the API surface.
+
 ---
 
 ## 6. `Trellis.Asp` — one entry point, protocol semantics preserved

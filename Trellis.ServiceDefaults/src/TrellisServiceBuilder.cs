@@ -307,6 +307,7 @@ public sealed class TrellisServiceBuilder
         TResource,
         TResponse>()
         where TMessage : IAuthorizeResource<TResource>, IMessage
+        where TResource : class
         where TResponse : IResult, IFailureFactory<TResponse>
     {
         _useResourceAuthorization = true;
