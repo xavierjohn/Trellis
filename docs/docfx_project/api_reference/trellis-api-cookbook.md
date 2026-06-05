@@ -2942,7 +2942,7 @@ builder.Services.AddTrellis(o => o
     .UseResourceAuthorization<UpdateIncidentCommand, Incident, Result<Unit>>());
 ```
 
-`MapInboundClaims = false` is essential: with the default `true`, `Microsoft.IdentityModel.JsonWebTokens` rewrites standard JWT claim names through `JsonWebTokenHandler.DefaultInboundClaimTypeMap` — most consequentially `tid` → `http://schemas.microsoft.com/identity/claims/tenantid`, `amr` → `http://schemas.microsoft.com/claims/authnmethodsreferences`, and the role claims. Any of those used as `AttributeClaimMap` values (the recipe uses `tid` and `amr_normalized`) silently misses at runtime because `TrellisInternalJwtActorProvider` reads claim names directly and case-sensitively with no short↔long fallback for attributes. `sub` is the one exception — the provider applies short/long fallback for `ActorIdClaim` only — but every other mapped claim has to match exactly.
+`MapInboundClaims = false` is essential: with the default `true`, `Microsoft.IdentityModel.JsonWebTokens` rewrites a fixed set of standard JWT claim names through `JsonWebTokenHandler.DefaultInboundClaimTypeMap` — most consequentially for this recipe, `tid` → `http://schemas.microsoft.com/identity/claims/tenantid` and the role claims. Any of those used as an `AttributeClaimMap` value silently misses at runtime because `TrellisInternalJwtActorProvider` reads claim names directly and case-sensitively with no short↔long fallback for attributes. Gateway-controlled custom claims that aren't in the default map (e.g. `amr_normalized` above, `permissions`, `trellis_*`) pass through unchanged either way, but turning the map off is still the simplest correct posture — the only general property is "what `ActorIdClaim` reads has short↔long fallback, everything else does not", so a consumer who later reconfigures `ActorIdClaim` away from `sub` or maps a different standard claim still gets predictable behavior.
 
 ### Profile B — Air-gapped static key ring (no JWKS endpoint)
 
@@ -2960,9 +2960,12 @@ var keyRing = new Dictionary<string, SecurityKey>
 
 builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
 {
-    o.RequireHttpsMetadata = false;                 // no metadata endpoint
     o.MapInboundClaims = false;
     o.SaveToken = false;                            // do not retain the raw JWT (redaction default)
+    // No Authority / MetadataAddress is set — there is no OIDC metadata endpoint to fetch,
+    // so RequireHttpsMetadata (default true) has no effect. Leave it at the default rather
+    // than flipping it off — that way a future revision that adds an Authority cannot
+    // accidentally permit HTTP metadata.
     o.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true, ValidIssuer = "https://gateway.internal",
