@@ -531,7 +531,47 @@ builder.Services.AddTrellis(o => o
     .UseResourceAuthorization<UpdateOrderCommand, Order, Result<Unit>>());
 ```
 
-This pattern works today with current Trellis. Choose it when the external IDP is stable, all microservices share the same trust root, and you don't need per-cluster permission projection or shorter-than-IDP token lifetimes. When those constraints matter, the roadmap will offer two additional opt-in patterns: **Trellis internal JWT** (gateway re-mints a fresh per-cluster JWT from the full resolved `Actor`; see `TrellisInternalJwtActorProvider` + `Trellis.Yarp` in the authorization-microservices article when it ships) and **OAuth2 token exchange / OBO** (use `Microsoft.Identity.Web`'s OBO support directly — Trellis does not ship a token-exchange helper). The three-way decision matrix is documented in the upcoming `authorization-microservices.md` article.
+This pattern works today with current Trellis. Choose it when the external IDP is stable, all microservices share the same trust root, and you don't need per-cluster permission projection or shorter-than-IDP token lifetimes.
+
+**Path B — Trellis internal JWT (`UseTrellisInternalJwtActor` / `AddTrellisInternalJwtActorProvider`).** When the constraints above don't hold — you need per-cluster audience isolation, gateway-side permission projection, shorter token lifetimes than the external IDP allows, or you want downstream services decoupled from the external IDP's claim shape — switch to the Trellis internal-JWT contract. A trusted gateway (typically `Trellis.Yarp`, but any gateway implementing the same minting contract works) re-mints a fresh per-cluster JWT carrying the FULL resolved `Actor` shape, including `ForbiddenPermissions` and ABAC `Attributes`. Downstream microservices select this provider via the `TrellisServiceBuilder` slot `UseTrellisInternalJwtActor(...)` shown below (or call `services.AddTrellisInternalJwtActorProvider(...)` directly on `IServiceCollection` when not using the `AddTrellis` composition root):
+
+```csharp
+// Microservice composition — Path B (Trellis internal JWT).
+// Gateway minted a fresh internal JWT for this cluster; this service validates it against
+// the gateway's signing key and hydrates the FULL Actor surface (including forbidden
+// permissions + ABAC attributes) from the gateway-controlled claim shape.
+builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
+{
+    o.Authority = "https://gateway.internal";
+    o.Audience = "incidents-service";
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true, ValidIssuer = "https://gateway.internal",
+        ValidateAudience = true, ValidAudience = "incidents-service",
+        ValidateLifetime = true, RequireSignedTokens = true,
+        ValidAlgorithms = ["RS256"],                  // gateway uses asymmetric signing
+        ClockSkew = TimeSpan.FromSeconds(30),         // tight skew for internal network
+    };
+});
+
+builder.Services.AddTrellis(o => o
+    .UseTrellisInternalJwtActor(c =>
+    {
+        c.RequiredAttributes = ["tenant_id"];          // fail closed on missing tenant
+        c.AttributeClaimMap["tenant_id"] = "tid";
+        c.AttributeClaimMap["mfa"] = "amr_normalized";
+        c.ExpectedIssuer = "https://gateway.internal"; // defense-in-depth runtime check
+        c.ExpectedAudience = "incidents-service";
+    })
+    .UseResourceAuthorization()
+    .UseResourceAuthorization<UpdateOrderCommand, Order, Result<Unit>>());
+```
+
+The internal-JWT contract requires the gateway to mint three sentinel claims (`trellis_actor_contract_version=1`, `trellis_permissions_count`, `trellis_forbidden_permissions_count`) so a misbehaving proxy cannot strip the deny set silently — the deny-overrides-allow contract integrity invariant. The strict validation profile shown above (`ValidateIssuer/Audience/Lifetime`, `RequireSignedTokens`, `ValidAlgorithms`, `ClockSkew = 30s`) is mandatory; the cookbook's upcoming Recipe 33 spells out the air-gapped (static-key-ring) variant and the key-rotation runbook.
+
+**Path C — OAuth2 token exchange / OBO** is out of scope for Trellis v1. Use `Microsoft.Identity.Web`'s OBO support directly when an enterprise multi-tenant SaaS needs RFC 8693 token exchange against the IDP.
+
+The three-way decision matrix (when to choose each path) is documented in the upcoming `authorization-microservices.md` article.
 
 ---
 
