@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-05-31
+last_verified: 2026-06-05
 audience: [llm]
 ---
 # Trellis Cross-Package Cookbook
@@ -108,6 +108,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Rehydrate an entity from a database row (fail-loud vs Result-track) | [Recipe 30](#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
 | Avoid the pipeline-then-handler duplicate load when a command both authorizes and mutates the same resource | [Recipe 31](#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) |
 | Hide existence of sensitive resources from unauthorized callers — translate `Forbidden`/`AuthenticationRequired` to `NotFound` | [Recipe 32](#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) |
+| Configure the strict `AddJwtBearer` validation profile + key-rotation runbook for `UseTrellisInternalJwtActor` (gateway-minted internal JWT) | [Recipe 33](#recipe-33--strict-addjwtbearer-validation-profile-for-usetrellisinternaljwtactor) |
 
 ### Mistake-regression routing
 
@@ -544,6 +545,7 @@ builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
 {
     o.Authority = "https://gateway.internal";
     o.Audience = "incidents-service";
+    o.MapInboundClaims = false;                       // keep raw JWT claim names (e.g. "tid", not the Microsoft tenant URI)
     o.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true, ValidIssuer = "https://gateway.internal",
@@ -551,6 +553,7 @@ builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
         ValidateLifetime = true, RequireSignedTokens = true,
         ValidAlgorithms = ["RS256"],                  // gateway uses asymmetric signing
         ClockSkew = TimeSpan.FromSeconds(30),         // tight skew for internal network
+        TryAllIssuerSigningKeys = false,              // never fall back to "try every key" — see Recipe 33
     };
 });
 
@@ -567,7 +570,7 @@ builder.Services.AddTrellis(o => o
     .UseResourceAuthorization<UpdateOrderCommand, Order, Result<Unit>>());
 ```
 
-The internal-JWT contract requires the gateway to mint three sentinel claims (`trellis_actor_contract_version=1`, `trellis_permissions_count`, `trellis_forbidden_permissions_count`) so a misbehaving proxy cannot strip the deny set silently — the deny-overrides-allow contract integrity invariant. The strict validation profile shown above (`ValidateIssuer/Audience/Lifetime`, `RequireSignedTokens`, `ValidAlgorithms`, `ClockSkew = 30s`) is mandatory; the cookbook's upcoming Recipe 33 spells out the air-gapped (static-key-ring) variant and the key-rotation runbook.
+The internal-JWT contract requires the gateway to mint three sentinel claims (`trellis_actor_contract_version=1`, `trellis_permissions_count`, `trellis_forbidden_permissions_count`) so a misbehaving proxy cannot strip the deny set silently — the deny-overrides-allow contract integrity invariant. The strict validation profile shown above (`MapInboundClaims = false`, `ValidateIssuer/Audience/Lifetime`, `RequireSignedTokens`, `ValidAlgorithms`, `ClockSkew = 30s`, `TryAllIssuerSigningKeys = false`) is mandatory; [Recipe 33](#recipe-33--strict-addjwtbearer-validation-profile-for-usetrellisinternaljwtactor) spells out the air-gapped (static-key-ring) variant, the tenant-isolation defense-in-depth check, and the key-rotation runbook.
 
 **Path C — OAuth2 token exchange / OBO** is out of scope for Trellis v1. Use `Microsoft.Identity.Web`'s OBO support directly when an enterprise multi-tenant SaaS needs RFC 8693 token exchange against the IDP.
 
@@ -2892,6 +2895,182 @@ Trellis_Logs
 **Via commands and intermediate hop failures.** The pass-through guarantee above applies to the **leaf** loader's return value (the resource the command identifies). For multi-hop authorization (`IAuthorizeResourceVia<TOwner>` with one or more intermediate / owner loads), `ResourceAuthorizationViaBehavior` follows the v1 multi-hop security model: any intermediate or owner load failure — regardless of underlying error kind — is collapsed to `new Error.Forbidden("resource.authorization-via.load-failed")` **before** exposure-policy translation runs, to avoid leaking the existence of related resources whose presence the actor may not be authorized to learn. Under `HideAsNotFound`, that synthetic Forbidden translates to `NotFound` like any other Forbidden, so an `Unavailable` from a downstream owner service surfaces as `404` to the consumer. The `ExistenceHidden` log carries `OriginalCode = "resource.authorization-via.load-failed"`, which tells SecOps that a hop failed but not the underlying downstream-failure kind — consumers needing finer-grained downstream-failure visibility for the related-resource graph should use the direct `IAuthorizeResource<TResource>` model and surface the downstream cause from their loader instead of opting into the multi-hop fan-out.
 
 **Related recipes.** [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) for the authorization model; [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization) for via commands; [Recipe 31](#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) for the resource-handoff accessor that composes with this policy.
+
+---
+
+## Recipe 33 — Strict `AddJwtBearer` validation profile for `UseTrellisInternalJwtActor`
+
+**Problem.** Recipe 7's Path B (Trellis internal JWT) selects `UseTrellisInternalJwtActor(...)` to hydrate the `Actor` from a gateway-minted internal JWT, but `Trellis.Asp` deliberately does **not** take a hard `Microsoft.AspNetCore.Authentication.JwtBearer` dependency — the actor provider's job is claim-shape contract enforcement, not transport-level token validation. That makes JWT validation the consumer's responsibility, and most production failures of the internal-JWT pattern come from a too-loose `AddJwtBearer(...)` profile (default 5-minute `ClockSkew`, no `ValidAlgorithms` pin, no `RequireSignedTokens`, no signing-key resolver pinned to the gateway), not from the actor provider itself.
+
+**Fix.** Two strict validation profiles paired with `UseTrellisInternalJwtActor` and a few defense-in-depth checks that the gateway claim alone cannot guarantee.
+
+### Profile A — JWKS-discovery (default; gateway exposes a JWKS endpoint)
+
+Use when the gateway can serve a JWKS document over HTTPS that downstream services can fetch and cache. Suitable for in-cluster gateways such as `Trellis.Yarp` or any reverse proxy that signs tokens with a key whose public material is published at a well-known endpoint.
+
+```csharp
+// Microservice composition — strict JWKS-discovery profile.
+builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
+{
+    o.Authority = "https://gateway.internal";       // OIDC discovery = {Authority}/.well-known/openid-configuration; JWKS lives at the discovery doc's jwks_uri
+    o.Audience = "incidents-service";               // pin per-service audience
+    o.RequireHttpsMetadata = true;                  // never accept JWKS over plaintext, even on-prem
+    o.MapInboundClaims = false;                     // keep raw JWT claim names (e.g. "tid"/"amr"), not the Microsoft long-URI forms
+    o.SaveToken = false;                            // do not retain the raw JWT in AuthenticationProperties (redaction default)
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true, ValidIssuer = "https://gateway.internal",
+        ValidateAudience = true, ValidAudience = "incidents-service",
+        ValidateLifetime = true, RequireExpirationTime = true,
+        ValidateIssuerSigningKey = true, RequireSignedTokens = true,
+        ValidAlgorithms = ["RS256"],                // pin asymmetric — reject "alg":"none", HS256 key-confusion
+        ClockSkew = TimeSpan.FromSeconds(30),       // tighten from the 5-minute default
+        TryAllIssuerSigningKeys = false,            // see "Disable try-all signing-key fallback" below — applies to both profiles
+    };
+});
+
+builder.Services.AddTrellis(o => o
+    .UseTrellisInternalJwtActor(c =>
+    {
+        c.RequiredAttributes = ["tenant_id"];        // fail closed on missing tenant
+        c.AttributeClaimMap["tenant_id"] = "tid";
+        c.AttributeClaimMap["mfa"] = "amr_normalized";
+        c.ExpectedIssuer = "https://gateway.internal"; // defense-in-depth runtime check
+        c.ExpectedAudience = "incidents-service";
+    })
+    .UseResourceAuthorization()
+    .UseResourceAuthorization<UpdateIncidentCommand, Incident, Result<Unit>>());
+```
+
+`MapInboundClaims = false` is essential: with the default `true`, `Microsoft.IdentityModel.JsonWebTokens` rewrites a fixed set of standard JWT claim names through `JsonWebTokenHandler.DefaultInboundClaimTypeMap` — most consequentially for this recipe, `tid` → `http://schemas.microsoft.com/identity/claims/tenantid` and the role claims. Any of those used as an `AttributeClaimMap` value silently misses at runtime because `TrellisInternalJwtActorProvider` reads claim names directly and case-sensitively with no short↔long fallback for attributes. Gateway-controlled custom claims that aren't in the default map (e.g. `amr_normalized` above, `permissions`, `trellis_*`) pass through unchanged either way, but turning the map off is still the simplest correct posture — the only general property is "what `ActorIdClaim` reads has short↔long fallback, everything else does not", so a consumer who later reconfigures `ActorIdClaim` away from `sub` or maps a different standard claim still gets predictable behavior.
+
+### Profile B — Air-gapped static key ring (no JWKS endpoint)
+
+Use when network policy forbids the microservice from reaching the gateway's metadata endpoint (cross-segment, regulated workloads, air-gapped deployments). The signing key set is provisioned out-of-band via configuration/secrets and looked up by `kid` at validation time.
+
+```csharp
+// Microservice composition — air-gapped key-ring profile.
+// Gateway's active + previous-generation public keys are loaded from configuration
+// (Key Vault, sealed Secret, mounted JWK file, etc.) and resolved by 'kid'.
+var keyRing = new Dictionary<string, SecurityKey>
+{
+    ["2026-Q2"] = new RsaSecurityKey(LoadPublicRsaKey("gateway-2026-Q2.pem")),
+    ["2026-Q3"] = new RsaSecurityKey(LoadPublicRsaKey("gateway-2026-Q3.pem")),
+};
+
+builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
+{
+    o.MapInboundClaims = false;
+    o.SaveToken = false;                            // do not retain the raw JWT (redaction default)
+    // No Authority / MetadataAddress is set — there is no OIDC metadata endpoint to fetch,
+    // so RequireHttpsMetadata (default true) has no effect. Leave it at the default rather
+    // than flipping it off — that way a future revision that adds an Authority cannot
+    // accidentally permit HTTP metadata.
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true, ValidIssuer = "https://gateway.internal",
+        ValidateAudience = true, ValidAudience = "incidents-service",
+        ValidateLifetime = true, RequireExpirationTime = true,
+        ValidateIssuerSigningKey = true, RequireSignedTokens = true,
+        ValidAlgorithms = ["RS256"],
+        ClockSkew = TimeSpan.FromSeconds(30),
+        TryAllIssuerSigningKeys = false,            // honor the kid-pinned resolver below — never fall back to "try every key"
+        IssuerSigningKeyResolver = (token, securityToken, kid, _) =>
+            kid is not null && keyRing.TryGetValue(kid, out var key)
+                ? [key]
+                : Array.Empty<SecurityKey>(),       // unknown kid → no key → fail closed
+    };
+});
+```
+
+### Disable try-all signing-key fallback (BOTH profiles)
+
+`TokenValidationParameters.TryAllIssuerSigningKeys` defaults to `true`. When kid resolution returns nothing (no `kid` header, an unmapped `kid`, or a resolver returning empty), IdentityModel iterates every still-trusted signing key from cached OIDC configuration (Profile A) or `IssuerSigningKeys` (Profile B) and attempts signature validation against each. That throws away the rotation-isolation property: after the gateway has retired `K_old` but before some microservices have refreshed their cache, an attacker who exfiltrated `K_old` before retirement can mint a token with no/wrong `kid`; the kid-pinned resolver returns nothing; the try-all fallback then succeeds against the still-cached `K_old`. Pin `TryAllIssuerSigningKeys = false` so that an unmapped `kid` fails closed immediately — the only valid signatures are those produced under the currently advertised `kid`. The gateway MUST always set `kid` on issued tokens; treat unknown / null `kid` as fail-closed.
+
+In Profile B specifically, `TryAllIssuerSigningKeys = false` is also a config-drift guard: if some future revision of the validation parameters ever adds entries to `IssuerSigningKeys` (e.g. a copy-paste from another sample), the resolver's `kid` pinning still wins.
+
+Air-gapped rotation SLA: rotation requires a redeploy (or a config-reload hook) on every microservice. Plan a 24–72h overlap window per the runbook below.
+
+### Tightened `ClockSkew` rationale
+
+The framework default for `JwtBearerOptions.TokenValidationParameters.ClockSkew` is 5 minutes. Combined with a typical 5-minute access-token lifetime, that yields a ~10-minute effective replay window per token. The internal-JWT scenario is wholly inside your trust boundary with NTP-synchronized hosts (sub-second skew on production fleets), so 30 seconds is plenty of headroom and shrinks the replay window by an order of magnitude. Don't go below 30 seconds without an NTP SLA — clock drift can spike during VM live-migration and cause spurious validation failures.
+
+### Logging-redaction checklist
+
+Trellis-side: `TrellisInternalJwtActorProvider` already redacts (only logs scheme, claim **type** names, counts, consumer-configured literals — never claim values, JWT body, actor IDs, or PII). The consumer side has equivalent obligations:
+
+| Safe to log | Never log |
+|---|---|
+| Scheme name (e.g. `"Bearer"`) | The raw JWT (Authorization header value) |
+| `kid` (key identifier) | Raw claim values (`sub`, `tid`, `email`, permission strings) |
+| `iss` / `aud` (gateway-controlled literals) | The full `Actor.Id` |
+| `JwtBearerEvents.OnAuthenticationFailed` exception **type** | The decoded JWT body (`token.Claims`) |
+| `JwtBearerEvents.OnChallenge` failure code (`error`) | `Authorization` header on `HttpContext.Request` |
+| Request `traceparent` / `Activity.Id` for correlation | `JwtBearerEvents` `Token`/`Exception` raw content beyond type |
+
+Conditionally safe — only with controls in place:
+
+- **Keyed HMAC of `sub` / `jti`** (NOT plain SHA-256). Plain hashes of low-cardinality `sub` values are reversible by dictionary / frequency analysis; use a server-side HMAC key rotated separately from the JWT signing key, and truncate to 8-16 bytes for log volume.
+- **Permissions / forbidden / attribute *counts***. For small or known actor populations, exact counts fingerprint an actor (an actor with exactly 47 permissions narrows enumeration). Bucket (`0`, `1`, `2-5`, `6-20`, `21+`) or suppress entirely for sensitive populations.
+
+Add a `JwtBearerEvents.OnAuthenticationFailed` handler that logs only the exception type and `kid` (if available), never the token or full exception message.
+
+### Tenant-isolation defense-in-depth — the gateway claim is NOT sufficient
+
+A `tenant_id` claim minted by the gateway tells the microservice *which tenant the actor is acting on behalf of*. It does NOT prove that the resource being accessed belongs to that tenant. A bug in the gateway, a stale cached actor envelope, or a downstream service trusted to a wider tenant scope could surface a tenant claim that disagrees with the resource. Resource authorization MUST enforce `resource.TenantId == actor.Attributes["tenant_id"]` as a second gate — failing closed even when the static permission check (`actor.HasPermission("incidents:read")`) succeeds.
+
+```csharp
+public sealed record UpdateIncidentCommand(IncidentId Id, IncidentPatch Patch)
+    : ICommand<Result<Unit>>,
+      IAuthorizeResource<Incident>,
+      IIdentifyResource<Incident, IncidentId>
+{
+    public IncidentId GetResourceId() => Id;
+
+    public IResult Authorize(Actor actor, Incident incident)
+    {
+        if (!actor.Attributes.TryGetValue("tenant_id", out var actorTenant))
+            return Result.Fail(new Error.Forbidden("incidents.tenant-missing"));
+
+        if (!string.Equals(incident.TenantId.Value, actorTenant, StringComparison.Ordinal))
+            return Result.Fail(new Error.Forbidden("incidents.cross-tenant"));
+
+        return Result.Ensure(
+            incident.AssigneeId == actor.Id || actor.HasPermission("incidents:write-any"),
+            new Error.Forbidden("incidents.write-denied"));
+    }
+}
+```
+
+Pair this with [Recipe 32](#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) when cross-tenant probing is itself a leak — `Forbidden` from this check translates to `NotFound`, so an attacker enumerating incident IDs across tenants sees an indistinguishable 404. The `ExistenceHidden` log carries the original `incidents.cross-tenant` code so SecOps can still detect the probe pattern.
+
+### Key-rotation runbook (overlapping JWKS window)
+
+The internal JWT lifetime should be short (Trellis-recommended: 5 minutes). Rotation must cover any token already in flight, so the overlap window is `token_lifetime + ClockSkew + safety_margin`. With 5-minute lifetime + 30-second skew + 30-second safety = **~6 minutes minimum** to retire the previous key.
+
+Profile A (JWKS-discovery):
+
+1. **T0** — Gateway adds the new key `K_new` (kid `2026-Q3`) to its JWKS endpoint **alongside** `K_old` (kid `2026-Q2`). Gateway continues to sign tokens with `K_old`.
+2. **T0 + `AutomaticRefreshInterval` + jitter window + warm-up probe** — All microservices have refreshed their cached OIDC configuration. `ConfigurationManager` refresh is lazy (driven by the next inbound request after the interval elapses) and the next refresh is scheduled at `AutomaticRefreshInterval + random(AutomaticRefreshInterval/20)`, so a 30-second `safety_margin` is NOT enough on its own — fleet-wide convergence can lag by `AutomaticRefreshInterval + 5%` plus your slowest service's request idle gap. Operational gate: probe every microservice with a request that ACTUALLY exercises JWT validation — an authenticated endpoint (NOT an anonymous `/health` route, which returns 200 regardless of token state) such as a dedicated internal `/_internal/auth-probe` requiring a Bearer token signed by `K_new`. Require an `AuthenticateAsync("Bearer")` success (HTTP 200) from EVERY instance before proceeding. `JwtBearerOptions.RefreshOnIssuerKeyNotFound = true` (default) requests a forced refresh on the first request that hits an unknown `kid` — useful as a backstop, but it only fires AFTER a `SecurityTokenSignatureKeyNotFoundException`, so a botched rotation will produce a brief spike of rejected requests until the forced refresh completes (`ConfigurationManager.RefreshInterval`, default 5min, throttles forced refreshes).
+3. **Probe-confirmed convergence** — Gateway flips signer to `K_new`. Newly minted tokens carry `kid: "2026-Q3"`.
+4. **Signer-flip + token_lifetime + ClockSkew + safety_margin** — No in-flight token is signed with `K_old`. Gateway removes `K_old` from JWKS. Microservices stop accepting it on the next cache refresh.
+
+Profile B (air-gapped static key ring):
+
+1. **T0** — Push a config update to every microservice that adds `K_new` to the key ring **alongside** `K_old`. Restart / hot-reload as your infra requires. The microservice now trusts both keys.
+2. **T0 + slowest-fleet-rollout** — All microservices have the dual-key ring. Gateway flips signer.
+3. **Signer-flip + token_lifetime + ClockSkew + safety_margin** — Push a config update removing `K_old`. Restart / hot-reload.
+
+The fail-loud signal during a botched rotation is `SecurityTokenSignatureKeyNotFoundException` on the microservice side (this is the type `RefreshOnIssuerKeyNotFound` reacts to) — surface it on a high-priority alert (it correlates 1:1 with "tokens being rejected"). Do NOT silently retry; the runbook step is *roll forward the gateway* or *roll back the signing switch*, not *expand the key acceptance window*.
+
+### What it shows
+
+- `Trellis.Asp` decouples claim-shape contract enforcement (`TrellisInternalJwtActorProvider`) from transport-level token validation (`Microsoft.AspNetCore.Authentication.JwtBearer`). Consumers wire both, and each is independently strict.
+- The two profiles map to the two most common topologies (JWKS-reachable gateway vs air-gapped key ring) and share the same `TokenValidationParameters` core — only the key-source surface differs.
+- `MapInboundClaims = false` is mandatory for any consumer of `TrellisInternalJwtActorProvider`; the provider reads JWT claim names directly and case-sensitively.
+- Tenant isolation is the canonical example of "gateway claim ≠ resource authorization" — the resource authorization layer is the defense-in-depth second gate, never optional.
+
+**Related recipes.** [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) for the three-path microservices framing (Path A pass-through, Path B internal JWT shown here, Path C OBO); [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization) for owner-chain tenant enforcement; [Recipe 32](#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) for cross-tenant probing defense.
 
 ---
 
