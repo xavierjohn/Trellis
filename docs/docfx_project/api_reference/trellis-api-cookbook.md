@@ -2707,7 +2707,7 @@ In those cases the loader's job is "decide who owns the resource for the authori
 - the message lacks resource-authorization registration (`AddResourceAuthorization` was never called for it);
 - authentication failed, the loader failed, or `Authorize` was denied (none of which populate the accessor — denied authorizations cannot expose the loaded resource).
 
-For optional reads use `TryGet(out var resource)` which returns `false` instead of throwing.
+For optional reads use `TryGetResource(out var resource)` which returns `false` instead of throwing.
 
 **What it shows.** Eliminates the duplicate load that motivated the v4 accessor. For non-EF stores (CosmosDB, Dapper, HTTP-backed loaders) this is a measurable perf win — half the I/O on every authorized command. For EF it is also a win (skips the second LINQ query — the identity map only handles entity-instance deduplication, not the SQL roundtrip). The framework guarantee is identity, not mutation-readiness — the cookbook caution above is the user's responsibility.
 

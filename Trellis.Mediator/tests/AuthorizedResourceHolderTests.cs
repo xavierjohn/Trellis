@@ -16,10 +16,10 @@ using Trellis.Mediator.Tests.Helpers;
 /// </summary>
 public class AuthorizedResourceHolderTests
 {
-    #region GetRequired / TryGet outside dispatch
+    #region GetRequiredResource / TryGetResource outside dispatch
 
     [Fact]
-    public void GetRequired_OutsideAnyPush_ThrowsWithDiagnosticMessage()
+    public void GetRequiredResource_OutsideAnyPush_ThrowsWithDiagnosticMessage()
     {
         var holder = new AuthorizedResourceHolder<HolderTestCommand, TestResource>();
 
@@ -47,7 +47,7 @@ public class AuthorizedResourceHolderTests
     #region Single push / pop
 
     [Fact]
-    public void Push_ThenGetRequired_ReturnsPushedInstance()
+    public void Push_ThenGetRequiredResource_ReturnsPushedInstance()
     {
         var holder = new AuthorizedResourceHolder<HolderTestCommand, TestResource>();
         var resource = new TestResource("r1", "owner-1");
@@ -93,7 +93,7 @@ public class AuthorizedResourceHolderTests
     #region Nested push / pop (mirrors nested mediator.Send)
 
     [Fact]
-    public void NestedPush_GetRequired_ReturnsTopOfStack()
+    public void NestedPush_GetRequiredResource_ReturnsTopOfStack()
     {
         var holder = new AuthorizedResourceHolder<HolderTestCommand, TestResource>();
         var outer = new TestResource("outer", "owner");
@@ -302,7 +302,7 @@ public class AuthorizedResourceHolderTests
             "the IsActive flag must make the dispose visible across async flows");
         captured.Should().BeNull();
         getRequiredThrew.Should().BeTrue(
-            "GetRequired must throw rather than return a stale resource the orphan should not have access to");
+            "GetRequiredResource must throw rather than return a stale resource the orphan should not have access to");
     }
 
     #endregion
