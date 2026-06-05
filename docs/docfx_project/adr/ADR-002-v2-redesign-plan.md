@@ -923,6 +923,53 @@ For `IAuthorizeResource<TResource>` commands, the accessor exposes the loaded `T
 
 See Recipe 31 in `trellis-api-cookbook.md` for the WRONG/FIX shape and the cookbook caution. See `IAuthorizedResource<TMessage, TResource>` in `trellis-api-authorization.md` for the API surface.
 
+### 5.4 Failure-exposure policy via `AuthFailureExposurePolicy` (P2)
+
+`ResourceAuthorizationBehavior` and `ResourceAuthorizationViaBehavior` emit `Error.Forbidden` or `Error.AuthenticationRequired` on authorization failures, which the boundary maps to HTTP 403 / 401. For some resources — incident reports, security findings, internal correspondence, private profiles — the 403 itself reveals that the resource exists. The boundary needs to return 404 (indistinguishable from "resource does not exist") to unauthorized actors, and 200 to authorized actors.
+
+**The contract.** A new opt-in policy in `Trellis.Mediator`:
+
+```csharp
+public enum AuthFailureExposurePolicy { Propagate = 0, HideAsNotFound = 1 }
+
+public sealed class ResourceAuthorizationOptions
+{
+    public AuthFailureExposurePolicy DefaultExposurePolicy { get; set; } = Propagate;
+    public ResourceAuthorizationOptions HideExistence<TResource>() where TResource : class;
+    public ResourceAuthorizationOptions HideExistence<TAuthorizationResource, TPublicResource>() where TAuthorizationResource : class;
+    public ResourceAuthorizationOptions Propagate<TResource>() where TResource : class;
+}
+```
+
+Composition root:
+
+```csharp
+services.AddTrellis(o => o.UseResourceAuthorization(opts => opts.HideExistence<Incident>()));
+```
+
+**Translation scope is deliberately narrow.** Only `Error.Forbidden` and `Error.AuthenticationRequired` are translated to `new Error.NotFound(ResourceRef)`. Other errors — `Unexpected`, `Unavailable`, `NotFound` from the loader, transport faults — pass through verbatim. Hiding transient infrastructure failures behind 404 would destroy operational signal and lead clients and caches to treat them as permanent absence. For the via path the pass-through guarantee applies only to the LEAF loader; intermediate / owner hop failures continue to collapse to `new Error.Forbidden("resource.authorization-via.load-failed")` per the v1 multi-hop security model (existence-leak protection on related resources, §5.3 of ADR-002 v1 reference) before exposure-policy translation sees them, so an `Unavailable` from a downstream owner service does become `404` to the consumer under `HideAsNotFound`. The `ExistenceHidden` log carries the collapsed `OriginalCode` (`resource.authorization-via.load-failed`) — finer-grained downstream-failure visibility on the related-resource graph requires the direct `IAuthorizeResource<TResource>` model instead of the via fan-out shape.
+
+**Both load- and authorize-failure paths translate.** A remote loader returning `Forbidden` (e.g. a downstream ACL refused) and the local `message.Authorize(actor, resource)` returning `Forbidden` both flow through the same translation. The behavior's internal null-payload defense — which synthesises `new Error.Forbidden("resource.authorization.null-payload")` when a loader violates its `Result<T>` contract — is also translated; a misbehaving loader must not leak existence either.
+
+**Projection-loader overload.** `HideExistence<TAuthorizationResource, TPublicResource>()` decouples "what the loader returns" from "what the wire-public type is" — a common shape where the loader projects to a small authorization-only type (e.g. `IncidentOwnership`) but the REST resource is the full aggregate (e.g. `Incident`). The synthetic `NotFound.ResourceRef.Type` is the public type name; ID extraction tries `IIdentifyResource<TPublicResource, TId>` first, falling back to `IIdentifyResource<TAuthorizationResource, TId>` if only the projection identifier is declared on the message.
+
+**Via commands key on `TLeaf`, not `TOwner`.** `HideExistence<Match>()` hides authorization failures on commands implementing `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match, MatchId>`. The synthetic `NotFound` references `Match` (the resource the command identifies), never `Team` (the authorization implementation detail). Opting `Team` in is a no-op — the lookup key is the leaf.
+
+**Pipeline interaction caveat.** `AuthorizationBehavior` (static-permission gate, `IAuthorize`) runs **before** `ResourceAuthorizationBehavior` in the canonical pipeline. An unauthenticated caller fails the static gate first; that `Error.AuthenticationRequired` surfaces from `AuthorizationBehavior` and is **not** translated, because `AuthorizationBehavior` has no concept of the resource being protected. Commands needing existence-hiding to apply to anonymous probes must omit `IAuthorize` and let `HideAsNotFound` cover the resource-authorization branch alone. Documented in Recipe 32 and asserted by `ResourceAuthorizationBehaviorExposurePolicyTests`.
+
+**Options registration is unconditional.** Every `AddResourceAuthorization` overload (typed AOT, scan, related-typed, and the new options-bearing overload) funnels through a private `EnsureResourceAuthorizationOptionsRegistered` helper that calls `services.AddOptions<ResourceAuthorizationOptions>()`. Behaviors can therefore always resolve `IOptions<ResourceAuthorizationOptions>` regardless of registration order — null options would otherwise default to `Propagate` and silently break the contract.
+
+**Reflection-based ID extraction, cached per closed `(TMessage, TIdResource)` pair.** `IIdentifyResource<TResource, out TId>` has covariance on `TId`, but value-typed IDs (record struct, raw `Guid` / `int`) can't reach `object` through that covariance. A static `Func<TMessage, object?>?` per closed generic uses `MethodInfo.Invoke` against the message's `IIdentifyResource<TResource, TId>.GetResourceId()` to box the value. The closed-generic instantiation deduplicates the cache naturally; the reflection cost is paid only on the (rare) failure path.
+
+**Observability.** Translation emits a `[LoggerMessage]` event `ExistenceHidden` (`EventId = 1`, `Level = Information`) carrying the original `Kind`, `Code`, message-name, and public resource type. SecOps can audit denial reasons via SIEM without exposing the disclosure on the wire.
+
+**Out of scope** (rejected during design):
+- Global "hide everything" switch beyond `DefaultExposurePolicy = HideAsNotFound`. The default policy already covers this; resource-by-resource opt-in is the canonical interface.
+- Startup validation that every `HideExistence<TResource>()` references a TResource that's actually wired up. A typo silently does nothing; preferable to forcing scan-order coupling between options and registration. Documented in `ResourceAuthorizationOptions`.
+- Translation of static-permission `AuthorizationBehavior` failures — addressed via documentation (Recipe 32 caveat) rather than coupling the static-auth behavior to resource-type knowledge.
+
+See Recipe 32 in `trellis-api-cookbook.md` for the WRONG/FIX shape, cache caveats, SIEM query examples, and the canonical worked example. See `ResourceAuthorizationOptions` and `AuthFailureExposurePolicy` in `trellis-api-mediator.md` for the API surface.
+
 ---
 
 ## 6. `Trellis.Asp` — one entry point, protocol semantics preserved

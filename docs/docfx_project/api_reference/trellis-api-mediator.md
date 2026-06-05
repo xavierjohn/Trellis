@@ -29,6 +29,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#patterns-index) — 
 | Add static permission authorization | Message implements `IAuthorize`; register `AddTrellisBehaviors()` | [`AuthorizationBehavior<TMessage,TResponse>`](#authorizationbehaviortmessage-tresponse) |
 | Add resource authorization with assembly scanning | `services.AddResourceAuthorization(typeof(SomeType).Assembly)` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
 | Add resource authorization explicitly | `services.AddResourceAuthorization<TMessage,TResource,TResponse>()` plus loader registration | [`ResourceAuthorizationBehavior<TMessage,TResource,TResponse>`](#resourceauthorizationbehaviortmessage-tresource-tresponse) |
+| Hide existence of sensitive resources from unauthorized callers | `services.AddResourceAuthorization(o => o.HideExistence<TResource>())` | [`ResourceAuthorizationOptions`](#resourceauthorizationoptions) |
 | Bridge `IIdentifyResource<TResource,TId>` to a shared loader | `services.AddSharedResourceLoader<TMessage,TResource,TId>()` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
 | Register EF unit-of-work behavior | `services.AddTrellisUnitOfWork<TContext>()` | [`Canonical pipeline order`](#canonical-pipeline-order) |
 | Keep commits inside the pipeline | Repositories stage changes; `TransactionalCommandBehavior` commits on success | [`Behavioral notes`](#behavioral-notes) |
@@ -158,7 +159,7 @@ public sealed partial class LoggingBehavior<TMessage, TResponse> : IPipelineBeha
 **Declaration**
 
 ```csharp
-public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>
+public sealed partial class ResourceAuthorizationViaBehavior<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage, TLeaf, TOwner, TResponse>
     : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IAuthorizeResourceVia<TOwner>, global::Mediator.IMessage
     where TLeaf : class
@@ -171,14 +172,14 @@ Pipeline behavior implementing indirect (multi-hop) resource authorization. Load
 
 | Signature | Description |
 | --- | --- |
-| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse> pathHolder)` | DI-friendly constructor; the closed-generic holder is registered per via-command so DI naturally disambiguates. |
-| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPath path)` | Test/manual constructor accepting a hand-built path. Validates `path.MessageType`/`LeafType`/`OwnerType` match the behavior's generic arguments. |
+| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse> pathHolder, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)` | DI-friendly constructor; the closed-generic holder is registered per via-command so DI naturally disambiguates. `options` defaults to a fresh `ResourceAuthorizationOptions` (`DefaultExposurePolicy = Propagate`); `logger` defaults to `NullLogger.Instance`. |
+| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPath path, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)` | Test/manual constructor accepting a hand-built path. Validates `path.MessageType`/`LeafType`/`OwnerType` match the behavior's generic arguments. |
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Resolves the actor before doing any I/O (including resolving the leaf loader from DI — loader construction is treated as I/O because the DI factory may open a `DbContext` or pre-fetch state). When the actor provider returns `Maybe<Actor>.None`, short-circuits with `TResponse.CreateFailure(new Error.AuthenticationRequired { Detail = "Authentication required." })`; provider-side `InvalidOperationException` still propagates as a deployment bug. Loads the leaf via `IResourceLoader<TMessage, TLeaf>` — leaf load failure bubbles verbatim. Walks the resolved path: per hop extracts IDs (de-duplicated, nulls filtered), loads each via the registered `SharedResourceLoaderById<TTo, TToId>` — intermediate/owner load failures collapse to `Error.Forbidden` (no existence leak); empty ID list at any hop short-circuits to `Error.Forbidden`. Finally calls `message.Authorize(actor, IReadOnlyList<TOwner>)` and returns its result, or invokes the handler when the authorization passes. **Null-payload defense.** A loader that violates its `Result<T>` contract by returning `Result.Ok(null)` is treated as fail-closed rather than crashing the pipeline: a leaf null-payload short-circuits to `Error.Forbidden` with code `resource.authorization-via.null-payload` (caller-visible). A hop null-success is treated internally as a hop failure and — like every other intermediate/owner load failure — collapses to `Error.Forbidden` with code `resource.authorization-via.load-failed` (the underlying null-payload code is intentionally not surfaced, mirroring the existence-leak protection on hop failures generally). |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Resolves the actor before doing any I/O (including resolving the leaf loader from DI — loader construction is treated as I/O because the DI factory may open a `DbContext` or pre-fetch state). When the actor provider returns `Maybe<Actor>.None`, short-circuits with `TResponse.CreateFailure(new Error.AuthenticationRequired { Detail = "Authentication required." })`; provider-side `InvalidOperationException` still propagates as a deployment bug. Loads the leaf via `IResourceLoader<TMessage, TLeaf>` — leaf load failure bubbles verbatim. Walks the resolved path: per hop extracts IDs (de-duplicated, nulls filtered), loads each via the registered `SharedResourceLoaderById<TTo, TToId>` — intermediate/owner load failures collapse to `Error.Forbidden` (no existence leak); empty ID list at any hop short-circuits to `Error.Forbidden`. Finally calls `message.Authorize(actor, IReadOnlyList<TOwner>)` and returns its result, or invokes the handler when the authorization passes. **Failure-exposure policy.** Lookup key is `typeof(TLeaf)` (the resource the command identifies, not the owner). When `ResourceAuthorizationOptions` opts `TLeaf` into `HideAsNotFound`, all `Error.Forbidden` and `Error.AuthenticationRequired` outcomes — actor-required, leaf-load Forbidden, intermediate/owner load failures, empty-hop, null-payload, and `message.Authorize` denial — translate to `new Error.NotFound(ResourceRef)` referencing `TLeaf` (never `TOwner`). The pass-through guarantee for operational errors (`Error.Unexpected`, `Error.Unavailable`, transport faults) applies only to the LEAF loader's direct return value; intermediate / owner hop failures are already collapsed to the synthetic `Forbidden("resource.authorization-via.load-failed")` by the v1 multi-hop security model BEFORE the exposure-policy translation runs, so under `HideAsNotFound` an underlying `Unavailable` from a downstream owner service surfaces as `404` to the consumer. Translation emits the same `[LoggerMessage]` `ExistenceHidden` event as the direct behavior. See [Recipe 32](trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound). **Null-payload defense.** A loader that violates its `Result<T>` contract by returning `Result.Ok(null)` is treated as fail-closed rather than crashing the pipeline: a leaf null-payload short-circuits to `Error.Forbidden` with code `resource.authorization-via.null-payload` (caller-visible). A hop null-success is treated internally as a hop failure and — like every other intermediate/owner load failure — collapses to `Error.Forbidden` with code `resource.authorization-via.load-failed` (the underlying null-payload code is intentionally not surfaced, mirroring the existence-leak protection on hop failures generally). |
 
 ### ResolvedAuthorizationPath
 **Declaration**
@@ -282,14 +283,14 @@ Resolves a `ResolvedAuthorizationPath` from a leaf type to an owner type by walk
 **Declaration**
 
 ```csharp
-public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse>(IActorProvider actorProvider, IServiceProvider serviceProvider) : IPipelineBehavior<TMessage, TResponse> where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage where TResource : class where TResponse : IResult, IFailureFactory<TResponse>
+public sealed partial class ResourceAuthorizationBehavior<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage, TResource, TResponse>(IActorProvider actorProvider, IServiceProvider serviceProvider, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>? logger = null) : IPipelineBehavior<TMessage, TResponse> where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage where TResource : class where TResponse : IResult, IFailureFactory<TResponse>
 ```
 
 **Constructors**
 
 | Signature | Description |
 | --- | --- |
-| `public ResourceAuthorizationBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider)` | Builds the resource-loading authorization behavior. |
+| `public ResourceAuthorizationBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>? logger = null)` | Builds the resource-loading authorization behavior. `options` defaults to a fresh `ResourceAuthorizationOptions` with `DefaultExposurePolicy = Propagate` (back-compat for consumers that have not opted any resource into hide-as-NotFound). `logger` defaults to `NullLogger.Instance`. |
 
 **Properties**
 
@@ -301,7 +302,53 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Resolves the actor from `IActorProvider` first (returns `Error.AuthenticationRequired` when no actor is available — fail fast before doing any I/O; provider-side `InvalidOperationException` still propagates as a deployment bug). Then resolves `IResourceLoader<TMessage, TResource>` from the current scope, returns loader failures directly, and finally calls `message.Authorize(actor, resource)` before invoking the handler. After `Authorize` succeeds the loaded resource is published via the per-async-flow accessor backing `IAuthorizedResource<TMessage, TResource>` — a linked-frame design with a volatile `IsActive` flag whose dispose (after `next` returns) flips `IsActive` and restores the parent frame, so handlers can read the same instance and avoid a duplicate load while orphan tasks that outlive the dispatch cannot observe the resource. See [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource). **Null-payload defense.** A loader that violates its `Result<T>` contract by returning `Result.Ok(null)` is treated as fail-closed: the behavior short-circuits to `Error.Forbidden` with code `resource.authorization.null-payload` rather than letting a downstream `NullReferenceException` from `message.Authorize` bubble as a 500. This behavior is only active when registered explicitly or via `AddResourceAuthorization(...)`; it is not included in `AddTrellisBehaviors()` or `PipelineBehaviors`. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Resolves the actor from `IActorProvider` first (returns `Error.AuthenticationRequired` when no actor is available — fail fast before doing any I/O; provider-side `InvalidOperationException` still propagates as a deployment bug). Then resolves `IResourceLoader<TMessage, TResource>` from the current scope, returns loader failures directly, and finally calls `message.Authorize(actor, resource)` before invoking the handler. After `Authorize` succeeds the loaded resource is published via the per-async-flow accessor backing `IAuthorizedResource<TMessage, TResource>` — a linked-frame design with a volatile `IsActive` flag whose dispose (after `next` returns) flips `IsActive` and restores the parent frame, so handlers can read the same instance and avoid a duplicate load while orphan tasks that outlive the dispatch cannot observe the resource. See [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource). **Failure-exposure policy.** When `ResourceAuthorizationOptions` opts `TResource` into `AuthFailureExposurePolicy.HideAsNotFound`, both load-failure and authorize-failure `Error.Forbidden` / `Error.AuthenticationRequired` are translated to `new Error.NotFound(ResourceRef)` where the resource type comes from the configured public type (defaults to `TResource`) and the id is extracted via reflection on `IIdentifyResource<TResource, TId>` (or the public type for the projection overload). Other error kinds pass through unchanged. Translation emits a `[LoggerMessage]` event `ExistenceHidden` (`EventId = 1`, `Level = Information`) carrying the original `Kind` and `Code`. See [Recipe 32](trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound). **Null-payload defense.** A loader that violates its `Result<T>` contract by returning `Result.Ok(null)` is treated as fail-closed: the behavior short-circuits to `Error.Forbidden` with code `resource.authorization.null-payload` rather than letting a downstream `NullReferenceException` from `message.Authorize` bubble as a 500. Under `HideAsNotFound` that synthetic Forbidden is also translated. This behavior is only active when registered explicitly or via `AddResourceAuthorization(...)`; it is not included in `AddTrellisBehaviors()` or `PipelineBehaviors`. |
+
+### AuthFailureExposurePolicy
+**Declaration**
+
+```csharp
+public enum AuthFailureExposurePolicy { Propagate = 0, HideAsNotFound = 1 }
+```
+
+| Member | Description |
+| --- | --- |
+| `Propagate` | Default. `Error.Forbidden` and `Error.AuthenticationRequired` flow through verbatim. |
+| `HideAsNotFound` | `Error.Forbidden` and `Error.AuthenticationRequired` are translated to `new Error.NotFound(ResourceRef)` so unauthorized actors cannot distinguish "resource does not exist" from "resource exists but you may not access it." Only those two error kinds translate — other errors pass through. |
+
+### ResourceAuthorizationOptions
+**Declaration**
+
+```csharp
+public sealed class ResourceAuthorizationOptions
+```
+
+**Constructors**
+
+| Signature | Description |
+| --- | --- |
+| `public ResourceAuthorizationOptions()` | Constructs the options bag with `DefaultExposurePolicy = AuthFailureExposurePolicy.Propagate` and no per-resource overrides. |
+
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `DefaultExposurePolicy` | `AuthFailureExposurePolicy` | Policy applied to resources that have no per-resource override. Defaults to `Propagate`. Set to `HideAsNotFound` to flip the default for an entire service; use `Propagate<TResource>()` to mark individual safe-to-disclose resources. |
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public ResourceAuthorizationOptions HideExistence<TResource>() where TResource : class` | `ResourceAuthorizationOptions` | Opt `TResource` into `HideAsNotFound`. Synthetic `NotFound.ResourceRef.Type` uses the simple name of `TResource` with backtick mangling stripped via `ResourceRef.FormatTypeName`. ID extraction uses `IIdentifyResource<TResource, TId>` on the message (returns `ResourceRef` without an id when the message does not implement it). Returns `this` for chaining. |
+| `public ResourceAuthorizationOptions HideExistence<TAuthorizationResource, TPublicResource>() where TAuthorizationResource : class` | `ResourceAuthorizationOptions` | Projection-loader overload. Use when the loader returns an internal authorization-only projection (`TAuthorizationResource`) and the wire-public type is different (`TPublicResource`). The synthetic `NotFound.ResourceRef.Type` is the public type name. ID extraction tries `IIdentifyResource<TPublicResource, TId>` first, then falls back to `IIdentifyResource<TAuthorizationResource, TId>`. |
+| `public ResourceAuthorizationOptions Propagate<TResource>() where TResource : class` | `ResourceAuthorizationOptions` | Explicitly opt `TResource` into `Propagate`. Useful for overriding a non-default `DefaultExposurePolicy`. |
+
+**Behavioral notes**
+
+- **Translation scope is narrow by design.** Only `Error.Forbidden` and `Error.AuthenticationRequired` translate. `Error.Unexpected`, `Error.Unavailable`, `Error.NotFound` from the loader, and transport faults pass through verbatim — hiding transient infrastructure failures behind 404 would destroy operational signal. The pass-through guarantee applies to the leaf loader's direct return value only; for the via path, intermediate / owner hop failures are already collapsed to a synthetic `Forbidden("resource.authorization-via.load-failed")` by the v1 multi-hop security model (existence-leak protection on related resources) BEFORE exposure translation runs, so under `HideAsNotFound` an underlying `Unavailable` from a downstream owner service surfaces as `404` to the consumer. Consumers needing finer-grained downstream-failure visibility on the related-resource graph should use the direct `IAuthorizeResource<TResource>` model instead of the via fan-out shape.
+- **Via commands key on `TLeaf`.** `HideExistence<Match>()` covers commands implementing `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match, MatchId>`; the synthetic `NotFound` references `Match`, never `Team`. Opting `Team` (the authorization implementation detail) is a no-op.
+- **`AuthorizationBehavior` short-circuits earlier.** Commands implementing both `IAuthorize` and `IAuthorizeResource<T>` have their static-permission failures emitted by `AuthorizationBehavior` before resource authorization runs. Those failures are NOT translated. Commands needing full existence-hiding must omit `IAuthorize`.
+- **Cache safety.** Hidden 404s look identical to real 404s on the wire — a shared cache will misdirect responses across actors. Mark protected endpoints with `Cache-Control: no-store` or `private`.
 
 ### ServiceCollectionExtensions
 **Declaration**
@@ -332,6 +379,7 @@ No public constructors.
 | `public static IServiceCollection AddSharedResourceLoader<TMessage, TResource, TId>(this IServiceCollection services) where TMessage : IIdentifyResource<TResource, TId>` | `IServiceCollection` | Registers `SharedResourceLoaderAdapter<TMessage, TResource, TId>` as `IResourceLoader<TMessage, TResource>`. Constraint loosened from also requiring `IAuthorizeResource<TResource>` so via-commands (which use `IAuthorizeResourceVia<TOwner>` instead) can reuse the same bridging. There is no `AddSharedResourceLoaderById` helper; register `SharedResourceLoaderById<TResource,TId>` in DI separately. |
 | `public static IServiceCollection AddRelatedResourceAuthorization<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse>(this IServiceCollection services, Func<TLeaf, TOwnerId?> extractOwnerId) where TMessage : IAuthorizeResourceVia<TOwner>, IIdentifyResource<TLeaf, TLeafId>, global::Mediator.IMessage where TLeaf : class where TOwner : class where TOwnerId : notnull where TResponse : IResult, IFailureFactory<TResponse>` | `IServiceCollection` | Explicit single-hop registration for AOT / non-scanning consumers. Builds a `ResolvedAuthorizationPath` with one hop using `extractOwnerId` to extract the owner id from the loaded leaf, then registers `ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>` as a typed descriptor and `ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse>` as a singleton. Throws `ArgumentNullException` when `services` or `extractOwnerId` is null. Throws `InvalidOperationException` if `TMessage` also implements `IAuthorizeResource<T>` (dual-mode security primitives are never silently composed). The hop loader throws `InvalidOperationException` at request time if `SharedResourceLoaderById<TOwner, TOwnerId>` is not registered (deployment bug, not authorization denial). |
 | `public static IServiceCollection AddRelatedResourceAuthorization<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage, TLeaf, TOwner, TResponse>(this IServiceCollection services, ResolvedAuthorizationPath path) where TMessage : IAuthorizeResourceVia<TOwner>, global::Mediator.IMessage where TLeaf : class where TResponse : IResult, IFailureFactory<TResponse>` | `IServiceCollection` | Explicit registration accepting a hand-built `ResolvedAuthorizationPath` for shapes the single-hop overload cannot express (chains, plural-terminal fan-out, custom extractors). Also registers `IAuthorizedResource<TMessage, TLeaf>` as scoped so handlers can inject the v4 typed accessor for the leaf (the typical mutation target); the owner accessor is intentionally not in v4. Throws `ArgumentNullException` when `services` or `path` is null. Same dual-mode rejection as the single-hop overload. |
+| `public static IServiceCollection AddResourceAuthorization(this IServiceCollection services, Action<ResourceAuthorizationOptions> configure)` | `IServiceCollection` | Configures the per-resource failure-exposure policy via `ResourceAuthorizationOptions`. Repeated calls compose configure delegates rather than overwriting. Always-on side-effect: registers `IOptions<ResourceAuthorizationOptions>` (also added by every other `AddResourceAuthorization` / `AddRelatedResourceAuthorization` overload — behaviors can therefore always resolve options regardless of registration order). Throws `ArgumentNullException` when `services` or `configure` is null. See [Recipe 32](trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound). |
 
 ### TracingBehavior<TMessage, TResponse>
 **Declaration**

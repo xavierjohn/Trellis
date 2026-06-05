@@ -1,7 +1,11 @@
 ﻿namespace Trellis.Mediator;
 
+using System.Diagnostics.CodeAnalysis;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Trellis.Authorization;
 
 /// <summary>
@@ -27,7 +31,11 @@ using Trellis.Authorization;
 /// </list>
 /// </para>
 /// </remarks>
-public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>
+public sealed partial class ResourceAuthorizationViaBehavior<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage,
+    TLeaf,
+    TOwner,
+    TResponse>
     : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IAuthorizeResourceVia<TOwner>, global::Mediator.IMessage
     where TLeaf : class
@@ -36,6 +44,8 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
     private readonly IActorProvider _actorProvider;
     private readonly IServiceProvider _serviceProvider;
     private readonly ResolvedAuthorizationPath _path;
+    private readonly ResourceAuthorizationOptions _options;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Initializes a new instance using a <see cref="ResolvedAuthorizationPathHolder{TMessage, TLeaf, TOwner, TResponse}"/>
@@ -51,10 +61,33 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         IActorProvider actorProvider,
         IServiceProvider serviceProvider,
         ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse> pathHolder)
+        : this(actorProvider, serviceProvider, pathHolder, options: null, logger: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance using a <see cref="ResolvedAuthorizationPathHolder{TMessage, TLeaf, TOwner, TResponse}"/>
+    /// for DI-friendly typed registration. Includes exposure-policy options and logger for
+    /// the v2 hide-as-NotFound translation.
+    /// </summary>
+    /// <param name="actorProvider">Provider used to resolve the current actor.</param>
+    /// <param name="serviceProvider">The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</param>
+    /// <param name="pathHolder">The closed-generic carrier for the resolved path.</param>
+    /// <param name="options">Per-resource exposure-policy options resolved from DI. Null defaults to the always-propagate behavior.</param>
+    /// <param name="logger">Logger used to emit the <c>ExistenceHidden</c> event when a Forbidden or AuthenticationRequired failure is translated to NotFound. Null defaults to <see cref="NullLogger.Instance"/>.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any required argument is null.</exception>
+    public ResourceAuthorizationViaBehavior(
+        IActorProvider actorProvider,
+        IServiceProvider serviceProvider,
+        ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse> pathHolder,
+        IOptions<ResourceAuthorizationOptions>? options,
+        ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)
         : this(
             actorProvider,
             serviceProvider,
-            (pathHolder ?? throw new ArgumentNullException(nameof(pathHolder))).Path)
+            (pathHolder ?? throw new ArgumentNullException(nameof(pathHolder))).Path,
+            options,
+            logger)
     {
     }
 
@@ -81,6 +114,27 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         IActorProvider actorProvider,
         IServiceProvider serviceProvider,
         ResolvedAuthorizationPath path)
+        : this(actorProvider, serviceProvider, path, options: null, logger: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ResourceAuthorizationViaBehavior{TMessage, TLeaf, TOwner, TResponse}"/>
+    /// class with exposure-policy options and logger for the v2 hide-as-NotFound translation.
+    /// </summary>
+    /// <param name="actorProvider">Provider used to resolve the current actor.</param>
+    /// <param name="serviceProvider">The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</param>
+    /// <param name="path">The pre-resolved authorization path from leaf to owner.</param>
+    /// <param name="options">Per-resource exposure-policy options resolved from DI.</param>
+    /// <param name="logger">Logger used to emit the <c>ExistenceHidden</c> event when a translation occurs.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any required argument is null.</exception>
+    /// <exception cref="ArgumentException">Same shape as the parameterless overload — see remarks on path agreement.</exception>
+    public ResourceAuthorizationViaBehavior(
+        IActorProvider actorProvider,
+        IServiceProvider serviceProvider,
+        ResolvedAuthorizationPath path,
+        IOptions<ResourceAuthorizationOptions>? options,
+        ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(actorProvider);
         ArgumentNullException.ThrowIfNull(serviceProvider);
@@ -111,6 +165,8 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         _actorProvider = actorProvider;
         _serviceProvider = serviceProvider;
         _path = path;
+        _options = options?.Value ?? new ResourceAuthorizationOptions();
+        _logger = logger ?? (ILogger)NullLogger.Instance;
     }
 
     /// <inheritdoc />
@@ -124,7 +180,7 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         // throw plain InvalidOperationException and surface as 500 via ExceptionBehavior.
         var actor = await ActorResolution.TryResolveAsync(_actorProvider, cancellationToken).ConfigureAwait(false);
         if (actor is null)
-            return TResponse.CreateFailure(ActorResolution.AuthenticationRequired());
+            return TResponse.CreateFailure(MaybeTranslateExposure(ActorResolution.AuthenticationRequired(), message));
 
         var leafLoader = _serviceProvider.GetService<IResourceLoader<TMessage, TLeaf>>()
             ?? throw new InvalidOperationException(
@@ -136,7 +192,7 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
 
         var leafResult = await leafLoader.LoadAsync(message, cancellationToken).ConfigureAwait(false);
         if (!leafResult.TryGetValue(out var leaf, out var leafError))
-            return TResponse.CreateFailure(leafError);
+            return TResponse.CreateFailure(MaybeTranslateExposure(leafError, message));
 
         // Defense-in-depth: a leaf loader that violates its Result<T> contract by returning
         // a successful Result carrying a null payload must NOT crash the pipeline with
@@ -146,10 +202,12 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         // verbatim per the documented zero-hop semantics; only the null-success corner is
         // collapsed here.
         if (leaf is null)
-            return TResponse.CreateFailure(new Error.Forbidden("resource.authorization-via.null-payload")
-            {
-                Detail = "The leaf resource loader returned a successful result with a null value.",
-            });
+            return TResponse.CreateFailure(MaybeTranslateExposure(
+                new Error.Forbidden("resource.authorization-via.null-payload")
+                {
+                    Detail = "The leaf resource loader returned a successful result with a null value.",
+                },
+                message));
 
         List<object> current = [leaf];
         for (var hopIndex = 0; hopIndex < _path.Hops.Count; hopIndex++)
@@ -173,10 +231,12 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
             }
 
             if (idList.Count == 0)
-                return TResponse.CreateFailure(new Error.Forbidden("resource.authorization-via.empty")
-                {
-                    Detail = "No related resources were available at the authorization hop.",
-                });
+                return TResponse.CreateFailure(MaybeTranslateExposure(
+                    new Error.Forbidden("resource.authorization-via.empty")
+                    {
+                        Detail = "No related resources were available at the authorization hop.",
+                    },
+                    message));
 
             var loaded = new List<object>(idList.Count);
             foreach (var id in idList)
@@ -184,10 +244,12 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
                 var hopOutcome = await hop.LoadAsync(_serviceProvider, id, cancellationToken).ConfigureAwait(false);
                 if (!hopOutcome.IsSuccess)
                 {
-                    return TResponse.CreateFailure(new Error.Forbidden("resource.authorization-via.load-failed")
-                    {
-                        Detail = "A related resource could not be loaded during authorization.",
-                    });
+                    return TResponse.CreateFailure(MaybeTranslateExposure(
+                        new Error.Forbidden("resource.authorization-via.load-failed")
+                        {
+                            Detail = "A related resource could not be loaded during authorization.",
+                        },
+                        message));
                 }
 
                 loaded.Add(hopOutcome.Value!);
@@ -202,7 +264,7 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
 
         var authResult = message.Authorize(actor, owners);
         if (authResult.TryGetError(out var authError))
-            return TResponse.CreateFailure(authError);
+            return TResponse.CreateFailure(MaybeTranslateExposure(authError, message));
 
         // Publish the LEAF resource via the per-async-flow accessor so handlers injecting
         // IAuthorizedResource<TMessage, TLeaf> can read the same instance the leaf loader
@@ -216,5 +278,89 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         using var _ = AuthorizedResourceHolder<TMessage, TLeaf>.Push(leaf);
 
         return await next(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Translates <c>Error.Forbidden</c> / <c>Error.AuthenticationRequired</c> to
+    /// <c>new Error.NotFound(ResourceRef)</c> when the LEAF resource is opted into
+    /// <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>. Lookup key is
+    /// <typeparamref name="TLeaf"/> (the resource the command identifies), not
+    /// <typeparamref name="TOwner"/> (an authorization implementation detail).
+    /// </summary>
+    private Error MaybeTranslateExposure(Error original, TMessage message)
+    {
+        if (original is not (Error.Forbidden or Error.AuthenticationRequired))
+            return original;
+
+        var entry = _options.Resolve(typeof(TLeaf));
+        if (entry.Policy != AuthFailureExposurePolicy.HideAsNotFound)
+            return original;
+
+        var resourceId = ResourceIdExtractor.Extract(message, entry.IdResourceType)
+            ?? ResourceIdExtractor.Extract(message, typeof(TLeaf));
+
+        var publicTypeName = ResourceRef.FormatTypeName(entry.PublicResourceType);
+        var resourceRef = resourceId is null
+            ? ResourceRef.For(publicTypeName)
+            : ResourceRef.For(publicTypeName, resourceId);
+
+        LogExistenceHidden(_logger, typeof(TMessage).Name, original.Kind, original.Code, publicTypeName);
+
+        return new Error.NotFound(resourceRef);
+    }
+
+    [LoggerMessage(
+        EventId = 1,
+        EventName = "ExistenceHidden",
+        Level = LogLevel.Information,
+        Message = "Resource-authorization (via) failure hidden as NotFound for {MessageName}: original Kind={OriginalKind} Code={OriginalCode} → public resource {PublicResourceType}")]
+    private static partial void LogExistenceHidden(
+        ILogger logger,
+        string messageName,
+        string originalKind,
+        string originalCode,
+        string publicResourceType);
+
+    /// <summary>
+    /// Reflection-based <c>IIdentifyResource&lt;TIdResource, TId&gt;.GetResourceId()</c>
+    /// extractor, cached per <c>(TMessage, TIdResource)</c> closed pair. Same shape as the
+    /// direct-path behavior's extractor; via commands always implement
+    /// <c>IIdentifyResource&lt;TLeaf, TLeafId&gt;</c> per the registration invariant.
+    /// </summary>
+    private static class ResourceIdExtractor
+    {
+        private static readonly Dictionary<Type, Func<TMessage, object?>?> s_cache = [];
+
+        public static object? Extract(TMessage message, Type idResourceType)
+        {
+            Func<TMessage, object?>? extractor;
+            lock (s_cache)
+            {
+                if (!s_cache.TryGetValue(idResourceType, out extractor))
+                {
+                    extractor = Build(idResourceType);
+                    s_cache[idResourceType] = extractor;
+                }
+            }
+
+            return extractor?.Invoke(message);
+        }
+
+        [UnconditionalSuppressMessage("Trimming", "IL2070:'this' argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method.",
+            Justification = "TMessage is annotated [DynamicallyAccessedMembers(Interfaces)] on the closed-generic behavior, preserving interface metadata under trimming. Failure to find the interface returns a null extractor, so the missing-interface branch is non-fatal.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2075:'this' argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method.",
+            Justification = "The IIdentifyResource<,> interface metadata is preserved by the [DynamicallyAccessedMembers(Interfaces)] annotation on TMessage; the closed interface type retrieved by reflection therefore carries its single declared method.")]
+        private static Func<TMessage, object?>? Build(Type idResourceType)
+        {
+            var identifyIface = typeof(TMessage).GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType
+                    && i.GetGenericTypeDefinition() == typeof(IIdentifyResource<,>)
+                    && i.GetGenericArguments()[0] == idResourceType);
+            if (identifyIface is null)
+                return null;
+
+            var method = identifyIface.GetMethod(nameof(IIdentifyResource<object, object>.GetResourceId));
+            return method is null ? null : msg => method.Invoke(msg, null);
+        }
     }
 }
