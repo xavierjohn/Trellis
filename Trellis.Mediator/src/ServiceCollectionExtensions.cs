@@ -273,6 +273,7 @@ public static class ServiceCollectionExtensions
         TResponse>(
         this IServiceCollection services)
         where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage
+        where TResource : class
         where TResponse : IResult, IFailureFactory<TResponse>
     {
         ArgumentNullException.ThrowIfNull(services);

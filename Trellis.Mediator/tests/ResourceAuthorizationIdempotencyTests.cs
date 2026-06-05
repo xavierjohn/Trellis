@@ -101,6 +101,7 @@ public class ResourceAuthorizationIdempotencyTests
 
     private static int CountBehavior<TMessage, TResource, TResponse>(IServiceCollection services)
         where TMessage : IAuthorizeResource<TResource>, IMessage
+        where TResource : class
         where TResponse : IResult, IFailureFactory<TResponse>
         => services.Count(static descriptor =>
             descriptor.ServiceType == typeof(IPipelineBehavior<TMessage, TResponse>)

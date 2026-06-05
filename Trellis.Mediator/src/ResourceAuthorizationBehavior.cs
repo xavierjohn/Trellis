@@ -42,6 +42,7 @@ using Trellis.Authorization;
 public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse>
     : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage
+    where TResource : class
     where TResponse : IResult, IFailureFactory<TResponse>
 {
     private readonly IActorProvider _actorProvider;
@@ -110,7 +111,17 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
         if (authResult.TryGetError(out var authError))
             return TResponse.CreateFailure(authError);
 
-        // 5. Proceed to handler
+        // 5. Push the authorized resource onto the per-async-flow stack so handlers
+        //    injecting IAuthorizedResource<TMessage, TResource> can read the same instance
+        //    the loader returned — eliminating a duplicate load for CosmosDB (doubled RU
+        //    charge), Dapper (doubled roundtrip), and HTTP-backed loaders. The push happens
+        //    only AFTER a successful Authorize call so denied authorizations cannot expose
+        //    the loaded resource to any out-of-band observer. Dispose at the end of the
+        //    using-block (after next returns) restores the previous async-flow stack value,
+        //    correctly handling nested mediator.Send of the same closed pair.
+        using var _ = AuthorizedResourceHolder<TMessage, TResource>.Push(resource);
+
+        // 6. Proceed to handler
         return await next(message, cancellationToken).ConfigureAwait(false);
     }
 }
