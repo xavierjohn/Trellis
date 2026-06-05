@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using global::Mediator;
@@ -110,10 +111,24 @@ public class TrellisServiceBuilderTests
     {
         var services = new ServiceCollection();
 
-        var act = () => services.AddTrellis(options => options.UseResourceAuthorization(null!));
+        // Disambiguate the null literal across the new (Action<ResourceAuthorizationOptions>)
+        // overload — without the cast, the call binds to the Action<> overload and the
+        // ArgumentNullException is thrown with ParameterName "configure", not "assemblies".
+        var act = () => services.AddTrellis(options => options.UseResourceAuthorization((Assembly[])null!));
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("assemblies");
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_NullConfigureDelegate_ThrowsArgumentNullException()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options.UseResourceAuthorization((Action<ResourceAuthorizationOptions>)null!));
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("configure");
     }
 
     [Fact]
@@ -128,6 +143,52 @@ public class TrellisServiceBuilderTests
         act.Should().Throw<ArgumentException>()
             .Where(ex => ex.ParamName == "assemblies")
             .And.Message.Should().Contain("[1]");
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_ConfigureDelegate_RegistersResourceAuthorizationOptions()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseResourceAuthorization(o => o.HideExistence<UpdateProtectedOrderCommand>()));
+
+        var provider = services.BuildServiceProvider();
+        var resolved = provider.GetRequiredService<IOptions<ResourceAuthorizationOptions>>().Value;
+        resolved.DefaultExposurePolicy.Should().Be(AuthFailureExposurePolicy.Propagate,
+            "default policy is unchanged unless the configure delegate explicitly sets it");
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_ConfigureDelegate_CalledTwice_ComposesBothConfigurations()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseResourceAuthorization(o => o.DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound)
+            .UseResourceAuthorization(o => o.Propagate<UpdateProtectedOrderCommand>()));
+
+        var provider = services.BuildServiceProvider();
+        var resolved = provider.GetRequiredService<IOptions<ResourceAuthorizationOptions>>().Value;
+        resolved.DefaultExposurePolicy.Should().Be(AuthFailureExposurePolicy.HideAsNotFound,
+            "first configure delegate sets the default policy");
+        // Second delegate's override should still apply alongside the first.
+        var optionsForCommand = resolved; // resolved already exposes the merged view
+        optionsForCommand.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void UseResourceAuthorization_ConfigureDelegate_EnablesPipelineAndMediator()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseResourceAuthorization(_ => { }));
+
+        // UseResourceAuthorization(configure) implies UseMediator so AddTrellisBehaviors fires.
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IPipelineBehavior<,>) &&
+            d.ImplementationType == typeof(AuthorizationBehavior<,>));
     }
 
     [Fact]

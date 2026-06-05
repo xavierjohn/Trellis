@@ -5,6 +5,7 @@ using System.Reflection;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Trellis.Authorization;
 
 /// <summary>
@@ -285,6 +286,8 @@ public static class ServiceCollectionExtensions
         var viaIfaceCheck = ifaces.FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IAuthorizeResourceVia<>));
         EnsureNotDualSecurityMode(typeof(TMessage), authIface, viaIfaceCheck);
 
+        EnsureResourceAuthorizationOptionsRegistered(services);
+
         InsertResourceAuthorizationBehavior(
             services,
             ServiceDescriptor.Scoped<
@@ -388,7 +391,9 @@ public static class ServiceCollectionExtensions
                 distinctAssemblies.Add(assemblies[i]);
         }
 
-        var authorizeResourceDef = typeof(IAuthorizeResource<>);
+            EnsureResourceAuthorizationOptionsRegistered(services);
+
+            var authorizeResourceDef = typeof(IAuthorizeResource<>);
         var authorizeViaDef = typeof(IAuthorizeResourceVia<>);
         var loaderDef = typeof(IResourceLoader<,>);
         var sharedLoaderDef = typeof(SharedResourceLoaderById<,>);
@@ -766,6 +771,8 @@ public static class ServiceCollectionExtensions
         var viaIfaceCheck = ifaces.FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IAuthorizeResourceVia<>));
         EnsureNotDualSecurityMode(typeof(TMessage), authIface, viaIfaceCheck);
 
+        EnsureResourceAuthorizationOptionsRegistered(services);
+
         // Closed-generic holder so DI naturally disambiguates per via-authorized command.
         services.TryAddSingleton(new ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse>(path));
 
@@ -788,6 +795,42 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Configures the per-resource exposure policy for the resource-authorization pipeline
+    /// (see <see cref="ResourceAuthorizationOptions"/>). Idempotent; repeated calls compose
+    /// their configure delegates rather than overwriting. The
+    /// <c>IOptions&lt;ResourceAuthorizationOptions&gt;</c> registration created here is also
+    /// added implicitly by every other <c>AddResourceAuthorization</c> / <c>AddRelatedResourceAuthorization</c>
+    /// overload, so the resource-authorization behaviors can always resolve options regardless
+    /// of registration order.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">A delegate that configures the per-resource exposure policy.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddResourceAuthorization(
+        this IServiceCollection services,
+        Action<ResourceAuthorizationOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        EnsureResourceAuthorizationOptionsRegistered(services);
+        services.Configure(configure);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers <c>IOptions&lt;ResourceAuthorizationOptions&gt;</c> so the resource-authorization
+    /// behaviors can always resolve a (possibly default-valued) options snapshot. Called from
+    /// every <c>AddResourceAuthorization</c> / <c>AddRelatedResourceAuthorization</c> overload
+    /// so behavior consumers don't need to call the options overload explicitly. Safe to call
+    /// repeatedly — <c>AddOptions</c> is idempotent on the registration of the underlying
+    /// options-machinery services.
+    /// </summary>
+    private static void EnsureResourceAuthorizationOptionsRegistered(IServiceCollection services) =>
+        services.AddOptions<ResourceAuthorizationOptions>();
 
     private static void InsertResourceAuthorizationBehavior(
         IServiceCollection services,

@@ -269,6 +269,26 @@ public static class Composition
 > [!TIP]
 > Explicit `IResourceLoader<TMessage, TResource>` registrations always win over the shared-loader bridge.
 
+### Hide existence with `AuthFailureExposurePolicy.HideAsNotFound`
+
+For resources whose mere existence is sensitive — incident reports, security findings, internal correspondence, private profiles — the default `Forbidden` response leaks that the resource exists. Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions` and the pipeline translates `Error.Forbidden` and `Error.AuthenticationRequired` to `Error.NotFound(ResourceRef)`. Other error kinds (`Unexpected`, `Unavailable`, loader-`NotFound`, transport faults) pass through verbatim — operational signal is never hidden.
+
+```csharp
+builder.Services.AddTrellis(options => options
+    .UseResourceAuthorization()                                                // pipeline enabled
+    .UseResourceAuthorization<GetIncidentQuery, Incident, Result<IncidentDto>>()
+    .UseResourceAuthorization(o => o.HideExistence<Incident>()));              // opt-in per resource
+```
+
+Default is `Propagate` — no behavior change for resources that don't opt in. Set `DefaultExposurePolicy = HideAsNotFound` to flip the default service-wide and use `Propagate<TResource>()` for individual safe-to-disclose resources. Each translation emits a structured `[LoggerMessage]` event `ExistenceHidden` carrying the original `Kind` and `Code` so SecOps can audit the underlying denial reason via SIEM.
+
+**Caveats.**
+- **`AuthorizationBehavior` runs first.** Commands implementing both `IAuthorize` and `IAuthorizeResource<T>` have static-permission `AuthenticationRequired` / `Forbidden` surfaced by `AuthorizationBehavior` — those are NOT translated, because the static-auth behavior has no concept of the resource. Commands needing existence-hiding to apply to anonymous probes must omit `IAuthorize`.
+- **Cache safety.** Synthetic 404s look identical to real 404s on the wire — pair these endpoints with `Cache-Control: no-store` or `private` so a shared cache cannot serve an unauthorized actor's 404 to a later authorized actor.
+- **Via commands key on the leaf.** `HideExistence<Match>()` covers commands implementing `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match, MatchId>` — the synthetic NotFound references the leaf the command identifies, never the owner.
+
+See cookbook [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) for the projection-loader overload, SIEM query examples, and the full worked example.
+
 ## Validation
 
 `ValidationBehavior` runs for every message and pulls violations from two sources.

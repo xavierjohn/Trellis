@@ -36,6 +36,7 @@ public sealed class TrellisServiceBuilder
     private readonly List<Assembly> _domainEventAssemblies = [];
     private readonly List<Action<IServiceCollection>> _typedFluentValidatorRegistrations = [];
     private readonly List<Action<IServiceCollection>> _typedResourceAuthorizationRegistrations = [];
+    private readonly List<Action<Trellis.Mediator.ResourceAuthorizationOptions>> _resourceAuthorizationConfigures = [];
     private readonly List<Action<IServiceCollection>> _typedDomainEventHandlerRegistrations = [];
     private Action<TrellisAspOptions>? _configureAsp;
     private Action<TrellisMediatorTelemetryOptions>? _configureMediatorTelemetry;
@@ -290,6 +291,27 @@ public sealed class TrellisServiceBuilder
     {
         _useResourceAuthorization = true;
         _useMediator = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the per-resource failure-exposure policy for the resource-authorization
+    /// pipeline (see <see cref="Trellis.Mediator.ResourceAuthorizationOptions"/> for the
+    /// configuration surface, including
+    /// <see cref="Trellis.Mediator.ResourceAuthorizationOptions.HideExistence{TResource}"/>
+    /// and the projection-loader overload). Repeated calls compose configure delegates rather
+    /// than overwriting. Enables the resource-authorization pipeline (<see cref="UseResourceAuthorization()"/>)
+    /// and implies <see cref="UseMediator"/>.
+    /// </summary>
+    /// <param name="configure">A delegate that configures the per-resource exposure policy.</param>
+    /// <returns>The builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure"/> is null.</exception>
+    public TrellisServiceBuilder UseResourceAuthorization(Action<Trellis.Mediator.ResourceAuthorizationOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        _useResourceAuthorization = true;
+        _useMediator = true;
+        _resourceAuthorizationConfigures.Add(configure);
         return this;
     }
 
@@ -674,6 +696,9 @@ public sealed class TrellisServiceBuilder
 
         foreach (var register in _typedResourceAuthorizationRegistrations)
             register(_services);
+
+        foreach (var configure in _resourceAuthorizationConfigures)
+            _services.AddResourceAuthorization(configure);
 
         if (_useFluentValidation && _fluentValidationAssemblies.Count == 0)
             _services.AddTrellisFluentValidation();
