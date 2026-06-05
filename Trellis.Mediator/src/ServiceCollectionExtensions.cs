@@ -555,7 +555,8 @@ public static class ServiceCollectionExtensions
 
                     // v4 typed accessor — register IAuthorizedResource<type, tLeaf>. For via
                     // commands the accessor exposes the LEAF (the typical mutation target),
-                    // not the owner. The owner accessor is intentionally not in scope per ADR-002 §5.3.
+                    // not the owner. The owner accessor is intentionally not exposed; handlers
+                    // needing owner state reload via their repository.
                     RegisterAuthorizedResourceAccessor(services, type, tLeaf);
                 }
             }

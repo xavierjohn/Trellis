@@ -209,8 +209,8 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         // returned. Via authorization runs against the OWNER list, but the handler's
         // mutation target is almost always the leaf (e.g., UploadScorecardCommand
         // identifies a Match and authorizes via Team; the handler mutates the Match).
-        // The owner accessor is intentionally NOT exposed in v4 — handlers needing owner
-        // state reload via their repository. See ADR-002 §5.3.
+        // The owner accessor is intentionally NOT exposed; handlers needing owner
+        // state reload via their repository.
         using var _ = AuthorizedResourceHolder<TMessage, TLeaf>.Push(leaf);
 
         return await next(message, cancellationToken).ConfigureAwait(false);

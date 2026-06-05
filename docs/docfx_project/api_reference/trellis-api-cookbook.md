@@ -2627,6 +2627,94 @@ return Result.Ok(user);
 
 ---
 
+## Recipe 31 — Avoid duplicate load with `IAuthorizedResource<TCommand, TResource>`
+
+**Problem.** A command implements `IAuthorizeResource<Order>` (or `IAuthorizeResourceVia<Team>`); the resource-authorization pipeline loads the resource to run `Authorize(actor, resource)`; then the handler loads the **same** resource again from its repository to mutate it. For non-EF stores this is wasted I/O — a doubled CosmosDB read (and doubled RU billing), a doubled Dapper roundtrip, a doubled outbound HTTP call. Even for EF (where the change-tracker identity map returns the same tracked instance) the second LINQ query still fires.
+
+**Fix.** Inject `IAuthorizedResource<TCommand, TResource>` and call `GetRequired()` instead of re-fetching via the repository. The framework returns the **same instance** the loader produced for this dispatch.
+
+```csharp
+// ❌ Wrong — handler reloads the resource the pipeline already loaded.
+public sealed class CancelOrderHandler(IOrderRepository orders) // duplicate-load source
+    : ICommandHandler<CancelOrderCommand, Result<Unit>>
+{
+    public async ValueTask<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct)
+    {
+        var found = await orders.FindByIdAsync(cmd.OrderId, ct);   // SECOND lookup — wasteful
+        if (!found.TryGetValue(out var order))
+            return Result.Fail<Unit>(new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)));
+        order.Cancel();
+        return Result.Ok(Unit.Value);
+    }
+}
+
+// ✅ Correct — handler reads the loaded resource from the accessor.
+public sealed class CancelOrderHandler(IAuthorizedResource<CancelOrderCommand, Order> authorized)
+    : ICommandHandler<CancelOrderCommand, Result<Unit>>
+{
+    public ValueTask<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct)
+    {
+        // The pipeline loaded this Order to run cmd.Authorize(actor, order); we mutate the
+        // SAME instance. No second DB roundtrip; for EF the entity is already tracked and the
+        // mutation flows through the unit-of-work commit at the end of the request.
+        authorized.GetRequired().Cancel();
+        return new(Result.Ok(Unit.Value));
+    }
+}
+```
+
+**Command and loader are unchanged.** Existing `IAuthorizeResource<Order>` + `IIdentifyResource<Order, OrderId>` + `SharedResourceLoaderById<Order, OrderId>` registrations stay exactly as in Recipe 7. The accessor is **auto-registered** by `AddResourceAuthorization(...)` for every closed `(TMessage, TResource)` pair the scan sees, and by the explicit `AddResourceAuthorization<TMessage, TResource, TResponse>()` / `AddRelatedResourceAuthorization<...>()` helpers for AOT consumers. No additional composition-root call is required.
+
+**Via commands** (multi-hop authorization via `IAuthorizeResourceVia<TOwner>`) expose the **leaf** through the accessor — the resource the message identifies via `IIdentifyResource<TLeaf, TLeafId>`, which is the typical mutation target. The owner accessor is intentionally **not** exposed in v4; handlers that need owner state read it from their repository.
+
+```csharp
+public sealed record UploadScorecardCommand(MatchId MatchId, Scorecard Scorecard)
+    : ICommand<Result<Unit>>,
+      IIdentifyResource<Match, MatchId>,
+      IAuthorizeResourceVia<Team>
+{
+    public MatchId GetResourceId() => MatchId;
+    public IResult Authorize(Actor actor, IReadOnlyList<Team> teams) =>
+        Result.Ensure(teams.Any(t => t.CreatedByActorId == actor.Id),
+            new Error.Forbidden("not_team_owner"));
+}
+
+public sealed class UploadScorecardHandler(
+    IAuthorizedResource<UploadScorecardCommand, Match> match)   // LEAF accessor
+    : ICommandHandler<UploadScorecardCommand, Result<Unit>>
+{
+    public ValueTask<Result<Unit>> Handle(UploadScorecardCommand cmd, CancellationToken ct)
+    {
+        match.GetRequired().UploadScorecard(cmd.Scorecard);   // mutate the leaf
+        return new(Result.Ok(Unit.Value));
+    }
+}
+```
+
+**When NOT to inject the accessor.** The framework cannot enforce mutation-readiness — it just returns whatever the loader returned. If your loader returns any of the following, **do not inject the accessor**; reload via your repository instead:
+
+- A projection type (e.g. `OrderHeader` for cheap authorization, not the full `Order` aggregate).
+- A no-tracking EF entity that the handler must mutate (the mutation will not persist).
+- A stale read-replica POCO when the handler needs strong consistency.
+- An HTTP DTO that cannot be persisted back through any local repository.
+
+In those cases the loader's job is "decide who owns the resource for the authorization check"; the handler's job is "fetch the canonical mutation-ready aggregate". They are different shapes and the accessor would couple them incorrectly.
+
+**Concurrency.** The accessor is safe across nested `mediator.Send` and concurrent `Task.WhenAll` dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow `AsyncLocal` stack with copy-on-push / restore-on-dispose semantics, so each dispatch sees only its own pushed resource. (Verified by `AuthorizedResourceHolderTests.ParallelPushes_OfDifferentResources_DoNotCrossContaminate` and friends.)
+
+**Failure modes.** `GetRequired()` throws `InvalidOperationException` outside a populated dispatch — typical causes:
+- the handler was invoked directly (e.g. from a unit test) without going through the mediator pipeline;
+- the message lacks resource-authorization registration (`AddResourceAuthorization` was never called for it);
+- authentication failed, the loader failed, or `Authorize` was denied (none of which populate the accessor — denied authorizations cannot expose the loaded resource).
+
+For optional reads use `TryGet(out var resource)` which returns `false` instead of throwing.
+
+**What it shows.** Eliminates the duplicate load that motivated the v4 accessor. For non-EF stores (CosmosDB, Dapper, HTTP-backed loaders) this is a measurable perf win — half the I/O on every authorized command. For EF it is also a win (skips the second LINQ query — the identity map only handles entity-instance deduplication, not the SQL roundtrip). The framework guarantee is identity, not mutation-readiness — the cookbook caution above is the user's responsibility.
+
+**Related recipes.** [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) for the authorization model itself; [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization) for the via case the accessor composes with.
+
+---
+
 ## Cross-references
 
 - [trellis-api-core.md](trellis-api-core.md#extension-class-catalog-full-signatures) — every `Result*Extensions(Async)` family with full signatures.
