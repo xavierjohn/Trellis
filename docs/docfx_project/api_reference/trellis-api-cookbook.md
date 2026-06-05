@@ -109,6 +109,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Avoid the pipeline-then-handler duplicate load when a command both authorizes and mutates the same resource | [Recipe 31](#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) |
 | Hide existence of sensitive resources from unauthorized callers — translate `Forbidden`/`AuthenticationRequired` to `NotFound` | [Recipe 32](#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) |
 | Configure the strict `AddJwtBearer` validation profile + key-rotation runbook for `UseTrellisInternalJwtActor` (gateway-minted internal JWT) | [Recipe 33](#recipe-33--strict-addjwtbearer-validation-profile-for-usetrellisinternaljwtactor) |
+| Stand up the gateway side of the Path B microservices pattern (YARP transform that mints the internal JWT Recipe 33 validates) | [Recipe 34](#recipe-34--microservices-behind-yarp-end-to-end) |
 
 ### Mistake-regression routing
 
@@ -3070,7 +3071,196 @@ The fail-loud signal during a botched rotation is `SecurityTokenSignatureKeyNotF
 - `MapInboundClaims = false` is mandatory for any consumer of `TrellisInternalJwtActorProvider`; the provider reads JWT claim names directly and case-sensitively.
 - Tenant isolation is the canonical example of "gateway claim ≠ resource authorization" — the resource authorization layer is the defense-in-depth second gate, never optional.
 
-**Related recipes.** [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) for the three-path microservices framing (Path A pass-through, Path B internal JWT shown here, Path C OBO); [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization) for owner-chain tenant enforcement; [Recipe 32](#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) for cross-tenant probing defense.
+**Related recipes.** [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) for the three-path microservices framing (Path A pass-through, Path B internal JWT shown here, Path C OBO); [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization) for owner-chain tenant enforcement; [Recipe 32](#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) for cross-tenant probing defense; [Recipe 34](#recipe-34--microservices-behind-yarp-end-to-end) for the gateway-side bookend (`Trellis.Yarp` package — the matching mint of the same internal-JWT contract this recipe validates).
+
+---
+
+## Recipe 34 — Microservices behind YARP, end-to-end
+
+**Problem.** Recipes 7 + 33 cover the downstream microservice side of Path B (Trellis internal JWT): how to validate a gateway-minted JWT and hydrate the full `Actor`. The other half of that contract is the gateway — the component that authenticates the external user, resolves their full `Actor` (id + permissions + forbidden permissions + ABAC attributes), and re-mints a per-cluster internal JWT that downstream services can validate without ever touching the external IDP. v1 ships that gateway as a YARP transform in the `Trellis.Yarp` package.
+
+**Fix.** Three pieces: register the actor-forwarding transform on YARP's `IReverseProxyBuilder`, publish OIDC discovery + JWKS so downstream services can fetch the signing keys, and follow the operational guardrails for key rotation + redaction.
+
+### Gateway composition
+
+```csharp
+// Program.cs — YARP gateway with Trellis actor forwarding.
+var builder = WebApplication.CreateBuilder(args);
+
+// Authenticate the inbound (external) JWT — typically against the public IDP.
+// This is what gets hydrated into the Actor that's re-minted for downstream services.
+builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
+{
+    o.Authority = "https://your-idp.example";
+    o.Audience = "trellis-gateway";
+    o.MapInboundClaims = false;
+});
+
+// IActorProvider hydrates Actor from the inbound JWT's claims. AddTrellisActorForwarding
+// REQUIRES one of these to be registered — startup validation fails fast if missing.
+// Multi-tenant Entra example: AddEntraActorProvider populates actor.Attributes["tid"]
+// automatically. For multi-IdP fronts, ship a custom IActorProvider that ALSO populates
+// actor.Attributes["iss"] from the inbound JWT — see the "Multi-IdP namespacing" note below.
+builder.Services.AddTrellis(o => o
+    .UseEntraActorProvider());
+
+// Load YARP routes/clusters from configuration and attach the Trellis actor-forwarding
+// transform. The transform mints a fresh per-cluster JWT on every request and overwrites
+// the upstream Authorization header before forwarding.
+var rsa = LoadRsaPrivateKey("gateway-2026-Q3.pem");
+var signingKey = new RsaSecurityKey(rsa) { KeyId = "2026-Q3" };
+
+builder.Services
+    .AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTrellisActorForwarding(o =>
+    {
+        o.Issuer = "https://gateway.internal";
+        o.PublicBaseUrl = new Uri("https://gateway.internal");
+        o.SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256);
+        // Rotation overlap — keep the previous key in JWKS until token_lifetime + skew expires.
+        o.PreviousSigningKeys = [LoadRsaPublicKey("gateway-2026-Q2.pem", kid: "2026-Q2")];
+
+        // Per-cluster audience (defaults to ClusterConfig.ClusterId; explicit is clearer).
+        o.AudiencePerCluster = cluster => cluster.ClusterId switch
+        {
+            "incidents" => "incidents-service",
+            "orders" => "orders-service",
+            _ => cluster.ClusterId,
+        };
+
+        // Permission projection — forward only the permissions in the destination cluster's
+        // namespace. Convention: <cluster-id>.<verb>.
+        o.ProjectPermissionsFor = (cluster, perms) =>
+            perms.Where(p => p.StartsWith(cluster.ClusterId + ".", StringComparison.Ordinal))
+                 .ToHashSet(StringComparer.Ordinal);
+
+        // Attribute projection — actor.Attributes keys become JWT claim names verbatim
+        // (default pass-through). EntraActorProvider populates actor.Attributes["tid"] from
+        // the inbound JWT's 'tid' claim, so the gateway emits a JWT 'tid' claim that the
+        // downstream maps to its own actor attribute via AttributeClaimMap (see below).
+        o.ProjectAttributes = (_, attrs) => attrs;
+
+        // ActorIdResolver — namespace 'sub' so a downstream attacker cannot replay a token
+        // by guessing actor IDs across tenants. EntraActorProvider stores the externally-
+        // validated tenant in actor.Attributes["tid"]; combining tenant + sub is sufficient
+        // for the SINGLE-IdP-multi-tenant case. Fronting MULTIPLE IdPs requires a custom
+        // IActorProvider that also populates actor.Attributes["iss"] (see note below).
+        o.ActorIdResolver = actor =>
+        {
+            var tenant = actor.Attributes.GetValueOrDefault("tid", "unknown-tid");
+            return $"{tenant}|{actor.Id.Value}";
+        };
+    });
+
+var app = builder.Build();
+app.MapReverseProxy();
+
+// Publish OIDC discovery + JWKS so downstream services using
+// `AddJwtBearer(o => o.Authority = "https://gateway.internal")` can auto-fetch keys.
+app.MapTrellisDiscoveryEndpoint();   // defaults: /.well-known/openid-configuration + /.well-known/jwks.json
+
+app.Run();
+```
+
+The transform on every request: resolves the inbound `Actor` from the registered `IActorProvider`, applies the per-cluster projections, mints a fresh JWT (`iss`, `aud`, `sub`, `jti`, `iat`/`nbf`/`exp`, multi-valued `permissions` / `forbidden_permissions`, the three sentinel claims `trellis_actor_contract_version=1` + counts, and a claim per projected attribute), and overwrites the upstream `Authorization` header before the request hits the destination cluster. **No actor on the inbound request → the upstream `Authorization` header is CLEARED** before forwarding so the external bearer token cannot leak to the downstream service (fail-closed posture, security-amended P4 round 1); downstream policy decides whether anonymous is allowed.
+
+#### Multi-IdP namespacing (when fronting two or more external IDPs)
+
+`Actor` equality is identity-based on `Id` only, so two IdPs that both issue `sub = "12345"` collide. The single-tenant `actor.Attributes["tid"]` namespacing above is sufficient when the gateway fronts ONE IDP. For multi-IDP fronts, ship a minimal custom `IActorProvider` that populates `actor.Attributes["iss"]` from the inbound JWT's `iss` claim, then expand the resolver to `$"{iss}|{tid}|{actor.Id.Value}"`:
+
+```csharp
+public sealed class MultiIdpClaimsActorProvider(IHttpContextAccessor accessor) : IActorProvider
+{
+    public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    {
+        var user = accessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
+            return Task.FromResult(Maybe<Actor>.None);
+
+        var sub = user.FindFirst("sub")?.Value;
+        if (sub is null) return Task.FromResult(Maybe<Actor>.None);
+
+        var attrs = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (user.FindFirst("iss")?.Value is { } iss) attrs["iss"] = iss;
+        if (user.FindFirst("tid")?.Value is { } tid) attrs["tid"] = tid;
+
+        var permissions = user.FindAll("permissions").Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
+        return Task.FromResult(Maybe<Actor>.From(new Actor(sub, permissions, [], attrs)));
+    }
+}
+```
+
+### Pair with Recipe 33 on the downstream side
+
+The microservice consumes the gateway-minted JWT via `UseTrellisInternalJwtActor` + the strict `AddJwtBearer` profile from [Recipe 33](#recipe-33--strict-addjwtbearer-validation-profile-for-usetrellisinternaljwtactor). The `Authority` it sets points at the gateway, and OIDC discovery handles JWKS fetch:
+
+```csharp
+// Downstream microservice — pairs with the gateway above.
+builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
+{
+    o.Authority = "https://gateway.internal";    // matches the gateway's PublicBaseUrl
+    o.Audience = "incidents-service";            // matches AudiencePerCluster for "incidents"
+    o.MapInboundClaims = false;
+    o.SaveToken = false;
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true, ValidIssuer = "https://gateway.internal",
+        ValidateAudience = true, ValidAudience = "incidents-service",
+        ValidateLifetime = true, RequireExpirationTime = true,
+        ValidateIssuerSigningKey = true, RequireSignedTokens = true,
+        ValidAlgorithms = ["RS256"],
+        ClockSkew = TimeSpan.FromSeconds(30),
+        TryAllIssuerSigningKeys = false,
+    };
+});
+
+builder.Services.AddTrellis(o => o
+    .UseTrellisInternalJwtActor(c =>
+    {
+        c.ExpectedIssuer = "https://gateway.internal";
+        c.ExpectedAudience = "incidents-service";
+        c.RequiredAttributes = ["tenant_id"];
+        // The gateway uses EntraActorProvider, which populates actor.Attributes["tid"].
+        // Default ProjectAttributes pass-through emits a JWT claim 'tid' (not 'tenant_id'),
+        // so the downstream maps 'tenant_id' (the actor attribute name we want to enforce
+        // via RequiredAttributes) ← 'tid' (the JWT claim name we receive).
+        c.AttributeClaimMap["tenant_id"] = "tid";
+    }));
+```
+
+### Trust boundary — signing-key compromise is full identity spoof
+
+`Trellis.Yarp` is a trusted subsystem: the gateway owns identity + route policy + topology projection; downstream microservices trust the gateway's signature and treat the minted `Actor` as authoritative. The corollary is sharp: **if an attacker exfiltrates the gateway's private signing key, they can mint a token impersonating any user with any permission set, and every downstream service will accept it as authentic** — until the compromised `kid` is dropped from JWKS and every downstream's cached config refreshes.
+
+Mitigations built into the package:
+
+- **Short token lifetimes.** Default 5 minutes; capped to `[1m, 30m]` at startup validation. Even a successful key exfiltration grants the attacker only a short window of unbounded spoof per token (the attacker can re-mint indefinitely, but each token expires quickly).
+- **`kid`-aware overlapping JWKS rotation.** `PreviousSigningKeys` keeps the outgoing key in JWKS for the rotation overlap window so in-flight tokens validated downstream don't get rejected as the gateway switches signers. The runbook (Recipe 33) gates the signer flip on a warm-up probe.
+- **Audit-log redaction by construction.** Every mint emits a `[LoggerMessage]` event carrying `kid`, `iss`, `aud`, `jti`, expiration bucket, permission count, forbidden count. NEVER the JWT body, raw claim values, actor IDs, tenant IDs, or PII. Redaction tests assert no claim-value strings appear in the audit-log output.
+
+### Emergency revocation procedure
+
+When you suspect a signing-key compromise:
+
+1. **Drop the compromised `kid` from JWKS** — remove it from both `SigningCredentials` AND `PreviousSigningKeys`. Redeploy the gateway. The compromised key is no longer published.
+2. **Force a JWKS refresh on every downstream service.** Restart them, or wait for `ConfigurationManager.AutomaticRefreshInterval` to elapse, OR send a malformed-`kid` token to trigger `RefreshOnIssuerKeyNotFound`.
+3. **Rotate to a fresh `kid`** — generate a new asymmetric key pair, set it as the new `SigningCredentials`, deploy. Pre-cache the new key in `PreviousSigningKeys` for at least one rotation cycle so the rollback is bounded.
+4. **Audit the gateway log** — the `jti` in every minted token correlates 1:1 with a mint event. Cross-reference against your downstream services' authentication logs to identify which requests were potentially affected.
+
+The key takeaway: design assumes the signing key is secret, but the operational recovery procedure assumes it isn't (a stolen key cannot be unstolen). Short lifetimes + fast rotation + auditable mint correlation are the defense-in-depth posture.
+
+### mTLS environment — JWT is belt-and-suspenders
+
+When the gateway-to-microservice channel is already mTLS-authenticated or Managed-Identity-bound, the minted JWT is redundant for channel authentication (~25 µs of crypto per request) — but it carries application-layer identity (permissions, attributes, tenant) that mTLS does not. v1 deliberately does NOT skip the JWT in mTLS environments because the cost is negligible relative to typical workload I/O and the claim contract is the unification point. A v1.1 mTLS forwarded-headers path is on the roadmap; until then the v1 acceptance is: **JWT is belt-and-suspenders by design when mTLS already trusts the channel.**
+
+### What it shows
+
+- The gateway-side bookend of Path B (Trellis internal JWT). Where Recipe 33 covered the downstream's strict `AddJwtBearer` validation profile, this recipe shows where the JWT being validated comes from.
+- The two-package contract — `Trellis.Yarp` mints, `Trellis.Asp.Authorization`'s `TrellisInternalJwtActorProvider` hydrates — is unified through the sentinel + count claims (`trellis_actor_contract_version=1`, `trellis_permissions_count`, `trellis_forbidden_permissions_count`) and the strict claim-shape contract.
+- Operational guardrails: short lifetimes, kid-aware rotation overlap, audit-log redaction, emergency revocation procedure. Signing-key compromise is the worst-case scenario the framework explicitly designs around.
+
+**Related recipes.** [Recipe 33](#recipe-33--strict-addjwtbearer-validation-profile-for-usetrellisinternaljwtactor) for the downstream side of the same contract; [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) for the three-path microservices framing (this recipe + Recipe 33 together cover Path B end-to-end); [Recipe 32](#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) for downstream cross-tenant probing defense.
 
 ---
 
