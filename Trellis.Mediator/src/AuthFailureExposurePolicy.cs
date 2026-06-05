@@ -15,7 +15,7 @@
 /// </para>
 /// <para>
 /// <see cref="HideAsNotFound"/> translates <c>Error.Forbidden</c> and
-/// <c>Error.AuthenticationRequired</c> to <c>Error.NotFound(ResourceRef)</c> — the boundary
+/// <c>Error.AuthenticationRequired</c> to <c>new Error.NotFound(ResourceRef)</c> — the boundary
 /// layer maps the synthetic NotFound to HTTP 404 so an unauthorized actor cannot distinguish
 /// "the resource does not exist" from "the resource exists but you may not access it". Choose
 /// this for resources whose mere existence reveals information (incident reports, account
@@ -39,7 +39,7 @@ public enum AuthFailureExposurePolicy
 
     /// <summary>
     /// Translate <c>Error.Forbidden</c> and <c>Error.AuthenticationRequired</c> to
-    /// <c>Error.NotFound(ResourceRef)</c> so an unauthorized actor cannot distinguish
+    /// <c>new Error.NotFound(ResourceRef)</c> so an unauthorized actor cannot distinguish
     /// "the resource does not exist" from "the resource exists but you may not access it".
     /// </summary>
     HideAsNotFound = 1,

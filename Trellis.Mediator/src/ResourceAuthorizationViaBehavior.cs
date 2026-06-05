@@ -282,7 +282,7 @@ public sealed partial class ResourceAuthorizationViaBehavior<
 
     /// <summary>
     /// Translates <c>Error.Forbidden</c> / <c>Error.AuthenticationRequired</c> to
-    /// <c>Error.NotFound(ResourceRef)</c> when the LEAF resource is opted into
+    /// <c>new Error.NotFound(ResourceRef)</c> when the LEAF resource is opted into
     /// <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>. Lookup key is
     /// <typeparamref name="TLeaf"/> (the resource the command identifies), not
     /// <typeparamref name="TOwner"/> (an authorization implementation detail).

@@ -167,7 +167,7 @@ public sealed partial class ResourceAuthorizationBehavior<
 
     /// <summary>
     /// Translates <c>Error.Forbidden</c> / <c>Error.AuthenticationRequired</c> to
-    /// <c>Error.NotFound(ResourceRef)</c> when the resource is opted into
+    /// <c>new Error.NotFound(ResourceRef)</c> when the resource is opted into
     /// <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>; otherwise returns the original
     /// error unchanged. Other error kinds are never translated — operational signal must not
     /// be hidden behind a 404.

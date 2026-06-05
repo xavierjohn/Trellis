@@ -50,7 +50,7 @@ public sealed class ResourceAuthorizationOptions
     /// <summary>
     /// Opt the given resource into <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>.
     /// Authorization failures on this resource are translated to
-    /// <c>Error.NotFound(ResourceRef)</c> using <typeparamref name="TResource"/> as both the
+    /// <c>new Error.NotFound(ResourceRef)</c> using <typeparamref name="TResource"/> as both the
     /// public resource type and the ID extraction source.
     /// </summary>
     /// <typeparam name="TResource">The resource type to hide. Must be a reference type
