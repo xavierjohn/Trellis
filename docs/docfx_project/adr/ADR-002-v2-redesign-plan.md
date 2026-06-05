@@ -881,7 +881,7 @@ The current explicit resource-authorization model is load-bearing and AI-correct
 - `IAuthorize` marker interface on messages — kept (rejecting v1's "delete it; attributes are sufficient"). The marker is what the pipeline behavior dispatches on.
 - `IAuthorizeResource<TResource>` — declares "this message authorizes against a resource of type T".
 - `IIdentifyResource<TMessage, TId>` — extracts the resource id from the message.
-- `IResourceLoader<TId, TResource>` — loads the resource (with caching).
+- `IResourceLoader<TMessage, TResource>` — loads the resource.
 - `[Authorize(Permissions = ...)]` attribute as syntactic sugar over `IAuthorize` for the simple permission-check case.
 
 **Layering is the right framing** (per critique): attributes provide the simple ergonomic path; the explicit interfaces remain for resource-aware auth. We do not delete the explicit model.
