@@ -291,6 +291,14 @@ public static class ServiceCollectionExtensions
                 IPipelineBehavior<TMessage, TResponse>,
                 ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>());
 
+        // v4 typed accessor — register IAuthorizedResource<TMessage, TResource> so handlers
+        // can inject the loaded resource and avoid a duplicate load. The holder is stateless
+        // (per-closed-pair static AsyncLocal); Scoped lifetime matches surrounding pipeline
+        // components. TryAddScoped is idempotent on repeat registration.
+        services.TryAddScoped<
+            IAuthorizedResource<TMessage, TResource>,
+            AuthorizedResourceHolder<TMessage, TResource>>();
+
         return services;
     }
 
@@ -500,6 +508,11 @@ public static class ServiceCollectionExtensions
                         services,
                         ServiceDescriptor.Scoped(closedPipeline, closedBehavior));
 
+                    // v4 typed accessor — register IAuthorizedResource<type, commandResource> so
+                    // handlers can inject the loaded resource and avoid a duplicate load. Mirrors
+                    // the explicit AddResourceAuthorization<,,>() helper above.
+                    RegisterAuthorizedResourceAccessor(services, type, commandResource);
+
                     var identifyIfaceForAuth = type.GetInterfaces()
                         .FirstOrDefault(i => i.IsGenericType
                             && i.GetGenericTypeDefinition() == identifyResourceDef
@@ -539,6 +552,11 @@ public static class ServiceCollectionExtensions
                     viaCommands.Add((type, tLeaf, tOwner, tResponse, identifyIfaceForVia));
                     // Leaf-loader bridging shares the same machinery as IAuthorizeResource<T>.
                     commandsNeedingBridging.Add((type, tLeaf, tResponse, identifyIfaceForVia));
+
+                    // v4 typed accessor — register IAuthorizedResource<type, tLeaf>. For via
+                    // commands the accessor exposes the LEAF (the typical mutation target),
+                    // not the owner. The owner accessor is intentionally not in scope per ADR-002 §5.3.
+                    RegisterAuthorizedResourceAccessor(services, type, tLeaf);
                 }
             }
 
@@ -744,6 +762,13 @@ public static class ServiceCollectionExtensions
                 IPipelineBehavior<TMessage, TResponse>,
                 ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>());
 
+        // v4 typed accessor — register IAuthorizedResource<TMessage, TLeaf> so handlers
+        // can inject the LEAF (the mutation target). Mirrors the scan-path registration
+        // for via commands; ensures AOT/explicit registration users also get the accessor.
+        services.TryAddScoped<
+            IAuthorizedResource<TMessage, TLeaf>,
+            AuthorizedResourceHolder<TMessage, TLeaf>>();
+
         return services;
     }
 
@@ -768,6 +793,29 @@ public static class ServiceCollectionExtensions
         }
 
         services.Add(descriptor);
+    }
+
+    /// <summary>
+    /// Registers <c>IAuthorizedResource&lt;TMessage, TResource&gt;</c> implemented by
+    /// <c>AuthorizedResourceHolder&lt;TMessage, TResource&gt;</c> as scoped for the closed pair,
+    /// so handlers can inject the v4 accessor and avoid a duplicate load of the
+    /// pipeline-loaded resource. Called from the scan path for each discovered
+    /// <see cref="IAuthorizeResource{TResource}"/> command (with the resource type) and for each
+    /// discovered <see cref="IAuthorizeResourceVia{TOwner}"/> command (with the LEAF type).
+    /// The explicit AOT registration helpers register the accessor inline via the typed overload
+    /// of <c>TryAddScoped&lt;TService, TImplementation&gt;</c>; this helper covers the scan path
+    /// where the types are only known at runtime.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.",
+        Justification = "Caller is itself annotated [RequiresDynamicCode] — the entire scan path is AOT-incompatible by design; AOT consumers use the typed AddResourceAuthorization<,,>() / AddRelatedResourceAuthorization<,,,>() overloads which register the accessor without MakeGenericType.")]
+    private static void RegisterAuthorizedResourceAccessor(
+        IServiceCollection services,
+        Type messageType,
+        Type resourceType)
+    {
+        var holderType = typeof(AuthorizedResourceHolder<,>).MakeGenericType(messageType, resourceType);
+        var accessorType = typeof(IAuthorizedResource<,>).MakeGenericType(messageType, resourceType);
+        services.TryAddScoped(accessorType, holderType);
     }
 
     /// <summary>
