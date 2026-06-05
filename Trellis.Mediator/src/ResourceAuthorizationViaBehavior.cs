@@ -204,13 +204,15 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         if (authResult.TryGetError(out var authError))
             return TResponse.CreateFailure(authError);
 
-        // Push the LEAF resource onto the per-async-flow stack so handlers injecting
+        // Publish the LEAF resource via the per-async-flow accessor so handlers injecting
         // IAuthorizedResource<TMessage, TLeaf> can read the same instance the leaf loader
         // returned. Via authorization runs against the OWNER list, but the handler's
         // mutation target is almost always the leaf (e.g., UploadScorecardCommand
         // identifies a Match and authorizes via Team; the handler mutates the Match).
-        // The owner accessor is intentionally NOT exposed; handlers needing owner
-        // state reload via their repository.
+        // The owner accessor is intentionally NOT exposed; handlers needing owner state
+        // reload via their repository. Backed by a linked-frame design with a volatile
+        // IsActive flag: dispose flips IsActive (visible to orphan tasks that captured the
+        // frame at fork time but outlived the parent dispatch) and restores the parent frame.
         using var _ = AuthorizedResourceHolder<TMessage, TLeaf>.Push(leaf);
 
         return await next(message, cancellationToken).ConfigureAwait(false);

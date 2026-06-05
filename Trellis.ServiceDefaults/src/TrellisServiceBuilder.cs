@@ -312,28 +312,13 @@ public sealed class TrellisServiceBuilder
     {
         _useResourceAuthorization = true;
         _useMediator = true;
-        // Guard against duplicate registration: the underlying
-        // AddResourceAuthorization<TMessage, TResource, TResponse>() does not dedup, so
-        // repeated calls (composed from multiple modules) would register the same closed-generic
-        // ResourceAuthorizationBehavior twice and run authorization + resource loading twice
-        // per request.
+        // AddResourceAuthorization<,,>() is fully idempotent (InsertResourceAuthorizationBehavior
+        // dedupes by ServiceType+ImplementationType; the IAuthorizedResource accessor is
+        // registered via TryAddScoped which is also idempotent). Call unconditionally so a
+        // pre-existing behavior descriptor (registered by another module) doesn't cause this
+        // helper to silently skip the v4 accessor registration that handlers depend on.
         _typedResourceAuthorizationRegistrations.Add(static services =>
-        {
-            var alreadyRegistered = false;
-            for (var i = 0; i < services.Count; i++)
-            {
-                var d = services[i];
-                if (d.ServiceType == typeof(IPipelineBehavior<TMessage, TResponse>)
-                    && d.ImplementationType == typeof(ResourceAuthorizationBehavior<TMessage, TResource, TResponse>))
-                {
-                    alreadyRegistered = true;
-                    break;
-                }
-            }
-
-            if (!alreadyRegistered)
-                services.AddResourceAuthorization<TMessage, TResource, TResponse>();
-        });
+            services.AddResourceAuthorization<TMessage, TResource, TResponse>());
         return this;
     }
 

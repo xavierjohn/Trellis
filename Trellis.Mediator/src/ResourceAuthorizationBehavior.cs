@@ -111,14 +111,16 @@ public sealed class ResourceAuthorizationBehavior<TMessage, TResource, TResponse
         if (authResult.TryGetError(out var authError))
             return TResponse.CreateFailure(authError);
 
-        // 5. Push the authorized resource onto the per-async-flow stack so handlers
+        // 5. Publish the authorized resource via the per-async-flow accessor so handlers
         //    injecting IAuthorizedResource<TMessage, TResource> can read the same instance
         //    the loader returned — eliminating a duplicate load for CosmosDB (doubled RU
-        //    charge), Dapper (doubled roundtrip), and HTTP-backed loaders. The push happens
-        //    only AFTER a successful Authorize call so denied authorizations cannot expose
-        //    the loaded resource to any out-of-band observer. Dispose at the end of the
-        //    using-block (after next returns) restores the previous async-flow stack value,
-        //    correctly handling nested mediator.Send of the same closed pair.
+        //    charge), Dapper (doubled roundtrip), and HTTP-backed loaders. Publication
+        //    happens only AFTER a successful Authorize call so denied authorizations
+        //    cannot expose the loaded resource to any out-of-band observer. The accessor
+        //    is backed by a linked-frame design with a volatile IsActive flag: dispose
+        //    flips IsActive (visible across cores to orphan tasks that captured the frame
+        //    at fork time but outlived the parent dispatch) and restores the parent frame,
+        //    so nested mediator.Send of the same closed pair sees the outer resource again.
         using var _ = AuthorizedResourceHolder<TMessage, TResource>.Push(resource);
 
         // 6. Proceed to handler
