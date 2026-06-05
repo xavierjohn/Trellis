@@ -1068,7 +1068,60 @@ public class TrellisServiceBuilderTests
             d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderCommand, Result<string>>) &&
             d.ImplementationType == typeof(ResourceAuthorizationBehavior<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>))
             .Should().Be(1,
-            "the dedup guard must prevent duplicate closed-generic ResourceAuthorizationBehavior registration");
+            "AddResourceAuthorization<,,>() is idempotent via InsertResourceAuthorizationBehavior dedup");
+    }
+
+    [Fact]
+    public void UseResourceAuthorizationTyped_RegistersV4AuthorizedResourceAccessor()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseResourceAuthorization<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>());
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IAuthorizedResource<UpdateProtectedOrderCommand, ProtectedOrder>),
+            "UseResourceAuthorization<,,>() must register the v4 accessor so handlers can inject it");
+    }
+
+    [Fact]
+    public void UseResourceAuthorizationTyped_WhenBehaviorAlreadyRegisteredElsewhere_StillRegistersAccessor()
+    {
+        // Regression for round-4 code-review finding: the prior dedup guard in
+        // UseResourceAuthorization<,,> short-circuited the call to AddResourceAuthorization<,,>
+        // when the closed behavior was already registered (e.g. by another module's manual
+        // pipeline-behavior registration). That guard silently skipped the v4 accessor
+        // registration side effect — handlers couldn't resolve IAuthorizedResource<,>. The
+        // guard is now removed because AddResourceAuthorization<,,> is itself idempotent
+        // (InsertResourceAuthorizationBehavior dedups by ServiceType+ImplementationType,
+        // and the accessor uses TryAddScoped which is also idempotent).
+        //
+        // To exercise the bug we must pre-register ONLY the closed behavior descriptor (not
+        // via AddResourceAuthorization<,,>, which would already register the accessor as a
+        // side effect and mask the regression).
+        var services = new ServiceCollection();
+
+        services.AddScoped<
+            IPipelineBehavior<UpdateProtectedOrderCommand, Result<string>>,
+            ResourceAuthorizationBehavior<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>>();
+
+        // Sanity: pre-step did NOT register the accessor — would-be-broken builder must add it.
+        services.Should().NotContain(d =>
+            d.ServiceType == typeof(IAuthorizedResource<UpdateProtectedOrderCommand, ProtectedOrder>),
+            "the pre-step should only register the pipeline behavior so the bug can be exercised");
+
+        services.AddTrellis(options => options
+            .UseResourceAuthorization<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>());
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IAuthorizedResource<UpdateProtectedOrderCommand, ProtectedOrder>),
+            "the builder helper must register the accessor even when the closed behavior was pre-registered by another module");
+
+        // Idempotency invariant still holds — exactly one behavior descriptor.
+        services.Count(d =>
+            d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderCommand, Result<string>>) &&
+            d.ImplementationType == typeof(ResourceAuthorizationBehavior<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>))
+            .Should().Be(1, "InsertResourceAuthorizationBehavior dedup must prevent duplicate behavior registration");
     }
 
     [Fact]
