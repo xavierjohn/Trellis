@@ -898,7 +898,7 @@ The current explicit resource-authorization model is load-bearing and AI-correct
 public interface IAuthorizedResource<TMessage, TResource> where TResource : class
 {
     TResource GetRequiredResource();   // throws InvalidOperationException outside a populated dispatch
-    bool TryGetResource(out TResource resource);
+    bool TryGetResource([MaybeNullWhen(false)] out TResource resource);
 }
 ```
 

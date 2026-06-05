@@ -493,6 +493,15 @@ public static class ServiceCollectionExtensions
                 {
                     var commandResource = authIface.GetGenericArguments()[0];
 
+                    // v4 accessor requires reference-typed resources (the AsyncLocal frame
+                    // holds the instance by reference and the IAuthorizedResource<,> interface
+                    // is constrained `where TResource : class`). Pre-check here so the user
+                    // gets a Trellis-shaped diagnostic naming the offending command and resource
+                    // type, rather than the cryptic ArgumentException MakeGenericType emits when
+                    // a value-typed argument violates the generic constraint.
+                    EnsureResourceTypeIsReferenceType(type, commandResource,
+                        markerInterfaceName: "IAuthorizeResource");
+
                     // TResponse must satisfy the behavior's constraints: IResult + IFailureFactory<TResponse>.
                     // Fail fast on misconfigured security-marked commands rather than silently
                     // skipping them — IAuthorizeResource<TResource> is a security marker and a
@@ -543,6 +552,13 @@ public static class ServiceCollectionExtensions
 
                     var identifyIfaceForVia = identifyIfacesForVia[0];
                     var tLeaf = identifyIfaceForVia.GetGenericArguments()[0];
+
+                    // Same reason as the direct path: the v4 accessor requires reference-typed
+                    // leaves and via-pipeline closed generics constrain `where TLeaf : class`.
+                    // Friendly diagnostic before MakeGenericType would otherwise emit a cryptic
+                    // ArgumentException naming a synthesised generic-arg position.
+                    EnsureResourceTypeIsReferenceType(type, tLeaf,
+                        markerInterfaceName: "IIdentifyResource");
 
                     // Same TResponse constraint as IAuthorizeResource<T>: IResult + IFailureFactory<TResponse>.
                     ValidateResourceAuthorizationResponseType(type, tOwner, tResponse,
@@ -1103,5 +1119,36 @@ public static class ServiceCollectionExtensions
                 $"Use a result type that satisfies both constraints — e.g. Result<{resourceType.Name}>, Result<string>, Result<Unit>, " +
                 $"or any other Result<T> the message handler can return; alternatively, remove {markerInterfaceName}<{resourceType.Name}> " +
                 $"from the message.");
+    }
+
+    /// <summary>
+    /// Throws <see cref="InvalidOperationException"/> with a Trellis-shaped diagnostic when
+    /// <paramref name="resourceType"/> is a value type. Resource-authorization closed
+    /// generics (<c>ResourceAuthorizationBehavior&lt;,,&gt;</c>,
+    /// <c>ResourceAuthorizationViaBehavior&lt;,,,&gt;</c>,
+    /// <c>AuthorizedResourceHolder&lt;,&gt;</c>) all require <c>where TResource : class</c> /
+    /// <c>where TLeaf : class</c>; without this pre-check the user would get a cryptic
+    /// <c>ArgumentException</c> from <c>MakeGenericType</c> ("violates the constraint of
+    /// type 'TResource'") that does not name the offending command.
+    /// </summary>
+    /// <param name="messageType">The discovered mediator-message command type.</param>
+    /// <param name="resourceType">The closed resource (or leaf) type extracted from
+    /// <see cref="IAuthorizeResource{TResource}"/> / <see cref="IIdentifyResource{TResource, TId}"/>.</param>
+    /// <param name="markerInterfaceName">Display name of the marker interface for the diagnostic
+    /// (<c>"IAuthorizeResource"</c> for the direct path, <c>"IIdentifyResource"</c> for the via leaf).</param>
+    internal static void EnsureResourceTypeIsReferenceType(
+        Type messageType,
+        Type resourceType,
+        string markerInterfaceName)
+    {
+        if (!resourceType.IsValueType) return;
+
+        throw new InvalidOperationException(
+            $"{messageType.FullName ?? messageType.Name} declares {markerInterfaceName}<{resourceType.Name}>, " +
+            $"but {resourceType.FullName ?? resourceType.Name} is a value type. Resource-authorization " +
+            "requires reference-typed resources because the framework's v4 typed accessor " +
+            "(IAuthorizedResource<TMessage, TResource>) holds the loaded instance by reference and " +
+            "is constrained `where TResource : class`. Define the resource as a class (or record class) " +
+            "instead — domain aggregates and entities should be reference types anyway.");
     }
 }
