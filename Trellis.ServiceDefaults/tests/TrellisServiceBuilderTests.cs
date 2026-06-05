@@ -1079,9 +1079,9 @@ public class TrellisServiceBuilderTests
         services.AddTrellis(options => options
             .UseResourceAuthorization<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>());
 
-        services.Should().Contain(d =>
+        services.Should().ContainSingle(d =>
             d.ServiceType == typeof(IAuthorizedResource<UpdateProtectedOrderCommand, ProtectedOrder>),
-            "UseResourceAuthorization<,,>() must register the v4 accessor so handlers can inject it");
+            "UseResourceAuthorization<,,>() must register the v4 accessor exactly once so handlers can inject it");
     }
 
     [Fact]
@@ -1113,9 +1113,9 @@ public class TrellisServiceBuilderTests
         services.AddTrellis(options => options
             .UseResourceAuthorization<UpdateProtectedOrderCommand, ProtectedOrder, Result<string>>());
 
-        services.Should().Contain(d =>
+        services.Should().ContainSingle(d =>
             d.ServiceType == typeof(IAuthorizedResource<UpdateProtectedOrderCommand, ProtectedOrder>),
-            "the builder helper must register the accessor even when the closed behavior was pre-registered by another module");
+            "the builder helper must register the accessor exactly once even when the closed behavior was pre-registered by another module");
 
         // Idempotency invariant still holds — exactly one behavior descriptor.
         services.Count(d =>
