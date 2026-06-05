@@ -146,35 +146,68 @@ public class TrellisServiceBuilderTests
     }
 
     [Fact]
-    public void UseResourceAuthorization_ConfigureDelegate_RegistersResourceAuthorizationOptions()
+    public void UseResourceAuthorization_ConfigureDelegate_RegistersResourceAuthorizationOptionsAndAppliesDelegate()
     {
+        // The configure delegate must mutate the resolved options snapshot. Use a publicly
+        // observable mutation (DefaultExposurePolicy) so a regression that silently drops the
+        // delegate fails the assertion. `HideExistence<TResource>` keys on the RESOURCE type
+        // (the type loaded by the pipeline), not the command type — so the canonical example
+        // uses ProtectedOrder, not UpdateProtectedOrderCommand.
         var services = new ServiceCollection();
 
         services.AddTrellis(options => options
-            .UseResourceAuthorization(o => o.HideExistence<UpdateProtectedOrderCommand>()));
+            .UseResourceAuthorization(o =>
+            {
+                o.DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound;
+                o.HideExistence<ProtectedOrder>();
+            }));
 
         var provider = services.BuildServiceProvider();
         var resolved = provider.GetRequiredService<IOptions<ResourceAuthorizationOptions>>().Value;
-        resolved.DefaultExposurePolicy.Should().Be(AuthFailureExposurePolicy.Propagate,
-            "default policy is unchanged unless the configure delegate explicitly sets it");
+
+        // Visible delegate effect: DefaultExposurePolicy would be Propagate (the type default)
+        // if the configure delegate had not run.
+        resolved.DefaultExposurePolicy.Should().Be(AuthFailureExposurePolicy.HideAsNotFound,
+            "the configure delegate must mutate the options snapshot — a default-Propagate value here would indicate the delegate never ran");
     }
 
     [Fact]
     public void UseResourceAuthorization_ConfigureDelegate_CalledTwice_ComposesBothConfigurations()
     {
-        var services = new ServiceCollection();
+        // Both configure delegates must be invoked against the SAME options instance — i.e.
+        // the second delegate observes the first delegate's mutations, and a third-party
+        // probe (resolving IOptions) sees the cumulative effect of both. The previous version
+        // of this test asserted only the first delegate's effect, which would pass even if
+        // the second delegate were silently dropped. This version captures observable state
+        // inside each delegate AND in the resolved options snapshot.
+        var invocationCount = 0;
+        AuthFailureExposurePolicy defaultPolicySeenBySecondDelegate = default;
 
+        var services = new ServiceCollection();
         services.AddTrellis(options => options
-            .UseResourceAuthorization(o => o.DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound)
-            .UseResourceAuthorization(o => o.Propagate<UpdateProtectedOrderCommand>()));
+            .UseResourceAuthorization(o =>
+            {
+                o.DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound;
+                o.HideExistence<ProtectedOrder>();
+                invocationCount++;
+            })
+            .UseResourceAuthorization(o =>
+            {
+                // Inside the second delegate, the first delegate's mutations must already be
+                // visible — that's what "compose" means in the IOptions.Configure model.
+                defaultPolicySeenBySecondDelegate = o.DefaultExposurePolicy;
+                o.Propagate<ProtectedOrder>();
+                invocationCount++;
+            }));
 
         var provider = services.BuildServiceProvider();
         var resolved = provider.GetRequiredService<IOptions<ResourceAuthorizationOptions>>().Value;
+
+        invocationCount.Should().Be(2, "both configure delegates must be invoked when options is resolved");
+        defaultPolicySeenBySecondDelegate.Should().Be(AuthFailureExposurePolicy.HideAsNotFound,
+            "the second delegate must observe the first delegate's DefaultExposurePolicy mutation");
         resolved.DefaultExposurePolicy.Should().Be(AuthFailureExposurePolicy.HideAsNotFound,
-            "first configure delegate sets the default policy");
-        // Second delegate's override should still apply alongside the first.
-        var optionsForCommand = resolved; // resolved already exposes the merged view
-        optionsForCommand.Should().NotBeNull();
+            "the first delegate's DefaultExposurePolicy mutation must persist into the final snapshot — the second delegate did not overwrite it");
     }
 
     [Fact]
