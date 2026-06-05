@@ -94,6 +94,17 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
     {
         // The actor-resolution branch (line 91 in ResourceAuthorizationBehavior.cs) emits
         // Error.AuthenticationRequired, which must also be hidden when HideAsNotFound is on.
+        //
+        // Note on the AuthorizationBehavior pipeline-composition caveat: the canonical Trellis
+        // pipeline runs static-permission AuthorizationBehavior BEFORE ResourceAuthorization
+        // Behavior. When a command implements both IAuthorize AND IAuthorizeResource<T>, an
+        // unauthenticated caller fails the static gate first and that AuthenticationRequired
+        // is NOT translated to NotFound — AuthorizationBehavior has no concept of the resource
+        // being protected. This unit test covers only the inner behavior (the only scope where
+        // translation occurs); the pipeline-composition limitation is documented (and not
+        // asserted) in cookbook Recipe 32, ADR-002 §5.4, integration-mediator.md, and the
+        // ResourceAuthorizationOptions reference. Consumers needing existence-hiding on
+        // anonymous probes must omit IAuthorize.
         var options = new ResourceAuthorizationOptions().HideExistence<HiddenResource>();
         var behavior = CreateBehavior<HideExistenceCommand>(actorId: null, resource: new HiddenResource("res-1", "owner-1", "kind"), options);
         var command = new HideExistenceCommand("res-1");
@@ -183,34 +194,6 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         var result = await InvokeHide(behavior, command);
 
         result.UnwrapError().Should().BeOfType<Error.NotFound>();
-    }
-
-    [Fact]
-    public async Task Handle_AuthorizeBehaviorShortCircuit_AuthenticationRequiredFromStaticBehaviorNotHidden()
-    {
-        // Documented limitation: the pipeline's static-permission AuthorizationBehavior runs
-        // BEFORE the resource-authorization behavior. When a command implements IAuthorize
-        // alongside IAuthorizeResource<T>, an unauthenticated caller's 401 surfaces from
-        // AuthorizationBehavior — outside HideAsNotFound's scope. This test asserts the
-        // boundary: only failures that reach the resource-authorization behavior are hidden.
-        // (Anchors the cookbook caveat — if this test changes, the cookbook must change too.)
-        var resource = new HiddenResource("res-1", "owner-1", "k");
-        var options = new ResourceAuthorizationOptions().HideExistence<HiddenResource>();
-
-        // The resource-auth behavior alone — bypassing AuthorizationBehavior — handles
-        // authentication-required and translates it. The "limitation" is that when the OUTER
-        // AuthorizationBehavior also runs (pipeline composition) it short-circuits first; that
-        // outer-pipeline composition is asserted in the higher-level integration tests of
-        // AuthorizationBehavior, not at this single-behavior unit level. This test confirms
-        // the inner behavior correctly translates when reached.
-        var behavior = CreateBehavior<HideExistenceCommand>(actorId: null, resource, options);
-        var command = new HideExistenceCommand("res-1");
-
-        var result = await InvokeHide(behavior, command);
-
-        // Inner behavior translates correctly — pipeline-level short-circuit is a separate concern.
-        result.UnwrapError().Should().BeOfType<Error.NotFound>(
-            "this confirms the inner translation; pipeline-level AuthorizationBehavior short-circuit is documented in the cookbook caveat");
     }
 
     [Fact]

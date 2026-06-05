@@ -391,9 +391,9 @@ public static class ServiceCollectionExtensions
                 distinctAssemblies.Add(assemblies[i]);
         }
 
-            EnsureResourceAuthorizationOptionsRegistered(services);
+        EnsureResourceAuthorizationOptionsRegistered(services);
 
-            var authorizeResourceDef = typeof(IAuthorizeResource<>);
+        var authorizeResourceDef = typeof(IAuthorizeResource<>);
         var authorizeViaDef = typeof(IAuthorizeResourceVia<>);
         var loaderDef = typeof(IResourceLoader<,>);
         var sharedLoaderDef = typeof(SharedResourceLoaderById<,>);
