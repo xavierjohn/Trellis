@@ -876,15 +876,15 @@ The Trellis-owned dispatcher is a **Phase 7** opt-in (see §15), behind a separa
 ### 5.2 `Trellis.Authorization` — actor + resource auth retained explicitly
 
 The current explicit resource-authorization model is load-bearing and AI-correctness-positive. **Keep** the contracts:
-- `IActor` / `Actor` record (already good).
+- `Actor` — sealed class with `ActorId` typed identifier, permissions, forbidden permissions, and ABAC attributes (identity-based equality).
 - `IActorProvider` — single abstraction users implement.
 - `IAuthorize` marker interface on messages — kept (rejecting v1's "delete it; attributes are sufficient"). The marker is what the pipeline behavior dispatches on.
 - `IAuthorizeResource<TResource>` — declares "this message authorizes against a resource of type T".
-- `IIdentifyResource<TMessage, TId>` — extracts the resource id from the message.
+- `IAuthorizeResourceVia<TOwner>` — declares "this message authorizes against an owner reached by navigation from the resource" (multi-hop ownership).
+- `IIdentifyResource<TResource, TId>` — extracts the resource id from the message.
 - `IResourceLoader<TMessage, TResource>` — loads the resource.
-- `[Authorize(Permissions = ...)]` attribute as syntactic sugar over `IAuthorize` for the simple permission-check case.
 
-**Layering is the right framing** (per critique): attributes provide the simple ergonomic path; the explicit interfaces remain for resource-aware auth. We do not delete the explicit model.
+**Explicit interfaces are the right framing** (per critique): `IAuthorize.RequiredPermissions` is the simple permission-gate path (no attribute layer); `IAuthorizeResource<TResource>` and `IAuthorizeResourceVia<TOwner>` provide resource-aware auth. We do not delete the explicit model in favor of attributes.
 
 **`Trellis.FluentValidation` stays as a separate, opt-in package** (consistent with §2 row 9 and the "no forced third-party transitive dependencies" principle). The `ValidationBehavior` in `Trellis.Mediator` discovers FluentValidation validators *only when* `Trellis.FluentValidation` is referenced — the discovery happens via a typed extension method on `IServiceCollection` that the FluentValidation package contributes (`AddTrellisFluentValidation()`). Consumers who do not install `Trellis.FluentValidation` get the `IValidate.Validate()` path only. The 3 standalone extension methods (`ToResult`, `ValidateToResult`, `ValidateToResultAsync`) remain in `Trellis.FluentValidation` for use outside the pipeline. **No folding.**
 
