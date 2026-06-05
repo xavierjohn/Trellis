@@ -396,14 +396,14 @@ public sealed record CancelOrderCommand(OrderId OrderId)
 
 public interface IOrderRepository
 {
-    Task<Maybe<Order>> GetByIdAsync(OrderId id, CancellationToken ct);
+    Task<Maybe<Order>> FindByIdAsync(OrderId id, CancellationToken ct);
 }
 
 public sealed class OrderResourceLoader(IOrderRepository repo)
     : SharedResourceLoaderById<Order, OrderId>
 {
     public override async Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
-        (await repo.GetByIdAsync(id, ct)).ToResult(new Error.NotFound(ResourceRef.For<Order>(id)));
+        (await repo.FindByIdAsync(id, ct)).ToResult(new Error.NotFound(ResourceRef.For<Order>(id)));
 }
 ```
 
