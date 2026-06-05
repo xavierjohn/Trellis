@@ -2631,7 +2631,7 @@ return Result.Ok(user);
 
 **Problem.** A command implements `IAuthorizeResource<Order>` (or `IAuthorizeResourceVia<Team>`); the resource-authorization pipeline loads the resource to run `Authorize(actor, resource)`; then the handler loads the **same** resource again from its repository to mutate it. For non-EF stores this is wasted I/O — a doubled CosmosDB read (and doubled RU billing), a doubled Dapper roundtrip, a doubled outbound HTTP call. Even for EF (where the change-tracker identity map returns the same tracked instance) the second LINQ query still fires.
 
-**Fix.** Inject `IAuthorizedResource<TCommand, TResource>` and call `GetRequired()` instead of re-fetching via the repository. The framework returns the **same instance** the loader produced for this dispatch.
+**Fix.** Inject `IAuthorizedResource<TCommand, TResource>` and call `GetRequiredResource()` instead of re-fetching via the repository. The framework returns the **same instance** the loader produced for this dispatch.
 
 ```csharp
 // ❌ Wrong — handler reloads the resource the pipeline already loaded.
@@ -2657,7 +2657,7 @@ public sealed class CancelOrderHandler(IAuthorizedResource<CancelOrderCommand, O
         // The pipeline loaded this Order to run cmd.Authorize(actor, order); we mutate the
         // SAME instance. No second DB roundtrip; for EF the entity is already tracked and the
         // mutation flows through the unit-of-work commit at the end of the request.
-        authorized.GetRequired().Cancel();
+        authorized.GetRequiredResource().Cancel();
         return new(Result.Ok(Unit.Value));
     }
 }
@@ -2685,7 +2685,7 @@ public sealed class UploadScorecardHandler(
 {
     public ValueTask<Result<Unit>> Handle(UploadScorecardCommand cmd, CancellationToken ct)
     {
-        match.GetRequired().UploadScorecard(cmd.Scorecard);   // mutate the leaf
+        match.GetRequiredResource().UploadScorecard(cmd.Scorecard);   // mutate the leaf
         return new(Result.Ok(Unit.Value));
     }
 }
@@ -2702,7 +2702,7 @@ In those cases the loader's job is "decide who owns the resource for the authori
 
 **Concurrency.** The accessor is safe across nested `mediator.Send` and concurrent `Task.WhenAll` dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow linked frame list with an `IsActive` flag — each push allocates a new frame (no shared mutable state between sibling forks), and dispose flips the frame's `IsActive` flag (visible to orphan child tasks that captured the frame at fork time but outlived the parent dispatch). The framework guarantees an orphan task cannot read the resource after the parent's dispatch ends. (Verified by `AuthorizedResourceHolderTests.ParallelPushes_OfDifferentResources_DoNotCrossContaminate` and `OrphanChildTask_CapturesFrameAtFork_ButReadsNothingAfterParentDispose`.)
 
-**Failure modes.** `GetRequired()` throws `InvalidOperationException` outside a populated dispatch — typical causes:
+**Failure modes.** `GetRequiredResource()` throws `InvalidOperationException` outside a populated dispatch — typical causes:
 - the handler was invoked directly (e.g. from a unit test) without going through the mediator pipeline;
 - the message lacks resource-authorization registration (`AddResourceAuthorization` was never called for it);
 - authentication failed, the loader failed, or `Authorize` was denied (none of which populate the accessor — denied authorizations cannot expose the loaded resource).

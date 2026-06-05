@@ -356,8 +356,8 @@ namespace Trellis.Authorization;
 public interface IAuthorizedResource<TMessage, TResource>
     where TResource : class
 {
-    TResource GetRequired();
-    bool TryGet([MaybeNullWhen(false)] out TResource resource);
+    TResource GetRequiredResource();
+    bool TryGetResource([MaybeNullWhen(false)] out TResource resource);
 }
 ```
 
@@ -370,8 +370,8 @@ public interface IAuthorizedResource<TMessage, TResource>
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `TResource GetRequired()` | `TResource` | Returns the resource loaded and authorized for the current pipeline dispatch. Throws `InvalidOperationException` outside a populated dispatch — typical causes: the handler was invoked directly (e.g. from a unit test) without going through the mediator pipeline; the message lacks resource-authorization registration; authentication failed, the loader failed, or `Authorize` was denied (none of which populate the accessor). The exception message names the closed pair so misconfiguration is easy to diagnose. |
-| `bool TryGet(out TResource? resource)` | `bool` | Returns `true` with the resource when populated; `false` and `null` otherwise. Provided for genuinely optional reads (e.g., diagnostic logging that runs both inside and outside the pipeline). Production handlers should prefer `GetRequired()` so a misconfigured pipeline fails loudly instead of silently skipping work. |
+| `TResource GetRequiredResource()` | `TResource` | Returns the resource loaded and authorized for the current pipeline dispatch. Throws `InvalidOperationException` outside a populated dispatch — typical causes: the handler was invoked directly (e.g. from a unit test) without going through the mediator pipeline; the message lacks resource-authorization registration; authentication failed, the loader failed, or `Authorize` was denied (none of which populate the accessor). The exception message names the closed pair so misconfiguration is easy to diagnose. |
+| `bool TryGetResource(out TResource? resource)` | `bool` | Returns `true` with the resource when populated; `false` and `null` otherwise. Provided for genuinely optional reads (e.g., diagnostic logging that runs both inside and outside the pipeline). Production handlers should prefer `GetRequiredResource()` so a misconfigured pipeline fails loudly instead of silently skipping work. |
 
 **Identity, not mutation-readiness.** The accessor returns the SAME instance the loader returned. The framework does not validate that the instance is a canonical mutation-ready aggregate. **Do not inject the accessor** for commands whose loader returns:
 

@@ -897,8 +897,8 @@ The current explicit resource-authorization model is load-bearing and AI-correct
 ```csharp
 public interface IAuthorizedResource<TMessage, TResource> where TResource : class
 {
-    TResource GetRequired();   // throws InvalidOperationException outside a populated dispatch
-    bool TryGet(out TResource resource);
+    TResource GetRequiredResource();   // throws InvalidOperationException outside a populated dispatch
+    bool TryGetResource(out TResource resource);
 }
 ```
 

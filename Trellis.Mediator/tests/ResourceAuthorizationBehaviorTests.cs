@@ -279,7 +279,7 @@ public class ResourceAuthorizationBehaviorTests
         var holder = new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>();
         MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> next = (_, _) =>
         {
-            holder.TryGet(out observedDuringNext).Should().BeTrue(
+            holder.TryGetResource(out observedDuringNext).Should().BeTrue(
                 "the accessor must be populated by ResourceAuthorizationBehavior before invoking next");
             observedSameInstance = ReferenceEquals(observedDuringNext, resource);
             return new ValueTask<Result<string>>(Result.Ok("Done"));
@@ -292,7 +292,7 @@ public class ResourceAuthorizationBehaviorTests
         observedSameInstance.Should().BeTrue(
             "the accessor must return the SAME instance the loader returned — that is the whole point");
         // After Handle returns, the using-block has disposed and the accessor is empty again.
-        holder.TryGet(out _).Should().BeFalse();
+        holder.TryGetResource(out _).Should().BeFalse();
     }
 
     [Fact]
@@ -314,7 +314,7 @@ public class ResourceAuthorizationBehaviorTests
         tracker.WasInvoked.Should().BeFalse();
 
         new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
-            .TryGet(out _).Should().BeFalse(
+            .TryGetResource(out _).Should().BeFalse(
                 "denied authorizations must not leak the loaded resource through the accessor");
     }
 
@@ -331,7 +331,7 @@ public class ResourceAuthorizationBehaviorTests
         result.IsFailure.Should().BeTrue();
         tracker.WasInvoked.Should().BeFalse();
         new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
-            .TryGet(out _).Should().BeFalse(
+            .TryGetResource(out _).Should().BeFalse(
                 "load failures must not populate the accessor");
     }
 
@@ -352,7 +352,7 @@ public class ResourceAuthorizationBehaviorTests
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Conflict>();
         new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
-            .TryGet(out _).Should().BeFalse(
+            .TryGetResource(out _).Should().BeFalse(
                 "the using-block must pop the accessor even when the handler returns a failure result");
     }
 
@@ -377,16 +377,16 @@ public class ResourceAuthorizationBehaviorTests
 
         MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> innerNext = (_, _) =>
         {
-            observations.Add($"inner-next:{holder.GetRequired().Id}");
+            observations.Add($"inner-next:{holder.GetRequiredResource().Id}");
             return new ValueTask<Result<string>>(Result.Ok("inner-done"));
         };
 
         MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> outerNext = async (_, ct) =>
         {
-            observations.Add($"outer-next-before-nested:{holder.GetRequired().Id}");
+            observations.Add($"outer-next-before-nested:{holder.GetRequiredResource().Id}");
             var innerResult = await innerBehavior.Handle(innerCommand, innerNext, ct);
             innerResult.IsSuccess.Should().BeTrue();
-            observations.Add($"outer-next-after-nested:{holder.GetRequired().Id}");
+            observations.Add($"outer-next-after-nested:{holder.GetRequiredResource().Id}");
             return Result.Ok("outer-done");
         };
 

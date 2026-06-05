@@ -277,7 +277,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var holder = new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>();
         global::Mediator.MessageHandlerDelegate<SingleHopCommand, Result<string>> next = (_, _) =>
         {
-            holder.TryGet(out observedDuringNext).Should().BeTrue(
+            holder.TryGetResource(out observedDuringNext).Should().BeTrue(
                 "ResourceAuthorizationViaBehavior must populate the LEAF accessor before invoking next");
             observedSameInstance = ReferenceEquals(observedDuringNext, leaf);
             return new ValueTask<Result<string>>(Result.Ok("Done"));
@@ -289,7 +289,7 @@ public class ResourceAuthorizationViaBehaviorTests
         observedDuringNext.Should().NotBeNull();
         observedSameInstance.Should().BeTrue(
             "the LEAF accessor must return the SAME instance the leaf loader returned");
-        holder.TryGet(out _).Should().BeFalse(
+        holder.TryGetResource(out _).Should().BeFalse(
             "after Handle returns, the using-block has disposed and the accessor is empty");
     }
 
@@ -311,7 +311,7 @@ public class ResourceAuthorizationViaBehaviorTests
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse();
         new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
-            .TryGet(out _).Should().BeFalse(
+            .TryGetResource(out _).Should().BeFalse(
                 "denied via-authorization must not populate the leaf accessor");
     }
 
@@ -336,7 +336,7 @@ public class ResourceAuthorizationViaBehaviorTests
         result.IsFailure.Should().BeTrue();
         tracker.WasInvoked.Should().BeFalse();
         new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
-            .TryGet(out _).Should().BeFalse(
+            .TryGetResource(out _).Should().BeFalse(
                 "leaf load failure must not populate the accessor");
     }
 
@@ -358,7 +358,7 @@ public class ResourceAuthorizationViaBehaviorTests
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Conflict>();
         new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
-            .TryGet(out _).Should().BeFalse(
+            .TryGetResource(out _).Should().BeFalse(
                 "the using-block must pop the accessor even when the handler returns a failure result");
     }
 

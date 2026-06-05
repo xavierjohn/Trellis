@@ -26,7 +26,7 @@ using Trellis.Authorization;
 /// <c>s_frame.Value</c> in the disposing async flow. Any orphan child task that
 /// captured the frame reference at fork time (and outlives the parent dispatch) still
 /// holds the frame and would otherwise continue to read the resource via
-/// <see cref="GetRequired"/> / <see cref="TryGet"/> — violating the documented
+/// <see cref="GetRequiredResource"/> / <see cref="TryGetResource"/> — violating the documented
 /// "populated only during an active dispatch" contract. The <c>IsActive</c> flip is
 /// visible to those orphans on subsequent reads, so they correctly report
 /// "no resource in scope." (Caught by GPT-5.5 code review on PR #578.)
@@ -48,7 +48,7 @@ internal sealed class AuthorizedResourceHolder<TMessage, TResource>
     private static readonly AsyncLocal<Frame?> s_frame = new();
 
     /// <inheritdoc />
-    public TResource GetRequired()
+    public TResource GetRequiredResource()
     {
         var frame = s_frame.Value;
         if (frame is null || !frame.IsActive)
@@ -66,7 +66,7 @@ internal sealed class AuthorizedResourceHolder<TMessage, TResource>
     }
 
     /// <inheritdoc />
-    public bool TryGet([MaybeNullWhen(false)] out TResource resource)
+    public bool TryGetResource([MaybeNullWhen(false)] out TResource resource)
     {
         var frame = s_frame.Value;
         if (frame is null || !frame.IsActive)

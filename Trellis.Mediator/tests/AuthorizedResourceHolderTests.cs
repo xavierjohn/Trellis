@@ -23,7 +23,7 @@ public class AuthorizedResourceHolderTests
     {
         var holder = new AuthorizedResourceHolder<HolderTestCommand, TestResource>();
 
-        var act = () => holder.GetRequired();
+        var act = () => holder.GetRequiredResource();
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*HolderTestCommand*")
@@ -36,7 +36,7 @@ public class AuthorizedResourceHolderTests
     {
         var holder = new AuthorizedResourceHolder<HolderTestCommand, TestResource>();
 
-        var found = holder.TryGet(out var resource);
+        var found = holder.TryGetResource(out var resource);
 
         found.Should().BeFalse();
         resource.Should().BeNull();
@@ -54,13 +54,13 @@ public class AuthorizedResourceHolderTests
 
         using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(resource))
         {
-            holder.GetRequired().Should().BeSameAs(resource);
-            holder.TryGet(out var got).Should().BeTrue();
+            holder.GetRequiredResource().Should().BeSameAs(resource);
+            holder.TryGetResource(out var got).Should().BeTrue();
             got.Should().BeSameAs(resource);
         }
 
         // After dispose, no resource in scope.
-        holder.TryGet(out _).Should().BeFalse();
+        holder.TryGetResource(out _).Should().BeFalse();
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class AuthorizedResourceHolderTests
         innerToken.Dispose(); // second dispose must not corrupt the AsyncLocal
 
         // Outer should still be in scope; double-pop would have unwound back to "no value".
-        holder.GetRequired().Should().BeSameAs(outer);
+        holder.GetRequiredResource().Should().BeSameAs(outer);
     }
 
     #endregion
@@ -101,19 +101,19 @@ public class AuthorizedResourceHolderTests
 
         using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(outer))
         {
-            holder.GetRequired().Should().BeSameAs(outer);
+            holder.GetRequiredResource().Should().BeSameAs(outer);
 
             using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(inner))
             {
-                holder.GetRequired().Should().BeSameAs(inner,
+                holder.GetRequiredResource().Should().BeSameAs(inner,
                     "the most-recently-pushed resource is the active one — nested mediator.Send semantics");
             }
 
-            holder.GetRequired().Should().BeSameAs(outer,
+            holder.GetRequiredResource().Should().BeSameAs(outer,
                 "popping the inner push restores the outer dispatch's resource");
         }
 
-        holder.TryGet(out _).Should().BeFalse();
+        holder.TryGetResource(out _).Should().BeFalse();
     }
 
     [Fact]
@@ -126,16 +126,16 @@ public class AuthorizedResourceHolderTests
         using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(outer))
         {
             await Task.Yield();
-            holder.GetRequired().Should().BeSameAs(outer);
+            holder.GetRequiredResource().Should().BeSameAs(outer);
 
             using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(inner))
             {
                 await Task.Yield();
-                holder.GetRequired().Should().BeSameAs(inner);
+                holder.GetRequiredResource().Should().BeSameAs(inner);
             }
 
             await Task.Yield();
-            holder.GetRequired().Should().BeSameAs(outer,
+            holder.GetRequiredResource().Should().BeSameAs(outer,
                 "AsyncLocal flow must restore the outer value after the inner push's using-block disposes, even across awaits");
         }
     }
@@ -168,7 +168,7 @@ public class AuthorizedResourceHolderTests
                 {
                     // Yield several times to maximize the chance of interleaving with siblings.
                     for (int y = 0; y < 4; y++) await Task.Yield();
-                    observed[local] = holder.GetRequired();
+                    observed[local] = holder.GetRequiredResource();
                 }
             }, ct);
         }
@@ -181,7 +181,7 @@ public class AuthorizedResourceHolderTests
                     $"task {i} pushed r{i} and must observe only r{i} despite {parallelism - 1} concurrent siblings");
 
         // After all tasks complete and dispose their pushes, the holder is empty in the parent flow.
-        holder.TryGet(out _).Should().BeFalse();
+        holder.TryGetResource(out _).Should().BeFalse();
     }
 
     [Fact]
@@ -195,28 +195,28 @@ public class AuthorizedResourceHolderTests
 
         using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(parentResource))
         {
-            holder.GetRequired().Should().BeSameAs(parentResource);
+            holder.GetRequiredResource().Should().BeSameAs(parentResource);
 
             var ct = TestContext.Current.CancellationToken;
             var tasks = Enumerable.Range(0, 16).Select(i => Task.Run(async () =>
             {
                 var child = new TestResource($"child-{i}", "owner");
-                holder.GetRequired().Should().BeSameAs(parentResource,
+                holder.GetRequiredResource().Should().BeSameAs(parentResource,
                     "at fork time the child inherits the parent's AsyncLocal value");
 
                 using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(child))
                 {
                     for (int y = 0; y < 4; y++) await Task.Yield();
-                    holder.GetRequired().Should().BeSameAs(child);
+                    holder.GetRequiredResource().Should().BeSameAs(child);
                 }
 
-                holder.GetRequired().Should().BeSameAs(parentResource,
+                holder.GetRequiredResource().Should().BeSameAs(parentResource,
                     "after disposing the child's push, the child sees the parent's resource again");
             }, ct)).ToArray();
 
             await Task.WhenAll(tasks);
 
-            holder.GetRequired().Should().BeSameAs(parentResource,
+            holder.GetRequiredResource().Should().BeSameAs(parentResource,
                 "after all children complete, the parent's view is unchanged by sibling forks");
         }
     }
@@ -236,8 +236,8 @@ public class AuthorizedResourceHolderTests
         var a = new TestResource("a", "owner");
         using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(a))
         {
-            holderA.TryGet(out _).Should().BeTrue();
-            holderB.TryGet(out _).Should().BeFalse(
+            holderA.TryGetResource(out _).Should().BeTrue();
+            holderB.TryGetResource(out _).Should().BeFalse(
                 "a different closed pair has its own AsyncLocal-backed stack");
         }
     }
@@ -267,7 +267,7 @@ public class AuthorizedResourceHolderTests
         using (AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(resource))
         {
             // Inside the using-block, an orphan can see the resource — the captured frame is active.
-            holder.TryGet(out var sanityCheck).Should().BeTrue();
+            holder.TryGetResource(out var sanityCheck).Should().BeTrue();
             sanityCheck.Should().BeSameAs(resource);
 
             // Fork while the resource is in scope; the child captures the AsyncLocal value
@@ -275,11 +275,11 @@ public class AuthorizedResourceHolderTests
             orphan = Task.Run(async () =>
             {
                 await afterParentDisposed.Task;
-                var found = holder.TryGet(out var r);
+                var found = holder.TryGetResource(out var r);
                 var threw = false;
                 try
                 {
-                    holder.GetRequired();
+                    holder.GetRequiredResource();
                 }
                 catch (InvalidOperationException)
                 {

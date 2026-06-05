@@ -55,17 +55,17 @@ public interface IAuthorizedResource<TMessage, TResource>
     /// mediator pipeline. The exception message names the closed pair so misconfiguration
     /// is easy to diagnose.
     /// </exception>
-    TResource GetRequired();
+    TResource GetRequiredResource();
 
     /// <summary>
     /// Attempts to read the loaded resource. Returns <c>true</c> with the resource when
     /// a pipeline dispatch populated it; returns <c>false</c> when no populated dispatch
     /// is active. Provided for genuinely optional reads (e.g., diagnostic logging that
     /// runs both inside and outside the pipeline). Production handlers should prefer
-    /// <see cref="GetRequired"/> so a misconfigured pipeline fails loudly instead of
+    /// <see cref="GetRequiredResource"/> so a misconfigured pipeline fails loudly instead of
     /// silently skipping work.
     /// </summary>
     /// <param name="resource">The loaded resource on success; <c>null</c> otherwise.</param>
     /// <returns><c>true</c> when populated; <c>false</c> otherwise.</returns>
-    bool TryGet([MaybeNullWhen(false)] out TResource resource);
+    bool TryGetResource([MaybeNullWhen(false)] out TResource resource);
 }

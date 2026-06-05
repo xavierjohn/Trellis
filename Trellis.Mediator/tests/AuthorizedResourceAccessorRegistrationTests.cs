@@ -74,10 +74,10 @@ public class AuthorizedResourceAccessorRegistrationTests
         var resource = new RegTestResource("r");
         using (AuthorizedResourceHolder<RegTestDirectCommand, RegTestResource>.Push(resource))
         {
-            accessor.GetRequired().Should().BeSameAs(resource);
+            accessor.GetRequiredResource().Should().BeSameAs(resource);
         }
 
-        accessor.TryGet(out _).Should().BeFalse("after dispose the accessor is empty again");
+        accessor.TryGetResource(out _).Should().BeFalse("after dispose the accessor is empty again");
     }
 
     #endregion
