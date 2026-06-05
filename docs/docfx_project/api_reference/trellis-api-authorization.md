@@ -382,7 +382,7 @@ public interface IAuthorizedResource<TMessage, TResource>
 
 In those cases the handler reloads via the repository. The loader's job is to decide who owns the resource for the authorization check; the handler's job is to fetch the canonical mutation-ready aggregate. These are different shapes and the accessor would couple them incorrectly.
 
-**Concurrency.** Safe across nested `mediator.Send` and concurrent `Task.WhenAll` dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow `AsyncLocal` stack with copy-on-push / restore-on-dispose semantics, so each dispatch sees only its own pushed resource.
+**Concurrency.** Safe across nested `mediator.Send` and concurrent `Task.WhenAll` dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow linked frame list with a volatile `IsActive` flag — each push allocates a new frame (no shared mutable state between sibling forks), and dispose flips the frame's `IsActive` flag (visible to orphan child tasks that captured the frame at fork time but outlived the parent dispatch). The framework guarantees an orphan task cannot read the resource after the parent's dispatch ends.
 
 See [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) in the cookbook for the WRONG/FIX shape and a full end-to-end example.
 
