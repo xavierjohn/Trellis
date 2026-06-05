@@ -716,6 +716,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         ResolvedAuthorizationPath path)
         where TMessage : IAuthorizeResourceVia<TOwner>, global::Mediator.IMessage
+        where TLeaf : class
         where TResponse : IResult, IFailureFactory<TResponse>
     {
         ArgumentNullException.ThrowIfNull(services);

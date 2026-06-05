@@ -30,6 +30,7 @@ using Trellis.Authorization;
 public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>
     : IPipelineBehavior<TMessage, TResponse>
     where TMessage : IAuthorizeResourceVia<TOwner>, global::Mediator.IMessage
+    where TLeaf : class
     where TResponse : IResult, IFailureFactory<TResponse>
 {
     private readonly IActorProvider _actorProvider;
@@ -202,6 +203,15 @@ public sealed class ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TR
         var authResult = message.Authorize(actor, owners);
         if (authResult.TryGetError(out var authError))
             return TResponse.CreateFailure(authError);
+
+        // Push the LEAF resource onto the per-async-flow stack so handlers injecting
+        // IAuthorizedResource<TMessage, TLeaf> can read the same instance the leaf loader
+        // returned. Via authorization runs against the OWNER list, but the handler's
+        // mutation target is almost always the leaf (e.g., UploadScorecardCommand
+        // identifies a Match and authorizes via Team; the handler mutates the Match).
+        // The owner accessor is intentionally NOT exposed in v4 — handlers needing owner
+        // state reload via their repository. See ADR-002 §5.3.
+        using var _ = AuthorizedResourceHolder<TMessage, TLeaf>.Push(leaf);
 
         return await next(message, cancellationToken).ConfigureAwait(false);
     }

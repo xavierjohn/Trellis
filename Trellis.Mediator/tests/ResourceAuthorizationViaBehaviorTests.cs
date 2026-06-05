@@ -258,6 +258,112 @@ public class ResourceAuthorizationViaBehaviorTests
 
     #endregion
 
+    #region Accessor populated for handler during next() — v4 typed accessor (leaf)
+
+    [Fact]
+    public async Task Handle_AuthorizeSucceeds_LeafAccessorPopulatedDuringNextWithSameInstance()
+    {
+        // For IAuthorizeResourceVia<TOwner> commands the handler's mutation target is
+        // almost always the LEAF (the resource the command identifies), not the via owner.
+        // v4 accessor exposes the leaf; owner accessor is intentionally not in scope.
+        var leaf = new TestLeaf("leaf-1", OwnerId: "owner-1");
+        var owner = new TestOwner("owner-1", CreatedByActorId: "actor-1");
+        var ownerRepo = new InMemoryRepo<TestOwner>(o => o.Id, owner);
+        var behavior = CreateBehavior<SingleHopCommand>("actor-1", leaf, ownerRepo);
+        var command = new SingleHopCommand("leaf-1");
+
+        TestLeaf? observedDuringNext = null;
+        bool observedSameInstance = false;
+        var holder = new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>();
+        global::Mediator.MessageHandlerDelegate<SingleHopCommand, Result<string>> next = (_, _) =>
+        {
+            holder.TryGet(out observedDuringNext).Should().BeTrue(
+                "ResourceAuthorizationViaBehavior must populate the LEAF accessor before invoking next");
+            observedSameInstance = ReferenceEquals(observedDuringNext, leaf);
+            return new ValueTask<Result<string>>(Result.Ok("Done"));
+        };
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        observedDuringNext.Should().NotBeNull();
+        observedSameInstance.Should().BeTrue(
+            "the LEAF accessor must return the SAME instance the leaf loader returned");
+        holder.TryGet(out _).Should().BeFalse(
+            "after Handle returns, the using-block has disposed and the accessor is empty");
+    }
+
+    [Fact]
+    public async Task Handle_AuthorizeFails_LeafAccessorNotPopulated()
+    {
+        // Denied via-authorizations must not leak the leaf via the accessor.
+        var leaf = new TestLeaf("leaf-1", OwnerId: "owner-1");
+        var owner = new TestOwner("owner-1", CreatedByActorId: "someone-else");
+        var ownerRepo = new InMemoryRepo<TestOwner>(o => o.Id, owner);
+        var behavior = CreateBehavior<SingleHopCommand>("actor-1", leaf, ownerRepo);
+        var command = new SingleHopCommand("leaf-1");
+        var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
+            Result.Ok("should not reach"));
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsFailure.Should().BeTrue();
+        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        tracker.WasInvoked.Should().BeFalse();
+        new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
+            .TryGet(out _).Should().BeFalse(
+                "denied via-authorization must not populate the leaf accessor");
+    }
+
+    [Fact]
+    public async Task Handle_LeafLoadFails_LeafAccessorNotPopulated()
+    {
+        // No leaf loaded → no accessor populated. Pipeline returns a NotFound-shaped
+        // failure (matches the documented "leaf load failure bubbles verbatim" semantics).
+        var owner = new TestOwner("owner-1", CreatedByActorId: "actor-1");
+        var ownerRepo = new InMemoryRepo<TestOwner>(o => o.Id, owner);
+        var behavior = CreateBehavior<SingleHopCommand>(
+            actorId: "actor-1",
+            leaf: null,
+            ownerRepo: ownerRepo);
+
+        var command = new SingleHopCommand("missing-leaf");
+        var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
+            Result.Ok("should not reach"));
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsFailure.Should().BeTrue();
+        tracker.WasInvoked.Should().BeFalse();
+        new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
+            .TryGet(out _).Should().BeFalse(
+                "leaf load failure must not populate the accessor");
+    }
+
+    [Fact]
+    public async Task Handle_AccessorPoppedAfterHandlerEvenOnHandlerFailure()
+    {
+        // The using-block guarantees pop even when next returns a failure result.
+        var leaf = new TestLeaf("leaf-1", OwnerId: "owner-1");
+        var owner = new TestOwner("owner-1", CreatedByActorId: "actor-1");
+        var ownerRepo = new InMemoryRepo<TestOwner>(o => o.Id, owner);
+        var behavior = CreateBehavior<SingleHopCommand>("actor-1", leaf, ownerRepo);
+        var command = new SingleHopCommand("leaf-1");
+        global::Mediator.MessageHandlerDelegate<SingleHopCommand, Result<string>> next = (_, _) =>
+            new ValueTask<Result<string>>(Result.Fail<string>(
+                new Error.Conflict(null, "test.conflict") { Detail = "Handler-level failure" }));
+
+        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+
+        result.IsFailure.Should().BeTrue();
+        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
+            .TryGet(out _).Should().BeFalse(
+                "the using-block must pop the accessor even when the handler returns a failure result");
+    }
+
+    #endregion
+
     #region Helpers — synthetic types and behavior factory
 
     /// <summary>Leaf resource the command identifies.</summary>
