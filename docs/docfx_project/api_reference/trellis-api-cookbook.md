@@ -506,6 +506,33 @@ services.AddResourceAuthorization(
 
 For the AOT-safe per-command registration shape (`AddResourceAuthorization<TMessage, TResource, TResponse>()`) and the equivalent `TrellisServiceBuilder.UseResourceAuthorization<TMessage, TResource, TResponse>()` slot, see [`trellis-api-servicedefaults.md`](trellis-api-servicedefaults.md#trellisservicebuilder). For multi-hop authorization (the resource the actor must own is reached via one or more navigation hops), see [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization).
 
+**Microservices.** The setup above works identically behind a reverse proxy / API gateway — the simplest microservices pattern is **token pass-through**: the gateway validates the incoming external JWT (Auth0 / Entra / Keycloak / etc.) and forwards it as-is, and each microservice configures `AddJwtBearer(o => o.Authority = "https://idp")` against the SAME external IDP. No new Trellis packages required.
+
+```csharp
+// Microservice composition — token pass-through path.
+// Gateway validated the JWT; this service validates again against the same IDP and
+// hydrates the Actor from the standard claims.
+builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
+{
+    o.Authority = "https://your-idp.example";   // SAME IDP the gateway validated against
+    o.Audience = "your-service";                // pin per-service audience
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true, ValidIssuer = "https://your-idp.example",
+        ValidateAudience = true, ValidAudience = "your-service",
+        ValidateLifetime = true, RequireSignedTokens = true,
+        ClockSkew = TimeSpan.FromSeconds(30),
+    };
+});
+
+builder.Services.AddTrellis(o => o
+    .UseClaimsActorProvider(c => { c.ActorIdClaim = "sub"; c.PermissionsClaim = "permissions"; })
+    .UseResourceAuthorization()
+    .UseResourceAuthorization<UpdateOrderCommand, Order, Result<Unit>>());
+```
+
+This pattern works today with current Trellis. Choose it when the external IDP is stable, all microservices share the same trust root, and you don't need per-cluster permission projection or shorter-than-IDP token lifetimes. When those constraints matter, the roadmap will offer two additional opt-in patterns: **Trellis internal JWT** (gateway re-mints a fresh per-cluster JWT from the full resolved `Actor`; see `TrellisInternalJwtActorProvider` + `Trellis.Yarp` in the authorization-microservices article when it ships) and **OAuth2 token exchange / OBO** (use `Microsoft.Identity.Web`'s OBO support directly — Trellis does not ship a token-exchange helper). The three-way decision matrix is documented in the upcoming `authorization-microservices.md` article.
+
 ---
 
 ## Recipe 8 — EF Core: `MaybePropertyMapping` for nullable value objects
