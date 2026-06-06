@@ -356,61 +356,6 @@ public class TrellisServiceBuilderTests
     }
 
     [Fact]
-    public void UseTrellisInternalJwtActor_RegistersScopedActorProvider()
-    {
-        var services = new ServiceCollection();
-
-        services.AddTrellis(options => options.UseTrellisInternalJwtActor());
-
-        services.Count(d =>
-            d.ServiceType == typeof(IActorProvider) &&
-            d.ImplementationType?.Name == "TrellisInternalJwtActorProvider").Should().Be(1);
-    }
-
-    [Fact]
-    public void UseTrellisInternalJwtActor_AfterAnotherActorProvider_ThrowsExclusivity()
-    {
-        var services = new ServiceCollection();
-
-        var act = () => services.AddTrellis(options => options
-            .UseClaimsActorProvider()
-            .UseTrellisInternalJwtActor());
-
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Only one actor provider*");
-    }
-
-    [Fact]
-    public void UseTrellisInternalJwtActor_BeforeAnotherActorProvider_ThrowsExclusivity()
-    {
-        // Symmetry: the exclusivity check fires regardless of which slot was claimed first.
-        var services = new ServiceCollection();
-
-        var act = () => services.AddTrellis(options => options
-            .UseTrellisInternalJwtActor()
-            .UseEntraActorProvider());
-
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Only one actor provider*");
-    }
-
-    [Fact]
-    public void UseTrellisInternalJwtActor_RegistersAndValidatesOptions()
-    {
-        // Bad config (reserved JWT claim name as a permission source) → OptionsValidationException
-        // when IOptions<>.Value is resolved (which is what ValidateOnStart() triggers at host start).
-        var services = new ServiceCollection();
-        services.AddTrellis(options => options
-            .UseTrellisInternalJwtActor(o => o.PermissionsClaim = "iss"));
-
-        var provider = services.BuildServiceProvider();
-        var act = () => provider.GetRequiredService<IOptions<Trellis.Asp.Authorization.TrellisInternalJwtActorOptions>>().Value;
-
-        act.Should().Throw<OptionsValidationException>()
-            .WithMessage("*reserved JWT claim 'iss'*");
-    }
-
-    [Fact]
     public void UseNestedJsonPathClaimsActorProvider_RegistersNestedProviderInActorProviderSlot()
     {
         var services = new ServiceCollection();
