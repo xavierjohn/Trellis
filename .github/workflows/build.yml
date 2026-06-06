@@ -1,4 +1,4 @@
-﻿name: Build
+name: Build
 
 on:
   workflow_dispatch:
@@ -70,7 +70,7 @@ jobs:
           **/TestResults/**/*.trx
 
     - name: Upload Coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       if: always()
       with:
         # MTP writes coverage relative to each test project; search recursively
@@ -208,7 +208,7 @@ jobs:
       run: dotnet pack --no-build --verbosity normal -c Release -o artifacts/
         
     - name: Upload artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: ${{ success() && !github.base_ref }}
       with:
         name: artifact
