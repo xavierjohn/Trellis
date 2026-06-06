@@ -7,6 +7,16 @@ on:
   pull_request:
     branches: [ main ]
 
+# Dependabot PRs run with a read-only GITHUB_TOKEN by default. The
+# EnricoMi/publish-unit-test-result-action step calls POST /check-runs
+# (needs `checks: write`) and may comment on PRs (`pull-requests: write`).
+# Without this explicit block, the action 403s on every dependabot PR
+# even when the build + tests themselves are green.
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
