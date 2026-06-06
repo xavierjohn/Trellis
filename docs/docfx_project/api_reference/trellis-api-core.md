@@ -1237,9 +1237,9 @@ Maybe<Order> maybe = await repo.TryLoadAsync(id).ToMaybeAsync();
 
 #### Nullable to Result — `NullableExtensions`, `NullableExtensionsAsync`
 
-Bridge a plain nullable value (`T?` for reference or value types) into the Result track. Mirrors `Maybe<T>.ToResult` for repositories that return raw nullables instead of `Maybe<T>`. The async overloads extend `Task<T?>` and `ValueTask<T?>` directly so you don't pay the `(await …).ToResult(error)` parenthesised-await burr — chain them like `BindAsync` / `EnsureAsync` / `MapAsync`.
+Bridge a plain nullable value (`T?` for reference or value types) into the Result track. Mirrors `Maybe<T>.ToResult` for repositories that return raw nullables instead of `Maybe<T>`. The async overloads extend `Task<T?>` and `ValueTask<T?>` directly, so call sites can chain `.ToResultAsync(error)` onto a repository call without an intermediate `await` — matching the receiver pattern used by `BindAsync` / `EnsureAsync` / `MapAsync`.
 
-The `Func<Error>` overloads validate the factory **before** awaiting the receiver: a null `errorFactory` throws `ArgumentNullException` even when the source would have succeeded.
+The `Func<Error>` async overloads delegate to the sync `ToResult` after awaiting, so the `ArgumentNullException.ThrowIfNull(errorFactory)` check fires on the awaited continuation rather than synchronously. The thrown exception still surfaces from the returned `Task` / `ValueTask`. This intentionally differs from `MaybeExtensionsAsync.ToResultAsync(Func<Error>)`, which validates the factory before awaiting.
 
 **Sync — `NullableExtensions` (4 overloads)**
 
@@ -1264,7 +1264,8 @@ The `Func<Error>` overloads validate the factory **before** awaiting the receive
 | `public static ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> nullableTask, Func<Error> errorFactory) where T : class` | `ValueTask<Result<T>>` | `ValueTask<T?>` reference-type factory variant. |
 
 ```csharp
-// Repository returns ValueTask<Order?> — bridge into the Result track without (await ...).ToResult(...) parens.
+// Repository returns ValueTask<Order?>. ToResultAsync extends the task receiver
+// directly, so no intermediate await + sync ToResult call is required.
 private ValueTask<Result<Order>> LoadOrderAsync(OrderId id, CancellationToken ct) =>
     _orderRepository.FindByIdAsync(id, ct)
         .ToResultAsync(new Error.NotFound(ResourceRef.For<Order>(id)));
