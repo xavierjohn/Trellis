@@ -27,10 +27,10 @@ internal sealed class CompositeEndpointConventionBuilder(IReadOnlyList<IEndpoint
             builder.Add(convention);
     }
 
-    public void Finally(Action<EndpointBuilder> finallyConvention)
+    public void Finally(Action<EndpointBuilder> finallyConvention) // stale-doc-ok: IEndpointConventionBuilder.Finally (ASP.NET), not removed Trellis Result.Finally
     {
         ArgumentNullException.ThrowIfNull(finallyConvention);
         foreach (var builder in _inner)
-            builder.Finally(finallyConvention);
+            builder.Finally(finallyConvention); // stale-doc-ok: IEndpointConventionBuilder.Finally (ASP.NET), not removed Trellis Result.Finally
     }
 }
