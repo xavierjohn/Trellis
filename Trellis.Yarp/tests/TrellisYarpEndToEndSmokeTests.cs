@@ -126,7 +126,9 @@ public sealed class TrellisYarpEndToEndSmokeTests
                     app.UseRouting();
                     app.UseEndpoints(e => e.MapGet("/{**catch-all}", context =>
                     {
-                        capture.AuthorizationHeader = context.Request.Headers.Authorization.ToString();
+                        capture.AuthorizationHeader = context.Request.Headers.TryGetValue("Authorization", out var values)
+                            ? values.ToString()
+                            : null;   // distinguish "missing" from "present but empty"; the test's "(missing)" diagnostic depends on the null
                         capture.Method = context.Request.Method;
                         capture.Path = context.Request.Path.ToString();
                         context.Response.StatusCode = 200;

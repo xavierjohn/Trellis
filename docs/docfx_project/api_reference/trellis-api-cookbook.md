@@ -3186,7 +3186,11 @@ public sealed class MultiIdpClaimsActorProvider(IHttpContextAccessor accessor) :
         if (user.FindFirst("tid")?.Value is { } tid) attrs["tid"] = tid;
 
         var permissions = user.FindAll("permissions").Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
-        return Task.FromResult(Maybe<Actor>.From(new Actor(sub, permissions, [], attrs)));
+        // Actor's constructor takes IReadOnlySet<string> for forbiddenPermissions; the
+        // collection-expression `[]` does not satisfy that target type (the C# 12 collection
+        // expression doesn't synthesize IReadOnlySet). Use FrozenSet<string>.Empty for the
+        // unused parameter so the snippet compiles when copied.
+        return Task.FromResult(Maybe<Actor>.From(new Actor(sub, permissions, FrozenSet<string>.Empty, attrs)));
     }
 }
 ```

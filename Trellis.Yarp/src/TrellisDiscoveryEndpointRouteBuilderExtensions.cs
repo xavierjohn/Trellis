@@ -91,13 +91,17 @@ public static class TrellisDiscoveryEndpointRouteBuilderExtensions
                 contentType: "application/json"))
             .AllowAnonymous();
 
-        endpoints.MapGet(jwks, (HttpContext context) =>
+        var jwksEndpoint = endpoints.MapGet(jwks, (HttpContext context) =>
             Results.Json(
                 BuildJwks(context.RequestServices.GetRequiredService<IOptions<TrellisActorForwardingOptions>>().Value),
                 contentType: "application/json"))
             .AllowAnonymous();
 
-        return oidcEndpoint;
+        // Return a composite builder that applies any further conventions
+        // (.WithTags(...), .RequireHost(...), caching metadata, etc.) to BOTH endpoints.
+        // Returning only the OIDC builder would silently miss the JWKS endpoint for
+        // any chained call — a surprise-partial-configuration footgun.
+        return new CompositeEndpointConventionBuilder([oidcEndpoint, jwksEndpoint]);
     }
 
     internal static OidcDiscoveryDocument BuildDiscoveryDocument(
@@ -109,11 +113,19 @@ public static class TrellisDiscoveryEndpointRouteBuilderExtensions
 
         var jwksUri = new Uri(options.PublicBaseUrl, jwksPath).ToString();
 
+        // Advertise only the active signing algorithm — keeps the discovery document
+        // truthful about what the gateway actually mints. Downstream consumers using
+        // ValidAlgorithms = ["RS256"] (Recipe 33 recommendation) need the published
+        // alg list to match exactly. v1 assumes rotation is within a single algorithm
+        // family; if the active key's algorithm changes mid-rotation, redeploy with
+        // the new alg or list both at the SigningCredentials.Algorithm level.
+        var algorithm = options.SigningCredentials.Algorithm;
+
         return new OidcDiscoveryDocument
         {
             Issuer = options.Issuer,
             JwksUri = jwksUri,
-            IdTokenSigningAlgValuesSupported = [SecurityAlgorithms.RsaSha256, SecurityAlgorithms.RsaSha384, SecurityAlgorithms.RsaSha512, SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.EcdsaSha384, SecurityAlgorithms.EcdsaSha512],
+            IdTokenSigningAlgValuesSupported = [algorithm],
         };
     }
 
@@ -143,7 +155,25 @@ public static class TrellisDiscoveryEndpointRouteBuilderExtensions
         if (key is JsonWebKey octJwk && string.Equals(octJwk.Kty, JsonWebAlgorithmsKeyTypes.Octet, StringComparison.Ordinal))
             return;
 
-        var jwk = JsonWebKeyConverter.ConvertFromSecurityKey(key);
+        // Defense in depth: JsonWebKeyConverter.ConvertFromSecurityKey throws
+        // NotSupportedException for any SecurityKey subclass it does not know about
+        // (X509SecurityKey, JsonWebKey, hypothetical future subclasses, key vault
+        // wrappers, etc.). Startup validation rejects these, but if a future refactor
+        // loosens validation OR a caller mutates IOptionsMonitor at runtime, we MUST
+        // skip the unsupported key silently rather than turn the JWKS endpoint into
+        // a 500. The JWKS endpoint serves OIDC discovery + downstream token validation;
+        // a 500 here cascades to "every downstream service can't validate any token."
+        // Fail-closed for this key (skip publication) is better than fail-stop for
+        // the whole endpoint.
+        JsonWebKey jwk;
+        try
+        {
+            jwk = JsonWebKeyConverter.ConvertFromSecurityKey(key);
+        }
+        catch (NotSupportedException)
+        {
+            return;
+        }
 
         // Default the "use" + "alg" hints when the converter does not set them. Some
         // IdentityModel versions leave them empty for raw RsaSecurityKey / ECDsaSecurityKey.

@@ -51,15 +51,18 @@ public sealed class TrellisDiscoveryEndpointTests
     }
 
     [Fact]
-    public void BuildDiscoveryDocument_SigningAlgsIncludeRsaSha256()
+    public void BuildDiscoveryDocument_SigningAlgsIsOnlyActiveAlgorithm()
     {
+        // PR review feedback: discovery doc must advertise the algorithm actually in use,
+        // not a hard-coded RS*/ES* list. Downstream consumers using ValidAlgorithms = ["RS256"]
+        // (Recipe 33) need the published list to match what the gateway mints.
         var options = NewValidOptions();
 
         var doc = TrellisDiscoveryEndpointRouteBuilderExtensions.BuildDiscoveryDocument(
             options,
             "/.well-known/jwks.json");
 
-        doc.IdTokenSigningAlgValuesSupported.Should().Contain(SecurityAlgorithms.RsaSha256);
+        doc.IdTokenSigningAlgValuesSupported.Should().Equal([SecurityAlgorithms.RsaSha256]);
     }
 
     [Fact]
@@ -136,6 +139,76 @@ public sealed class TrellisDiscoveryEndpointTests
         var jwks = TrellisDiscoveryEndpointRouteBuilderExtensions.BuildJwks(options);
 
         jwks["keys"]!.AsArray().Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void BuildJwks_UnsupportedSecurityKeyTypeInRotationRing_FailsClosedSilently()
+    {
+        // PR review feedback (round 2): the AppendKey defense-in-depth path must NOT throw
+        // when JsonWebKeyConverter doesn't know about the key type. A throw here turns the
+        // entire JWKS endpoint into a 500, which cascades to "every downstream service
+        // can't validate any token." Silent-skip is the correct fail-closed behavior for
+        // this key only.
+        //
+        // We construct an unsupported SecurityKey by hand. X509SecurityKey is rejected by
+        // the validator but ConvertFromSecurityKey for it returns a JWK without the n/e/x/y
+        // fields the builder emits — so it would produce an unusable JWK entry rather than
+        // throw. The reliable "throws NotSupportedException" path is a JsonWebKey wrapper.
+        var jwkInput = new JsonWebKey
+        {
+            Kty = JsonWebAlgorithmsKeyTypes.RSA,
+            N = "abc",
+            E = "AQAB",
+            KeyId = "jwk-input-1",
+        };
+        var options = NewValidOptions(previousSigningKeys: [jwkInput]);
+
+        var jwks = TrellisDiscoveryEndpointRouteBuilderExtensions.BuildJwks(options);
+
+        var keys = jwks["keys"]!.AsArray();
+        keys.Should().HaveCount(1,
+            "the unsupported JsonWebKey input must be silently skipped — throwing would 500 the entire JWKS endpoint");
+        keys.Select(k => k!["kid"]!.GetValue<string>()).Should().NotContain("jwk-input-1");
+    }
+
+    [Fact]
+    public async Task MapTrellisDiscoveryEndpoint_ReturnedConventionBuilder_AppliesToBothEndpoints()
+    {
+        // PR review feedback (round 2): the returned IEndpointConventionBuilder MUST apply
+        // chained conventions (.WithTags, .RequireHost, caching metadata, etc.) to BOTH the
+        // OIDC and JWKS endpoints. Previously it returned only the OIDC endpoint's builder
+        // and any chained call would silently configure only one of the two routes.
+        //
+        // Asserting via metadata count: tag the endpoints with a sentinel marker via the
+        // returned composite builder, then enumerate the EndpointDataSource and count how
+        // many endpoints carry the marker. If the builder fans out correctly, both
+        // discovery endpoints have the marker. If only one (the old behavior), only one.
+        var marker = "trellis-yarp-composite-builder-test-marker";
+        var builder = new HostBuilder()
+            .ConfigureWebHost(webHost =>
+            {
+                webHost.UseTestServer();
+                webHost.ConfigureServices(s =>
+                {
+                    s.AddRouting();
+                    s.AddSingleton(Options.Create(NewValidOptions()));
+                });
+                webHost.Configure(app =>
+                {
+                    app.UseRouting();
+                    app.UseEndpoints(e =>
+                        e.MapTrellisDiscoveryEndpoint().WithMetadata(marker));
+                });
+            });
+        using var host = await builder.StartAsync(TestContext.Current.CancellationToken);
+
+        var dataSource = host.Services.GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>();
+        var endpointsWithMarker = dataSource.Endpoints
+            .Where(ep => ep.Metadata.GetMetadata<string>() == marker)
+            .ToList();
+
+        endpointsWithMarker.Should().HaveCount(2,
+            "chained conventions on the returned builder must reach BOTH the OIDC AND the JWKS endpoint registrations");
     }
 
     [Fact]
