@@ -363,21 +363,6 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
-    /// Registers <see cref="TrellisInternalJwtActorProvider"/> as the scoped actor provider.
-    /// For microservices that consume internal-network JWTs minted by a trusted gateway
-    /// (typically <c>Trellis.Yarp</c> or an equivalent third-party gateway implementing the
-    /// same contract). Hydrates the FULL <see cref="Actor"/> surface — id, permissions,
-    /// forbidden permissions, ABAC attributes — and enforces the sentinel + count claim
-    /// contract that protects deny-overrides-allow against a proxy stripping the deny set.
-    /// Mutually exclusive with the other actor-provider selectors.
-    /// </summary>
-    public TrellisServiceBuilder UseTrellisInternalJwtActor(Action<TrellisInternalJwtActorOptions>? configure = null)
-    {
-        SetActorProvider(ActorProviderKind.TrellisInternalJwt, services => services.AddTrellisInternalJwtActorProvider(configure));
-        return this;
-    }
-
-    /// <summary>
     /// Registers <see cref="DevelopmentActorProvider"/> as the scoped actor provider.
     /// </summary>
     public TrellisServiceBuilder UseDevelopmentActorProvider(Action<DevelopmentActorOptions>? configure = null)
@@ -787,6 +772,5 @@ public sealed class TrellisServiceBuilder
         Entra,
         Development,
         NestedJsonPathClaims,
-        TrellisInternalJwt,
     }
 }

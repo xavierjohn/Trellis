@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — Microservice trust-boundary code carved out to `xavierjohn/Trellis.Microservices` (BREAKING)
+
+This release completes the carve-out of all microservice trust-boundary code (gateway-side JWT minting + consumer-side actor hydration + shared contract constants) into the separate [`xavierjohn/Trellis.Microservices`](https://github.com/xavierjohn/Trellis.Microservices) repository. The carve-out consolidates security-tier code under one CODEOWNERS surface, eliminates the gateway/consumer contract-literal duplication (now via the new `Trellis.Microservices.Abstractions` package), and lets the microservices packages evolve on an independent release cadence from the core framework.
+
+**BREAKING** for preview-stage adopters of P3 (`TrellisInternalJwtActorProvider`) / P3.5 (Recipe 33) / P4 (`Trellis.Yarp`). Stable consumers are unaffected — no `3.0.0` GA shipped this surface.
+
+#### Removed types
+
+- `Trellis.Yarp` package — entire package directory. Now lives in `xavierjohn/Trellis.Microservices` under the same NuGet ID `Trellis.Yarp` (non-breaking on the package ID itself; consumer `using` directives unchanged).
+- `Trellis.Asp.Authorization.TrellisInternalJwtActorProvider` — moved to `Trellis.Microservices.AspNetCore.TrellisInternalJwtActorProvider` (new package).
+- `Trellis.Asp.Authorization.TrellisInternalJwtActorOptions` — moved to `Trellis.Microservices.AspNetCore.TrellisInternalJwtActorOptions`.
+- `Trellis.Asp.Authorization.TrellisInternalJwtActorOptionsValidator` — moved (internal).
+- `Trellis.Asp.Authorization.ServiceCollectionExtensions.AddTrellisInternalJwtActorProvider` — moved to `Trellis.Microservices.AspNetCore.ServiceCollectionExtensions.AddTrellisInternalJwtActorProvider`.
+- `Trellis.ServiceDefaults.TrellisServiceBuilder.UseTrellisInternalJwtActor` slot — **DELETED outright** (no `[Obsolete]` shim). The slot in `TrellisServiceBuilder` cannot be retargeted without creating a cross-repo NuGet dependency cycle, and there is no consumer base on `3.0.0-alpha.342` that depends on it stably enough to warrant a deprecation period. Replacement is the direct `services.AddTrellisInternalJwtActorProvider(...)` extension from `Trellis.Microservices.AspNetCore`.
+
+#### Removed documentation
+
+- `docs/docfx_project/api_reference/trellis-api-yarp.md` — moved to `xavierjohn/Trellis.Microservices/docs/docfx_project/api_reference/trellis-api-yarp.md`.
+- `docs/docfx_project/api_reference/trellis-api-cookbook.md` Recipes 33 + 34 — moved to `xavierjohn/Trellis.Microservices/docs/docfx_project/api_reference/trellis-api-microservices-cookbook.md` (renumbered as Recipe 1 + Recipe 2). The previous slots in this cookbook now hold a forward-pointer subsection.
+- `TrellisInternalJwt*` sections in `docs/docfx_project/api_reference/trellis-api-asp.md` — replaced with a forward-pointer to `trellis-api-internal-jwt.md` in the new repo, plus migration guidance.
+- `UseTrellisInternalJwtActor` row in `docs/docfx_project/api_reference/trellis-api-servicedefaults.md` — replaced with guidance to use `services.AddTrellisInternalJwtActorProvider(...)` directly after installing `Trellis.Microservices.AspNetCore`.
+
+#### Migration
+
+| Before (this repo) | After (new repo) |
+|---|---|
+| `using Trellis.Asp.Authorization;` (for the `TrellisInternalJwt*` types) | `using Trellis.Microservices.AspNetCore;` |
+| `<PackageReference Include="Trellis.Asp" />` (sufficient) | `<PackageReference Include="Trellis.Asp" />` **+** `<PackageReference Include="Trellis.Microservices.AspNetCore" />` |
+| `services.AddTrellis(b => b.UseTrellisInternalJwtActor(...))` | `services.AddTrellisInternalJwtActorProvider(...)` (direct extension; no `TrellisServiceBuilder` slot for this provider) |
+| `<PackageReference Include="Trellis.Yarp" />` | Unchanged — same NuGet ID, now published from the new repo |
+
+The Path B "Microservices" snippet in cookbook Recipe 7 has been updated to show the new composition shape.
+
 ### Added — `Trellis.Yarp` package for gateway-side internal-JWT minting (P4)
 
 - **New package: `Trellis.Yarp`.** YARP gateway integration that re-mints a per-cluster internal JWT from the full Trellis `Actor` (id + permissions + forbidden permissions + ABAC attributes), exposes an OIDC discovery + JWKS endpoint pair so downstream services using `AddJwtBearer(o => o.Authority = gatewayUrl)` can fetch the signing keys, and emits redacted audit telemetry on every mint. Pairs with the consumer-side `TrellisInternalJwtActorProvider` shipped in P3 (PR #582) and the strict `AddJwtBearer` profile documented in cookbook Recipe 33 (PR #583). The package is **not** AOT-compatible — YARP itself is not AOT-clean; keeping `Trellis.Yarp` outside the AOT promise set prevents leaking that constraint into `Trellis.Asp`.

@@ -142,8 +142,4 @@
     <Project Path="Trellis.Testing.Worker/src/Trellis.Testing.Worker.csproj" />
     <Project Path="Trellis.Testing.Worker/tests/Trellis.Testing.Worker.Tests.csproj" />
   </Folder>
-  <Folder Name="/Trellis.Yarp/">
-    <Project Path="Trellis.Yarp/src/Trellis.Yarp.csproj" />
-    <Project Path="Trellis.Yarp/tests/Trellis.Yarp.Tests.csproj" />
-  </Folder>
 </Solution>
