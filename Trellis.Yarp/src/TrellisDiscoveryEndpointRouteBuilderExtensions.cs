@@ -135,14 +135,21 @@ public static class TrellisDiscoveryEndpointRouteBuilderExtensions
 
         var keys = new JsonArray();
 
-        AppendKey(keys, options.SigningCredentials.Key);
+        // v1 normalizes the JWKS "alg" field to the active SigningCredentials.Algorithm
+        // for every key in the ring (including PreviousSigningKeys). The contract assumes
+        // rotation stays within a single algorithm family — if it ever doesn't, the
+        // discovery document's id_token_signing_alg_values_supported (also single-valued
+        // from the active alg) would disagree with the JWKS, so we keep them in lock-step.
+        var activeAlgorithm = options.SigningCredentials.Algorithm;
+
+        AppendKey(keys, options.SigningCredentials.Key, activeAlgorithm);
         foreach (var previous in options.PreviousSigningKeys)
-            AppendKey(keys, previous);
+            AppendKey(keys, previous, activeAlgorithm);
 
         return new JsonObject { ["keys"] = keys };
     }
 
-    private static void AppendKey(JsonArray keys, SecurityKey key)
+    private static void AppendKey(JsonArray keys, SecurityKey key, string activeAlgorithm)
     {
         // Defense in depth: even though TrellisActorForwardingOptionsValidator rejects
         // symmetric keys at startup (including JsonWebKey { Kty: "oct" } wrappers), refuse
@@ -175,19 +182,17 @@ public static class TrellisDiscoveryEndpointRouteBuilderExtensions
             return;
         }
 
-        // Default the "use" + "alg" hints when the converter does not set them. Some
-        // IdentityModel versions leave them empty for raw RsaSecurityKey / ECDsaSecurityKey.
+        // Default the "use" hint when the converter does not set it. Some IdentityModel
+        // versions leave it empty for raw RsaSecurityKey / ECDsaSecurityKey.
         if (string.IsNullOrEmpty(jwk.Use))
             jwk.Use = "sig";
-        if (string.IsNullOrEmpty(jwk.Alg))
-        {
-            jwk.Alg = key switch
-            {
-                RsaSecurityKey => SecurityAlgorithms.RsaSha256,
-                ECDsaSecurityKey => SecurityAlgorithms.EcdsaSha256,
-                _ => null,
-            };
-        }
+
+        // Always set "alg" to the active SigningCredentials.Algorithm (not derived from key
+        // TYPE). The previous behavior defaulted to RS256/ES256 based on the key class,
+        // which would silently disagree with the discovery document's published
+        // id_token_signing_alg_values_supported (also single-valued from the active alg)
+        // whenever the consumer configures RS384 / RS512 / ES384 / ES512.
+        jwk.Alg = activeAlgorithm;
 
         var jwkObject = new JsonObject();
         SetIfPresent(jwkObject, "kty", jwk.Kty);

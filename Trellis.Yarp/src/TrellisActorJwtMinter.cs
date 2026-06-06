@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Yarp;
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Claims;
@@ -162,8 +163,55 @@ internal sealed class TrellisActorJwtMinter
             identity.AddClaim(new Claim(TrellisInternalJwtClaimNames.ForbiddenPermissions, permission));
 
         foreach (var (claimName, value) in attributes)
+        {
+            // Fail loudly if ProjectAttributes returns a key that collides with a reserved
+            // JWT claim name (iss/aud/exp/nbf/iat/jti/sub) or with the structural Trellis
+            // contract claim names (the count + version sentinels, the permissions / forbidden
+            // multi-valued claims). A silent collision would produce a JWT with duplicate
+            // claim names — downstream JwtBearer validation would either reject the token or
+            // (worse) read attacker-controlled values for iss/aud/sub. Throwing forces the
+            // operator to rename the attribute (or filter it out in ProjectAttributes) before
+            // any token is minted, rather than producing tokens that mysteriously fail
+            // validation downstream.
+            if (ReservedJwtClaimNames.Contains(claimName) || TrellisStructuralClaimNames.Contains(claimName))
+                throw new InvalidOperationException(
+                    $"TrellisActorForwardingOptions.ProjectAttributes returned an entry with reserved JWT claim name '{claimName}'. " +
+                    "Emitting an attribute claim with the same name as a structural JWT or Trellis-contract claim would produce a duplicate-claim-name JWT with undefined validation behavior downstream. " +
+                    "Rename the attribute key (e.g. 'external_iss' instead of 'iss') or filter the key out in your ProjectAttributes callback. " +
+                    "Reserved JWT claim names: " + string.Join(", ", ReservedJwtClaimNames) + ". " +
+                    "Trellis-contract claim names: " + string.Join(", ", TrellisStructuralClaimNames) + ".");
+
             identity.AddClaim(new Claim(claimName, value));
+        }
 
         return identity;
     }
+
+    /// <summary>
+    /// JWT registered claim names (RFC 7519 §4.1). Emitting any of these as an attribute
+    /// claim would collide with the structural JWT claims the minter produces from options
+    /// (iss, aud) or from the per-token state (jti, exp, nbf, iat) — duplicate-name claims
+    /// have undefined validation behavior at downstream <c>JwtBearerHandler</c>.
+    /// </summary>
+    private static readonly FrozenSet<string> ReservedJwtClaimNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "iss", "aud", "exp", "nbf", "iat", "jti", "sub",
+        }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Trellis internal-JWT structural claim names emitted by the minter. Attribute keys
+    /// that collide with these would also produce duplicate-name claims (specifically: the
+    /// permissions / forbidden multi-valued sets, the contract-version sentinel, and the
+    /// two count claims). Same fail-loud rationale as <see cref="ReservedJwtClaimNames"/>.
+    /// </summary>
+    private static readonly FrozenSet<string> TrellisStructuralClaimNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            TrellisInternalJwtClaimNames.Permissions,
+            TrellisInternalJwtClaimNames.ForbiddenPermissions,
+            TrellisInternalJwtClaimNames.ContractVersion,
+            TrellisInternalJwtClaimNames.PermissionsCount,
+            TrellisInternalJwtClaimNames.ForbiddenPermissionsCount,
+        }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 }

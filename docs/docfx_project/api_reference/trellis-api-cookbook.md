@@ -3167,7 +3167,7 @@ The transform on every request: resolves the inbound `Actor` from the registered
 
 #### Multi-IdP namespacing (when fronting two or more external IDPs)
 
-`Actor` equality is identity-based on `Id` only, so two IdPs that both issue `sub = "12345"` collide. The single-tenant `actor.Attributes["tid"]` namespacing above is sufficient when the gateway fronts ONE IDP. For multi-IDP fronts, ship a minimal custom `IActorProvider` that populates `actor.Attributes["iss"]` from the inbound JWT's `iss` claim, then expand the resolver to `$"{iss}|{tid}|{actor.Id.Value}"`:
+`Actor` equality is identity-based on `Id` only, so two IdPs that both issue `sub = "12345"` collide. The single-tenant `actor.Attributes["tid"]` namespacing above is sufficient when the gateway fronts ONE IDP. For multi-IDP fronts, ship a minimal custom `IActorProvider` that populates `actor.Attributes["external_iss"]` from the inbound JWT's `iss` claim (NOT under the attribute key `"iss"` — that name collides with the gateway's structural JWT `iss` claim AND with the consumer-side reserved-claim guard, and the minter will throw if `ProjectAttributes` returns a reserved key). Then expand the resolver to `$"{external_iss}|{tid}|{actor.Id.Value}"`:
 
 ```csharp
 public sealed class MultiIdpClaimsActorProvider(IHttpContextAccessor accessor) : IActorProvider
@@ -3182,7 +3182,10 @@ public sealed class MultiIdpClaimsActorProvider(IHttpContextAccessor accessor) :
         if (sub is null) return Task.FromResult(Maybe<Actor>.None);
 
         var attrs = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (user.FindFirst("iss")?.Value is { } iss) attrs["iss"] = iss;
+        // Store the EXTERNAL issuer under a non-registered attribute key. Using "iss" here
+        // would collide with the gateway-minted structural JWT iss claim — the minter would
+        // throw InvalidOperationException because ProjectAttributes returned a reserved name.
+        if (user.FindFirst("iss")?.Value is { } iss) attrs["external_iss"] = iss;
         if (user.FindFirst("tid")?.Value is { } tid) attrs["tid"] = tid;
 
         var permissions = user.FindAll("permissions").Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
@@ -3193,6 +3196,17 @@ public sealed class MultiIdpClaimsActorProvider(IHttpContextAccessor accessor) :
         return Task.FromResult(Maybe<Actor>.From(new Actor(sub, permissions, FrozenSet<string>.Empty, attrs)));
     }
 }
+```
+
+Pair the provider with an updated `ActorIdResolver` that reads `external_iss`:
+
+```csharp
+o.ActorIdResolver = actor =>
+{
+    var externalIss = actor.Attributes.GetValueOrDefault("external_iss", "unknown-iss");
+    var tenant = actor.Attributes.GetValueOrDefault("tid", "unknown-tid");
+    return $"{externalIss}|{tenant}|{actor.Id.Value}";
+};
 ```
 
 ### Pair with Recipe 33 on the downstream side

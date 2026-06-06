@@ -360,6 +360,59 @@ public sealed class TrellisActorJwtMinterTests
         act.Should().Throw<ArgumentNullException>();
     }
 
+    // === PR review feedback (round 3): reserved-claim-name attribute guard ===
+
+    [Theory]
+    [InlineData("iss")]
+    [InlineData("aud")]
+    [InlineData("exp")]
+    [InlineData("nbf")]
+    [InlineData("iat")]
+    [InlineData("jti")]
+    [InlineData("sub")]
+    [InlineData("ISS")]    // case-insensitive match — JWT claim names are case-sensitive but the structural ones are well-known
+    public void MintFor_AttributeWithReservedJwtClaimName_ThrowsLoudly(string reservedName)
+    {
+        // The minter MUST reject attribute keys that collide with structural JWT claim
+        // names (iss/aud/exp/nbf/iat/jti/sub). Emitting a duplicate-name claim would
+        // produce a JWT with undefined validation behavior downstream — JwtBearer might
+        // read attacker-controlled values for iss/aud/sub. Throwing forces the operator
+        // to rename the attribute or filter it in ProjectAttributes.
+        var (minter, _, _) = NewMinter(
+            projectAttributes: (_, _) => new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [reservedName] = "attacker-controlled-value",
+            });
+        var actor = NewActor(attributes: new Dictionary<string, string> { ["ignored"] = "ignored" });
+
+        var act = () => minter.MintFor(actor, NewCluster("incidents"));
+
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage($"*reserved JWT claim name '{reservedName}'*")
+           .WithMessage("*ProjectAttributes*")
+           .WithMessage("*external_iss*"); // the suggested workaround
+    }
+
+    [Theory]
+    [InlineData("permissions")]
+    [InlineData("forbidden_permissions")]
+    [InlineData("trellis_actor_contract_version")]
+    [InlineData("trellis_permissions_count")]
+    [InlineData("trellis_forbidden_permissions_count")]
+    public void MintFor_AttributeWithTrellisStructuralClaimName_ThrowsLoudly(string structuralName)
+    {
+        var (minter, _, _) = NewMinter(
+            projectAttributes: (_, _) => new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [structuralName] = "would-override-structural-claim",
+            });
+
+        var act = () => minter.MintFor(NewActor(), NewCluster("incidents"));
+
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage($"*reserved JWT claim name '{structuralName}'*");
+    }
+
     [Fact]
     public void Constructor_NullOptions_Throws()
     {

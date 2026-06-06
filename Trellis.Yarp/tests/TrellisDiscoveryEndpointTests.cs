@@ -141,6 +141,37 @@ public sealed class TrellisDiscoveryEndpointTests
         jwks["keys"]!.AsArray().Should().HaveCount(1);
     }
 
+    [Theory]
+    [InlineData(SecurityAlgorithms.RsaSha256)]
+    [InlineData(SecurityAlgorithms.RsaSha384)]
+    [InlineData(SecurityAlgorithms.RsaSha512)]
+    public void BuildJwks_AlgFieldMirrorsActiveSigningCredentialsAlgorithm(string algorithm)
+    {
+        // PR review feedback (round 3): the JWKS `alg` hint must match
+        // options.SigningCredentials.Algorithm exactly — not be derived from the key TYPE
+        // (which previously defaulted to RS256/ES256 regardless of whether the consumer
+        // configured RS384/RS512/etc). Misalignment between JWKS alg and discovery doc
+        // alg would mislead metadata consumers and break ValidAlgorithms enforcement.
+        var rsa = new RsaSecurityKey(System.Security.Cryptography.RSA.Create(2048)) { KeyId = "active-1" };
+        var previous = new RsaSecurityKey(System.Security.Cryptography.RSA.Create(2048)) { KeyId = "prev-1" };
+        var options = new TrellisActorForwardingOptions
+        {
+            Issuer = "https://gateway.internal",
+            SigningCredentials = new SigningCredentials(rsa, algorithm),
+            PreviousSigningKeys = [previous],
+            PublicBaseUrl = new Uri("https://gateway.internal", UriKind.Absolute),
+        };
+
+        var jwks = TrellisDiscoveryEndpointRouteBuilderExtensions.BuildJwks(options);
+
+        var keys = jwks["keys"]!.AsArray();
+        keys.Should().HaveCount(2);
+        keys[0]!["alg"]!.GetValue<string>().Should().Be(algorithm,
+            "the active key's JWKS alg field MUST match the configured signing algorithm exactly");
+        keys[1]!["alg"]!.GetValue<string>().Should().Be(algorithm,
+            "every key in the rotation ring inherits the active signing algorithm; v1 assumes rotation stays within a single algorithm family");
+    }
+
     [Fact]
     public void BuildJwks_UnsupportedSecurityKeyTypeInRotationRing_FailsClosedSilently()
     {
