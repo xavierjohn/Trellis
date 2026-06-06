@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <Description>YARP gateway integration for Trellis. Re-mints a per-cluster internal JWT from the full Trellis Actor (id + permissions + forbidden permissions + ABAC attributes), exposes an OIDC discovery + JWKS endpoint pair so downstream services can configure AddJwtBearer(o =&gt; o.Authority = gatewayUrl) for transparent key rotation, and emits redacted audit telemetry on every mint. Pairs with the consumer-side TrellisInternalJwtActorProvider in Trellis.Asp.</Description>
+    <PackageTags>trellis;yarp;reverse-proxy;gateway;jwt;authorization;actor;forwarding;microservices;jwks;oidc</PackageTags>
+    <!--
+      Trellis.Yarp is NOT AOT-compatible. YARP itself is not AOT-clean. Marking this
+      package as AOT-incompatible (false / unset) prevents leaking that constraint into
+      Trellis.Asp via transitive references. Consumers who need an AOT-compatible
+      microservice path can keep the gateway non-AOT (typically a thin reverse proxy
+      where AOT savings are negligible) and ship AOT-compatible downstream services
+      that depend only on Trellis.Asp.
+
+      We also turn off the trim and AOT analyzers (which Directory.Build.props enables
+      repo-wide) because this package legitimately uses APIs the analyzers flag —
+      Minimal-API Map* delegates, Results.Json reflection-based serialization, and
+      Microsoft.IdentityModel's Newtonsoft-based JWK serializer. Each of those is a
+      deliberate v1 trade-off; consumers are warned via IsAotCompatible=false.
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>yarp</TrellisApiRefName>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trellis.Yarp.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Yarp.ReverseProxy" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
+    <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
+  </ItemGroup>
+</Project>
