@@ -36,9 +36,14 @@ public static class TrellisActorForwardingServiceCollectionExtensions
     /// uses <c>AddClaimsActorProvider</c> or <c>AddEntraActorProvider</c> from
     /// <c>Trellis.Asp</c> to hydrate the actor from the upstream JWT (the JWT the
     /// gateway validated at its boundary). Calling this extension WITHOUT having
-    /// registered an actor provider fails at request time with
-    /// <see cref="InvalidOperationException"/> from <see cref="System.IServiceProvider"/>
-    /// when the per-request transform resolves <see cref="Authorization.IActorProvider"/>.
+    /// registered an actor provider <b>fails at host startup</b>:
+    /// <c>AddTrellisActorForwarding</c> registers
+    /// <see cref="TrellisActorForwardingRegistrationValidator"/> as an
+    /// <see cref="Microsoft.Extensions.Hosting.IHostedLifecycleService"/> that throws
+    /// <see cref="InvalidOperationException"/> in <c>StartingAsync</c> if no
+    /// <see cref="Authorization.IActorProvider"/> is registered. That turns what would
+    /// otherwise be a per-request "no service registered" error into a clear startup
+    /// failure pointing at the exact misconfiguration.
     /// </para>
     /// <para>
     /// <b>YARP composition.</b> Place this call immediately after

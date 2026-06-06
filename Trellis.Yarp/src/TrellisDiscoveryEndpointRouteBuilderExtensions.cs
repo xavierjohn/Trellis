@@ -149,8 +149,19 @@ public static class TrellisDiscoveryEndpointRouteBuilderExtensions
         return new JsonObject { ["keys"] = keys };
     }
 
-    private static void AppendKey(JsonArray keys, SecurityKey key, string activeAlgorithm)
+    private static void AppendKey(JsonArray keys, SecurityKey? key, string activeAlgorithm)
     {
+        // Defense in depth: a null entry in PreviousSigningKeys would crash
+        // JsonWebKeyConverter.ConvertFromSecurityKey(null) with NullReferenceException and
+        // 500 the JWKS endpoint. Startup validation rejects null entries, but a runtime
+        // mutation of IOptionsMonitor (or a future refactor that loosens validation) could
+        // still produce one. Silent-skip is the correct fail-closed posture: the missing
+        // key isn't published, downstream validation for tokens signed by it fails — but
+        // tokens signed by OTHER keys in the ring still validate, so the impact is bounded
+        // to the misbehaving key rather than the whole endpoint.
+        if (key is null)
+            return;
+
         // Defense in depth: even though TrellisActorForwardingOptionsValidator rejects
         // symmetric keys at startup (including JsonWebKey { Kty: "oct" } wrappers), refuse
         // to publish one if it somehow reaches this point. Publishing symmetric key
@@ -163,15 +174,16 @@ public static class TrellisDiscoveryEndpointRouteBuilderExtensions
             return;
 
         // Defense in depth: JsonWebKeyConverter.ConvertFromSecurityKey throws
-        // NotSupportedException for any SecurityKey subclass it does not know about
-        // (X509SecurityKey, JsonWebKey, hypothetical future subclasses, key vault
-        // wrappers, etc.). Startup validation rejects these, but if a future refactor
-        // loosens validation OR a caller mutates IOptionsMonitor at runtime, we MUST
-        // skip the unsupported key silently rather than turn the JWKS endpoint into
-        // a 500. The JWKS endpoint serves OIDC discovery + downstream token validation;
-        // a 500 here cascades to "every downstream service can't validate any token."
-        // Fail-closed for this key (skip publication) is better than fail-stop for
-        // the whole endpoint.
+        // NotSupportedException for some SecurityKey subclasses it does not know how to
+        // serialize — notably JsonWebKey input (the converter's INPUT is the concrete
+        // CLR subclasses; JsonWebKey is its OUTPUT format). X509SecurityKey behaves
+        // differently: the converter succeeds but produces a JWK that's missing the
+        // public-component fields the builder emits (n/e or crv/x/y) — that key is
+        // serialized but downstream consumers can't use it for signature validation.
+        // Both failure modes are rejected at startup by IsSupportedAsymmetricKey, but if
+        // a future refactor loosens validation OR a caller mutates IOptionsMonitor at
+        // runtime, the catch here ensures the JWKS endpoint stays up. A 500 here
+        // cascades to "every downstream service can't validate any token."
         JsonWebKey jwk;
         try
         {

@@ -203,6 +203,23 @@ public sealed class TrellisDiscoveryEndpointTests
     }
 
     [Fact]
+    public void BuildJwks_NullEntryInRotationRing_FailsClosedSilently()
+    {
+        // PR review feedback (round 4): startup validation rejects null entries in
+        // PreviousSigningKeys, but a runtime mutation of IOptionsMonitor (or a future
+        // refactor that loosens validation) could still produce one. Without a null guard,
+        // JsonWebKeyConverter.ConvertFromSecurityKey(null) throws NullReferenceException
+        // and 500s the JWKS endpoint, contradicting the method's own defense-in-depth
+        // rationale. Silent-skip keeps the rest of the ring published.
+        var options = NewValidOptions(previousSigningKeys: [null!]);
+
+        var jwks = TrellisDiscoveryEndpointRouteBuilderExtensions.BuildJwks(options);
+
+        var keys = jwks["keys"]!.AsArray();
+        keys.Should().HaveCount(1, "only the active key should be published; the null previous entry must be silently dropped");
+    }
+
+    [Fact]
     public async Task MapTrellisDiscoveryEndpoint_ReturnedConventionBuilder_AppliesToBothEndpoints()
     {
         // PR review feedback (round 2): the returned IEndpointConventionBuilder MUST apply
