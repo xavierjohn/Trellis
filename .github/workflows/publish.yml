@@ -100,7 +100,7 @@ jobs:
         ls -lh nupkgs/*.nupkg
 
     - name: Upload SBOMs
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: sbom-spdx
         path: sbom/_manifest/**
