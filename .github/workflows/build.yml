@@ -1,4 +1,4 @@
-﻿name: Build
+name: Build
 
 on:
   workflow_dispatch:
@@ -6,6 +6,16 @@ on:
     branches: [ main, release/v** ]
   pull_request:
     branches: [ main ]
+
+# Dependabot PRs run with a read-only GITHUB_TOKEN by default. The
+# EnricoMi/publish-unit-test-result-action step calls POST /check-runs
+# (needs `checks: write`) and may comment on PRs (`pull-requests: write`).
+# Without this explicit block, the action 403s on every dependabot PR
+# even when the build + tests themselves are green.
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   build:
@@ -60,7 +70,7 @@ jobs:
           **/TestResults/**/*.trx
 
     - name: Upload Coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       if: always()
       with:
         # MTP writes coverage relative to each test project; search recursively
@@ -198,7 +208,7 @@ jobs:
       run: dotnet pack --no-build --verbosity normal -c Release -o artifacts/
         
     - name: Upload artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       if: ${{ success() && !github.base_ref }}
       with:
         name: artifact
