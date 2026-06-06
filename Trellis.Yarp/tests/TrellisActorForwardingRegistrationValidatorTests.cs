@@ -48,6 +48,31 @@ public sealed class TrellisActorForwardingRegistrationValidatorTests
     }
 
     [Fact]
+    public async Task StartingAsync_MultipleActorProvidersRegistered_ThrowsWithGuidance()
+    {
+        // PR review feedback (round 6): the validator must enforce EXACTLY ONE IActorProvider.
+        // DI's GetRequiredService<T> returns the LAST registered descriptor — with multiple
+        // actor providers, the minted Actor surface silently depends on registration order,
+        // a hard-to-debug authorization regression. TrellisServiceBuilder enforces single-slot
+        // selection at composition time, but consumers calling AddTrellisActorForwarding
+        // directly bypass that gate; this validator restores the invariant for that path.
+        var services = new ServiceCollection();
+        services.AddSingleton<IActorProvider>(new StubActorProvider());
+        services.AddSingleton<IActorProvider>(new StubActorProvider());
+        services.AddSingleton<IActorProvider>(new StubActorProvider());
+        var sp = services.BuildServiceProvider();
+        var validator = new TrellisActorForwardingRegistrationValidator(sp);
+
+        var act = async () => await validator.StartingAsync(TestContext.Current.CancellationToken);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.WithMessage("*EXACTLY ONE IActorProvider*");
+        ex.WithMessage("*Found 3 registrations*");
+        ex.WithMessage("*StubActorProvider*"); // names the type that would silently win
+        ex.WithMessage("*TrellisServiceBuilder*"); // points at the canonical fix
+    }
+
+    [Fact]
     public async Task Host_StartsCleanly_WhenAddTrellisActorForwardingPairedWithActorProvider()
     {
         var builder = new HostBuilder()
