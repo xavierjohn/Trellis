@@ -1,16 +1,63 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Dependabot version update configuration.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
 updates:
-  - package-ecosystem: "github-actions" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: "nuget"
+    directory: "/"
     schedule:
       interval: "weekly"
 
-  - package-ecosystem: "nuget" # See documentation for possible values
-    directory: "/" # Location of package manifests
-    schedule:
-      interval: "weekly"
+    ignore:
+      # FluentAssertions 8.0.0+ switched to the XCEED commercial license.
+      # Pin to the last free major (7.x); block automatic upgrades to 8.x.
+      - dependency-name: "FluentAssertions"
+        update-types: ["version-update:semver-major"]
+
+      # Microsoft.Testing.Extensions.TrxReport has TWO version generations on
+      # NuGet: 1.x is the current Microsoft.Testing.Platform extension (2024+),
+      # 2.x is an abandoned 2021 codebase with confusingly-higher version
+      # numbers. Bumping 1.x -> 2.x is a downgrade-as-upgrade.
+      - dependency-name: "Microsoft.Testing.Extensions.TrxReport"
+        update-types: ["version-update:semver-major"]
+
+    # Group weekly NuGet bumps so the schedule produces ~5 PRs instead of
+    # 20+ unrelated single-package PRs.
+    groups:
+      microsoft-platform:
+        patterns:
+          - "Microsoft.Extensions.*"
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.IdentityModel.*"
+          - "Microsoft.Identity.*"
+      ef-core:
+        patterns:
+          - "Microsoft.EntityFrameworkCore*"
+      roslyn:
+        patterns:
+          - "Microsoft.CodeAnalysis.*"
+          - "Roslynator.*"
+      testing:
+        patterns:
+          - "xunit*"
+          - "Xunit.*"
+          - "Microsoft.Testing.*"
+          - "FluentAssertions"
+          - "Moq"
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry*"
+      api-versioning:
+        patterns:
+          - "Asp.Versioning.*"
+      scalar:
+        patterns:
+          - "Scalar.*"
