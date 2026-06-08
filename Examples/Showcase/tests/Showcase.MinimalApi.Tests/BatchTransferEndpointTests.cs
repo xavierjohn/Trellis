@@ -19,10 +19,10 @@ using Trellis.Showcase.MinimalApi.Endpoints;
 /// FluentValidation adapter on the same message and aggregates every violation into one
 /// 422 response. Internally, FluentValidation property names (e.g. <c>"Metadata.Reference"</c>,
 /// <c>"Lines[0].Memo"</c>) are normalized to RFC 6901 JSON Pointers
-/// (<c>/Metadata/Reference</c>, <c>/Lines/0/Memo</c>) and stored on
+/// (<c>/metadata/reference</c>, <c>/lines/0/memo</c>) and stored on
 /// <see cref="FieldViolation"/>. The ASP boundary then translates those pointers into the
 /// dot+bracket convention used by ASP.NET Core's default <c>ValidationProblemDetails</c>
-/// (<c>Metadata.Reference</c>, <c>Lines[0].Memo</c>) for the wire <c>errors</c> dict, so
+/// (<c>metadata.reference</c>, <c>lines[0].memo</c>) for the wire <c>errors</c> dict, so
 /// React form libraries (react-hook-form, Formik) and OpenAPI codegen consumers can lookup
 /// errors by the same field name they use client-side.
 /// </para>
@@ -98,14 +98,14 @@ public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFac
         var body = await response.Content.ReadAsStringAsync(Ct);
 
         // Nested property: FluentValidation reports "Metadata.Reference" → adapter normalizes to
-        // RFC 6901 pointer "/Metadata/Reference" → ASP wire emits MVC convention "Metadata.Reference".
-        body.Should().Contain("Metadata.Reference");
+        // RFC 6901 pointer "/metadata/reference" → ASP wire emits MVC convention "metadata.reference".
+        body.Should().Contain("metadata.reference");
         // Indexer property: FluentValidation reports "Lines[0].Memo" → adapter normalizes to
-        // "/Lines/0/Memo" → ASP wire emits MVC convention "Lines[0].Memo".
-        body.Should().Contain("Lines[0].Memo");
+        // "/lines/0/memo" → ASP wire emits MVC convention "lines[0].memo".
+        body.Should().Contain("lines[0].memo");
         // Confirm the JSON Pointer slash form did NOT leak through to the wire.
-        body.Should().NotContain("Metadata/Reference");
-        body.Should().NotContain("Lines/0/Memo");
+        body.Should().NotContain("metadata/reference");
+        body.Should().NotContain("lines/0/memo");
     }
 
     [Fact]
@@ -128,9 +128,9 @@ public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFac
         // From IValidate (uses InputPointer "/Lines/0/ToAccountId" → wire "Lines[0].ToAccountId")
         body.Should().Contain("Lines[0].ToAccountId");
         body.Should().Contain("A line may not target the source account.");
-        // From FluentValidation, normalized through "/Metadata/Reference" / "/Lines/0/Memo" then translated to MVC convention.
-        body.Should().Contain("Metadata.Reference");
-        body.Should().Contain("Lines[0].Memo");
+        // From FluentValidation, normalized through "/metadata/reference" / "/lines/0/memo" then translated to MVC convention.
+        body.Should().Contain("metadata.reference");
+        body.Should().Contain("lines[0].memo");
     }
 
     [Fact]

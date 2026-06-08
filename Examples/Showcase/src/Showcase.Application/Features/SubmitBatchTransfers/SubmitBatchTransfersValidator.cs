@@ -8,9 +8,9 @@ using global::FluentValidation;
 /// <list type="bullet">
 ///   <item><description><c>RuleFor(c =&gt; c.Metadata.Reference)</c> produces the FluentValidation
 ///   property name <c>"Metadata.Reference"</c>, which the Trellis adapter translates to
-///   <c>/Metadata/Reference</c>.</description></item>
+///   <c>/metadata/reference</c>.</description></item>
 ///   <item><description><c>RuleForEach(c =&gt; c.Lines).ChildRules(...)</c> produces names like
-///   <c>"Lines[0].Memo"</c>, which the adapter translates to <c>/Lines/0/Memo</c>.</description></item>
+///   <c>"Lines[0].Memo"</c>, which the adapter translates to <c>/lines/0/memo</c>.</description></item>
 /// </list>
 /// </summary>
 public sealed class SubmitBatchTransfersValidator : AbstractValidator<SubmitBatchTransfersCommand>

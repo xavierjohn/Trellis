@@ -29,7 +29,7 @@ The Mediator-agnostic helpers in `Trellis.FluentValidation` convert standalone `
 
 - You already use FluentValidation and want failures to surface as `Error.InvalidInput` instead of exceptions or hand-rolled translations.
 - You send messages through `Trellis.Mediator` and want validators to run automatically inside `ValidationBehavior<TMessage,TResponse>` without per-handler boilerplate.
-- You need RFC 6901 JSON Pointer paths (`/Lines/0/Memo`) on validation failures so the ASP boundary renders them under the right field.
+- You need RFC 6901 JSON Pointer paths (`/lines/0/memo`) on validation failures so the ASP boundary renders them under the right field.
 
 ## Surface at a glance
 
@@ -319,10 +319,10 @@ The adapter and `ToResult` translate FluentValidation property names to RFC 6901
 
 | FluentValidation `PropertyName` | `FieldViolation.Field` |
 |---|---|
-| `Email` | `/Email` |
-| `Address.PostCode` | `/Address/PostCode` |
-| `Items[0].Sku` | `/Items/0/Sku` |
-| `Items[0].Tags[2]` | `/Items/0/Tags/2` |
+| `Email` | `/email` |
+| `Address.PostCode` | `/address/postCode` |
+| `Items[0].Sku` | `/items/0/sku` |
+| `Items[0].Tags[2]` | `/items/0/tags/2` |
 
 Special characters in segments are escaped per RFC 6901 (`~` → `~0`, `/` → `~1`). Names that already begin with `/` are passed through unchanged.
 

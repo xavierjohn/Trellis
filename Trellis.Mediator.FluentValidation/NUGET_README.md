@@ -29,7 +29,7 @@ builder.Services.AddTrellisFluentValidation();
 builder.Services.AddScoped<IValidator<MyCommand>, MyCommandValidator>();
 ```
 
-`AddTrellisFluentValidation()` registers `FluentValidationMessageValidatorAdapter<TMessage>` as the open-generic `IMessageValidator<TMessage>` implementation. Every `IValidator<T>` registered for the message in DI runs inside the existing `ValidationBehavior<TMessage, TResponse>` and contributes its failures to an aggregated `Error.InvalidInput` response. FluentValidation property names with member chains (`Address.City`) or indexers (`Items[0].Sku`) are translated to RFC 6901 JSON Pointers (`/Address/City`, `/Items/0/Sku`).
+`AddTrellisFluentValidation()` registers `FluentValidationMessageValidatorAdapter<TMessage>` as the open-generic `IMessageValidator<TMessage>` implementation. Every `IValidator<T>` registered for the message in DI runs inside the existing `ValidationBehavior<TMessage, TResponse>` and contributes its failures to an aggregated `Error.InvalidInput` response. FluentValidation property names with member chains (`Address.City`) or indexers (`Items[0].Sku`) are translated to camelCase RFC 6901 JSON Pointers (`/address/city`, `/items/0/sku`).
 
 ## AOT / trim story
 

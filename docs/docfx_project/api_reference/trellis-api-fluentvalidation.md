@@ -14,7 +14,7 @@ audience: [llm]
 - **Namespace:** `Trellis.FluentValidation`
 - **Purpose:** Mediator-agnostic FluentValidation helpers for Trellis:
   1. **Standalone helpers** — `FluentValidationResultExtensions` converts a `ValidationResult` (or runs an `IValidator<T>` synchronously/asynchronously) into a `Result<T>` failure backed by `Error.InvalidInput`.
-  2. **Pointer normalization** — `JsonPointerNormalizer.ToJsonPointer(...)` projects FluentValidation member-chain property names (`Address.PostCode`, `Items[0].Sku`) into RFC 6901 JSON Pointers (`/Address/PostCode`, `/Items/0/Sku`) so they round-trip through Trellis `InputPointer` values.
+  2. **Pointer normalization** — `JsonPointerNormalizer.ToJsonPointer(...)` projects FluentValidation member-chain property names (`Address.PostCode`, `Items[0].Sku`) into camelCase RFC 6901 JSON Pointers (`/address/postCode`, `/items/0/sku`) so they round-trip through Trellis `InputPointer` values.
 
 > **v3 package split.** The Mediator integration (`AddTrellisFluentValidation()` + `FluentValidationMessageValidatorAdapter<TMessage>`) moved to the new `Trellis.Mediator.FluentValidation` package so consumers of these standalone helpers do not have to take a Mediator dependency. See [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#header) for the adapter API, and `MIGRATION_v3.md` for the migration recipe.
 
@@ -42,7 +42,7 @@ For wiring FluentValidation validators into the Trellis Mediator validation stag
 - Keep primitive-to-value-object parsing at the transport seam; validators should normally validate already-shaped command/value-object inputs.
 - `ToResult<T>` only null-checks `validationResult`; it does not independently reject a `null` `value`.
 - `ValidateToResultAsync<T>` observes `cancellationToken` BEFORE the null-value short-circuit, so a cancelled token always wins over the synchronous null-input fallback.
-- `JsonPointerNormalizer.ToJsonPointer` splits FluentValidation dotted chains (`Address.City` → `/Address/City`). The general-purpose `InputPointer.ForProperty(string)` does **not** split on `.` (it only escapes `~` → `~0` and `/` → `~1` per RFC 6901 §3). The dotted-chain normalization is FluentValidation-specific.
+- `JsonPointerNormalizer.ToJsonPointer` splits FluentValidation dotted chains (`Address.City` → `/address/city`). The general-purpose `InputPointer.ForProperty(string)` does **not** split on `.` (it only escapes `~` → `~0` and `/` → `~1` per RFC 6901 §3). The dotted-chain normalization is FluentValidation-specific.
 
 ## Types
 
@@ -84,19 +84,19 @@ public static class JsonPointerNormalizer
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static string ToJsonPointer(string? propertyName)` | `string` | Converts a FluentValidation `PropertyName` (e.g., `Address.PostCode`, `Items[0].Sku`) into an RFC 6901 JSON Pointer (`/Address/PostCode`, `/Items/0/Sku`). Returns `""` for `null` or empty input. Inputs that already start with `/` are assumed to already be pointers and are returned unchanged. Inside each segment, `~` is escaped to `~0` and `/` to `~1` per RFC 6901 §3. Indexer contents (`[...]`) are treated as standalone segments — `Items[0]` becomes `/Items/0`. |
+| `public static string ToJsonPointer(string? propertyName)` | `string` | Converts a FluentValidation `PropertyName` (e.g., `Address.PostCode`, `Items[0].Sku`) into a camelCase RFC 6901 JSON Pointer (`/address/postCode`, `/items/0/sku`) — each name segment's first character is lower-cased; indexer segments are unchanged. Returns `""` for `null` or empty input. Inputs that already start with `/` are assumed to already be pointers and are returned unchanged. Inside each segment, `~` is escaped to `~0` and `/` to `~1` per RFC 6901 §3. Indexer contents (`[...]`) are treated as standalone segments — `Items[0]` becomes `/items/0`. |
 
 **Pointer normalization (RFC 6901) — examples**
 
 | FluentValidation `PropertyName` | `ToJsonPointer` result |
 | --- | --- |
 | `""` or `null` | `""` |
-| `Email` | `/Email` |
-| `Address.PostCode` | `/Address/PostCode` |
-| `Items[0].Sku` | `/Items/0/Sku` |
+| `Email` | `/email` |
+| `Address.PostCode` | `/address/postCode` |
+| `Items[0].Sku` | `/items/0/sku` |
 | `/already/a/pointer` | `/already/a/pointer` (returned unchanged) |
-| `Field~Name` | `/Field~0Name` |
-| `Path/With/Slash` | `/Path~1With~1Slash` |
+| `Field~Name` | `/field~0Name` |
+| `Path/With/Slash` | `/path~1With~1Slash` |
 
 ## Extension methods
 
@@ -206,7 +206,7 @@ using Trellis.FluentValidation;
 // Custom FluentValidation projection that needs to build an InputPointer
 // without going through the Mediator adapter.
 var pointer = new InputPointer(JsonPointerNormalizer.ToJsonPointer("Items[0].Sku"));
-// pointer.RawValue == "/Items/0/Sku"
+// pointer.RawValue == "/items/0/sku"
 ```
 
 ## Cross-references

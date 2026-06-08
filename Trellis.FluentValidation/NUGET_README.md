@@ -39,7 +39,7 @@ builder.Services.AddTrellisFluentValidation();
 builder.Services.AddScoped<IValidator<MyCommand>, MyCommandValidator>();
 ```
 
-The adapter normalizes FluentValidation property names (`Metadata.Reference`, `Lines[0].Memo`) into RFC 6901 JSON Pointers (`/Metadata/Reference`, `/Lines/0/Memo`) using `JsonPointerNormalizer`, which is now part of the public surface of `Trellis.FluentValidation`.
+The adapter normalizes FluentValidation property names (`Metadata.Reference`, `Lines[0].Memo`) into RFC 6901 JSON Pointers (`/metadata/reference`, `/lines/0/memo`) using `JsonPointerNormalizer`, which is now part of the public surface of `Trellis.FluentValidation`.
 
 ## Key Features
 - Convert `ValidationResult` into `Result<T>` with Trellis validation errors.

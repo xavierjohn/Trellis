@@ -23,7 +23,7 @@ the two hosting styles side-by-side over a single, identical contract.
 | `Trellis.Asp.ToHttpResponseAsync(...)` mapping (Minimal API) | `Showcase.MinimalApi/Endpoints/*` |
 | **Mediator pipeline** (`AddMediator` + `AddTrellisBehaviors`) | `Showcase.MinimalApi/Program.cs` |
 | **`IValidate` + FluentValidation composition** in one `ValidationBehavior` stage | `Showcase.Application/Features/SubmitBatchTransfers/*` |
-| **JSON Pointer normalization** for FluentValidation nested (`/Metadata/Reference`) and indexer (`/Lines/0/Memo`) paths (translated to MVC `Metadata.Reference` / `Lines[0].Memo` on the wire by `Trellis.Asp`) | `Showcase.Application/Features/SubmitBatchTransfers/SubmitBatchTransfersValidator.cs` |
+| **JSON Pointer normalization** for FluentValidation nested (`/metadata/reference`) and indexer (`/lines/0/memo`) paths (translated to MVC `metadata.reference` / `lines[0].memo` on the wire by `Trellis.Asp`) | `Showcase.Application/Features/SubmitBatchTransfers/SubmitBatchTransfersValidator.cs` |
 | AOT-friendly `AddTrellisFluentValidation()` + explicit `AddScoped<IValidator<T>, ...>` | `Showcase.MinimalApi/Program.cs` |
 | **IETF Idempotency-Key middleware** (opt-in `[Idempotent]` / `.WithMetadata(new IdempotentAttribute())` on POST — first call executes, retry replays the captured snapshot with `Idempotent-Replayed: true`, same key + mutated body is rejected as 422, missing key on an opted-in endpoint is rejected as 400) | `Showcase.{Mvc,MinimalApi}/Program.cs`, `Showcase.MinimalApi/Endpoints/TransferEndpoints.cs`, `Showcase.Mvc/Controllers/TransfersController.cs` |
 

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — FluentValidation validation-error keys are now camelCase
+
+`JsonPointerNormalizer.ToJsonPointer(...)` now lower-camelCases each name segment, so
+FluentValidation-derived validation error keys match the camelCase JSON wire and the rest of
+Trellis's validation field names (the seam's `Required*.TryCreate(value, fieldName)` and the ASP
+scalar-binding path already camelCase). For example, `Address.PostCode` now normalizes to
+`/address/postCode` (was `/Address/PostCode`) and `Items[0].Sku` to `/items/0/sku`. Indexer
+segments are unchanged. Tests or clients asserting on the previous PascalCase FluentValidation
+field keys need updating.
+
 ### Removed — Microservice trust-boundary code carved out to `xavierjohn/Trellis.Microservices` (BREAKING)
 
 This release completes the carve-out of all microservice trust-boundary code (gateway-side JWT minting + consumer-side actor hydration + shared contract constants) into the separate [`xavierjohn/Trellis.Microservices`](https://github.com/xavierjohn/Trellis.Microservices) repository. The carve-out consolidates security-tier code under one CODEOWNERS surface, eliminates the gateway/consumer contract-literal duplication (now via the new `Trellis.Microservices.Abstractions` package), and lets the microservices packages evolve on an independent release cadence from the core framework.
