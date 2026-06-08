@@ -104,6 +104,16 @@ Typical overhead is measured in single-digit to low double-digit nanoseconds—t
 - [API reference](https://xavierjohn.github.io/Trellis/api/index.html)
 - [Training lab](https://github.com/xavierjohn/trellis-training)
 
+## Related repositories
+
+The Trellis family extends the core framework into multi-service topologies, ready-to-scaffold templates, and operational telemetry. All packages live on nuget.org; all repos share the same MIT license, branch-protected `main`, and analyzer gates.
+
+- [`xavierjohn/Trellis.Microservices`](https://github.com/xavierjohn/Trellis.Microservices) — microservice trust-boundary packages: YARP gateway that mints internal-network JWTs + consumer-side actor provider enforcing a strict claim contract that defends multi-tenant ABAC. Ships `Trellis.Microservices.Abstractions`, `Trellis.Microservices.AspNetCore`, `Trellis.Yarp`.
+- [`xavierjohn/Trellis.Microservices.Template`](https://github.com/xavierjohn/Trellis.Microservices.Template) — `dotnet new trellis-microservices` template scaffolding a multi-tenant Project Tracker (YARP gateway + Projects + Members + Aspire AppHost) that demonstrates resource auth, the HideExistence pattern, and the deny-overrides-allow JWT contract.
+- [`xavierjohn/Trellis.AspTemplate`](https://github.com/xavierjohn/Trellis.AspTemplate) — `dotnet new trellis-asp` template scaffolding a production-ready single-service ASP.NET application with Clean Architecture layout (API + Application + Domain + ACL), API versioning, EF Core, OpenAPI, and test infrastructure.
+- [`xavierjohn/Trellis.ServiceLevelIndicators`](https://github.com/xavierjohn/Trellis.ServiceLevelIndicators) — latency SLI metrics library for emitting operation-duration histograms via `System.Diagnostics.Metrics` + OpenTelemetry, with rich dimensions (`CustomerResourceId`, `LocationId`, `Operation`, `Outcome`) and ASP.NET Core + API-versioning integrations.
+- [`xavierjohn/trellis-training`](https://github.com/xavierjohn/trellis-training) — training lab + AI consistency benchmark: give an AI model Trellis, a template, and a business spec; let it ship a service in one shot; score against 57 criteria across 5 quality levels.
+
 ## Contributing
 
 Contributions are welcome. For major changes, please open an issue first and run `dotnet test` before sending a PR.
