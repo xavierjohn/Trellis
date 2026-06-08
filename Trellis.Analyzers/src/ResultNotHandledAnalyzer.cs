@@ -21,34 +21,55 @@ public sealed class ResultNotHandledAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeExpressionStatement, SyntaxKind.ExpressionStatement);
+        context.RegisterSyntaxNodeAction(AnalyzeArrowExpressionClause, SyntaxKind.ArrowExpressionClause);
     }
 
     private static void AnalyzeExpressionStatement(SyntaxNodeAnalysisContext context)
     {
         var expressionStatement = (ExpressionStatementSyntax)context.Node;
-        var expression = expressionStatement.Expression;
+        AnalyzeDiscardedExpression(context, expressionStatement.Expression);
+    }
 
-        // Check for method invocations that return Result
+    private static void AnalyzeArrowExpressionClause(SyntaxNodeAnalysisContext context)
+    {
+        var arrow = (ArrowExpressionClauseSyntax)context.Node;
+        if (!ExpressionBodyDiscardsValue(arrow.Parent, context.SemanticModel))
+            return;
+
+        AnalyzeDiscardedExpression(context, arrow.Expression);
+    }
+
+    private static bool ExpressionBodyDiscardsValue(SyntaxNode? member, SemanticModel semanticModel)
+    {
+        if (member is null || semanticModel.GetDeclaredSymbol(member) is not IMethodSymbol method)
+            return false;
+
+        return method.ReturnsVoid || ReturnsNonGenericAwaitable(method);
+    }
+
+    private static bool ReturnsNonGenericAwaitable(IMethodSymbol method) =>
+        method.ReturnType is INamedTypeSymbol { TypeArguments.Length: 0 } returnType &&
+        returnType.IsAnyTaskType();
+
+    private static void AnalyzeDiscardedExpression(SyntaxNodeAnalysisContext context, ExpressionSyntax expression)
+    {
         if (expression is InvocationExpressionSyntax invocation)
         {
             AnalyzeResultExpression(context, invocation);
         }
-        // Check for await expressions
         else if (expression is AwaitExpressionSyntax awaitExpression)
         {
-            var awaitedExpression = awaitExpression.Expression;
-
-            // Unwrap ConfigureAwait: await x.ConfigureAwait(false) → x
-            if (awaitedExpression is InvocationExpressionSyntax awaitedInvocation &&
-                awaitedInvocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name.Identifier.Text == "ConfigureAwait")
-            {
-                awaitedExpression = memberAccess.Expression;
-            }
-
-            AnalyzeResultExpression(context, awaitedExpression);
+            AnalyzeResultExpression(context, UnwrapConfigureAwait(awaitExpression.Expression));
         }
     }
+
+    private static ExpressionSyntax UnwrapConfigureAwait(ExpressionSyntax expression) =>
+        expression is InvocationExpressionSyntax
+        {
+            Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "ConfigureAwait" } configureAwait,
+        }
+            ? configureAwait.Expression
+            : expression;
 
     private static void AnalyzeResultExpression(SyntaxNodeAnalysisContext context, ExpressionSyntax expression)
     {

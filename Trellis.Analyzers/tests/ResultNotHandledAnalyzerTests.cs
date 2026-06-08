@@ -87,6 +87,181 @@ public class ResultNotHandledAnalyzerTests
     }
 
     [Fact]
+    public async Task UnhandledResult_ExpressionBodiedVoidMethod_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod() => {|#0:GetResult()|};
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
+                .WithLocation(0)
+                .WithArguments("GetResult"));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task UnhandledResult_ExpressionBodiedVoidLocalFunction_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void Outer()
+                {
+                    Inner();
+                    void Inner() => {|#0:GetResult()|};
+                }
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
+                .WithLocation(0)
+                .WithArguments("GetResult"));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task UnhandledAsyncResult_ExpressionBodiedAsyncTaskMethod_ReportsDiagnostic()
+    {
+        const string source = """
+            using System.Threading.Tasks;
+
+            public class TestClass
+            {
+                public async Task TestMethod() => await {|#0:GetResultAsync()|};
+
+                private Task<Result<int>> GetResultAsync() => Task.FromResult<Result<int>>(42);
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
+                .WithLocation(0)
+                .WithArguments("GetResultAsync"));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ExpressionBodiedMethodReturningResult_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Result<int> TestMethod() => GetResult();
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ResultNotHandledAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ExpressionBodiedPropertyReturningResult_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Result<int> Value => GetResult();
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ResultNotHandledAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ExpressionBodiedVoidMethod_ExplicitDiscard_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public void TestMethod() => _ = GetResult();
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ResultNotHandledAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task UnhandledResult_ExpressionBodiedConstructor_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public TestClass() => {|#0:GetResult()|};
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
+                .WithLocation(0)
+                .WithArguments("GetResult"));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task UnhandledResult_ExpressionBodiedSetAccessor_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int Value { set => {|#0:GetResult()|}; }
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ResultNotHandledAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.ResultNotHandled)
+                .WithLocation(0)
+                .WithArguments("GetResult"));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task ExpressionBodiedGetAccessorReturningResult_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public Result<int> Value { get => GetResult(); }
+
+                private Result<int> GetResult() => 42;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ResultNotHandledAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task UnhandledAsyncResult_ReportsDiagnostic()
     {
         const string source = """
