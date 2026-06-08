@@ -70,7 +70,11 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
         IConventionNavigationBuilder navigationBuilder,
         IConventionContext<IConventionNavigationBuilder> context)
     {
-        var targetType = navigationBuilder.Metadata.TargetEntityType.ClrType;
+        var target = navigationBuilder.Metadata.TargetEntityType;
+        if (!target.IsOwned())
+            return;
+
+        var targetType = target.ClrType;
         if (targetType == s_moneyType || !compositeTypes.Contains(targetType) || HasParameterlessConstructor(targetType))
             return;
 
