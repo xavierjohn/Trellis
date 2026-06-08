@@ -1,5 +1,6 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
+using System.Reflection;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -43,7 +44,7 @@ using Trellis.Primitives;
 /// </para>
 /// </remarks>
 internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> compositeTypes)
-    : IModelInitializedConvention, IModelFinalizingConvention
+    : IModelInitializedConvention, INavigationAddedConvention, IModelFinalizingConvention
 {
     private static readonly Type s_moneyType = typeof(Money);
 
@@ -59,6 +60,41 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
         foreach (var type in compositeTypes)
             modelBuilder.Owned(type);
     }
+
+    /// <summary>
+    /// Fails fast with an actionable <see cref="TrellisPersistenceMappingException"/> when a composite
+    /// value object reached by an ownership navigation has no parameterless constructor for EF Core to
+    /// materialize, replacing EF Core's cryptic "No suitable constructor was found" model-build error.
+    /// </summary>
+    public void ProcessNavigationAdded(
+        IConventionNavigationBuilder navigationBuilder,
+        IConventionContext<IConventionNavigationBuilder> context)
+    {
+        var target = navigationBuilder.Metadata.TargetEntityType;
+        if (!target.IsOwned())
+            return;
+
+        var targetType = target.ClrType;
+        if (targetType == s_moneyType || !compositeTypes.Contains(targetType) || HasParameterlessConstructor(targetType))
+            return;
+
+        throw new TrellisPersistenceMappingException(MissingConstructorMessage(targetType));
+    }
+
+    private static bool HasParameterlessConstructor(Type type) =>
+        type.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            Type.EmptyTypes,
+            modifiers: null) is not null;
+
+    private static string MissingConstructorMessage(Type type) =>
+        $"The composite value object '{type.FullName}' is mapped as an EF Core owned type by Trellis " +
+        "conventions, but it has no parameterless constructor for EF Core to materialize it. Either " +
+        "annotate it with [OwnedEntity] (Trellis.EntityFrameworkCore generates a private parameterless " +
+        "constructor), or declare a private parameterless constructor on the type yourself — the latter " +
+        "keeps the value object free of any Entity Framework Core dependency. See the composite " +
+        "value object recipe (Recipe 13) in trellis-api-cookbook.md.";
 
     /// <summary>
     /// After the model is built, configures nullable columns and correct column-name prefix
