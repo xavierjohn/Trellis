@@ -86,7 +86,8 @@ If an API reference contradicts these instructions, treat the API reference as a
 - Use `ConfigureAwait(false)` in library source code; do not add it in test code.
 - Prefer `ValueTask<T>` for high-frequency operations that may complete synchronously; prefer `Task<T>` for I/O-bound work.
 - Avoid broad `try`/`catch` blocks and silent fallbacks. Surface or propagate errors using the existing repository patterns documented in the API references.
-- Keep public APIs documented with XML comments.
+- Prefer self-documenting code over comments: use intention-revealing names and extract small, well-named helpers instead of explanatory comments. Add a comment only where the code genuinely cannot convey the *why* (a non-obvious workaround, invariant, or consequence) — do not narrate *what* the code does. (Per *Clean Code*, a comment compensates for a failure to express intent in code.)
+- Keep public APIs documented with XML comments (the sanctioned exception to the guidance above).
 
 ## Test-driven development
 
