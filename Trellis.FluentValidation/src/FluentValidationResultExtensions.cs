@@ -148,8 +148,8 @@ public static class FluentValidationResultExtensions
     /// failure's <see cref="ValidationFailure.PropertyName"/> is normalized to an RFC 6901
     /// JSON Pointer before being placed on <see cref="FieldViolation.Field"/>: dotted member
     /// paths become path segments and array/list indexers become numeric segments
-    /// (e.g., <c>"Address.PostCode"</c> → <c>/Address/PostCode</c>,
-    /// <c>"Lines[0].Sku"</c> → <c>/Lines/0/Sku</c>). Special characters in segments are
+    /// (e.g., <c>"Address.PostCode"</c> → <c>/address/postCode</c>,
+    /// <c>"Lines[0].Sku"</c> → <c>/lines/0/sku</c>). Special characters in segments are
     /// escaped per RFC 6901 (<c>~</c> → <c>~0</c>, <c>/</c> → <c>~1</c>). Property names that
     /// already start with <c>/</c> are passed through unchanged. When
     /// <see cref="ValidationFailure.PropertyName"/> is empty, the caller-captured
@@ -186,8 +186,8 @@ public static class FluentValidationResultExtensions
     ///     }
     /// }
     /// // Output:
-    /// // /Name:  Name is required (validation.error)
-    /// // /Email: Email must be a valid email address (validation.error)
+    /// // /name:  Name is required (validation.error)
+    /// // /email: Email must be a valid email address (validation.error)
     /// </code>
     /// </example>
     /// <param name="paramName">

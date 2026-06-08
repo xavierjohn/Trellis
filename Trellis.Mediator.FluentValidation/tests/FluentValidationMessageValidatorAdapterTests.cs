@@ -64,7 +64,7 @@ public class FluentValidationMessageValidatorAdapterTests
 
         var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/Name");
+            .Which.Field.Path.Should().Be("/name");
     }
 
     [Fact]
@@ -78,8 +78,8 @@ public class FluentValidationMessageValidatorAdapterTests
 
         var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().HaveCount(2);
-        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/Name");
-        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/Email");
+        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/name");
+        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/email");
     }
 
     [Fact]
@@ -107,8 +107,8 @@ public class FluentValidationMessageValidatorAdapterTests
 
         var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
         var paths = error.Fields.Items.Select(fv => fv.Field.Path).ToArray();
-        paths.Should().Contain("/Address/Zip");
-        paths.Should().Contain("/Lines/0/Sku");
+        paths.Should().Contain("/address/zip");
+        paths.Should().Contain("/lines/0/sku");
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public class FluentValidationMessageValidatorAdapterTests
 
         var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/CreateUserCommand");
+            .Which.Field.Path.Should().Be("/createUserCommand");
     }
 
     #endregion

@@ -23,8 +23,8 @@ using Trellis.Mediator;
 /// </para>
 /// <para>
 /// FluentValidation property names that include member chains (<c>Address.PostCode</c>) or
-/// indexers (<c>Items[0].Sku</c>) are translated to RFC 6901 JSON Pointers
-/// (<c>/Address/PostCode</c>, <c>/Items/0/Sku</c>) via
+/// indexers (<c>Items[0].Sku</c>) are translated to camelCase RFC 6901 JSON Pointers
+/// (<c>/address/postCode</c>, <c>/items/0/sku</c>) via
 /// <see cref="JsonPointerNormalizer.ToJsonPointer(string?)"/> so they round-trip correctly
 /// through <see cref="InputPointer"/>. The normalizer lives in the sister
 /// <c>Trellis.FluentValidation</c> package so that domain-layer FluentValidation conversion

@@ -43,9 +43,9 @@ public class FluentTests
         rUser.Should().BeFailureOfType<Error.InvalidInput>()
             .Which.Should()
             .HaveFieldCount(3)
-            .And.HaveFieldError("FirstName")
-            .And.HaveFieldError("LastName")
-            .And.HaveFieldError("Email");
+            .And.HaveFieldError("firstName")
+            .And.HaveFieldError("lastName")
+            .And.HaveFieldError("email");
     }
 
     [Fact]
@@ -63,9 +63,9 @@ public class FluentTests
         rUser.Should().BeFailureOfType<Error.InvalidInput>()
             .Which.Should()
             .HaveFieldCount(3)
-            .And.HaveFieldError("FirstName")
-            .And.HaveFieldError("LastName")
-            .And.HaveFieldErrorWithDetail("Password", "Password must contain at least one number.");
+            .And.HaveFieldError("firstName")
+            .And.HaveFieldError("lastName")
+            .And.HaveFieldErrorWithDetail("password", "Password must contain at least one number.");
     }
 
     [Theory]
@@ -133,7 +133,7 @@ public class FluentTests
         // Assert
         result.Should().BeFailureOfType<Error.InvalidInput>()
             .Which.Should()
-            .HaveFieldErrorWithDetail("Alias", "Hello There");
+            .HaveFieldErrorWithDetail("alias", "Hello There");
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public class FluentTests
         // Assert
         result.Should().BeFailureOfType<Error.InvalidInput>()
             .Which.Should()
-            .HaveFieldErrorWithDetail("CustomParam", "Custom error message");
+            .HaveFieldErrorWithDetail("customParam", "Custom error message");
     }
 
     [Fact]

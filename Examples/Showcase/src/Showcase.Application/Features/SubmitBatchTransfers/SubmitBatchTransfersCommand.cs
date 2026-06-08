@@ -27,8 +27,8 @@ using Trellis.Showcase.Domain.ValueObjects;
 /// <see cref="ValidationBehavior{TMessage, TResponse}"/> aggregates every
 /// <see cref="Error.InvalidInput"/> failure into a single response with one combined
 /// <see cref="FieldViolation"/> list. Nested and indexer property names from FluentValidation
-/// are translated to RFC&#8239;6901 JSON Pointers (<c>/Metadata/Reference</c>,
-/// <c>/Lines/0/Memo</c>) by the FluentValidation adapter.
+/// are translated to RFC&#8239;6901 JSON Pointers (<c>/metadata/reference</c>,
+/// <c>/lines/0/memo</c>) by the FluentValidation adapter.
 /// </para>
 /// </summary>
 public sealed record SubmitBatchTransfersCommand(

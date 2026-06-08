@@ -196,7 +196,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Email" && e.Detail!.Contains("Email is already registered"));
+            e.Field.Path == "/email" && e.Detail!.Contains("Email is already registered"));
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Email" && e.Detail!.Contains("Email domain is not allowed"));
+            e.Field.Path == "/email" && e.Detail!.Contains("Email domain is not allowed"));
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Username" && e.Detail!.Contains("Username is already taken"));
+            e.Field.Path == "/username" && e.Detail!.Contains("Username is already taken"));
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class FluentValidationSamplesTests
         // Assert
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path == "/Username");
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path == "/username");
     }
 
     [Fact]
@@ -573,7 +573,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/ShippingAddress" &&
+            e.Field.Path == "/shippingAddress" &&
             e.Detail!.Contains("Shipping address is required for physical orders"));
     }
 
@@ -620,7 +620,7 @@ public class FluentValidationSamplesTests
         var validationError = (Error.InvalidInput)result.UnwrapError();
         // FluentValidation's default message is "'Email' must not be empty."
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Email" &&
+            e.Field.Path == "/email" &&
             e.Detail!.Contains("must not be empty"));
     }
 
@@ -645,7 +645,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/TotalAmount" &&
+            e.Field.Path == "/totalAmount" &&
             e.Detail!.Contains("Express shipping not available for orders over $10,000"));
     }
 
@@ -691,7 +691,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/TaxId" &&
+            e.Field.Path == "/taxId" &&
             e.Detail!.Contains("Tax ID required for business orders"));
     }
 
@@ -745,7 +745,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Price" &&
+            e.Field.Path == "/price" &&
             e.Detail!.Contains("$-5") && e.Detail!.Contains("must be greater than $0"));
     }
 
@@ -763,7 +763,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Stock" &&
+            e.Field.Path == "/stock" &&
             e.Detail!.Contains("15000") && e.Detail!.Contains("exceeds maximum of 10,000"));
     }
 
@@ -781,7 +781,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Name" &&
+            e.Field.Path == "/name" &&
             e.Detail!.Contains("current: 2"));
     }
 
@@ -799,7 +799,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Discount" &&
+            e.Field.Path == "/discount" &&
             e.Detail!.Contains("$60") && e.Detail!.Contains("$100"));
     }
 
@@ -856,7 +856,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/OrderIds" &&
+            e.Field.Path == "/orderIds" &&
             e.Detail!.Contains("Batch must contain at least one order"));
     }
 
@@ -875,7 +875,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/OrderIds" &&
+            e.Field.Path == "/orderIds" &&
             e.Detail!.Contains("101") && e.Detail!.Contains("maximum is 100"));
     }
 
@@ -893,7 +893,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/OrderIds" &&
+            e.Field.Path == "/orderIds" &&
             e.Detail!.Contains("Batch contains duplicate order IDs"));
     }
 
@@ -1009,8 +1009,8 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         // Both Email and Phone should have validation errors
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Email"));
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Phone"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("email"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("phone"));
     }
 
     [Fact]
@@ -1029,9 +1029,9 @@ public class FluentValidationSamplesTests
         // Assert
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Street"));
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("PostalCode"));
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("Country"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("street"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("postalCode"));
+        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("country"));
     }
 
     [Fact]
@@ -1051,7 +1051,7 @@ public class FluentValidationSamplesTests
         result.IsFailure.Should().BeTrue();
         var validationError = (Error.InvalidInput)result.UnwrapError();
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/ContactInfo" &&
+            e.Field.Path == "/contactInfo" &&
             e.Detail!.Contains("Contact information is required"));
     }
 
@@ -1100,7 +1100,7 @@ public class FluentValidationSamplesTests
         var validationError = (Error.InvalidInput)result.UnwrapError();
         // ValidateToResult uses custom paramName and message for null values
         validationError.Fields.Items.Should().Contain(e =>
-            e.Field.Path == "/Alias" &&
+            e.Field.Path == "/alias" &&
             e.Detail!.Contains("Hello There"));
     }
 

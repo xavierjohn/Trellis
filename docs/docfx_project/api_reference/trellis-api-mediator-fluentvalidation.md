@@ -81,9 +81,9 @@ FluentValidation property names are converted to JSON Pointers via [`JsonPointer
 
 | FluentValidation `PropertyName` | Resulting `InputPointer.RawValue` |
 | --- | --- |
-| `Email` | `/Email` |
-| `Address.PostCode` | `/Address/PostCode` |
-| `Items[0].Sku` | `/Items/0/Sku` |
+| `Email` | `/email` |
+| `Address.PostCode` | `/address/postCode` |
+| `Items[0].Sku` | `/items/0/sku` |
 
 Dotted FluentValidation paths split into separate JSON-pointer segments; bracketed indexers become numeric segments. Other producers (e.g., the ASP integration) build `InputPointer` values directly via `InputPointer.ForProperty(...)`, which does **not** split on `.`, so the normalizer is FluentValidation-specific.
 

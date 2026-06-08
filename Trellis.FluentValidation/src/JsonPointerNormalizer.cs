@@ -1,12 +1,15 @@
 ﻿namespace Trellis.FluentValidation;
 
 using System.Text;
+using Trellis;
 
 /// <summary>
 /// Converts FluentValidation member-chain property names (e.g., <c>Address.PostCode</c>,
-/// <c>Items[0].Sku</c>) into RFC 6901 JSON Pointers (e.g., <c>/Address/PostCode</c>,
-/// <c>/Items/0/Sku</c>) so they can be carried through Trellis <see cref="InputPointer"/>
-/// values without losing structure.
+/// <c>Items[0].Sku</c>) into camelCase RFC 6901 JSON Pointers (e.g., <c>/address/postCode</c>,
+/// <c>/items/0/sku</c>) so they can be carried through Trellis <see cref="InputPointer"/> values.
+/// Each name segment's first character is lower-cased (via <see cref="StringExtensions.ToCamelCase"/>)
+/// so FluentValidation error keys match the camelCase JSON wire and the rest of Trellis's validation
+/// field names; indexer segments are left unchanged.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -48,7 +51,7 @@ public static class JsonPointerNormalizer
 
             i = propertyName[i] == '['
                 ? AppendIndexer(propertyName, i, sb)
-                : AppendSegment(propertyName, i, sb);
+                : AppendNameSegment(propertyName, i, sb);
 
             if (i < propertyName.Length && propertyName[i] == '.')
                 i++;
@@ -57,20 +60,13 @@ public static class JsonPointerNormalizer
         return sb.ToString();
     }
 
-    private static int AppendSegment(string source, int i, StringBuilder sb)
+    private static int AppendNameSegment(string source, int i, StringBuilder sb)
     {
+        var start = i;
         while (i < source.Length && source[i] != '.' && source[i] != '[')
-        {
-            var c = source[i];
-            if (c == '~')
-                sb.Append("~0");
-            else if (c == '/')
-                sb.Append("~1");
-            else
-                sb.Append(c);
             i++;
-        }
 
+        AppendEscaped(source.Substring(start, i - start).ToCamelCase(), sb);
         return i;
     }
 
@@ -81,8 +77,17 @@ public static class JsonPointerNormalizer
         while (i < source.Length && source[i] != ']')
             i++;
 
-        var indexContent = source.AsSpan(start, i - start);
-        foreach (var c in indexContent)
+        AppendEscaped(source.AsSpan(start, i - start), sb);
+
+        if (i < source.Length)
+            i++;
+
+        return i;
+    }
+
+    private static void AppendEscaped(ReadOnlySpan<char> segment, StringBuilder sb)
+    {
+        foreach (var c in segment)
         {
             if (c == '~')
                 sb.Append("~0");
@@ -91,10 +96,5 @@ public static class JsonPointerNormalizer
             else
                 sb.Append(c);
         }
-
-        if (i < source.Length)
-            i++;
-
-        return i;
     }
 }

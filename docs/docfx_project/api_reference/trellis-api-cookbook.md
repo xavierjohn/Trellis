@@ -1482,7 +1482,7 @@ public sealed class CustomersController(ISender sender) : ControllerBase
 **What it shows.**
 
 - Keep DTOs transport-shaped and commands/domain methods value-object-shaped.
-- Pass field names into `TryCreate` so failures point at the request field (`/Email`, `/CustomerName` after pointer normalization at the ASP boundary).
+- Pass field names into `TryCreate` so failures point at the request field (`/email`, `/customerName` after pointer normalization at the ASP boundary).
 - Use `Result.Combine(...)` to aggregate per-field `Error.InvalidInput` failures into one validation response.
 - Stay on the ROP track: invalid input short-circuits before `sender.Send(...)`; valid input creates the command and continues.
 
