@@ -33,12 +33,6 @@ public sealed class ResultNotHandledAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeArrowExpressionClause(SyntaxNodeAnalysisContext context)
     {
         var arrow = (ArrowExpressionClauseSyntax)context.Node;
-
-        // An expression-bodied member only DISCARDS its expression value when the member
-        // does not return it: a void method/local function, or a non-generic async
-        // Task/ValueTask (whose awaited value is dropped). Members that return the value —
-        // Result<T>-typed methods, properties, and Task<Result<T>> — handle it, as does an
-        // explicit discard (=> _ = GetResult();), which AnalyzeDiscardedExpression ignores.
         if (!ExpressionBodyDiscardsValue(arrow.Parent, context.SemanticModel))
             return;
 
@@ -47,48 +41,35 @@ public sealed class ResultNotHandledAnalyzer : DiagnosticAnalyzer
 
     private static bool ExpressionBodyDiscardsValue(SyntaxNode? member, SemanticModel semanticModel)
     {
-        if (member is null)
+        if (member is null || semanticModel.GetDeclaredSymbol(member) is not IMethodSymbol method)
             return false;
 
-        // Properties, indexers, operators, and value-returning methods RETURN their expression
-        // value (their declared symbol is an IPropertySymbol, or a non-void IMethodSymbol), so they
-        // handle the Result. Only method-like members whose result is void — void methods and local
-        // functions, constructors, destructors, and set/init/add/remove accessors — or a non-generic
-        // async Task/ValueTask discard it.
-        if (semanticModel.GetDeclaredSymbol(member) is not IMethodSymbol methodSymbol)
-            return false;
-
-        if (methodSymbol.ReturnsVoid)
-            return true;
-
-        // Non-generic Task / ValueTask: an async expression-bodied method drops the awaited value.
-        return methodSymbol.ReturnType is INamedTypeSymbol { TypeArguments.Length: 0 } returnType &&
-            returnType.IsAnyTaskType();
+        return method.ReturnsVoid || ReturnsNonGenericAwaitable(method);
     }
+
+    private static bool ReturnsNonGenericAwaitable(IMethodSymbol method) =>
+        method.ReturnType is INamedTypeSymbol { TypeArguments.Length: 0 } returnType &&
+        returnType.IsAnyTaskType();
 
     private static void AnalyzeDiscardedExpression(SyntaxNodeAnalysisContext context, ExpressionSyntax expression)
     {
-        // Check for method invocations that return Result
         if (expression is InvocationExpressionSyntax invocation)
         {
             AnalyzeResultExpression(context, invocation);
         }
-        // Check for await expressions
         else if (expression is AwaitExpressionSyntax awaitExpression)
         {
-            var awaitedExpression = awaitExpression.Expression;
-
-            // Unwrap ConfigureAwait: await x.ConfigureAwait(false) → x
-            if (awaitedExpression is InvocationExpressionSyntax awaitedInvocation &&
-                awaitedInvocation.Expression is MemberAccessExpressionSyntax memberAccess &&
-                memberAccess.Name.Identifier.Text == "ConfigureAwait")
-            {
-                awaitedExpression = memberAccess.Expression;
-            }
-
-            AnalyzeResultExpression(context, awaitedExpression);
+            AnalyzeResultExpression(context, UnwrapConfigureAwait(awaitExpression.Expression));
         }
     }
+
+    private static ExpressionSyntax UnwrapConfigureAwait(ExpressionSyntax expression) =>
+        expression is InvocationExpressionSyntax
+        {
+            Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "ConfigureAwait" } configureAwait,
+        }
+            ? configureAwait.Expression
+            : expression;
 
     private static void AnalyzeResultExpression(SyntaxNodeAnalysisContext context, ExpressionSyntax expression)
     {
