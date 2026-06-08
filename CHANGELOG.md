@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — composite value objects must have a parameterless constructor (clearer error)
+
+A composite `ValueObject` mapped as an EF Core owned type now fails fast at model build with an
+actionable `TrellisPersistenceMappingException` — naming the value object and pointing at
+`[OwnedEntity]` or a hand-written private parameterless constructor — instead of EF Core's cryptic
+"No suitable constructor was found for the type 'X'". This makes the long-standing requirement
+explicit and uniform: a composite value object that previously relied on EF Core constructor-binding
+(no parameterless constructor) now requires one. To keep a *domain* value object free of any EF Core
+dependency (axiom A8), declare a private parameterless constructor yourself rather than using
+`[OwnedEntity]` (which lives in `Trellis.EntityFrameworkCore`), as `Money` does.
+
 ### Changed — FluentValidation validation-error keys are now camelCase
 
 `JsonPointerNormalizer.ToJsonPointer(...)` now lower-camelCases each name segment, so
