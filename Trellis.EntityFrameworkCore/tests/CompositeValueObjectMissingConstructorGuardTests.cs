@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Tests;
+﻿namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
