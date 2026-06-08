@@ -855,7 +855,11 @@ public static class CompositionRoot
             .UseSqlServer(connectionString)
             .AddTrellisInterceptors());
 
-        services.AddMediator(options => options.Assemblies = [typeof(PlaceOrderCommand).Assembly]);
+        services.AddMediator(options =>
+        {
+            options.Assemblies = [typeof(PlaceOrderCommand).Assembly];
+            options.ServiceLifetime = ServiceLifetime.Scoped;
+        });
 
         services.AddTrellis(options => options
             .UseAsp()
@@ -888,6 +892,8 @@ public static class CompositionRoot
 | `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()` and is always applied last. |
 
 **Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
+
+> **Set `options.ServiceLifetime = ServiceLifetime.Scoped` on `AddMediator(...)`** in any host that creates a request/execution scope (ASP.NET Core, workers). Mediator's default lifetime is `Singleton`, but the Trellis pipeline behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>`), so a singleton handler/behavior fails the DI root-scope validation the moment it resolves a scoped dependency — a build-clean service that throws at startup. (Same guidance: `Trellis.Mediator` README and the [Mediator integration article](../articles/integration-mediator.md).)
 
 ---
 
@@ -2356,7 +2362,11 @@ public class HealthProbeWorkerTests
                 // composition root so the test exercises the same wiring the production
                 // host uses. Forgetting either registration would surface as
                 // GetRequiredService throwing at scope resolution.
-                s.AddMediator(options => options.Assemblies = [typeof(RunProbeCommand).Assembly]);
+                s.AddMediator(options =>
+                {
+                    options.Assemblies = [typeof(RunProbeCommand).Assembly];
+                    options.ServiceLifetime = ServiceLifetime.Scoped;
+                });
                 s.AddDomainEventDispatch();
                 s.AddSingleton<IHealthProbeRepository, FakeHealthProbeRepository>();
             });

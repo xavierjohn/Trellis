@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
     /// services.AddMediator(options =>
     /// {
     ///     options.Assemblies = [typeof(MyCommand).Assembly];
+    ///     options.ServiceLifetime = ServiceLifetime.Scoped;
     ///     options.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors.ToArray();
     /// });
     /// </code>
