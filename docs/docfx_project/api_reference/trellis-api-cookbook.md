@@ -205,9 +205,9 @@ public interface IOrderRepository
 
 `Required*<TSelf>` primitives are strict by default. Do not add legacy `[NotDefault]` or `[Trim]` to this recipe — they are vestigial no-ops that produce informational generator diagnostics. To opt out of strictness, use the per-base attributes documented in [trellis-api-primitives.md](trellis-api-primitives.md#required-defaults-and-opt-outs).
 
-`[StringLength]` and `[Range]` come from the **`Trellis` namespace** and are placed on the **class declaration**. The `System.ComponentModel.DataAnnotations` attributes of the same name target properties/fields/parameters, so applying them to a value object is a **compile error** — `CS0104` (ambiguous reference) for an unqualified attribute when both namespaces are in scope, otherwise `CS0592` — and `TRLS017` flags the wrong-namespace attribute.
+`[StringLength]` and `[Range]` come from the **`Trellis` namespace** and are placed on the **class declaration**. The `System.ComponentModel.DataAnnotations` attributes of the same name target properties/fields/parameters, so applying them to a value object is a **compile error** — `CS0104` (ambiguous reference) for an unqualified attribute when both namespaces are in scope, otherwise `CS0592`.
 
-**Anti-pattern → fix (TRLS017).**
+**Anti-pattern → fix (wrong attribute namespace).**
 
 ```csharp
 // WRONG — importing System.ComponentModel.DataAnnotations alongside Trellis brings a
