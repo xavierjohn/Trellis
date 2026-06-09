@@ -205,19 +205,21 @@ public interface IOrderRepository
 
 `Required*<TSelf>` primitives are strict by default. Do not add legacy `[NotDefault]` or `[Trim]` to this recipe — they are vestigial no-ops that produce informational generator diagnostics. To opt out of strictness, use the per-base attributes documented in [trellis-api-primitives.md](trellis-api-primitives.md#required-defaults-and-opt-outs).
 
-`[StringLength]` and `[Range]` come from the **`Trellis` namespace** and are placed on the **class declaration** — using `System.ComponentModel.DataAnnotations` versions silently compiles but is ignored by the Trellis source generator (`TRLS017`).
+`[StringLength]` and `[Range]` come from the **`Trellis` namespace** and are placed on the **class declaration**. The `System.ComponentModel.DataAnnotations` attributes of the same name target properties/fields/parameters, so applying them to a value object is a **compile error** — `CS0104` (ambiguous reference) for an unqualified attribute when both namespaces are in scope, otherwise `CS0592` — and `TRLS017` flags the wrong-namespace attribute.
 
 **Anti-pattern → fix (TRLS017).**
 
 ```csharp
-// WRONG — using System.ComponentModel.DataAnnotations.StringLength
-using System.ComponentModel.DataAnnotations;     // ← wrong namespace
-[StringLength(3, MinimumLength = 3)]             // TRLS017
+// WRONG — importing System.ComponentModel.DataAnnotations alongside Trellis brings a
+// second [StringLength] into scope, so the attribute no longer resolves to Trellis.
+using Trellis;
+using System.ComponentModel.DataAnnotations;     // ← wrong namespace also in scope
+[StringLength(3, MinimumLength = 3)]             // CS0104: ambiguous between Trellis and DataAnnotations
 public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
 
-// FIX
-using Trellis;                                   // ← Trellis attributes
-[StringLength(3, MinimumLength = 3)]             // generator now picks it up
+// FIX — keep only the Trellis namespace in scope.
+using Trellis;                                   // ← Trellis attributes only
+[StringLength(3, MinimumLength = 3)]             // resolves to Trellis.StringLength
 public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
 ```
 
