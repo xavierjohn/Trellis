@@ -14,6 +14,20 @@ audience: [llm]
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) — recipes using this package.
 
+## Installation — the analyzers are opt-in
+
+The analyzers ship as a **separate NuGet package, `Trellis.Analyzers`**. Installing `Trellis.Core` (or any other Trellis package) does **not** include them — every `TRLS###` diagnostic stays silent until you add this package. Enable it on each project that uses Trellis `Result<T>`, `Maybe<T>`, value objects, or the EF Core integration:
+
+```xml
+<PackageReference Include="Trellis.Analyzers" Version="...">
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
+```
+
+- `PrivateAssets="all"` keeps the package a build-time-only concern so the analyzers do not flow to downstream consumers of your library.
+- Tune any rule's severity per project through `.editorconfig`, e.g. `dotnet_diagnostic.TRLS001.severity = error`. Default severities are in the [Diagnostics](#diagnostics) table.
+- In this repository's own source tree, examples reference the analyzer project directly with `OutputItemType="Analyzer" ReferenceOutputAssembly="false"` (see `Examples/Showcase/src/Showcase.Application`); published-package consumers use the `PackageReference` above.
+
 ## Use this file when
 
 - A build emits a `TRLS###` diagnostic and you need the exact meaning, likely fix, or suppression constant.

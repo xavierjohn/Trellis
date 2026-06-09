@@ -88,12 +88,11 @@ public class BankingWorkflow
         string description,
         CancellationToken cancellationToken = default)
     {
-        var fromCheck = _fraud.AnalyzeTransactionAsync(fromAccount, amount, "transfer-out", cancellationToken);
-        var toCheck = _fraud.AnalyzeTransactionAsync(toAccount, amount, "transfer-in", cancellationToken);
-        await Task.WhenAll(fromCheck, toCheck);
-
-        var combined = fromCheck.Result.Combine(toCheck.Result);
-        if (combined.TryGetError(out var combinedError))
+        var fraudCheck = await (
+            _fraud.AnalyzeTransactionAsync(fromAccount, amount, "transfer-out", cancellationToken),
+            _fraud.AnalyzeTransactionAsync(toAccount, amount, "transfer-in", cancellationToken)
+        ).WhenAllAsync();
+        if (fraudCheck.TryGetError(out var combinedError))
             return Result.Fail<(BankAccount From, BankAccount To)>(combinedError);
 
         return await fromAccount.TransferTo(toAccount, amount, description)

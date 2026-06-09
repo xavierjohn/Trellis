@@ -834,6 +834,8 @@ The anti-pattern catalog moved to its own file so that AI sessions and human rea
 
 If you are looking up a specific analyzer by ID, the standalone file is faster than scanning this cookbook. The cookbook recipes still link to the relevant sections of that file where they apply.
 
+> **Enabling these analyzers.** They are **opt-in**: the diagnostics ship in a separate `Trellis.Analyzers` package that `Trellis.Core` does not pull in. Add `<PackageReference Include="Trellis.Analyzers" PrivateAssets="all" />` to every project that uses Trellis `Result`/`Maybe`/value objects so the gallery below is enforced at build time. See [trellis-api-analyzers.md](trellis-api-analyzers.md#installation--the-analyzers-are-opt-in) for the install snippet and `.editorconfig` severity control.
+
 ---
 
 ## Recipe 12 — DI wiring playbook: `AddTrellis` composition builder
