@@ -122,7 +122,8 @@ public sealed class OutboxSqlServerIntegrationTests : IAsyncLifetime
                 poisonId,
                 DateTimeOffset.UnixEpoch,
                 "Trellis.Outbox.Tests.NoSuchEvent, Trellis.Outbox.Tests.NoSuchAssembly",
-                "{}"));
+                "{}",
+                OutboxMessageKind.Domain));
             await context.SaveChangesAsync(ct);
 
             context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "good-after-poison", DateTimeOffset.UnixEpoch));

@@ -271,7 +271,8 @@ public sealed class OutboxTests
                 poisonId,
                 DateTimeOffset.UnixEpoch,
                 "Trellis.Outbox.Tests.NoSuchEvent, Trellis.Outbox.Tests.NoSuchAssembly",
-                "{}"));
+                "{}",
+                OutboxMessageKind.Domain));
             await context.SaveChangesAsync(ct);
 
             context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "good", DateTimeOffset.UnixEpoch));
@@ -390,6 +391,122 @@ public sealed class OutboxTests
         var zeroAttempts = () => services.AddTrellisOutbox<OutboxTestDbContext>(o => o.MaxAttempts = 0);
         zeroAttempts.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("MaxAttempts");
     }
+
+    [Fact]
+    public async Task Relay_translates_a_domain_event_into_an_integration_event_and_publishes_it()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var publishedIntegration = new List<ThingCreatedIntegrationEvent>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(publishedIntegration);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        // The translator is a domain-event handler that emits an integration event into the collector.
+        services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
+        services.AddIntegrationEventHandler<ThingCreatedIntegrationEvent, IntegrationCapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        var id = ThingId.NewUniqueV7();
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(id, "translate-me", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        // Drain 1: the domain row is dispatched, the translator runs, and the integration event it
+        // produced is staged as a new Integration row — not yet published.
+        await relay.DrainAsync(ct);
+        publishedIntegration.Should().BeEmpty();
+
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var rows = await context.Set<OutboxMessage>().AsNoTracking().OrderBy(r => r.Sequence).ToListAsync(ct);
+            rows.Should().HaveCount(2);
+            var domain = rows.Single(r => r.Kind == OutboxMessageKind.Domain);
+            var integration = rows.Single(r => r.Kind == OutboxMessageKind.Integration);
+            domain.ProcessedAt.Should().NotBeNull("the domain event was dispatched");
+            integration.ProcessedAt.Should().BeNull("the integration event is staged but not yet relayed");
+            integration.EventType.Should().Contain(nameof(ThingCreatedIntegrationEvent));
+        }
+
+        // Drain 2: the staged Integration row is published to the integration handler.
+        await relay.DrainAsync(ct);
+
+        publishedIntegration.Should().ContainSingle().Which.Name.Should().Be("translate-me");
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var integration = await context.Set<OutboxMessage>().AsNoTracking()
+                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
+            integration.ProcessedAt.Should().NotBeNull();
+        }
+    }
+
+    [Fact]
+    public async Task Relay_does_not_stage_partial_integration_rows_when_one_fails_to_serialize()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        // The translator emits a serializable integration event AND one that throws while serializing.
+        services.AddDomainEventHandler<ThingCreated, PartiallyFailingTranslator>();
+        services.AddIntegrationEventDispatch();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "partial", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        await relay.DrainAsync(ct);
+
+        // Per-message atomicity: because the second produced event fails to serialize, NONE of the
+        // message's integration rows are staged, and the domain message is recorded as failed (not
+        // processed) so a retry re-translates the whole set rather than duplicating the first event.
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var rows = await context.Set<OutboxMessage>().AsNoTracking().ToListAsync(ct);
+            rows.Should().ContainSingle("only the original domain row exists; no partial integration rows were staged");
+            var domain = rows.Single();
+            domain.Kind.Should().Be(OutboxMessageKind.Domain);
+            domain.ProcessedAt.Should().BeNull("the domain message failed and must retry");
+            domain.Attempts.Should().Be(1);
+        }
+    }
 }
 
 // ── Test domain model ──────────────────────────────────────────────────────────
@@ -397,6 +514,44 @@ public sealed class OutboxTests
 internal sealed partial class ThingId : RequiredGuid<ThingId>;
 
 internal sealed record ThingCreated(ThingId Id, string Name, DateTimeOffset OccurredAt) : IDomainEvent;
+
+internal sealed record ThingCreatedIntegrationEvent(Guid Id, string Name, DateTimeOffset OccurredAt) : IIntegrationEvent;
+
+internal sealed class ThingCreatedTranslator(IIntegrationEventCollector collector) : IDomainEventHandler<ThingCreated>
+{
+    public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken)
+    {
+        collector.Add(new ThingCreatedIntegrationEvent(domainEvent.Id.Value, domainEvent.Name, domainEvent.OccurredAt));
+        return ValueTask.CompletedTask;
+    }
+}
+
+internal sealed class IntegrationCapturingHandler(List<ThingCreatedIntegrationEvent> captured)
+    : IIntegrationEventHandler<ThingCreatedIntegrationEvent>
+{
+    public ValueTask HandleAsync(ThingCreatedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    {
+        captured.Add(integrationEvent);
+        return ValueTask.CompletedTask;
+    }
+}
+
+// An integration event whose property throws while System.Text.Json serializes it, so CreateIntegrationRow fails.
+internal sealed record UnserializableIntegrationEvent(DateTimeOffset OccurredAt) : IIntegrationEvent
+{
+    public string Explode => throw new InvalidOperationException($"cannot serialize integration event from {OccurredAt:O}");
+}
+
+internal sealed class PartiallyFailingTranslator(IIntegrationEventCollector collector) : IDomainEventHandler<ThingCreated>
+{
+    public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken)
+    {
+        // A serializable event first, then one that throws during serialization.
+        collector.Add(new ThingCreatedIntegrationEvent(domainEvent.Id.Value, domainEvent.Name, domainEvent.OccurredAt));
+        collector.Add(new UnserializableIntegrationEvent(domainEvent.OccurredAt));
+        return ValueTask.CompletedTask;
+    }
+}
 
 internal sealed class Thing : Aggregate<ThingId>
 {

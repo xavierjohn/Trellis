@@ -1,15 +1,20 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
 /// <summary>
-/// A persisted domain event awaiting relay — a transactional-outbox row.
+/// A persisted event awaiting relay — a transactional-outbox row. Carries either a captured
+/// <see cref="IDomainEvent"/> or a translated <see cref="IIntegrationEvent"/>, distinguished by
+/// <see cref="Kind"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The <c>OutboxCaptureInterceptor</c> writes one row per uncommitted domain event in the same
+/// For domain rows, the <c>OutboxCaptureInterceptor</c> writes one row per uncommitted domain event in
+/// the same
 /// <see cref="Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(System.Threading.CancellationToken)"/>
 /// transaction as the aggregate change that raised it, so state and outbound notifications commit
-/// atomically. <c>OutboxRelay{TContext}</c> later drains pending rows and re-dispatches each event
-/// to its <see cref="Trellis.Mediator.IDomainEventHandler{TEvent}"/>s.
+/// atomically. <c>OutboxRelay{TContext}</c> later drains pending rows and routes each by <see cref="Kind"/>:
+/// domain events re-dispatch to <see cref="Trellis.Mediator.IDomainEventHandler{TEvent}"/>s, and any
+/// integration events their translators produce are staged as new <see cref="OutboxMessageKind.Integration"/>
+/// rows and published through <see cref="Trellis.Mediator.IIntegrationEventPublisher"/>.
 /// </para>
 /// <para>
 /// This is an infrastructure record, not a domain aggregate; the rows are transient and may be
@@ -19,12 +24,13 @@
 /// </remarks>
 public sealed class OutboxMessage
 {
-    private OutboxMessage(Guid id, DateTimeOffset occurredAt, string eventType, string payload)
+    private OutboxMessage(Guid id, DateTimeOffset occurredAt, string eventType, string payload, OutboxMessageKind kind)
     {
         Id = id;
         OccurredAt = occurredAt;
         EventType = eventType;
         Payload = payload;
+        Kind = kind;
     }
 
     // EF Core materialization constructor.
@@ -40,7 +46,10 @@ public sealed class OutboxMessage
     /// <summary>Stable message identity (UUIDv7) for consumer-side idempotency / de-duplication.</summary>
     public Guid Id { get; private set; }
 
-    /// <summary>When the domain event occurred, copied from <see cref="IDomainEvent.OccurredAt"/>.</summary>
+    /// <summary>Whether this row carries a domain event or a translated integration event.</summary>
+    public OutboxMessageKind Kind { get; private set; }
+
+    /// <summary>When the event occurred, copied from the event's <c>OccurredAt</c>.</summary>
     public DateTimeOffset OccurredAt { get; private set; }
 
     /// <summary>The assembly-qualified name of the concrete event type, used to rehydrate the payload.</summary>
@@ -58,8 +67,8 @@ public sealed class OutboxMessage
     /// <summary>The most recent relay error, if any.</summary>
     public string? LastError { get; private set; }
 
-    internal static OutboxMessage Create(Guid id, DateTimeOffset occurredAt, string eventType, string payload) =>
-        new(id, occurredAt, eventType, payload);
+    internal static OutboxMessage Create(Guid id, DateTimeOffset occurredAt, string eventType, string payload, OutboxMessageKind kind) =>
+        new(id, occurredAt, eventType, payload, kind);
 
     internal void MarkProcessed(DateTimeOffset processedAt)
     {

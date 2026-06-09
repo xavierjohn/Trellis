@@ -89,6 +89,40 @@ The guarantee is **at-least-once delivery**, not handler success — an importan
 
 Retry-until-handlers-succeed would need a non-swallowing publish path; that is a planned follow-up. Until then, a handler that must not silently drop work should surface failure through its own durable mechanism (its own outbox row, a dead-letter table, etc.).
 
+## Domain events vs. integration events
+
+A **domain event** is internal to your bounded context — raised by an aggregate, dispatched in-process, free to speak the domain's ubiquitous language. An **integration event** is the stable, versioned contract you publish to the outside world. Relaying raw domain events externally couples other systems to your internal model; the outbox lets you keep them separate and publish a deliberate contract instead.
+
+Model the contract as an `IIntegrationEvent` (primitive/nullable members, no internal value objects), then **translate** from the domain event with an ordinary domain-event handler that adds to the scoped `IIntegrationEventCollector`:
+
+```csharp
+// The external contract.
+public sealed record OrderPlacedIntegrationEvent(Guid OrderId, string CustomerEmail, decimal Total, DateTimeOffset OccurredAt)
+    : IIntegrationEvent;
+
+// The translator: a domain-event handler that emits the contract.
+public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector) : IDomainEventHandler<OrderPlaced>
+{
+    public ValueTask HandleAsync(OrderPlaced domainEvent, CancellationToken cancellationToken)
+    {
+        collector.Add(new OrderPlacedIntegrationEvent(
+            domainEvent.OrderId.Value, domainEvent.CustomerEmail.Value, domainEvent.Total.Amount, domainEvent.OccurredAt));
+        return ValueTask.CompletedTask;
+    }
+}
+
+// Wire the consumer side (or swap the publisher for a broker adapter).
+builder.Services.AddTrellis(trellis => trellis
+    .UseDomainEvents(typeof(Program).Assembly)        // translators are domain-event handlers
+    .UseIntegrationEvents(typeof(Program).Assembly)   // publisher + collector + in-process consumers
+    .UseEntityFrameworkUnitOfWork<AppDbContext>()
+    .UseOutbox<AppDbContext>());
+```
+
+**How delivery flows.** When the relay re-dispatches `OrderPlaced`, the translator runs and adds the integration event to the collector. The relay drains the collector and stages the integration event as a new `OutboxMessageKind.Integration` row — in the same save that marks the domain row processed — and a later drain publishes it through `IIntegrationEventPublisher`. So an integration event is emitted **only after** its source domain event is durably committed and dispatched, never for state that rolled back.
+
+The default `IIntegrationEventPublisher` fans out to in-process `IIntegrationEventHandler<T>` registrations — ideal for a modular monolith and for tests. To deliver to other services, replace that one registration with a message-broker adapter; aggregates, translators, and the outbox are unchanged. Delivery is at-least-once and a retried domain event re-runs its translator, so a consumer may see the same integration event more than once (with a different `OutboxMessage.Id` each time) — **dedupe on business identity, not on the message id.**
+
 ## Persist-on-failure (`FailAfterCommit`) events
 
 `TransactionalCommandBehavior` commits a `Result.FailAfterCommit` outcome (persist-on-failure), but `DomainEventDispatchBehavior` does **not** dispatch domain events for any failed result — by design those events are discarded, not a durable buffer.

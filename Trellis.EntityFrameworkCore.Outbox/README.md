@@ -63,6 +63,26 @@ Now `await dbContext.SaveChangesAsync(ct)` commits the `OrderPlaced` row in the 
 - **At-least-once delivery** — a background relay drains pending rows in `Sequence` order and re-dispatches each event through `IDomainEventPublisher`, retrying infrastructure failures up to `MaxAttempts`.
 - **Crash-safe** — a failed save rolls back the captured rows and preserves the in-memory events for retry; a crash after commit re-delivers on the next drain. Handlers must be idempotent.
 
+## Integration events
+Translate internal domain events into stable external contracts by handling the domain event and adding one or more `IIntegrationEvent` instances to the scoped `IIntegrationEventCollector`:
+
+```csharp
+public sealed record OrderPlacedIntegrationEvent(Guid OrderId, DateTimeOffset OccurredAt)
+    : IIntegrationEvent;
+
+public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector)
+    : IDomainEventHandler<OrderPlaced>
+{
+    public ValueTask HandleAsync(OrderPlaced domainEvent, CancellationToken cancellationToken)
+    {
+        collector.Add(new OrderPlacedIntegrationEvent(domainEvent.OrderId.Value, domainEvent.OccurredAt));
+        return ValueTask.CompletedTask;
+    }
+}
+```
+
+After each outboxed domain event is dispatched, the relay drains the collector and publishes the integration events through `IIntegrationEventPublisher`. The default publisher fans out to in-process `IIntegrationEventHandler<TEvent>` consumers; replace it with a broker adapter when contracts must leave the process. Delivery is at least once, so consumers must be idempotent on business identity.
+
 ## Delivery & Serialization Notes
 - The guarantee is at-least-once **delivery**, not handler success: per the `IDomainEventHandler<TEvent>` contract the publisher logs and swallows handler exceptions, so a failing handler does **not** retry — only infrastructure failures do. Retry-until-handlers-succeed needs a non-swallowing publish path (a planned follow-up).
 - Events are serialized with the default `System.Text.Json` options. Trellis value objects that carry a `[JsonConverter]` attribute round-trip; use a **nullable transport** (not `Maybe<T>`) for optional event payload members.

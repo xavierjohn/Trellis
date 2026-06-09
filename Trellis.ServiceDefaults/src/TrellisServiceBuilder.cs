@@ -38,6 +38,8 @@ public sealed class TrellisServiceBuilder
     private readonly List<Action<IServiceCollection>> _typedResourceAuthorizationRegistrations = [];
     private readonly List<Action<Trellis.Mediator.ResourceAuthorizationOptions>> _resourceAuthorizationConfigures = [];
     private readonly List<Action<IServiceCollection>> _typedDomainEventHandlerRegistrations = [];
+    private readonly List<Assembly> _integrationEventAssemblies = [];
+    private readonly List<Action<IServiceCollection>> _typedIntegrationEventHandlerRegistrations = [];
     private Action<TrellisAspOptions>? _configureAsp;
     private Action<TrellisMediatorTelemetryOptions>? _configureMediatorTelemetry;
     private Action<IServiceCollection>? _actorProviderRegistration;
@@ -54,6 +56,7 @@ public sealed class TrellisServiceBuilder
     private bool _useFluentValidation;
     private bool _useResourceAuthorization;
     private bool _useDomainEvents;
+    private bool _useIntegrationEvents;
     private bool _useTrackedAggregateDomainEvents;
     private ActorProviderKind _actorProviderKind;
 
@@ -559,6 +562,73 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// Registers the default in-process <see cref="IIntegrationEventPublisher"/> and the scoped
+    /// <see cref="IIntegrationEventCollector"/>, plus any <see cref="IIntegrationEventHandler{TEvent}"/>
+    /// implementations found by scanning <paramref name="assemblies"/>. AOT-safe when called with no
+    /// assemblies.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Integration events are the published external contract; they are produced by translating domain
+    /// events (a domain-event handler adds to <see cref="IIntegrationEventCollector"/>) and delivered by
+    /// the transactional outbox relay - so pair this with <see cref="UseDomainEvents()"/> and
+    /// <see cref="UseOutbox{TContext}"/>. To deliver to other services instead of in-process consumers,
+    /// replace the <see cref="IIntegrationEventPublisher"/> registration with a message-broker adapter.
+    /// </para>
+    /// <para>
+    /// Passing one or more assemblies scans them at startup using reflection and is not AOT- or
+    /// trim-safe; use the parameterless overload with
+    /// <see cref="UseIntegrationEvents{TEvent, THandler}()"/> for AOT scenarios.
+    /// </para>
+    /// </remarks>
+    /// <param name="assemblies">Assemblies to scan for integration-event handler implementations.</param>
+    /// <returns>The same builder for chaining.</returns>
+    [RequiresUnreferencedCode("Scans assemblies for IIntegrationEventHandler<TEvent> implementations. Use UseIntegrationEvents() with UseIntegrationEvents<TEvent, THandler>() for AOT/trim scenarios.")]
+    [RequiresDynamicCode("Constructs closed generic IIntegrationEventHandler<TEvent> service types at runtime. Use UseIntegrationEvents() with UseIntegrationEvents<TEvent, THandler>() for AOT scenarios.")]
+    public TrellisServiceBuilder UseIntegrationEvents(params Assembly[] assemblies)
+    {
+        ArgumentNullException.ThrowIfNull(assemblies);
+
+        if (assemblies.Length > 0)
+            AddAssemblies(_integrationEventAssemblies, assemblies, nameof(assemblies));
+
+        _useIntegrationEvents = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers the default in-process <see cref="IIntegrationEventPublisher"/> and the scoped
+    /// <see cref="IIntegrationEventCollector"/> without assembly scanning. AOT- and trim-safe. Pair with
+    /// <see cref="UseIntegrationEvents{TEvent, THandler}()"/> per consumer.
+    /// </summary>
+    /// <returns>The same builder for chaining.</returns>
+    public TrellisServiceBuilder UseIntegrationEvents()
+    {
+        _useIntegrationEvents = true;
+        return this;
+    }
+
+    /// <summary>
+    /// AOT-safe per-consumer integration-event registration. Registers <typeparamref name="THandler"/>
+    /// as an <see cref="IIntegrationEventHandler{TEvent}"/> for <typeparamref name="TEvent"/> and wires
+    /// the default publisher and collector.
+    /// </summary>
+    /// <typeparam name="TEvent">The integration event type.</typeparam>
+    /// <typeparam name="THandler">The handler implementation type.</typeparam>
+    /// <returns>The same builder for chaining.</returns>
+    public TrellisServiceBuilder UseIntegrationEvents<
+        TEvent,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler>()
+        where TEvent : IIntegrationEvent
+        where THandler : class, IIntegrationEventHandler<TEvent>
+    {
+        _useIntegrationEvents = true;
+        _typedIntegrationEventHandlerRegistrations.Add(static services =>
+            services.AddIntegrationEventHandler<TEvent, THandler>());
+        return this;
+    }
+
+    /// <summary>
     /// Registers the tracked-aggregate domain-event dispatch behavior and (optionally) scans
     /// assemblies for <see cref="IDomainEventHandler{TEvent}"/> implementations. Implies
     /// <see cref="UseMediator"/>. Mutually exclusive with <see cref="UseDomainEvents(Assembly[])"/>.
@@ -775,6 +845,14 @@ public sealed class TrellisServiceBuilder
         }
 
         foreach (var register in _typedDomainEventHandlerRegistrations)
+            register(_services);
+
+        if (_useIntegrationEvents && _integrationEventAssemblies.Count == 0)
+            _services.AddIntegrationEventDispatch();
+        else if (_useIntegrationEvents)
+            _services.AddIntegrationEventDispatch([.. _integrationEventAssemblies]);
+
+        foreach (var register in _typedIntegrationEventHandlerRegistrations)
             register(_services);
 
         _unitOfWorkRegistration?.Invoke(_services);

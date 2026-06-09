@@ -8,9 +8,13 @@ using Microsoft.Extensions.Logging;
 using Trellis.Mediator;
 
 /// <summary>
-/// Background relay that drains pending <see cref="OutboxMessage"/> rows and re-dispatches each event
-/// to its <see cref="IDomainEventHandler{TEvent}"/>s via <see cref="IDomainEventPublisher"/> — the same
-/// fan-out the in-pipeline dispatch would perform, but from a durable, crash-safe store.
+/// Background relay that drains pending <see cref="OutboxMessage"/> rows from a durable, crash-safe
+/// store and routes each by <see cref="OutboxMessage.Kind"/>: <see cref="OutboxMessageKind.Domain"/>
+/// rows re-dispatch to their <see cref="IDomainEventHandler{TEvent}"/>s via
+/// <see cref="IDomainEventPublisher"/> (the same fan-out the in-pipeline dispatch would perform), and any
+/// integration events their translators emit into <see cref="IIntegrationEventCollector"/> are staged as
+/// new <see cref="OutboxMessageKind.Integration"/> rows; those are later published through
+/// <see cref="IIntegrationEventPublisher"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -97,12 +101,33 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             .ConfigureAwait(false);
 
         List<(OutboxMessage Message, Exception Error)>? failures = null;
+        List<OutboxMessage>? stagedIntegrationRows = null;
         foreach (var message in batch)
         {
             try
             {
-                var domainEvent = Deserialize(message);
-                await PublishInIsolatedScopeAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+                if (message.Kind == OutboxMessageKind.Integration)
+                {
+                    var integrationEvent = Deserialize<IIntegrationEvent>(message);
+                    await PublishIntegrationAsync(integrationEvent, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    var domainEvent = Deserialize<IDomainEvent>(message);
+                    var produced = await PublishDomainAndCollectAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+                    if (produced.Count > 0)
+                    {
+                        // Materialize every row for THIS message before staging any of them, so a
+                        // serialization failure on a later produced event does not leave earlier rows
+                        // staged for a domain message that the catch then records as failed. The local
+                        // list is discarded on throw; only a fully-converted set is enrolled.
+                        var rows = new List<OutboxMessage>(produced.Count);
+                        foreach (var integrationEvent in produced)
+                            rows.Add(CreateIntegrationRow(integrationEvent));
+                        (stagedIntegrationRows ??= []).AddRange(rows);
+                    }
+                }
+
                 message.MarkProcessed(_timeProvider.GetUtcNow());
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -111,6 +136,12 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
                 (failures ??= []).Add((message, ex));
             }
         }
+
+        // Integration events translated from the domain events in this batch are staged transactionally
+        // with their source messages' MarkProcessed, so a domain event is marked delivered only once the
+        // integration rows it produced are durably enrolled. They are picked up on a later drain.
+        if (stagedIntegrationRows is not null)
+            context.Set<OutboxMessage>().AddRange(stagedIntegrationRows);
 
         if (batch.Count > 0)
         {
@@ -143,27 +174,57 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         }
     }
 
-    // Publish in a dedicated scope so handlers that inject TContext (or any scoped service) receive
-    // their own instances — never the relay's bookkeeping context. Otherwise a handler's tracked
-    // changes, and any aggregate events it raises, would be persisted/captured by the relay's own
-    // SaveChanges below. This mirrors in-pipeline dispatch, where handlers run after the commit and the
-    // unit of work has already closed, so their context mutations are not auto-persisted by the relay.
-    private async Task PublishInIsolatedScopeAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)
+    // Publish a domain event in a dedicated scope so handlers that inject TContext (or any scoped
+    // service) receive their own instances — never the relay's bookkeeping context. Otherwise a
+    // handler's tracked changes, and any aggregate events it raises, would be persisted/captured by the
+    // relay's own SaveChanges. This mirrors in-pipeline dispatch, where handlers run after the commit and
+    // the unit of work has already closed. After publishing, drain whatever integration events the
+    // handlers (translators) produced in this same scope so they can be staged for delivery.
+    private async Task<IReadOnlyList<IIntegrationEvent>> PublishDomainAndCollectAsync(
+        IDomainEvent domainEvent, CancellationToken cancellationToken)
     {
         await using var publishScope = _scopeFactory.CreateAsyncScope();
         var publisher = publishScope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
         await publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+
+        // The collector is optional: consumers that do not translate integration events never register
+        // it, and existing domain-only outboxes are unaffected.
+        var collector = publishScope.ServiceProvider.GetService<IIntegrationEventCollector>();
+        return collector?.DrainPending() ?? [];
     }
 
-    private static IDomainEvent Deserialize(OutboxMessage message)
+    private async Task PublishIntegrationAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    {
+        await using var publishScope = _scopeFactory.CreateAsyncScope();
+        var publisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
+        await publisher.PublishAsync(integrationEvent, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static OutboxMessage CreateIntegrationRow(IIntegrationEvent integrationEvent)
+    {
+        var type = integrationEvent.GetType();
+        var eventType = type.AssemblyQualifiedName
+            ?? throw new InvalidOperationException(
+                $"Integration event type '{type}' has no AssemblyQualifiedName and cannot be relayed from the outbox; use a concrete, non-generic event type.");
+
+        return OutboxMessage.Create(
+            Guid.CreateVersion7(),
+            integrationEvent.OccurredAt,
+            eventType,
+            JsonSerializer.Serialize(integrationEvent, type),
+            OutboxMessageKind.Integration);
+    }
+
+    private static T Deserialize<T>(OutboxMessage message)
+        where T : class
     {
         var type = Type.GetType(message.EventType)
             ?? throw new InvalidOperationException(
                 $"Cannot resolve outbox event type '{message.EventType}'. The producing assembly must be loaded by the relay.");
 
-        return JsonSerializer.Deserialize(message.Payload, type) as IDomainEvent
+        return JsonSerializer.Deserialize(message.Payload, type) as T
             ?? throw new InvalidOperationException(
-                $"Outbox payload for '{message.EventType}' did not deserialize to an {nameof(IDomainEvent)}.");
+                $"Outbox payload for '{message.EventType}' did not deserialize to an {typeof(T).Name}.");
     }
 }
 

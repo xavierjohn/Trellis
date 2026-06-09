@@ -104,6 +104,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Make POST / PATCH safe under client retries with an IETF `Idempotency-Key` header | [Recipe 29](#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Make domain events survive a crash (transactional outbox) | [Recipe 35](#recipe-35--transactional-outbox-for-crash-safe-domain-events) |
+| Publish a stable external contract (integration events) translated from domain events | [Recipe 36](#recipe-36--translating-a-domain-event-into-an-integration-event) |
 | Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
 | Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 | Rehydrate an entity from a database row (fail-loud vs Result-track) | [Recipe 30](#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
@@ -2959,6 +2960,51 @@ Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.G
 - This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
 
 See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#how-the-outbox-works) for the full contract, options, and operational guidance.
+
+## Recipe 36 — Translating a domain event into an integration event
+
+**Problem.** You want to publish that an order was placed to *other* services, but your `OrderPlaced` domain event carries internal value objects (`OrderId`, `CustomerEmail`, `Money`). Relaying it as-is couples external consumers to your domain model, and every refactor becomes a breaking wire change.
+
+**Fix.** Keep the domain event internal and publish a deliberately-shaped `IIntegrationEvent` translated from it. The translator is an ordinary domain-event handler that adds to `IIntegrationEventCollector`; the outbox relay captures and delivers the integration event.
+
+```csharp
+// 1. The external contract — primitive/nullable members, no internal value objects.
+public sealed record OrderPlacedIntegrationEvent(Guid OrderId, string CustomerEmail, decimal Total, DateTimeOffset OccurredAt)
+    : IIntegrationEvent;
+
+// 2. The translator — a domain-event handler that emits the contract.
+public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector) : IDomainEventHandler<OrderPlaced>
+{
+    public ValueTask HandleAsync(OrderPlaced domainEvent, CancellationToken cancellationToken)
+    {
+        collector.Add(new OrderPlacedIntegrationEvent(
+            domainEvent.OrderId.Value, domainEvent.CustomerEmail.Value, domainEvent.Total.Amount, domainEvent.OccurredAt));
+        return ValueTask.CompletedTask;
+    }
+}
+
+// 3. An in-process consumer (or replace IIntegrationEventPublisher with a broker adapter).
+public sealed class NotifyShippingHandler : IIntegrationEventHandler<OrderPlacedIntegrationEvent>
+{
+    public ValueTask HandleAsync(OrderPlacedIntegrationEvent e, CancellationToken ct) { /* ... */ return ValueTask.CompletedTask; }
+}
+
+// 4. Wire it — translators are domain-event handlers; the outbox delivers both kinds.
+services.AddTrellis(trellis => trellis
+    .UseDomainEvents(typeof(Program).Assembly)
+    .UseIntegrationEvents(typeof(Program).Assembly)
+    .UseEntityFrameworkUnitOfWork<AppDbContext>()
+    .UseOutbox<AppDbContext>());
+```
+
+**Semantics to remember.**
+
+- The integration event is emitted **only after** its source domain event is durably committed and dispatched — never for state that rolled back. The relay stages it as an `OutboxMessageKind.Integration` row atomically with marking the domain row processed, then publishes it on a later drain.
+- The default `IIntegrationEventPublisher` fans out in-process to `IIntegrationEventHandler<T>` (great for a modular monolith and tests). Replace that one registration with a message-broker adapter to deliver to other services — the aggregate, translator, and outbox are unchanged.
+- Delivery is at-least-once and a retried domain event re-runs its translator, so a consumer may see the same integration event more than once (a new `OutboxMessage.Id` each time). **Dedupe on business identity, not the message id.**
+- Integration events require the outbox: the collector is only a hand-off buffer, so events added without `UseOutbox<TContext>()` are never delivered.
+
+See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#integration-events) for the routing contract.
 
 ## Cross-references
 

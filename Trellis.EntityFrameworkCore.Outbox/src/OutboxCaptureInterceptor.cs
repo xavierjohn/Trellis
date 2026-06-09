@@ -134,7 +134,8 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
                     Guid.CreateVersion7(),
                     domainEvent.OccurredAt,
                     eventType,
-                    JsonSerializer.Serialize(domainEvent, type)));
+                    JsonSerializer.Serialize(domainEvent, type),
+                    OutboxMessageKind.Domain));
             }
         }
 

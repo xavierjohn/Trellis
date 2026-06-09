@@ -861,6 +861,42 @@ public class TrellisServiceBuilderTests
             .WithMessage("*outbox*");
     }
 
+    // -------- Integration-event slot (UseIntegrationEvents) --------
+
+    [Fact]
+    public void UseIntegrationEvents_RegistersPublisherAndCollector()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options.UseIntegrationEvents());
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventPublisher));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventCollector));
+    }
+
+    [Fact]
+    public void UseIntegrationEvents_Typed_RegistersHandlerPublisherAndCollector()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseIntegrationEvents<TestIntegrationEvent, TestIntegrationEventHandler>());
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IIntegrationEventHandler<TestIntegrationEvent>) &&
+            d.ImplementationType == typeof(TestIntegrationEventHandler));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventPublisher));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventCollector));
+    }
+
+    private sealed record TestIntegrationEvent(DateTimeOffset OccurredAt) : IIntegrationEvent;
+
+    private sealed class TestIntegrationEventHandler : IIntegrationEventHandler<TestIntegrationEvent>
+    {
+        public ValueTask HandleAsync(TestIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+            => ValueTask.CompletedTask;
+    }
+
     [Fact]
     public void ExplicitResourceAuthorization_BeforeAddTrellis_PositionsBehaviorBeforeValidation()
     {

@@ -22,6 +22,11 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(m => m.Id).IsRequired();
         builder.HasIndex(m => m.Id).IsUnique();
 
+        builder.Property(m => m.Kind)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired();
+
         builder.Property(m => m.OccurredAt).IsRequired();
         builder.Property(m => m.EventType).IsRequired();
         builder.Property(m => m.Payload).IsRequired();
