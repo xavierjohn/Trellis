@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS017, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-06-03
@@ -74,20 +74,6 @@ b.HasIndex(c => c.Email);                          // TRLS016 — silently no-op
 // FIX
 b.HasTrellisIndex(c => new { c.Email });
 ```
-
-## TRLS017 — Wrong attribute namespace on a value object
-
-```csharp
-// WRONG — System.ComponentModel.DataAnnotations
-[System.ComponentModel.DataAnnotations.StringLength(10)]    // CS0592 — DataAnnotations StringLength can't target a class
-public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
-
-// FIX
-[Trellis.StringLength(10)]
-public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
-```
-
-> On a value-object class the DataAnnotations `[StringLength]`/`[Range]` do not compile — `CS0592`, or `CS0104` for an unqualified attribute when both namespaces are in scope. `TRLS017` is a backstop that names the correct `Trellis` attribute.
 
 ## TRLS018 — Unsafe `Result<T>` deconstruction
 

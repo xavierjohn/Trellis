@@ -204,13 +204,12 @@ bool notDone = paid.IsNot(OrderStatus.Cancelled);
 
 `fieldName` defaults to the camelCased type name (e.g., `orderStatus`) when omitted. Pass it explicitly to align field-violation paths with the calling DTO property.
 
-## Analyzer warnings
+## Generator diagnostics
 
-Two analyzer / generator diagnostics commonly affect `RequiredEnum<TSelf>`-derived types. Full reference: [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md).
+A generator diagnostic commonly affects `RequiredEnum<TSelf>`-derived types. Full reference: [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md).
 
 | ID | Severity | Trigger | Fix |
 |---|---|---|---|
-| `TRLS017` | Warning | `[StringLength]` / `[Range]` from `System.ComponentModel.DataAnnotations` applied to a Trellis primitive class. The Trellis generator only inspects attributes from `namespace Trellis`. | Switch the `using` to `using Trellis;` or fully-qualify (`[Trellis.StringLength(...)]`). |
 | `TRLS031` | Warning | Source generator detected a `Required*`-derived class whose base is not in the supported set (`RequiredString`, `RequiredGuid`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`). | Inherit directly from `RequiredEnum<TSelf>`; do not insert intermediate base classes. |
 
 There is no analyzer that flags a `RequiredEnum<TSelf>` declared without `partial`. The build will simply fail to find the generated `IScalarValue<TSelf, string>` implementation — if `TryCreate` / `Parse` look missing on the derived class, the class is almost always missing the `partial` keyword.
@@ -268,6 +267,6 @@ public static Result<Order> Submit(Guid id, string statusName) =>
 
 - API surface and source-generated members: [`trellis-api-core.md` → `RequiredEnum<TSelf>`](../api_reference/trellis-api-core.md#requiredenumtself)
 - Concrete primitives derived from `Required*<TSelf>` bases: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
-- Analyzer / generator diagnostics: [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md) (in particular `TRLS017`, `TRLS031`)
+- Analyzer / generator diagnostics: [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md) (in particular `TRLS031`)
 - JSON converter: [`trellis-api-core.md` → `RequiredEnumJsonConverter<TRequiredEnum>`](../api_reference/trellis-api-core.md#requiredenumjsonconvertertrequiredenum)
 - Companion article on scalar primitives: [`primitives.md`](primitives.md)

@@ -47,8 +47,6 @@ public static class AntiPatternFixes
 
     // ─── TRLS016 — HasIndex on a Maybe<T> property: see Recipe08 FixPattern ─
 
-    // ─── TRLS017 — Wrong attribute namespace on a value object: Recipe 1 FIX block ─
-
     // ─── TRLS018 — Unsafe Result<T> deconstruction ─────────────────────────
     public static Microsoft.AspNetCore.Http.IResult TRLS018_Fix(Result<EmailAddress> result)
     {

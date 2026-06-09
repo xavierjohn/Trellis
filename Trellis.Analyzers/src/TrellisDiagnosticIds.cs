@@ -80,9 +80,6 @@ public static class TrellisDiagnosticIds
     /// <summary>TRLS016 — <c>HasIndex</c> references a <c>Maybe&lt;T&gt;</c> property.</summary>
     public const string HasIndexMaybeProperty = "TRLS016";
 
-    /// <summary>TRLS017 — Wrong <c>[StringLength]</c> or <c>[Range]</c> attribute namespace.</summary>
-    public const string WrongAttributeNamespace = "TRLS017";
-
     /// <summary>TRLS018 — <c>Result&lt;T&gt;</c> deconstruction reads value without success gate.</summary>
     public const string UnsafeResultDeconstruction = "TRLS018";
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — `TRLS017` analyzer (`WrongAttributeNamespaceAnalyzer`)
+
+`TRLS017` flagged `System.ComponentModel.DataAnnotations` `[StringLength]`/`[Range]` applied to a Trellis value object, but it could never fire on the real attributes: those attributes target properties/fields/parameters, not classes, so applying one to a value-object class is always a compile error (`CS0104` for an unqualified attribute when both namespaces are in scope, otherwise `CS0592`). The C# compiler catches it first, and Roslyn drops the invalidly-targeted attribute before the analyzer runs; the rule's only passing test relied on a stub attribute declared with `AttributeTargets.Class`, which misrepresented the real type. The analyzer, its tests, the `TRLS017` diagnostic ID, and all documentation references are removed. The rule was unshipped, so no released package exposed it — drop any `TRLS017` suppressions.
+
 ### Changed — composite value objects must have a parameterless constructor (clearer error)
 
 A composite `ValueObject` mapped as an EF Core owned type now fails fast at model build with an

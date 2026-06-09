@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, WrongAttributeNamespaceAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS046, TRLS047, TRLS048, TRLS049, TRLS050, TRLS051, TRLS052, TRLS053, TRLS054, TRLS055]
+types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS046, TRLS047, TRLS048, TRLS049, TRLS050, TRLS051, TRLS052, TRLS053, TRLS054, TRLS055]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -48,7 +48,6 @@ The analyzers ship as a **separate NuGet package, `Trellis.Analyzers`**. Install
 | EF query calls `HasValueWhere` with a captured delegate or method group | Inline the lambda or materialize before applying the delegate | `TRLS055` |
 | Direct `SaveChangesAsync` in non-UoW repository code | Use `SaveChangesResultAsync` / `SaveChangesResultUnitAsync`, or let `AddTrellisUnitOfWork<TContext>()` own commits | `TRLS015` |
 | EF index points at a `Maybe<T>` CLR property | Use `HasTrellisIndex(...)` | `TRLS016` |
-| Value object uses `System.ComponentModel.DataAnnotations.StringLength` / `Range` | Use Trellis attributes from `namespace Trellis` | `TRLS017` |
 | `[OwnedEntity]` has init-only properties | Use `{ get; private set; }` for EF-owned value objects | `TRLS022` |
 
 ## Suppression guidance
@@ -72,7 +71,6 @@ Prefer fixing the code over suppressing diagnostics. When a suppression is genui
 | `TRLS014` | Error | Combine chain exceeds maximum supported tuple size | Combine supports up to 9 elements. Downstream methods (Bind, Map, Tap, Match) also only support tuples up to 9 elements. Group related fields into intermediate value objects or sub-results, then combine those groups. |
 | `TRLS015` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | In non-UoW contexts, direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions; use `SaveChangesResultAsync` (returns `Result<int>`) or `SaveChangesResultUnitAsync` (returns `Result<Unit>`). Under `AddTrellisUnitOfWork<TContext>` the `TransactionalCommandBehavior` owns commit — repositories should stage changes via DbContext APIs (Add/Update/Remove) and not invoke SaveChanges at all. |
 | `TRLS016` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
-| `TRLS017` | Warning | Wrong [StringLength] or [Range] attribute namespace | Trellis [StringLength] and [Range] attributes share names with System.ComponentModel.DataAnnotations versions. Because the DataAnnotations versions target properties/fields/parameters rather than classes, applying them to a value object is a compile error (CS0104 for an unqualified attribute when both namespaces are in scope, otherwise CS0592), not a silent miss. Use the Trellis versions (namespace Trellis) instead. |
 | `TRLS018` | Warning | Result<T> deconstruction reads value without success gate | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
 | `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default_initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
 | `TRLS020` | Warning | Composite value object DTO property is not safely deserializable | Composite `[OwnedEntity]` value objects exposed through request/response DTO surfaces need a supported transport. Bare composite properties require `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type; `Maybe<TComposite>` DTO properties are not supported and should use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam. |
@@ -134,7 +132,6 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `CombineChainTooLong` | `TRLS014` | `CombineLimitAnalyzer` |
 | `UseSaveChangesResult` | `TRLS015` | `UseSaveChangesResultAnalyzer` |
 | `HasIndexMaybeProperty` | `TRLS016` | `HasIndexMaybePropertyAnalyzer` |
-| `WrongAttributeNamespace` | `TRLS017` | `WrongAttributeNamespaceAnalyzer` |
 | `UnsafeResultDeconstruction` | `TRLS018` | `UnsafeResultDeconstructionAnalyzer` |
 | `DefaultResultOrMaybe` | `TRLS019` | `DefaultResultOrMaybeAnalyzer` |
 | `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | `CompositeValueObjectDtoConverterAnalyzer` |
@@ -186,7 +183,6 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 | `CombineChainTooLong` | `TRLS014` | Error |
 | `UseSaveChangesResult` | `TRLS015` | Warning |
 | `HasIndexMaybeProperty` | `TRLS016` | Warning |
-| `WrongAttributeNamespace` | `TRLS017` | Warning |
 | `UnsafeResultDeconstruction` | `TRLS018` | Warning |
 | `DefaultResultOrMaybe` | `TRLS019` | Warning |
 | `CompositeValueObjectDtoMissingJsonConverter` | `TRLS020` | Warning |
@@ -354,19 +350,6 @@ This analyzer was deleted from the current API. The `result.IsSuccess ? result.V
 - Activates only when the compilation references `Trellis.EntityFrameworkCore.MaybeConvention`.
 - Flags `EntityTypeBuilder.HasIndex(...)` lambda members that reference `Maybe<T>` properties.
 - Reports both the CLR property name and the generated storage-member fallback name (for example `_submittedAt`).
-- No code fix.
-
-#### `WrongAttributeNamespaceAnalyzer` — `TRLS017`
-- Flags `System.ComponentModel.DataAnnotations.StringLengthAttribute` and `System.ComponentModel.DataAnnotations.RangeAttribute` applied to types that inherit from Trellis value-object base types:
-  - `ScalarValueObject`
-  - `RequiredString`
-  - `RequiredInt`
-  - `RequiredDecimal`
-  - `RequiredLong`
-  - `RequiredGuid`
-  - `RequiredBool`
-  - `RequiredDateTime`
-  - `RequiredEnum`
 - No code fix.
 
 #### `UnsafeResultDeconstructionAnalyzer` — `TRLS018`

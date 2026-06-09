@@ -232,7 +232,7 @@ Trellis primitives enforce their rules in the generated `TryCreate`. There are t
 | `Trellis.AllowMinValueAttribute` | `partial class X : RequiredDateTime<X>` / `RequiredDateTimeOffset<X>` | none | Opts out of `MinValue` rejection. |
 
 > [!WARNING]
-> The `System.ComponentModel.DataAnnotations` attributes of the same name **do not work**. `[DataAnnotations.StringLength]` on the class fails to compile (`CS0592`); on a property of a `Required*<TSelf>` it compiles but is **silently ignored** by the generator. The analyzer rule `TRLS017` flags the class-placement case. Always import from `namespace Trellis`.
+> The `System.ComponentModel.DataAnnotations` attributes of the same name **do not work**. `[DataAnnotations.StringLength]` on the class fails to compile (`CS0592`); on a property of a `Required*<TSelf>` it compiles but is **silently ignored** by the generator. Always import from `namespace Trellis`.
 
 ### Patterns and regex
 

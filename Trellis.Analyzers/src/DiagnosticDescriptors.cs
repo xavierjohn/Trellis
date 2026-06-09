@@ -230,22 +230,6 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase);
 
     /// <summary>
-    /// TRLS017: Wrong attribute namespace — System.ComponentModel.DataAnnotations instead of Trellis.
-    /// </summary>
-    public static readonly DiagnosticDescriptor WrongAttributeNamespace = new(
-        id: TrellisDiagnosticIds.WrongAttributeNamespace,
-        title: "Wrong [StringLength] or [Range] attribute namespace",
-        messageFormat: "'{0}' uses System.ComponentModel.DataAnnotations.{1} on a value object. Use Trellis.{1} instead.",
-        category: Category,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Trellis [StringLength] and [Range] attributes target the value-object class declaration, " +
-                 "whereas the System.ComponentModel.DataAnnotations versions of the same name target properties, fields, or parameters. " +
-                 "Applying a DataAnnotations attribute to a value object is a compile error (CS0104 for an unqualified attribute when both namespaces are in scope, otherwise CS0592), not a silent miss. " +
-                 "Use the Trellis versions (namespace Trellis) instead.",
-        helpLinkUri: HelpLinkBase);
-
-    /// <summary>
     /// TRLS018: Result&lt;T&gt; deconstruction reads the value slot without a success/error gate.
     /// </summary>
     public static readonly DiagnosticDescriptor UnsafeResultDeconstruction = new(
