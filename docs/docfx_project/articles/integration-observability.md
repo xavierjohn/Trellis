@@ -68,7 +68,7 @@ using Trellis.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMediator();
+builder.Services.AddMediator(opts => opts.ServiceLifetime = ServiceLifetime.Scoped);
 builder.Services.AddTrellis(options => options
     .UseAsp()
     .UseMediator());
