@@ -20,7 +20,8 @@
             "Trellis.Authorization/src/Trellis.Authorization.csproj",
             "Trellis.Mediator/src/Trellis.Mediator.csproj",
             "Trellis.Mediator.FluentValidation/src/Trellis.Mediator.FluentValidation.csproj",
-            "Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj"
+            "Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj",
+            "Trellis.EntityFrameworkCore.Outbox/src/Trellis.EntityFrameworkCore.Outbox.csproj"
           ]
         }
       ],

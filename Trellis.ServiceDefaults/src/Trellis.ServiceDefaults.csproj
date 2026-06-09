@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\Trellis.EntityFrameworkCore.Outbox\src\Trellis.EntityFrameworkCore.Outbox.csproj" />
     <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
     <ProjectReference Include="..\..\Trellis.Mediator.FluentValidation\src\Trellis.Mediator.FluentValidation.csproj" />
   </ItemGroup>

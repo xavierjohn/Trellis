@@ -1,4 +1,4 @@
-﻿<Solution>
+<Solution>
   <Folder Name="/.github/">
     <File Path=".github/codecov.yml" />
     <File Path=".github/copilot-instructions.md" />
@@ -86,12 +86,22 @@
   <Folder Name="/Trellis.Benchmark/">
     <Project Path="Trellis.Benchmark/Trellis.Benchmark.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Core/generator/" />
+  <Folder Name="/Trellis.Core/src/" />
+  <Folder Name="/Trellis.EntityFrameworkCore.Outbox/" />
+  <Folder Name="/Trellis.EntityFrameworkCore.Outbox/src/">
+    <Project Path="Trellis.EntityFrameworkCore.Outbox/src/Trellis.EntityFrameworkCore.Outbox.csproj" />
+  </Folder>
+  <Folder Name="/Trellis.EntityFrameworkCore.Outbox/tests/">
+    <Project Path="Trellis.EntityFrameworkCore.Outbox/tests/Trellis.EntityFrameworkCore.Outbox.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.EntityFrameworkCore/">
     <Project Path="Trellis.EntityFrameworkCore/generator/Trellis.EntityFrameworkCore.Generator.csproj" />
     <Project Path="Trellis.EntityFrameworkCore/generator-tests/Trellis.EntityFrameworkCore.Generator.Tests.csproj" />
     <Project Path="Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj" />
     <Project Path="Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.EntityFrameworkCore/src/" />
   <Folder Name="/Trellis.FluentValidation/">
     <Project Path="Trellis.FluentValidation/src/Trellis.FluentValidation.csproj" />
     <Project Path="Trellis.FluentValidation/tests/Trellis.FluentValidation.Tests.csproj" />
@@ -112,6 +122,7 @@
     <Project Path="Trellis.Mediator.FluentValidation/src/Trellis.Mediator.FluentValidation.csproj" />
     <Project Path="Trellis.Mediator.FluentValidation/tests/Trellis.Mediator.FluentValidation.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Mediator/src/" />
   <Folder Name="/Trellis.Primitives/">
     <File Path="Trellis.Primitives/SAMPLES.md" />
     <Project Path="Trellis.Primitives/src/Trellis.Primitives.csproj" />
@@ -142,4 +153,5 @@
     <Project Path="Trellis.Testing.Worker/src/Trellis.Testing.Worker.csproj" />
     <Project Path="Trellis.Testing.Worker/tests/Trellis.Testing.Worker.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Testing/src/" />
 </Solution>

@@ -44,6 +44,7 @@ public sealed class TrellisServiceBuilder
     private Action<IServiceCollection>? _cachingActorProviderWrap;
     private Action<IServiceCollection>? _workerActorWrap;
     private Action<IServiceCollection>? _unitOfWorkRegistration;
+    private Action<IServiceCollection>? _outboxRegistration;
     private bool _useAsp;
     private bool _useScalarValueValidation;
     private bool _useProblemDetails;
@@ -427,6 +428,53 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// Registers the transactional-outbox relay for <typeparamref name="TContext"/> so domain events
+    /// captured into the outbox table are durably re-dispatched after the transaction commits.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This slot owns only the service-collection half of the outbox: the relay hosted service and its
+    /// <see cref="OutboxOptions"/>. The capture interceptor and the <see cref="OutboxMessage"/> table
+    /// mapping live on the <see cref="DbContext"/> and must be wired where the context is configured —
+    /// call <c>optionsBuilder.AddTrellisOutboxInterceptor()</c> on the options builder and
+    /// <c>modelBuilder.AddTrellisOutbox()</c> in <c>OnModelCreating</c>. This mirrors how
+    /// <see cref="UseEntityFrameworkUnitOfWork{TContext}"/> owns the service registration while
+    /// <c>AddTrellisInterceptors</c> is applied on the context.
+    /// </para>
+    /// <para>
+    /// When the outbox is enabled the capture interceptor clears each aggregate's events inside the
+    /// commit, so the in-pipeline <c>DomainEventDispatchBehavior</c> observes none and the relay becomes
+    /// the single, durable dispatch path. Pair this with <see cref="UseDomainEvents()"/> (or an explicit
+    /// <c>AddDomainEventDispatch</c>) so the relay has handlers and an <see cref="IDomainEventPublisher"/>
+    /// to fan out to. The relay registration is order-independent: it adds a hosted service and does not
+    /// participate in the Mediator behavior pipeline, so calling it before or after
+    /// <see cref="UseEntityFrameworkUnitOfWork{TContext}"/> yields the same canonical pipeline order.
+    /// </para>
+    /// <para>
+    /// Calling this method more than once throws <see cref="InvalidOperationException"/>; one outbox
+    /// relay per composition is supported. The method is annotated
+    /// <see cref="RequiresUnreferencedCodeAttribute"/> / <see cref="RequiresDynamicCodeAttribute"/>
+    /// because the outbox builds on <c>Trellis.EntityFrameworkCore</c>, which is intentionally opted out
+    /// of AOT and trim.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TContext">The application's <see cref="DbContext"/> that owns the outbox table.</typeparam>
+    /// <param name="configure">Optional relay tuning (poll interval, batch size, max attempts).</param>
+    /// <returns>The same builder for chaining.</returns>
+    [RequiresUnreferencedCode("Trellis.EntityFrameworkCore is not AOT- or trim-compatible because EF Core requires reflection over entity types and query expression trees. AOT consumers should compose their data access layer outside of this builder.")]
+    [RequiresDynamicCode("Trellis.EntityFrameworkCore is not AOT-compatible because EF Core requires runtime code generation for query compilation. AOT consumers should compose their data access layer outside of this builder.")]
+    public TrellisServiceBuilder UseOutbox<TContext>(Action<OutboxOptions>? configure = null)
+        where TContext : DbContext
+    {
+        if (_outboxRegistration is not null)
+            throw new InvalidOperationException(
+                "Only one outbox relay can be configured per Trellis composition.");
+
+        _outboxRegistration = services => services.AddTrellisOutbox<TContext>(configure);
+        return this;
+    }
+
+    /// <summary>
     /// Registers the domain-event dispatch behavior and (optionally) scans assemblies for
     /// <see cref="IDomainEventHandler{TEvent}"/> implementations. Implies <see cref="UseMediator"/>.
     /// </summary>
@@ -730,6 +778,7 @@ public sealed class TrellisServiceBuilder
             register(_services);
 
         _unitOfWorkRegistration?.Invoke(_services);
+        _outboxRegistration?.Invoke(_services);
     }
 
     private void SetActorProvider(ActorProviderKind kind, Action<IServiceCollection> registration)
