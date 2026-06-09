@@ -41,7 +41,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 
 - This file documents concrete primitives. Custom primitive base classes and Trellis validation attributes live in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes).
 - `Required*<TSelf>` generated primitives are strict by default. Remove legacy `[NotDefault]` / `[Trim]`; use the per-base opt-outs below only when the sentinel value is a legitimate domain value.
-- Use Trellis attributes when defining generated primitives; similarly named DataAnnotations attributes compile but are ignored by the Trellis generator.
+- Use Trellis attributes when defining generated primitives. On the value-object class the similarly named DataAnnotations attributes do not compile (`CS0592`, or `CS0104` for an unqualified attribute when both namespaces are in scope); on a member they compile but the Trellis generator ignores them.
 - Keep primitive parsing out of handlers. Convert transport primitives to value objects at the DTO/controller/application seam, then pass shaped commands inward.
 
 ### Trellis validation attributes vs `System.ComponentModel.DataAnnotations`

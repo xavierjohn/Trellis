@@ -6,8 +6,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
 /// Detects when System.ComponentModel.DataAnnotations [StringLength] or [Range] is applied
-/// to a type inheriting from a Trellis base class. The Trellis source generator ignores
-/// the DataAnnotations versions, so validation constraints will be silently missing.
+/// to a type inheriting from a Trellis base class. The Trellis source generator only reads the
+/// Trellis-namespace attributes; because the DataAnnotations versions target properties, fields,
+/// or parameters rather than classes, applying them to a value object is a compile error
+/// (CS0104 for an unqualified attribute when both namespaces are in scope, otherwise CS0592). This analyzer is a
+/// backstop that names the correct Trellis attribute.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class WrongAttributeNamespaceAnalyzer : DiagnosticAnalyzer

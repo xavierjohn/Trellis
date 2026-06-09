@@ -7,16 +7,16 @@
 Flags `System.ComponentModel.DataAnnotations.StringLengthAttribute` and `RangeAttribute` when they are applied to Trellis value-object base types.
 
 ## Why it matters
-The code compiles, but the Trellis source generator only understands the Trellis versions of these attributes. Your intended validation rules never make it into the generated type.
+The `System.ComponentModel.DataAnnotations` attributes target properties, fields, or parameters — not classes — so applying them to a value object does not compile: `CS0592` when the attribute is fully qualified (or only the DataAnnotations namespace is imported), or `CS0104` (ambiguous reference) for an unqualified attribute when the `Trellis` namespace is also in scope. The Trellis source generator reads only the `Trellis` versions, which target the class declaration.
 
 > [!WARNING]
-> This is a namespace problem, not a syntax problem. The attribute name looks right, but the generator ignores the DataAnnotations version.
+> This is a namespace problem, not a syntax problem. The attribute name looks right, but the DataAnnotations version cannot be applied to a class, so the build fails until you switch to the `Trellis` attribute.
 
 ## Bad example
 ```csharp
 using Trellis;
 
-[System.ComponentModel.DataAnnotations.StringLength(50)]
+[System.ComponentModel.DataAnnotations.StringLength(50)]   // CS0592 — not valid on a class
 public sealed partial class FirstName : RequiredString<FirstName>
 {
 }

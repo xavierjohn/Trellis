@@ -79,13 +79,15 @@ b.HasTrellisIndex(c => new { c.Email });
 
 ```csharp
 // WRONG — System.ComponentModel.DataAnnotations
-[System.ComponentModel.DataAnnotations.StringLength(10)]    // TRLS017 — generator ignores it
+[System.ComponentModel.DataAnnotations.StringLength(10)]    // CS0592 — DataAnnotations StringLength can't target a class
 public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
 
 // FIX
 [Trellis.StringLength(10)]
 public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
 ```
+
+> On a value-object class the DataAnnotations `[StringLength]`/`[Range]` do not compile — `CS0592`, or `CS0104` for an unqualified attribute when both namespaces are in scope. `TRLS017` is a backstop that names the correct `Trellis` attribute.
 
 ## TRLS018 — Unsafe `Result<T>` deconstruction
 
