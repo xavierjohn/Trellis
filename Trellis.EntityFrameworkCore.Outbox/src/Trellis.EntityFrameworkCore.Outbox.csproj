@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <Description>Transactional outbox for Trellis. Atomically captures aggregate domain events to an EF Core table in the same transaction as the aggregate change, then relays them to Trellis domain-event handlers — durable, at-least-once, in-process dispatch.</Description>
+    <PackageTags>trellis;outbox;efcore;domain-events;ddd;reliability;messaging;railway-oriented</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>efcore-outbox</TrellisApiRefName>
+    <!--
+      Bridges Trellis.EntityFrameworkCore (reflection-heavy EF Core) and Trellis.Mediator.
+      Like Trellis.EntityFrameworkCore, this package opts out of the AOT/trim story.
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trellis.EntityFrameworkCore.Outbox.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+</Project>

@@ -70,6 +70,8 @@
     href: integration-fluentvalidation.md
   - name: Entity Framework Core
     href: integration-ef.md
+  - name: Transactional Outbox
+    href: integration-outbox.md
   - name: Mediator Pipeline
     href: integration-mediator.md
   - name: Service Defaults (Composition Root)

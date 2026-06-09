@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
@@ -769,6 +770,95 @@ public class TrellisServiceBuilderTests
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*unit of work*");
+    }
+
+    // -------- Outbox relay slot (UseOutbox) --------
+
+    [Fact]
+    public void UseOutbox_RegistersRelayHostedServiceOptionsAndTimeProvider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseEntityFrameworkUnitOfWork<TestDbContext>()
+            .UseOutbox<TestDbContext>());
+
+        // OutboxRelay<TContext> is internal to the outbox package, so assert the hosted-service
+        // registration by reflected type shape rather than a direct type reference.
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IHostedService) &&
+            d.ImplementationType != null &&
+            d.ImplementationType.Name.StartsWith("OutboxRelay", StringComparison.Ordinal) &&
+            d.ImplementationType.IsGenericType &&
+            d.ImplementationType.GetGenericArguments()[0] == typeof(TestDbContext));
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(OutboxOptions));
+        services.Should().Contain(d => d.ServiceType == typeof(TimeProvider));
+    }
+
+    [Fact]
+    public void UseOutbox_AppliesConfiguredOptions()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseOutbox<TestDbContext>(o =>
+            {
+                o.BatchSize = 7;
+                o.MaxAttempts = 3;
+            }));
+
+        var configured = (OutboxOptions)services
+            .Single(d => d.ServiceType == typeof(OutboxOptions))
+            .ImplementationInstance!;
+
+        configured.BatchSize.Should().Be(7);
+        configured.MaxAttempts.Should().Be(3);
+    }
+
+    [Fact]
+    public void UseOutbox_DoesNotPerturbPipelineOrder_WhetherRegisteredBeforeOrAfterUnitOfWork()
+    {
+        // The outbox relay is a hosted service, not a Mediator behavior, so enabling it must leave
+        // the canonical pipeline order identical regardless of where UseOutbox is called relative to
+        // UseEntityFrameworkUnitOfWork (the registration-API checklist requirement).
+        static System.Collections.Generic.List<Type?> PipelineOf(Action<TrellisServiceBuilder> compose)
+        {
+            var services = new ServiceCollection();
+            services.AddTrellis(compose);
+            return services
+                .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
+                .Select(d => d.ImplementationType)
+                .ToList();
+        }
+
+        var outboxBeforeUow = PipelineOf(o => o
+            .UseOutbox<TestDbContext>()
+            .UseEntityFrameworkUnitOfWork<TestDbContext>());
+
+        var outboxAfterUow = PipelineOf(o => o
+            .UseEntityFrameworkUnitOfWork<TestDbContext>()
+            .UseOutbox<TestDbContext>());
+
+        var withoutOutbox = PipelineOf(o => o
+            .UseEntityFrameworkUnitOfWork<TestDbContext>());
+
+        outboxBeforeUow.Should().Equal(outboxAfterUow);
+        outboxBeforeUow.Should().Equal(withoutOutbox);
+        outboxBeforeUow.Should().EndWith(typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void UseOutbox_Twice_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseOutbox<TestDbContext>()
+            .UseOutbox<TestDbContext>());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*outbox*");
     }
 
     [Fact]

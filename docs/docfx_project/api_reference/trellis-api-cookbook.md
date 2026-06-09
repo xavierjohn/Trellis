@@ -103,6 +103,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Insert a row idempotently on a unique constraint (de-duplicated worker outbox, "save unless exists") | [Recipe 27](#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync) |
 | Make POST / PATCH safe under client retries with an IETF `Idempotency-Key` header | [Recipe 29](#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
+| Make domain events survive a crash (transactional outbox) | [Recipe 35](#recipe-35--transactional-outbox-for-crash-safe-domain-events) |
 | Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
 | Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 | Rehydrate an entity from a database row (fail-loud vs Result-track) | [Recipe 30](#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
@@ -2925,6 +2926,39 @@ Trellis_Logs
 > **Why moved.** The recipes document the consumer-side strict ``AddJwtBearer`` profile (Recipe 1) and the end-to-end YARP gateway + downstream walkthrough (Recipe 2), both of which depend on types that now live exclusively in the new repo. Keeping them here would create dangling cross-doc references.
 >
 > **Migration for early adopters.** If you were calling ``services.AddTrellis(b => b.UseTrellisInternalJwtActor(...))``, switch to ``services.AddTrellisInternalJwtActorProvider(...)`` after installing [`Trellis.Microservices.AspNetCore`](https://www.nuget.org/packages/Trellis.Microservices.AspNetCore) and replacing the ``using Trellis.Asp.Authorization;`` directive with ``using Trellis.Microservices.AspNetCore;``. The ``UseTrellisInternalJwtActor`` slot was removed from ``TrellisServiceBuilder`` in this same v3 cleanup (breaking change — see CHANGELOG).
+
+---
+
+## Recipe 35 — Transactional outbox for crash-safe domain events
+
+**Problem.** Your command raises a domain event and commits, but the in-pipeline `UseDomainEvents()` dispatch runs *after* the transaction. If the process crashes between the commit and the dispatch, the event is lost — the order is saved but `OrderPlaced` never reaches its handler.
+
+**Fix.** Install `Trellis.EntityFrameworkCore.Outbox`. The capture interceptor writes one row per uncommitted event into `TrellisOutboxMessages` in the **same** transaction as the aggregate, and a background relay re-dispatches them after the commit. Wire three things:
+
+```csharp
+// 1. Map the table.
+protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    modelBuilder.AddTrellisOutbox();
+
+// 2. Add the capture interceptor on the context options.
+options.UseNpgsql(cs).AddTrellisInterceptors().AddTrellisOutboxInterceptor();
+
+// 3. Register the relay (UseOutbox) alongside your handlers (UseDomainEvents).
+services.AddTrellis(trellis => trellis
+    .UseDomainEvents(typeof(Program).Assembly)
+    .UseEntityFrameworkUnitOfWork<AppDbContext>()
+    .UseOutbox<AppDbContext>());
+```
+
+Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.GetUtcNow()))`. When the outbox is enabled the capture interceptor clears the aggregate's events inside the commit, so the in-pipeline dispatch sees none and the relay becomes the single, durable dispatcher.
+
+**Semantics to remember.**
+
+- The guarantee is at-least-once **delivery**, not handler success: the publisher swallows handler exceptions (the `IDomainEventHandler<TEvent>` contract), so a failing handler does **not** retry — only infrastructure failures retry, up to `OutboxOptions.MaxAttempts`, after which the message is parked. Make handlers idempotent.
+- Use a nullable transport (not `Maybe<T>`) in event payloads — the default serializer cannot round-trip `Maybe<T>` (consistent with [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) and TRLS020).
+- This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
+
+See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#how-the-outbox-works) for the full contract, options, and operational guidance.
 
 ## Cross-references
 
