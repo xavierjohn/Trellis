@@ -788,7 +788,7 @@ unproc.Rules.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machin
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
-using Trellis.Primitives;
+using Trellis.Authorization;
 using Trellis.Testing;
 using Xunit;
 
@@ -802,7 +802,8 @@ public class PlaceOrderHandlerTests
 
         var command = new PlaceOrderCommand(
             OrderId.TryCreate(Guid.NewGuid()).Unwrap(),
-            Money.TryCreate(100m, "USD").Unwrap());
+            new Money(100m, CurrencyCode.TryCreate("USD").Unwrap()),
+            ActorId.TryCreate("alice").Unwrap());
 
         var result = await sut.Handle(command, CancellationToken.None);
 
@@ -813,7 +814,7 @@ public class PlaceOrderHandlerTests
     [Fact]
     public void PlaceOrder_request_adapter_fails_when_currency_invalid()
     {
-        var request = new PlaceOrderRequest(Guid.NewGuid(), 100m, "US"); // 2 chars, not 3
+        var request = new PlaceOrderRequest(Guid.NewGuid(), 100m, "US", "alice"); // 2 chars, not 3
 
         var result = PlaceOrderCommand.TryCreate(request);
 

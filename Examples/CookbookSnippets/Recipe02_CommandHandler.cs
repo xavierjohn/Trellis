@@ -14,32 +14,39 @@ using Trellis.EntityFrameworkCore;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
 using Trellis.Mediator.FluentValidation;
+using MonetaryAmount = Trellis.Primitives.MonetaryAmount;
 
-public sealed record PlaceOrderCommand(System.Guid OrderId, decimal Amount, string Currency, string OwnerId)
-    : ICommand<Result<OrderId>>;
+public sealed record PlaceOrderRequest(System.Guid OrderId, decimal Amount, string Currency, string OwnerId);
+
+public sealed record PlaceOrderCommand(OrderId OrderId, Money Total, ActorId OwnerId)
+    : ICommand<Result<OrderId>>
+{
+    public static Result<PlaceOrderCommand> TryCreate(PlaceOrderRequest request) =>
+        Result.Combine(
+                OrderId.TryCreate(request.OrderId, nameof(request.OrderId)),
+                MonetaryAmount.TryCreate(request.Amount, nameof(request.Amount)),
+                CurrencyCode.TryCreate(request.Currency, nameof(request.Currency)),
+                ActorId.TryCreate(request.OwnerId, nameof(request.OwnerId)))
+            .Map((orderId, amount, currency, ownerId) =>
+                new PlaceOrderCommand(orderId, new Money(amount.Value, currency), ownerId));
+}
 
 public sealed class PlaceOrderValidator : AbstractValidator<PlaceOrderCommand>
 {
-    public PlaceOrderValidator()
-    {
-        RuleFor(x => x.OrderId).NotEmpty();
-        RuleFor(x => x.Amount).GreaterThan(0);
-        RuleFor(x => x.Currency).Length(3);
-        RuleFor(x => x.OwnerId).NotEmpty();
-    }
+    public PlaceOrderValidator() =>
+        RuleFor(x => x.Total.Amount)
+            .LessThanOrEqualTo(10_000m)
+            .WithMessage("Orders over 10,000 require manual approval.");
 }
 
 public sealed class PlaceOrderHandler(IOrderRepository repo)
     : ICommandHandler<PlaceOrderCommand, Result<OrderId>>
 {
-    public ValueTask<Result<OrderId>> Handle(PlaceOrderCommand command, CancellationToken cancellationToken) =>
-        new(Result.Combine(
-                OrderId.TryCreate(command.OrderId),
-                CurrencyCode.TryCreate(command.Currency).Map(c => new Money(command.Amount, c)),
-                ActorId.TryCreate(command.OwnerId))
-            .Bind((id, money, ownerId) => Order.TryCreate(id, money, ownerId))
+    public ValueTask<Result<OrderId>> Handle(PlaceOrderCommand cmd, CancellationToken cancellationToken) =>
+        Order.TryCreate(cmd.OrderId, cmd.Total, cmd.OwnerId)
             .Tap(repo.Add)
-            .Map(o => o.Id));
+            .Map(o => o.Id)
+            .AsValueTask();
 }
 
 // Composition root
