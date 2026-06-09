@@ -104,7 +104,7 @@ Events are serialized with the default `System.Text.Json` options:
 
 ## Operating the outbox
 
-- **Monitor parked messages.** Alert on rows where `ProcessedAt IS NULL AND Attempts >= MaxAttempts`; those are events that exhausted their retries and need investigation.
+- **Monitor parked messages.** Alert on the `OutboxRelay.MessageParked` error log (and on rows where `ProcessedAt IS NULL AND Attempts >= MaxAttempts`); those are events that exhausted their retries and need investigation. Transient retries log at Warning (`OutboxRelay.RelayAttemptFailed`) and self-heal, so they should not page on their own.
 - **Prune processed rows.** Rows with a non-null `ProcessedAt` are a spent delivery buffer — a periodic job can delete old ones with no loss of source-of-truth state. The aggregate tables remain authoritative.
 - **Keep the producing assemblies loaded.** The relay resolves each event by its assembly-qualified type name, so the worker process must reference the assemblies that declare your events.
 - **Run a single active relay.** The relay does not lock the rows it drains, so two concurrent relay instances (a horizontally-scaled deployment) can deliver the same message before either marks it processed. The at-least-once contract and idempotent handlers absorb this; if you need exactly-one drain across instances, gate the relay behind leader election or a distributed lock. Cross-instance row-claiming (`FOR UPDATE SKIP LOCKED` / `READPAST`) is a planned follow-up.

@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/.github/">
     <File Path=".github/codecov.yml" />
     <File Path=".github/copilot-instructions.md" />

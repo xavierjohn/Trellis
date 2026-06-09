@@ -127,10 +127,13 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
             foreach (var domainEvent in events)
             {
                 var type = domainEvent.GetType();
+                var eventType = type.AssemblyQualifiedName
+                    ?? throw new InvalidOperationException(
+                        $"Domain event type '{type}' has no AssemblyQualifiedName and cannot be relayed from the outbox; use a concrete, non-generic event type.");
                 messages.Add(OutboxMessage.Create(
                     Guid.CreateVersion7(),
                     domainEvent.OccurredAt,
-                    type.AssemblyQualifiedName ?? type.FullName ?? type.Name,
+                    eventType,
                     JsonSerializer.Serialize(domainEvent, type)));
             }
         }

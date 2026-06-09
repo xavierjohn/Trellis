@@ -31,6 +31,7 @@ public static class OutboxServiceCollectionExtensions
 
         var options = new OutboxOptions();
         configure?.Invoke(options);
+        options.Validate();
 
         services.TryAddSingleton(options);
         services.TryAddSingleton(TimeProvider.System);

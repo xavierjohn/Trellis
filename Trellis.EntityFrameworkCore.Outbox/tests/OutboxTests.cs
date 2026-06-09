@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 #pragma warning disable CA1707 // readable xUnit test names
 
@@ -233,6 +234,162 @@ public sealed class OutboxTests
 
         thing.UncommittedEvents().Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Relay_retries_then_parks_a_poison_message_without_blocking_others()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var captured = new List<ThingCreated>();
+        var logs = new List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<ILogger<OutboxRelay<OutboxTestDbContext>>>(
+            new FakeLogger<OutboxRelay<OutboxTestDbContext>>(logs));
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>(o => o.MaxAttempts = 2);
+
+        await using var provider = services.BuildServiceProvider();
+
+        var poisonId = Guid.CreateVersion7();
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+
+            // Poison first (lowest Sequence) so it is drained before the good message — its event type
+            // cannot be resolved, so the relay records a failure rather than marking it processed.
+            context.Set<OutboxMessage>().Add(OutboxMessage.Create(
+                poisonId,
+                DateTimeOffset.UnixEpoch,
+                "Trellis.Outbox.Tests.NoSuchEvent, Trellis.Outbox.Tests.NoSuchAssembly",
+                "{}"));
+            await context.SaveChangesAsync(ct);
+
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "good", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        // Drain 1: poison fails (Attempts -> 1, transient); the good message behind it is still dispatched.
+        await relay.DrainAsync(ct);
+        captured.Should().ContainSingle().Which.Name.Should().Be("good");
+
+        // Drain 2: poison fails again (Attempts -> 2 == MaxAttempts) and is parked thereafter.
+        await relay.DrainAsync(ct);
+
+        // Drain 3: poison is now skipped (Attempts == MaxAttempts) and the good row is processed — nothing left.
+        (await relay.DrainAsync(ct)).Should().Be(0);
+
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var rows = await context.Set<OutboxMessage>().AsNoTracking().ToListAsync(ct);
+
+            var good = rows.Single(r => r.EventType.Contains(nameof(ThingCreated)));
+            var poison = rows.Single(r => r.EventType.Contains("NoSuchEvent"));
+
+            good.ProcessedAt.Should().NotBeNull();
+            poison.ProcessedAt.Should().BeNull("the poison message exhausted its attempts and is parked");
+            poison.Attempts.Should().Be(2);
+            poison.LastError.Should().NotBeNullOrEmpty();
+        }
+
+        // Production supportability: the first failure logs as a retryable Warning; exhausting
+        // MaxAttempts logs a distinct, alertable Error that identifies the parked message — both with
+        // the underlying exception attached so on-call can triage from the log alone.
+        var attemptFailed = logs.Where(e => e.EventId.Name == "OutboxRelay.RelayAttemptFailed").ToList();
+        attemptFailed.Should().ContainSingle();
+        attemptFailed[0].Level.Should().Be(LogLevel.Warning);
+        attemptFailed[0].Message.Should().Contain("attempt 1 of 2");
+        attemptFailed[0].Exception.Should().NotBeNull();
+
+        var parked = logs.Where(e => e.EventId.Name == "OutboxRelay.MessageParked").ToList();
+        parked.Should().ContainSingle();
+        parked[0].Level.Should().Be(LogLevel.Error);
+        parked[0].Message.Should().Contain(poisonId.ToString());
+        parked[0].Message.Should().Contain("NoSuchEvent");
+        parked[0].Exception.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Relay_marks_processed_when_a_handler_throws()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var logs = new List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<ILogger<OutboxRelay<OutboxTestDbContext>>>(
+            new FakeLogger<OutboxRelay<OutboxTestDbContext>>(logs));
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, ThrowingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "boom", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        // Delivery, not handler success: the publisher swallows the handler exception, so the relay
+        // marks the message processed (no retry) rather than recording a failure.
+        drained.Should().Be(1);
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var row = await context.Set<OutboxMessage>().SingleAsync(ct);
+            row.ProcessedAt.Should().NotBeNull();
+            row.Attempts.Should().Be(0);
+        }
+
+        // A swallowed handler exception must NOT surface as a relay failure/parked log — that noise
+        // would mislead on-call into chasing a delivery problem that does not exist.
+        logs.Where(e => e.EventId.Name is "OutboxRelay.RelayAttemptFailed" or "OutboxRelay.MessageParked")
+            .Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddTrellisOutbox_WithInvalidOptions_ThrowsAtRegistration()
+    {
+        var services = new ServiceCollection();
+
+        var zeroBatch = () => services.AddTrellisOutbox<OutboxTestDbContext>(o => o.BatchSize = 0);
+        zeroBatch.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("BatchSize");
+
+        var negativePoll = () => services.AddTrellisOutbox<OutboxTestDbContext>(o => o.PollInterval = TimeSpan.FromSeconds(-1));
+        negativePoll.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("PollInterval");
+
+        var zeroAttempts = () => services.AddTrellisOutbox<OutboxTestDbContext>(o => o.MaxAttempts = 0);
+        zeroAttempts.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("MaxAttempts");
+    }
 }
 
 // ── Test domain model ──────────────────────────────────────────────────────────
@@ -272,6 +429,23 @@ internal sealed class ContextMutatingHandler(OutboxTestDbContext context) : IDom
         context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "handler-added", DateTimeOffset.UnixEpoch));
         return ValueTask.CompletedTask;
     }
+}
+
+internal sealed class ThrowingHandler : IDomainEventHandler<ThingCreated>
+{
+    public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("handler boom");
+}
+
+internal sealed class FakeLogger<T>(List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)> entries)
+    : ILogger<T>
+{
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        => entries.Add((logLevel, eventId, formatter(state, exception), exception));
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 }
 
 internal sealed class OutboxTestDbContext(DbContextOptions<OutboxTestDbContext> options) : DbContext(options)

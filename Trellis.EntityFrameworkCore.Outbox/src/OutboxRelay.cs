@@ -47,6 +47,8 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        OutboxRelayLog.Started(_logger, typeof(TContext).Name, _options.PollInterval, _options.BatchSize, _options.MaxAttempts);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             int drained;
@@ -94,6 +96,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        List<(OutboxMessage Message, Exception Error)>? failures = null;
         foreach (var message in batch)
         {
             try
@@ -105,14 +108,39 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 message.RecordFailure(ex.Message);
-                OutboxRelayLog.RelayFailed(_logger, message.Id, message.EventType, ex);
+                (failures ??= []).Add((message, ex));
             }
         }
 
         if (batch.Count > 0)
+        {
+            // Persist MarkProcessed / RecordFailure first, then log. Emitting the failure logs only
+            // after the save succeeds keeps the alertable MessageParked (and the retry Warning) honest:
+            // if this save throws, the Attempts increments never persisted, the message is NOT parked,
+            // ExecuteAsync logs DrainFailed instead, and no false "parked" alert is raised.
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            LogFailures(failures);
+            OutboxRelayLog.DrainCompleted(_logger, batch.Count);
+        }
 
         return batch.Count;
+    }
+
+    private void LogFailures(List<(OutboxMessage Message, Exception Error)>? failures)
+    {
+        if (failures is null)
+            return;
+
+        foreach (var (message, error) in failures)
+        {
+            // Attempts now reflects the persisted value, so the parked-vs-retry decision matches the DB.
+            // Parked is the alertable, intervention-required signal; a retry is a transient, self-healing
+            // Warning. Both carry the exception and structured fields for triage.
+            if (message.Attempts >= _options.MaxAttempts)
+                OutboxRelayLog.MessageParked(_logger, message.Id, message.EventType, message.Attempts, error);
+            else
+                OutboxRelayLog.RelayAttemptFailed(_logger, message.Id, message.EventType, message.Attempts, _options.MaxAttempts, error);
+        }
     }
 
     // Publish in a dedicated scope so handlers that inject TContext (or any scoped service) receive
@@ -142,21 +170,48 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
 /// <summary>High-performance log delegates for <see cref="OutboxRelay{TContext}"/> (satisfies CA1848).</summary>
 internal static class OutboxRelayLog
 {
+    private static readonly Action<ILogger, string, TimeSpan, int, int, Exception?> s_started =
+        LoggerMessage.Define<string, TimeSpan, int, int>(
+            LogLevel.Information,
+            new EventId(1, "OutboxRelay.Started"),
+            "Outbox relay started for {ContextType}; polling every {PollInterval}, batch size {BatchSize}, max attempts {MaxAttempts}.");
+
+    private static readonly Action<ILogger, int, Exception?> s_drainCompleted =
+        LoggerMessage.Define<int>(
+            LogLevel.Debug,
+            new EventId(2, "OutboxRelay.DrainCompleted"),
+            "Outbox relay processed {MessageCount} outbox message(s) this cycle.");
+
     private static readonly Action<ILogger, TimeSpan, Exception?> s_drainFailed =
         LoggerMessage.Define<TimeSpan>(
             LogLevel.Error,
-            new EventId(1, "OutboxRelay.DrainFailed"),
-            "Outbox relay drain failed; retrying after {PollInterval}.");
+            new EventId(3, "OutboxRelay.DrainFailed"),
+            "Outbox relay drain cycle failed; retrying after {PollInterval}.");
 
-    private static readonly Action<ILogger, Guid, string, Exception?> s_relayFailed =
-        LoggerMessage.Define<Guid, string>(
+    private static readonly Action<ILogger, Guid, string, int, int, Exception?> s_attemptFailed =
+        LoggerMessage.Define<Guid, string, int, int>(
+            LogLevel.Warning,
+            new EventId(4, "OutboxRelay.RelayAttemptFailed"),
+            "Outbox relay failed to deliver message {MessageId} ({EventType}) on attempt {Attempts} of {MaxAttempts}; it will be retried.");
+
+    private static readonly Action<ILogger, Guid, string, int, Exception?> s_parked =
+        LoggerMessage.Define<Guid, string, int>(
             LogLevel.Error,
-            new EventId(2, "OutboxRelay.RelayFailed"),
-            "Failed to relay outbox message {Id} ({EventType}).");
+            new EventId(5, "OutboxRelay.MessageParked"),
+            "Outbox relay parked message {MessageId} ({EventType}) after {Attempts} failed attempts; it will not be retried and requires manual intervention.");
+
+    public static void Started(ILogger logger, string contextType, TimeSpan pollInterval, int batchSize, int maxAttempts) =>
+        s_started(logger, contextType, pollInterval, batchSize, maxAttempts, null);
+
+    public static void DrainCompleted(ILogger logger, int messageCount) =>
+        s_drainCompleted(logger, messageCount, null);
 
     public static void DrainFailed(ILogger logger, TimeSpan pollInterval, Exception exception) =>
         s_drainFailed(logger, pollInterval, exception);
 
-    public static void RelayFailed(ILogger logger, Guid id, string eventType, Exception exception) =>
-        s_relayFailed(logger, id, eventType, exception);
+    public static void RelayAttemptFailed(ILogger logger, Guid messageId, string eventType, int attempts, int maxAttempts, Exception exception) =>
+        s_attemptFailed(logger, messageId, eventType, attempts, maxAttempts, exception);
+
+    public static void MessageParked(ILogger logger, Guid messageId, string eventType, int attempts, Exception exception) =>
+        s_parked(logger, messageId, eventType, attempts, exception);
 }
