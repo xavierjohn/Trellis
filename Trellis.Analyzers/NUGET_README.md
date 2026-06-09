@@ -12,7 +12,7 @@ The analyzers are **opt-in** and ship separately — installing `Trellis.Core` d
 dotnet add package Trellis.Analyzers
 ```
 
-Mark the reference analyzer-only so it does not flow to consumers of your library:
+Prevent the package from flowing transitively to consumers of your library (analyzers are a build-time-only concern):
 
 ```xml
 <PackageReference Include="Trellis.Analyzers" Version="...">
