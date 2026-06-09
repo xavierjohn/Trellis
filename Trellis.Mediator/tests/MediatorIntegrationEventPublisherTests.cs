@@ -101,6 +101,27 @@ public class MediatorIntegrationEventPublisherTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [Fact]
+    public async Task PublishAsync_HandlerOnlyMatchesExactRuntimeType()
+    {
+        // Dispatch matches the runtime type exactly — a handler registered against the base
+        // IIntegrationEvent interface must not be invoked for a derived event type.
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        var baseHandler = new RecordingBaseHandler();
+        services.AddSingleton<IIntegrationEventHandler<IIntegrationEvent>>(baseHandler);
+
+        var provider = services.BuildServiceProvider();
+        var publisher = new MediatorIntegrationEventPublisher(
+            provider, NullLogger<MediatorIntegrationEventPublisher>.Instance);
+
+        await publisher.PublishAsync(
+            new TestIntegrationEvent("payload", DateTimeOffset.UtcNow), CancellationToken.None);
+
+        baseHandler.Received.Should().BeEmpty(
+            "dispatch is by exact runtime type only — base/interface-type handlers are not invoked");
+    }
+
     private static void AddNullLogging(IServiceCollection services)
     {
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
@@ -114,6 +135,17 @@ public class MediatorIntegrationEventPublisherTests
         public List<TestIntegrationEvent> Received { get; } = [];
 
         public ValueTask HandleAsync(TestIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+        {
+            Received.Add(integrationEvent);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingBaseHandler : IIntegrationEventHandler<IIntegrationEvent>
+    {
+        public List<IIntegrationEvent> Received { get; } = [];
+
+        public ValueTask HandleAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
         {
             Received.Add(integrationEvent);
             return ValueTask.CompletedTask;
