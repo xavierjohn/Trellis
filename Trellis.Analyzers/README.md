@@ -5,9 +5,22 @@
 Roslyn analyzers that keep Trellis usage safe, idiomatic, and review-friendly.
 
 ## Installation
+
+The analyzers are **opt-in** and ship separately — installing `Trellis.Core` does not include them.
+
 ```bash
 dotnet add package Trellis.Analyzers
 ```
+
+Prevent the package from flowing transitively to consumers of your library (analyzers are a build-time-only concern):
+
+```xml
+<PackageReference Include="Trellis.Analyzers" Version="...">
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
+```
+
+Tune any rule's severity per project via `.editorconfig`, e.g. `dotnet_diagnostic.TRLS001.severity = error`.
 
 ## Quick Example
 ```csharp

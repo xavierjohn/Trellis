@@ -51,4 +51,21 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
   </ItemGroup>
 
+  <!--
+      Force-disable PublishAot/PublishTrimmed inherited from a parent AOT-publishing project.
+      Analyzers target netstandard2.0 (mandated by Roslyn) and cannot satisfy the AOT/Trim gate
+      (NETSDK1207). Source-tree consumers that reference this project as an analyzer
+      (OutputItemType="Analyzer") inside an AOT-published app graph would otherwise fail. This
+      target runs before ProcessFrameworkReferences, which is gated on _RequiresILLinkPack=true
+      (set by PublishAot/PublishTrimmed). Mirrors Trellis.Core.Generator.csproj.
+   -->
+  <Target Name="_TrellisDisablePublishAotForAnalyzer"
+          BeforeTargets="ProcessFrameworkReferences;_CheckForUnsupportedNETCoreSdkVersion;CollectPackageReferences;Restore">
+    <PropertyGroup>
+      <PublishAot>false</PublishAot>
+      <PublishTrimmed>false</PublishTrimmed>
+      <_RequiresILLinkPack>false</_RequiresILLinkPack>
+    </PropertyGroup>
+  </Target>
+
 </Project>
