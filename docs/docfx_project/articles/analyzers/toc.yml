@@ -26,8 +26,6 @@
   href: TRLS015.md
 - name: TRLS016 - HasIndex with Maybe<T> property
   href: TRLS016.md
-- name: TRLS017 - Wrong attribute namespace
-  href: TRLS017.md
 - name: TRLS018 - Unsafe Result deconstruction
   href: TRLS018.md
 - name: TRLS019 - Avoid default(Result/Maybe)

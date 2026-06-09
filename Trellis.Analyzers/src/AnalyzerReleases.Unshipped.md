@@ -18,7 +18,6 @@ TRLS013  | Trellis  | Warning  | Unsafe access to Maybe.Value inside a LINQ expr
 TRLS014  | Trellis  | Error    | Combine chain exceeds the maximum supported tuple size.
 TRLS015  | Trellis  | Warning  | Use SaveChangesResultAsync instead of SaveChangesAsync inside a Result pipeline.
 TRLS016  | Trellis  | Warning  | HasIndex references a Maybe<T> property; use the underlying field instead.
-TRLS017  | Trellis  | Warning  | Wrong [StringLength] / [Range] attribute namespace (use Trellis attributes, not DataAnnotations).
 TRLS018  | Trellis  | Warning  | Result<T> deconstruction reads value without a success gate.
 TRLS019  | Trellis  | Warning  | Avoid default(Result&lt;T&gt;) and default(Maybe&lt;T&gt;); prefer factories.
 TRLS020  | Trellis  | Warning  | Composite value object DTO property is missing CompositeValueObjectJsonConverter<T>.

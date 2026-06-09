@@ -19,7 +19,6 @@ Trellis analyzers help you keep `Result<T>`, `Maybe<T>`, EF Core integration, an
 | TRLS014 | Error | Combine chain exceeds maximum supported tuple size | [TRLS014](TRLS014.md) |
 | TRLS015 | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | [TRLS015](TRLS015.md) |
 | TRLS016 | Warning | HasIndex references a Maybe<T> property | [TRLS016](TRLS016.md) |
-| TRLS017 | Warning | Wrong [StringLength] or [Range] attribute namespace | [TRLS017](TRLS017.md) |
 | TRLS018 | Warning | Unsafe Result<T> deconstruction | [TRLS018](TRLS018.md) |
 | TRLS019 | Warning | Avoid default(Result&lt;T&gt;) / default(Maybe&lt;T&gt;) | [TRLS019](TRLS019.md) |
 | TRLS020 | Warning | Composite value object DTO property is not safely deserializable | [TRLS020](TRLS020.md) |
