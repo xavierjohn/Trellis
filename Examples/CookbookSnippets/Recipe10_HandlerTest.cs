@@ -4,10 +4,12 @@ namespace CookbookSnippets.Recipe10;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Recipe01;
 using CookbookSnippets.Recipe02;
 using CookbookSnippets.Stubs;
 using FluentAssertions;
 using Trellis;
+using Trellis.Authorization;
 using Trellis.Testing;
 using Xunit;
 
@@ -20,27 +22,26 @@ public class PlaceOrderHandlerTests
         var repo = new InMemoryOrderRepository();
         var sut = new PlaceOrderHandler(repo);
 
-        var result = await sut.Handle(
-            new PlaceOrderCommand(Guid.NewGuid(), 100m, "USD", "alice"),
-            CancellationToken.None);
+        var command = new PlaceOrderCommand(
+            OrderId.TryCreate(Guid.NewGuid()).Unwrap(),
+            new Money(100m, CurrencyCode.TryCreate("USD").Unwrap()),
+            ActorId.TryCreate("alice").Unwrap());
+
+        var result = await sut.Handle(command, CancellationToken.None);
 
         result.Should().BeSuccess();
         result.Should().HaveValue(repo.Last().Id);
     }
 
     [Fact]
-    public async Task PlaceOrder_fails_with_validation_when_currency_invalid()
+    public void PlaceOrder_request_adapter_fails_when_currency_invalid()
     {
-        var sut = new PlaceOrderHandler(new InMemoryOrderRepository());
+        var request = new PlaceOrderRequest(Guid.NewGuid(), 100m, "US", "alice"); // 2 chars, not 3
 
-        var result = await sut.Handle(
-            new PlaceOrderCommand(Guid.NewGuid(), 100m, "US", "alice"),
-            CancellationToken.None);
+        var result = PlaceOrderCommand.TryCreate(request);
 
-        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        var unwrapped = result.UnwrapError();
-        unwrapped.Should().BeOfType<Error.InvalidInput>();
-        error.Should().HaveFieldError("currency");
+        result.Should().BeFailureOfType<Error.InvalidInput>()
+            .Which.Should().HaveFieldError("currency");
     }
 #pragma warning restore CA1707
 }
@@ -60,6 +61,7 @@ internal static class Recipe10TestingSurface
             .And.HaveFieldCount(1);
 
         _ = assertions;
+        _ = Result.Fail<int>(error).UnwrapError();
     }
 
     public static async Task AsyncResultAssertionSurface()
