@@ -204,7 +204,7 @@ bool notDone = paid.IsNot(OrderStatus.Cancelled);
 
 `fieldName` defaults to the camelCased type name (e.g., `orderStatus`) when omitted. Pass it explicitly to align field-violation paths with the calling DTO property.
 
-## Analyzer warnings
+## Generator diagnostics
 
 A generator diagnostic commonly affects `RequiredEnum<TSelf>`-derived types. Full reference: [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md).
 
