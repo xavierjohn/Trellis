@@ -22,6 +22,21 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You are composing domain/application flows and need the canonical ROP operation: `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `ParallelAsync`, `AsTask`, or `AsValueTask`.
 - You are defining aggregates, entities, domain events, specifications, or source-generated `Required*<TSelf>` value objects.
 
+## Error-handling philosophy
+
+Trellis models **expected failures as values, not exceptions.** Anything a caller can reasonably anticipate — input validation, not-found, conflict, forbidden, optional absence — is returned as `Result<T>` (or modelled as `Maybe<T>`) and pattern-matched at the boundary. This keeps the railway intact and every failure path testable.
+
+`throw` is **not** banned — it is reserved for the *truly exceptional*: a programming error, a "can't happen" invariant that was violated, or a startup/configuration/infrastructure fault the process cannot recover from. The rule is "never throw for an **expected** outcome," **not** "never throw at all."
+
+| Situation | Do | Not |
+|---|---|---|
+| Expected domain failure (validation, not-found, conflict, forbidden) | `Result.Fail<T>(new Error.X(...))` | `throw` |
+| Expected absence of a value | `Maybe<T>` | `null` / `throw` |
+| Truly exceptional / unrecoverable (bug, broken environment, violated precondition) | `throw` | wrap a normal outcome in a Result just to avoid throwing |
+| Internal "shouldn't happen" you still want to flow as a value | return `Error.Unexpected(reasonCode, faultId?)` (renders 500 at the boundary, no exception) | `throw new Exception(...)` inside a Result chain |
+
+Analyzer **TRLS010** flags `throw` inside Result chains (`Bind`/`Map`/`Tap`/`Ensure`); reading `result.Error` never throws. Never use `try`/`catch` in Domain or Application layers to drive an *expected* outcome — use `Result.Try(...)` only to convert a genuinely unexpected exception at an integration seam into a typed `Error`.
+
 ## Patterns Index
 
 Use this table before searching the long type catalog.
