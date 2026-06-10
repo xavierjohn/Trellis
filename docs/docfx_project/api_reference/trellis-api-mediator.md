@@ -416,6 +416,18 @@ public sealed class TracingBehavior<TMessage, TResponse> : IPipelineBehavior<TMe
 | --- | --- | --- |
 | `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Starts an activity named after `TMessage`. On failed results, tags the activity with `error.code` (the stable `Error.Code`) and `error.type` (the stable error class name); sets `ActivityStatusCode.Error`. The `StatusDescription` is left empty by default — the free-text `Error.Detail` is included only when `TrellisMediatorTelemetryOptions.IncludeErrorDetail` is `true`. On success sets `ActivityStatusCode.Ok`. Rethrows consumer-initiated `OperationCanceledException` when the request `cancellationToken` is canceled and the exception carries that token, after recording the OpenTelemetry exception event and tagging `otel.status_description` = `canceled`; the activity status remains `Unset`. Other thrown exceptions are marked `ActivityStatusCode.Error`, tagged with `error.type`, recorded as an OpenTelemetry exception event (`exception.type`, `exception.message`, `exception.stacktrace`), and rethrown; the exception message is **not** copied into `Activity.StatusDescription`. |
 
+**Recording these spans**
+
+`AddTrellisBehaviors()` registers `TracingBehavior`, so the `Activity` is *created* — but it is only sampled and exported if your `TracerProvider` listens to the `"Trellis.Mediator"` source. If the source is not registered, `ActivitySource.StartActivity` returns `null` and the per-command/query span never appears (you still see the HTTP and value-object spans, but not the handler). Add the source to your tracing setup:
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddSource("Trellis.Mediator") // == TracingBehavior<TMessage, TResponse>.ActivitySourceName
+        .AddOtlpExporter());
+```
+
 ### TrellisMediatorTelemetryOptions
 **Declaration**
 
