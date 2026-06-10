@@ -122,6 +122,64 @@ public class MediatorIntegrationEventPublisherTests
             "dispatch is by exact runtime type only — base/interface-type handlers are not invoked");
     }
 
+    [Fact]
+    public async Task PublishAsync_HandlerResolutionThrows_LogsAndDoesNotThrow()
+    {
+        // A handler with an unresolvable constructor dependency makes resolving the
+        // IEnumerable<IIntegrationEventHandler<T>> throw; the publisher logs and returns.
+        var captureLogger = new CaptureLogger();
+        var services = new ServiceCollection();
+        services.AddScoped<IIntegrationEventHandler<TestIntegrationEvent>, UnresolvableHandler>();
+
+        var provider = services.BuildServiceProvider();
+        var publisher = new MediatorIntegrationEventPublisher(provider, captureLogger);
+
+        var act = async () => await publisher.PublishAsync(
+            new TestIntegrationEvent("payload", DateTimeOffset.UtcNow), CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+        captureLogger.Records.Should().Contain(r =>
+            r.Level == LogLevel.Error
+            && r.Message.Contains("resolve handlers", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task PublishAsync_NoHandlers_LogsDebug()
+    {
+        var captureLogger = new CaptureLogger();
+        var services = new ServiceCollection();
+        var provider = services.BuildServiceProvider();
+        var publisher = new MediatorIntegrationEventPublisher(provider, captureLogger);
+
+        await publisher.PublishAsync(
+            new TestIntegrationEvent("payload", DateTimeOffset.UtcNow), CancellationToken.None);
+
+        captureLogger.Records.Should().Contain(r =>
+            r.Level == LogLevel.Debug
+            && r.Message.Contains("No IIntegrationEventHandler", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task PublishAsync_HandlerImplementingMultipleEventInterfaces_IsInvokedForEach()
+    {
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        var handler = new MultiEventHandler();
+        services.AddSingleton<IIntegrationEventHandler<TestIntegrationEvent>>(handler);
+        services.AddSingleton<IIntegrationEventHandler<OtherIntegrationEvent>>(handler);
+
+        var provider = services.BuildServiceProvider();
+        var publisher = new MediatorIntegrationEventPublisher(
+            provider, NullLogger<MediatorIntegrationEventPublisher>.Instance);
+
+        var first = new TestIntegrationEvent("a", DateTimeOffset.UtcNow);
+        var second = new OtherIntegrationEvent(7, DateTimeOffset.UtcNow);
+        await publisher.PublishAsync(first, CancellationToken.None);
+        await publisher.PublishAsync(second, CancellationToken.None);
+
+        handler.Received.Should().Equal(new IIntegrationEvent[] { first, second });
+    }
+
     private static void AddNullLogging(IServiceCollection services)
     {
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
@@ -129,6 +187,38 @@ public class MediatorIntegrationEventPublisherTests
     }
 
     private sealed record TestIntegrationEvent(string Payload, DateTimeOffset OccurredAt) : IIntegrationEvent;
+
+    private sealed record OtherIntegrationEvent(int Value, DateTimeOffset OccurredAt) : IIntegrationEvent;
+
+    private interface IUnregisteredDependency;
+
+    private sealed class UnresolvableHandler(IUnregisteredDependency dependency) : IIntegrationEventHandler<TestIntegrationEvent>
+    {
+        private readonly IUnregisteredDependency _dependency = dependency;
+
+        public ValueTask HandleAsync(TestIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+        {
+            _ = _dependency;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class MultiEventHandler : IIntegrationEventHandler<TestIntegrationEvent>, IIntegrationEventHandler<OtherIntegrationEvent>
+    {
+        public List<IIntegrationEvent> Received { get; } = [];
+
+        public ValueTask HandleAsync(TestIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+        {
+            Received.Add(integrationEvent);
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask HandleAsync(OtherIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+        {
+            Received.Add(integrationEvent);
+            return ValueTask.CompletedTask;
+        }
+    }
 
     private sealed class RecordingHandler : IIntegrationEventHandler<TestIntegrationEvent>
     {

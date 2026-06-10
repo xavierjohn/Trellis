@@ -889,6 +889,21 @@ public class TrellisServiceBuilderTests
         services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventCollector));
     }
 
+    [Fact]
+    public void UseIntegrationEvents_Scanning_RegistersHandlersFromAssembly()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseIntegrationEvents(typeof(TrellisServiceBuilderTests).Assembly));
+
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IIntegrationEventHandler<TestIntegrationEvent>) &&
+            d.ImplementationType == typeof(TestIntegrationEventHandler));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventPublisher));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventCollector));
+    }
+
     private sealed record TestIntegrationEvent(DateTimeOffset OccurredAt) : IIntegrationEvent;
 
     private sealed class TestIntegrationEventHandler : IIntegrationEventHandler<TestIntegrationEvent>
