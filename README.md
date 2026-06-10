@@ -47,7 +47,8 @@ return EmailAddress.TryCreate(request.Email)
 
 - `Result<T>` and `Maybe<T>` pipelines that make failures explicit.
 - Strongly typed value objects that remove primitive obsession.
-- DDD building blocks: `Aggregate`, `Entity`, `ValueObject`, `Specification`, and domain events.
+- DDD building blocks: `Aggregate`, `Entity`, `ValueObject`, `Specification`, and domain & integration events.
+- Reliable, crash-safe event delivery via a transactional outbox—events persist atomically with state and are relayed after commit.
 - ASP.NET Core, EF Core, Mediator, HttpClient, FluentValidation, and Stateless integrations.
 - Roslyn analyzers and test helpers that keep teams on the happy path.
 - AOT-friendly, allocation-conscious APIs built for modern .NET. (Per-package APIs are AOT- and trim-safe; the optional `Trellis.ServiceDefaults` composition builder exposes both AOT-safe per-type overloads — e.g. `UseFluentValidation<TValidator, TMessage>()` — and assembly-scanning overloads annotated with `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` so the AOT analyzer surfaces the choice at the consumer's call site. `Trellis.EntityFrameworkCore` follows EF Core's own AOT policy and is intentionally excluded from the AOT publish gate.)
@@ -88,6 +89,7 @@ var result = Result.Ok("ada@example.com")
 | [Trellis.Mediator](https://www.nuget.org/packages/Trellis.Mediator) | Result-aware pipeline behaviors for [Mediator](https://github.com/martinothamar/Mediator) |
 | [Trellis.FluentValidation](https://www.nuget.org/packages/Trellis.FluentValidation) | FluentValidation output converted into Trellis results |
 | [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, and safe save helpers (bundles the `Maybe<T>` / owned value-object source generator) |
+| [Trellis.EntityFrameworkCore.Outbox](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Outbox) | Transactional outbox that captures domain events in the same transaction and relays them after commit, with domain/integration-event routing |
 | [Trellis.ServiceDefaults](https://www.nuget.org/packages/Trellis.ServiceDefaults) | Opinionated composition builder for wiring Trellis web-service modules in the canonical order |
 | [Trellis.StateMachine](https://www.nuget.org/packages/Trellis.StateMachine) | Stateless transitions that return `Result<TState>` |
 | [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions for `Result<T>` and `Maybe<T>` |

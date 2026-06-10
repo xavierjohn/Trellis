@@ -124,6 +124,7 @@ string message = orderNumber.Match(
 | **`Result<T>` and `Maybe<T>`** | Make success and failure explicit instead of hiding them in exceptions and nulls | [Basics](articles/basics.md) |
 | **Generated value objects** | Turn raw primitives into domain language the compiler understands | [Introduction](articles/intro.md) |
 | **DDD building blocks** | Model aggregates, entities, value objects, and specifications directly | [Aggregate Factory Pattern](articles/aggregate-factory-pattern.md) |
+| **Durable event publishing** | Publish domain and integration events reliably via a transactional outbox—atomic with the state change, relayed after commit | [Transactional Outbox](articles/integration-outbox.md) |
 | **Structured error types** | Return meaningful failures with default HTTP mappings | [Error Handling](articles/error-handling.md) |
 | **ASP.NET integration** | Convert results to MVC or Minimal API responses without repetitive switch logic | [ASP.NET Core Integration](articles/integration-aspnet.md) |
 | **Roslyn analyzers** | Catch unsafe `.Value` access and other ROP mistakes during development | [Analyzers](articles/analyzers/index.md) |
