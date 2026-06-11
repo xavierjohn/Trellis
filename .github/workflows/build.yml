@@ -70,7 +70,7 @@ jobs:
           **/TestResults/**/*.trx
 
     - name: Upload Coverage to Codecov
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       if: always()
       with:
         # MTP writes coverage relative to each test project; search recursively
