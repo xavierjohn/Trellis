@@ -251,7 +251,8 @@ public static class TraverseExtensions
     /// Failure semantics are first-failure-wins (matching <see cref="Traverse{TIn,TOut}"/>
     /// and the current first-failure-wins design). To surface every failure instead, use
     /// <c>TraverseAll</c> / <c>SequenceAll</c> (or <c>Result.Combine</c>), which fold failures
-    /// into a single <see cref="Error.InvalidInput"/>.
+    /// via <c>Error.Combine</c>: two <see cref="Error.InvalidInput"/> merge into one, while
+    /// heterogeneous error kinds produce <c>Error.Aggregate</c>.
     /// </para>
     /// </remarks>
     /// <example>
