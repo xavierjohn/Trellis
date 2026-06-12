@@ -47,7 +47,7 @@
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.7.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
-    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.0.6" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.8.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="1.9.1" />
   </ItemGroup>
 </Project>
