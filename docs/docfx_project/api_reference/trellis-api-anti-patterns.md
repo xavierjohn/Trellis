@@ -185,7 +185,7 @@ Pick FIX 1 when the non-UoW caller discards the affected-row count.
 await db.SaveChangesAsync(ct);
 
 // FIX 1 — preserve Result pipeline semantics when the count is not needed
-await db.SaveChangesResultUnitAsync(ct);
+Result<Unit> result = await db.SaveChangesResultUnitAsync(ct);
 ```
 
 Pick FIX 2 when the non-UoW caller needs the affected-row count.
