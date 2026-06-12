@@ -418,7 +418,7 @@ public sealed class TracingBehavior<TMessage, TResponse> : IPipelineBehavior<TMe
 
 **Recording these spans**
 
-`AddTrellisBehaviors()` registers `TracingBehavior`, so the `Activity` is *created* — but it is only sampled and exported if your `TracerProvider` listens to the `"Trellis.Mediator"` source. If the source is not registered, `ActivitySource.StartActivity` returns `null` and the per-command/query span never appears (you still see the HTTP and value-object spans, but not the handler). Add the source to your tracing setup:
+`AddTrellisBehaviors()` registers `TracingBehavior`, so on each command/query it *calls* `ActivitySource.StartActivity` — but that only returns a live `Activity` if your `TracerProvider` listens to the `"Trellis.Mediator"` source. If the source is not registered, `StartActivity` returns `null` and the per-command/query span never appears (you still see the HTTP and value-object spans, but not the handler). Add the source to your tracing setup:
 
 ```csharp
 builder.Services.AddOpenTelemetry()
