@@ -234,26 +234,6 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 
 > **Result accessors:** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` and `Result<T>.Error`. Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
 
-#### `UseMatchErrorAnalyzer` *(removed in v3-alpha)*
-
-This analyzer was deleted from the current API. With the closed-ADT `Error`, `switch` over an `Error` reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled — so manual error-type discrimination is the recommended pattern. Replace any remaining `result.MatchError(onValidation: ..., onNotFound: ..., ...)` calls with:
-
-```csharp
-result.Match(
-    onSuccess: value => ...,
-    onFailure: error => error switch
-    {
-        Error.NotFound nf            => ...,
-        Error.InvalidInput uc => ...,
-        Error.Conflict c             => ...,
-        _                            => ...,
-    });
-```
-
-#### `TryCreateValueAccessAnalyzer` *(removed in v3-alpha)*
-
-This analyzer was deleted from the current API. The pattern `TryCreate(...).Value` no longer compiles because `Result<T>.Value` was removed (see TRLS003). Call `Create(...)` directly when the input is known-good, or handle the `Result` returned by `TryCreate(...)` explicitly via `TryGetValue` / `Match` / `Bind`.
-
 #### `ResultDoubleWrappingAnalyzer` — `TRLS004`
 - Flags declared or inferred `Result<Result<T>>` in:
   - variable declarations
@@ -281,10 +261,6 @@ This analyzer was deleted from the current API. The pattern `TryCreate(...).Valu
   - `||` chains over `.IsFailure`
 - Uses operation analysis, so it looks at semantic property access rather than raw text.
 - No code fix.
-
-#### `TernaryValueOrDefaultAnalyzer` *(removed in v3-alpha)*
-
-This analyzer was deleted from the current API. The `result.IsSuccess ? result.Value : fallback` shape no longer compiles because `Result<T>.Value` was removed. Use `result.GetValueOrDefault(fallback)` or `result.Match(onSuccess: v => v, onFailure: _ => fallback)`. <!-- stale-doc-ok: analyzer migration note intentionally cites removed value accessor -->
 
 #### `AsyncLambdaWithSyncMethodAnalyzer` — `TRLS009`
 - Flags synchronous Trellis methods called with async work:
