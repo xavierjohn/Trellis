@@ -119,7 +119,7 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
 ```csharp
 public static class IResultAssertionsExtensions
 {
-    public static IResultAssertions Should(this IResult result);
+    public static IResultAssertions Should(this IResult? result);
 }
 ```
 
@@ -132,7 +132,7 @@ Overload resolution: a concrete `Result<T>` always binds to the typed `Should<T>
 ```csharp
 public class IResultAssertions : ReferenceTypeAssertions<IResult, IResultAssertions>
 {
-    public IResultAssertions(IResult result);
+    public IResultAssertions(IResult? result);
 
     public AndConstraint<IResultAssertions> BeSuccess(
         string because = "",
@@ -258,7 +258,7 @@ public static class ErrorAssertionsExtensions
 ```csharp
 public class ErrorAssertions : ReferenceTypeAssertions<Error, ErrorAssertions>
 {
-    public ErrorAssertions(Error error);
+    public ErrorAssertions(Error? error);
 
     public AndConstraint<ErrorAssertions> Be(
         Error expected,

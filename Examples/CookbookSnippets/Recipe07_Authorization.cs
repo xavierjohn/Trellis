@@ -38,11 +38,11 @@ public static class AuthorizationDi
         services.AddTrellisBehaviors();
         services.AddClaimsActorProvider();
         // Pass every assembly that holds command/query types AND every assembly that holds
-        // IResourceLoader<,> implementations (typically the ACL assembly). The scanner does
-        // not de-duplicate, so deduplicate locally before calling — otherwise the same assembly
-        // scanned twice registers ResourceAuthorizationBehavior twice and the loader runs twice
-        // per request. In a real layered app these are two distinct assemblies; the demonstrator
-        // packs everything into CookbookSnippets, so .Distinct() collapses to one.
+        // IResourceLoader<,> implementations (typically the ACL assembly). The scanner
+        // de-duplicates the assemblies internally (first-seen order preserved), so passing the
+        // same assembly twice is harmless — ResourceAuthorizationBehavior is registered once per
+        // request. In a real layered app these are two distinct assemblies; the demonstrator
+        // packs everything into CookbookSnippets, so the .Distinct() below is just demo tidiness.
         Assembly applicationAssembly = typeof(UpdateOrderCommand).Assembly;
         Assembly aclAssembly = typeof(AuthorizationDi).Assembly; // same assembly in this demo
         Assembly[] scanAssemblies = new[] { applicationAssembly, aclAssembly }

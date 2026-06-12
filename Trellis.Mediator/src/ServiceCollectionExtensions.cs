@@ -78,9 +78,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// Idempotent: calling this method more than once registers each behavior exactly once,
-    /// so plug-in extension methods (e.g. <c>AddTrellisFluentValidation</c>, <c>AddTrellisAsp</c>)
-    /// that defensively call it as a precondition will not produce duplicate pipeline entries
-    /// when the consumer also calls it explicitly.
+    /// so an extension method that defensively calls it as a precondition will not produce
+    /// duplicate pipeline entries when the consumer also calls it explicitly.
     /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
