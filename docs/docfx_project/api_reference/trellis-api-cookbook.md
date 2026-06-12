@@ -154,7 +154,7 @@ public sealed class Money : ValueObject
     protected override IEnumerable<IComparable?> GetEqualityComponents()
     {
         yield return Amount;
-        yield return Currency.Value;
+        yield return Currency;
     }
 }
 
@@ -201,7 +201,7 @@ public interface IOrderRepository
 - `RequiredGuid<TSelf>` source-generates `TryCreate` overloads, `Parse`/`TryParse`, an explicit `Guid` → `TSelf` operator, the `Value` accessor, equality / `GetHashCode` / `IComparable`, JSON and EF Core converters, plus the `NewUniqueV4()`, `NewUniqueV7()`, and `NewUniqueV7(TimeProvider)` factories. It rejects `null` and `Guid.Empty` by default; use `[AllowEmpty]` only for a domain that permits the all-zero GUID. Do not write your own `TryCreate`, equality members, parse/convert helpers, or JSON/EF converters.
 - `RequiredString<TSelf>` source-generates `TryCreate(string?, string?)`, `Parse`/`TryParse`, an explicit `string` → `TSelf` operator, the `Value` accessor, equality, JSON and EF Core converters, plus `Length`/`StartsWith`/`Contains`/`EndsWith` pass-throughs. It rejects `null`, `""`, and whitespace-only input by default, and stores the trimmed value. Use `[AllowEmpty]`, `[AllowWhitespace]`, and/or `[NoTrim]` only for an explicitly lenient domain. Same rule applies: derived classes add only domain-specific helpers (e.g., a custom `TryCreateWithValidation` that layers extra rules on top of the generated `TryCreate`).
 - `ValueObject` (the base of `Money`, `Address`, etc.) supplies `Equals(object?)`, `Equals(ValueObject?)`, `GetHashCode`, `CompareTo`, and the `==`/`!=`/`<`/`<=`/`>`/`>=` operators — all derived from `GetEqualityComponents()`. Your derived type implements **only** `protected override IEnumerable<IComparable?> GetEqualityComponents()`. Do not override `Equals`/`GetHashCode`/`CompareTo` or write equality operators yourself — that breaks the contract the base class establishes. For `Maybe<T>` components, use the inherited `protected static IComparable? MaybeComponent<T>(Maybe<T>)` helper rather than unwrapping manually.
-- `Aggregate<TId>` already supplies inherited infrastructure members: `Id`, protected `DomainEvents`, persistence-managed `ETag`, and `IsChanged` based on pending domain events. Do not redeclare those members on every aggregate; use the inherited surface and add only domain-specific state. Domain events are added via `DomainEvents.Add(...)` from inside the aggregate; the public read-only view is `IAggregate.UncommittedEvents()`.
+- `Aggregate<TId>` already supplies inherited infrastructure members: `Id`, protected `DomainEvents`, persistence-managed `ETag`, `IsChanged` based on pending domain events, and the `CreatedAt`/`LastModified` timestamps (inherited from `Entity<TId>`, managed by `EntityTimestampInterceptor`). Do not redeclare those members on every aggregate; use the inherited surface and add only domain-specific state. Domain events are added via `DomainEvents.Add(...)` from inside the aggregate; the public read-only view is `IAggregate.UncommittedEvents()`.
 
 > **Compiled contract.** The exact signatures of every member listed above are exercised in `Examples/CookbookSnippets/Recipe01_CrudAggregate.cs` → `Recipe1InheritedSurface`. That file is compiled in CI, so if a signature changes in the framework, the build fails and this callout MUST be updated to match. When you need to confirm an exact overload, read the demonstrator — never paraphrase signatures from memory.
 
@@ -238,6 +238,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
+using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
 using Trellis.Mediator;
 using Trellis.Mediator.FluentValidation;
@@ -330,6 +331,7 @@ public static class OrdersDi
 **Problem.** Expose a list endpoint that paginates `Order` rows by cursor, exposes the requested vs. applied limit, and projects a DTO.
 
 ```csharp
+using Mediator;
 using Trellis;
 using Trellis.EntityFrameworkCore;
 
@@ -987,7 +989,7 @@ public sealed partial class Customer : Aggregate<CustomerId>
 
 // CONFIGURATION — note the absence of OwnsOne(c => c.ShippingAddress).
 // CompositeValueObjectConvention picks up [OwnedEntity] types automatically
-// from the assemblies passed to ApplyTrellisConventions.
+// through the source-generated ApplyTrellisConventionsFor<TContext>() entry point.
 internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
@@ -1004,7 +1006,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Customer> Customers => Set<Customer>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        configurationBuilder.ApplyTrellisConventions(typeof(Customer).Assembly);
+        configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -1322,7 +1324,7 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
 
 > `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your ACL composition root, automatically calls `SaveChangesAsync` after every successful handler — no explicit save call is needed in the handler.
 
-**What it shows.** Handlers in Trellis follow a strict separation: the handler shapes domain state and the pipeline owns the commit boundary. `IRepository.Add` returns `void` precisely to signal "staged, not yet persisted" — the `void` return makes it impossible to write the (wrong) `await repo.Add(...).Should().BeSuccess()`. The mediator pipeline for command handlers is, innermost first: `TransactionalCommandBehavior` → `ValidationBehavior` → `LoggingBehavior` → handler. When the handler returns a successful `Result<T>`, the transactional behavior calls `SaveChangesAsync` and only then surfaces the result; on failure or exception, nothing is committed.
+**What it shows.** Handlers in Trellis follow a strict separation: the handler shapes domain state and the pipeline owns the commit boundary. `IRepository.Add` returns `void` precisely to signal "staged, not yet persisted" — the `void` return makes it impossible to write the (wrong) `await repo.Add(...).Should().BeSuccess()`. The mediator pipeline wraps the handler; from innermost (closest to the handler) outward it is: `TransactionalCommandBehavior` → `ValidationBehavior` → `AuthorizationBehavior` → `LoggingBehavior` → `TracingBehavior` → `ExceptionBehavior` (the opt-in `ResourceAuthorizationBehavior` sits just outside `ValidationBehavior`). When the handler returns a successful `Result<T>`, the transactional behavior calls `SaveChangesAsync` and only then surfaces the result; on failure or exception, nothing is committed.
 
 | Method | Signature | Saves immediately? | When to use |
 |---|---|---|---|
@@ -1370,7 +1372,7 @@ result.UnwrapError().Should().BeOfType<Error.Conflict>();
 
 ```csharp
 services
-    .AddTrellisBehaviors()                              // validation/logging/tracing
+    .AddTrellisBehaviors()                              // exception/tracing/logging/authorization/validation
     .AddTrellisFluentValidation(typeof(MyValidator).Assembly)
     .AddTrellisUnitOfWork<AppDbContext>()               // ⬅ registers TransactionalCommandBehavior
     .AddScoped<IOrderRepository, EfOrderRepository>();
@@ -1936,8 +1938,8 @@ app.MapPut("/orders/{id:guid}", (OrderId id, ReplaceOrderRequest request, OrderD
 - **Do not mix sync chain methods with async lambdas.** `result.Map(async v => …)` triggers `TRLS009`; use `MapAsync`. The fix provider can apply this rewrite automatically.
 - **Construct errors via the closed ADT.** `new Error.NotFound(ResourceRef.For<Order>(id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
-- **Aggregate per-item Results with `Traverse` / `Sequence` (fail-fast) or `TraverseAll` / `SequenceAll` (accumulating).** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure. When you need to surface every failure (form-style validation), use `TraverseAll` / `SequenceAll`: they run through every item and fold failures via `Error.Combine` — two `UnprocessableContent` errors merge their fields/rules, heterogeneous errors flatten into `Error.Aggregate`. See [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) for when to choose which.
-- **Use `Error.InvalidInput.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.InvalidInput.ForField("email", "invalid_format", "must contain @")` over `new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "invalid_format") { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>` or use the `Validate` builder.
+- **Aggregate per-item Results with `Traverse` / `Sequence` (fail-fast) or `TraverseAll` / `SequenceAll` (accumulating).** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure. When you need to surface every failure (form-style validation), use `TraverseAll` / `SequenceAll`: they run through every item and fold failures via `Error.Combine` — two `Error.InvalidInput` errors merge their fields/rules, heterogeneous errors flatten into `Error.Aggregate`. See [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) for when to choose which.
+- **Use `Error.InvalidInput.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.InvalidInput.ForField("email", "invalid_format", "must contain @")` over `new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "invalid_format") { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>`, or chain `.Combine(...)` across the per-field `TryCreate`s as in Recipe 1 (which folds multiple `Error.InvalidInput` into one).
 - **`InputPointer.Root` for whole-body violations.** Use `InputPointer.ForProperty(name)` for field-level violations and `InputPointer.Root` when the rule is object-level.
 - **Only the `Trellis` namespace is auto-imported.** The template's implicit usings include `Trellis` (which exposes `Result`, `Result<T>`, `Error`, `Maybe<T>`, `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredDateTime<T>`, etc.). Every other Trellis namespace requires an explicit `using` per file — e.g. `using Trellis.Primitives;` for `Money` / `EmailAddress` / `PhoneNumber` / `MonetaryAmount` / `CurrencyCode` / `CountryCode` / etc., `using Stateless;` for the upstream `StateMachine<TState, TTrigger>` type plus `using Trellis.StateMachine;` for the Trellis `FireResult` extension and `LazyStateMachine<TState, TTrigger>`, `using Trellis.Authorization;` for permission types. This is intentional: implicit usings cannot be added at the template level without breaking services that don't reference the package.
 - **Accessing `Maybe<T>.Value` inside `Expression<Func<...>>` lambdas (EF Core `Where`/`Select`, FluentValidation `RuleFor`, Specifications):** TRLS003 still applies inside expression trees, but it now recognises the multi-clause guard — `e => e.Status == X && e.Y.HasValue && e.Y.Value == y` is analyzer-clean, and `MaybeQueryInterceptor` translates each clause faithfully to SQL when `AddTrellisInterceptors()` is wired. The single-call equivalent `e.Y.HasValueWhere(v => v == y)` is also analyzer-clean and rewritten by the interceptor — use whichever reads better. Hoist into a guarded variable for projections that the interceptor doesn't cover. Do not suppress with `#pragma warning disable TRLS003`. See [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects) for the full Specification walkthrough.
@@ -2485,7 +2487,7 @@ public sealed class DispatchLogger(DispatchLogDbContext db, TimeProvider time, I
         if (result.IsSuccess)
             return Result.Ok(DeliveryOutcome.Recorded);
 
-        if (result.UnwrapError() is Error.Conflict conflict && conflict.ReasonCode == "duplicate.key")
+        if (result.Error is Error.Conflict conflict && conflict.ReasonCode == "duplicate.key")
         {
             // The second delivery — exactly what idempotency promises. No-op, do not fail.
             log.LogInformation(
@@ -2494,7 +2496,7 @@ public sealed class DispatchLogger(DispatchLogDbContext db, TimeProvider time, I
             return Result.Ok(DeliveryOutcome.AlreadyRecorded);
         }
 
-        return Result.Fail<DeliveryOutcome>(result.UnwrapError());
+        return Result.Fail<DeliveryOutcome>(result.Error);
     }
 }
 
@@ -2965,7 +2967,7 @@ services.AddTrellis(trellis => trellis
     .UseOutbox<AppDbContext>());
 ```
 
-Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.GetUtcNow()))`. When the outbox is enabled the capture interceptor clears the aggregate's events inside the commit, so the in-pipeline dispatch sees none and the relay becomes the single, durable dispatcher.
+Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.GetUtcNow()))`. When the outbox is enabled the capture interceptor clears the aggregate's events after the commit succeeds (in the `SavedChanges` callback, not inside the transaction), so the in-pipeline dispatch sees none and the relay becomes the single, durable dispatcher.
 
 **Semantics to remember.**
 
