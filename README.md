@@ -8,15 +8,18 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download)
 [![C#](https://img.shields.io/badge/C%23-14.0-blue.svg)](https://docs.microsoft.com/en-us/dotnet/csharp/)
 [![GitHub Stars](https://img.shields.io/github/stars/xavierjohn/Trellis?style=social)](https://github.com/xavierjohn/Trellis/stargazers)
+[![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UC30bqiObz9ML3NMP6a0U7jw?style=social&label=%40trellisdev)](https://www.youtube.com/@trellisdev)
 [![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://xavierjohn.github.io/Trellis/)
 
 <p align="center">
-  <img src="docs/images/hero-banner.png" alt="Trellis — Structured building blocks for AI-driven enterprise software" />
+  <img src="docs/images/hero-banner.png" alt="Trellis — Compiler-enforced guardrails for .NET." />
 </p>
 
-> Structured building blocks for AI-driven enterprise software.
+> **Compiler-enforced guardrails for .NET.**
 
-Trellis helps AI create consistent, reliable .NET services by turning typed errors, validated value objects, and composable application pipelines into compiler-enforced guardrails.
+Trellis is an opinionated .NET service framework with compiler and analyzer guardrails that make generated code more predictable. It turns typed errors, validated value objects, and composable application pipelines into structure the compiler can enforce — so a whole class of common mistakes fails at build time, whether the code is written by a human or an AI assistant.
+
+📺 **Watch the series:** [youtube.com/@trellisdev](https://www.youtube.com/@trellisdev) — Railway-Oriented Programming, Domain-Driven Design, and more.
 
 ## Before / After
 
@@ -45,15 +48,19 @@ return EmailAddress.TryCreate(request.Email)
 
 ## What You Get
 
-- `Result<T>` and `Maybe<T>` pipelines that make failures explicit.
-- Strongly typed value objects that remove primitive obsession.
+- **Compiler-enforced guardrails** — Roslyn analyzers and types so a whole class of illegal states won't compile; humans and AI stay on the happy path.
+- `Result<T>` and `Maybe<T>` pipelines that make failures explicit — no exceptions for control flow.
+- Strongly typed value objects that eliminate primitive obsession.
 - DDD building blocks: `Aggregate`, `Entity`, `ValueObject`, `Specification`, and domain & integration events.
-- Reliable, crash-safe event delivery via a transactional outbox—events persist atomically with state and are relayed after commit.
-- ASP.NET Core, EF Core, Mediator, HttpClient, FluentValidation, and Stateless integrations.
-- Roslyn analyzers and test helpers that keep teams on the happy path.
-- AOT-friendly, allocation-conscious APIs built for modern .NET. (Per-package APIs are AOT- and trim-safe; the optional `Trellis.ServiceDefaults` composition builder exposes both AOT-safe per-type overloads — e.g. `UseFluentValidation<TValidator, TMessage>()` — and assembly-scanning overloads annotated with `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` so the AOT analyzer surfaces the choice at the consumer's call site. `Trellis.EntityFrameworkCore` follows EF Core's own AOT policy and is intentionally excluded from the AOT publish gate.)
+- Reliable, crash-safe event delivery via a transactional outbox — events persist atomically with state and relay after commit.
+- ASP.NET Core, EF Core, Mediator, HttpClient, FluentValidation, and state-machine integrations.
+- AOT-friendly, allocation-conscious APIs built for modern .NET.
+
+> **AOT:** per-package APIs are trim- and AOT-safe; `Trellis.ServiceDefaults` exposes both AOT-safe per-type overloads and assembly-scanning overloads (annotated so the AOT analyzer flags the choice). `Trellis.EntityFrameworkCore` follows EF Core's own AOT policy. See the [docs](https://xavierjohn.github.io/Trellis/) for details.
 
 ## Quick Start
+
+**Add the library:**
 
 ```bash
 dotnet add package Trellis.Core
@@ -66,6 +73,12 @@ var result = Result.Ok("ada@example.com")
     .Ensure(email => email.Contains('@'),
         Error.InvalidInput.ForField("email", "validation.error", "Email is invalid."))
     .Map(email => email.Trim().ToLowerInvariant());
+```
+
+**Or scaffold a full production-ready service** — Clean Architecture, API versioning, EF Core, OpenAPI, and tests — with the [`trellis-asp`](https://github.com/xavierjohn/Trellis.AspTemplate) template:
+
+```bash
+dotnet new trellis-asp -n MyService
 ```
 
 ## Packages
@@ -98,13 +111,14 @@ var result = Result.Ok("ada@example.com")
 
 Typical overhead is measured in single-digit to low double-digit nanoseconds—tiny next to a database call or HTTP request. [Benchmarks](BENCHMARKS.md)
 
-## Documentation
+## Learn
 
+- 📺 **YouTube — [@trellisdev](https://www.youtube.com/@trellisdev):** the Trellis video series covering Railway-Oriented Programming, Domain-Driven Design, and more.
 - [Full documentation](https://xavierjohn.github.io/Trellis/)
 - [Getting started](https://xavierjohn.github.io/Trellis/articles/intro.html)
 - [With vs without Trellis](https://xavierjohn.github.io/Trellis/articles/with-vs-without-trellis.html)
 - [API reference](https://xavierjohn.github.io/Trellis/api/index.html)
-- [Training lab](https://github.com/xavierjohn/trellis-training)
+- [Training lab + AI consistency benchmark](https://github.com/xavierjohn/trellis-training) — hand an AI model Trellis, a template, and a spec; let it ship a service in one shot; score against **66 criteria across 6 quality levels**.
 
 ## Related repositories
 
@@ -114,7 +128,7 @@ The Trellis family extends the core framework into multi-service topologies, rea
 - [`xavierjohn/Trellis.Microservices.Template`](https://github.com/xavierjohn/Trellis.Microservices.Template) — `dotnet new trellis-microservices` template scaffolding a multi-tenant Project Tracker (YARP gateway + Projects + Members + Aspire AppHost) that demonstrates resource auth, the HideExistence pattern, and the deny-overrides-allow JWT contract.
 - [`xavierjohn/Trellis.AspTemplate`](https://github.com/xavierjohn/Trellis.AspTemplate) — `dotnet new trellis-asp` template scaffolding a production-ready single-service ASP.NET application with Clean Architecture layout (API + Application + Domain + ACL), API versioning, EF Core, OpenAPI, and test infrastructure.
 - [`xavierjohn/Trellis.ServiceLevelIndicators`](https://github.com/xavierjohn/Trellis.ServiceLevelIndicators) — latency SLI metrics library for emitting operation-duration histograms via `System.Diagnostics.Metrics` + OpenTelemetry, with rich dimensions (`CustomerResourceId`, `LocationId`, `Operation`, `Outcome`) and ASP.NET Core + API-versioning integrations.
-- [`xavierjohn/trellis-training`](https://github.com/xavierjohn/trellis-training) — training lab + AI consistency benchmark: give an AI model Trellis, a template, and a business spec; let it ship a service in one shot; score against 57 criteria across 5 quality levels.
+- [`xavierjohn/trellis-training`](https://github.com/xavierjohn/trellis-training) — training lab + AI consistency benchmark: give an AI model Trellis, a template, and a business spec; let it ship a service in one shot; score against 66 criteria across 6 quality levels.
 
 ## Contributing
 
