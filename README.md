@@ -12,12 +12,12 @@
 [![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://xavierjohn.github.io/Trellis/)
 
 <p align="center">
-  <img src="docs/images/hero-banner.png" alt="Trellis — AI writes it. Trellis keeps it correct." />
+  <img src="docs/images/hero-banner.png" alt="Trellis — Compiler-enforced guardrails for .NET." />
 </p>
 
-> **AI writes it. Trellis keeps it correct.**
+> **Compiler-enforced guardrails for .NET.**
 
-Trellis is an AI-native framework for building reliable enterprise .NET services. It turns typed errors, validated value objects, and composable application pipelines into **compiler-enforced guardrails** — so whether a human or an AI assistant writes the code, it lands correct.
+Trellis is an opinionated .NET service framework with compiler and analyzer guardrails that make generated code more predictable. It turns typed errors, validated value objects, and composable application pipelines into structure the compiler can enforce — so a whole class of common mistakes fails at build time, whether the code is written by a human or an AI assistant.
 
 📺 **Watch the series:** [youtube.com/@trellisdev](https://www.youtube.com/@trellisdev) — Railway-Oriented Programming, Domain-Driven Design, and more.
 
@@ -48,7 +48,7 @@ return EmailAddress.TryCreate(request.Email)
 
 ## What You Get
 
-- **Compiler-enforced correctness** — Roslyn analyzers and types so illegal states don't compile; humans and AI stay on the happy path.
+- **Compiler-enforced guardrails** — Roslyn analyzers and types so a whole class of illegal states won't compile; humans and AI stay on the happy path.
 - `Result<T>` and `Maybe<T>` pipelines that make failures explicit — no exceptions for control flow.
 - Strongly typed value objects that eliminate primitive obsession.
 - DDD building blocks: `Aggregate`, `Entity`, `ValueObject`, `Specification`, and domain & integration events.
