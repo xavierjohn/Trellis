@@ -79,7 +79,7 @@ Prefer fixing the code over suppressing diagnostics. When a suppression is genui
 | `TRLS023` | Warning | Location route is missing the api-version route value | Flags `HttpResponseOptionsBuilder<T>.CreatedAtRoute(...)`, `HttpResponseOptionsBuilder<T>.CreatedAtAction(...)`, and `HttpResponseOptionsBuilder<T>.WithLocation(...)` calls inside `[ApiVersion]`-decorated controllers when the chain is not followed by `.WithVersionedRoute(...)` (or the underlying primitive `.WithRouteValueResolver("api-version", httpContext => ...)` on `HttpResponseOptionsBuilder<T>`, matched case-insensitively) and the route values dictionary literal does not include an `"api-version"` key. Without that key, the generated `Location` header omits the version under query/header API versioning and a follow-up `GET` to the dereferenced URL returns 404. The code fix appends `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning` and adds `using Trellis.Asp.ApiVersioning;` when missing. The analyzer matches `["api-version"]` keys case-insensitively (matching `RouteValueDictionary`'s runtime semantics) and resolves const-string identifiers via the semantic model. Recognises and warns on the anonymous-object ctor shape (`new RouteValueDictionary(new { id = ... })`) since C# property names cannot contain `"-"`, and on the single-id overloads (`CreatedAtRoute(routeName, idSelector)` / `WithLocation(routeName, idSelector)`) which construct a single-key dictionary internally. Does not walk attribute base-type chains (`[ApiVersion]` is `Inherited = false`). |
 | `TRLS054` | Warning | Use operators instead of Maybe.Equals/object.Equals in IQueryable expressions | Flags `Maybe<T>.Equals(...)` and `object.Equals(...)` over `Maybe<T>` values inside `System.Linq.Queryable` LINQ lambdas. `MaybeExpressionRewriter` supports `==` / `!=` operator comparisons but cannot translate these opaque method-call shapes, so use operators or `MaybeQueryableExtensions.WhereEquals(...)`. In-memory `IEnumerable<T>` LINQ is not flagged. |
 | `TRLS055` | Warning | Inline `HasValueWhere` predicates in `IQueryable` expressions | Flags `maybe.HasValueWhere(predicate)` inside `System.Linq.Queryable` LINQ lambdas when `predicate` is not an inline lambda expression. Captured `Func<T, bool>` variables, method groups, and member delegates are opaque to `MaybeExpressionRewriter`; inline the lambda (`maybe.HasValueWhere(x => ...)`) or materialize first. In-memory `IEnumerable<T>` LINQ is not flagged. |
-| `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
+| `TRLS031` | Warning | Unsupported base type for `RequiredPartialClassGenerator` | Emitted by the Primitives source generator when a `Required*`-derived value object inherits from an unsupported base. Supported bases: `RequiredGuid`, `RequiredString`, `RequiredInt`, `RequiredDecimal`, `RequiredLong`, `RequiredBool`, `RequiredDateTime`, `RequiredDateTimeOffset`, `RequiredEnum`. *(formerly `TRLSGEN001`)* |
 | `TRLS032` | Error | `MinimumLength` exceeds `MaximumLength` | Emitted by the Primitives source generator when a `[StringLength]` attribute has `MinimumLength > MaximumLength`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN002`)* |
 | `TRLS033` | Error | `Range` minimum exceeds maximum | Emitted by the Primitives source generator when a `[Range]` attribute on `int`/`long`/`decimal` has `Min > Max`. Adjust the attribute values so the range is non-empty. *(formerly `TRLSGEN003`)* |
 | `TRLS034` | Error | Decimal range exceeds `decimal` bounds | Emitted by the Primitives source generator when a `[Range]` attribute on `decimal` exceeds the CLR `decimal` value range. Use a tighter range. *(formerly `TRLSGEN004`)* |
@@ -111,7 +111,7 @@ The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzer
 public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
-Generator IDs (`TRLS031`–`TRLS056`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
+Generator IDs (`TRLS031`–`TRLS053`, `TRLS056`) and the LINQ-analyzer IDs (`TRLS054`–`TRLS055`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
 
 ### Constant → diagnostic ID → emitter
 
@@ -234,26 +234,6 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 
 > **Result accessors:** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` and `Result<T>.Error`. Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
 
-#### `UseMatchErrorAnalyzer` — `TRLS005` *(removed from the current API)*
-
-This analyzer was deleted from the current API. With the closed-ADT `Error`, `switch` over an `Error` reference is exhaustive at the language level — the C# compiler verifies that every nested case is handled — so manual error-type discrimination is the recommended pattern. Replace any remaining `result.MatchError(onValidation: ..., onNotFound: ..., ...)` calls with:
-
-```csharp
-result.Match(
-    onSuccess: value => ...,
-    onFailure: error => error switch
-    {
-        Error.NotFound nf            => ...,
-        Error.InvalidInput uc => ...,
-        Error.Conflict c             => ...,
-        _                            => ...,
-    });
-```
-
-#### `TryCreateValueAccessAnalyzer` — `TRLS007` *(removed from the current API)*
-
-This analyzer was deleted from the current API. The pattern `TryCreate(...).Value` no longer compiles because `Result<T>.Value` was removed (see TRLS003). Call `Create(...)` directly when the input is known-good, or handle the `Result` returned by `TryCreate(...)` explicitly via `TryGetValue` / `Match` / `Bind`.
-
 #### `ResultDoubleWrappingAnalyzer` — `TRLS004`
 - Flags declared or inferred `Result<Result<T>>` in:
   - variable declarations
@@ -281,10 +261,6 @@ This analyzer was deleted from the current API. The pattern `TryCreate(...).Valu
   - `||` chains over `.IsFailure`
 - Uses operation analysis, so it looks at semantic property access rather than raw text.
 - No code fix.
-
-#### `TernaryValueOrDefaultAnalyzer` — `TRLS013` *(removed from the current API)*
-
-This analyzer was deleted from the current API. The `result.IsSuccess ? result.Value : fallback` shape no longer compiles because `Result<T>.Value` was removed. Use `result.GetValueOrDefault(fallback)` or `result.Match(onSuccess: v => v, onFailure: _ => fallback)`. <!-- stale-doc-ok: analyzer migration note intentionally cites removed value accessor -->
 
 #### `AsyncLambdaWithSyncMethodAnalyzer` — `TRLS009`
 - Flags synchronous Trellis methods called with async work:

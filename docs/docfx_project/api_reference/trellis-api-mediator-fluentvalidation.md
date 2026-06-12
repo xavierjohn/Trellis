@@ -63,10 +63,13 @@ public static class FluentValidationServiceCollectionExtensions
 **Declaration**
 
 ```csharp
-public sealed class FluentValidationMessageValidatorAdapter<TMessage>(
-    IEnumerable<IValidator<TMessage>> validators)
+public sealed class FluentValidationMessageValidatorAdapter<TMessage>
     : IMessageValidator<TMessage>
     where TMessage : Mediator.IMessage
+{
+    // Throws ArgumentNullException when validators is null.
+    public FluentValidationMessageValidatorAdapter(IEnumerable<IValidator<TMessage>> validators);
+}
 ```
 
 **Methods**

@@ -249,8 +249,10 @@ public static class TraverseExtensions
     /// </para>
     /// <para>
     /// Failure semantics are first-failure-wins (matching <see cref="Traverse{TIn,TOut}"/>
-    /// and the current first-failure-wins design). For per-field validation aggregation,
-    /// use the <c>Validate</c> builder which accumulates into a single <see cref="Error.InvalidInput"/>.
+    /// and the current first-failure-wins design). To surface every failure instead, use
+    /// <c>TraverseAll</c> / <c>SequenceAll</c> (or <c>Result.Combine</c>), which fold failures
+    /// via <c>Error.Combine</c>: two <see cref="Error.InvalidInput"/> merge into one, while
+    /// heterogeneous error kinds produce <c>Error.Aggregate</c>.
     /// </para>
     /// </remarks>
     /// <example>
@@ -294,7 +296,7 @@ public static class TraverseExtensions
     /// </summary>
     /// <remarks>
     /// First-failure-wins semantics, matching <see cref="Traverse{TIn,TOut}"/>.
-    /// For per-field validation aggregation, use the <c>Validate</c> builder.
+    /// To surface every failure instead, use <c>SequenceAll</c> (or <c>Result.Combine</c>).
     /// </remarks>
     /// <param name="source">Source collection of results.</param>
     /// <returns>Success if every item succeeds; otherwise the first failure.</returns>

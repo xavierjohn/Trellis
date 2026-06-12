@@ -22,6 +22,21 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You are composing domain/application flows and need the canonical ROP operation: `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, `ParallelAsync`, `AsTask`, or `AsValueTask`.
 - You are defining aggregates, entities, domain events, specifications, or source-generated `Required*<TSelf>` value objects.
 
+## Error-handling philosophy
+
+Trellis models **expected failures as values, not exceptions.** Anything a caller can reasonably anticipate — input validation, not-found, conflict, forbidden, optional absence — is returned as `Result<T>` (or modelled as `Maybe<T>`) and pattern-matched at the boundary. This keeps the railway intact and every failure path testable.
+
+`throw` is **not** banned — it is reserved for the *truly exceptional*: a programming error, a "can't happen" invariant that was violated, or a startup/configuration/infrastructure fault the process cannot recover from. The rule is "never throw for an **expected** outcome," **not** "never throw at all."
+
+| Situation | Do | Not |
+|---|---|---|
+| Expected domain failure (validation, not-found, conflict, forbidden) | `Result.Fail<T>(new Error.X(...))` | `throw` |
+| Expected absence of a value | `Maybe<T>` | `null` / `throw` |
+| Truly exceptional / unrecoverable (bug, broken environment, violated precondition) | `throw` | wrap a normal outcome in a Result just to avoid throwing |
+| Internal "shouldn't happen" you still want to flow as a value | return `new Error.Unexpected(reasonCode, faultId?)` (renders 500 at the boundary, no exception) | `throw new Exception(...)` inside a Result chain |
+
+Analyzer **TRLS010** flags `throw` inside Result chains (`Bind`/`Map`/`Tap`/`Ensure`); reading `result.Error` never throws. Never use `try`/`catch` in Domain or Application layers to drive an *expected* outcome — use `Result.Try(...)` only to convert a genuinely unexpected exception at an integration seam into a typed `Error`.
+
 ## Patterns Index
 
 Use this table before searching the long type catalog.
@@ -1004,7 +1019,7 @@ Task<Result<Settings>> Load(UserId id) =>
 
 #### Ensure family — `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync`
 
-Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure into a single `Error.Aggregate` for applicative-style validation.
+Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure via `Error.Combine` (homogeneous `Error.InvalidInput` failures merge into a single `Error.InvalidInput`; heterogeneous failures fold into `Error.Aggregate`) for applicative-style validation.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -1052,9 +1067,9 @@ Aggregates results into tuples (success-track) or merges errors via `Error.Aggre
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<(T1, T2)> Combine<T1, T2>(this Result<T1> t1, Result<T2> t2)` | `Result<(T1, T2)>` | Tuple combine; failures fold via `Error.Aggregate`. When either operand is `Result<Unit>`, `Unit` becomes the next tuple element (use `_` in the destructuring lambda to ignore it). |
+| `public static Result<(T1, T2)> Combine<T1, T2>(this Result<T1> t1, Result<T2> t2)` | `Result<(T1, T2)>` | Tuple combine; failures fold via `Error.Combine` (two `Error.InvalidInput` merge into one `Error.InvalidInput`; otherwise `Error.Aggregate`). When either operand is `Result<Unit>`, `Unit` becomes the next tuple element (use `_` in the destructuring lambda to ignore it). |
 | `public static Task<Result<(T1, T2)>> CombineAsync<T1, T2>(this Task<Result<T1>> tt1, Task<Result<T2>> tt2)` | `Task<Result<(T1, T2)>>` | `CombineExtensionsAsync` covers every Task/ValueTask × Task/ValueTask combination. Task overloads validate null `Task` inputs before awaiting either side. |
-| `public static Error Combine(this Error? left, Error right)` | `Error` | On `CombineErrorExtensions`: combines two errors into an `Error.Aggregate`, flattening nested aggregates and treating `null` left as right. |
+| `public static Error Combine(this Error? left, Error right)` | `Error` | On `CombineErrorExtensions`: if both errors are `Error.InvalidInput`, merges their `Fields`/`Rules` into a single `Error.InvalidInput`; otherwise combines into an `Error.Aggregate` (flattening nested aggregates). Treats `null` left as right. |
 
 ```csharp
 return Result.Combine(streetCity, contact)
@@ -1214,7 +1229,7 @@ Conditional execution and async fan-in.
 | `public static Result<T> When<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<T>> operation)` | `Result<T>` | Runs `operation` only when the predicate holds. |
 | `public static Result<T> Unless<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<T>> operation)` | `Result<T>` | Inverse of `When`. |
 | `public static Task<Result<T>> WhenAsync<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Task<Result<T>>> operation)` | `Task<Result<T>>` | `WhenExtensionsAsync` covers Task/ValueTask × predicate-/no-predicate × Result/Task-Result combinations for both `WhenAsync` and `UnlessAsync`. |
-| `public static Task<Result<T>> UnlessAsync<T>(this Task<Result<T>> resultTask, Func<T, Task<Result<T>>> operation)` | `Task<Result<T>>` | Async inverse-`When`. |
+| `public static Task<Result<T>> UnlessAsync<T>(this Task<Result<T>> resultTask, Func<T, bool> predicate, Func<T, Task<Result<T>>> operation)` | `Task<Result<T>>` | Async inverse-`When` (a `bool condition` overload also exists). |
 | `public static Task<Result<(T1, T2)>> WhenAllAsync<T1, T2>(this (Task<Result<T1>> t1, Task<Result<T2>> t2) tasks)` | `Task<Result<(T1, T2)>>` | `WhenAllExtensionsAsync` runs tasks concurrently via `Task.WhenAll` and folds the results. Tuple arities 2–9 are generated. |
 
 ```csharp
@@ -1319,7 +1334,7 @@ public readonly record struct Page<T>
 
 | Member | Description |
 | --- | --- |
-| `Page(IReadOnlyList<T>, Cursor?, Cursor?, int, int)` | Validated constructor. Throws `ArgumentNullException` on null `Items`, `ArgumentOutOfRangeException` on a non-positive limit or `AppliedLimit > RequestedLimit`. Copies the input sequence so later caller-side list mutations cannot change the page. |
+| `Page(IReadOnlyList<T>, Cursor?, Cursor?, int, int)` | Validated constructor. Throws `ArgumentNullException` on null `Items`, `ArgumentException` when `Next`/`Previous` is `default(Cursor)` (use `null` to signal absence), `ArgumentOutOfRangeException` on a non-positive limit or `AppliedLimit > RequestedLimit`. Copies the input sequence so later caller-side list mutations cannot change the page. |
 | `Items` | The items returned for this page. Never null; `default(Page<T>)` observes an empty sequence. |
 | `Next` | Cursor for the next page, or `null` on the last page. |
 | `Previous` | Cursor for the previous page, or `null` on the first page (or when the source doesn't support reverse). |
@@ -1373,7 +1388,7 @@ public readonly record struct PageSize
 | `Requested` / `Applied` | The pair the caller asked for and the value the server actually used. Composes directly with `Page<T>` so `WasCapped` round-trips through the wire envelope. |
 | `WasCapped` | `true` when `Applied < Requested`. |
 | `FromRequested(int?, int)` | Lenient parser. When `requested` is `null` or non-positive, returns `Requested = Default` and `Applied = min(Default, max)` (so a custom `max < Default` still clamps `Applied` and surfaces as `WasCapped`). When `requested` is positive, preserves it verbatim and clamps `Applied` to `max`. |
-| `TryCreate(int?, int, string?)` | Strict parser. Returns `Result.Fail<PageSize>` with `Error.InvalidInput` on a non-positive or out-of-range value; uses `fieldName ?? "pageSize"` for the field violation. |
+| `TryCreate(int?, int, string?)` | Strict parser. A `null` `requested` returns `Result.Ok` with `Default` (like `FromRequested`); a non-positive or out-of-range value returns `Result.Fail<PageSize>` with `Error.InvalidInput` (uses `fieldName ?? "pageSize"` for the field violation). |
 
 ### `public static class CursorCodec`
 
@@ -1397,7 +1412,7 @@ public static class CursorCodec
 
 | Member | Description |
 | --- | --- |
-| `Encode<TKey>(TKey)` | Single-key cursor: URL-safe base64 of the key's invariant-culture string form. Supported keys include `Guid`, `long`, `int`, and `string`. Project Trellis value-object IDs to their underlying primitive (`.Value`) before calling. |
+| `Encode<TKey>(TKey)` | Single-key cursor: URL-safe base64 of the key's invariant-culture string form. Supported keys include `Guid`, `long`, `int`, and `string`. Source-generated `Required*` value-object IDs round-trip directly (they inherit `IFormattable` and gain `IParsable<TSelf>` from the generator); only hand-written value objects lacking `IParsable<TSelf>` need projecting to their underlying primitive (`.Value`). |
 | `TryDecode<TKey>(Cursor, string?)` | Inverse of the single-key `Encode`. Returns `Error.InvalidInput` (reason code `cursor.malformed`, field `fieldName ?? "cursor"`) on malformed base64, oversized tokens, invalid UTF-8, or unparseable payload. |
 | `Encode<TKey>(DateTimeOffset, TKey)` | Composite cursor for stable time-ordered seek: URL-safe base64 of `"{createdAt:O}&#124;{id}"` in invariant culture. |
 | `TryDecodeComposite<TKey>` | Inverse of the composite `Encode`. Returns `Error.InvalidInput` (reason code `cursor.malformed`, field `fieldName ?? "cursor"`) on malformed base64, oversized tokens, invalid UTF-8, missing separator, or unparseable segments. Splits at the **first** `&#124;` only, so an Id that happens to contain a pipe is still unambiguous. |
@@ -1476,7 +1491,7 @@ public async Task<Result<Page<OrderListItem>>> Handle(ListOrdersQuery query, Can
 | `Error.InvariantViolation` | `(string ReasonCode, ResourceRef? Resource = null)` | `ReasonCode` | `invariant-violation` |
 | `Error.NotFound` | `(ResourceRef Resource)` | `not-found` | `not-found` |
 | `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | `PolicyId` | `forbidden` |
-| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | `ReasonCode` | `conflict` |
+| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` — plus `[JsonIgnore]` init-only `ConstraintName`/`ConstraintTableName` (telemetry-only, set by EF Core helpers such as `TryInsertUniqueAsync`) | `ReasonCode` | `conflict` |
 | `Error.Gone` | `(ResourceRef Resource)` | `gone` | `gone` |
 | `Error.AuthenticationRequired` | `(string? Scheme = null, string? ReasonCode = null)` | `ReasonCode ?? "authentication-required"` | `authentication-required` |
 | `Error.Unavailable` | `(string? ReasonCode = null, RetryAdvice? Retry = null)` | `ReasonCode ?? "unavailable"` | `unavailable` |
@@ -1993,7 +2008,7 @@ public static class StringExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static string NormalizeFieldName(this string? fieldName, string defaultName)` | `string` | Uses `fieldName` when present, otherwise camel-cases `defaultName`. |
+| `public static string NormalizeFieldName(this string? fieldName, string defaultName)` | `string` | Camel-cases `fieldName` when present; otherwise returns `defaultName` verbatim. |
 | `public static T ParseScalarValue<T>(string? s) where T : class, IScalarValue<T, string>` | `T` | Throws `FormatException` based on `T.TryCreate`. |
 | `public static bool TryParseScalarValue<T>([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out T result) where T : class, IScalarValue<T, string>` | `bool` | Safe parsing helper based on `T.TryCreate`. |
 | `public static string ToCamelCase(this string? str)` | `string` | Lowercases the first character only. |
