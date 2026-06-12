@@ -116,14 +116,17 @@ public sealed class TrellisServiceBuilder
 `AddTrellis(...)` records selected modules first and then applies them in this order:
 
 1. ASP integration.
-2. ProblemDetails customization (when `UseProblemDetails()` is selected).
-3. Idempotency-Key middleware DI (when `UseIdempotency(...)` is selected).
-4. Actor provider (the optional caching wrap that chains after it, then the optional worker-actor wrap that chains after caching).
-5. Mediator behaviors.
-6. Resource authorization (assembly scanning, when assemblies are supplied).
-7. FluentValidation adapter/scanning when selected.
-8. Domain event dispatch (registers `DomainEventDispatchBehavior<,>`, the default `IDomainEventPublisher`, and any scanned handlers).
-9. EF Core Unit of Work.
+2. Scalar-value validation (when `UseScalarValueValidation()` is selected).
+3. ProblemDetails customization (when `UseProblemDetails()` is selected).
+4. Idempotency-Key middleware DI (when `UseIdempotency(...)` is selected).
+5. Actor provider (the optional caching wrap that chains after it, then the optional worker-actor wrap that chains after caching).
+6. Mediator behaviors.
+7. Resource authorization (assembly scanning, when assemblies are supplied).
+8. FluentValidation adapter/scanning when selected.
+9. Domain event dispatch (registers `DomainEventDispatchBehavior<,>`, the default `IDomainEventPublisher`, and any scanned handlers), plus tracked-aggregate domain events when selected.
+10. Integration event dispatch (when `UseIntegrationEvents(...)` is selected).
+11. EF Core Unit of Work.
+12. Transactional outbox relay (when `UseOutbox<TContext>()` is selected).
 
 That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors.
 
