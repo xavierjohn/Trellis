@@ -1660,7 +1660,7 @@ public sealed class CheckoutHandler(
 
 **When NOT to use it.**
 
-1. **Two or more repositories sharing the same scoped `DbContext`.** The most common case in a typical Trellis service. The repos look independent at the C# level, but they all resolve `IRepositoryBase<T, TId>` from the same scoped `TContext`. Parallelising them races the underlying connection and throws `InvalidOperationException`. **Keep sequential `Bind` for this case** — the savings vs the sum-of-fetches are negligible against a local DB anyway, and the integrity loss is real.
+1. **Two or more repositories sharing the same scoped `DbContext`.** The most common case in a typical Trellis service. The repos look independent at the C# level, but they all resolve `IRepositoryBase<T, TId>` from the same scoped `TContext`. Parallelising them races the underlying connection and throws `InvalidOperationException`. **Keep them sequential with `BindZipAsync`** (it awaits the first, runs the second only on success, and zips both into a tuple — short-circuiting on failure) — the savings vs the sum-of-fetches are negligible against a local DB anyway, and the integrity loss is real.
 2. **The second factory's body references a value produced by the first.** Not independent — keep the sequential `BindAsync` chain. The rule is mechanical: if the second load requires data the first one produced (an id, a filter, a cursor), the two are sequential by definition.
 3. **Side-effecting writes.** `Result.ParallelAsync` is for reads. Parallel `repository.Add(...)` calls against a shared context have the same race as parallel reads, plus tracker contention; parallel writes against per-scope contexts need transaction coordination outside this helper.
 
@@ -1683,9 +1683,23 @@ public ValueTask<Result<DraftOrderId>> Handle(CreateDraftOrderCommand command, C
         .TapAsync(_orders.Add)
         .MapAsync(o => o.Id));
 
-// ✅ Sequential against a shared DbContext — correct by construction. The latency
-// cost is the sum of two local reads, which is negligible in practice.
-public async ValueTask<Result<DraftOrderId>> Handle(CreateDraftOrderCommand command, CancellationToken cancellationToken)
+// ✅ Sequential against a shared DbContext — correct by construction, and fluent.
+// `BindZipAsync` awaits the first read, runs the second ONLY if the first succeeded
+// (short-circuits), and zips both into `Result<(Customer, Product)>`. The two reads
+// never overlap, so the shared context is never raced. Latency = the sum of two
+// local reads, which is negligible in practice.
+public ValueTask<Result<DraftOrderId>> Handle(CreateDraftOrderCommand command, CancellationToken cancellationToken) =>
+    new(_customers.FindByIdAsync(command.CustomerId, cancellationToken)
+        .BindZipAsync(_ => _products.FindByIdAsync(command.ProductId, cancellationToken))
+        .BindAsync((customer, product) => DraftOrder.CreateDraft(customer, product, command.Quantity))
+        .TapAsync(_orders.Add)
+        .MapAsync(o => o.Id));
+
+// Alternative — eager await + Result.Combine. Also sequential and safe, but it does
+// NOT short-circuit: the second read runs even when the first already failed. Prefer
+// this only when you deliberately want to ACCUMULATE both failures — Combine merges
+// their errors (e.g. report "customer not found" AND "product not found" together).
+public async ValueTask<Result<DraftOrderId>> HandleAccumulating(CreateDraftOrderCommand command, CancellationToken cancellationToken)
 {
     var customerResult = await _customers.FindByIdAsync(command.CustomerId, cancellationToken);
     var productResult  = await _products.FindByIdAsync(command.ProductId, cancellationToken);
