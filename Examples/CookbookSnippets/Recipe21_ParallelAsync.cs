@@ -148,6 +148,18 @@ internal static class Recipe21ParallelAsyncSurface
         _ = result;
     }
 
+    public static async Task SequentialBindZip()
+    {
+        // Sequence two resource-coupled loads on the railway (the shared-DbContext fix):
+        // BindZipAsync awaits the first, runs the second only on success (short-circuits),
+        // and zips both into a tuple; BindAsync then continues.
+        var result = await LoadNumberAsync()
+            .BindZipAsync(_ => LoadNameAsync())
+            .BindAsync((number, name) => Result.Ok($"{number}:{name}"));
+
+        _ = result;
+    }
+
     private static Task<Result<int>> LoadNumberAsync() =>
         Task.FromResult(Result.Ok(1));
 
