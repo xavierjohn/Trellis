@@ -14,24 +14,19 @@ public partial class EmployeeId : RequiredGuid<EmployeeId>
 public class RequiredGuidTests
 {
     [Fact]
-    public void Cannot_create_empty_RequiredGuid()
+    public void Can_create_RequiredGuid_from_GuidEmpty()
     {
         var guidId1 = EmployeeId.TryCreate(default(Guid));
-        guidId1.IsFailure.Should().BeTrue();
-        guidId1.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)guidId1.UnwrapError();
-        validation.Fields[0].Field.Path.Should().Be("/employeeId");
-        validation.Fields[0].Detail.Should().Be("Employee Id cannot be Guid.Empty.");
-        validation.Fields[0].ReasonCode.Should().Be("validation.error");
+        guidId1.IsSuccess.Should().BeTrue();
+        guidId1.Unwrap().Value.Should().Be(Guid.Empty);
     }
 
     [Fact]
     public void TryCreate_with_custom_fieldName()
     {
-        // Act
-        var result = EmployeeId.TryCreate(default(Guid), "myField");
+        // Null still rejects under the lenient default; verify the custom field name flows through.
+        var result = EmployeeId.TryCreate((string?)null, "myField");
 
-        // Assert
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
         validation.Fields[0].Field.Path.Should().Be("/myField");
@@ -134,18 +129,14 @@ public class RequiredGuidTests
     }
 
     [Fact]
-    public void Cannot_cast_empty_to_RequiredGuid()
+    public void Can_cast_empty_to_RequiredGuid()
     {
-        // Arrange
+        // Lenient default — casting Guid.Empty succeeds.
         Guid myGuid = default;
-        EmployeeId myGuidId1;
 
-        // Act
-        Action act = () => myGuidId1 = (EmployeeId)myGuid;
+        EmployeeId myGuidId1 = (EmployeeId)myGuid;
 
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create EmployeeId:*Employee Id cannot be Guid.Empty*");
+        myGuidId1.Value.Should().Be(Guid.Empty);
     }
 
     [Theory]
@@ -178,16 +169,13 @@ public class RequiredGuidTests
     }
 
     [Fact]
-    public void Cannot_create_RequiredGuid_from_all_zero_string()
+    public void Can_create_RequiredGuid_from_all_zero_string()
     {
-        // "00000000-..." parses successfully into Guid.Empty, then the strict default check fires
-        // with the per-type "cannot be Guid.Empty." message — distinct from the null case above.
+        // Lenient default — Guid.Empty parsed from "00000000-..." is accepted.
         var myGuidResult = EmployeeId.TryCreate("00000000-0000-0000-0000-000000000000");
 
-        myGuidResult.IsFailure.Should().BeTrue();
-        var ve = (Error.InvalidInput)myGuidResult.UnwrapError();
-        ve.Fields[0].Field.Path.Should().Be("/employeeId");
-        ve.Fields[0].Detail.Should().Be("Employee Id cannot be Guid.Empty.");
+        myGuidResult.IsSuccess.Should().BeTrue();
+        myGuidResult.Unwrap().Value.Should().Be(Guid.Empty);
     }
 
     [Fact]

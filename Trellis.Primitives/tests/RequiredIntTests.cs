@@ -4,12 +4,10 @@ using System.Globalization;
 using System.Text.Json;
 using Trellis.Testing;
 
-[AllowZero]
 public partial class TicketNumber : RequiredInt<TicketNumber>
 {
 }
 
-[AllowZero]
 internal partial class InternalTicketNumber : RequiredInt<InternalTicketNumber>
 {
 }

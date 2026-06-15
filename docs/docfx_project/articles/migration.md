@@ -14,12 +14,12 @@ A package- and namespace-rename combined with a tightened public surface. Per-pa
 > **Version-label key.** The previous public release line was published as `FunctionalDdd.*` packages (last GA: `2.1`). v3 ships as the renamed `Trellis.*` packages. Sections below sometimes use "v1" and "v2" as internal shorthand for transitional Trellis development surfaces during the rename; in terms of *public* releases, treat the v1→v2 transitions in this guide as the canonical FunctionalDdd 2.x → Trellis 3.0 upgrade path.
 
 > [!NOTE]
-> **Coming from a 3.0-alpha build?** See [`CHANGELOG.md` → 3.0.0](https://github.com/xavierjohn/Trellis/blob/main/CHANGELOG.md#300) for the breaking changes between the late-alpha and 3.0 GA. Required value objects are now strict by default: remove legacy `[NotDefault]` / `[Trim]`, replace deleted `[AllowDefault]` with `[AllowEmpty]`, `[AllowZero]`, or `[AllowMinValue]` as appropriate, and use `[AllowWhitespace]` / `[NoTrim]` only for string domains that need those leniencies.
+> **Coming from a 3.0-alpha build?** See [`CHANGELOG.md` → 3.0.0](https://github.com/xavierjohn/Trellis/blob/main/CHANGELOG.md#300) for the breaking changes between the late-alpha and 3.0 GA. Required value objects are **lenient by default** (rejects `null` only). Remove the deleted attributes `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, `[AllowMinValue]`, and any `[AllowDefault]`. Use `[NotDefault]` to opt into sentinel rejection and `[Trim]` to opt into string trimming.
 
 This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For release-by-release migration details during the preview churn — including the final move to the current 12-case `Trellis.Core.Error` union — use [`CHANGELOG.md`](https://github.com/xavierjohn/Trellis/blob/main/CHANGELOG.md) as the canonical ledger.
 
 > [!IMPORTANT]
-> **Required defaults flip.** `RequiredString<TSelf>` now rejects `null`, empty, and whitespace-only values and trims by default; `RequiredGuid<TSelf>` rejects `Guid.Empty`; numeric Required bases reject zero; date Required bases reject `MinValue`. `[NotDefault]` and `[Trim]` are vestigial no-ops with informational diagnostics (`TRLS046`, `TRLS047`). To preserve intentionally lenient legacy behavior, add the per-base opt-out: `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, or `[AllowMinValue]`.
+> **Required defaults are lenient.** `Required*<TSelf>` rejects only `null`; all concrete values (`""`, whitespace, `0`, `Guid.Empty`, `MinValue`) are accepted by default. Strings are NOT auto-trimmed. Opt into sentinel rejection with `[NotDefault]` and into string trimming with `[Trim]`. The five `[Allow*]` attributes and diagnostics `TRLS046`–`TRLS053` are gone. See `MIGRATION_v3.md` for the full migration recipe.
 
 ## Patterns Index
 

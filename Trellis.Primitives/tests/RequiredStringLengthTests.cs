@@ -44,12 +44,13 @@ public class RequiredStringLengthTests
     }
 
     [Fact]
-    public void TryCreate_MaxLengthOnly_ValidAfterTrimming_ReturnsTrimmedSuccess()
+    public void TryCreate_MaxLengthOnly_DoesNotTrim_ReturnsRawSuccessWhenWithinMax()
     {
-        var result = ShortCode.TryCreate("  ABC123  "); // trims to 6 characters
+        // Lenient default — no auto-trim. "  ABC123  " is 10 chars (== max) and is stored verbatim.
+        var result = ShortCode.TryCreate("  ABC123  ");
 
         result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("ABC123");
+        result.Unwrap().Value.Should().Be("  ABC123  ");
     }
 
     [Fact]
@@ -73,12 +74,12 @@ public class RequiredStringLengthTests
     }
 
     [Fact]
-    public void TryCreate_MaxLengthOnly_EmptyString_ReturnsEmptyError()
+    public void TryCreate_MaxLengthOnly_EmptyString_ReturnsSuccess()
     {
+        // Lenient default — empty string is accepted.
         var result = ShortCode.TryCreate("");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Short Code cannot be empty.");
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Value.Should().Be("");
     }
 
     [Fact]

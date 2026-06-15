@@ -30,17 +30,14 @@ public class SourceGeneratedCreateMethodTests
     }
 
     [Fact]
-    public void RequiredGuid_Create_WithEmptyGuid_ThrowsInvalidOperationException()
+    public void RequiredGuid_Create_WithEmptyGuid_Succeeds()
     {
-        // Arrange
+        // Lenient default — bare RequiredGuid accepts Guid.Empty.
         var emptyGuid = Guid.Empty;
 
-        // Act
-        var act = () => EmployeeId.Create(emptyGuid);
+        var employeeId = EmployeeId.Create(emptyGuid);
 
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create EmployeeId:*Employee Id cannot be Guid.Empty*");
+        employeeId.Value.Should().Be(Guid.Empty);
     }
 
     [Fact]
@@ -232,45 +229,30 @@ public class SourceGeneratedCreateMethodTests
     }
 
     [Fact]
-    public void RequiredString_Create_WithEmptyString_ThrowsInvalidOperationException()
+    public void RequiredString_Create_WithEmptyString_Succeeds()
     {
-        // Arrange
-        var emptyString = "";
+        // Lenient default — bare RequiredString accepts "".
+        var trackingId = TrackingId.Create("");
 
-        // Act
-        var act = () => TrackingId.Create(emptyString);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TrackingId:*Tracking Id cannot be empty*");
+        trackingId.Value.Should().Be("");
     }
 
     [Fact]
-    public void RequiredString_Create_WithWhitespaceString_ThrowsInvalidOperationException()
+    public void RequiredString_Create_WithWhitespaceString_Succeeds()
     {
-        // Arrange
-        var whitespaceString = "   ";
+        // Lenient default — bare RequiredString stores whitespace verbatim.
+        var trackingId = TrackingId.Create("   ");
 
-        // Act
-        var act = () => TrackingId.Create(whitespaceString);
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TrackingId:*Tracking Id cannot be whitespace-only*");
+        trackingId.Value.Should().Be("   ");
     }
 
     [Fact]
-    public void RequiredString_ExplicitCast_WithEmptyString_ThrowsCreateStyleInvalidOperationException()
+    public void RequiredString_ExplicitCast_WithEmptyString_Succeeds()
     {
-        // Arrange
-        TrackingId trackingId;
+        // Lenient default — explicit cast from "" succeeds.
+        TrackingId trackingId = (TrackingId)string.Empty;
 
-        // Act
-        Action act = () => trackingId = (TrackingId)string.Empty;
-
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TrackingId:*Tracking Id cannot be empty*");
+        trackingId.Value.Should().Be("");
     }
 
     #endregion

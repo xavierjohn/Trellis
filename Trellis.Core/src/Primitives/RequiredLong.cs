@@ -3,6 +3,8 @@
 /// <summary>
 /// Base class for creating strongly-typed long integer value objects.
 /// Provides a foundation for large identifiers, sequence numbers, and other domain concepts represented by long integers.
+/// Rejects only <c>null</c> by default; rejection of <c>0</c> is opt-in via the
+/// <see cref="NotDefaultAttribute"/> attribute.
 /// </summary>
 /// <remarks>
 /// <para>

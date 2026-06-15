@@ -9,29 +9,25 @@ using Trellis.Asp.ModelBinding;
 using Trellis.Testing;
 using Xunit;
 
-// --- Lenient and strict generated Required* test fixtures ---
-
-[AllowEmpty]
+// Both fixtures are bare lenient under the post-flip defaults; the test names retain their
+// historical "Lenient" / "Strict" labels but assertions all express the lenient binder behavior.
 public partial class AspLenientGuid : RequiredGuid<AspLenientGuid> { }
 
 public partial class AspStrictGuid : RequiredGuid<AspStrictGuid> { }
 
-[AllowEmpty, AllowWhitespace, NoTrim]
 public partial class AspLenientString : RequiredString<AspLenientString> { }
 
 public partial class AspStrictString : RequiredString<AspStrictString> { }
 
-[AllowZero]
 public partial class AspLenientInt : RequiredInt<AspLenientInt> { }
 
 public partial class AspStrictInt : RequiredInt<AspStrictInt> { }
 
 /// <summary>
-/// ASP-boundary regression coverage for the <c>RequiredXxx&lt;T&gt;</c> strict-by-default behavior:
-/// proves that explicit lenience opt-out attributes flow through
+/// ASP-boundary regression coverage for the post-flip Required* lenient defaults: proves that
+/// the bare Required* base accepts the per-type sentinel via
 /// <see cref="ScalarValueModelBinder{TValue, TPrimitive}"/> on the route / query / form / header
-/// path. Lenient types accept the per-type sentinel value via the binder; strict default types
-/// reject with the per-type wording.
+/// path.
 /// </summary>
 /// <remarks>
 /// Mirrors the EF rehydration test (<c>RequiredXxxRehydrationLenienceTests</c>) and the
@@ -60,17 +56,17 @@ public class RequiredXxxBinderLenienceTests
     }
 
     [Fact]
-    public async Task StrictGuidBinder_rejects_all_zero_guid_with_per_type_wording()
+    public async Task StrictGuidBinder_accepts_all_zero_guid()
     {
         var binder = new ScalarValueModelBinder<AspStrictGuid, Guid>();
         var ctx = CreateBindingContext("id", "00000000-0000-0000-0000-000000000000");
 
         await binder.BindModelAsync(ctx);
 
-        ctx.Result.IsModelSet.Should().BeFalse();
-        ctx.ModelState.IsValid.Should().BeFalse();
-        ctx.ModelState["id"]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be("Asp Strict Guid cannot be Guid.Empty.");
+        ctx.Result.IsModelSet.Should().BeTrue();
+        var bound = ctx.Result.Model as AspStrictGuid;
+        bound!.Value.Should().Be(Guid.Empty);
+        ctx.ModelState.ErrorCount.Should().Be(0);
     }
 
     // ---- String ----
@@ -91,25 +87,23 @@ public class RequiredXxxBinderLenienceTests
     }
 
     [Fact]
-    public async Task StrictStringBinder_rejects_empty_string_via_direct_TryCreate()
+    public async Task StrictStringBinder_accepts_empty_string_via_direct_TryCreate()
     {
-        // Empty-string handling at the binder layer is short-circuited; the per-type rejection
-        // path is the strict TryCreate. Asserting at TryCreate level keeps this test stable
-        // regardless of value-provider short-circuit policy.
+        // Under the lenient default the bare Required* base accepts "" verbatim.
         var result = AspStrictString.TryCreate("");
-        result.IsFailure.Should().BeTrue();
-        var ve = (Error.InvalidInput)result.UnwrapError();
-        ve.Fields[0].Detail.Should().Be("Asp Strict String cannot be empty.");
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Value.Should().Be("");
 
-        // And via binder for a whitespace-only payload:
+        // And via binder for a whitespace-only payload — bound verbatim.
         var binder = new ScalarValueModelBinder<AspStrictString, string>();
         var ctx = CreateBindingContext("name", "   ");
 
         await binder.BindModelAsync(ctx);
 
-        ctx.Result.IsModelSet.Should().BeFalse();
-        ctx.ModelState["name"]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be("Asp Strict String cannot be whitespace-only.");
+        ctx.Result.IsModelSet.Should().BeTrue();
+        var bound = ctx.Result.Model as AspStrictString;
+        bound!.Value.Should().Be("   ");
+        ctx.ModelState.ErrorCount.Should().Be(0);
     }
 
     [Fact]
@@ -142,16 +136,17 @@ public class RequiredXxxBinderLenienceTests
     }
 
     [Fact]
-    public async Task StrictIntBinder_rejects_zero_with_per_type_wording()
+    public async Task StrictIntBinder_accepts_zero()
     {
         var binder = new ScalarValueModelBinder<AspStrictInt, int>();
         var ctx = CreateBindingContext("count", "0");
 
         await binder.BindModelAsync(ctx);
 
-        ctx.Result.IsModelSet.Should().BeFalse();
-        ctx.ModelState["count"]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be("Asp Strict Int cannot be zero.");
+        ctx.Result.IsModelSet.Should().BeTrue();
+        var bound = ctx.Result.Model as AspStrictInt;
+        bound!.Value.Should().Be(0);
+        ctx.ModelState.ErrorCount.Should().Be(0);
     }
 
     // ---- Helpers ----

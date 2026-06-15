@@ -3,6 +3,8 @@
 /// <summary>
 /// Base class for creating strongly-typed integer value objects that must be explicitly provided.
 /// Provides a foundation for entity identifiers, counts, and other domain concepts represented by integers.
+/// Rejects only <c>null</c> by default; rejection of <c>0</c> is opt-in via the
+/// <see cref="NotDefaultAttribute"/> attribute.
 /// </summary>
 /// <remarks>
 /// <para>

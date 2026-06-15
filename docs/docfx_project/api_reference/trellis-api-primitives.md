@@ -14,7 +14,7 @@ audience: [llm]
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) — recipes using this package.
 
-> **Package scope.** The `Required*<TSelf>` base classes (`RequiredString`, `RequiredEnum`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredGuid`, `RequiredBool`, `RequiredDateTime`, `RequiredDateTimeOffset`), validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), strict-default opt-out attributes (`AllowEmptyAttribute`, `AllowWhitespaceAttribute`, `NoTrimAttribute`, `AllowZeroAttribute`, `AllowMinValueAttribute`), vestigial compatibility attributes (`NotDefaultAttribute`, `TrimAttribute`), `StringExtensions` (`NormalizeFieldName`, `ToCamelCase`, `ParseScalarValue`, `TryParseScalarValue`), `ParsableJsonConverter<T>`, `PrimitiveValueObjectTrace`, and `RequiredEnumJsonConverter<TRequiredEnum>` live in `Trellis.Core`. The base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`) and base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`) also live in `Trellis.Core`. `Trellis.Primitives` ships the concrete VOs that build on those bases plus the composite JSON converter and OpenTelemetry registration extension listed below. See [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the base-type reference.
+> **Package scope.** The `Required*<TSelf>` base classes (`RequiredString`, `RequiredEnum`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredGuid`, `RequiredBool`, `RequiredDateTime`, `RequiredDateTimeOffset`), validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), opt-in behavior attributes (`NotDefaultAttribute`, `TrimAttribute`), numeric sign attributes (`PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, `NonPositiveAttribute`), `StringExtensions` (`NormalizeFieldName`, `ToCamelCase`, `ParseScalarValue`, `TryParseScalarValue`), `ParsableJsonConverter<T>`, `PrimitiveValueObjectTrace`, and `RequiredEnumJsonConverter<TRequiredEnum>` live in `Trellis.Core`. The base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`) and base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`) also live in `Trellis.Core`. `Trellis.Primitives` ships the concrete VOs that build on those bases plus the composite JSON converter and OpenTelemetry registration extension listed below. See [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the base-type reference.
 >
 > The incremental generator that emits the `TryCreate`/`Create`/`Parse`/`TryParse`/`JsonConverter` partial bodies for `Required*<TSelf>` derivations (`Trellis.Core.Generator`) is bundled inside `Trellis.Core.nupkg` under `analyzers/dotnet/cs/`. `Trellis.Primitives` no longer references its own generator package — installing `Trellis.Core` (or transitively, `Trellis.Primitives` which depends on it) attaches the analyzer automatically.
 
@@ -33,14 +33,14 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 | Represent money | `Money` / `MonetaryAmount` / `CurrencyCode` | [`Money`](#money), [`MonetaryAmount`](#monetaryamount), [`CurrencyCode`](#currencycode) |
 | Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](trellis-api-core.md#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
 | Define a custom SKU/order-id primitive | Use `partial class Sku : RequiredString<Sku>` or `partial class OrderId : RequiredGuid<OrderId>` from `Trellis.Core` | [Core primitive base classes](trellis-api-core.md#primitive-value-object-base-classes) |
-| Opt out of strict Required defaults | Use `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, or `[AllowMinValue]` on the generated primitive class | [`Required*` defaults and opt-outs](#required-defaults-and-opt-outs) |
+| Opt into strict Required behavior | Use `[NotDefault]` to reject the type's sentinel, `[Trim]` to enable string trimming | [`Required*` defaults and opt-ins](#required-defaults-and-opt-ins) |
 | Add length/range constraints to custom primitives | Use Trellis `[StringLength]` / `[Range]` attributes from `namespace Trellis`, not DataAnnotations | [Core attributes](trellis-api-core.md#primitive-value-object-base-classes) |
 | Add JSON for composite value objects | `CompositeValueObjectJsonConverter<T>` | [`CompositeValueObjectJsonConverter<T>`](#compositevalueobjectjsonconvertert) |
 
 ## Common traps
 
 - This file documents concrete primitives. Custom primitive base classes and Trellis validation attributes live in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes).
-- `Required*<TSelf>` generated primitives are strict by default. Remove legacy `[NotDefault]` / `[Trim]`; use the per-base opt-outs below only when the sentinel value is a legitimate domain value.
+- `Required*<TSelf>` generated primitives are **lenient by default** (rejects `null` only). Use `[NotDefault]` to opt into sentinel rejection; use `[Trim]` to opt into string trimming.
 - Use Trellis attributes when defining generated primitives. On the value-object class the similarly named DataAnnotations attributes do not compile (`CS0592`, or `CS0104` for an unqualified attribute when both namespaces are in scope); on a member they compile but the Trellis generator ignores them.
 - Keep primitive parsing out of handlers. Convert transport primitives to value objects at the DTO/controller/application seam, then pass shaped commands inward.
 
@@ -63,62 +63,54 @@ The Trellis validation attributes are **class-targeted** with **different shapes
 A property-targeted form like `[StringLength(20, MinimumLength = 3)] public string Value { get; }` produces `CS0592: Attribute is not valid on this declaration type` only if `[StringLength]` resolves to `Trellis.StringLengthAttribute`, which targets `AttributeTargets.Class` only. The DataAnnotations attribute of the same name targets properties/fields/parameters and compiles in those positions, but the Trellis source generator only inspects attributes on the partial class declaration, so a DataAnnotations attribute on a member of a `Required*<TSelf>`-derived class is silently ignored. A DataAnnotations `[StringLength]`/`[Range]` applied to the class itself is a compile error (`CS0592`, or `CS0104` for an unqualified attribute when both namespaces are in scope).
 
 
-## `Required*` defaults and opt-outs
+## `Required*` defaults and opt-ins
 
-`Required*<TSelf>` generated primitives are **strict by default**. The generator rejects `null` for every base; it also rejects each base's sentinel value unless the matching opt-out attribute is present. `[NotDefault]` and `[Trim]` are vestigial compatibility attributes: remove them from new code. The generator ignores them and emits informational diagnostics (`TRLS046`, `TRLS047`). `[AllowDefault]` was removed; use the per-type opt-out name instead.
+`Required*<TSelf>` generated primitives are **lenient by default**. The generator rejects `null` for every base and accepts every concrete value. Use `[NotDefault]` to opt into sentinel rejection and `[Trim]` to opt into string trimming.
 
-| Base | Default rejects | Opt-out |
+| Base | Default rejects | Opt-in attributes |
 |---|---|---|
-| `RequiredString<T>` | `null`, `""`, whitespace-only | `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]` |
-| `RequiredGuid<T>` | `null`, `Guid.Empty` | `[AllowEmpty]` |
-| `RequiredDateTime<T>` | `null`, `DateTime.MinValue` | `[AllowMinValue]` |
-| `RequiredDateTimeOffset<T>` | `null`, `DateTimeOffset.MinValue` | `[AllowMinValue]` |
-| `RequiredInt<T>` | `null`, `0` | `[AllowZero]` |
-| `RequiredLong<T>` | `null`, `0` | `[AllowZero]` |
-| `RequiredDecimal<T>` | `null`, `0m` | `[AllowZero]` |
-| `RequiredBool<T>` | `null` | (no opt-out — degenerate) |
+| `RequiredString<T>` | `null` only (accepts `""`, whitespace; no auto-trim) | `[NotDefault]` rejects `""`; `[Trim]` enables trimming; combine for strict trim-then-reject-empty |
+| `RequiredGuid<T>` | `null` only (accepts `Guid.Empty`) | `[NotDefault]` rejects `Guid.Empty` |
+| `RequiredDateTime<T>` | `null` only (accepts `DateTime.MinValue`) | `[NotDefault]` rejects `DateTime.MinValue` |
+| `RequiredDateTimeOffset<T>` | `null` only (accepts `DateTimeOffset.MinValue`) | `[NotDefault]` rejects `DateTimeOffset.MinValue` |
+| `RequiredInt<T>` | `null` only (accepts `0`) | `[NotDefault]` rejects `0` |
+| `RequiredLong<T>` | `null` only (accepts `0L`) | `[NotDefault]` rejects `0L` |
+| `RequiredDecimal<T>` | `null` only (accepts `0m`) | `[NotDefault]` rejects `0m` |
+| `RequiredBool<T>` | `null` | (no sentinel) |
 | `RequiredEnum<T>` | `null`, undeclared members | (handled by smart-enum lookup) |
 
 ### `RequiredString<T>` truth table
 
 | Attribute(s) | `null` | `""` | `"   "` | `" a "` | `"a"` |
 |---|---|---|---|---|---|
-| (none) | reject | reject | reject | accept `"a"` | accept `"a"` |
-| `[AllowEmpty]` | reject | accept `""` | reject | accept `"a"` | accept `"a"` |
-| `[AllowWhitespace]` | reject | reject | accept `""` | accept `"a"` | accept `"a"` |
-| `[NoTrim]` | reject | reject | reject | accept `" a "` | accept `"a"` |
-| `[AllowEmpty, AllowWhitespace]` | reject | accept `""` | accept `""` | accept `"a"` | accept `"a"` |
-| `[AllowEmpty, NoTrim]` | reject | accept `""` | reject | accept `" a "` | accept `"a"` |
-| `[AllowWhitespace, NoTrim]` | reject | reject | accept `"   "` | accept `" a "` | accept `"a"` |
-| `[AllowEmpty, AllowWhitespace, NoTrim]` | reject | accept `""` | accept `"   "` | accept `" a "` | accept `"a"` |
+| (none) | reject | accept `""` | accept `"   "` | accept `" a "` | accept `"a"` |
+| `[NotDefault]` | reject | reject | accept `"   "` | accept `" a "` | accept `"a"` |
+| `[Trim]` | reject | accept `""` | accept `""` | accept `"a"` | accept `"a"` |
+| `[Trim, NotDefault]` | reject | reject | reject (trims to `""`) | accept `"a"` | accept `"a"` |
 
 Validation order:
 
 1. **null check** (no opt-out)
-2. **whitespace-only check on raw input** (skipped if `[AllowWhitespace]`)
-3. **trim** (skipped if `[NoTrim]`)
-4. **empty check on final input** (skipped if `[AllowEmpty]` OR raw was whitespace AND `[AllowWhitespace]`)
-5. user-supplied constraints (`[StringLength]`, `ValidateAdditional`)
+2. **trim** (only if `[Trim]` present)
+3. **empty check** (only if `[NotDefault]` present)
+4. user-supplied constraints (`[StringLength]`, `ValidateAdditional`)
 
 > [!IMPORTANT]
-> `[AllowWhitespace]` alone (no `[NoTrim]`) accepts whitespace-only input but trim normalizes it to `""` for storage. To preserve whitespace verbatim, combine with `[NoTrim]`.
+> `[Trim]` without `[NotDefault]` trims the value before storage but does not reject `""` or whitespace-only input. Combine both to get trim-then-reject-empty behavior (equivalent to the old strict default).
 
-### Required opt-out diagnostics
+### Required diagnostics
 
 | ID | Severity | When |
 |---|---|---|
-| TRLS046 | Info | `[NotDefault]` is vestigial — strict behavior is the new default |
-| TRLS047 | Info | `[Trim]` is vestigial — trim is the new default on `RequiredString` |
-| TRLS048 | Error | `[AllowZero]` on a non-numeric Required base |
-| TRLS049 | Error | `[AllowEmpty]` on a numeric / date Required base |
-| TRLS050 | Error | `[AllowMinValue]` on a non-date Required base |
-| TRLS051 | Error | `[AllowWhitespace]` on a non-string Required base |
-| TRLS052 | Error | `[NoTrim]` on a non-string Required base |
-| TRLS053 | Error | Contradictory combinations (e.g. `[AllowZero]` + `[Positive]`) |
+| TRLS043 | Error | Numeric convenience attribute on a non-numeric Required base |
+| TRLS044 | Error | More than one numeric convenience attribute on the same type |
+| TRLS045 | Error | Numeric convenience attribute combined with explicit `[Range]` |
+| TRLS057 | Error | `[Trim]` on a Required base other than `RequiredString` |
+| TRLS058 | Error | `[NotDefault]` on `RequiredBool` or `RequiredEnum` (no default sentinel to reject) |
 
 ## Types
 
-> Base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`), base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`), validation and opt-out attributes (`RangeAttribute`, `StringLengthAttribute`, `EnumValueAttribute`, `AllowEmptyAttribute`, `AllowWhitespaceAttribute`, `NoTrimAttribute`, `AllowZeroAttribute`, `AllowMinValueAttribute`), vestigial compatibility attributes (`NotDefaultAttribute`, `TrimAttribute`), `StringExtensions`, the `Required*<TSelf>` base classes, `ParsableJsonConverter<T>`, `PrimitiveValueObjectTrace`, and `RequiredEnumJsonConverter<TRequiredEnum>` are all documented in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes). They live in `Trellis.Core` and are used by every concrete VO listed below. `Trellis.Primitives` type-forwards `ParsableJsonConverter<T>` and `PrimitiveValueObjectTrace` for binary compatibility, but new source guidance should treat Core as the owner. The inherited `static TSelf Create(TPrimitive value)` factory documented on `ScalarValueObject<TSelf, T>` is **not** repeated on each concrete VO below.
+> Base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`), base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`), validation attributes (`RangeAttribute`, `StringLengthAttribute`, `EnumValueAttribute`), opt-in behavior attributes (`NotDefaultAttribute`, `TrimAttribute`), numeric sign attributes (`PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, `NonPositiveAttribute`), `StringExtensions`, the `Required*<TSelf>` base classes, `ParsableJsonConverter<T>`, `PrimitiveValueObjectTrace`, and `RequiredEnumJsonConverter<TRequiredEnum>` are all documented in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes). They live in `Trellis.Core` and are used by every concrete VO listed below. `Trellis.Primitives` type-forwards `ParsableJsonConverter<T>` and `PrimitiveValueObjectTrace` for binary compatibility, but new source guidance should treat Core as the owner. The inherited `static TSelf Create(TPrimitive value)` factory documented on `ScalarValueObject<TSelf, T>` is **not** repeated on each concrete VO below.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

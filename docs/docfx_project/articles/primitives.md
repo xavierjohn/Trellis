@@ -41,7 +41,7 @@ audience: [developer]
 | Built-in scalar VOs | `Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Percentage`, `PhoneNumber`, `Slug`, `Url` | `Trellis.Primitives` |
 | Built-in structured VO | `Money` (`amount` + `currency`) | `Trellis.Primitives` |
 | Custom-primitive bases | `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredLong<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredBool<TSelf>`, `RequiredDateTime<TSelf>`, `RequiredDateTimeOffset<TSelf>`, `RequiredEnum<TSelf>` | `Trellis.Core` |
-| Validation and opt-out attributes | `[Trellis.StringLength]`, `[Trellis.Range]`, `[Trellis.EnumValue]`, `[Trellis.AllowEmpty]`, `[Trellis.AllowWhitespace]`, `[Trellis.NoTrim]`, `[Trellis.AllowZero]`, `[Trellis.AllowMinValue]` | `Trellis.Core` |
+| Validation and behavior attributes | `[Trellis.StringLength]`, `[Trellis.Range]`, `[Trellis.EnumValue]`, `[Trellis.NotDefault]`, `[Trellis.Trim]` | `Trellis.Core` |
 | Pattern / cross-field hook | `static partial void ValidateAdditional(value, fieldName, ref string? errorMessage)` | generator-emitted |
 | Scalar JSON converters | `ParsableJsonConverter<T>` (scalars), `RequiredEnumJsonConverter<TRequiredEnum>` | `Trellis.Core` |
 | Composite JSON converter | `CompositeValueObjectJsonConverter<T>` | `Trellis.Primitives` |
@@ -73,7 +73,6 @@ public partial class CustomerId : RequiredGuid<CustomerId> { }
 [Trellis.StringLength(200, MinimumLength = 1)]
 public partial class DisplayName : RequiredString<DisplayName> { }
 
-[Trellis.AllowZero]
 [Trellis.Range(0, 150)]
 public partial class LoyaltyScore : RequiredInt<LoyaltyScore> { }
 
@@ -157,7 +156,7 @@ public partial class PublishedAt : RequiredDateTime<PublishedAt> { }
 public partial class ExternalSequence : RequiredLong<ExternalSequence> { }
 ```
 
-Strict defaults are opt-out, not opt-in. Remove legacy `[NotDefault]` and `[Trim]`; use `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, or `[AllowMinValue]` only for primitives whose domain genuinely accepts those sentinel values.
+Defaults are lenient — `Required*<TSelf>` rejects only `null`. Use `[NotDefault]` to also reject the type's sentinel value (`""` for strings, `Guid.Empty`, `0`, `MinValue`), and `[Trim]` to enable automatic string trimming before validation.
 
 ### Factory methods
 
@@ -225,11 +224,8 @@ Trellis primitives enforce their rules in the generated `TryCreate`. There are t
 |---|---|---|---|
 | `Trellis.StringLengthAttribute` | `partial class X : RequiredString<X>` | `StringLength(int maximumLength)`; set `MinimumLength = N` via property initializer | `maximumLength` must be `>= 1`. Enforced after the null/empty/whitespace check and default trim. |
 | `Trellis.RangeAttribute` | `partial class X : RequiredInt<X>` / `RequiredLong<X>` / `RequiredDecimal<X>` | `(int, int)`, `(long, long)`, `(double, double)` | The constructor selected determines which generator template fires. There is **no** `RangeAttribute(typeof(decimal), "0.01", "999999.99")` overload — use `(double, double)` for fractional ranges. |
-| `Trellis.AllowEmptyAttribute` | `partial class X : RequiredString<X>` / `RequiredGuid<X>` | none | Opts out of final-empty rejection for strings or `Guid.Empty` rejection for GUIDs. |
-| `Trellis.AllowWhitespaceAttribute` | `partial class X : RequiredString<X>` | none | Opts out of whitespace-only rejection. Combine with `[NoTrim]` to preserve whitespace instead of storing `""`. |
-| `Trellis.NoTrimAttribute` | `partial class X : RequiredString<X>` | none | Opts out of automatic trim. |
-| `Trellis.AllowZeroAttribute` | `partial class X : RequiredInt<X>` / `RequiredLong<X>` / `RequiredDecimal<X>` | none | Opts out of zero rejection. |
-| `Trellis.AllowMinValueAttribute` | `partial class X : RequiredDateTime<X>` / `RequiredDateTimeOffset<X>` | none | Opts out of `MinValue` rejection. |
+| `Trellis.NotDefaultAttribute` | `partial class X : RequiredString<X>` / `RequiredGuid<X>` / `RequiredInt<X>` / `RequiredLong<X>` / `RequiredDecimal<X>` / `RequiredDateTime<X>` / `RequiredDateTimeOffset<X>` | none | Opts into sentinel rejection: `""` for strings (after any `[Trim]`), `Guid.Empty` for GUIDs, `0` for numerics, `MinValue` for dates. |
+| `Trellis.TrimAttribute` | `partial class X : RequiredString<X>` | none | Opts into automatic trimming. When combined with `[NotDefault]`, whitespace-only input trims to `""` and is rejected. |
 
 > [!WARNING]
 > The `System.ComponentModel.DataAnnotations` attributes of the same name **do not work**. `[DataAnnotations.StringLength]` on the class fails to compile (`CS0592`); on a property of a `Required*<TSelf>` it compiles but is **silently ignored** by the generator. Always import from `namespace Trellis`.

@@ -3,6 +3,8 @@
 /// <summary>
 /// Base class for creating strongly-typed decimal value objects that must be explicitly provided.
 /// Provides a foundation for monetary amounts, percentages, and other domain concepts represented by decimals.
+/// Rejects only <c>null</c> by default; rejection of <c>0</c> is opt-in via the
+/// <see cref="NotDefaultAttribute"/> attribute.
 /// </summary>
 /// <remarks>
 /// <para>
