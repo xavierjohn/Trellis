@@ -49,7 +49,6 @@ public partial class EvenPercentage : RequiredInt<EvenPercentage>
 /// <summary>
 /// RequiredInt without [Range] + custom positive-only validation.
 /// </summary>
-[AllowZero]
 public partial class PositiveScore : RequiredInt<PositiveScore>
 {
     static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage)
@@ -62,7 +61,6 @@ public partial class PositiveScore : RequiredInt<PositiveScore>
 /// <summary>
 /// RequiredDecimal with custom two-decimal-places validation.
 /// </summary>
-[AllowZero]
 public partial class PreciseAmount : RequiredDecimal<PreciseAmount>
 {
     static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage)
@@ -125,12 +123,13 @@ public class ValidateAdditionalTests
     }
 
     [Fact]
-    public void Sku_WithLeadingTrailingWhitespace_ValidatesOnTrimmedValue()
+    public void Sku_WithLeadingTrailingWhitespace_DoesNotTrim_FailsLengthCheck()
     {
-        // "SKU-123456" is 10 chars (at StringLength limit), spaces should be trimmed before validation
+        // Lenient default — no auto-trim. " SKU-123456 " is 12 chars and exceeds StringLength(10).
         var result = Sku.TryCreate(" SKU-123456 ");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("SKU-123456");
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Sku must be 10 characters or fewer.");
     }
 
     #endregion
@@ -224,7 +223,7 @@ public class ValidateAdditionalTests
     [Fact]
     public void PositiveScore_Zero_AcceptedByAdditionalValidation()
     {
-        // [AllowZero] permits zero, and ValidateAdditional allows it (< 0 check).
+        // Lenient default permits zero, and ValidateAdditional allows it (< 0 check).
         var result = PositiveScore.TryCreate(0);
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(0);
@@ -272,7 +271,7 @@ public class ValidateAdditionalTests
     [Fact]
     public void PreciseAmount_Zero_PassesAllValidation()
     {
-        // [AllowZero] permits zero, and ValidateAdditional allows it (0.00 has 2 decimal places).
+        // Lenient default permits zero, and ValidateAdditional allows it (0.00 has 2 decimal places).
         var result = PreciseAmount.TryCreate(0m);
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(0m);

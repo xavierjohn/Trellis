@@ -4,28 +4,26 @@ using System;
 using Trellis;
 using Xunit;
 
-// Lenient and strict variants for the strict-by-default rehydration test.
-[AllowEmpty]
+// Both fixtures are now bare lenient under the post-flip defaults; the test names retain
+// their historical "Lenient" / "Strict" labels but the fixtures and assertions all express
+// the lenient behavior (no rejection of Guid.Empty / DateTime.MinValue / "").
 public partial class LenientEfGuid : RequiredGuid<LenientEfGuid> { }
 
 public partial class StrictEfGuid : RequiredGuid<StrictEfGuid> { }
 
-[AllowMinValue]
 public partial class LenientEfDateTime : RequiredDateTime<LenientEfDateTime> { }
 
 public partial class StrictEfDateTime : RequiredDateTime<StrictEfDateTime> { }
 
-[AllowEmpty, AllowWhitespace, NoTrim]
 public partial class LenientEfString : RequiredString<LenientEfString> { }
 
 public partial class StrictEfString : RequiredString<StrictEfString> { }
 
 /// <summary>
-/// Regression coverage for the strict-by-default EF read-path impact: <see cref="TrellisScalarConverter{TModel, TProvider}"/>
-/// calls <c>TryCreate</c> to materialize every row, so opt-out Required types still do not throw
-/// <c>TrellisPersistenceMappingException</c> when a legacy column legitimately contains the
-/// sentinel value (<c>Guid.Empty</c>, <c>DateTime.MinValue</c>, <c>""</c>). Strict default types
-/// retain the database-invariant guarantee.
+/// Regression coverage for the EF read-path impact: <see cref="TrellisScalarConverter{TModel, TProvider}"/>
+/// calls <c>TryCreate</c> to materialize every row, so the bare Required* base materializes legacy
+/// column sentinels (<c>Guid.Empty</c>, <c>DateTime.MinValue</c>, <c>""</c>) without throwing
+/// <c>TrellisPersistenceMappingException</c>.
 /// </summary>
 /// <remarks>
 /// Exercises the converter directly via <c>ValueConverter&lt;,&gt;.ConvertFromProvider</c> rather
@@ -45,12 +43,11 @@ public class RequiredXxxRehydrationLenienceTests
     }
 
     [Fact]
-    public void StrictGuidConverter_throws_TrellisPersistenceMappingException_on_Guid_Empty()
+    public void StrictGuidConverter_materializes_Guid_Empty_without_throwing()
     {
         var converter = new TrellisScalarConverter<StrictEfGuid, Guid>();
-        Action act = () => _ = (StrictEfGuid)converter.ConvertFromProvider(Guid.Empty)!;
-        act.Should().Throw<TrellisPersistenceMappingException>()
-            .WithMessage("*Strict Ef Guid cannot be Guid.Empty*");
+        var materialized = (StrictEfGuid)converter.ConvertFromProvider(Guid.Empty)!;
+        materialized.Value.Should().Be(Guid.Empty);
     }
 
     [Fact]
@@ -62,12 +59,11 @@ public class RequiredXxxRehydrationLenienceTests
     }
 
     [Fact]
-    public void StrictDateTimeConverter_throws_on_MinValue()
+    public void StrictDateTimeConverter_materializes_MinValue_without_throwing()
     {
         var converter = new TrellisScalarConverter<StrictEfDateTime, DateTime>();
-        Action act = () => _ = (StrictEfDateTime)converter.ConvertFromProvider(DateTime.MinValue)!;
-        act.Should().Throw<TrellisPersistenceMappingException>()
-            .WithMessage("*Strict Ef Date Time cannot be DateTime.MinValue*");
+        var materialized = (StrictEfDateTime)converter.ConvertFromProvider(DateTime.MinValue)!;
+        materialized.Value.Should().Be(DateTime.MinValue);
     }
 
     [Fact]
@@ -79,11 +75,10 @@ public class RequiredXxxRehydrationLenienceTests
     }
 
     [Fact]
-    public void StrictStringConverter_throws_on_empty_string()
+    public void StrictStringConverter_materializes_empty_string_without_throwing()
     {
         var converter = new TrellisScalarConverter<StrictEfString, string>();
-        Action act = () => _ = (StrictEfString)converter.ConvertFromProvider("")!;
-        act.Should().Throw<TrellisPersistenceMappingException>()
-            .WithMessage("*Strict Ef String cannot be empty*");
+        var materialized = (StrictEfString)converter.ConvertFromProvider("")!;
+        materialized.Value.Should().Be("");
     }
 }

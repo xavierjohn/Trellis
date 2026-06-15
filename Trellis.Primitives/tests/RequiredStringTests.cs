@@ -98,16 +98,12 @@ public class RequiredStringTests
     }
 
     [Fact]
-    public void Cannot_cast_empty_to_RequiredString()
+    public void Can_cast_empty_to_RequiredString()
     {
-        // Arrange
-        TrackingId trackingId;
-        // Act
-        Action act = () => trackingId = (TrackingId)string.Empty;
+        // Lenient default — casting "" succeeds and stores it verbatim.
+        TrackingId trackingId = (TrackingId)string.Empty;
 
-        // Assert
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TrackingId:*Tracking Id cannot be empty*");
+        trackingId.Value.Should().Be(string.Empty);
     }
 
     [Fact]
@@ -212,35 +208,31 @@ public class RequiredStringTests
     }
 
     [Fact]
-    public void Cannot_create_RequiredString_from_parsing_empty_string_in_json()
+    public void Can_create_RequiredString_from_parsing_empty_string_in_json()
     {
-        // Arrange
-        var strGuid = JsonSerializer.Serialize(string.Empty);
+        // Lenient default — empty JSON string deserializes successfully and stores "" verbatim.
+        var json = JsonSerializer.Serialize(string.Empty);
 
-        // Act
-        Action act = () => JsonSerializer.Deserialize<TrackingId>(strGuid);
+        TrackingId actual = JsonSerializer.Deserialize<TrackingId>(json)!;
 
-        // Assert
-        act.Should().Throw<FormatException>()
-            .WithMessage("Tracking Id cannot be empty.");
+        actual.Value.Should().Be(string.Empty);
     }
 
     [Fact]
-    public void TryCreate_with_whitespace_padding_should_trim()
+    public void TryCreate_with_whitespace_padding_should_not_trim()
     {
+        // Lenient default — no auto-trim. Input is stored verbatim.
         var result = TrackingId.TryCreate("  ABC123  ");
 
         result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("ABC123",
-            "RequiredString should trim leading and trailing whitespace by default");
+        result.Unwrap().Value.Should().Be("  ABC123  ",
+            "RequiredString does not auto-trim under the lenient default; opt in with [Trim].");
     }
 
     public static TheoryData<string?, string> GetBadStringWithMessages() =>
       new TheoryData<string?, string>
       {
-              { default(string), "Tracking Id cannot be null." },
-              { string.Empty, "Tracking Id cannot be empty." },
-              { "   ", "Tracking Id cannot be whitespace-only." }
+              { default(string), "Tracking Id cannot be null." }
       };
 
     #region StartsWith, Contains, EndsWith, Length

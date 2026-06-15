@@ -61,7 +61,7 @@ Apply this shape to every `RequiredString`, `RequiredGuid`, `RequiredInt`, `Requ
 
 The generator is bundled inside `Trellis.Core.nupkg` at `analyzers/dotnet/cs/`, so the `FunctionalDdd.CommonValueObjectGenerator` package reference can be dropped — installing `Trellis.Core` attaches the generator automatically.
 
-**Strict-by-default attributes.** `Required*<TSelf>` is now strict-by-default in v3 — `null`, sentinel values, and (for `RequiredString`) `""` / whitespace-only input are rejected without any opt-in attribute. The pre-v3 `[NotDefault]` and `[Trim]` attributes are now vestigial no-ops (the generator emits informational diagnostics `TRLS046` / `TRLS047`). See [`Required<T>` defaults flip](#requiredt-defaults-flip-strict-by-default-with-per-type-opt-outs) for the full strict-default rules and the per-type opt-outs (`[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, `[AllowMinValue]`).
+**Lenient-by-default.** `Required*<TSelf>` is lenient by default in v3 — rejects only `null`. `[NotDefault]` opts into sentinel rejection; `[Trim]` opts into string trimming. The deleted attributes `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, and `[AllowMinValue]` no longer exist. See [`Required<T>` defaults — lenient by default](#requiredt-defaults-lenient-by-default-with-notdefault--trim-opt-ins) for the full details and opt-in guidance.
 
 ### Step 4 — Closed Error ADT port
 
@@ -937,106 +937,110 @@ If your composition root uses `services.AddTrellis(o => o.UseFluentValidation(..
 
 ---
 
-## Required<T> defaults flip: strict-by-default with per-type opt-outs
+## Required<T> defaults: lenient by default with `[NotDefault]` / `[Trim]` opt-ins
 
 ### Rationale
 
-`Required<T>` value-object bases now follow the principle of least astonishment: a type named "Required" rejects its CLR sentinel value by default. V2-era `Required*<T>` classes were lenient unless consumers opted into strict validation with `[NotDefault]` and, for strings, `[Trim]`. In v3, strict validation is the default and boundary / legacy-data shapes opt out explicitly with attributes whose names describe the sentinel they allow.
+`Required<T>` value-object bases are lenient by default: a bare `Required*<T>` rejects only `null`. Every concrete value — `0`, `Guid.Empty`, `DateTime.MinValue`, `DateTimeOffset.MinValue`, `""`, whitespace-only strings — is accepted. Strings are not auto-trimmed. Consumer code opts into stricter behavior declaratively: `[NotDefault]` to reject the type's sentinel, `[Trim]` to enable string trimming.
 
-### Defaults and opt-outs
+This keeps the default safe for boundary types, legacy-data rehydration, and integration seams without requiring any attribute. Domain types that should be strict simply add `[NotDefault]` (and `[Trim]` for strings).
 
-`null` remains rejected by every `Required*<T>` base and has no opt-out. The opt-outs below only affect the non-null sentinel listed for that base.
+> **If you were on a pre-release build that had strict-by-default semantics:** the five `[Allow*]` opt-out attributes (`[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, `[AllowMinValue]`) are **deleted**. Remove them. Leniency is the default, so no replacement attribute is needed. Add `[NotDefault]` where you genuinely need to reject the sentinel.
 
-| Base | Default rejects | Opt-out |
+### Defaults and opt-ins
+
+`null` remains rejected by every `Required*<T>` base and has no opt-out.
+
+| Base | Default rejects | Opt-in to reject sentinel |
 |---|---|---|
-| `RequiredString<T>` | `null`, `""`, whitespace-only | `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]` |
-| `RequiredGuid<T>` | `null`, `Guid.Empty` | `[AllowEmpty]` |
-| `RequiredDateTime<T>` | `null`, `DateTime.MinValue` | `[AllowMinValue]` |
-| `RequiredDateTimeOffset<T>` | `null`, `DateTimeOffset.MinValue` | `[AllowMinValue]` |
-| `RequiredInt<T>` | `null`, `0` | `[AllowZero]` |
-| `RequiredLong<T>` | `null`, `0` | `[AllowZero]` |
-| `RequiredDecimal<T>` | `null`, `0m` | `[AllowZero]` |
-| `RequiredBool<T>` | `null` | (no opt-out — degenerate) |
+| `RequiredString<T>` | `null` only (accepts `""`, whitespace; no auto-trim) | `[NotDefault]` rejects `""`; `[Trim]` enables trimming; combine for strict trim-then-reject-empty |
+| `RequiredGuid<T>` | `null` only (accepts `Guid.Empty`) | `[NotDefault]` rejects `Guid.Empty` |
+| `RequiredDateTime<T>` | `null` only (accepts `DateTime.MinValue`) | `[NotDefault]` rejects `DateTime.MinValue` |
+| `RequiredDateTimeOffset<T>` | `null` only (accepts `DateTimeOffset.MinValue`) | `[NotDefault]` rejects `DateTimeOffset.MinValue` |
+| `RequiredInt<T>` | `null` only (accepts `0`) | `[NotDefault]` rejects `0` |
+| `RequiredLong<T>` | `null` only (accepts `0L`) | `[NotDefault]` rejects `0L` |
+| `RequiredDecimal<T>` | `null` only (accepts `0m`) | `[NotDefault]` rejects `0m` |
+| `RequiredBool<T>` | `null` | (no sentinel — `false` is valid) |
 | `RequiredEnum<T>` | `null`, undeclared members | (smart-enum) |
 
 ### `RequiredString<T>` validation order
 
 1. **Null check** (no opt-out): reject if input is `null`.
-2. **Whitespace-only check on raw input** (skipped by `[AllowWhitespace]`): reject if `value.Length > 0` and every character satisfies `char.IsWhiteSpace`.
-3. **Trim** (skipped by `[NoTrim]`): `value = value.Trim()`.
-4. **Empty check on final input** (skipped by `[AllowEmpty]`, or when the raw value was whitespace-only and `[AllowWhitespace]` is present): reject if `value.Length == 0`.
-5. **User-supplied constraints** such as `[StringLength]` and `ValidateAdditional`.
-
-The whitespace check is Unicode-aware because it uses `char.IsWhiteSpace`.
+2. **Trim** (only if `[Trim]` present): `value = value.Trim()`.
+3. **Empty check** (only if `[NotDefault]` present): reject if `value.Length == 0`.
+4. **User-supplied constraints** such as `[StringLength]` and `ValidateAdditional`.
 
 ### `RequiredString<T>` truth table
 
 | Attribute(s) | `null` | `""` | `"   "` | `" a "` | `"a"` |
 |---|---|---|---|---|---|
-| (none) | reject | reject | reject | accept `"a"` | accept `"a"` |
-| `[AllowEmpty]` | reject | accept `""` | reject | accept `"a"` | accept `"a"` |
-| `[AllowWhitespace]` | reject | reject | accept `""` | accept `"a"` | accept `"a"` |
-| `[NoTrim]` | reject | reject | reject | accept `" a "` | accept `"a"` |
-| `[AllowEmpty, AllowWhitespace]` | reject | accept `""` | accept `""` | accept `"a"` | accept `"a"` |
-| `[AllowEmpty, NoTrim]` | reject | accept `""` | reject | accept `" a "` | accept `"a"` |
-| `[AllowWhitespace, NoTrim]` | reject | reject | accept `"   "` | accept `" a "` | accept `"a"` |
-| `[AllowEmpty, AllowWhitespace, NoTrim]` | reject | accept `""` | accept `"   "` | accept `" a "` | accept `"a"` |
+| (none) | reject | accept `""` | accept `"   "` | accept `" a "` | accept `"a"` |
+| `[NotDefault]` | reject | reject | accept `"   "` | accept `" a "` | accept `"a"` |
+| `[Trim]` | reject | accept `""` | accept `""` | accept `"a"` | accept `"a"` |
+| `[Trim, NotDefault]` | reject | reject | reject (trims to `""`) | accept `"a"` | accept `"a"` |
 
-`[AllowWhitespace]` alone accepts whitespace-only input, but trim still normalizes the stored value to `""`. Combine `[AllowWhitespace]` with `[NoTrim]` when preserving whitespace verbatim is part of the contract.
+`[Trim, NotDefault]` is the equivalent of the old strict default: trim first, then reject if empty (so whitespace-only trims to `""` and is rejected).
 
 ### Mechanical migration recipe
 
-1. Remove `[NotDefault]` and `[Trim]` from existing classes. They are vestigial no-ops under v3 strict defaults; the generator ignores them and reports informational diagnostics TRLS046 / TRLS047.
-2. For value objects that legitimately accept the CLR sentinel (boundary types, legacy-data rehydration, or other compatibility seams), add the per-type opt-out: `[AllowEmpty]` for post-trim-empty `RequiredString<T>` values, `[AllowEmpty]` for `RequiredGuid<T>`, `[AllowMinValue]` for date bases, or `[AllowZero]` for numeric bases.
-3. For `RequiredString<T>` fixtures that need lenient handling of whitespace input or skip-trim behavior, also add `[AllowWhitespace]` and/or `[NoTrim]` according to the truth table above.
+**From v2 / FunctionalDdd 2.x (lenient-by-default era):**
+
+1. Add `[NotDefault]` to any value object that should reject its type's sentinel.
+2. Add `[Trim]` to any `RequiredString<T>` that should trim whitespace before storage.
+3. Add `[Trim, NotDefault]` to get the old-fashioned strict + trim behavior.
+4. No `[Allow*]` attributes were ever present in v2; nothing to remove.
+
+**From a pre-release v3 build that had strict-by-default semantics (if applicable):**
+
+1. Remove all `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, and `[AllowMinValue]` attributes — they no longer exist and will not compile.
+2. Remove `[NotDefault]` and `[Trim]` where you do NOT want sentinel rejection or trimming (they are now opt-ins, so leaving them off means lenient).
+3. Keep `[NotDefault]` where you DO want sentinel rejection; keep `[Trim]` where you DO want trimming.
+4. Diagnostics TRLS046–TRLS053 are gone; drop any suppressions referencing them.
 
 ### Worked example
 
-A typical domain email value object becomes simpler because strictness and trimming are the default:
+A strict email address type (rejects empty, trims):
 
 ```csharp
-// Before v3
+// Lenient by default — no attributes needed for a plain string wrapper
+public sealed partial class CommentBody : RequiredString<CommentBody>;
+
+// Opt in to strict + trim behavior
 [Trim]
 [NotDefault]
-[EmailAddress]
 public sealed partial class Email : RequiredString<Email>;
 
-// After v3
-[EmailAddress]
-public sealed partial class Email : RequiredString<Email>;
+// Strict guid (no empty GUIDs)
+[NotDefault]
+public sealed partial class OrderId : RequiredGuid<OrderId>;
+
+// Strict numeric (no zero quantities)
+[NotDefault]
+public sealed partial class Quantity : RequiredInt<Quantity>;
 ```
 
-A boundary or legacy-data value object that intentionally accepts empty / whitespace comment bodies opts out explicitly:
+A value object that previously required `[AllowEmpty]` (post-trim empty is valid — a comment body can be blank):
 
 ```csharp
-// Before v3 — lenient by default
+// Before — required [AllowEmpty] to accept ""
+[AllowEmpty]
 public sealed partial class CommentBody : RequiredString<CommentBody>;
 
-// After v3 — leniency is explicit
-[AllowEmpty]
-[AllowWhitespace]
-[NoTrim]
+// After — leniency is the default; just remove the attribute
 public sealed partial class CommentBody : RequiredString<CommentBody>;
 ```
-
-If the comment body should accept `""` after trimming but still reject whitespace-only input, use `[AllowEmpty]` without `[AllowWhitespace]`. If it should accept whitespace-only input but normalize it to `""`, use `[AllowWhitespace]` without `[NoTrim]`.
 
 ### What about `[AllowDefault]`?
 
-`[AllowDefault]` was deleted before v3 shipped. No consumers existed, and the generic name was replaced by per-type names that make the allowed sentinel obvious at the declaration site: `[AllowEmpty]`, `[AllowMinValue]`, and `[AllowZero]`.
+`[AllowDefault]` was deleted before any stable v3 shipped. No migration needed.
 
-### New conflict diagnostics
+### Active diagnostics
 
 | ID | Severity | Trigger |
 |---|---|---|
-| TRLS046 | Info | `[NotDefault]` is vestigial under the v3 strict defaults |
-| TRLS047 | Info | `[Trim]` is vestigial under the v3 strict defaults |
-| TRLS048 | Error | `[AllowZero]` on a non-numeric Required base |
-| TRLS049 | Error | `[AllowEmpty]` on a numeric / date Required base |
-| TRLS050 | Error | `[AllowMinValue]` on a non-date Required base |
-| TRLS051 | Error | `[AllowWhitespace]` on a non-string Required base |
-| TRLS052 | Error | `[NoTrim]` on a non-string Required base |
-| TRLS053 | Error | Contradictory combination, for example `[AllowZero]` + `[Positive]` |
+| TRLS043 | Error | Numeric convenience attribute (`[Positive]` etc.) on a non-numeric Required base |
+| TRLS044 | Error | More than one numeric convenience attribute on the same class |
+| TRLS045 | Error | Numeric convenience attribute combined with explicit `[Range]` |
 
 ---
 
@@ -1053,7 +1057,7 @@ After upgrading a Trellis package, several authoritative sources can answer "wha
 
 The methodology emerged from a real `FunctionalDdd 2.x → Trellis 3.0.0-alpha.337` migration where it caught two mistakes before they shipped:
 
-- **False-positive correctness regression**, caught at step (2). The author wrote up a "`RequiredString<T>` silently accepts empty strings — silent semantic change from v2.x" finding, drafted an upstream issue, and added `[NotDefault, Trim]` to six value objects to "preserve v2.x semantics." An audit pass against `.github/trellis-api-core.md` proved strict-by-default ships in alpha.337 — the attributes were vestigial no-ops (`TRLS046`, `TRLS047`). Issue retracted before filing. Without the auto-deposited docs this would have shipped as a public framework-team report carrying a false correctness claim.
+- **False-positive correctness regression**, caught at step (2). The author wrote up a "`RequiredString<T>` silently accepts empty strings — silent semantic change from v2.x" finding, drafted an upstream issue, and added `[NotDefault, Trim]` to six value objects to "preserve v2.x semantics." An audit pass against `.github/trellis-api-core.md` showed the deposited docs for the installed alpha, which described the behavior at the time. Issue retracted before filing. Without the auto-deposited docs this would have shipped as a public framework-team report carrying a false correctness claim.
 - **Real correctness bug**, also caught at step (2). Porting removed `Result<T>.Value` to inline `.Match(v => v, e => throw …)` for nested DTO conversion preserved the throwing semantic locally but surfaced as HTTP 500 instead of HTTP 422 with field violations. An audit of the cookbook against the actual API behavior found `TraverseAll` — the canonical accumulating combinator for exactly this pattern.
 
 ### Why this order

@@ -29,9 +29,8 @@ var name = CustomerName.Create(" Ada "); // stores "Ada" by default
 
 ## Key Features
 - Generates `Create`, `TryCreate`, parsing, and conversion boilerplate for custom primitives.
-- Emits strict-by-default validation: strings reject null/empty/whitespace and trim, GUIDs reject `Guid.Empty`, numerics reject zero, and dates reject `MinValue`.
-- Reads Trellis validation and opt-out attributes such as `[StringLength]`, `[Range]`, `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`, `[AllowZero]`, and `[AllowMinValue]` at compile time.
-- Treats legacy `[NotDefault]` and `[Trim]` as vestigial no-ops with informational diagnostics.
+- Emits lenient-by-default validation: rejects only `null`; every concrete value is accepted by default. Opt into sentinel rejection with `[NotDefault]`, and string trimming with `[Trim]`.
+- Reads Trellis validation and behavior attributes such as `[StringLength]`, `[Range]`, `[NotDefault]`, and `[Trim]` at compile time.
 - Keeps custom value objects terse without giving up strong typing.
 
 ## Documentation

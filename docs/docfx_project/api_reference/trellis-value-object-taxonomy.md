@@ -28,14 +28,14 @@ Use this table to pick the right base class before reading the per-type signatur
 
 ## Required base defaults
 
-`Required*<TSelf>` bases are strict by default. Remove legacy `[NotDefault]` / `[Trim]`; use the per-base opt-outs only when the sentinel is valid domain state.
+`Required*<TSelf>` bases are lenient by default: rejects only `null`. Use `[NotDefault]` to opt into sentinel rejection and `[Trim]` to opt into string trimming.
 
-| Base | Default rejects | Opt-out |
+| Base | Default rejects | Opt-in to reject sentinel |
 |---|---|---|
-| `RequiredString<TSelf>` | `null`, `""`, whitespace-only; trims accepted values | `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]` |
-| `RequiredGuid<TSelf>` | `null`, `Guid.Empty` | `[AllowEmpty]` |
-| `RequiredInt<TSelf>` / `RequiredLong<TSelf>` / `RequiredDecimal<TSelf>` | `null`, `0` / `0L` / `0m` | `[AllowZero]` |
-| `RequiredDateTime<TSelf>` / `RequiredDateTimeOffset<TSelf>` | `null`, `MinValue` | `[AllowMinValue]` |
+| `RequiredString<TSelf>` | `null` only (accepts `""`, whitespace; no auto-trim) | `[NotDefault]` rejects `""`; `[Trim]` enables trimming; combine for strict trim-then-reject-empty |
+| `RequiredGuid<TSelf>` | `null` only (accepts `Guid.Empty`) | `[NotDefault]` rejects `Guid.Empty` |
+| `RequiredInt<TSelf>` / `RequiredLong<TSelf>` / `RequiredDecimal<TSelf>` | `null` only (accepts `0`) | `[NotDefault]` rejects the zero sentinel |
+| `RequiredDateTime<TSelf>` / `RequiredDateTimeOffset<TSelf>` | `null` only (accepts `MinValue`) | `[NotDefault]` rejects `MinValue` |
 | `RequiredBool<TSelf>` | `null` | none (`false` is valid) |
 | `RequiredEnum<TSelf>` | `null`, undeclared names | none (smart-enum lookup) |
 

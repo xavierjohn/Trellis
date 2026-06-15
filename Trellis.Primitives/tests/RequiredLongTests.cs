@@ -2,9 +2,9 @@
 namespace Trellis.Primitives.Tests;
 
 /// <summary>
-/// RequiredLong without [Range] — accepts any non-null long, including zero via [AllowZero].
+/// RequiredLong without [Range] — accepts any non-null long, including zero, under the lenient default.
 /// </summary>
-[AllowZero] public partial class TraceId : RequiredLong<TraceId> { }
+public partial class TraceId : RequiredLong<TraceId> { }
 
 /// <summary>
 /// RequiredLong with [Range].
@@ -15,13 +15,13 @@ public partial class SequenceNumber : RequiredLong<SequenceNumber> { }
 /// <summary>
 /// RequiredLong with [Range] at int.MaxValue boundary — tests int→long cast.
 /// </summary>
-[AllowZero, Range(0L, 5000000000L)]
+[Range(0L, 5000000000L)]
 public partial class LargeSequence : RequiredLong<LargeSequence> { }
 
 /// <summary>
 /// RequiredLong with full long range.
 /// </summary>
-[AllowZero, Range(long.MinValue, long.MaxValue)]
+[Range(long.MinValue, long.MaxValue)]
 public partial class FullRangeLong : RequiredLong<FullRangeLong> { }
 
 /// <summary>
@@ -148,7 +148,7 @@ public class RequiredLongTests
         deserialized.Should().Be(original);
     }
 
-    #region LargeSequence — [AllowZero, Range(0L, 5000000000L)] boundary tests
+    #region LargeSequence — [Range(0L, 5000000000L)] boundary tests
 
     [Fact]
     public void LargeSequence_AtLongMax_ReturnsSuccess()
@@ -181,7 +181,7 @@ public class RequiredLongTests
 
     #endregion
 
-    #region FullRangeLong — [AllowZero, Range(long.MinValue, long.MaxValue)]
+    #region FullRangeLong — [Range(long.MinValue, long.MaxValue)]
 
     [Fact]
     public void FullRangeLong_AtLongMinValue_ReturnsSuccess()

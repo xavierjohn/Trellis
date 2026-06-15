@@ -36,13 +36,13 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// <para>
 /// Type-specific behavior:
 /// <list type="bullet">
-/// <item><c>RequiredGuid</c> — rejects <c>Guid.Empty</c>; generates <c>NewUniqueV4()</c>, <c>NewUniqueV7()</c>, and <c>NewUniqueV7(TimeProvider)</c></item>
-/// <item><c>RequiredString</c> — rejects null/empty/whitespace; trims; supports <c>[StringLength]</c></item>
+/// <item><c>RequiredGuid</c> — generates <c>NewUniqueV4()</c>, <c>NewUniqueV7()</c>, and <c>NewUniqueV7(TimeProvider)</c>; rejects <c>Guid.Empty</c> only when <c>[NotDefault]</c> is applied</item>
+/// <item><c>RequiredString</c> — rejects <c>null</c> only by default; opt into trim with <c>[Trim]</c> and into empty-string rejection with <c>[NotDefault]</c>; supports <c>[StringLength]</c></item>
 /// <item><c>RequiredInt</c> — supports <c>[Range(int, int)]</c></item>
 /// <item><c>RequiredLong</c> — supports <c>[Range(long, long)]</c></item>
 /// <item><c>RequiredDecimal</c> — supports <c>[Range(int, int)]</c> and <c>[Range(double, double)]</c></item>
 /// <item><c>RequiredBool</c> — accepts true/false; rejects null</item>
-/// <item><c>RequiredDateTime</c> — rejects <c>DateTime.MinValue</c>; ISO 8601 round-trip <c>ToString</c></item>
+/// <item><c>RequiredDateTime</c> — rejects <c>DateTime.MinValue</c> only when <c>[NotDefault]</c> is applied; ISO 8601 round-trip <c>ToString</c></item>
 /// <item><c>RequiredEnum</c> — smart enum; delegates to <c>TryFromName</c></item>
 /// </list>
 /// </para>
@@ -149,18 +149,9 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public const string InvalidStringLengthRange = "TRLS032";
         public const string InvalidRangeMinExceedsMax = "TRLS033";
         public const string DecimalRangeExceedsDecimalRange = "TRLS034";
-        // TRLS040 / TRLS041 / TRLS042 retired in the v3 defaults flip — see TRLS046 / TRLS047 below.
         public const string NumericConvenienceOnNonNumeric = "TRLS043";
         public const string NumericConvenienceConflict = "TRLS044";
         public const string NumericConvenienceWithExplicitRange = "TRLS045";
-        public const string NotDefaultIsVestigial = "TRLS046";
-        public const string TrimIsVestigial = "TRLS047";
-        public const string AllowZeroOnNonNumericRequired = "TRLS048";
-        public const string AllowEmptyOnNumericOrDateRequired = "TRLS049";
-        public const string AllowMinValueOnNonDateRequired = "TRLS050";
-        public const string AllowWhitespaceOnNonStringRequired = "TRLS051";
-        public const string NoTrimOnNonStringRequired = "TRLS052";
-        public const string ContradictoryRequiredAttributeCombination = "TRLS053";
         public const string GeneratedMemberCollision = "TRLS056";
     }
 
@@ -678,16 +669,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     private static string GenerateGuidMethods(RequiredPartialClassInfo g, SourceProductionContext context, HashSet<string> reportedCollisions)
     {
         var emptyDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be Guid.Empty.""";
-        var emptyCheck = g.HasAllowEmpty
+        var emptyCheck = !g.HasNotDefault
             ? ""
             : $@"
             if (value == Guid.Empty)
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {emptyDetail} }})));";
-        var emptyNullableEnsure = g.HasAllowEmpty
+        var emptyNullableEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(x => x != Guid.Empty, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {emptyDetail} }})))";
-        var emptyParsedEnsure = g.HasAllowEmpty
+        var emptyParsedEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(_ => parsedGuid != Guid.Empty, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {emptyDetail} }})))";
@@ -820,149 +811,23 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         string.IsNullOrEmpty(g.NameSpace) ? string.Empty : $"namespace {g.NameSpace};";
 
     /// <summary>
-    /// Validates that the <c>[NotDefault]</c> and <c>[Trim]</c> attributes (if present) are
-    /// applied to a compatible <c>Required*</c> base. Emits a generator diagnostic when the
-    /// combination is invalid. Defense in depth — the same combinations are also flagged by
-    /// the matching analyzer rules in <c>Trellis.Analyzers</c>, but the generator must refuse
-    /// to emit broken code even if the analyzer is disabled or suppressed.
+    /// Validates that the numeric convenience attributes (<c>[Positive]</c>, <c>[NonNegative]</c>,
+    /// <c>[Negative]</c>, <c>[NonPositive]</c>) are applied to a compatible numeric
+    /// <c>Required*</c> base, and that mutually exclusive combinations are not stacked. Emits
+    /// a generator diagnostic when the combination is invalid. Defense in depth — the same
+    /// combinations are also flagged by the matching analyzer rules in
+    /// <c>Trellis.Analyzers</c>, but the generator must refuse to emit broken code even if the
+    /// analyzer is disabled or suppressed.
     /// </summary>
     /// <returns><c>true</c> when generation may proceed; <c>false</c> when generation must be skipped.</returns>
     private static bool ValidateAttributeUsage(RequiredPartialClassInfo g, SourceProductionContext context)
     {
         var ok = true;
         var isNumericBase = g.ClassBase is "RequiredInt" or "RequiredLong" or "RequiredDecimal";
-        var isDateBase = g.ClassBase is "RequiredDateTime" or "RequiredDateTimeOffset";
         var numericConvenienceCount = (g.HasPositive ? 1 : 0)
             + (g.HasNonNegative ? 1 : 0)
             + (g.HasNegative ? 1 : 0)
             + (g.HasNonPositive ? 1 : 0);
-
-        if (g.HasNotDefault)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.NotDefaultIsVestigial,
-                    title: "[NotDefault] is vestigial",
-                    messageFormat: "Class '{0}' has [NotDefault]. Attribute is now vestigial under the v3 strict-by-default model. Remove it; the strict behavior it opted into is now the default. To opt OUT use [AllowEmpty]/[AllowZero]/[AllowMinValue] as appropriate.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Info,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName));
-        }
-
-        if (g.HasTrim)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.TrimIsVestigial,
-                    title: "[Trim] is vestigial",
-                    messageFormat: "Class '{0}' has [Trim]. Attribute is now vestigial under the v3 strict-by-default model. On RequiredString trim now runs by default — remove this attribute and use [NoTrim] to opt out. On other Required bases [Trim] has never had meaning and is silently ignored.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Info,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName));
-        }
-
-        if (g.HasAllowZero && !isNumericBase)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.AllowZeroOnNonNumericRequired,
-                    title: "[AllowZero] is only valid on numeric Required bases",
-                    messageFormat: "Class '{0}' has [AllowZero] but inherits from '{1}'. [AllowZero] only applies to RequiredInt, RequiredLong, and RequiredDecimal.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Error,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName,
-                g.ClassBase));
-            ok = false;
-        }
-
-        if (g.HasAllowEmpty && g.ClassBase is not ("RequiredString" or "RequiredGuid"))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.AllowEmptyOnNumericOrDateRequired,
-                    title: "[AllowEmpty] is only valid on RequiredString and RequiredGuid",
-                    messageFormat: "Class '{0}' has [AllowEmpty] but inherits from '{1}'. [AllowEmpty] only applies to RequiredString and RequiredGuid; use [AllowZero] for numeric Required bases or [AllowMinValue] for date Required bases. RequiredBool / RequiredEnum have no opt-out (RequiredBool is degenerate; RequiredEnum uses smart-enum lookup).",
-                    category: "Trellis",
-                    DiagnosticSeverity.Error,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName,
-                g.ClassBase));
-            ok = false;
-        }
-
-        if (g.HasAllowMinValue && !isDateBase)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.AllowMinValueOnNonDateRequired,
-                    title: "[AllowMinValue] is only valid on date Required bases",
-                    messageFormat: "Class '{0}' has [AllowMinValue] but inherits from '{1}'. [AllowMinValue] only applies to RequiredDateTime and RequiredDateTimeOffset.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Error,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName,
-                g.ClassBase));
-            ok = false;
-        }
-
-        if (g.HasAllowWhitespace && g.ClassBase != "RequiredString")
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.AllowWhitespaceOnNonStringRequired,
-                    title: "[AllowWhitespace] is only valid on RequiredString",
-                    messageFormat: "Class '{0}' has [AllowWhitespace] but inherits from '{1}'. [AllowWhitespace] only applies to RequiredString.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Error,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName,
-                g.ClassBase));
-            ok = false;
-        }
-
-        if (g.HasNoTrim && g.ClassBase != "RequiredString")
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.NoTrimOnNonStringRequired,
-                    title: "[NoTrim] is only valid on RequiredString",
-                    messageFormat: "Class '{0}' has [NoTrim] but inherits from '{1}'. [NoTrim] only applies to RequiredString.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Error,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName,
-                g.ClassBase));
-            ok = false;
-        }
-
-        if (g.HasAllowZero && (g.HasPositive || g.HasNegative) && isNumericBase)
-        {
-            var attrName = g.HasPositive && g.HasNegative ? "[Positive] and [Negative]"
-                : g.HasPositive ? "[Positive]"
-                : "[Negative]";
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.ContradictoryRequiredAttributeCombination,
-                    title: "Contradictory Required attribute combination",
-                    messageFormat: "Class '{0}' has [AllowZero] combined with {1}. {1} rejects zero by definition, so [AllowZero] is contradictory. Remove [AllowZero], or use [NonNegative]/[NonPositive] if zero should be accepted.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Error,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName,
-                attrName));
-            ok = false;
-        }
 
         // Numeric convenience attrs ([Positive] / [NonNegative] / [Negative] / [NonPositive])
         // only make sense on numeric Required bases (Int, Long, Decimal).
@@ -1065,49 +930,21 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = ""{g.ClassName.SplitPascalCase()} must be {g.MaxLength.Value} {"character" + (g.MaxLength.Value == 1 ? "" : "s")} or fewer."" }})));";
         }
 
-        // String validation pipeline, strict-by-default:
+        // String validation pipeline, lenient-by-default:
         //   1. Null check (always emitted; no opt-out).
-        //   2. Raw-input whitespace-only detection and rejection (unless [AllowWhitespace]).
-        //   3. Trim (unless [NoTrim]).
-        //   4. Empty-string rejection (unless [AllowEmpty], or [AllowWhitespace] accepted raw whitespace that trimmed to empty).
-        //   5. [StringLength] (operates on the normalized value).
-        //   6. ValidateAdditional consumer hook.
-        var needsWhitespaceOnlyProbe = !g.HasAllowWhitespace
-            || (g.HasAllowWhitespace && !g.HasAllowEmpty && !g.HasNoTrim);
-        var whitespaceOnlyStep = needsWhitespaceOnlyProbe
+        //   2. Trim (only when [Trim]).
+        //   3. Empty rejection (only when [NotDefault]; when combined with [Trim], whitespace-only
+        //      input trims to empty and is rejected).
+        //   4. [StringLength] (operates on the normalized value).
+        //   5. ValidateAdditional consumer hook.
+        var trimStep = g.HasTrim
+            ? "var normalized = value.Trim();"
+            : "var normalized = value;";
+        var emptyStep = g.HasNotDefault
             ? $@"
-    bool isWhitespaceOnly = false;
-    if (value.Length > 0)
-    {{
-        isWhitespaceOnly = true;
-        for (int i = 0; i < value.Length; i++)
-        {{
-            if (!char.IsWhiteSpace(value[i]))
-            {{
-                isWhitespaceOnly = false;
-                break;
-            }}
-        }}
-    }}"
+    if (normalized.Length == 0)
+        return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})));"
             : "";
-        var whitespaceOnlyReject = g.HasAllowWhitespace
-            ? ""
-            : $@"
-    if (isWhitespaceOnly)
-        return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be whitespace-only."" }})));";
-        var trimStep = g.HasNoTrim
-            ? "var normalized = value;"
-            : "var normalized = value.Trim();";
-        var emptyStep = "";
-        if (!g.HasAllowEmpty)
-        {
-            var emptyCondition = g.HasAllowWhitespace && !g.HasNoTrim
-                ? "normalized.Length == 0 && !isWhitespaceOnly"
-                : "normalized.Length == 0";
-            emptyStep = $@"
-    if ({emptyCondition})
-        return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})));";
-        }
 
         return $@"
 
@@ -1115,7 +952,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         /// Optional validation hook. Implement this partial method to add custom validation
         /// (e.g., regex patterns, format checks). Called after built-in validations pass.
         /// </summary>
-        /// <param name=""value"">The validated string value (trimmed unless [NoTrim] is applied).</param>
+        /// <param name=""value"">The validated string value (trimmed when [Trim] is applied).</param>
         /// <param name=""fieldName"">The normalized field name for error messages.</param>
         /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
         static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage);
@@ -1133,7 +970,6 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             if (value is null)
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be null."" }})));
-            {whitespaceOnlyStep}{whitespaceOnlyReject}
             {trimStep}{emptyStep}{lengthChecks}
             string? additionalError = null;
             ValidateAdditional(normalized, field, ref additionalError);
@@ -1166,16 +1002,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         var rangeMax = g.RangeMax.GetValueOrDefault();
 
         var notDefaultDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be zero.""";
-        var notDefaultIfCheck = g.HasAllowZero
+        var notDefaultIfCheck = !g.HasNotDefault
             ? ""
             : $@"
             if (value == 0)
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})));";
-        var notDefaultNullableEnsure = g.HasAllowZero
+        var notDefaultNullableEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(x => x != 0, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
-        var notDefaultParsedEnsure = g.HasAllowZero
+        var notDefaultParsedEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(_ => parsedInt != 0, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
@@ -1407,16 +1243,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         hasRange = hasRange || (g.RangeMin.HasValue && g.RangeMax.HasValue);
 
         var notDefaultDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be zero.""";
-        var notDefaultIfCheck = g.HasAllowZero
+        var notDefaultIfCheck = !g.HasNotDefault
             ? ""
             : $@"
             if (value == 0m)
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})));";
-        var notDefaultNullableEnsure = g.HasAllowZero
+        var notDefaultNullableEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(x => x != 0m, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
-        var notDefaultParsedEnsure = g.HasAllowZero
+        var notDefaultParsedEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(_ => parsedDecimal != 0m, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
@@ -1703,16 +1539,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         var rangeLongMax = g.RangeLongMax.GetValueOrDefault();
 
         var notDefaultDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be zero.""";
-        var notDefaultIfCheck = g.HasAllowZero
+        var notDefaultIfCheck = !g.HasNotDefault
             ? ""
             : $@"
             if (value == 0L)
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})));";
-        var notDefaultNullableEnsure = g.HasAllowZero
+        var notDefaultNullableEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(x => x != 0L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
-        var notDefaultParsedEnsure = g.HasAllowZero
+        var notDefaultParsedEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(_ => parsedLong != 0L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
@@ -2031,16 +1867,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     private static string GenerateDateTimeMethods(RequiredPartialClassInfo g, SourceProductionContext context, HashSet<string> reportedCollisions)
     {
         var notDefaultDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be DateTime.MinValue.""";
-        var notDefaultCheck = g.HasAllowMinValue
+        var notDefaultCheck = !g.HasNotDefault
             ? ""
             : $@"
             if (value == default(DateTime))
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})));";
-        var notDefaultNullableEnsure = g.HasAllowMinValue
+        var notDefaultNullableEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(x => x != default(DateTime), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
-        var notDefaultParsedEnsure = g.HasAllowMinValue
+        var notDefaultParsedEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(_ => parsedDateTime != default(DateTime), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
@@ -2153,16 +1989,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     private static string GenerateDateTimeOffsetMethods(RequiredPartialClassInfo g, SourceProductionContext context, HashSet<string> reportedCollisions)
     {
         var notDefaultDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be DateTimeOffset.MinValue.""";
-        var notDefaultCheck = g.HasAllowMinValue
+        var notDefaultCheck = !g.HasNotDefault
             ? ""
             : $@"
             if (value == default(DateTimeOffset))
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})));";
-        var notDefaultNullableEnsure = g.HasAllowMinValue
+        var notDefaultNullableEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(x => x != default(DateTimeOffset), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
-        var notDefaultParsedEnsure = g.HasAllowMinValue
+        var notDefaultParsedEnsure = !g.HasNotDefault
             ? ""
             : $@"
                 .Ensure(_ => parsedDateTimeOffset != default(DateTimeOffset), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ""validation.error"") {{ Detail = {notDefaultDetail} }})))";
@@ -2388,19 +2224,13 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 }
             }
 
-            // Read [NotDefault], [Trim], opt-out marker attributes
-            // ([AllowEmpty], [AllowWhitespace], [NoTrim], [AllowZero], [AllowMinValue], [AllowDefault]),
-            // and numeric convenience attributes ([Positive], [NonNegative], [Negative], [NonPositive]).
-            // [NotDefault] and [Trim] are vestigial under strict-by-default emission; they are
-            // still tracked so ValidateAttributeUsage can report migration diagnostics.
+            // Read [NotDefault], [Trim], and numeric convenience attributes
+            // ([Positive], [NonNegative], [Negative], [NonPositive]).
+            // [NotDefault] is the per-type sentinel-rejection opt-in (rejects 0 / Guid.Empty /
+            // MinValue / "" depending on the base). [Trim] is the RequiredString-only opt-in
+            // for trim-before-validate.
             bool hasNotDefault = false;
             bool hasTrim = false;
-            bool hasAllowEmpty = false;
-            bool hasAllowWhitespace = false;
-            bool hasNoTrim = false;
-            bool hasAllowZero = false;
-            bool hasAllowMinValue = false;
-            bool hasAllowDefault = false;
             bool hasPositive = false;
             bool hasNonNegative = false;
             bool hasNegative = false;
@@ -2416,24 +2246,6 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                         break;
                     case "TrimAttribute":
                         hasTrim = true;
-                        break;
-                    case "AllowEmptyAttribute":
-                        hasAllowEmpty = true;
-                        break;
-                    case "AllowWhitespaceAttribute":
-                        hasAllowWhitespace = true;
-                        break;
-                    case "NoTrimAttribute":
-                        hasNoTrim = true;
-                        break;
-                    case "AllowZeroAttribute":
-                        hasAllowZero = true;
-                        break;
-                    case "AllowMinValueAttribute":
-                        hasAllowMinValue = true;
-                        break;
-                    case "AllowDefaultAttribute":
-                        hasAllowDefault = true;
                         break;
                     case "PositiveAttribute":
                         hasPositive = true;
@@ -2473,7 +2285,6 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 rangeDoubleMin, rangeDoubleMax,
                 nestingParents, typePath,
                 hasNotDefault, hasTrim,
-                hasAllowEmpty, hasAllowWhitespace, hasNoTrim, hasAllowZero, hasAllowMinValue, hasAllowDefault,
                 hasPositive, hasNonNegative, hasNegative, hasNonPositive,
                 hasExplicitRange,
                 userDeclaredMembers));

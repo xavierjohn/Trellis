@@ -4,27 +4,27 @@ using System;
 using Trellis.Testing;
 using Xunit;
 
-// RequiredDateTimeOffset with [AllowMinValue] — opts out of strict MinValue rejection.
-[AllowMinValue] public partial class EventOccurredAt : RequiredDateTimeOffset<EventOccurredAt> { }
+// RequiredDateTimeOffset bare base — accepts DateTimeOffset.MinValue under the lenient default.
+public partial class EventOccurredAt : RequiredDateTimeOffset<EventOccurredAt> { }
 
-// Strict RequiredDateTimeOffset — default rejects DateTimeOffset.MinValue.
-public partial class StrictOccurredAt : RequiredDateTimeOffset<StrictOccurredAt> { }
+// Strict RequiredDateTimeOffset — opts into MinValue rejection via [NotDefault].
+[NotDefault] public partial class StrictOccurredAt : RequiredDateTimeOffset<StrictOccurredAt> { }
 
 // Numeric convenience attributes on the three numeric Required bases.
 [Positive] public partial class PositiveInt : RequiredInt<PositiveInt> { }
-[AllowZero, NonNegative] public partial class NonNegativeInt : RequiredInt<NonNegativeInt> { }
+[NonNegative] public partial class NonNegativeInt : RequiredInt<NonNegativeInt> { }
 [Negative] public partial class NegativeInt : RequiredInt<NegativeInt> { }
-[AllowZero, NonPositive] public partial class NonPositiveInt : RequiredInt<NonPositiveInt> { }
+[NonPositive] public partial class NonPositiveInt : RequiredInt<NonPositiveInt> { }
 
 [Positive] public partial class PositiveLong : RequiredLong<PositiveLong> { }
-[AllowZero, NonNegative] public partial class NonNegativeLong : RequiredLong<NonNegativeLong> { }
+[NonNegative] public partial class NonNegativeLong : RequiredLong<NonNegativeLong> { }
 [Negative] public partial class NegativeLong : RequiredLong<NegativeLong> { }
-[AllowZero, NonPositive] public partial class NonPositiveLong : RequiredLong<NonPositiveLong> { }
+[NonPositive] public partial class NonPositiveLong : RequiredLong<NonPositiveLong> { }
 
 [Positive] public partial class PositiveDecimal : RequiredDecimal<PositiveDecimal> { }
-[AllowZero, NonNegative] public partial class NonNegativeDecimal : RequiredDecimal<NonNegativeDecimal> { }
+[NonNegative] public partial class NonNegativeDecimal : RequiredDecimal<NonNegativeDecimal> { }
 [Negative] public partial class NegativeDecimal : RequiredDecimal<NegativeDecimal> { }
-[AllowZero, NonPositive] public partial class NonPositiveDecimal : RequiredDecimal<NonPositiveDecimal> { }
+[NonPositive] public partial class NonPositiveDecimal : RequiredDecimal<NonPositiveDecimal> { }
 
 /// <summary>
 /// Tests for the additive Required<T> primitives added in PR2a:

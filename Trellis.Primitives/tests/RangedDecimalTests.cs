@@ -16,14 +16,14 @@ public partial class FractionalPrice : RequiredDecimal<FractionalPrice> { }
 /// <summary>
 /// Test value object with large range using double min/max values.
 /// </summary>
-[AllowZero, Range(-1e15, 1e15)]
+[Range(-1e15, 1e15)]
 public partial class LargeRangeDecimal : RequiredDecimal<LargeRangeDecimal> { }
 
 /// <summary>
 /// Test value object with scientific-notation range values.
 /// 1e20 produces "1E+20" from double.ToString() which is not a valid decimal literal.
 /// </summary>
-[AllowZero, Range(0, 1e20)]
+[Range(0, 1e20)]
 public partial class ScientificNotationDecimal : RequiredDecimal<ScientificNotationDecimal> { }
 
 /// <summary>
@@ -176,7 +176,7 @@ public class RangedDecimalTests
 
     #endregion
 
-    #region LargeRangeDecimal — [AllowZero, Range(-1e15, 1e15)]
+    #region LargeRangeDecimal — [Range(-1e15, 1e15)]
 
     [Fact]
     public void LargeRangeDecimal_AtMinBoundary_ReturnsSuccess()
@@ -217,7 +217,7 @@ public class RangedDecimalTests
 
     #endregion
 
-    #region ScientificNotationDecimal — [AllowZero, Range(0, 1e20)] — validates no scientific notation in generated code
+    #region ScientificNotationDecimal — [Range(0, 1e20)] — validates no scientific notation in generated code
 
     [Fact]
     public void ScientificNotationDecimal_WithinRange_ReturnsSuccess()

@@ -10,13 +10,13 @@ public partial class TestQuantity : RequiredInt<TestQuantity> { }
 /// <summary>
 /// Test value object with range constraint that allows zero (0–100).
 /// </summary>
-[AllowZero, Range(0, 100)]
+[Range(0, 100)]
 public partial class TestPercentageInt : RequiredInt<TestPercentageInt> { }
 
 /// <summary>
 /// Test value object with full int range (int.MinValue–int.MaxValue).
 /// </summary>
-[AllowZero, Range(int.MinValue, int.MaxValue)]
+[Range(int.MinValue, int.MaxValue)]
 public partial class FullRangeInt : RequiredInt<FullRangeInt> { }
 
 /// <summary>
@@ -162,7 +162,7 @@ public class RangedIntTests
 
     #endregion
 
-    #region FullRangeInt — [AllowZero, Range(int.MinValue, int.MaxValue)]
+    #region FullRangeInt — [Range(int.MinValue, int.MaxValue)]
 
     [Fact]
     public void FullRangeInt_AtIntMinValue_ReturnsSuccess()
