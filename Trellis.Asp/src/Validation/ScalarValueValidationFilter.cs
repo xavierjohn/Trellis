@@ -176,13 +176,14 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             }
         }
 
+        var statusCode = ScalarValidationStatus.Resolve(context.HttpContext);
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(
             context.HttpContext,
             freshModelState,
-            statusCode: 422,
+            statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
-        context.Result = new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status422UnprocessableEntity };
+        context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
         return true;
     }
 
@@ -212,13 +213,14 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             modelState.AddModelError(JsonPointerToMvc.Translate(fieldViolation.Field.Path), fieldViolation.Detail ?? fieldViolation.ReasonCode);
         }
 
+        var statusCode = ScalarValidationStatus.Resolve(context.HttpContext);
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(
             context.HttpContext,
             modelState,
-            statusCode: 422,
+            statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
-        context.Result = new ObjectResult(problemDetails) { StatusCode = StatusCodes.Status422UnprocessableEntity };
+        context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
 
     private static ObjectResult CreateValidationProblemResult(ActionExecutingContext context, int statusCode)
@@ -342,7 +344,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                 context,
                 statusCode: hasPlainJsonException
                     ? StatusCodes.Status400BadRequest
-                    : StatusCodes.Status422UnprocessableEntity);
+                    : ScalarValidationStatus.Resolve(context.HttpContext));
         }
         else if (!context.ModelState.IsValid)
         {

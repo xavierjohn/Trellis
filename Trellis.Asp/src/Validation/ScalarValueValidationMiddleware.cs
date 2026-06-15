@@ -178,15 +178,16 @@ public sealed class ScalarValueValidationMiddleware
         IDictionary<string, string[]> errors)
     {
         // Scalar value object TryCreate rejected the bound value — the request bytes were
-        // well-formed, but the value failed semantic validation. Per RFC 9110 §15.5.21 this
-        // is 422 ("Unprocessable Content"), aligning with the status emitted by Trellis
-        // domain handlers via ResponseFailureWriter for the same logical condition.
-        context.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+        // well-formed, but the value failed semantic validation. This is the Error.InvalidInput
+        // class, so the status honors the configured TrellisAspOptions map (default 422 per RFC
+        // 9110 §15.5.21), aligning the binder seam with handler-level Error.InvalidInput.
+        var statusCode = ScalarValidationStatus.Resolve(context);
+        context.Response.StatusCode = statusCode;
 
         var result = Results.ValidationProblem(
             errors,
             instance: context.Request.GetEncodedPathAndQuery(),
-            statusCode: StatusCodes.Status422UnprocessableEntity);
+            statusCode: statusCode);
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
 
@@ -195,11 +196,12 @@ public sealed class ScalarValueValidationMiddleware
         // Status-code split. TrellisJsonValidationException is thrown by Trellis converters
         // when a value-level rule fails (e.g. composite VO TryCreate returned a violation,
         // missing required property, unsupported primitive type, JSON shape mismatch). The
-        // bytes parsed as JSON; the *values* failed semantic validation → 422.
+        // bytes parsed as JSON; the *values* failed semantic validation → the Error.InvalidInput
+        // status from the configured map (default 422).
         // Plain JsonException (from System.Text.Json's tokenizer/structure errors) means the
         // bytes are not valid JSON → 400 per RFC 9110 §15.5.1.
         var statusCode = ex.InnerException is TrellisJsonValidationException
-            ? StatusCodes.Status422UnprocessableEntity
+            ? ScalarValidationStatus.Resolve(context)
             : StatusCodes.Status400BadRequest;
         context.Response.StatusCode = statusCode;
 
