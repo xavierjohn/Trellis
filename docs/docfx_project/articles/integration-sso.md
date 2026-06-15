@@ -871,7 +871,6 @@ if (builder.Environment.IsDevelopment())
     {
         options.DefaultActorId         = "developer@local";
         options.DefaultPermissions     = new HashSet<string> { "todos:read", "todos:create" };
-        options.ThrowOnMalformedHeader = false;
     });
 }
 else

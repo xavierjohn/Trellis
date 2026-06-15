@@ -216,7 +216,7 @@ See [Cache partitioning across actors (`VaryForActor()`)](#cache-partitioning-ac
 | `AddTrellisWorkerActor(this IServiceCollection, Actor)` | DI extension | Scoped `IActorProvider` → `WorkerComposedActorProvider` wrapping the prior slot | Returns the supplied system actor when `IHttpContextAccessor.HttpContext` is null; delegates to the inner provider otherwise. |
 | `ClaimsActorProvider` | Class | Scoped, virtual `GetCurrentActorAsync` | Subclass for custom flat-claim providers. Permissions resolved via literal `FindAll(PermissionsClaim)` plus the well-known short↔long counterpart from the JWT inbound claim-name map; matches are merged into a deduplicated `FrozenSet<string>`. |
 | `EntraActorProvider` | Class | Scoped, sealed | Falls back to short `oid` when `IdClaimType` is the default; rewraps mapper exceptions in `InvalidOperationException`. |
-| `DevelopmentActorProvider` | Class | Scoped, sealed partial | Logs a warning and falls back when the header is malformed (unless `ThrowOnMalformedHeader = true`). |
+| `DevelopmentActorProvider` | Class | Scoped, sealed partial | Throws on a malformed header by default (`ThrowOnMalformedHeader = true`); set it to `false` to log a warning and fall back to the default actor. |
 | `CachingActorProvider` | Class | Scoped, sealed | Uses `LazyInitializer.EnsureInitialized` + `HttpContext.RequestAborted`; honors per-call `CancellationToken` via `Task.WaitAsync`. |
 | `EntraActorOptions` / `ClaimsActorOptions` / `DevelopmentActorOptions` | Options | — | Mapping delegates / claim-type strings / dev defaults. |
 
@@ -346,7 +346,7 @@ For local development and integration tests only. The provider reads an `X-Test-
 |---|---|---|
 | `DevelopmentActorOptions.DefaultActorId` | `"development"` | Used when the header is missing or empty. |
 | `DevelopmentActorOptions.DefaultPermissions` | empty `HashSet<string>` | Used when the header is missing or empty. |
-| `DevelopmentActorOptions.ThrowOnMalformedHeader` | `false` | When `true`, malformed JSON throws instead of logging a warning and falling back. |
+| `DevelopmentActorOptions.ThrowOnMalformedHeader` | `true` | When `true` (the default), a malformed header throws; set to `false` to log a warning and fall back to the default actor. |
 
 ```csharp
 using System.Collections.Generic;
