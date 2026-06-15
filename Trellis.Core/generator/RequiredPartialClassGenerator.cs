@@ -43,6 +43,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// <item><c>RequiredDecimal</c> — supports <c>[Range(int, int)]</c> and <c>[Range(double, double)]</c></item>
 /// <item><c>RequiredBool</c> — accepts true/false; rejects null</item>
 /// <item><c>RequiredDateTime</c> — rejects <c>DateTime.MinValue</c> only when <c>[NotDefault]</c> is applied; ISO 8601 round-trip <c>ToString</c></item>
+/// <item><c>RequiredDateTimeOffset</c> — rejects <c>DateTimeOffset.MinValue</c> only when <c>[NotDefault]</c> is applied; ISO 8601 round-trip <c>ToString</c></item>
 /// <item><c>RequiredEnum</c> — smart enum; delegates to <c>TryFromName</c></item>
 /// </list>
 /// </para>
