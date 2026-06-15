@@ -21,10 +21,10 @@ dotnet add package Trellis.Primitives
 ```csharp
 using Trellis;
 
-[StringLength(100)]
+[Trim, StringLength(100)]
 public partial class CustomerName : RequiredString<CustomerName> { }
 
-var name = CustomerName.Create(" Ada "); // stores "Ada" by default
+var name = CustomerName.Create(" Ada "); // [Trim] opts in, so this stores "Ada"
 ```
 
 ## Key Features

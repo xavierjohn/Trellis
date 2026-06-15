@@ -4,26 +4,32 @@ using System;
 using Trellis;
 using Xunit;
 
-// Both fixtures are now bare lenient under the post-flip defaults; the test names retain
-// their historical "Lenient" / "Strict" labels but the fixtures and assertions all express
-// the lenient behavior (no rejection of Guid.Empty / DateTime.MinValue / "").
+// Lenient fixtures are bare (post-flip default): TryCreate accepts every concrete value and
+// rejects only null, so the EF converter materializes legacy column sentinels (Guid.Empty,
+// DateTime.MinValue, "") without throwing. Strict fixtures opt back into sentinel rejection via
+// [NotDefault] (and [Trim, NotDefault] for strings), so the converter throws
+// TrellisPersistenceMappingException when it reads a sentinel — this is the regression coverage
+// for the strict EF read-path that the lenient flip would otherwise have silently dropped.
 public partial class LenientEfGuid : RequiredGuid<LenientEfGuid> { }
 
-public partial class StrictEfGuid : RequiredGuid<StrictEfGuid> { }
+[NotDefault] public partial class StrictEfGuid : RequiredGuid<StrictEfGuid> { }
 
 public partial class LenientEfDateTime : RequiredDateTime<LenientEfDateTime> { }
 
-public partial class StrictEfDateTime : RequiredDateTime<StrictEfDateTime> { }
+[NotDefault] public partial class StrictEfDateTime : RequiredDateTime<StrictEfDateTime> { }
 
 public partial class LenientEfString : RequiredString<LenientEfString> { }
 
-public partial class StrictEfString : RequiredString<StrictEfString> { }
+[Trim, NotDefault] public partial class StrictEfString : RequiredString<StrictEfString> { }
 
 /// <summary>
 /// Regression coverage for the EF read-path impact: <see cref="TrellisScalarConverter{TModel, TProvider}"/>
-/// calls <c>TryCreate</c> to materialize every row, so the bare Required* base materializes legacy
-/// column sentinels (<c>Guid.Empty</c>, <c>DateTime.MinValue</c>, <c>""</c>) without throwing
-/// <c>TrellisPersistenceMappingException</c>.
+/// calls <c>TryCreate</c> to materialize every row. A bare (lenient) Required* base materializes
+/// legacy column sentinels (<c>Guid.Empty</c>, <c>DateTime.MinValue</c>, <c>""</c>) without
+/// throwing, whereas a fixture that opts into sentinel rejection via <c>[NotDefault]</c>
+/// (or <c>[Trim, NotDefault]</c> for strings) makes the converter throw
+/// <c>TrellisPersistenceMappingException</c> when it reads that sentinel. Both paths are asserted
+/// so the lenient flip cannot silently drop the strict read-path coverage.
 /// </summary>
 /// <remarks>
 /// Exercises the converter directly via <c>ValueConverter&lt;,&gt;.ConvertFromProvider</c> rather
@@ -43,11 +49,12 @@ public class RequiredXxxRehydrationLenienceTests
     }
 
     [Fact]
-    public void StrictGuidConverter_materializes_Guid_Empty_without_throwing()
+    public void StrictGuidConverter_throws_when_materializing_Guid_Empty()
     {
         var converter = new TrellisScalarConverter<StrictEfGuid, Guid>();
-        var materialized = (StrictEfGuid)converter.ConvertFromProvider(Guid.Empty)!;
-        materialized.Value.Should().Be(Guid.Empty);
+        var act = () => converter.ConvertFromProvider(Guid.Empty);
+        act.Should().Throw<TrellisPersistenceMappingException>()
+            .Which.PersistedValue.Should().Be(Guid.Empty);
     }
 
     [Fact]
@@ -59,11 +66,12 @@ public class RequiredXxxRehydrationLenienceTests
     }
 
     [Fact]
-    public void StrictDateTimeConverter_materializes_MinValue_without_throwing()
+    public void StrictDateTimeConverter_throws_when_materializing_MinValue()
     {
         var converter = new TrellisScalarConverter<StrictEfDateTime, DateTime>();
-        var materialized = (StrictEfDateTime)converter.ConvertFromProvider(DateTime.MinValue)!;
-        materialized.Value.Should().Be(DateTime.MinValue);
+        var act = () => converter.ConvertFromProvider(DateTime.MinValue);
+        act.Should().Throw<TrellisPersistenceMappingException>()
+            .Which.PersistedValue.Should().Be(DateTime.MinValue);
     }
 
     [Fact]
@@ -75,10 +83,11 @@ public class RequiredXxxRehydrationLenienceTests
     }
 
     [Fact]
-    public void StrictStringConverter_materializes_empty_string_without_throwing()
+    public void StrictStringConverter_throws_when_materializing_empty_string()
     {
         var converter = new TrellisScalarConverter<StrictEfString, string>();
-        var materialized = (StrictEfString)converter.ConvertFromProvider("")!;
-        materialized.Value.Should().Be("");
+        var act = () => converter.ConvertFromProvider("");
+        act.Should().Throw<TrellisPersistenceMappingException>()
+            .Which.PersistedValue.Should().Be("");
     }
 }
