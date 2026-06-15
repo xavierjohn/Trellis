@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `DevelopmentActorProvider` rejects a malformed `X-Test-Actor` header by default
+
+`DevelopmentActorOptions.ThrowOnMalformedHeader` now defaults to `true`. A malformed `X-Test-Actor`
+header (invalid JSON, missing/empty/whitespace `Id`, or non-string permission entries) is a developer
+error and is now **rejected** with an `InvalidOperationException` instead of silently falling back to
+the configured default actor — which was a silent privilege elevation when `DefaultPermissions` is
+non-empty. An **absent** or empty header is unchanged: it still yields the configured default actor
+(intentional dev convenience). Set `ThrowOnMalformedHeader = false` to restore the previous lenient
+fall-back-to-default behavior. Development-only — the provider already throws outside Development.
+
 ### Changed — binder/JSON value-validation status honors `MapError<Error.InvalidInput>`
 
 Scalar- and composite-value-object validation failures raised during request binding and JSON body

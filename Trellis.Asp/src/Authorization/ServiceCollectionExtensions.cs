@@ -179,8 +179,9 @@ public static class ServiceCollectionExtensions
     /// <param name="configure">
     /// Optional delegate to customize <see cref="DevelopmentActorOptions"/>.
     /// Set <see cref="DevelopmentActorOptions.DefaultPermissions"/> to grant permissions
-    /// when no header is present, or <see cref="DevelopmentActorOptions.ThrowOnMalformedHeader"/>
-    /// to reject invalid headers instead of falling back.
+    /// when no header is present, or set <see cref="DevelopmentActorOptions.ThrowOnMalformedHeader"/>
+    /// to <see langword="false"/> to fall back to the default actor on a malformed header
+    /// instead of rejecting it (rejection is the default).
     /// </param>
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>

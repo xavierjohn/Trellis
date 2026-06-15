@@ -34,9 +34,15 @@ public sealed class DevelopmentActorOptions
     public IReadOnlySet<string> DefaultPermissions { get; set; } = new HashSet<string>();
 
     /// <summary>
-    /// When <see langword="true"/>, a malformed <c>X-Test-Actor</c> header throws
+    /// When <see langword="true"/> (the default), a malformed <c>X-Test-Actor</c> header throws
     /// <see cref="InvalidOperationException"/> instead of falling back to the default actor.
-    /// Defaults to <see langword="false"/>.
     /// </summary>
-    public bool ThrowOnMalformedHeader { get; set; }
+    /// <remarks>
+    /// A malformed header is a developer error and is treated distinctly from an <em>absent</em>
+    /// header (which intentionally yields the configured default actor). Rejecting it by default
+    /// avoids silently granting the default actor's permissions — a privilege elevation when
+    /// <see cref="DefaultPermissions"/> is non-empty. Set to <see langword="false"/> to restore the
+    /// lenient fall-back-to-default behavior.
+    /// </remarks>
+    public bool ThrowOnMalformedHeader { get; set; } = true;
 }
