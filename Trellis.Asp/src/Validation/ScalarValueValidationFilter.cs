@@ -67,8 +67,13 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         // First, check for validation errors from JSON deserialization that landed in
         // the per-request collection scope (Trellis scalar VO converters that fail
         // gracefully — e.g., MaybeScalarValueJsonConverter / ValidatingJsonConverter).
+        // Precedence guard: if the same request ALSO failed with malformed JSON (a plain
+        // JsonException in ModelState), the 400 path is authoritative — malformed bytes are a
+        // more fundamental client error (RFC 9110 §15.5.1) than a semantic VO failure, and we
+        // must not short-circuit to the semantic status. This mirrors the guard in
+        // TryHandleStructuredModelStateErrors so both VO-failure entry points agree.
         var validationError = ValidationErrorsContext.GetUnprocessableContent();
-        if (validationError is not null)
+        if (validationError is not null && !HasPlainJsonException(context.ModelState))
         {
             HandleJsonValidationErrors(context, validationError);
             return;
@@ -89,6 +94,23 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
 
         // Third, check for null IScalarValue route/query parameters (binding failures)
         ValidateScalarValueParameters(context);
+    }
+
+    // True when ModelState carries a plain System.Text.Json JsonException (malformed request
+    // bytes), excluding the TrellisJsonValidationException subclass (a semantic value failure).
+    // Malformed bytes are RFC 9110 §15.5.1 (400) and take precedence over semantic validation.
+    private static bool HasPlainJsonException(ModelStateDictionary modelState)
+    {
+        foreach (var (_, entry) in modelState)
+        {
+            foreach (var error in entry.Errors)
+            {
+                if (error.Exception is System.Text.Json.JsonException and not TrellisJsonValidationException)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool TryHandleStructuredModelStateErrors(ActionExecutingContext context)

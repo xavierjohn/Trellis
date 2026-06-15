@@ -19,6 +19,16 @@ the prior asymmetry where handler-level `Error.InvalidInput` was configurable bu
 validation was locked to `422`. Syntactically malformed JSON still returns `400` (RFC 9110 §15.5.1)
 and is unaffected by the mapping. Default behavior is unchanged.
 
+### Fixed — malformed JSON masked by a value-object validation error now returns 400
+
+The MVC `ScalarValueValidationFilter` short-circuited to the semantic value-validation status as soon
+as a scalar value object recorded a failure into the per-request `ValidationErrorsContext`, even when
+the same request body also failed with a plain `JsonException` (malformed bytes). A body that first
+rejected a value-object field and then hit a syntax error therefore returned `422` instead of `400`.
+The filter now applies the same malformed-bytes-take-precedence guard that the structured-error path
+already used, so a malformed body returns `400` (RFC 9110 §15.5.1) regardless of any value-level
+failure collected earlier in the same request.
+
 ### Added — domain-event to integration-event translation (`IIntegrationEvent`)
 
 New types for the domain-event vs. integration-event boundary, building on the transactional outbox. `IIntegrationEvent` (in `Trellis.Core`) is the published external contract, distinct from the in-process `IDomainEvent`. A domain-event handler (the *translator*) adds integration events to the scoped `IIntegrationEventCollector`; when the outbox relay re-dispatches a domain event, it drains whatever integration events the translators produced and stages them as new `OutboxMessageKind.Integration` rows, then publishes those through `IIntegrationEventPublisher` (default in-process fan-out to `IIntegrationEventHandler<T>`, swappable for a message-broker adapter). `OutboxMessage` gains a `Kind` discriminator so the relay routes domain vs. integration rows. Register via `services.AddIntegrationEventDispatch(...)` / `AddIntegrationEventHandler<TEvent, THandler>()` or the `TrellisServiceBuilder.UseIntegrationEvents(...)` slot. Integration events are emitted only after the source domain event is durably committed and dispatched; delivery is at-least-once, so consumers must be idempotent on business identity.
