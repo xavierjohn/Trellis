@@ -9,7 +9,8 @@ using System;
 /// whitespace-only input trims to <see cref="string.Empty"/> and is rejected.
 /// </summary>
 /// <remarks>
-/// Only valid on <see cref="RequiredString{TSelf}"/>-derived types. Applying <c>[Trim, NotDefault]</c>
+/// Only valid on <see cref="RequiredString{TSelf}"/>-derived types; applying it to any other
+/// Required base raises generator error <c>TRLS057</c>. Applying <c>[Trim, NotDefault]</c>
 /// together is the recommended setup for any string mapped to a database column and recovers
 /// the legacy "reject null + empty + whitespace; auto-trim" behavior.
 /// </remarks>

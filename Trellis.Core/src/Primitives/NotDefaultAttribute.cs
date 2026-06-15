@@ -20,7 +20,7 @@ using System;
 /// </list>
 /// <para>
 /// Invalid on <see cref="RequiredBool{TSelf}"/> and <see cref="RequiredEnum{TSelf}"/> — those
-/// bases have no meaningful sentinel.
+/// bases have no meaningful sentinel, so applying it there raises generator error <c>TRLS058</c>.
 /// </para>
 /// </remarks>
 /// <seealso cref="TrimAttribute"/>

@@ -15,7 +15,7 @@
 /// </code>
 /// <para>
 /// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges are emitted by the
-/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c> and <c>TRLS056</c>
+/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c> and <c>TRLS056</c>–<c>TRLS058</c>
 /// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
 /// and <c>Trellis.AspSourceGenerator</c>).
@@ -155,4 +155,10 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS056 — User-declared member conflicts with a Required value object generated member.</summary>
     public const string GeneratedRequiredMemberCollision = "TRLS056";
+
+    /// <summary>TRLS057 — <c>[Trim]</c> applied to a Required base other than <c>RequiredString</c>; the attribute only affects string trimming and is otherwise silently ignored.</summary>
+    public const string TrimOnNonStringBase = "TRLS057";
+
+    /// <summary>TRLS058 — <c>[NotDefault]</c> applied to a sentinel-less Required base (<c>RequiredBool</c> or <c>RequiredEnum</c>), which has no default value to reject.</summary>
+    public const string NotDefaultOnSentinellessBase = "TRLS058";
 }

@@ -153,6 +153,8 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public const string NumericConvenienceConflict = "TRLS044";
         public const string NumericConvenienceWithExplicitRange = "TRLS045";
         public const string GeneratedMemberCollision = "TRLS056";
+        public const string TrimOnNonStringBase = "TRLS057";
+        public const string NotDefaultOnSentinellessBase = "TRLS058";
     }
 
     /// <summary>
@@ -811,13 +813,14 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         string.IsNullOrEmpty(g.NameSpace) ? string.Empty : $"namespace {g.NameSpace};";
 
     /// <summary>
-    /// Validates that the numeric convenience attributes (<c>[Positive]</c>, <c>[NonNegative]</c>,
-    /// <c>[Negative]</c>, <c>[NonPositive]</c>) are applied to a compatible numeric
-    /// <c>Required*</c> base, and that mutually exclusive combinations are not stacked. Emits
-    /// a generator diagnostic when the combination is invalid. Defense in depth — the same
-    /// combinations are also flagged by the matching analyzer rules in
-    /// <c>Trellis.Analyzers</c>, but the generator must refuse to emit broken code even if the
-    /// analyzer is disabled or suppressed.
+    /// Validates attribute placement on a <c>Required*</c> partial class. Checks that the numeric
+    /// convenience attributes (<c>[Positive]</c>, <c>[NonNegative]</c>, <c>[Negative]</c>,
+    /// <c>[NonPositive]</c>) target a compatible numeric base and are not mutually-exclusively
+    /// stacked, that <c>[Trim]</c> is only used on <c>RequiredString</c>, and that
+    /// <c>[NotDefault]</c> is not used on a sentinel-less base (<c>RequiredBool</c> /
+    /// <c>RequiredEnum</c>). Emits a generator diagnostic when a combination is invalid. Defense in
+    /// depth — the generator must refuse to emit broken code even if the analyzer is disabled or
+    /// suppressed.
     /// </summary>
     /// <returns><c>true</c> when generation may proceed; <c>false</c> when generation must be skipped.</returns>
     private static bool ValidateAttributeUsage(RequiredPartialClassInfo g, SourceProductionContext context)
@@ -887,6 +890,43 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 location: null,
                 g.ClassName,
                 attrName));
+            ok = false;
+        }
+
+        // [Trim] only affects the RequiredString generation path; on any other base it is
+        // silently ignored, contradicting its documented contract ("only valid on RequiredString").
+        // Refuse to emit code so the mistake surfaces at build time even if the analyzer is off.
+        if (g.HasTrim && g.ClassBase != "RequiredString")
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    id: Ids.TrimOnNonStringBase,
+                    title: "[Trim] on a non-string Required base",
+                    messageFormat: "Class '{0}' has [Trim] but inherits from '{1}'. [Trim] only applies to RequiredString — remove it.",
+                    category: "Trellis",
+                    DiagnosticSeverity.Error,
+                    isEnabledByDefault: true),
+                location: null,
+                g.ClassName,
+                g.ClassBase));
+            ok = false;
+        }
+
+        // [NotDefault] rejects the base's CLR default sentinel; RequiredBool and RequiredEnum have
+        // no meaningful sentinel (every value is valid), so the attribute is silently ignored there.
+        if (g.HasNotDefault && g.ClassBase is "RequiredBool" or "RequiredEnum")
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    id: Ids.NotDefaultOnSentinellessBase,
+                    title: "[NotDefault] on a Required base with no sentinel",
+                    messageFormat: "Class '{0}' has [NotDefault] but inherits from '{1}', which has no meaningful default sentinel to reject. Remove [NotDefault].",
+                    category: "Trellis",
+                    DiagnosticSeverity.Error,
+                    isEnabledByDefault: true),
+                location: null,
+                g.ClassName,
+                g.ClassBase));
             ok = false;
         }
 

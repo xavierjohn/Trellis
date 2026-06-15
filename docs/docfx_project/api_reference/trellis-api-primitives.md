@@ -105,6 +105,8 @@ Validation order:
 | TRLS043 | Error | Numeric convenience attribute on a non-numeric Required base |
 | TRLS044 | Error | More than one numeric convenience attribute on the same type |
 | TRLS045 | Error | Numeric convenience attribute combined with explicit `[Range]` |
+| TRLS057 | Error | `[Trim]` on a Required base other than `RequiredString` |
+| TRLS058 | Error | `[NotDefault]` on `RequiredBool` or `RequiredEnum` (no default sentinel to reject) |
 
 ## Types
 

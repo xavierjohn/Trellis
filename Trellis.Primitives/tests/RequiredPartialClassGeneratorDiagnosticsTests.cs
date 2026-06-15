@@ -275,6 +275,78 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
+    public void TrimOnRequiredInt_Reports_TRLS057()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Trim]
+            public partial class Quantity : RequiredInt<Quantity>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().Contain(d => d.Id == "TRLS057");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS057");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Quantity");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[Trim]");
+    }
+
+    [Fact]
+    public void NotDefaultOnRequiredBool_Reports_TRLS058()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [NotDefault]
+            public partial class IsActive : RequiredBool<IsActive>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().Contain(d => d.Id == "TRLS058");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS058");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("IsActive");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[NotDefault]");
+    }
+
+    [Fact]
+    public void TrimAndNotDefaultOnRequiredString_ReportsNoPlacementDiagnostic()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Trim, NotDefault]
+            public partial class Name : RequiredString<Name>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS057");
+        diagnostics.Should().NotContain(d => d.Id == "TRLS058");
+    }
+
+    [Fact]
     public void NegativeOnRequiredGuid_Reports_TRLS043()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

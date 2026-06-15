@@ -1041,6 +1041,8 @@ public sealed partial class CommentBody : RequiredString<CommentBody>;
 | TRLS043 | Error | Numeric convenience attribute (`[Positive]` etc.) on a non-numeric Required base |
 | TRLS044 | Error | More than one numeric convenience attribute on the same class |
 | TRLS045 | Error | Numeric convenience attribute combined with explicit `[Range]` |
+| TRLS057 | Error | `[Trim]` on a Required base other than `RequiredString` |
+| TRLS058 | Error | `[NotDefault]` on `RequiredBool` or `RequiredEnum` (no default sentinel to reject) |
 
 ---
 
