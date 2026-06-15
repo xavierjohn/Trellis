@@ -91,6 +91,30 @@ public class ScalarValueValidationFilterTests
     }
 
     [Fact]
+    public void OnActionExecuting_MalformedJsonInModelState_DoesNotShortCircuitToValidationStatus()
+    {
+        // A request body can record a scalar VO validation error into ValidationErrorsContext and
+        // THEN fail with malformed JSON (a plain JsonException in ModelState). Malformed bytes are a
+        // more fundamental client error (RFC 9110 §15.5.1 → 400) than the semantic VO failure, so the
+        // filter must yield rather than short-circuit to the Error.InvalidInput status — letting the
+        // 400 path win, consistent with the precedence guard in the structured-error path.
+        var filter = new ScalarValueValidationFilter();
+        var context = CreateActionExecutingContext();
+        context.ModelState.TryAddModelException("$", new System.Text.Json.JsonException("Unexpected token"));
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.AddError("value", "value is required.");
+
+            filter.OnActionExecuting(context);
+
+            // Malformed bytes win: the filter emits 400, not the semantic Error.InvalidInput status.
+            context.Result.Should().BeOfType<ObjectResult>()
+                .Which.StatusCode.Should().Be(400);
+        }
+    }
+
+    [Fact]
     public void OnActionExecuting_SingleValidationError_AddsToModelState()
     {
         // Arrange

@@ -27,6 +27,16 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         return ctx;
     }
 
+    private static DefaultHttpContext NewContextWithInvalidInputMappedTo(int status)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddTrellisAsp(o => o.MapError<Error.InvalidInput>(status));
+        var ctx = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        ctx.Response.Body = new MemoryStream();
+        return ctx;
+    }
+
     private static async Task<JsonElement> ReadProblemAsync(HttpContext ctx)
     {
         ctx.Response.Body.Position = 0;
@@ -74,6 +84,36 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         // structuredResult). Pinning the middleware-emitted shape independently of the
         // ResponseFailureWriter and MVC filter paths.
         problem.GetProperty("instance").GetString().Should().Be("/middleware-structured-json");
+    }
+
+    [Fact]
+    public async Task TrellisJsonValidationException_honors_mapped_InvalidInput_status()
+    {
+        // Semantic value-level validation failure (well-formed bytes) is the Error.InvalidInput
+        // class; MapError<Error.InvalidInput>(400) must reach this binder seam, not a hardcoded 422.
+        var ctx = NewContextWithInvalidInputMappedTo(StatusCodes.Status400BadRequest);
+        var inner = new TrellisJsonValidationException("Amount cannot be negative.");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+    }
+
+    [Fact]
+    public async Task plain_JsonException_stays_400_even_when_InvalidInput_is_remapped()
+    {
+        // Malformed bytes are RFC 9110 §15.5.1 (400), not the Error.InvalidInput class. Remapping
+        // InvalidInput to a distinctive status must NOT move the malformed-JSON response.
+        var ctx = NewContextWithInvalidInputMappedTo(StatusCodes.Status409Conflict);
+        var inner = new JsonException("Unexpected token");
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
     }
 
     [Fact]

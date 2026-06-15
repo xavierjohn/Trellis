@@ -44,14 +44,15 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
 
             // Trellis-driven scalar VO validation rejection — semantic per RFC 9110 §15.5.21.
-            // Aligns with the status code emitted by the rest of the framework
+            // The status honors the configured TrellisAspOptions Error.InvalidInput map (default
+            // 422), aligning with the status code emitted by the rest of the framework
             // (ResponseFailureWriter for domain handler failures, ScalarValueValidationFilter
             // and ScalarValueValidationMiddleware for the same condition on other code paths).
             // instance: RFC 9457 §3.1 — server-relative path+query per ResponseFailureWriter convention.
             return Results.ValidationProblem(
                 dictionary,
                 instance: context.HttpContext.Request.GetEncodedPathAndQuery(),
-                statusCode: StatusCodes.Status422UnprocessableEntity);
+                statusCode: ScalarValidationStatus.Resolve(context.HttpContext));
         }
 
         return await next(context).ConfigureAwait(false);
