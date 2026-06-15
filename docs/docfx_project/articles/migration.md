@@ -19,7 +19,7 @@ A package- and namespace-rename combined with a tightened public surface. Per-pa
 This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For release-by-release migration details during the preview churn — including the final move to the current 12-case `Trellis.Core.Error` union — use [`CHANGELOG.md`](https://github.com/xavierjohn/Trellis/blob/main/CHANGELOG.md) as the canonical ledger.
 
 > [!IMPORTANT]
-> **Required defaults are lenient.** `Required*<TSelf>` rejects only `null`; all concrete values (`""`, whitespace, `0`, `Guid.Empty`, `MinValue`) are accepted by default. Strings are NOT auto-trimmed. Opt into sentinel rejection with `[NotDefault]` and into string trimming with `[Trim]`. The five `[Allow*]` attributes and diagnostics `TRLS046`–`TRLS053` are gone. See [MIGRATION_v3.md](https://github.com/xavierjohn/Trellis/blob/main/MIGRATION_v3.md#requiredt-defaults-lenient-by-default-with-notdefault--trim-opt-ins) for details.
+> **Required defaults are lenient.** `Required*<TSelf>` rejects only `null`; all concrete values (`""`, whitespace, `0`, `Guid.Empty`, `MinValue`) are accepted by default. Strings are NOT auto-trimmed. Opt into sentinel rejection with `[NotDefault]` and into string trimming with `[Trim]`. The five `[Allow*]` attributes and diagnostics `TRLS046`–`TRLS053` are gone. See `MIGRATION_v3.md` for the full migration recipe.
 
 ## Patterns Index
 
