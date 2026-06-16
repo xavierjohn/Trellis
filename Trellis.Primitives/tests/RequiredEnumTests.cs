@@ -566,6 +566,36 @@ public class RequiredEnumTests
     }
 
     [Fact]
+    public void GenericCompareTo_Null_ReturnsPositive() =>
+        TestOrderState.Draft.CompareTo(null).Should().BePositive();
+
+    [Fact]
+    public void ComparisonOperators_WithNullOperands_TreatNullAsSortingFirst()
+    {
+        RequiredEnum<TestOrderState>? nullLeft = null;
+        RequiredEnum<TestOrderState>? nullRight = null;
+        var value = TestOrderState.Draft;
+
+        // null precedes a value
+        (nullLeft < value).Should().BeTrue();
+        (nullLeft <= value).Should().BeTrue();
+        (nullLeft > value).Should().BeFalse();
+        (nullLeft >= value).Should().BeFalse();
+
+        // a value follows null
+        (value > nullRight).Should().BeTrue();
+        (value >= nullRight).Should().BeTrue();
+        (value < nullRight).Should().BeFalse();
+        (value <= nullRight).Should().BeFalse();
+
+        // null compared to null
+        (nullLeft < nullRight).Should().BeFalse();
+        (nullLeft > nullRight).Should().BeFalse();
+        (nullLeft <= nullRight).Should().BeTrue();
+        (nullLeft >= nullRight).Should().BeTrue();
+    }
+
+    [Fact]
     public void CompositeValueObject_WithRequiredEnumComponents_SupportsEqualityAndOrdering()
     {
         var first = new TestEnumHolder(TestOrderState.Draft, TestPaymentMethod.Cash);

@@ -283,7 +283,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// </summary>
     /// <param name="obj">The object to compare with.</param>
     /// <returns>The relative order, as described by <see cref="CompareTo(RequiredEnum{TSelf})"/>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="obj"/> is not a <typeparamref name="TSelf"/>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="obj"/> is non-null and not a <see cref="RequiredEnum{TSelf}"/> (consistent with <see cref="Equals(object?)"/>).</exception>
     int IComparable.CompareTo(object? obj) => obj switch
     {
         null => 1,
