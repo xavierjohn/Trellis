@@ -288,7 +288,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     {
         null => 1,
         RequiredEnum<TSelf> other => CompareTo(other),
-        _ => throw new ArgumentException($"Object must be of type {typeof(TSelf).Name}.", nameof(obj)),
+        _ => throw new ArgumentException($"Cannot compare {GetType()} to {obj.GetType()}.", nameof(obj)),
     };
 
     /// <summary>Determines whether the left instance precedes the right in declaration order (<see cref="Ordinal"/>).</summary>

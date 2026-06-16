@@ -528,7 +528,8 @@ public class RequiredEnumTests
     {
         var act = () => ((IComparable)TestOrderState.Draft).CompareTo("not an enum");
 
-        act.Should().Throw<ArgumentException>();
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*String*");
     }
 
     [Fact]
