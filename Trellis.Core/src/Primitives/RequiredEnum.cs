@@ -257,9 +257,11 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) => !(left == right);
 
     /// <summary>
-    /// Compares this instance with another by <see cref="Value"/> using a case-insensitive ordinal
-    /// comparison, consistent with <see cref="Equals(RequiredEnum{TSelf})"/>. Ordering follows the
-    /// symbolic <see cref="Value"/>, not the declaration-order <see cref="Ordinal"/>.
+    /// Compares this instance with another by <see cref="Ordinal"/> (declaration order), so members
+    /// sort in the order they are declared — matching how the C# <see langword="enum"/> this type
+    /// replaces would sort by its underlying value. Equality remains keyed on <see cref="Value"/>;
+    /// the two stay consistent because each member has a unique <see cref="Value"/> and a unique
+    /// <see cref="Ordinal"/>.
     /// </summary>
     /// <param name="other">The instance to compare with, or <see langword="null"/>.</param>
     /// <returns>
@@ -271,7 +273,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         if (other is null) return 1;
         if (ReferenceEquals(this, other)) return 0;
 
-        return string.Compare(Value, other.Value, StringComparison.OrdinalIgnoreCase);
+        return Ordinal.CompareTo(other.Ordinal);
     }
 
     /// <summary>
@@ -289,19 +291,19 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         _ => throw new ArgumentException($"Object must be of type {typeof(TSelf).Name}.", nameof(obj)),
     };
 
-    /// <summary>Determines whether the left instance precedes the right in <see cref="Value"/> order.</summary>
+    /// <summary>Determines whether the left instance precedes the right in declaration order (<see cref="Ordinal"/>).</summary>
     public static bool operator <(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
         left is null ? right is not null : left.CompareTo(right) < 0;
 
-    /// <summary>Determines whether the left instance precedes or equals the right in <see cref="Value"/> order.</summary>
+    /// <summary>Determines whether the left instance precedes or equals the right in declaration order (<see cref="Ordinal"/>).</summary>
     public static bool operator <=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
         left is null || left.CompareTo(right) <= 0;
 
-    /// <summary>Determines whether the left instance follows the right in <see cref="Value"/> order.</summary>
+    /// <summary>Determines whether the left instance follows the right in declaration order (<see cref="Ordinal"/>).</summary>
     public static bool operator >(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
         left is not null && left.CompareTo(right) > 0;
 
-    /// <summary>Determines whether the left instance follows or equals the right in <see cref="Value"/> order.</summary>
+    /// <summary>Determines whether the left instance follows or equals the right in declaration order (<see cref="Ordinal"/>).</summary>
     public static bool operator >=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
         left is null ? right is null : left.CompareTo(right) >= 0;
 

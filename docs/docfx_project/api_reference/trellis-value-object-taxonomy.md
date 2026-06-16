@@ -269,12 +269,12 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 | `public bool Equals(RequiredEnum<TSelf>? other)` | `bool` | Case-insensitive symbolic equality. |
 | `public static bool operator ==(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Equality operator. |
 | `public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Inequality operator. |
-| `public int CompareTo(RequiredEnum<TSelf>? other)` | `int` | Orders by `Value` (ordinal, case-insensitive), consistent with equality; `null` sorts first. |
+| `public int CompareTo(RequiredEnum<TSelf>? other)` | `int` | Orders by `Ordinal` (declaration order), like the C# `enum` it replaces; stays consistent with `Value`-based equality; `null` sorts first. |
 | `int IComparable.CompareTo(object? obj)` | `int` | Non-generic comparison; enables members to be used as composite `ValueObject` equality components and sorted by the default comparer. |
-| `public static bool operator <(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Less-than by `Value` order. |
-| `public static bool operator <=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Less-than-or-equal by `Value` order. |
-| `public static bool operator >(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Greater-than by `Value` order. |
-| `public static bool operator >=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Greater-than-or-equal by `Value` order. |
+| `public static bool operator <(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Less-than by declaration order. |
+| `public static bool operator <=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Less-than-or-equal by declaration order. |
+| `public static bool operator >(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Greater-than by declaration order. |
+| `public static bool operator >=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Greater-than-or-equal by declaration order. |
 
 ### `MonetaryAmount`
 

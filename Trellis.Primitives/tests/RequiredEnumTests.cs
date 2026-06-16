@@ -503,11 +503,11 @@ public class RequiredEnumTests
         ((IComparable)TestOrderState.Draft).CompareTo(TestOrderState.Draft).Should().Be(0);
 
     [Fact]
-    public void CompareTo_OrdersByValueUsingOrdinalIgnoreCase()
+    public void CompareTo_OrdersByDeclarationOrder()
     {
-        // Value defaults to the field name, so "Confirmed" precedes "Draft" ordinally.
-        ((IComparable)TestOrderState.Confirmed).CompareTo(TestOrderState.Draft).Should().BeNegative();
-        ((IComparable)TestOrderState.Draft).CompareTo(TestOrderState.Confirmed).Should().BePositive();
+        // Draft is declared before Confirmed, so it sorts first (by Ordinal, not alphabetically).
+        ((IComparable)TestOrderState.Draft).CompareTo(TestOrderState.Confirmed).Should().BeNegative();
+        ((IComparable)TestOrderState.Confirmed).CompareTo(TestOrderState.Draft).Should().BePositive();
     }
 
     [Fact]
@@ -532,35 +532,37 @@ public class RequiredEnumTests
     }
 
     [Fact]
-    public void OrderBy_SortsMembersByValueOrdinalIgnoreCase()
+    public void OrderBy_SortsMembersByDeclarationOrderNotAlphabetically()
     {
+        // Declaration order: Draft(0), Confirmed(1), Shipped(2), Delivered(3), Cancelled(4).
+        // Alphabetical would be Cancelled, Draft, Shipped — so this also proves ordering is NOT by Value.
         var sorted = new[] { TestOrderState.Shipped, TestOrderState.Cancelled, TestOrderState.Draft }
             .OrderBy(state => (IComparable)state)
             .ToList();
 
-        sorted.Should().Equal(TestOrderState.Cancelled, TestOrderState.Draft, TestOrderState.Shipped);
+        sorted.Should().Equal(TestOrderState.Draft, TestOrderState.Shipped, TestOrderState.Cancelled);
     }
 
     [Fact]
-    public void GenericCompareTo_OrdersByValueOrdinalIgnoreCase()
+    public void GenericCompareTo_OrdersByDeclarationOrder()
     {
-        TestOrderState.Confirmed.CompareTo(TestOrderState.Draft).Should().BeNegative();
-        TestOrderState.Draft.CompareTo(TestOrderState.Confirmed).Should().BePositive();
+        TestOrderState.Draft.CompareTo(TestOrderState.Confirmed).Should().BeNegative();
+        TestOrderState.Confirmed.CompareTo(TestOrderState.Draft).Should().BePositive();
         TestOrderState.Draft.CompareTo(TestOrderState.Draft).Should().Be(0);
     }
 
     [Fact]
-    public void ComparisonOperators_FollowValueOrder()
+    public void ComparisonOperators_FollowDeclarationOrder()
     {
         var draft = TestOrderState.Draft;
         var draftAgain = TestOrderState.Draft;
         var confirmed = TestOrderState.Confirmed;
 
-        (confirmed < draft).Should().BeTrue();
-        (draft > confirmed).Should().BeTrue();
+        (draft < confirmed).Should().BeTrue();
+        (confirmed > draft).Should().BeTrue();
         (draft <= draftAgain).Should().BeTrue();
         (draft >= draftAgain).Should().BeTrue();
-        (draft < confirmed).Should().BeFalse();
+        (confirmed < draft).Should().BeFalse();
     }
 
     [Fact]
