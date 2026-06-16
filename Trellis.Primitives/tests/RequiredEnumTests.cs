@@ -68,6 +68,30 @@ public partial class TestImmutableEnumMembers : RequiredEnum<TestImmutableEnumMe
     public static readonly TestImmutableEnumMembers Three = new();
 }
 
+/// <summary>
+/// Composite value object holding <see cref="RequiredEnum{TSelf}"/> members — the scenario that
+/// requires <c>RequiredEnum</c> to implement <see cref="IComparable"/> so members can be yielded
+/// as equality components.
+/// </summary>
+public sealed class TestEnumHolder : ValueObject
+{
+    public TestEnumHolder(TestOrderState state, TestPaymentMethod method)
+    {
+        State = state;
+        Method = method;
+    }
+
+    public TestOrderState State { get; }
+
+    public TestPaymentMethod Method { get; }
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return State;
+        yield return Method;
+    }
+}
+
 public class RequiredEnumTests
 {
     #region TryCreate Tests
@@ -461,6 +485,94 @@ public class RequiredEnumTests
         // Assert
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*duplicate symbolic value 'duplicate'*");
+    }
+
+    #endregion
+
+    #region IComparable Tests
+
+    [Fact]
+    public void RequiredEnum_IsAssignableTo_IComparable()
+    {
+        TestOrderState.Draft.Should().BeAssignableTo<IComparable>();
+        TestOrderState.Draft.Should().BeAssignableTo<IComparable<RequiredEnum<TestOrderState>>>();
+    }
+
+    [Fact]
+    public void CompareTo_SameMember_ReturnsZero() =>
+        ((IComparable)TestOrderState.Draft).CompareTo(TestOrderState.Draft).Should().Be(0);
+
+    [Fact]
+    public void CompareTo_OrdersByValueUsingOrdinalIgnoreCase()
+    {
+        // Value defaults to the field name, so "Confirmed" precedes "Draft" ordinally.
+        ((IComparable)TestOrderState.Confirmed).CompareTo(TestOrderState.Draft).Should().BeNegative();
+        ((IComparable)TestOrderState.Draft).CompareTo(TestOrderState.Confirmed).Should().BePositive();
+    }
+
+    [Fact]
+    public void CompareTo_IsConsistentWithEquality()
+    {
+        var left = TestOrderState.Shipped;
+        var right = TestOrderState.Shipped;
+
+        (((IComparable)left).CompareTo(right) == 0).Should().Be(left.Equals(right));
+    }
+
+    [Fact]
+    public void CompareTo_Null_ReturnsPositive() =>
+        ((IComparable)TestOrderState.Draft).CompareTo(null).Should().BePositive();
+
+    [Fact]
+    public void CompareTo_DifferentType_ThrowsArgumentException()
+    {
+        var act = () => ((IComparable)TestOrderState.Draft).CompareTo("not an enum");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void OrderBy_SortsMembersByValueOrdinalIgnoreCase()
+    {
+        var sorted = new[] { TestOrderState.Shipped, TestOrderState.Cancelled, TestOrderState.Draft }
+            .OrderBy(state => (IComparable)state)
+            .ToList();
+
+        sorted.Should().Equal(TestOrderState.Cancelled, TestOrderState.Draft, TestOrderState.Shipped);
+    }
+
+    [Fact]
+    public void GenericCompareTo_OrdersByValueOrdinalIgnoreCase()
+    {
+        TestOrderState.Confirmed.CompareTo(TestOrderState.Draft).Should().BeNegative();
+        TestOrderState.Draft.CompareTo(TestOrderState.Confirmed).Should().BePositive();
+        TestOrderState.Draft.CompareTo(TestOrderState.Draft).Should().Be(0);
+    }
+
+    [Fact]
+    public void ComparisonOperators_FollowValueOrder()
+    {
+        var draft = TestOrderState.Draft;
+        var draftAgain = TestOrderState.Draft;
+        var confirmed = TestOrderState.Confirmed;
+
+        (confirmed < draft).Should().BeTrue();
+        (draft > confirmed).Should().BeTrue();
+        (draft <= draftAgain).Should().BeTrue();
+        (draft >= draftAgain).Should().BeTrue();
+        (draft < confirmed).Should().BeFalse();
+    }
+
+    [Fact]
+    public void CompositeValueObject_WithRequiredEnumComponents_SupportsEqualityAndOrdering()
+    {
+        var first = new TestEnumHolder(TestOrderState.Draft, TestPaymentMethod.Cash);
+        var same = new TestEnumHolder(TestOrderState.Draft, TestPaymentMethod.Cash);
+        var different = new TestEnumHolder(TestOrderState.Shipped, TestPaymentMethod.Cash);
+
+        first.Should().Be(same);
+        first.Equals(different).Should().BeFalse();
+        first.CompareTo(different).Should().NotBe(0);
     }
 
     #endregion

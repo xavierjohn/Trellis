@@ -137,7 +137,7 @@ using System.Reflection;
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix - RequiredEnum is a valid DDD pattern name
 [DebuggerDisplay("{Value}")]
 public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf>
-    : IEquatable<RequiredEnum<TSelf>>
+    : IEquatable<RequiredEnum<TSelf>>, IComparable<RequiredEnum<TSelf>>, IComparable
     where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>
 #pragma warning restore CA1711
 {
@@ -255,6 +255,55 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 
     /// <summary>Determines whether two instances are not equal.</summary>
     public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) => !(left == right);
+
+    /// <summary>
+    /// Compares this instance with another by <see cref="Value"/> using a case-insensitive ordinal
+    /// comparison, consistent with <see cref="Equals(RequiredEnum{TSelf})"/>. Ordering follows the
+    /// symbolic <see cref="Value"/>, not the declaration-order <see cref="Ordinal"/>.
+    /// </summary>
+    /// <param name="other">The instance to compare with, or <see langword="null"/>.</param>
+    /// <returns>
+    /// A negative value if this instance precedes <paramref name="other"/>; zero if they are equal;
+    /// a positive value if this instance follows <paramref name="other"/> or <paramref name="other"/> is <see langword="null"/>.
+    /// </returns>
+    public int CompareTo(RequiredEnum<TSelf>? other)
+    {
+        if (other is null) return 1;
+        if (ReferenceEquals(this, other)) return 0;
+
+        return string.Compare(Value, other.Value, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Non-generic <see cref="IComparable"/> implementation. Enables members to be used as
+    /// <see cref="ValueObject.GetEqualityComponents"/> components of composite value objects and to
+    /// be ordered by the default comparer.
+    /// </summary>
+    /// <param name="obj">The object to compare with.</param>
+    /// <returns>The relative order, as described by <see cref="CompareTo(RequiredEnum{TSelf})"/>.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="obj"/> is not a <typeparamref name="TSelf"/>.</exception>
+    int IComparable.CompareTo(object? obj) => obj switch
+    {
+        null => 1,
+        RequiredEnum<TSelf> other => CompareTo(other),
+        _ => throw new ArgumentException($"Object must be of type {typeof(TSelf).Name}.", nameof(obj)),
+    };
+
+    /// <summary>Determines whether the left instance precedes the right in <see cref="Value"/> order.</summary>
+    public static bool operator <(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is null ? right is not null : left.CompareTo(right) < 0;
+
+    /// <summary>Determines whether the left instance precedes or equals the right in <see cref="Value"/> order.</summary>
+    public static bool operator <=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is null || left.CompareTo(right) <= 0;
+
+    /// <summary>Determines whether the left instance follows the right in <see cref="Value"/> order.</summary>
+    public static bool operator >(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is not null && left.CompareTo(right) > 0;
+
+    /// <summary>Determines whether the left instance follows or equals the right in <see cref="Value"/> order.</summary>
+    public static bool operator >=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is null ? right is null : left.CompareTo(right) >= 0;
 
     private static (ReadOnlyCollection<TSelf> Members, Dictionary<string, TSelf> ByName) GetCache() =>
         s_cache.GetOrAdd(typeof(TSelf), _ =>
