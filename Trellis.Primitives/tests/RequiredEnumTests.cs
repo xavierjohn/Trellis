@@ -578,4 +578,26 @@ public class RequiredEnumTests
     }
 
     #endregion
+
+    #region Singleton Construction Tests
+
+    [Fact]
+    public void RequiredEnum_WithNoDeclaredConstructor_ExposesNoPublicConstructor() =>
+        typeof(TestOrderState).GetConstructors()
+            .Should().BeEmpty("members are singletons; the generator emits a private parameterless constructor so callers cannot create non-member instances whose Value/Ordinal are never assigned");
+
+    [Fact]
+    public void RequiredEnum_CannotBeConstructedViaPublicActivator()
+    {
+        var act = () => Activator.CreateInstance<TestOrderState>();
+
+        act.Should().Throw<MissingMethodException>();
+    }
+
+    [Fact]
+    public void RequiredEnum_WithParameterizedConstructor_ExposesNoPublicConstructor() =>
+        typeof(TestPaymentMethod).GetConstructors()
+            .Should().BeEmpty("a behavior enum's own constructor must be non-public so non-member instances cannot be created");
+
+    #endregion
 }
