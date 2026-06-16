@@ -41,7 +41,7 @@ Use this table to pick the right base class before reading the per-type signatur
 
 ## Types
 
-This section is a **selection guide** — one or two distinguishing facts per type, not a signature reference. For complete signatures (members, overloads, operators, generated factories) see the per-type entries in [trellis-api-core.md](trellis-api-core.md) for the base classes and interfaces below, and [trellis-api-primitives.md](trellis-api-primitives.md) for the concrete built-in primitives. Default rejection behavior for every `Required*<TSelf>` base is the authoritative [Required base defaults](#required-base-defaults) table above and is not restated per type here.
+This section is a **selection guide** — one or two distinguishing facts per type, not a signature reference. For complete signatures (members, overloads, operators, generated factories) see the per-type entries in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the base classes and interfaces below, and [trellis-api-primitives.md](trellis-api-primitives.md#types) for the concrete built-in primitives. Default rejection behavior for every `Required*<TSelf>` base is the authoritative [Required base defaults](#required-base-defaults) table above and is not restated per type here.
 
 ### `ValueObject`
 
@@ -142,7 +142,7 @@ Concrete **structured** value object (`Amount` + `Currency`) for multi-currency;
 
 ## Source-generated members
 
-For a `partial` `Required*<TSelf>` type the primitive generator emits the `IScalarValue<TSelf, T>` implementation, the `TryCreate` primitive and string factories (plus a culture-aware `IFormatProvider` overload for the numeric and date/time families), `Create`, `Parse` / `TryParse`, an explicit cast operator, and a `ValidateAdditional(...)` extension hook. `RequiredGuid<TSelf>` additionally gets `NewUniqueV4()` / `NewUniqueV7()`; `RequiredEnum<TSelf>` creation routes through `TryFromName`. See the per-type generated-member entries in [trellis-api-core.md](trellis-api-core.md) for the exact emitted signatures.
+For a `partial` `Required*<TSelf>` type the primitive generator emits the `IScalarValue<TSelf, T>` implementation, the `TryCreate` primitive and string factories (plus a culture-aware `IFormatProvider` overload for the numeric and date/time families), `Create`, `Parse` / `TryParse`, an explicit cast operator, and a `ValidateAdditional(...)` extension hook. `RequiredGuid<TSelf>` additionally gets `NewUniqueV4()` / `NewUniqueV7()`; `RequiredEnum<TSelf>` creation routes through `TryFromName`. See the per-type generated-member entries in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the exact emitted signatures.
 
 ## Built-in primitives table
 
