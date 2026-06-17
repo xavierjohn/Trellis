@@ -359,4 +359,21 @@ public static class DiagnosticDescriptors
         description: "MaybeExpressionRewriter can inspect and inline HasValueWhere(t => ...) predicate bodies in IQueryable expression trees. " +
                      "Captured Func<T, bool> variables, method groups, and other non-inline delegate shapes are opaque to the rewriter and fall through to EF Core translation failures.",
         helpLinkUri: HelpLinkBase);
+
+    /// <summary>
+    /// TRLS059: Result&lt;Mediator.Unit&gt; should be Result&lt;Trellis.Unit&gt;.
+    /// </summary>
+    public static readonly DiagnosticDescriptor MediatorUnitInResult = new(
+        id: TrellisDiagnosticIds.MediatorUnitInResult,
+        title: "Result wraps Mediator.Unit instead of Trellis.Unit",
+        messageFormat: "Result<Mediator.Unit> should be Result<Trellis.Unit>. A bare 'Unit' in a file with 'using Mediator;' binds to Mediator.Unit, which the ASP layer does not map to 204 No Content.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Trellis and the martinothamar/Mediator package both define a 'Unit' type. Inside a handler file with a file-scoped 'using Mediator;', " +
+                     "a bare 'Unit' resolves to Mediator.Unit (the nearer using wins, with no ambiguity error), so 'Result<Unit>' silently compiles as " +
+                     "'Result<Mediator.Unit>'. The Trellis.Asp response layer only maps 'Result<Trellis.Unit>' to 204 No Content, so the endpoint returns " +
+                     "200 instead of 204 and only an HTTP integration test catches it. Qualify the type as 'Result<Trellis.Unit>' (or add a file-scoped " +
+                     "'using Unit = Trellis.Unit;').",
+        helpLinkUri: HelpLinkBase);
 }

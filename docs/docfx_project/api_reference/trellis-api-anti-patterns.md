@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-06-03
@@ -173,6 +173,32 @@ IEnumerable<Order> overdueInMemory = db.Orders
 ```
 
 > Method groups and member-held delegates have the same limitation as local `Func<T, bool>` variables: EF Core cannot translate a delegate body it cannot see.
+
+## TRLS059 — `Result<Mediator.Unit>` instead of `Result<Trellis.Unit>`
+
+Trellis and the martinothamar/Mediator package both define a `Unit` type. In a handler file with a file-scoped `using Mediator;`, a bare `Unit` binds to `Mediator.Unit` (the nearer `using` wins — no `CS0104` ambiguity), so `Result<Unit>` silently compiles as `Result<Mediator.Unit>`. The Trellis.Asp response layer maps only `Result<Trellis.Unit>` to `204 No Content`, so the endpoint returns `200` instead — and handler/unit tests pass; only an HTTP integration test catches it.
+
+```csharp
+using Mediator;   // brings Mediator.Unit into scope, nearer than the global `using Trellis;`
+
+// WRONG — bare `Unit` binds to Mediator.Unit; the endpoint returns 200, not 204
+public sealed record DeleteOrderCommand(OrderId Id) : ICommand<Result<Unit>>;          // TRLS059
+
+internal sealed class DeleteOrderHandler(IOrderRepository repository)
+    : ICommandHandler<DeleteOrderCommand, Result<Unit>>                                // TRLS059
+{
+    public ValueTask<Result<Unit>> Handle(DeleteOrderCommand command, CancellationToken ct) => /* ... */;  // TRLS059
+}
+
+// FIX 1 — qualify the Trellis type so the 204 mapping matches
+public sealed record DeleteOrderCommand(OrderId Id) : ICommand<Result<Trellis.Unit>>;
+
+// FIX 2 — add a file-scoped alias so a bare `Unit` resolves to Trellis.Unit
+using Unit = Trellis.Unit;
+public sealed record DeleteOrderCommand(OrderId Id) : ICommand<Result<Unit>>;
+```
+
+> `Mediator.Unit` is correct as the Mediator response marker for a void message (`ICommand<Mediator.Unit>`); the analyzer only flags it when it is the type argument of a Trellis `Result<>`.
 
 ## TRLS015 — Use `SaveChangesResultAsync` instead of `SaveChangesAsync`
 

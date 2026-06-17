@@ -26,3 +26,4 @@ TRLS022  | Trellis  | Warning  | [OwnedEntity] property uses init-only setter; u
 TRLS023  | Trellis  | Warning  | CreatedAtRoute, CreatedAtAction, or WithLocation on a versioned controller is missing the api-version route value; chain .WithVersionedRoute() instead.
 TRLS054  | Trellis  | Warning  | Maybe<T>.Equals or object.Equals over Maybe<T> inside an IQueryable expression is not translatable; use == or != instead.
 TRLS055  | Trellis  | Warning  | HasValueWhere inside an IQueryable expression requires an inline lambda predicate.
+TRLS059  | Trellis  | Warning  | Result&lt;Mediator.Unit&gt; should be Result&lt;Trellis.Unit&gt;; a bare Unit under `using Mediator;` binds to Mediator.Unit and breaks the 204 No Content mapping.

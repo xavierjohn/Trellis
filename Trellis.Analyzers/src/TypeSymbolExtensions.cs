@@ -22,6 +22,14 @@ internal static class TypeSymbolExtensions
         namedType.ContainingNamespace?.ToDisplayString() == "Trellis";
 
     /// <summary>
+    /// Checks if the type is <c>Unit</c> from the <c>Mediator</c> namespace
+    /// (the martinothamar/Mediator package), as opposed to <c>Trellis.Unit</c>.
+    /// </summary>
+    internal static bool IsMediatorUnit(this ITypeSymbol? typeSymbol) =>
+        typeSymbol is { Name: "Unit" } &&
+        typeSymbol.ContainingNamespace?.ToDisplayString() == "Mediator";
+
+    /// <summary>
     /// Checks if the type is Error or a derived error type from Trellis namespace.
     /// </summary>
     internal static bool IsErrorOrDerivedType(this ITypeSymbol? typeSymbol)
