@@ -54,6 +54,8 @@ The analyzers ship as a **separate NuGet package, `Trellis.Analyzers`**. Install
 
 Prefer fixing the code over suppressing diagnostics. When a suppression is genuinely intentional, use `TrellisDiagnosticIds` constants instead of string literals and include a justification.
 
+In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuning — intentional fire-and-forget calls in *arrange*, and `DbContext.SaveChangesAsync()` used for seeding. Idiomatic assertions and explicit discards (`_ = ...`) already satisfy `TRLS001`, so reach for a scoped `.editorconfig` severity override rather than a project-wide `<NoWarn>`. See [test-context guidance](trellis-api-testing-reference.md#common-traps).
+
 ## Diagnostics
 
 | ID | Severity | Title | Description |
