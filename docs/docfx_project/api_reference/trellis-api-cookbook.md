@@ -1088,7 +1088,22 @@ public partial class ShippingAddress { /* … */ }
 
 ### Owned collections with a private backing field
 
-When an aggregate exposes a collection navigation as an `IReadOnlyList<T>` (or `IReadOnlyCollection<T>`) facade over a private `List<T>` field, **ignore the facade and map via the backing field name**. EF Core cannot instantiate an interface type for a navigation, so it has to bind directly to the concrete `List<T>` field.
+When an aggregate or composite value object exposes a collection as an `IReadOnlyList<T>` (or `IReadOnlyCollection<T>`) facade over a private `List<T>` field, **how you map it depends on whether the element `T` is a value object or an entity:**
+
+- **`T` is a composite value object** (derives from `ValueObject`): **no configuration is required.** `CompositeValueObjectConvention` registers every composite VO as an owned type, and EF Core's navigation discovery binds the read-only facade to its `_camelCase` backing field automatically — including when the collection lives *inside another composite VO*, and whether the owner is required or `Maybe<T>`. Writing `Ignore` + `OwnsMany` for a value-object collection is redundant.
+- **`T` is an entity** (has its own identity, not a `ValueObject`): the element is **not auto-owned** — Trellis conventions auto-own value objects only. By convention EF treats an entity collection as a *separate, independently-tracked* relationship, so configure `OwnsMany` explicitly to make it an owned aggregate child, as shown below.
+
+```csharp
+// VALUE-OBJECT collection — zero configuration; the convention owns it.
+[OwnedEntity]
+public partial class Innings : ValueObject
+{
+    private readonly List<FallOfWicket> _fallOfWickets = [];            // FallOfWicket : ValueObject
+    public IReadOnlyList<FallOfWicket> FallOfWickets => _fallOfWickets; // auto-mapped — no Ignore/OwnsMany
+}
+```
+
+Map an **entity** collection explicitly with `OwnsMany`. Binding against the private backing field by name keeps the public surface an immutable `IReadOnlyList<T>` while EF writes through the field:
 
 ```csharp
 public sealed partial class Order : Aggregate<OrderId>
@@ -1128,7 +1143,9 @@ The string `"_lineItems"` is unfortunately part of the public mapping contract: 
 | `private const string LineItemsField = "_lineItems";` on `Order`, then `builder.OwnsMany<LineItem>(Order.LineItemsField, …)` | Refactoring tools follow the constant. Still no compile check that the field actually exists. | Leaks the field name through `internal`/`public` constant on the aggregate — adds public surface for a persistence concern. |
 | `builder.OwnsMany(o => o.LineItems, …)` directly against the facade | n/a | Does not work: EF reports it cannot determine the relationship from `IReadOnlyList<LineItem>`. |
 
-**Why no `[OwnedEntity]`-style convention for collections (yet).** `CompositeValueObjectConvention` discovers composite owned *value objects* by inheritance from `ValueObject`. An equivalent collection convention would need to walk every aggregate, find `IReadOnlyList<T>` / `IReadOnlyCollection<T>` properties whose `T` is an entity, locate a matching `_camelCase` backing field, and register the `OwnsMany` against it. This is on the roadmap (tracked as the analogue of `MaybeConvention` for collections); for now the cookbook pattern above is the supported approach.
+**Why no convention for _entity_ collections (yet).** Composite **value-object** collections are already handled automatically (see the value-object case above) — `CompositeValueObjectConvention` registers each composite VO as owned, so EF Core's navigation discovery maps the `IReadOnlyList<VO>` facade with no extra configuration. An equivalent convention for **entity** collections would need to walk every aggregate, find `IReadOnlyList<T>` / `IReadOnlyCollection<T>` properties whose `T` is an entity, locate a matching `_camelCase` backing field, and register the `OwnsMany` against it. This is on the roadmap (tracked as the analogue of `MaybeConvention` for collections); for now the manual pattern above is the supported approach for entity collections.
+
+> **Testing on SQLite?** An `OwnsMany` whose per-row key is a store-generated integer inserts fine on SQL Server (`int IDENTITY`) but fails on SQLite with `NOT NULL constraint failed: <Table>.Id`, because SQLite only auto-increments a single-column `INTEGER PRIMARY KEY`. This is stock EF Core + SQLite behavior, not a Trellis issue. Give the collection a client-generated `Guid` key to make it provider-independent — see [trellis-api-efcore.md](trellis-api-efcore.md#provider-specific-behavior-owned-collections-on-sqlite).
 
 ### Supported property shapes inside a composite VO — when to map to a DTO instead
 

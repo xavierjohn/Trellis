@@ -801,6 +801,32 @@ The same pattern applies to other CLR-type / provider mismatches — for example
 
 The same Acl boundary applies to [`PaginationQueryableExtensions.ToPageAsync`](#paginationqueryableextensions). The helper emits `Expression.GreaterThan` for numeric and `DateTime`/`DateTimeOffset` keys (which translate natively on every common provider) and routes through `IComparable<TKey>.CompareTo` for `Guid` and `string` keys (which SQL Server translates to native `ORDER BY` / `>` semantics, and which other providers translate to their dialect equivalents). If a provider rejects the `CompareTo` shape for a particular key type, register a `ValueConverter` on the Id column that converts to a sortable scalar (e.g. `Guid` → `string` byte-canonical form on Postgres) so the seek predicate translates correctly.
 
+### Provider-specific behavior: owned collections on SQLite
+
+> **Note:** This documents a stock EF Core + SQLite interaction, **not** a Trellis behavior. It is included here only because Trellis projects commonly test against SQLite while deploying to SQL Server, so the symptom can surface in a Trellis test suite.
+
+An owned collection (`OwnsMany`) whose per-row key is a **store-generated integer** — the default when the owned type is keyless and EF Core synthesizes a key for it — fails to insert on **SQLite** with:
+
+```text
+Microsoft.Data.Sqlite.SqliteException: SQLite Error 19: 'NOT NULL constraint failed: <OwnedTable>.Id'
+```
+
+**Why.** EF Core identifies each owned-collection row by a *composite* primary key `(<OwnerForeignKey>, <Id>)`, where the synthesized `<Id>` is an `int` marked `ValueGenerated.OnAdd`. On **SQL Server** that column is emitted as `int NOT NULL IDENTITY`, which auto-increments even as part of a composite key, so inserts succeed. **SQLite** only auto-increments a *single-column* `INTEGER PRIMARY KEY` (the rowid alias); an integer that is merely *part of* a composite primary key is never auto-populated, so it stays `NULL` and the `NOT NULL` constraint fails. The same failure reproduces with a plain non-Trellis POCO owned collection and no Trellis conventions registered — confirming it is provider behavior, not a framework defect — and **SQL Server (the provider the production schema targets) is unaffected.**
+
+**Fix.** Give the owned collection an explicit **client-generated** key so row identity does not depend on database identity. A `Guid` key is generated client-side by EF Core on every provider (sequential on SQL Server, random on SQLite), so the INSERT carries a value on SQLite and SQL Server alike:
+
+```csharp
+builder.OwnsMany(o => o.Addresses, a =>
+{
+    // Client-generated Guid key: no dependency on database IDENTITY/rowid, so the
+    // owned-collection row inserts on SQLite as well as on SQL Server.
+    a.Property<Guid>("Id").ValueGeneratedOnAdd();
+    a.HasKey("Id");
+});
+```
+
+Alternatively, run integration tests against the same provider you deploy to (for example SQL Server LocalDB), which sidesteps the SQLite-only rowid limitation entirely.
+
 ## Cross-references
 
 - [Trellis DDD primitives in `Trellis.Core` (API reference)](trellis-api-core.md#domain-driven-design) — `IEntity`, `IAggregate`, `Aggregate<TId>`, `Entity<TId>`, `ValueObject`, `ScalarValueObject<TSelf, T>`, and `Specification<T>`
