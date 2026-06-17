@@ -737,6 +737,78 @@ public class UnsafeValueAccessAnalyzerTests
         await test.RunAsync();
     }
 
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedViaRefLocalAlias_StillReportsDiagnostic()
+    {
+        // A writable ref-local alias of the receiver can rewrite it, defeating the guard.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    ref var alias = ref maybe;
+                    alias = other;
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_RefReadonlyAlias_NoDiagnostic()
+    {
+        // A `ref readonly` alias cannot rewrite the receiver, so the guard stays valid.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    ref readonly var alias = ref maybe;
+                    _ = alias;
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_RefAliasOfUnrelatedVariable_NoDiagnostic()
+    {
+        // A writable ref-local that aliases a different variable does not touch the receiver.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    int x = 0;
+                    ref var r = ref x;
+                    r = 5;
+                    return maybe.Value + x;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
     #endregion
 
     [Fact]

@@ -545,11 +545,11 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
     /// guard — a loop back-edge re-enters the body, so a later reassignment is visible on the next
     /// iteration's access.</item>
     /// </list>
-    /// A "write" is a simple/compound assignment, a tuple-deconstruction target, or a
-    /// <c>ref</c>/<c>out</c> argument. Writes inside nested local functions / lambdas are ignored
-    /// because they are not evaluated inline. Known accepted limitations (consistent with the
-    /// analyzer's other syntactic guards): a mutation performed by an invoked local function / lambda
-    /// and control flow via <c>goto</c> are not tracked.
+    /// A "write" is a simple/compound assignment, a tuple-deconstruction target, a
+    /// <c>ref</c>/<c>out</c> argument, or a writable <c>ref</c>-local alias of the receiver. Writes
+    /// inside nested local functions / lambdas are ignored because they are not evaluated inline.
+    /// Known accepted limitations (consistent with the analyzer's other syntactic guards): a mutation
+    /// performed by an invoked local function / lambda and control flow via <c>goto</c> are not tracked.
     /// </summary>
     private static bool IsReceiverReassignedBeforeAccess(
         StatementSyntax guardStatement,
@@ -598,7 +598,8 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// Returns <see langword="true"/> when <paramref name="node"/> writes to
     /// <paramref name="receiver"/> (or a prefix of its member-access chain): a simple/compound
-    /// assignment, a tuple-deconstruction element, or a <c>ref</c>/<c>out</c> argument.
+    /// assignment, a tuple-deconstruction element, a <c>ref</c>/<c>out</c> argument, or a writable
+    /// <c>ref</c> local that aliases the receiver (which can rewrite it indirectly).
     /// </summary>
     private static bool WritesReceiver(SyntaxNode node, ExpressionSyntax receiver, SemanticModel semanticModel) =>
         node switch
@@ -607,8 +608,34 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             ArgumentSyntax argument when argument.RefKindKeyword.IsKind(SyntaxKind.RefKeyword) ||
                                          argument.RefKindKeyword.IsKind(SyntaxKind.OutKeyword) =>
                 WriteTargetMatches(argument.Expression, receiver, semanticModel),
+            LocalDeclarationStatementSyntax local => DeclaresWritableRefAliasOfReceiver(local, receiver, semanticModel),
             _ => false,
         };
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="local"/> declares a writable (non-<c>ref
+    /// readonly</c>) <c>ref</c> local initialized as <c>ref receiver</c> (or a prefix of its chain).
+    /// Such an alias can rewrite the receiver via <c>alias = ...</c>, so it conservatively invalidates
+    /// the guard.
+    /// </summary>
+    private static bool DeclaresWritableRefAliasOfReceiver(
+        LocalDeclarationStatementSyntax local,
+        ExpressionSyntax receiver,
+        SemanticModel semanticModel)
+    {
+        if (local.Declaration.Type is not RefTypeSyntax refType ||
+            refType.ReadOnlyKeyword.IsKind(SyntaxKind.ReadOnlyKeyword))
+            return false;
+
+        foreach (var declarator in local.Declaration.Variables)
+        {
+            if (declarator.Initializer?.Value is RefExpressionSyntax refExpression &&
+                WriteTargetMatches(refExpression.Expression, receiver, semanticModel))
+                return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// Returns <see langword="true"/> when assigning <paramref name="target"/> changes the value seen
