@@ -707,6 +707,36 @@ public class UnsafeValueAccessAnalyzerTests
         await test.RunAsync();
     }
 
+    [Fact]
+    public async Task EarlyReturnGuard_GuardInsideLoop_ReassignedLaterInLoop_NoDiagnostic()
+    {
+        // The guard is INSIDE the loop, so it re-runs every iteration before the access; a
+        // reassignment later in the same loop body is re-checked on the next iteration and must NOT
+        // invalidate the guard. (The loop-carried scan only covers loops that enclose the access but
+        // not the guard; here the guard's block is the loop body, so the loop is not scanned.)
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    int total = 0;
+                    foreach (var i in new[] { 1, 2 })
+                    {
+                        if (!maybe.HasValue)
+                            continue;
+
+                        total += maybe.Value;
+                        maybe = other;
+                    }
+                    return total;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
     #endregion
 
     [Fact]

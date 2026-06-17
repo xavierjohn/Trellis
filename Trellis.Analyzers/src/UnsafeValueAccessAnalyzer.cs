@@ -571,6 +571,11 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
                 return true;
         }
 
+        // Walk from the access up to (but not into) the guard's block. Terminating at guardBlock is
+        // what restricts this to loops that enclose the access but NOT the guard: any loop whose body
+        // is at or above guardBlock (i.e. a loop the guard itself lives in, which therefore re-runs
+        // the guard every iteration before the access) is never reached, so a later reassignment in
+        // that loop does not invalidate the guard.
         for (SyntaxNode? node = memberAccess; node is not null && node != guardBlock; node = node.Parent)
         {
             if (node is ForStatementSyntax or ForEachStatementSyntax or ForEachVariableStatementSyntax
