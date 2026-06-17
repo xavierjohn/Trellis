@@ -272,6 +272,8 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 | `public override string ToString()` | `string` | Invariant decimal string. |
 | `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Returns `Zero` for empty collections. Throws `ArgumentNullException` when `values` is null and `ArgumentException` when any element is null. |
 
+> **`Create` (throws) vs `TryCreate` (Result).** `MonetaryAmount` inherits the scalar `Create(decimal)` factory from `ScalarValueObject<TSelf, T>`, which **throws** `InvalidOperationException` on invalid input (it runs `TryCreate` and throws on the failure) — the same fail-fast factory the explicit `decimal` cast uses. `TryCreate(...)` returns `Result<MonetaryAmount>` and never throws on a validation failure. Use `Create` only for trusted, constant, or already-validated values (fail-fast at a boundary); use `TryCreate` for untrusted input and **inside any `Result`/ROP chain**, where a throw breaks the railway (analyzer `TRLS010` flags throwing inside `Bind`/`Map`/`Tap`/`Ensure`). The same throws-vs-`Result` split applies across value objects — both the composite `Money` and the scalar `Required*<T>` primitives expose a throwing `Create` alongside `TryCreate`. (`Parse` throws `FormatException`; `TryParse` is the non-throwing parse counterpart.)
+
 ### `CompositeValueObjectJsonConverter<T>`
 
 ```csharp

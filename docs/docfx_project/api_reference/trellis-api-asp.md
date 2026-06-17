@@ -1117,29 +1117,92 @@ app.MapGet("/widgets", async (string? cursor, int? limit, IWidgetReader reader, 
 });
 ```
 
-### MVC controller using `AsActionResult<T>` for typed signatures
+### Canonical MVC controller — `ToHttpResponseAsync(...).AsActionResultAsync<T>()`
+
+This is the single end-to-end controller idiom for every verb: send the message, project the domain value to a response DTO with `ToHttpResponseAsync(map, opts => …)`, then adapt to a typed `ActionResult<T>` with `AsActionResultAsync<T>()`. The options builder is the one place HTTP metadata is attached (`WithETag` / `WithLastModified` / `CreatedAtRoute` / `HonorPrefer`); `ETagHelper.ParseIfMatch(Request)` flows the precondition into the command. There is no manual status-code branching — a failure `Error` maps to the correct status at the boundary.
 
 ```csharp
+using System.Collections.Generic;
+using System.Linq;
+using Mediator;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Trellis;
 using Trellis.Asp;
 
 [ApiController]
-[Route("widgets")]
-public sealed class WidgetsController(IWidgetReader reader) : ControllerBase
+[Produces("application/json")]
+[Route("api/[controller]")]
+public sealed class WidgetsController(ISender sender) : ControllerBase
 {
-    [HttpGet("{id}", Name = "widgets.get")]
-    [ProducesResponseType<WidgetResponse>(200)]
-    [ProducesResponseType<ProblemDetails>(404)]
-    public async Task<ActionResult<WidgetResponse>> Get(string id, CancellationToken ct)
-    {
-        Result<Widget> result = await reader.GetAsync(id, ct);
-        return await result
-            .ToHttpResponseAsync(w => new WidgetResponse(w.Id, w.Name))
+    // GET by id — 200 with strong ETag + Last-Modified; 404 on NotFound.
+    [HttpGet("{id}", Name = "Widgets_GetById")]
+    [ProducesResponseType(typeof(WidgetResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ValueTask<ActionResult<WidgetResponse>> GetById(WidgetId id, CancellationToken ct) =>
+        sender.Send(new GetWidgetByIdQuery(id), ct)
+            .ToHttpResponseAsync(
+                WidgetResponse.From,
+                opts => opts.WithETag(w => EntityTagValue.Strong(w.ETag)).WithLastModified(w => w.LastModified))
             .AsActionResultAsync<WidgetResponse>();
+
+    // GET list — 200 with a projected collection.
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<WidgetResponse>), StatusCodes.Status200OK)]
+    public ValueTask<ActionResult<IReadOnlyList<WidgetResponse>>> GetAll(CancellationToken ct) =>
+        sender.Send(new GetAllWidgetsQuery(), ct)
+            .ToHttpResponseAsync(widgets => widgets.Select(WidgetResponse.From).ToList())
+            .AsActionResultAsync<IReadOnlyList<WidgetResponse>>();
+
+    // POST create — 201 Created with Location via CreatedAtRoute; 422 on invalid input.
+    [HttpPost]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(WidgetResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public ValueTask<ActionResult<WidgetResponse>> Create([FromBody] CreateWidgetRequest request, CancellationToken ct) =>
+        sender.Send(new CreateWidgetCommand(request.Name), ct)
+            .ToHttpResponseAsync(
+                WidgetResponse.From,
+                opts => opts.CreatedAtRoute("Widgets_GetById", w => new RouteValueDictionary { ["id"] = w.Id.Value }))
+            .AsActionResultAsync<WidgetResponse>();
+
+    // PUT update — If-Match precondition + Prefer handling.
+    [HttpPut("{id}")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(WidgetResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status412PreconditionFailed)]
+    [ProducesResponseType(StatusCodes.Status428PreconditionRequired)]
+    public ValueTask<ActionResult<WidgetResponse>> Update(WidgetId id, [FromBody] UpdateWidgetRequest request, CancellationToken ct)
+    {
+        var ifMatch = ETagHelper.ParseIfMatch(Request);
+        return sender.Send(new UpdateWidgetCommand(id, ifMatch, request.Name), ct)
+            .ToHttpResponseAsync(
+                WidgetResponse.From,
+                opts => opts.WithETag(w => EntityTagValue.Strong(w.ETag)).WithLastModified(w => w.LastModified).HonorPrefer())
+            .AsActionResultAsync<WidgetResponse>();
+    }
+
+    // DELETE — 204 No Content. Body-less, so return IResult directly (no AsActionResultAsync).
+    // Fully-qualify Microsoft.AspNetCore.Http.IResult — it clashes with Trellis.IResult under `using Trellis;`.
+    // ToHttpResponseAsync() returns ValueTask<IResult>, so await it and return Task<IResult>.
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status412PreconditionFailed)]
+    public async Task<Microsoft.AspNetCore.Http.IResult> Delete(WidgetId id, CancellationToken ct)
+    {
+        var ifMatch = ETagHelper.ParseIfMatch(Request);
+        return await sender.Send(new DeleteWidgetCommand(id, ifMatch), ct).ToHttpResponseAsync();
     }
 }
 ```
+
+What this canonicalizes (the same shape the Todo sample and generated services use):
+
+- **One projection + adapter per action.** `ToHttpResponseAsync(map, opts)` then `AsActionResultAsync<T>()` for body responses; the no-argument `ToHttpResponseAsync()` (returning `Microsoft.AspNetCore.Http.IResult`) for body-less responses (DELETE → `204`).
+- **The options builder owns HTTP metadata.** `WithETag` / `WithLastModified` for validators; `Created` / `CreatedAtRoute` for `201 Created` + `Location`; `WithLocation` for a `Location` header on the response's *natural* 2xx status (a state-transition primitive — it does **not** mark the response `201`); and `HonorPrefer()` for `Prefer: return=representation|minimal`.
+- **Preconditions flow through the command.** `ETagHelper.ParseIfMatch(Request)` → command → `.RequireETag(...)` in the handler (see [trellis-api-core.md](trellis-api-core.md#result-flow)); the boundary turns a stale/missing precondition into `412` / `428`.
 
 ### Per-call error mapping override
 
