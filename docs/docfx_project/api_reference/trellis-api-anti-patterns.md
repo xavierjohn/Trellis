@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Analyzers]
 types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
-last_verified: 2026-06-03
+last_verified: 2026-06-17
 audience: [llm]
 ---
 # Trellis Anti-Pattern → Fix Gallery
@@ -202,7 +202,7 @@ return await db.SaveChangesResultAsync(ct);       // Result<int> carries the aff
 
 ## TRLS020 — Composite value object DTO property is not safely deserializable
 
-Composite value objects exposed through request/response DTOs need a supported JSON transport so binding round-trips through `TryCreate`. A bare composite DTO property must use `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type. A `Maybe<TComposite>` DTO property is not analyzer-clean even when the inner composite type has that converter; use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam instead. The analyzer only inspects DTOs that are visible through a controller `[FromBody]` parameter or response type, a minimal API endpoint handler parameter, or a Mediator message type — the DTO type alone is not enough to trip the rule.
+Composite value objects exposed through request/response DTOs need a supported JSON transport so binding round-trips through `TryCreate`. A bare composite DTO property must use `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type. A `Maybe<TComposite>` DTO property is not analyzer-clean even when the inner composite type has that converter; use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam instead. The analyzer only inspects DTOs that are actually bound from the wire: a controller `[FromBody]` parameter or response type, or a minimal API endpoint handler parameter. A Mediator command is flagged only when it is itself the bound request body at one of those seams; a command constructed server-side (mapped from a separate request DTO and never deserialized from JSON) is not flagged, because System.Text.Json never touches it. The DTO type alone is not enough to trip the rule.
 
 ```csharp
 // WRONG — bare composite [OwnedEntity] value object exposed as a [FromBody] DTO property without the converter
