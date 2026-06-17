@@ -395,7 +395,7 @@ public abstract record Error
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A resourceless <see cref="Conflict"/>.</returns>
         public static Conflict ForReason(string reasonCode, string? detail = null) =>
-            new(Resource: null, reasonCode) { Detail = detail };
+            new(Resource: null, ReasonCode: reasonCode) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────
