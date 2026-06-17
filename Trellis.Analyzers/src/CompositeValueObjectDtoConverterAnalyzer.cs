@@ -29,10 +29,6 @@ public sealed class CompositeValueObjectDtoConverterAnalyzer : DiagnosticAnalyze
                 symbolContext => AnalyzeMethod(symbolContext, reportedProperties),
                 SymbolKind.Method);
 
-            compilationContext.RegisterSymbolAction(
-                symbolContext => AnalyzeMessageType(symbolContext, reportedProperties),
-                SymbolKind.NamedType);
-
             compilationContext.RegisterOperationAction(
                 operationContext => AnalyzeEndpointMappingInvocation(operationContext, reportedProperties),
                 OperationKind.Invocation);
@@ -62,14 +58,6 @@ public sealed class CompositeValueObjectDtoConverterAnalyzer : DiagnosticAnalyze
         }
     }
 
-    private static void AnalyzeMessageType(SymbolAnalysisContext context, ISet<ISymbol> reportedProperties)
-    {
-        if (context.Symbol is not INamedTypeSymbol type || !IsMediatorMessageType(type))
-            return;
-
-        AnalyzeDtoType(type, context.ReportDiagnostic, reportedProperties);
-    }
-
     private static void AnalyzeEndpointMappingInvocation(OperationAnalysisContext context, ISet<ISymbol> reportedProperties)
     {
         var invocation = (IInvocationOperation)context.Operation;
@@ -97,6 +85,10 @@ public sealed class CompositeValueObjectDtoConverterAnalyzer : DiagnosticAnalyze
             IMethodReferenceOperation methodReference => methodReference.Method,
             IDelegateCreationOperation { Target: var target } => GetEndpointHandlerMethod(target),
             IConversionOperation { Operand: var operand } => GetEndpointHandlerMethod(operand),
+            // A delegate-typed value (e.g. a local/field/parameter holding the handler) is not a
+            // lambda or method group, so fall back to the delegate's Invoke signature to recover
+            // the handler parameters that are bound from the request.
+            { Type: INamedTypeSymbol { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: { } invoke } } => invoke,
             _ => null,
         };
 
@@ -207,24 +199,6 @@ public sealed class CompositeValueObjectDtoConverterAnalyzer : DiagnosticAnalyze
         (InheritsFrom(method.ContainingType, "ControllerBase", "Microsoft.AspNetCore.Mvc") ||
          HasAttribute(method.ContainingType, "ApiControllerAttribute", "Microsoft.AspNetCore.Mvc"));
 
-    private static bool IsMediatorMessageType(INamedTypeSymbol type)
-    {
-        foreach (var interfaceType in type.AllInterfaces)
-        {
-            if (interfaceType.Name is "IRequest" or "ICommand" or "IQuery" &&
-                IsMediatorNamespace(interfaceType.ContainingNamespace))
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsMediatorNamespace(INamespaceSymbol? namespaceSymbol)
-    {
-        var namespaceName = namespaceSymbol?.ToDisplayString();
-        return namespaceName == "Mediator" || namespaceName?.EndsWith(".Mediator", StringComparison.Ordinal) == true;
-    }
-
     private static bool IsEndpointMappingMethod(IMethodSymbol method)
     {
         var endpointMethod = method.ReducedFrom ?? method;
@@ -252,8 +226,6 @@ public sealed class CompositeValueObjectDtoConverterAnalyzer : DiagnosticAnalyze
         // shim via `namespace Microsoft.AspNetCore.Builder { ... }` resolves to the nested
         // namespace `TestNamespace.Microsoft.AspNetCore.Builder`. Without this suffix branch the
         // analyzer's MapPost/MapPut/MapPatch/MapDelete detection cannot fire from analyzer tests.
-        // (Compare to `IsMediatorNamespace`, where the suffix branch ALSO accommodates real
-        // forks like `Foo.Mediator`; here the suffix branch is purely a test-support concession.)
         var namespaceName = namespaceSymbol?.ToDisplayString();
         return namespaceName == "Microsoft.AspNetCore.Builder" ||
                namespaceName?.EndsWith(".Microsoft.AspNetCore.Builder", StringComparison.Ordinal) == true;
