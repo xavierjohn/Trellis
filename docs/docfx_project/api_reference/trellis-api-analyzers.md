@@ -215,7 +215,7 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
   - `if` / ternary checks on `HasValue` / `HasNoValue`
   - `TryGetValue` branches, including negated forms
   - `maybe.HasValue && maybe.Value ...` short-circuit
-  - early-return / guard-clause exits — `if (!maybe.HasValue) return;` (also `throw` / `break` / `continue`, and the `maybe.HasNoValue` / `maybe.HasValue == false` forms) followed by `maybe.Value` in a later statement, when the receiver is not reassigned between the guard and the access
+  - early-return / guard-clause exits — `if (!maybe.HasValue) return;` (also `throw` / `break` / `continue`, and the `maybe.HasNoValue`, `maybe.HasValue == false`, and `maybe.HasValue != true` forms, with the literal on either side) followed by `maybe.Value` in a later statement, when the receiver is not reassigned between the guard and the access
   - safe lambda parameters inside Trellis Maybe APIs such as `Bind`, `Map`, `Tap`, `Ensure`, `Match`
   - prior assignment from `Maybe.From(...)` when `T` is a non-nullable value type and the variable is not reassigned
 - **Inside `Expression<Func<...>>` lambdas (EF Core, Specifications, FluentValidation):** the rule is *not* relaxed. The analyzer recognizes the immediate short-circuit shape `e.SubmittedAt.HasValue && e.SubmittedAt.Value < cutoff`; when the `Maybe<T>` check is part of a longer predicate, keep that pair parenthesized or prefer an analyzer-clean sentinel form such as `e.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < cutoff`. For ad-hoc EF `IQueryable<T>` queries, prefer the `MaybeQueryableExtensions.WhereXxx` helpers when one matches the predicate.

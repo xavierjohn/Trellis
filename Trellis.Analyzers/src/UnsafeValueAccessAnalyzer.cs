@@ -563,7 +563,10 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         var guardEnd = guardStatement.Span.End;
         var accessStart = memberAccess.SpanStart;
 
-        foreach (var descendant in guardBlock.DescendantNodes(descendIntoChildren: n => !IsFunctionBoundary(n)))
+        // Only the span between the guard and the access matters, so prune any subtree that lies
+        // entirely before the guard or at/after the access instead of walking the whole block.
+        foreach (var descendant in guardBlock.DescendantNodes(
+            descendIntoChildren: n => !IsFunctionBoundary(n) && n.SpanStart < accessStart && n.Span.End > guardEnd))
         {
             if (descendant.SpanStart >= guardEnd &&
                 descendant.SpanStart < accessStart &&
