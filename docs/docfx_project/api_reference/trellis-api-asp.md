@@ -1163,7 +1163,7 @@ public sealed class WidgetsController(ISender sender) : ControllerBase
         sender.Send(new CreateWidgetCommand(request.Name), ct)
             .ToHttpResponseAsync(
                 WidgetResponse.From,
-                opts => opts.CreatedAtRoute("Widgets_GetById", w => new RouteValueDictionary { ["id"] = (Guid)w.Id }))
+                opts => opts.CreatedAtRoute("Widgets_GetById", w => new RouteValueDictionary { ["id"] = w.Id.Value }))
             .AsActionResultAsync<WidgetResponse>();
 
     // PUT update — If-Match precondition + Prefer handling.
