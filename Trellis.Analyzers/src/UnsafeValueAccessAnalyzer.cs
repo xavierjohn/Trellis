@@ -54,6 +54,7 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         IsGuardedByCheck(memberAccess, semanticModel, "HasNoValue", false) ||
         IsGuardedByShortCircuitAnd(memberAccess, semanticModel) ||
         IsGuardedByPriorAssignment(memberAccess, semanticModel) ||
+        IsGuardedByEarlyReturn(memberAccess, semanticModel) ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
         IsInsideTrackSafeLambda(memberAccess, semanticModel);
 
@@ -477,5 +478,267 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Recognizes the guard-clause / early-exit pattern where a preceding sibling statement
+    /// asserts the <c>Maybe&lt;T&gt;</c> is empty and unconditionally exits the flow that would
+    /// otherwise reach <paramref name="memberAccess"/>:
+    /// <code>
+    /// if (!m.HasValue) return ...;   // or m.HasNoValue / m.HasValue == false; return / throw / break / continue
+    /// ... m.Value ...                // safe in any subsequent sibling statement
+    /// </code>
+    /// The guard must have no <c>else</c> branch, its then-branch must unconditionally exit, and
+    /// the same receiver must not be reassigned anywhere on the path between the guard and the
+    /// access. The scan walks each enclosing block so the access may sit in a nested block or loop
+    /// body, but it stops at the boundary of the executable body that contains the access: a guard
+    /// in an enclosing method/function does not protect a nested local function or lambda body,
+    /// which may be invoked before the guard runs.
+    /// </summary>
+    private static bool IsGuardedByEarlyReturn(
+        MemberAccessExpressionSyntax memberAccess,
+        SemanticModel semanticModel)
+    {
+        var receiver = memberAccess.Expression;
+        SyntaxNode? node = memberAccess;
+
+        while (node != null)
+        {
+            // Do not let a guard from an enclosing body reach into a nested local function or
+            // lambda: once the walk reaches the access's own function boundary, stop. Guards inside
+            // that body have already been scanned in earlier iterations.
+            if (IsFunctionBoundary(node))
+                break;
+
+            if (node is StatementSyntax statement && statement.Parent is BlockSyntax block)
+            {
+                var statementIndex = block.Statements.IndexOf(statement);
+                for (var i = statementIndex - 1; i >= 0; i--)
+                {
+                    if (block.Statements[i] is IfStatementSyntax { Else: null } guard &&
+                        ConditionAssertsEmpty(guard.Condition, receiver, semanticModel) &&
+                        StatementUnconditionallyExits(guard.Statement) &&
+                        !IsReceiverReassignedBeforeAccess(block.Statements[i], memberAccess, receiver, semanticModel))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            node = node.Parent;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> if <paramref name="receiver"/> may be reassigned between
+    /// <paramref name="guardStatement"/> and <paramref name="memberAccess"/>, which would defeat the
+    /// guard. This is intentionally a conservative over-approximation (firing on an Error-severity
+    /// safety rule is preferable to missing a real throw):
+    /// <list type="bullet">
+    /// <item>any write to the receiver (or a prefix of its member-access chain) evaluated after the
+    /// guard and before the access — found by scanning descendant writes in the guard's block whose
+    /// span sits between the two, so reassignments nested in blocks or embedded in expressions
+    /// (<c>Consume(m = other)</c>) are caught;</item>
+    /// <item>any write to the receiver anywhere inside a loop that encloses the access but not the
+    /// guard — a loop back-edge re-enters the body, so a later reassignment is visible on the next
+    /// iteration's access.</item>
+    /// </list>
+    /// A "write" is a simple/compound assignment, a tuple-deconstruction target, or a
+    /// <c>ref</c>/<c>out</c> argument. Writes inside nested local functions / lambdas are ignored
+    /// because they are not evaluated inline. Known accepted limitations (consistent with the
+    /// analyzer's other syntactic guards): a mutation performed by an invoked local function / lambda
+    /// and control flow via <c>goto</c> are not tracked.
+    /// </summary>
+    private static bool IsReceiverReassignedBeforeAccess(
+        StatementSyntax guardStatement,
+        MemberAccessExpressionSyntax memberAccess,
+        ExpressionSyntax receiver,
+        SemanticModel semanticModel)
+    {
+        if (guardStatement.Parent is not BlockSyntax guardBlock)
+            return false;
+
+        var guardEnd = guardStatement.Span.End;
+        var accessStart = memberAccess.SpanStart;
+
+        foreach (var descendant in guardBlock.DescendantNodes(descendIntoChildren: n => !IsFunctionBoundary(n)))
+        {
+            if (descendant.SpanStart >= guardEnd &&
+                descendant.SpanStart < accessStart &&
+                WritesReceiver(descendant, receiver, semanticModel))
+                return true;
+        }
+
+        for (SyntaxNode? node = memberAccess; node is not null && node != guardBlock; node = node.Parent)
+        {
+            if (node is ForStatementSyntax or ForEachStatementSyntax or ForEachVariableStatementSyntax
+                or WhileStatementSyntax or DoStatementSyntax)
+            {
+                foreach (var descendant in node.DescendantNodes(descendIntoChildren: n => !IsFunctionBoundary(n)))
+                {
+                    if (WritesReceiver(descendant, receiver, semanticModel))
+                        return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="node"/> writes to
+    /// <paramref name="receiver"/> (or a prefix of its member-access chain): a simple/compound
+    /// assignment, a tuple-deconstruction element, or a <c>ref</c>/<c>out</c> argument.
+    /// </summary>
+    private static bool WritesReceiver(SyntaxNode node, ExpressionSyntax receiver, SemanticModel semanticModel) =>
+        node switch
+        {
+            AssignmentExpressionSyntax assignment => WriteTargetMatches(assignment.Left, receiver, semanticModel),
+            ArgumentSyntax argument when argument.RefKindKeyword.IsKind(SyntaxKind.RefKeyword) ||
+                                         argument.RefKindKeyword.IsKind(SyntaxKind.OutKeyword) =>
+                WriteTargetMatches(argument.Expression, receiver, semanticModel),
+            _ => false,
+        };
+
+    /// <summary>
+    /// Returns <see langword="true"/> when assigning <paramref name="target"/> changes the value seen
+    /// through <paramref name="receiver"/>: an exact match, a match against a prefix of the receiver's
+    /// member-access chain (assigning <c>holder</c> defeats a guard on <c>holder.Maybe</c>), or any
+    /// element of a tuple-deconstruction target.
+    /// </summary>
+    private static bool WriteTargetMatches(ExpressionSyntax target, ExpressionSyntax receiver, SemanticModel semanticModel)
+    {
+        if (target is TupleExpressionSyntax tuple)
+        {
+            foreach (var element in tuple.Arguments)
+            {
+                if (WriteTargetMatches(element.Expression, receiver, semanticModel))
+                    return true;
+            }
+
+            return false;
+        }
+
+        for (ExpressionSyntax? prefix = receiver; prefix is not null;)
+        {
+            while (prefix is ParenthesizedExpressionSyntax parenthesized)
+                prefix = parenthesized.Expression;
+
+            if (AreSameVariable(target, prefix, semanticModel))
+                return true;
+
+            prefix = (prefix as MemberAccessExpressionSyntax)?.Expression;
+        }
+
+        return false;
+    }
+
+    private static bool IsFunctionBoundary(SyntaxNode node) =>
+        node is LocalFunctionStatementSyntax or AnonymousFunctionExpressionSyntax;
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="condition"/> is true exactly when the
+    /// <paramref name="receiver"/>'s <c>Maybe&lt;T&gt;</c> is empty: <c>!receiver.HasValue</c>,
+    /// <c>receiver.HasNoValue</c>, <c>receiver.HasValue == false</c>, or <c>receiver.HasValue != true</c>
+    /// (operands order-independent, parentheses transparent).
+    /// </summary>
+    private static bool ConditionAssertsEmpty(
+        ExpressionSyntax condition,
+        ExpressionSyntax receiver,
+        SemanticModel semanticModel)
+    {
+        while (condition is ParenthesizedExpressionSyntax parenthesized)
+            condition = parenthesized.Expression;
+
+        if (condition is PrefixUnaryExpressionSyntax prefixUnary &&
+            prefixUnary.IsKind(SyntaxKind.LogicalNotExpression))
+        {
+            var operand = prefixUnary.Operand;
+            while (operand is ParenthesizedExpressionSyntax innerParenthesized)
+                operand = innerParenthesized.Expression;
+
+            if (operand is MemberAccessExpressionSyntax negatedAccess &&
+                negatedAccess.Name.Identifier.Text == "HasValue" &&
+                AreSameVariable(negatedAccess.Expression, receiver, semanticModel))
+                return true;
+        }
+
+        if (condition is MemberAccessExpressionSyntax memberAccess &&
+            memberAccess.Name.Identifier.Text == "HasNoValue" &&
+            AreSameVariable(memberAccess.Expression, receiver, semanticModel))
+            return true;
+
+        if (condition is BinaryExpressionSyntax binaryExpression &&
+            (binaryExpression.IsKind(SyntaxKind.EqualsExpression) || binaryExpression.IsKind(SyntaxKind.NotEqualsExpression)) &&
+            TryGetHasValueLiteralComparison(binaryExpression, receiver, semanticModel, out var assertsEmpty))
+            return assertsEmpty;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Matches a <c>receiver.HasValue</c> vs boolean-literal equality/inequality and reports via
+    /// <paramref name="assertsEmpty"/> whether the comparison is true exactly when the value is absent.
+    /// </summary>
+    private static bool TryGetHasValueLiteralComparison(
+        BinaryExpressionSyntax binaryExpression,
+        ExpressionSyntax receiver,
+        SemanticModel semanticModel,
+        out bool assertsEmpty)
+    {
+        assertsEmpty = false;
+
+        MemberAccessExpressionSyntax? hasValueAccess = null;
+        LiteralExpressionSyntax? literal = null;
+
+        if (binaryExpression.Left is MemberAccessExpressionSyntax leftAccess &&
+            leftAccess.Name.Identifier.Text == "HasValue" &&
+            binaryExpression.Right is LiteralExpressionSyntax rightLiteral)
+        {
+            hasValueAccess = leftAccess;
+            literal = rightLiteral;
+        }
+        else if (binaryExpression.Right is MemberAccessExpressionSyntax rightAccess &&
+            rightAccess.Name.Identifier.Text == "HasValue" &&
+            binaryExpression.Left is LiteralExpressionSyntax leftLiteral)
+        {
+            hasValueAccess = rightAccess;
+            literal = leftLiteral;
+        }
+
+        if (hasValueAccess is null || literal is null)
+            return false;
+
+        if (!literal.IsKind(SyntaxKind.TrueLiteralExpression) && !literal.IsKind(SyntaxKind.FalseLiteralExpression))
+            return false;
+
+        if (!AreSameVariable(hasValueAccess.Expression, receiver, semanticModel))
+            return false;
+
+        var literalIsTrue = literal.IsKind(SyntaxKind.TrueLiteralExpression);
+        var isEquals = binaryExpression.IsKind(SyntaxKind.EqualsExpression);
+
+        // `HasValue == false` and `HasValue != true` are both true exactly when the value is absent.
+        assertsEmpty = isEquals ? !literalIsTrue : literalIsTrue;
+        return true;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="statement"/> cannot complete normally —
+    /// it is a <c>return</c>, <c>throw</c>, <c>break</c>, or <c>continue</c> (or a block whose final
+    /// statement is one of these). Such a guard body guarantees that any following sibling statement
+    /// is reached only when the guard condition was false.
+    /// </summary>
+    private static bool StatementUnconditionallyExits(StatementSyntax statement)
+    {
+        if (statement is BlockSyntax block)
+            return block.Statements.Count > 0 && StatementUnconditionallyExits(block.Statements[block.Statements.Count - 1]);
+
+        return statement is ReturnStatementSyntax
+            or ThrowStatementSyntax
+            or BreakStatementSyntax
+            or ContinueStatementSyntax;
     }
 }
