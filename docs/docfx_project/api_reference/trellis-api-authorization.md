@@ -3,7 +3,7 @@ package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
 types: [Actor, ActorAttributes, ActorId, IActorProvider, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-06-17
 audience: [llm]
 ---
 # Trellis.Authorization — API Reference
@@ -392,6 +392,7 @@ See [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iau
 - **Ordinal comparison everywhere.** Permission lookups, attribute lookups, and `IsOwner` use `StringComparison.Ordinal`. Hydrate permissions and attributes with consistent casing.
 - **Permissions snapshot to frozen collections.** Mutating a collection passed into `Actor` after construction has no effect; the actor exposes a `FrozenSet<string>` / `FrozenDictionary<string, string>` snapshot for O(1) lookups.
 - **Scoped permissions** use the `"Permission:Scope"` convention (`Document.Edit:Tenant_A`). Add scoped entries directly to `Permissions` and check via `HasPermission(string, string)` — no separate scope collection.
+- **Exact match only — no check-time wildcards.** `HasPermission` is a set lookup, so a granted `"seasons:*"` does **not** match a `HasPermission("seasons:read")` check, and a granted unscoped `"seasons"` does **not** satisfy `HasPermission("seasons", scope)`. Expand any `entity:*`-style authoring shorthand into a concrete permission catalog when hydrating the `Actor` (e.g. a static `Permissions` constants class plus a role→permissions map), consistent with the pre-flatten guidance above. This keeps every check O(1) and avoids the privilege-escalation surface of pattern matching at authorization time.
 - **Pipeline ordering.** When a command implements both `IAuthorize` (static) and `IAuthorizeResource<TResource>` (resource), the mediator behavior runs static checks first; resource loading and `Authorize(actor, resource)` only execute if the static check passes. A loader failure short-circuits before `Authorize` is called.
 
 ## Code examples
