@@ -3,7 +3,7 @@ package: Trellis.Testing
 namespaces: [Trellis.Testing]
 types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", TestActorProvider, TestActorScope, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-06-17
 audience: [llm]
 ---
 # Trellis.Testing — API Reference
@@ -40,6 +40,22 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 - `Unwrap()` and `UnwrapError()` are test helpers. Do not copy them into production code or documentation snippets for application logic.
 - Test both the success path and the expected error branch; a compiling handler that never asserts failure semantics can still miss Trellis behavior.
 - ASP.NET Core integration helpers are in [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#use-this-file-when), not this package.
+- **Trellis analyzers in test code.** Idiomatic assertions already satisfy `TRLS001` (Result not handled): a FluentAssertions chain (`result.Should().BeSuccess()`) and an explicit discard (`_ = await repo.AddAsync(...)`) both count as *handled*. For a deliberate fire-and-forget call in *arrange*/seeding, prefer the discard (`_ = ...`) over a blanket `<NoWarn>TRLS001</NoWarn>` so the rule keeps protecting the rest of the project. Seeding through `DbContext.SaveChangesAsync()` trips `TRLS015`; call `SaveChangesResultAsync()` (then assert or discard it), or relax just that one rule in the test project if you intentionally seed with the raw EF method.
+- **Relax a rule across test projects with one shared file, not a per-project `<NoWarn>`.** In a Clean Architecture layout the test projects are scattered (`Domain/tests/`, `Application/tests/`, …) with no common folder, so a per-directory `.editorconfig` is awkward. Keep a single global analyzer config and apply it to every `*.Tests` project from the root `Directory.Build.props`; a severity override (rather than `<NoWarn>`) keeps the rule visible as guidance:
+
+  ```ini
+  # eng/Trellis.Tests.globalconfig
+  is_global = true
+  dotnet_diagnostic.TRLS001.severity = suggestion
+  dotnet_diagnostic.TRLS015.severity = none
+  ```
+
+  ```xml
+  <!-- Directory.Build.props (repo root) — auto-applies to *.Tests projects, no per-project edits -->
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <EditorConfigFiles Include="$(MSBuildThisFileDirectory)eng/Trellis.Tests.globalconfig" />
+  </ItemGroup>
+  ```
 
 ## Types
 
