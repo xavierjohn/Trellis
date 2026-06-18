@@ -266,6 +266,28 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "not-found";
+
+        /// <summary>
+        /// Convenience factory that builds a <see cref="NotFound"/> for the resource type
+        /// <typeparamref name="TResource"/> (its CLR name becomes the resource name).
+        /// </summary>
+        /// <typeparam name="TResource">The resource type whose name identifies the resource.</typeparam>
+        /// <param name="id">Optional identifier of the specific instance; omit for a collection-level lookup.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="NotFound"/> wrapping the resource reference.</returns>
+        public static NotFound For<TResource>(object? id = null, string? detail = null) =>
+            new(ResourceRef.For<TResource>(id)) { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory that builds a <see cref="NotFound"/> from an explicit resource
+        /// type name and optional identifier.
+        /// </summary>
+        /// <param name="resourceType">The resource type name (e.g. <c>"Season"</c>).</param>
+        /// <param name="id">Optional identifier of the specific instance.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="NotFound"/> wrapping the resource reference.</returns>
+        public static NotFound For(string resourceType, object? id = null, string? detail = null) =>
+            new(ResourceRef.For(resourceType, id)) { Detail = detail };
     }
 
     /// <summary>The resource was previously known but has been permanently removed (tombstone).</summary>
@@ -274,6 +296,28 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "gone";
+
+        /// <summary>
+        /// Convenience factory that builds a <see cref="Gone"/> for the resource type
+        /// <typeparamref name="TResource"/> (its CLR name becomes the resource name).
+        /// </summary>
+        /// <typeparam name="TResource">The resource type whose name identifies the resource.</typeparam>
+        /// <param name="id">Optional identifier of the specific instance.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="Gone"/> wrapping the resource reference.</returns>
+        public static Gone For<TResource>(object? id = null, string? detail = null) =>
+            new(ResourceRef.For<TResource>(id)) { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory that builds a <see cref="Gone"/> from an explicit resource
+        /// type name and optional identifier.
+        /// </summary>
+        /// <param name="resourceType">The resource type name (e.g. <c>"Season"</c>).</param>
+        /// <param name="id">Optional identifier of the specific instance.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="Gone"/> wrapping the resource reference.</returns>
+        public static Gone For(string resourceType, object? id = null, string? detail = null) =>
+            new(ResourceRef.For(resourceType, id)) { Detail = detail };
     }
 
     /// <summary>The request conflicts with the current state of the resource.</summary>
@@ -318,6 +362,40 @@ public abstract record Error
         /// </remarks>
         [JsonIgnore]
         public string? ConstraintTableName { get; init; }
+
+        /// <summary>
+        /// Convenience factory that builds a <see cref="Conflict"/> against the resource type
+        /// <typeparamref name="TResource"/> (its CLR name becomes the resource name).
+        /// </summary>
+        /// <typeparam name="TResource">The conflicting resource type.</typeparam>
+        /// <param name="id">Identifier of the conflicting instance; pass <see langword="null"/> for a collection-level conflict, or use <see cref="ForReason(string, string?)"/>.</param>
+        /// <param name="reasonCode">Machine-readable code describing the kind of conflict.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="Conflict"/> for the resource.</returns>
+        public static Conflict For<TResource>(object? id, string reasonCode, string? detail = null) =>
+            new(ResourceRef.For<TResource>(id), reasonCode) { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory that builds a <see cref="Conflict"/> from an explicit resource
+        /// type name and identifier.
+        /// </summary>
+        /// <param name="resourceType">The conflicting resource type name.</param>
+        /// <param name="id">Identifier of the conflicting instance.</param>
+        /// <param name="reasonCode">Machine-readable code describing the kind of conflict.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="Conflict"/> for the resource.</returns>
+        public static Conflict For(string resourceType, object? id, string reasonCode, string? detail = null) =>
+            new(ResourceRef.For(resourceType, id), reasonCode) { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory for a stateless conflict with no identifiable resource (e.g. a
+        /// workflow / state-machine guard, or library code with no aggregate context).
+        /// </summary>
+        /// <param name="reasonCode">Machine-readable code describing the kind of conflict.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A resourceless <see cref="Conflict"/>.</returns>
+        public static Conflict ForReason(string reasonCode, string? detail = null) =>
+            new(Resource: null, ReasonCode: reasonCode) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -352,6 +430,27 @@ public abstract record Error
 
         /// <inheritdoc />
         public override string Code => PolicyId;
+
+        /// <summary>
+        /// Convenience factory that builds a <see cref="Forbidden"/> for <paramref name="policyId"/>
+        /// against the resource type <typeparamref name="TResource"/> (its CLR name becomes the resource name).
+        /// </summary>
+        /// <typeparam name="TResource">The resource the policy was evaluated against.</typeparam>
+        /// <param name="policyId">Identifier of the policy that denied access.</param>
+        /// <param name="id">Optional identifier of the specific instance.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="Forbidden"/> carrying the policy and resource.</returns>
+        public static Forbidden For<TResource>(string policyId, object? id = null, string? detail = null) =>
+            new(policyId, ResourceRef.For<TResource>(id)) { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory for a policy denial with no specific resource context.
+        /// </summary>
+        /// <param name="policyId">Identifier of the policy that denied access.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A resourceless <see cref="Forbidden"/>.</returns>
+        public static Forbidden ForPolicy(string policyId, string? detail = null) =>
+            new(policyId) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────

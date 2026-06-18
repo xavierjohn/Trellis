@@ -185,6 +185,8 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 
 Default mappings: `Error.InvalidInput=422`, `Error.InvariantViolation=422`, `Error.AuthenticationRequired=401`, `Error.Forbidden=403`, `Error.NotFound=404`, `Error.Conflict=409`, `Error.Gone=410`, `Error.RateLimited=429`, `Error.Unexpected=500`, and `Error.Unavailable=503`. `Error.Unexpected { ReasonCode: "not_implemented" }` is special-cased to `501`. `Error.TransportFault` unwraps `HttpError.MethodNotAllowed`, `HttpError.NotAcceptable`, `HttpError.PreconditionFailed`, `HttpError.ContentTooLarge`, `HttpError.UnsupportedMediaType`, `HttpError.RangeNotSatisfiable`, and `HttpError.PreconditionRequired` to `405/406/412/413/415/416/428`. Explicit `MapError<Error.TransportFault>(...)` overrides all wrapped transport faults at once.
 
+The `Error.InvalidInput` mapping also governs **binder- and JSON-body value-validation failures** (`ScalarValueValidationMiddleware`, `ScalarValueValidationFilter`, and `ScalarValueValidationEndpointFilter`), so a single `MapError<Error.InvalidInput>(status)` applies uniformly to scalar/value-object validation at the route/query binder, the JSON request body, and domain handlers (default `422`). Syntactically malformed JSON is exempt — it stays `400` per RFC 9110 §15.5.1.
+
 ### Domain → HTTP boundary mapping
 
 Trellis.Core.Error is transport-neutral. The ASP boundary translates domain failures to HTTP per the table below.
@@ -707,7 +709,7 @@ public sealed class DevelopmentActorOptions
 | --- | --- | --- |
 | `DefaultActorId` | `string` | Default fallback actor ID. Default: `"development"`. |
 | `DefaultPermissions` | `IReadOnlySet<string>` | Default fallback permissions when no header is supplied. Default: empty `HashSet<string>`. |
-| `ThrowOnMalformedHeader` | `bool` | When `true`, malformed `X-Test-Actor` JSON throws instead of falling back to the default actor. Default: `false`. |
+| `ThrowOnMalformedHeader` | `bool` | When `true` (the **default**), a malformed `X-Test-Actor` header throws instead of falling back to the default actor — a malformed header is a developer error, distinct from an absent header. Set to `false` to restore the lenient fall-back-to-default behavior. Default: `true`. |
 
 ### `DevelopmentActorProvider`
 
@@ -725,7 +727,7 @@ Reads the `X-Test-Actor` header (JSON: `{ "Id": ..., "Permissions": [...], "Forb
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Throws `InvalidOperationException` whenever `!hostEnvironment.IsDevelopment()`, regardless of header presence. In Development, always returns `Maybe.From(actor)` — never `Maybe.None` — so dev workflows are unaffected by the 401 contract: `Maybe.From(Actor.Create(DefaultActorId, DefaultPermissions))` when `HttpContext` is null or the header is missing/empty, otherwise the parsed actor wrapped via `Maybe.From`. Malformed JSON logs a warning and falls back unless `ThrowOnMalformedHeader` is `true`. |
+| `public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Throws `InvalidOperationException` whenever `!hostEnvironment.IsDevelopment()`, regardless of header presence. In Development, always returns `Maybe.From(actor)` — never `Maybe.None` — so dev workflows are unaffected by the 401 contract: `Maybe.From(Actor.Create(DefaultActorId, DefaultPermissions))` when `HttpContext` is null or the header is missing/empty, otherwise the parsed actor wrapped via `Maybe.From`. Malformed JSON throws `InvalidOperationException` by default (`ThrowOnMalformedHeader` defaults to `true`); set it to `false` to instead log a warning and fall back to the default actor. |
 
 ### `CachingActorProvider`
 
@@ -1006,7 +1008,7 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)` | `ValueTask<object?>` | For Minimal APIs, returns `Results.ValidationProblem(...)` with status `422` and MVC dot+bracket field keys when `ValidationErrorsContext` contains errors; otherwise invokes `next`. |
+| `public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)` | `ValueTask<object?>` | For Minimal APIs, returns `Results.ValidationProblem(...)` with the configured `Error.InvalidInput` status (default `422`, see `MapError`) and MVC dot+bracket field keys when `ValidationErrorsContext` contains errors; otherwise invokes `next`. |
 
 ### `ScalarValueValidationMiddleware`
 
@@ -1054,6 +1056,7 @@ public static class ValidationErrorsContext
 - **Validation collection scope.** `ScalarValueValidationMiddleware` opens a `ValidationErrorsContext` scope per request. Both `ValidatingJsonConverter<,>` and `MaybeScalarValueJsonConverter<,>` collect errors into this scope; `ScalarValueValidationFilter` (MVC) and `ScalarValueValidationEndpointFilter` (Minimal API) short-circuit with a validation problem when the scope is non-empty at action/handler entry.
 - **AOT-generated converters participate in the same scope.** When an assembly opts into the source generator (a partial `JsonSerializerContext` decorated with `[GenerateScalarValueConverters]` or any other `JsonSerializerContext` in a project that references the generator), the emitted `JsonConverter<TValue>`s mirror `ScalarValueJsonConverterBase<,,>` bit-for-bit — they read `ValidationErrorsContext.CurrentPropertyName` for the field name (falling back to the camel-cased type name when the AOT path has no `PropertyNameAwareConverter<T>` setting it), call `TryCreate(primitive, fieldName)`, and on failure call `ValidationErrorsContext.AddError(...)` (forwarding `Error.InvalidInput` directly to preserve `ReasonCode`/`Args`, otherwise recording the `Detail` string under `fieldName`). Without this, AOT consumers got `null` on validation failure while reflection-mode consumers got a 422 — a divergence that broke "one programming model" between the two modes. The factory `Trellis.Generated.GeneratedValueObjectConverterFactory` is emitted by the generator alongside the per-type converters; consumers wire it in by adding it to their `JsonSerializerOptions.Converters` collection (e.g. inside `AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new GeneratedValueObjectConverterFactory()))`). The `[GenerateScalarValueConverters]`-marked partial `JsonSerializerContext` extension only emits `[JsonSerializable]` attributes; it does not auto-register the factory.
 - **Minimal API scalar binding failures are metadata-driven.** When ASP.NET Core throws a 400 while binding route/query parameters, `ScalarValueValidationMiddleware` no longer parses `BadHttpRequestException.Message` to discover a field name or invalid value. It inspects `IParameterBindingMetadata`, reads the matching route/query raw value, and re-runs Trellis scalar validation for `IScalarValue<,>` / `Maybe<TScalar>` parameters. Non-scalar endpoint binding failures are rethrown to ASP.NET Core.
+- **Binder/JSON validation status is configurable.** All three validation seams — `ScalarValueValidationMiddleware`, `ScalarValueValidationFilter` (MVC), and `ScalarValueValidationEndpointFilter` (Minimal API) — resolve the semantic-validation status from the ambient `TrellisAspOptions` `Error.InvalidInput` mapping (default `422`), the same map domain handlers use via `ResponseFailureWriter`. A single `MapError<Error.InvalidInput>(status)` therefore governs scalar/value-object validation failures uniformly across the binder, the JSON body, and handlers. Syntactically malformed JSON is not remapped — it stays `400` (RFC 9110 §15.5.1).
 - **`AddTrellisAsp` is error-mapping setup only.** It registers `TrellisAspOptions` and `ResourceCollectionNameRegistry`; it does **not** chain scalar-value validation. Call `AddTrellisAspWithScalarValidation()` for the combined setup, or call `AddTrellisAsp()` plus `AddScalarValueValidation()` explicitly. You still need `UseScalarValueValidation()` middleware in the request pipeline and `WithScalarValueValidation()` on each Minimal API endpoint that should short-circuit on validation errors.
 - **Composite value objects in request/response DTOs.** `AddTrellisAsp`/`AddScalarValueValidation` only wires the **scalar** VO converters. Composite VOs (multi-field `[OwnedEntity]` types like `ShippingAddress`, `Money`) bind through `CompositeValueObjectJsonConverter<T>` (in `Trellis.Primitives`), which is **opt-in per type** via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object class itself. Without that attribute, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer. See [Cookbook Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership) for the full Domain + API JSON + EF pattern.
 
@@ -1114,29 +1117,92 @@ app.MapGet("/widgets", async (string? cursor, int? limit, IWidgetReader reader, 
 });
 ```
 
-### MVC controller using `AsActionResult<T>` for typed signatures
+### Canonical MVC controller — `ToHttpResponseAsync(...).AsActionResultAsync<T>()`
+
+This is the single end-to-end controller idiom for every verb: send the message, project the domain value to a response DTO with `ToHttpResponseAsync(map, opts => …)`, then adapt to a typed `ActionResult<T>` with `AsActionResultAsync<T>()`. The options builder is the one place HTTP metadata is attached (`WithETag` / `WithLastModified` / `CreatedAtRoute` / `HonorPrefer`); `ETagHelper.ParseIfMatch(Request)` flows the precondition into the command. There is no manual status-code branching — a failure `Error` maps to the correct status at the boundary.
 
 ```csharp
+using System.Collections.Generic;
+using System.Linq;
+using Mediator;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Trellis;
 using Trellis.Asp;
 
 [ApiController]
-[Route("widgets")]
-public sealed class WidgetsController(IWidgetReader reader) : ControllerBase
+[Produces("application/json")]
+[Route("api/[controller]")]
+public sealed class WidgetsController(ISender sender) : ControllerBase
 {
-    [HttpGet("{id}", Name = "widgets.get")]
-    [ProducesResponseType<WidgetResponse>(200)]
-    [ProducesResponseType<ProblemDetails>(404)]
-    public async Task<ActionResult<WidgetResponse>> Get(string id, CancellationToken ct)
-    {
-        Result<Widget> result = await reader.GetAsync(id, ct);
-        return await result
-            .ToHttpResponseAsync(w => new WidgetResponse(w.Id, w.Name))
+    // GET by id — 200 with strong ETag + Last-Modified; 404 on NotFound.
+    [HttpGet("{id}", Name = "Widgets_GetById")]
+    [ProducesResponseType(typeof(WidgetResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ValueTask<ActionResult<WidgetResponse>> GetById(WidgetId id, CancellationToken ct) =>
+        sender.Send(new GetWidgetByIdQuery(id), ct)
+            .ToHttpResponseAsync(
+                WidgetResponse.From,
+                opts => opts.WithETag(w => EntityTagValue.Strong(w.ETag)).WithLastModified(w => w.LastModified))
             .AsActionResultAsync<WidgetResponse>();
+
+    // GET list — 200 with a projected collection.
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<WidgetResponse>), StatusCodes.Status200OK)]
+    public ValueTask<ActionResult<IReadOnlyList<WidgetResponse>>> GetAll(CancellationToken ct) =>
+        sender.Send(new GetAllWidgetsQuery(), ct)
+            .ToHttpResponseAsync(widgets => widgets.Select(WidgetResponse.From).ToList())
+            .AsActionResultAsync<IReadOnlyList<WidgetResponse>>();
+
+    // POST create — 201 Created with Location via CreatedAtRoute; 422 on invalid input.
+    [HttpPost]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(WidgetResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public ValueTask<ActionResult<WidgetResponse>> Create([FromBody] CreateWidgetRequest request, CancellationToken ct) =>
+        sender.Send(new CreateWidgetCommand(request.Name), ct)
+            .ToHttpResponseAsync(
+                WidgetResponse.From,
+                opts => opts.CreatedAtRoute("Widgets_GetById", w => new RouteValueDictionary { ["id"] = w.Id.Value }))
+            .AsActionResultAsync<WidgetResponse>();
+
+    // PUT update — If-Match precondition + Prefer handling.
+    [HttpPut("{id}")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(WidgetResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status412PreconditionFailed)]
+    [ProducesResponseType(StatusCodes.Status428PreconditionRequired)]
+    public ValueTask<ActionResult<WidgetResponse>> Update(WidgetId id, [FromBody] UpdateWidgetRequest request, CancellationToken ct)
+    {
+        var ifMatch = ETagHelper.ParseIfMatch(Request);
+        return sender.Send(new UpdateWidgetCommand(id, ifMatch, request.Name), ct)
+            .ToHttpResponseAsync(
+                WidgetResponse.From,
+                opts => opts.WithETag(w => EntityTagValue.Strong(w.ETag)).WithLastModified(w => w.LastModified).HonorPrefer())
+            .AsActionResultAsync<WidgetResponse>();
+    }
+
+    // DELETE — 204 No Content. Body-less, so return IResult directly (no AsActionResultAsync).
+    // Fully-qualify Microsoft.AspNetCore.Http.IResult — it clashes with Trellis.IResult under `using Trellis;`.
+    // ToHttpResponseAsync() returns ValueTask<IResult>, so await it and return Task<IResult>.
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status412PreconditionFailed)]
+    public async Task<Microsoft.AspNetCore.Http.IResult> Delete(WidgetId id, CancellationToken ct)
+    {
+        var ifMatch = ETagHelper.ParseIfMatch(Request);
+        return await sender.Send(new DeleteWidgetCommand(id, ifMatch), ct).ToHttpResponseAsync();
     }
 }
 ```
+
+What this canonicalizes (the same shape the Todo sample and generated services use):
+
+- **One projection + adapter per action.** `ToHttpResponseAsync(map, opts)` then `AsActionResultAsync<T>()` for body responses; the no-argument `ToHttpResponseAsync()` (returning `Microsoft.AspNetCore.Http.IResult`) for body-less responses (DELETE → `204`).
+- **The options builder owns HTTP metadata.** `WithETag` / `WithLastModified` for validators; `Created` / `CreatedAtRoute` for `201 Created` + `Location`; `WithLocation` for a `Location` header on the response's *natural* 2xx status (a state-transition primitive — it does **not** mark the response `201`); and `HonorPrefer()` for `Prefer: return=representation|minimal`.
+- **Preconditions flow through the command.** `ETagHelper.ParseIfMatch(Request)` → command → `.RequireETag(...)` in the handler (see [trellis-api-core.md](trellis-api-core.md#result-flow)); the boundary turns a stale/missing precondition into `412` / `428`.
 
 ### Per-call error mapping override
 

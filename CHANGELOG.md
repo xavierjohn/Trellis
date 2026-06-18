@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `DevelopmentActorProvider` rejects a malformed `X-Test-Actor` header by default
+
+`DevelopmentActorOptions.ThrowOnMalformedHeader` now defaults to `true`. A malformed `X-Test-Actor`
+header (invalid JSON, missing/empty/whitespace `Id`, or non-string permission entries) is a developer
+error and is now **rejected** with an `InvalidOperationException` instead of silently falling back to
+the configured default actor — which was a silent privilege elevation when `DefaultPermissions` is
+non-empty. An **absent** or empty header is unchanged: it still yields the configured default actor
+(intentional dev convenience). Set `ThrowOnMalformedHeader = false` to restore the previous lenient
+fall-back-to-default behavior. Development-only — the provider already throws outside Development.
+
+### Changed — binder/JSON value-validation status honors `MapError<Error.InvalidInput>`
+
+Scalar- and composite-value-object validation failures raised during request binding and JSON body
+deserialization now resolve their HTTP status from the configured `TrellisAspOptions`
+`Error.InvalidInput` mapping (default `422`) instead of a hardcoded `422`. A single
+`MapError<Error.InvalidInput>(status)` now applies uniformly across the route/query binder
+(`ScalarValueValidationMiddleware`), the MVC action filter (`ScalarValueValidationFilter`), the
+Minimal API endpoint filter (`ScalarValueValidationEndpointFilter`), and domain handlers — removing
+the prior asymmetry where handler-level `Error.InvalidInput` was configurable but binder-level
+validation was locked to `422`. Syntactically malformed JSON still returns `400` (RFC 9110 §15.5.1)
+and is unaffected by the mapping. Default behavior is unchanged.
+
+### Fixed — malformed JSON masked by a value-object validation error now returns 400
+
+The MVC `ScalarValueValidationFilter` short-circuited to the semantic value-validation status as soon
+as a scalar value object recorded a failure into the per-request `ValidationErrorsContext`, even when
+the same request body also failed with a plain `JsonException` (malformed bytes). A body that first
+rejected a value-object field and then hit a syntax error therefore returned `422` instead of `400`.
+The filter now applies the same malformed-bytes-take-precedence guard that the structured-error path
+already used, so a malformed body returns `400` (RFC 9110 §15.5.1) regardless of any value-level
+failure collected earlier in the same request.
+
 ### Added — domain-event to integration-event translation (`IIntegrationEvent`)
 
 New types for the domain-event vs. integration-event boundary, building on the transactional outbox. `IIntegrationEvent` (in `Trellis.Core`) is the published external contract, distinct from the in-process `IDomainEvent`. A domain-event handler (the *translator*) adds integration events to the scoped `IIntegrationEventCollector`; when the outbox relay re-dispatches a domain event, it drains whatever integration events the translators produced and stages them as new `OutboxMessageKind.Integration` rows, then publishes those through `IIntegrationEventPublisher` (default in-process fan-out to `IIntegrationEventHandler<T>`, swappable for a message-broker adapter). `OutboxMessage` gains a `Kind` discriminator so the relay routes domain vs. integration rows. Register via `services.AddIntegrationEventDispatch(...)` / `AddIntegrationEventHandler<TEvent, THandler>()` or the `TrellisServiceBuilder.UseIntegrationEvents(...)` slot. Integration events are emitted only after the source domain event is durably committed and dispatched; delivery is at-least-once, so consumers must be idempotent on business identity.
@@ -168,13 +200,17 @@ The Path B "Microservices" snippet in cookbook Recipe 7 has been updated to show
 - <strong>Breaking — `Trellis.Primitives` `PhoneNumber.GetCountryCode()`</strong> — now returns `Maybe<string>` instead of `string`. Numbers that satisfy E.164 shape validation but do not start with an assigned ITU-T country calling code now return `Maybe<string>.None` instead of throwing `InvalidOperationException`, restoring the value-object contract that a constructed value is safe for all queries. Migration: replace `var code = phone.GetCountryCode();` with `if (phone.GetCountryCode().TryGetValue(out var code)) { ... }` or use `phone.GetCountryCode().GetValueOrDefault(...)` when a fallback is appropriate.
 - **XML docs, examples, and compile-checked snippets** — refreshed stale examples across Core, Authorization, Cookbook snippets, testing-pattern guidance, and the Core API reference so documented shapes compile against the current framework. The sweep updates obsolete `Result.Value` / implicit-failure examples to `TryGetValue` or `Match`, replaces removed `ICommand<Result>` examples with `ICommand<Result<Unit>>`, modernizes scalar-value examples to `RequiredString<TSelf>` / `RequiredGuid<TSelf>` and `IScalarValue<TSelf, TPrimitive>`, and points aggregate event persistence guidance at the tracked-aggregate domain-event dispatch behavior.
 
-### Breaking — Required<T> defaults flipped to strict-by-default with per-type opt-outs
+### Breaking — Required<T> defaults flipped to LENIENT-by-default; `[NotDefault]`/`[Trim]` are the new opt-ins
 
-- **`Trellis.Core` / `Trellis.Primitives`** — every `Required*<T>` base now rejects its CLR sentinel by default. `RequiredString<T>` rejects `null`, `""`, and whitespace-only input, trims by default, then runs user constraints. `RequiredGuid<T>` rejects `Guid.Empty`; `RequiredDateTime<T>` and `RequiredDateTimeOffset<T>` reject their `MinValue`; `RequiredInt<T>`, `RequiredLong<T>`, and `RequiredDecimal<T>` reject zero; `RequiredBool<T>` still rejects `null`; `RequiredEnum<T>` rejects `null` and undeclared members.
-- **New / now-active opt-out attributes** — use `[AllowEmpty]` for post-trim-empty `RequiredString<T>` values and `Guid.Empty`, `[AllowWhitespace]` for whitespace-only string input, `[NoTrim]` to preserve string input verbatim, `[AllowMinValue]` for date sentinels, and `[AllowZero]` for numeric sentinels. `[AllowWhitespace]` without `[NoTrim]` accepts whitespace-only input but stores `""` after trim.
-- **Retired attributes** — `[NotDefault]` and `[Trim]` are vestigial no-ops under the v3 strict defaults; the generator ignores them and reports informational diagnostics. `[AllowDefault]` was deleted before release because the opt-out surface now uses per-type names.
-- **New generator diagnostics** — TRLS046 (info: `[NotDefault]` is vestigial), TRLS047 (info: `[Trim]` is vestigial), TRLS048 (error: `[AllowZero]` on a non-numeric Required base), TRLS049 (error: `[AllowEmpty]` on numeric / date Required bases), TRLS050 (error: `[AllowMinValue]` on a non-date Required base), TRLS051 (error: `[AllowWhitespace]` on a non-string Required base), TRLS052 (error: `[NoTrim]` on a non-string Required base), and TRLS053 (error: contradictory combinations such as `[AllowZero]` + `[Positive]`).
-- **Migration.** Remove `[NotDefault]` / `[Trim]`, add per-type opt-outs only where sentinel values are legitimate, and audit string fixtures against the validation-order truth table. Full recipe and worked examples: [MIGRATION_v3.md](MIGRATION_v3.md#requiredt-defaults-flip-strict-by-default-with-per-type-opt-outs).
+This is the canonical v3 `Required*` default behavior.
+
+- **`Trellis.Core` / `Trellis.Primitives`** — every `Required*<T>` base is now **lenient by default**: rejects only `null`. Every concrete value is accepted: `0` (int/long/decimal), `Guid.Empty`, `DateTime.MinValue` / `DateTimeOffset.MinValue`, `""`, and whitespace-only strings. Strings are **not** auto-trimmed.
+- **`[NotDefault]` is now the meaningful opt-in** to reject the type's sentinel (`0` / `Guid.Empty` / `MinValue`). For `RequiredString<T>`, `[NotDefault]` rejects `null` + `""` (and whitespace-only when combined with `[Trim]`).
+- **`[Trim]` is now the meaningful opt-in** for string trimming. With `[NotDefault]`, whitespace-only input trims to `""` and is rejected. Without `[NotDefault]`, trimming normalizes the stored value only.
+- **Deleted attributes** — `[AllowZero]`, `[AllowEmpty]`, `[AllowMinValue]`, `[AllowWhitespace]`, and `[NoTrim]` are **removed entirely**. Remove any usage; they no longer compile.
+- **Retired diagnostics** — `TRLS048`–`TRLS053` (which policed the deleted attributes) are retired. `TRLS046` ("`[NotDefault]` is vestigial") and `TRLS047` ("`[Trim]` is vestigial") are removed — those attributes are now meaningful opt-ins.
+- **`ActorId`** (`Trellis.Authorization`) carries `[Trim, NotDefault]` to preserve its previous strict + trim behavior.
+- **Migration.** Add `[NotDefault]` where sentinel rejection is required; add `[Trim]` where trimming is required. For types that previously used `[AllowEmpty]` / `[AllowZero]` / `[AllowMinValue]` / `[AllowWhitespace]` / `[NoTrim]`: those leniencies are now the default — simply remove the deleted attributes. Full guidance: [MIGRATION_v3.md](MIGRATION_v3.md#requiredt-defaults-lenient-by-default-with-notdefault--trim-opt-ins).
 
 ### Changed — `OverloadResolutionPriority` retires CS0121 ambiguity on async Result extensions
 
@@ -217,7 +253,6 @@ The Path B "Microservices" snippet in cookbook Recipe 7 has been updated to show
 
 - **`Trellis.Core`** — new `RequiredDateTimeOffset<TSelf>` primitive base class mirroring `RequiredDateTime<TSelf>` for instants whose originating UTC offset is part of the domain contract. Lenient by default (rejects `null` only); opt into `DateTimeOffset.MinValue` rejection via `[NotDefault]`. Generator support: `RequiredPartialClassGenerator` now recognises `RequiredDateTimeOffset` as a valid base, emits the full `TryCreate(DateTimeOffset)` / `TryCreate(DateTimeOffset?, string?)` / `TryCreate(string?, string?)` / `IFormattableScalarValue` factory family, and round-trips the offset through `IParsable<T>` / `ParsableJsonConverter<T>` via ISO 8601 round-trip ("O") format.
 - **`Trellis.Core`** — four new numeric convenience attributes for `RequiredInt<TSelf>` / `RequiredLong<TSelf>` / `RequiredDecimal<TSelf>`: `[Positive]` (rejects `<= 0`), `[NonNegative]` (rejects `< 0`), `[Negative]` (rejects `>= 0`), `[NonPositive]` (rejects `> 0`). On `RequiredInt` and `RequiredLong` the generator synthesises the equivalent `[Range]` bounds; on `RequiredDecimal` it emits a direct sign comparison (the full decimal range exceeds what double-backed `[Range]` can express). New generator diagnostics: **TRLS043** — convenience attribute on a non-numeric Required base; **TRLS044** — more than one convenience attribute on the same class (the sign constraints are mutually exclusive); **TRLS045** — convenience attribute combined with an explicit `[Range]` on the same class (the combination would silently disable the convenience sign check). The diagnostic IDs are also mirrored on `Trellis.Analyzers.TrellisDiagnosticIds` for the consumer-facing analyzer surface.
-- **`Trellis.Core`** — string opt-out marker attributes (`[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]`) were introduced ahead of the strict-default emission flip and are now active as described in the breaking-change entry above. The generic `[AllowDefault]` placeholder was removed before release in favor of per-type opt-out names.
 
 ### Fixed — `Maybe<T>` equality silent miss-query
 

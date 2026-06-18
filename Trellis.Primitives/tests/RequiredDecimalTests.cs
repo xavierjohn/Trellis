@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Text.Json;
 using Trellis.Testing;
 
-[AllowZero]
 public partial class UnitPrice : RequiredDecimal<UnitPrice>
 {
 }
@@ -14,7 +13,6 @@ public partial class RangedUnitPrice : RequiredDecimal<RangedUnitPrice>
 {
 }
 
-[AllowZero]
 internal partial class InternalUnitPrice : RequiredDecimal<InternalUnitPrice>
 {
 }

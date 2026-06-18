@@ -68,6 +68,30 @@ public partial class TestImmutableEnumMembers : RequiredEnum<TestImmutableEnumMe
     public static readonly TestImmutableEnumMembers Three = new();
 }
 
+/// <summary>
+/// Composite value object holding <see cref="RequiredEnum{TSelf}"/> members — the scenario that
+/// requires <c>RequiredEnum</c> to implement <see cref="IComparable"/> so members can be yielded
+/// as equality components.
+/// </summary>
+public sealed class TestEnumHolder : ValueObject
+{
+    public TestEnumHolder(TestOrderState state, TestPaymentMethod method)
+    {
+        State = state;
+        Method = method;
+    }
+
+    public TestOrderState State { get; }
+
+    public TestPaymentMethod Method { get; }
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return State;
+        yield return Method;
+    }
+}
+
 public class RequiredEnumTests
 {
     #region TryCreate Tests
@@ -462,6 +486,149 @@ public class RequiredEnumTests
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*duplicate symbolic value 'duplicate'*");
     }
+
+    #endregion
+
+    #region IComparable Tests
+
+    [Fact]
+    public void RequiredEnum_IsAssignableTo_IComparable()
+    {
+        TestOrderState.Draft.Should().BeAssignableTo<IComparable>();
+        TestOrderState.Draft.Should().BeAssignableTo<IComparable<RequiredEnum<TestOrderState>>>();
+    }
+
+    [Fact]
+    public void CompareTo_SameMember_ReturnsZero() =>
+        ((IComparable)TestOrderState.Draft).CompareTo(TestOrderState.Draft).Should().Be(0);
+
+    [Fact]
+    public void CompareTo_OrdersByDeclarationOrder()
+    {
+        // Draft is declared before Confirmed, so it sorts first (by Ordinal, not alphabetically).
+        ((IComparable)TestOrderState.Draft).CompareTo(TestOrderState.Confirmed).Should().BeNegative();
+        ((IComparable)TestOrderState.Confirmed).CompareTo(TestOrderState.Draft).Should().BePositive();
+    }
+
+    [Fact]
+    public void CompareTo_IsConsistentWithEquality()
+    {
+        var left = TestOrderState.Shipped;
+        var right = TestOrderState.Shipped;
+
+        (((IComparable)left).CompareTo(right) == 0).Should().Be(left.Equals(right));
+    }
+
+    [Fact]
+    public void CompareTo_Null_ReturnsPositive() =>
+        ((IComparable)TestOrderState.Draft).CompareTo(null).Should().BePositive();
+
+    [Fact]
+    public void CompareTo_DifferentType_ThrowsArgumentException()
+    {
+        var act = () => ((IComparable)TestOrderState.Draft).CompareTo("not an enum");
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*String*");
+    }
+
+    [Fact]
+    public void OrderBy_SortsMembersByDeclarationOrderNotAlphabetically()
+    {
+        // Declaration order: Draft(0), Confirmed(1), Shipped(2), Delivered(3), Cancelled(4).
+        // Alphabetical would be Cancelled, Draft, Shipped — so this also proves ordering is NOT by Value.
+        var sorted = new[] { TestOrderState.Shipped, TestOrderState.Cancelled, TestOrderState.Draft }
+            .OrderBy(state => (IComparable)state)
+            .ToList();
+
+        sorted.Should().Equal(TestOrderState.Draft, TestOrderState.Shipped, TestOrderState.Cancelled);
+    }
+
+    [Fact]
+    public void GenericCompareTo_OrdersByDeclarationOrder()
+    {
+        TestOrderState.Draft.CompareTo(TestOrderState.Confirmed).Should().BeNegative();
+        TestOrderState.Confirmed.CompareTo(TestOrderState.Draft).Should().BePositive();
+        TestOrderState.Draft.CompareTo(TestOrderState.Draft).Should().Be(0);
+    }
+
+    [Fact]
+    public void ComparisonOperators_FollowDeclarationOrder()
+    {
+        var draft = TestOrderState.Draft;
+        var draftAgain = TestOrderState.Draft;
+        var confirmed = TestOrderState.Confirmed;
+
+        (draft < confirmed).Should().BeTrue();
+        (confirmed > draft).Should().BeTrue();
+        (draft <= draftAgain).Should().BeTrue();
+        (draft >= draftAgain).Should().BeTrue();
+        (confirmed < draft).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GenericCompareTo_Null_ReturnsPositive() =>
+        TestOrderState.Draft.CompareTo(null).Should().BePositive();
+
+    [Fact]
+    public void ComparisonOperators_WithNullOperands_TreatNullAsSortingFirst()
+    {
+        RequiredEnum<TestOrderState>? nullLeft = null;
+        RequiredEnum<TestOrderState>? nullRight = null;
+        var value = TestOrderState.Draft;
+
+        // null precedes a value
+        (nullLeft < value).Should().BeTrue();
+        (nullLeft <= value).Should().BeTrue();
+        (nullLeft > value).Should().BeFalse();
+        (nullLeft >= value).Should().BeFalse();
+
+        // a value follows null
+        (value > nullRight).Should().BeTrue();
+        (value >= nullRight).Should().BeTrue();
+        (value < nullRight).Should().BeFalse();
+        (value <= nullRight).Should().BeFalse();
+
+        // null compared to null
+        (nullLeft < nullRight).Should().BeFalse();
+        (nullLeft > nullRight).Should().BeFalse();
+        (nullLeft <= nullRight).Should().BeTrue();
+        (nullLeft >= nullRight).Should().BeTrue();
+    }
+
+    [Fact]
+    public void CompositeValueObject_WithRequiredEnumComponents_SupportsEqualityAndOrdering()
+    {
+        var first = new TestEnumHolder(TestOrderState.Draft, TestPaymentMethod.Cash);
+        var same = new TestEnumHolder(TestOrderState.Draft, TestPaymentMethod.Cash);
+        var different = new TestEnumHolder(TestOrderState.Shipped, TestPaymentMethod.Cash);
+
+        first.Should().Be(same);
+        first.Equals(different).Should().BeFalse();
+        first.CompareTo(different).Should().NotBe(0);
+    }
+
+    #endregion
+
+    #region Singleton Construction Tests
+
+    [Fact]
+    public void RequiredEnum_WithNoDeclaredConstructor_ExposesNoPublicConstructor() =>
+        typeof(TestOrderState).GetConstructors()
+            .Should().BeEmpty("members are singletons; the generator emits a private parameterless constructor so callers cannot create non-member instances whose Value/Ordinal are never assigned");
+
+    [Fact]
+    public void RequiredEnum_CannotBeConstructedViaPublicActivator()
+    {
+        var act = () => Activator.CreateInstance<TestOrderState>();
+
+        act.Should().Throw<MissingMethodException>();
+    }
+
+    [Fact]
+    public void RequiredEnum_WithParameterizedConstructor_ExposesNoPublicConstructor() =>
+        typeof(TestPaymentMethod).GetConstructors()
+            .Should().BeEmpty("a behavior enum's own constructor must be non-public so non-member instances cannot be created");
 
     #endregion
 }

@@ -137,7 +137,7 @@ using System.Reflection;
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix - RequiredEnum is a valid DDD pattern name
 [DebuggerDisplay("{Value}")]
 public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf>
-    : IEquatable<RequiredEnum<TSelf>>
+    : IEquatable<RequiredEnum<TSelf>>, IComparable<RequiredEnum<TSelf>>, IComparable
     where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>
 #pragma warning restore CA1711
 {
@@ -255,6 +255,57 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 
     /// <summary>Determines whether two instances are not equal.</summary>
     public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) => !(left == right);
+
+    /// <summary>
+    /// Compares this instance with another by <see cref="Ordinal"/> (declaration order), so members
+    /// sort in the order they are declared — matching how the C# <see langword="enum"/> this type
+    /// replaces would sort by its underlying value. Equality remains keyed on <see cref="Value"/>;
+    /// the two stay consistent because each member has a unique <see cref="Value"/> and a unique
+    /// <see cref="Ordinal"/>.
+    /// </summary>
+    /// <param name="other">The instance to compare with, or <see langword="null"/>.</param>
+    /// <returns>
+    /// A negative value if this instance precedes <paramref name="other"/>; zero if they are equal;
+    /// a positive value if this instance follows <paramref name="other"/> or <paramref name="other"/> is <see langword="null"/>.
+    /// </returns>
+    public int CompareTo(RequiredEnum<TSelf>? other)
+    {
+        if (other is null) return 1;
+        if (ReferenceEquals(this, other)) return 0;
+
+        return Ordinal.CompareTo(other.Ordinal);
+    }
+
+    /// <summary>
+    /// Non-generic <see cref="IComparable"/> implementation. Enables members to be used as
+    /// <see cref="ValueObject.GetEqualityComponents"/> components of composite value objects and to
+    /// be ordered by the default comparer.
+    /// </summary>
+    /// <param name="obj">The object to compare with.</param>
+    /// <returns>The relative order, as described by <see cref="CompareTo(RequiredEnum{TSelf})"/>.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="obj"/> is non-null and not a <see cref="RequiredEnum{TSelf}"/> (consistent with <see cref="Equals(object?)"/>).</exception>
+    int IComparable.CompareTo(object? obj) => obj switch
+    {
+        null => 1,
+        RequiredEnum<TSelf> other => CompareTo(other),
+        _ => throw new ArgumentException($"Cannot compare {GetType()} to {obj.GetType()}.", nameof(obj)),
+    };
+
+    /// <summary>Determines whether the left instance precedes the right in declaration order (<see cref="Ordinal"/>).</summary>
+    public static bool operator <(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is null ? right is not null : left.CompareTo(right) < 0;
+
+    /// <summary>Determines whether the left instance precedes or equals the right in declaration order (<see cref="Ordinal"/>).</summary>
+    public static bool operator <=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is null || left.CompareTo(right) <= 0;
+
+    /// <summary>Determines whether the left instance follows the right in declaration order (<see cref="Ordinal"/>).</summary>
+    public static bool operator >(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is not null && left.CompareTo(right) > 0;
+
+    /// <summary>Determines whether the left instance follows or equals the right in declaration order (<see cref="Ordinal"/>).</summary>
+    public static bool operator >=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) =>
+        left is null ? right is null : left.CompareTo(right) >= 0;
 
     private static (ReadOnlyCollection<TSelf> Members, Dictionary<string, TSelf> ByName) GetCache() =>
         s_cache.GetOrAdd(typeof(TSelf), _ =>

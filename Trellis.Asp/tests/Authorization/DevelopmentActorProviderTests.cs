@@ -243,10 +243,27 @@ public class DevelopmentActorProviderTests
     #region Development — Malformed header
 
     [Fact]
-    public async Task GetCurrentActor_Development_MalformedJson_FallsBackToDefault()
+    public async Task GetCurrentActor_Development_MalformedJson_ByDefault_Throws()
     {
+        // Security: a MALFORMED header is a developer error, distinct from an ABSENT header
+        // (which intentionally yields the default actor). By default the provider now rejects it
+        // rather than silently falling back to the configured default actor — which would be a
+        // silent privilege elevation when DefaultPermissions is non-empty.
         var context = CreateHttpContextWithHeader("not valid json {{{");
         var provider = CreateProvider(context);
+
+        Func<Task> act = async () => await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Malformed*");
+    }
+
+    [Fact]
+    public async Task GetCurrentActor_Development_MalformedJson_FallsBackToDefault()
+    {
+        // Opt-out: with ThrowOnMalformedHeader=false the legacy lenient behavior is preserved.
+        var context = CreateHttpContextWithHeader("not valid json {{{");
+        var provider = CreateProvider(context, options: new DevelopmentActorOptions { ThrowOnMalformedHeader = false });
 
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
@@ -257,7 +274,7 @@ public class DevelopmentActorProviderTests
     public async Task GetCurrentActor_Development_MissingId_FallsBackToDefault()
     {
         var context = CreateHttpContextWithHeader("""{"Permissions":["orders:read"]}""");
-        var provider = CreateProvider(context);
+        var provider = CreateProvider(context, options: new DevelopmentActorOptions { ThrowOnMalformedHeader = false });
 
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
@@ -268,7 +285,7 @@ public class DevelopmentActorProviderTests
     public async Task GetCurrentActor_Development_EmptyId_FallsBackToDefault()
     {
         var context = CreateHttpContextWithHeader("""{"Id":"","Permissions":["orders:read"]}""");
-        var provider = CreateProvider(context);
+        var provider = CreateProvider(context, options: new DevelopmentActorOptions { ThrowOnMalformedHeader = false });
 
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
@@ -282,7 +299,7 @@ public class DevelopmentActorProviderTests
         // Without this guard, ActorId.TryCreate would reject the value and Actor.Create
         // would throw ArgumentException instead of producing the configured default actor.
         var context = CreateHttpContextWithHeader("""{"Id":"   ","Permissions":["orders:read"]}""");
-        var provider = CreateProvider(context);
+        var provider = CreateProvider(context, options: new DevelopmentActorOptions { ThrowOnMalformedHeader = false });
 
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
@@ -337,7 +354,7 @@ public class DevelopmentActorProviderTests
     public async Task GetCurrentActor_Development_NonStringPermissionValues_FallsBackToDefault()
     {
         var context = CreateHttpContextWithHeader("""{"Id":"user-1","Permissions":[123,true]}""");
-        var provider = CreateProvider(context);
+        var provider = CreateProvider(context, options: new DevelopmentActorOptions { ThrowOnMalformedHeader = false });
 
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 

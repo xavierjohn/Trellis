@@ -27,7 +27,7 @@ using Trellis.Primitives;
 /// </summary>
 public sealed class BinderValidationStatusCodeTests
 {
-    private static IHost CreateMvcHost()
+    private static IHost CreateMvcHost(System.Action<TrellisAspOptions>? configure = null)
     {
         var builder = Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults(web => web
@@ -35,7 +35,7 @@ public sealed class BinderValidationStatusCodeTests
                 .ConfigureServices(s =>
                 {
                     s.AddProblemDetails();
-                    s.AddTrellisAspWithScalarValidation();
+                    s.AddTrellisAspWithScalarValidation(configure ?? (_ => { }));
                     s.AddControllers().AddApplicationPart(typeof(StatusCodeController).Assembly);
                 })
                 .Configure(app =>
@@ -135,6 +135,59 @@ public sealed class BinderValidationStatusCodeTests
 
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest,
             "malformed JSON body must dominate even when a query-bound scalar VO also fails on the same request");
+    }
+
+    [Fact]
+    public async Task Mvc_ScalarVoQueryValidationFailure_WithInvalidInputMappedTo400_Returns400()
+    {
+        // MapError<Error.InvalidInput>(400) must reach the MVC scalar-binder validation seam,
+        // not just handler-level failures. value= is empty → StatusCodeScalar.TryCreate rejects it.
+        using var host = CreateMvcHost(o => o.MapError<Error.InvalidInput>(400));
+        using var client = host.GetTestClient();
+
+        var resp = await client.GetAsync("/binder-status/scalar?value=", TestContext.Current.CancellationToken);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await AssertRfc9457ProblemDetails(
+            resp,
+            expectedStatus: 400,
+            expectedInstance: "/binder-status/scalar?value=");
+    }
+
+    [Fact]
+    public async Task Mvc_CompositeVoValidationFailure_WithInvalidInputMappedTo400_Returns400()
+    {
+        // Same override must reach the JSON-body composite-VO validation seam (MVC action filter).
+        using var host = CreateMvcHost(o => o.MapError<Error.InvalidInput>(400));
+        using var client = host.GetTestClient();
+
+        var json = """{"address":{"street":"","city":"","state":""}}""";
+        using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        var resp = await client.PostAsync("/binder-status/composite", content, TestContext.Current.CancellationToken);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await AssertRfc9457ProblemDetails(
+            resp,
+            expectedStatus: 400,
+            expectedErrorKey: "address.street",
+            expectedInstance: "/binder-status/composite");
+    }
+
+    [Fact]
+    public async Task Mvc_MalformedJson_StaysBadRequest_EvenWhenInvalidInputRemapped()
+    {
+        // Remapping Error.InvalidInput to a distinctive status must not move the malformed-bytes
+        // 400: syntactically invalid JSON is RFC 9110 §15.5.1, a different class than InvalidInput.
+        using var host = CreateMvcHost(o => o.MapError<Error.InvalidInput>(409));
+        using var client = host.GetTestClient();
+
+        var json = "{not valid";
+        using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        var resp = await client.PostAsync("/binder-status/composite", content, TestContext.Current.CancellationToken);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private static async Task AssertRfc9457ProblemDetails(

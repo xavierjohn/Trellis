@@ -15,7 +15,7 @@
 /// </code>
 /// <para>
 /// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges are emitted by the
-/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS053</c> and <c>TRLS056</c>
+/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c> and <c>TRLS056</c>–<c>TRLS058</c>
 /// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
 /// and <c>Trellis.AspSourceGenerator</c>).
@@ -132,9 +132,11 @@ public static class TrellisDiagnosticIds
     /// <summary>TRLS039 — Scalar value object wraps a primitive that is not supported by the AOT-safe JSON converter generator.</summary>
     public const string UnsupportedScalarValuePrimitiveForAotJson = "TRLS039";
 
-    // TRLS040, TRLS041, TRLS042 were retired in the v3 defaults flip: [NotDefault] and [Trim]
-    // are now vestigial no-ops universally, surfaced via TRLS046/TRLS047 informational diagnostics
-    // rather than per-base errors. The IDs are intentionally not reused.
+    // TRLS040, TRLS041, TRLS042, TRLS046, TRLS047, TRLS048, TRLS049, TRLS050, TRLS051, TRLS052,
+    // and TRLS053 were retired when the Required defaults flipped to lenient-by-default. The
+    // Allow*/NoTrim opt-out attributes were deleted, [NotDefault] and [Trim] became the
+    // meaningful opt-ins, and the per-base validity diagnostics for the deleted attributes are
+    // no longer reachable. The IDs are intentionally not reused.
 
     /// <summary>TRLS043 — Numeric convenience attribute (<c>[Positive]</c>, <c>[NonNegative]</c>, <c>[Negative]</c>, or <c>[NonPositive]</c>) applied to a non-numeric Required base.</summary>
     public const string NumericConvenienceOnNonNumeric = "TRLS043";
@@ -145,30 +147,6 @@ public static class TrellisDiagnosticIds
     /// <summary>TRLS045 — Numeric convenience attribute combined with an explicit <c>[Range]</c> on the same class; the combination would silently disable the convenience sign check.</summary>
     public const string NumericConvenienceWithExplicitRange = "TRLS045";
 
-    /// <summary>TRLS046 — <c>[NotDefault]</c> is vestigial under the v3 strict-by-default Required model.</summary>
-    public const string NotDefaultIsVestigial = "TRLS046";
-
-    /// <summary>TRLS047 — <c>[Trim]</c> is vestigial on <c>RequiredString&lt;T&gt;</c> under the v3 trim-by-default model.</summary>
-    public const string TrimIsVestigial = "TRLS047";
-
-    /// <summary>TRLS048 — <c>[AllowZero]</c> applied to a non-numeric Required base.</summary>
-    public const string AllowZeroOnNonNumericRequired = "TRLS048";
-
-    /// <summary>TRLS049 — <c>[AllowEmpty]</c> applied to a numeric or date Required base.</summary>
-    public const string AllowEmptyOnNumericOrDateRequired = "TRLS049";
-
-    /// <summary>TRLS050 — <c>[AllowMinValue]</c> applied to a non-date Required base.</summary>
-    public const string AllowMinValueOnNonDateRequired = "TRLS050";
-
-    /// <summary>TRLS051 — <c>[AllowWhitespace]</c> applied to a non-string Required base.</summary>
-    public const string AllowWhitespaceOnNonStringRequired = "TRLS051";
-
-    /// <summary>TRLS052 — <c>[NoTrim]</c> applied to a non-string Required base.</summary>
-    public const string NoTrimOnNonStringRequired = "TRLS052";
-
-    /// <summary>TRLS053 — Contradictory Required attribute combination.</summary>
-    public const string ContradictoryRequiredAttributeCombination = "TRLS053";
-
     /// <summary>TRLS054 — <c>Maybe&lt;T&gt;.Equals</c> is used inside an <c>IQueryable</c> expression.</summary>
     public const string MaybeEqualsInQueryable = "TRLS054";
 
@@ -177,4 +155,10 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS056 — User-declared member conflicts with a Required value object generated member.</summary>
     public const string GeneratedRequiredMemberCollision = "TRLS056";
+
+    /// <summary>TRLS057 — <c>[Trim]</c> applied to a Required base other than <c>RequiredString</c>; the attribute only affects string trimming and is otherwise silently ignored.</summary>
+    public const string TrimOnNonStringBase = "TRLS057";
+
+    /// <summary>TRLS058 — <c>[NotDefault]</c> applied to a sentinel-less Required base (<c>RequiredBool</c> or <c>RequiredEnum</c>), which has no default value to reject.</summary>
+    public const string NotDefaultOnSentinellessBase = "TRLS058";
 }

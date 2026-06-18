@@ -29,7 +29,7 @@ This document provides detailed examples and patterns for using Primitive Value 
 
 ## RequiredString Examples
 
-`RequiredString<TSelf>` is strict by default: generated `TryCreate` rejects `null`, `""`, and whitespace-only input, then stores the trimmed value. Use `[AllowEmpty]`, `[AllowWhitespace]`, or `[NoTrim]` only when the domain explicitly opts out of one of those defaults.
+`RequiredString<TSelf>` is lenient by default: generated `TryCreate` rejects only `null`; `""` and whitespace-only input are accepted without trimming. Use `[NotDefault]` to also reject `""` (and, combined with `[Trim]`, whitespace-only input that trims to `""`), and `[Trim]` to enable automatic trimming.
 
 ### Basic Usage
 
@@ -249,7 +249,7 @@ public class Order : Entity<OrderId>
 
 ## RequiredGuid Examples
 
-`RequiredGuid<TSelf>` rejects `null` and `Guid.Empty` by default. Use `[AllowEmpty]` only for domains where the all-zero GUID is meaningful.
+`RequiredGuid<TSelf>` rejects `null` by default; `Guid.Empty` is accepted. Use `[NotDefault]` to also reject `Guid.Empty` when the all-zero GUID should not be a valid domain value.
 
 ### Identity Value Objects
 
@@ -659,7 +659,7 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
 
 ### RequiredString Generation with `[StringLength]`
 
-When `[StringLength]` is applied, the generated `TryCreate` trims first (unless `[NoTrim]` is present) and then includes length checks on the normalized value:
+When `[StringLength]` is applied, the generated `TryCreate` applies trimming only if `[Trim]` is present, then includes length checks on the (possibly normalized) value:
 
 ```csharp
 // Your declaration

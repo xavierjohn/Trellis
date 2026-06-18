@@ -3,7 +3,7 @@ package: Trellis.Core, Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredLong<TSelf>, RequiredDecimal<TSelf>, RequiredBool<TSelf>, RequiredDateTime<TSelf>, RequiredDateTimeOffset<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-06-16
 audience: [llm]
 ---
 # Trellis Value Object Taxonomy
@@ -28,317 +28,84 @@ Use this table to pick the right base class before reading the per-type signatur
 
 ## Required base defaults
 
-`Required*<TSelf>` bases are strict by default. Remove legacy `[NotDefault]` / `[Trim]`; use the per-base opt-outs only when the sentinel is valid domain state.
+`Required*<TSelf>` bases are lenient by default: rejects only `null`. Use `[NotDefault]` to opt into sentinel rejection and `[Trim]` to opt into string trimming.
 
-| Base | Default rejects | Opt-out |
+| Base | Default rejects | Opt-in to reject sentinel |
 |---|---|---|
-| `RequiredString<TSelf>` | `null`, `""`, whitespace-only; trims accepted values | `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]` |
-| `RequiredGuid<TSelf>` | `null`, `Guid.Empty` | `[AllowEmpty]` |
-| `RequiredInt<TSelf>` / `RequiredLong<TSelf>` / `RequiredDecimal<TSelf>` | `null`, `0` / `0L` / `0m` | `[AllowZero]` |
-| `RequiredDateTime<TSelf>` / `RequiredDateTimeOffset<TSelf>` | `null`, `MinValue` | `[AllowMinValue]` |
+| `RequiredString<TSelf>` | `null` only (accepts `""`, whitespace; no auto-trim) | `[NotDefault]` rejects `""`; `[Trim]` enables trimming; combine for strict trim-then-reject-empty |
+| `RequiredGuid<TSelf>` | `null` only (accepts `Guid.Empty`) | `[NotDefault]` rejects `Guid.Empty` |
+| `RequiredInt<TSelf>` / `RequiredLong<TSelf>` / `RequiredDecimal<TSelf>` | `null` only (accepts `0`) | `[NotDefault]` rejects the zero sentinel |
+| `RequiredDateTime<TSelf>` / `RequiredDateTimeOffset<TSelf>` | `null` only (accepts `MinValue`) | `[NotDefault]` rejects `MinValue` |
 | `RequiredBool<TSelf>` | `null` | none (`false` is valid) |
 | `RequiredEnum<TSelf>` | `null`, undeclared names | none (smart-enum lookup) |
 
 ## Types
 
+This section is a **selection guide** — one or two distinguishing facts per type, not a signature reference. For complete signatures (members, overloads, operators, generated factories) see the per-type entries in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the base classes and interfaces below, and [trellis-api-primitives.md](trellis-api-primitives.md#types) for the concrete built-in primitives. Default rejection behavior for every `Required*<TSelf>` base is the authoritative [Required base defaults](#required-base-defaults) table above and is not restated per type here.
+
 ### `ValueObject`
 
-```csharp
-public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEquatable<ValueObject>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| — | — | Base type for all structural equality objects. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `protected abstract IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Derived types override this to define structural identity. |
-| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Helper for optional equality components: returns the contained value when present, otherwise `null`. |
-| `public override bool Equals(object? obj)` | `bool` | Structural equality. |
-| `public bool Equals(ValueObject? other)` | `bool` | Strongly typed structural equality. |
-| `public override int GetHashCode()` | `int` | Cached structural hash. |
-| `public virtual int CompareTo(ValueObject? other)` | `int` | Ordered comparison by equality components. |
-| `public static bool operator ==(ValueObject? a, ValueObject? b)` | `bool` | Equality operator. |
-| `public static bool operator !=(ValueObject? a, ValueObject? b)` | `bool` | Inequality operator. |
-| `public static bool operator <(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator. |
-| `public static bool operator <=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator. |
-| `public static bool operator >(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator. |
-| `public static bool operator >=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator. |
+Base for **structured** value objects: override `GetEqualityComponents()` to define identity from multiple fields. Provides structural equality, hashing, and ordering (`IComparable`); yielded components must be `IComparable?` — use `MaybeComponent<T>(...)` to yield an optional field.
 
 ### `ScalarValueObject<TSelf, T>`
 
-```csharp
-public abstract class ScalarValueObject<TSelf, T> : ValueObject, IConvertible, IFormattable
-    where TSelf : ScalarValueObject<TSelf, T>, IScalarValue<TSelf, T>
-    where T : IComparable
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `T` | Canonical scalar identity. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public override string ToString()` | `string` | Primitive string form. |
-| `public static implicit operator T(ScalarValueObject<TSelf, T> valueObject)` | `T` | Implicit unwrap. |
-| `public static TSelf Create(T value)` | `TSelf` | Throwing scalar factory. |
-| `public string ToString(string? format, IFormatProvider? formatProvider)` | `string` | Formattable support. |
+Base for a single-primitive value object with custom validation and **no** source generation. Exposes `Value : T`, implicit unwrap to `T`, and a throwing `Create(T)`. Prefer a `Required*<TSelf>` base unless you need a primitive family they don't cover.
 
 ### `IScalarValue<TSelf, TPrimitive>`
 
-```csharp
-public interface IScalarValue<TSelf, TPrimitive>
-    where TSelf : IScalarValue<TSelf, TPrimitive>
-    where TPrimitive : IComparable
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `TPrimitive` | Required canonical scalar property. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `static abstract Result<TSelf> TryCreate(TPrimitive value, string? fieldName = null)` | `Result<TSelf>` | Primitive creation path. |
-| `static abstract Result<TSelf> TryCreate(string? value, string? fieldName = null)` | `Result<TSelf>` | String creation path. |
-| `static virtual TSelf Create(TPrimitive value)` | `TSelf` | Throwing convenience factory. |
+Static-abstract contract every scalar value object implements (`TryCreate` primitive/string paths + `Value`). The source generator emits it for partial `Required*` types; you rarely implement it by hand.
 
 ### `IFormattableScalarValue<TSelf, TPrimitive>`
 
-```csharp
-public interface IFormattableScalarValue<TSelf, TPrimitive> : IScalarValue<TSelf, TPrimitive>
-    where TSelf : IFormattableScalarValue<TSelf, TPrimitive>
-    where TPrimitive : IComparable
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `TPrimitive` | Inherited canonical scalar value. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `static abstract Result<TSelf> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)` | `Result<TSelf>` | Culture-aware string creation path used by numeric/date scalar types. |
+`IScalarValue` plus a culture-aware `TryCreate(string?, IFormatProvider?, ...)` — used by the numeric and date/time scalar families.
 
 ### `RequiredString<TSelf>`
 
-```csharp
-public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
-    where TSelf : RequiredString<TSelf>, IScalarValue<TSelf, string>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `string` | Canonical scalar identity for required text; non-empty, non-whitespace, and trimmed by default. |
-| `Length` | `int` | String convenience member. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public bool StartsWith(string value)` | `bool` | Query helper. |
-| `public bool Contains(string value)` | `bool` | Query helper. |
-| `public bool EndsWith(string value)` | `bool` | Query helper. |
+Single-`string` value object. Adds EF-Core-translatable query helpers (`StartsWith`/`Contains`/`EndsWith`, `Length`). Apply `[Trim, NotDefault, StringLength(n)]` for the strict, database-mapped default.
 
 ### `RequiredGuid<TSelf>`
 
-```csharp
-public abstract class RequiredGuid<TSelf> : ScalarValueObject<TSelf, Guid>
-    where TSelf : RequiredGuid<TSelf>, IScalarValue<TSelf, Guid>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `Guid` | Canonical scalar identity for non-empty GUIDs by default. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static TSelf Create(Guid value)` | `TSelf` | Inherited throwing scalar factory. |
+Single-`Guid` identity value object. The generator adds `NewUniqueV7()` (time-ordered) and `NewUniqueV4()` — the idiomatic way to mint aggregate and entity IDs.
 
 ### `RequiredInt<TSelf>`
 
-```csharp
-public abstract class RequiredInt<TSelf> : ScalarValueObject<TSelf, int>
-    where TSelf : RequiredInt<TSelf>, IScalarValue<TSelf, int>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `int` | Canonical scalar identity for required integers; zero is rejected by default. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static TSelf Create(int value)` | `TSelf` | Inherited throwing scalar factory. |
+Single-`int` value object. Bound the domain with `[Range(min, max)]`; add `[NotDefault]` only when `0` is itself invalid (otherwise `0` is a legal value).
 
 ### `RequiredDecimal<TSelf>`
 
-```csharp
-public abstract class RequiredDecimal<TSelf> : ScalarValueObject<TSelf, decimal>
-    where TSelf : RequiredDecimal<TSelf>, IScalarValue<TSelf, decimal>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `decimal` | Canonical scalar identity for required decimals; zero is rejected by default. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static TSelf Create(decimal value)` | `TSelf` | Inherited throwing scalar factory. |
+Single-`decimal` value object for ratios, rates, and quantities. For money use the dedicated `MonetaryAmount` (single-currency) or `Money` (multi-currency) types.
 
 ### `RequiredLong<TSelf>`
 
-```csharp
-public abstract class RequiredLong<TSelf> : ScalarValueObject<TSelf, long>
-    where TSelf : RequiredLong<TSelf>, IScalarValue<TSelf, long>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `long` | Canonical scalar identity for required longs; zero is rejected by default. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static TSelf Create(long value)` | `TSelf` | Inherited throwing scalar factory. |
+Single-`long` value object; same shape as `RequiredInt<TSelf>` for 64-bit ranges.
 
 ### `RequiredBool<TSelf>`
 
-```csharp
-public abstract class RequiredBool<TSelf> : ScalarValueObject<TSelf, bool>
-    where TSelf : RequiredBool<TSelf>, IScalarValue<TSelf, bool>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `bool` | Canonical scalar identity for required booleans; `true` and `false` are both valid. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static TSelf Create(bool value)` | `TSelf` | Inherited throwing scalar factory. |
+Single-`bool` value object. Both `true` and `false` are valid (no sentinel), so `[NotDefault]` does not apply.
 
 ### `RequiredDateTime<TSelf>`
 
-```csharp
-public abstract class RequiredDateTime<TSelf> : ScalarValueObject<TSelf, DateTime>
-    where TSelf : RequiredDateTime<TSelf>, IScalarValue<TSelf, DateTime>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `DateTime` | Canonical scalar identity for non-`DateTime.MinValue` dates by default. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public override string ToString()` | `string` | Invariant ISO 8601 round-trip string. |
-| `public static TSelf Create(DateTime value)` | `TSelf` | Inherited throwing scalar factory. |
+Single-`DateTime` value object; `ToString()` is an invariant ISO-8601 round-trip.
 
 ### `RequiredDateTimeOffset<TSelf>`
 
-```csharp
-public abstract class RequiredDateTimeOffset<TSelf> : ScalarValueObject<TSelf, DateTimeOffset>
-    where TSelf : RequiredDateTimeOffset<TSelf>, IScalarValue<TSelf, DateTimeOffset>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `DateTimeOffset` | Canonical scalar identity for non-`DateTimeOffset.MinValue` timestamps by default. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public override string ToString()` | `string` | Invariant ISO 8601 round-trip string. |
-| `public static TSelf Create(DateTimeOffset value)` | `TSelf` | Inherited throwing scalar factory. |
+Single-`DateTimeOffset` value object; prefer over `RequiredDateTime<TSelf>` when an offset matters (e.g. `IDomainEvent.OccurredAt` is a `DateTimeOffset`).
 
 ### `RequiredEnum<TSelf>`
 
-```csharp
-public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf>
-    : IEquatable<RequiredEnum<TSelf>>
-    where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `string` | Canonical symbolic identity. |
-| `Ordinal` | `int` | Non-semantic declaration-order metadata. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static IReadOnlyCollection<TSelf> GetAll()` | `IReadOnlyCollection<TSelf>` | Returns all declared symbolic members. |
-| `public static Result<TSelf> TryFromName(string? name, string? fieldName = null)` | `Result<TSelf>` | Canonical symbolic lookup. |
-| `public bool Is(params TSelf[] values)` | `bool` | Membership check. |
-| `public bool IsNot(params TSelf[] values)` | `bool` | Negated membership check. |
-| `public override string ToString()` | `string` | Returns `Value`. |
-| `public override int GetHashCode()` | `int` | Case-insensitive symbolic hash. |
-| `public override bool Equals(object? obj)` | `bool` | Case-insensitive symbolic equality. |
-| `public bool Equals(RequiredEnum<TSelf>? other)` | `bool` | Case-insensitive symbolic equality. |
-| `public static bool operator ==(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Equality operator. |
-| `public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Inequality operator. |
+**Symbolic** smart-enum that replaces a C# `enum`; members are `public static readonly` singletons. Identity is the string `Value` (equality is case-insensitive); ordering (`IComparable`) is by `Ordinal` = **declaration order**, like the underlying enum it replaces. String-backed in JSON and EF Core. Use `GetAll()` / `TryFromName(...)` for lookup and `[EnumValue("...")]` to override a member's external name. Stands apart from `ScalarValueObject<TSelf, T>`.
 
 ### `MonetaryAmount`
 
-```csharp
-public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScalarValue<MonetaryAmount, decimal>, IFormattableScalarValue<MonetaryAmount, decimal>, IParsable<MonetaryAmount>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `decimal` | Canonical scalar identity for single-currency systems. |
-| `Zero` | `MonetaryAmount` | Cached zero instance. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static Result<MonetaryAmount> TryCreate(decimal value, string? fieldName = null)` | `Result<MonetaryAmount>` | Non-negative scalar creation path. |
-| `public static Result<MonetaryAmount> TryCreate(decimal? value, string? fieldName = null)` | `Result<MonetaryAmount>` | Nullable scalar creation path. |
-| `public static Result<MonetaryAmount> TryCreate(string? value, string? fieldName = null)` | `Result<MonetaryAmount>` | Invariant string creation path. |
-| `public static Result<MonetaryAmount> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)` | `Result<MonetaryAmount>` | Culture-aware string creation path. |
-| `public Result<MonetaryAmount> Add(MonetaryAmount other)` | `Result<MonetaryAmount>` | Scalar arithmetic. |
-| `public Result<MonetaryAmount> Subtract(MonetaryAmount other)` | `Result<MonetaryAmount>` | Scalar arithmetic. |
-| `public Result<MonetaryAmount> Multiply(int quantity)` | `Result<MonetaryAmount>` | Scalar arithmetic. |
-| `public Result<MonetaryAmount> Multiply(decimal multiplier)` | `Result<MonetaryAmount>` | Scalar arithmetic. |
-| `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Scalar accumulation. |
+Concrete **single-currency** amount (`Value : decimal`, no currency component). Arithmetic returns `Result<>`; `TryCreate` rejects negatives.
 
 ### `Percentage`
 
-```csharp
-public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<Percentage, decimal>, IFormattableScalarValue<Percentage, decimal>, IParsable<Percentage>
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Value` | `decimal` | Canonical scalar identity for percentages. |
-| `Zero` | `Percentage` | Cached `0%`. |
-| `Full` | `Percentage` | Cached `100%`. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static Result<Percentage> TryCreate(decimal value, string? fieldName = null)` | `Result<Percentage>` | Numeric creation path. |
-| `public static Result<Percentage> TryCreate(decimal? value, string? fieldName = null)` | `Result<Percentage>` | Nullable numeric creation path. |
-| `public static Result<Percentage> TryCreate(string? value, string? fieldName = null)` | `Result<Percentage>` | Invariant string creation path. |
-| `public static Result<Percentage> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)` | `Result<Percentage>` | Culture-aware string creation path. |
-| `public static Result<Percentage> FromFraction(decimal fraction, string? fieldName = null)` | `Result<Percentage>` | Derived scalar factory. |
-| `public decimal AsFraction()` | `decimal` | Converts to fraction. |
-| `public decimal Of(decimal amount)` | `decimal` | Applies percentage to an amount. |
+Concrete percentage (`Value : decimal`) with `FromFraction` / `AsFraction` / `Of(amount)` helpers and `%` parsing.
 
 ### `Money`
 
-```csharp
-public class Money : ValueObject
-```
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `Amount` | `decimal` | One structured component. |
-| `Currency` | `CurrencyCode` | Second structured component. |
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null)` | `Result<Money>` | Structured factory. |
-| `public static Money Create(decimal amount, string currencyCode)` | `Money` | Throwing structured factory. |
-| `public Result<Money> Add(Money other)` | `Result<Money>` | Structured arithmetic with currency match enforcement. |
-| `public Result<Money> Subtract(Money other)` | `Result<Money>` | Structured arithmetic with currency match enforcement. |
-| `public Result<Money> Multiply(decimal multiplier)` | `Result<Money>` | Structured arithmetic. |
-| `public Result<Money> Multiply(int quantity)` | `Result<Money>` | Structured arithmetic. |
-| `public Result<Money> Divide(decimal divisor)` | `Result<Money>` | Structured arithmetic. |
-| `public Result<Money> Divide(int divisor)` | `Result<Money>` | Structured arithmetic. |
-| `public Result<Money[]> Allocate(params int[] ratios)` | `Result<Money[]>` | Structured split operation. |
-| `public static Result<Money> Zero(string currencyCode = "USD")` | `Result<Money>` | Structured zero factory. |
-| `public static Result<Money> Sum(IEnumerable<Money> values)` | `Result<Money>` | Structured accumulation. |
+Concrete **structured** value object (`Amount` + `Currency`) for multi-currency; arithmetic enforces a currency match and supports `Allocate(...)`.
 
 ## Base class hierarchy
 
@@ -375,13 +142,7 @@ public class Money : ValueObject
 
 ## Source-generated members
 
-The primitive generator adds category-specific members to partial types:
-
-- `RequiredGuid<TSelf>`: `NewUniqueV4()`, `NewUniqueV7()`, `NewUniqueV7(TimeProvider timeProvider)`, `TryCreate(Guid value, string? fieldName = null)`, `TryCreate(Guid? requiredGuidOrNothing, string? fieldName = null)`, `TryCreate(string? stringOrNull, string? fieldName = null)`, `Create(string stringValue)`, `Parse`, `TryParse`, explicit cast, and `ValidateAdditional(Guid value, string fieldName, ref string? errorMessage)`.
-- `RequiredString<TSelf>`: `TryCreate(string? value, string? fieldName = null)`, `Create(string? value, string? fieldName = null)`, `Parse`, `TryParse`, explicit cast, and `ValidateAdditional(string value, string fieldName, ref string? errorMessage)`.
-- `RequiredInt<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredLong<TSelf>`, `RequiredDateTime<TSelf>`, and `RequiredDateTimeOffset<TSelf>`: the invariant `TryCreate(string? stringOrNull, string? fieldName = null)` overload plus the culture-aware `TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)` overload, `Create(string stringValue)`, `Parse`, `TryParse`, explicit cast, and `ValidateAdditional(...)`.
-- `RequiredBool<TSelf>`: primitive/string factories, `Parse`, `TryParse`, explicit cast, and `ValidateAdditional(bool value, string fieldName, ref string? errorMessage)`.
-- `RequiredEnum<TSelf>`: `TryCreate(string value)`, `TryCreate(string? value, string? fieldName = null)`, `Parse`, `TryParse`, and `Create(string value)`. Generated enum creation uses `TryFromName` only.
+For a `partial` `Required*<TSelf>` type the primitive generator emits the `IScalarValue<TSelf, T>` implementation, the `TryCreate` primitive and string factories (plus a culture-aware `IFormatProvider` overload for the numeric and date/time families), `Create`, `Parse` / `TryParse`, an explicit cast operator, and a `ValidateAdditional(...)` extension hook. `RequiredGuid<TSelf>` additionally gets `NewUniqueV4()` / `NewUniqueV7()`; `RequiredEnum<TSelf>` creation routes through `TryFromName`. See the per-type generated-member entries in [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the exact emitted signatures.
 
 ## Built-in primitives table
 

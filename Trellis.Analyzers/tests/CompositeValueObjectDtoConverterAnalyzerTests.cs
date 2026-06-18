@@ -229,8 +229,13 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
     }
 
     [Fact]
-    public async Task MediatorRequestDto_WithOwnedValueObjectMissingConverter_ReportsDiagnostic()
+    public async Task ServerBuiltMediatorCommand_WithOwnedValueObject_NoDiagnostic()
     {
+        // A Mediator command constructed server-side (mapped from a separate request DTO, never
+        // deserialized from the HTTP body) must NOT be flagged: System.Text.Json never touches it,
+        // so there is no TryCreate-bypass risk and [JsonConverter] would be dead weight. TRLS020
+        // only fires at real binding seams ([FromBody]/controller return, Minimal API handler params),
+        // not on every Mediator message type.
         const string source = """
             using Mediator;
             using Trellis;
@@ -255,7 +260,125 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
             }
 
             // Result<int> is a placeholder because the analyzer test stubs do not include Unit.
+            public sealed record CreateCustomerCommand(ShippingAddress ShippingAddress) : ICommand<Result<int>>;
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(source);
+        test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task MediatorCommandAsMinimalApiBody_WithOwnedValueObjectMissingConverter_ReportsDiagnostic()
+    {
+        // Coverage retained after dropping the blanket Mediator-message rule: a command bound DIRECTLY
+        // as a Minimal API request body is still flagged via the endpoint-mapping seam.
+        const string source = """
+            using Microsoft.AspNetCore.Builder;
+            using Mediator;
+            using Trellis;
+            using Trellis.EntityFrameworkCore;
+
+            namespace Mediator
+            {
+                public interface ICommand<TResponse> { }
+            }
+
+            namespace Microsoft.AspNetCore.Builder
+            {
+                public delegate void CreateCustomerCommandHandler(global::TestNamespace.CreateCustomerCommand command);
+
+                public static class EndpointRouteBuilderExtensions
+                {
+                    public static void MapPost(this object builder, string pattern, CreateCustomerCommandHandler handler) { }
+                }
+            }
+
+            [OwnedEntity]
+            public partial class ShippingAddress : ValueObject
+            {
+                public string Street { get; }
+                public string City { get; }
+
+                protected override System.Collections.Generic.IEnumerable<System.IComparable?> GetEqualityComponents()
+                {
+                    yield return Street;
+                    yield return City;
+                }
+            }
+
+            // Result<int> is a placeholder because the analyzer test stubs do not include Unit.
             public sealed record CreateCustomerCommand(ShippingAddress {|#0:ShippingAddress|}) : ICommand<Result<int>>;
+
+            public static class CustomerEndpoints
+            {
+                public static void Map(object app) =>
+                    app.MapPost("/customers", (CreateCustomerCommand command) => { });
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.CompositeValueObjectDtoMissingJsonConverter)
+                .WithLocation(0)
+                .WithArguments("ShippingAddress", "CreateCustomerCommand.ShippingAddress"));
+        test.TestState.Sources.Add(("AspAndTrellisStubs.cs", AspAndTrellisStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task MediatorCommandViaDelegateLocalMinimalApiBody_WithOwnedValueObjectMissingConverter_ReportsDiagnostic()
+    {
+        // Coverage retention for the delegate-valued handler shape: the command is bound as the
+        // Minimal API body, but the handler is passed as a delegate local (not an inline lambda or
+        // method group). The endpoint seam must still resolve the delegate's Invoke signature.
+        const string source = """
+            using Microsoft.AspNetCore.Builder;
+            using Mediator;
+            using Trellis;
+            using Trellis.EntityFrameworkCore;
+
+            namespace Mediator
+            {
+                public interface ICommand<TResponse> { }
+            }
+
+            namespace Microsoft.AspNetCore.Builder
+            {
+                public delegate void CreateCustomerCommandHandler(global::TestNamespace.CreateCustomerCommand command);
+
+                public static class EndpointRouteBuilderExtensions
+                {
+                    public static void MapPost(this object builder, string pattern, CreateCustomerCommandHandler handler) { }
+                }
+            }
+
+            [OwnedEntity]
+            public partial class ShippingAddress : ValueObject
+            {
+                public string Street { get; }
+                public string City { get; }
+
+                protected override System.Collections.Generic.IEnumerable<System.IComparable?> GetEqualityComponents()
+                {
+                    yield return Street;
+                    yield return City;
+                }
+            }
+
+            // Result<int> is a placeholder because the analyzer test stubs do not include Unit.
+            public sealed record CreateCustomerCommand(ShippingAddress {|#0:ShippingAddress|}) : ICommand<Result<int>>;
+
+            public static class CustomerEndpoints
+            {
+                public static void Map(object app)
+                {
+                    CreateCustomerCommandHandler handler = (CreateCustomerCommand command) => { };
+                    app.MapPost("/customers", handler);
+                }
+            }
             """;
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<CompositeValueObjectDtoConverterAnalyzer>(

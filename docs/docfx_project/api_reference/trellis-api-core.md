@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, AllowEmptyAttribute, AllowWhitespaceAttribute, NoTrimAttribute, AllowZeroAttribute, AllowMinValueAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
+types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -244,6 +244,8 @@ Static factory and helper surface for `Result<TValue>`. There is no non-generic 
 | `public static Result<TValue> Fail<TValue>(Error error)` | Failure factory |
 | `public static Result<Unit> Fail(Error error)` | Failure without payload (returns `Result<Unit>`) |
 | `public static Result<TValue> FailAfterCommit<TValue>(Error error)` | Persist-on-failure factory. Still a failure (`IsFailure == true`), but sets [`IPersistOnFailure.PersistOnFailure`](#public-interface-ipersistonfailure) so `TransactionalCommandBehavior` (and any other opt-in pipeline behavior) commits staged changes alongside the failure. Canonical use: worker handler that converts a transient external-service rejection into a persisted `permanently_failed` row. Throws `ArgumentNullException` on null `error`. |
+
+> **`null` and `Result.Ok`.** `Ok<TValue>(TValue value)` is unconstrained and performs **no null check** — at runtime a `null` argument yields a *successful* result whose value is `null` (`IsSuccess == true`, `TryGetValue` returns `true` with a `null` out-value). Nullable-reference annotations catch only the obvious mistake: a literal `null` against a non-nullable `T` (e.g. `Result.Ok<string>(null)`) raises the nullable-reference *warning* `CS8625` — a build error only where warnings are promoted (`TreatWarningsAsErrors`, as this repo sets). They do **not** stop the common case — passing an already-nullable value, where inference widens `TValue` to the nullable type and the null success compiles silently. A success that wraps `null` is almost never intended: model optionality with `Maybe<T>` (absence is data) and a missing-but-required value with `Result.Fail(Error.NotFound.For<T>(id))`, not `Result.Ok(null)`.
 | `public static Result<Unit> FailAfterCommit(Error error)` | No-payload persist-on-failure factory (returns `Result<Unit>`). |
 | `public static Result<Unit> Ensure(bool flag, Error error)` | Converts a boolean to `Result<Unit>` |
 | `public static Result<Unit> Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
@@ -521,9 +523,9 @@ Closed discriminated union of domain error values. Each case is a nested `sealed
 | `public override bool Equals(object? obj)` / `Equals(Error? other)` | Value equality over discriminator + typed payload + `Detail`. **`Cause` is excluded** so two errors with identical surface payload compare equal regardless of how deeply they were wrapped (mirrors `System.Exception` precedent). Collection-bearing payloads use `EquatableArray<T>` for sequence equality. |
 | `public override int GetHashCode()` | Hash matches `Equals`. |
 
-#### Construction (no static factory methods)
+#### Construction and case-scoped factories
 
-Construct cases directly: `new Error.NotFound(payload) { Detail = "..." }`. The base type intentionally exposes no static `Error.Validation(...)` / `Error.NotFound(...)` helpers — every call site names the case it produces. <!-- v1-stale-ok: explanatory note about removed v1 factory helpers -->
+Construct cases directly: `new Error.NotFound(payload) { Detail = "..." }`. The base `Error` type intentionally exposes no static `Error.Validation(...)` / `Error.NotFound(...)` helpers — every call site names the case it produces. <!-- v1-stale-ok: explanatory note about removed v1 factory helpers --> For the common single-payload shapes, the resource-oriented cases (`NotFound`, `Gone`, `Conflict`, `Forbidden`) and `InvalidInput` expose **case-scoped** convenience factories (e.g. `Error.NotFound.For<Order>(id, detail)`) that bundle the typed payload and an optional trailing `detail` argument while still naming the case — see each case row below.
 
 ---
 
@@ -535,10 +537,10 @@ Nested `sealed record` cases under `Error`. The base constructor is `private`, s
 | --- | --- | --- |
 | `Error.InvalidInput` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | Request input failed semantic validation. Use `ForField(...)` / `ForRule(...)` for the common single-violation shapes. |
 | `Error.InvariantViolation` | `(string ReasonCode, ResourceRef? Resource = null)` | Domain rule failed outside field-bound request validation; use for cross-aggregate invariants or internal preconditions. |
-| `Error.NotFound` | `(ResourceRef Resource)` | The addressed resource does not exist. |
-| `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | The caller is authenticated but not allowed by the named policy. |
-| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | The request collides with current state (for example duplicate keys or concurrent modification). |
-| `Error.Gone` | `(ResourceRef Resource)` | The resource previously existed but has been permanently removed (tombstone). |
+| `Error.NotFound` | `(ResourceRef Resource)` | The addressed resource does not exist. Use `For<TResource>(id, detail)` / `For(type, id, detail)` for the common shape. |
+| `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | The caller is authenticated but not allowed by the named policy. Use `For<TResource>(policyId, id, detail)` or `ForPolicy(policyId, detail)` (resourceless). |
+| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | The request collides with current state (for example duplicate keys or concurrent modification). Use `For<TResource>(id, reasonCode, detail)` / `For(type, id, reasonCode, detail)` / `ForReason(reasonCode, detail)` (resourceless). |
+| `Error.Gone` | `(ResourceRef Resource)` | The resource previously existed but has been permanently removed (tombstone). Use `For<TResource>(id, detail)` / `For(type, id, detail)` for the common shape. |
 | `Error.AuthenticationRequired` | `(string? Scheme = null, string? ReasonCode = null)` | Authentication is missing or could not be established. `ReasonCode` (when supplied) distinguishes causes that share the 401 surface — e.g. `"Authentication.InvalidCredentials"` vs `"Authentication.MissingCredentials"` vs `"Authentication.TokenExpired"` — so telemetry, dashboards, and client branching don't have to parse `Detail`. |
 | `Error.Unavailable` | `(string? ReasonCode = null, RetryAdvice? Retry = null)` | A dependency or subsystem is temporarily unavailable; retry may succeed later. |
 | `Error.RateLimited` | `(RetryAdvice? Retry = null)` | The caller exceeded a quota or rate limit. |
@@ -1794,29 +1796,29 @@ Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON conve
 
 ## Primitive value object base classes
 
-These types ship in `Trellis.Core`. They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), strict-default opt-out attributes (`AllowEmptyAttribute`, `AllowWhitespaceAttribute`, `NoTrimAttribute`, `AllowZeroAttribute`, `AllowMinValueAttribute`), numeric sign attributes (`PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, `NonPositiveAttribute`), and vestigial compatibility attributes (`NotDefaultAttribute`, `TrimAttribute`) attach declarative metadata that the generator wires into validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md#types).
+These types ship in `Trellis.Core`. They are the building blocks for strongly-typed primitive value objects — derive a `partial class` from one of the `Required*<TSelf>` bases and the bundled `Trellis.Core.Generator` source generator emits the `TryCreate` / `Create` / `Parse` / `TryParse` / `JsonConverter` boilerplate. The validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), opt-in behavior attributes (`NotDefaultAttribute`, `TrimAttribute`), and numeric sign attributes (`PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, `NonPositiveAttribute`) attach declarative metadata that the generator wires into validation. The concrete primitives that derive from these bases (`EmailAddress`, `Money`, etc.) live in `Trellis.Primitives` — see [trellis-api-primitives.md](trellis-api-primitives.md#types).
 
 #### `Required*<TSelf>` default behavior and opt-outs
 
-Every `Required*<TSelf>` base is **strict by default**. The generated `TryCreate` rejects `null` for every base and also rejects each base's sentinel value where one exists. Use the per-base opt-out attributes only when that sentinel is a legitimate domain value. `[NotDefault]` and `[Trim]` are now vestigial no-ops: the generator ignores them and emits informational diagnostics (`TRLS046`, `TRLS047`). `[AllowDefault]` was removed; use the specific opt-out name instead.
+Every `Required*<TSelf>` base is **lenient by default**. The generated `TryCreate` rejects `null` for every base and accepts every concrete value. Use `[NotDefault]` to opt into sentinel rejection for a given base, and `[Trim]` to opt into string trimming on `RequiredString<TSelf>`.
 
-| Base | Default rejects | Opt-out |
+| Base | Default rejects | Opt-in attributes |
 |---|---|---|
-| `RequiredString<TSelf>` | `null`, `""`, whitespace-only | `[AllowEmpty]`, `[AllowWhitespace]`, `[NoTrim]` |
-| `RequiredGuid<TSelf>` | `null`, `Guid.Empty` | `[AllowEmpty]` |
-| `RequiredDateTime<TSelf>` | `null`, `DateTime.MinValue` | `[AllowMinValue]` |
-| `RequiredDateTimeOffset<TSelf>` | `null`, `DateTimeOffset.MinValue` | `[AllowMinValue]` |
-| `RequiredInt<TSelf>` | `null`, `0` | `[AllowZero]` |
-| `RequiredLong<TSelf>` | `null`, `0` | `[AllowZero]` |
-| `RequiredDecimal<TSelf>` | `null`, `0m` | `[AllowZero]` |
-| `RequiredBool<TSelf>` | `null` | (no opt-out — `false` remains valid) |
+| `RequiredString<TSelf>` | `null` only (accepts `""`, whitespace; no auto-trim) | `[NotDefault]` rejects `""`; `[Trim]` enables trimming; combine for strict trim-then-reject-empty |
+| `RequiredGuid<TSelf>` | `null` only (accepts `Guid.Empty`) | `[NotDefault]` rejects `Guid.Empty` |
+| `RequiredDateTime<TSelf>` | `null` only (accepts `DateTime.MinValue`) | `[NotDefault]` rejects `DateTime.MinValue` |
+| `RequiredDateTimeOffset<TSelf>` | `null` only (accepts `DateTimeOffset.MinValue`) | `[NotDefault]` rejects `DateTimeOffset.MinValue` |
+| `RequiredInt<TSelf>` | `null` only (accepts `0`) | `[NotDefault]` rejects `0` |
+| `RequiredLong<TSelf>` | `null` only (accepts `0L`) | `[NotDefault]` rejects `0L` |
+| `RequiredDecimal<TSelf>` | `null` only (accepts `0m`) | `[NotDefault]` rejects `0m` |
+| `RequiredBool<TSelf>` | `null` | (no sentinel — `false` remains valid) |
 | `RequiredEnum<TSelf>` | `null`, undeclared member names | (smart-enum lookup via `TryFromName`) |
 
-`RequiredString<TSelf>` validation order is: `null` check → raw whitespace-only check (skipped by `[AllowWhitespace]`) → trim (skipped by `[NoTrim]`) → final empty check (skipped by `[AllowEmpty]`, or when raw whitespace was accepted by `[AllowWhitespace]`) → `[StringLength]` → `ValidateAdditional`. `[AllowWhitespace]` without `[NoTrim]` accepts whitespace-only input but stores `""` after trim.
+`RequiredString<TSelf>` validation order: `null` check → trim (only if `[Trim]` present) → empty check (only if `[NotDefault]` present) → `[StringLength]` → `ValidateAdditional`. `[Trim]` without `[NotDefault]` trims the value before storage but does not reject `""` or whitespace-only input. Combine `[Trim, NotDefault]` for trim-then-reject-empty behavior.
 
-Numeric Required bases (`RequiredInt`, `RequiredLong`, `RequiredDecimal`) accept four convenience sign-check attributes — `[Positive]`, `[NonNegative]`, `[Negative]`, `[NonPositive]` — mutually exclusive with each other. `RequiredInt` and `RequiredLong` translate them into the equivalent `[Range]` bounds; `RequiredDecimal` emits a direct sign comparison (the full `decimal` range exceeds what `double`-backed `[Range]` could express). Applying a convenience attribute to a non-numeric base is TRLS043; applying more than one is TRLS044. `[AllowZero]` conflicts with `[Positive]` and `[Negative]` because those attributes reject zero by definition (TRLS053).
+Numeric Required bases (`RequiredInt`, `RequiredLong`, `RequiredDecimal`) accept four convenience sign-check attributes — `[Positive]`, `[NonNegative]`, `[Negative]`, `[NonPositive]` — mutually exclusive with each other. `RequiredInt` and `RequiredLong` translate them into the equivalent `[Range]` bounds; `RequiredDecimal` emits a direct sign comparison (the full `decimal` range exceeds what `double`-backed `[Range]` could express). Applying a convenience attribute to a non-numeric base is TRLS043; applying more than one is TRLS044. Note: a `[Range(1, 100)] RequiredInt` rejects `0` via the range message ("must be at least 1"), not a sentinel message — no `[NotDefault]` needed when a range already excludes zero.
 
-The same strict defaults drive the EF Core `TrellisScalarConverter` read path: persisted sentinel values for strict types throw `TrellisPersistenceMappingException` during materialization. Add `[AllowEmpty]`, `[AllowZero]`, or `[AllowMinValue]` only for columns where the sentinel value is valid persisted domain state.
+The lenient defaults also drive the EF Core `TrellisScalarConverter` read path: only `null` triggers `TrellisPersistenceMappingException` during materialization. When `[NotDefault]` is present, persisted sentinel values also throw. Add `[NotDefault]` for columns where the sentinel is never valid persisted domain state.
 
 ### `ResultRequiresExplicitHttpMappingConverter`
 
@@ -1877,7 +1879,7 @@ public sealed class StringLengthAttribute : Attribute
 public sealed class NotDefaultAttribute : Attribute
 ```
 
-Vestigial compatibility attribute. Before the strict-default flip this opted into sentinel rejection; sentinel rejection is now the default for every applicable `Required*<TSelf>` base. The generator ignores `[NotDefault]` and emits informational diagnostic TRLS046 so legacy code keeps compiling while new code can remove the attribute.
+Opt-in attribute consumed by `Trellis.Core.Generator`. When present, the generated `TryCreate` rejects the type's sentinel value in addition to `null`. On `RequiredString<TSelf>`, rejects `""` (after any trimming applied by `[Trim]`). On `RequiredGuid<TSelf>`, rejects `Guid.Empty`. On numeric bases, rejects `0` / `0L` / `0m`. On date bases, rejects `DateTime.MinValue` or `DateTimeOffset.MinValue`.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -1890,76 +1892,11 @@ Vestigial compatibility attribute. Before the strict-default flip this opted int
 public sealed class TrimAttribute : Attribute
 ```
 
-Vestigial compatibility attribute. Before the strict-default flip this opted into trimming on `RequiredString<TSelf>`; trim now runs by default. The generator ignores `[Trim]` and emits informational diagnostic TRLS047. Use `[NoTrim]` to opt out of automatic trim.
+Opt-in attribute consumed by `Trellis.Core.Generator`. When present on `RequiredString<TSelf>`, the generated `TryCreate` trims leading and trailing whitespace before applying further checks. When combined with `[NotDefault]`, whitespace-only input trims to `""` and is rejected. Without `[NotDefault]`, trimming normalizes the stored value but does not reject `""` or whitespace-only input.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public TrimAttribute()` | `TrimAttribute` | Marker only — no constructor arguments. |
-
-### `AllowEmptyAttribute`
-
-```csharp
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-public sealed class AllowEmptyAttribute : Attribute
-```
-
-Opt-out attribute consumed by `Trellis.Core.Generator`. On `RequiredString<TSelf>`, permits the final stored value to be `string.Empty` after trimming; it does not by itself permit whitespace-only raw input. On `RequiredGuid<TSelf>`, permits `Guid.Empty`. Applying it to numeric or date Required bases is TRLS049.
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public AllowEmptyAttribute()` | `AllowEmptyAttribute` | Marker only — no constructor arguments. |
-
-### `AllowWhitespaceAttribute`
-
-```csharp
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-public sealed class AllowWhitespaceAttribute : Attribute
-```
-
-Opt-out attribute consumed by `Trellis.Core.Generator`. Permits whitespace-only raw input on `RequiredString<TSelf>`. Unless `[NoTrim]` is also present, accepted whitespace-only input is trimmed to `string.Empty` for storage. Applying it to any non-string Required base is TRLS051.
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public AllowWhitespaceAttribute()` | `AllowWhitespaceAttribute` | Marker only — no constructor arguments. |
-
-### `NoTrimAttribute`
-
-```csharp
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-public sealed class NoTrimAttribute : Attribute
-```
-
-Opt-out attribute consumed by `Trellis.Core.Generator`. Skips the automatic trim step on `RequiredString<TSelf>` so leading and trailing whitespace are stored verbatim. It does not change acceptance by itself: whitespace-only input still needs `[AllowWhitespace]`, and literal empty input still needs `[AllowEmpty]`. Applying it to any non-string Required base is TRLS052.
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public NoTrimAttribute()` | `NoTrimAttribute` | Marker only — no constructor arguments. |
-
-### `AllowZeroAttribute`
-
-```csharp
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-public sealed class AllowZeroAttribute : Attribute
-```
-
-Opt-out attribute consumed by `Trellis.Core.Generator`. Permits `0` on `RequiredInt<TSelf>`, `RequiredLong<TSelf>`, and `RequiredDecimal<TSelf>`. Applying it to non-numeric Required bases is TRLS048. Combining it with `[Positive]` or `[Negative]` is contradictory because those attributes reject zero (TRLS053).
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public AllowZeroAttribute()` | `AllowZeroAttribute` | Marker only — no constructor arguments. |
-
-### `AllowMinValueAttribute`
-
-```csharp
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-public sealed class AllowMinValueAttribute : Attribute
-```
-
-Opt-out attribute consumed by `Trellis.Core.Generator`. Permits `DateTime.MinValue` on `RequiredDateTime<TSelf>` and `DateTimeOffset.MinValue` on `RequiredDateTimeOffset<TSelf>`. Applying it to a non-date Required base is TRLS050.
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public AllowMinValueAttribute()` | `AllowMinValueAttribute` | Marker only — no constructor arguments. |
 
 ### `EnumValueAttribute`
 
@@ -2164,7 +2101,7 @@ public abstract class RequiredDateTimeOffset<TSelf> : ScalarValueObject<TSelf, D
 
 ```csharp
 public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TSelf>
-    : IEquatable<RequiredEnum<TSelf>>
+    : IEquatable<RequiredEnum<TSelf>>, IComparable<RequiredEnum<TSelf>>, IComparable
     where TSelf : RequiredEnum<TSelf>, IScalarValue<TSelf, string>
 ```
 
@@ -2185,6 +2122,12 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 | `public bool Equals(RequiredEnum<TSelf>? other)` | `bool` | Case-insensitive symbolic equality. |
 | `public static bool operator ==(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Equality operator. |
 | `public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Inequality operator. |
+| `public int CompareTo(RequiredEnum<TSelf>? other)` | `int` | Orders by `Ordinal` (declaration order), like the C# `enum` it replaces; stays consistent with `Value`-based equality (`Value` and `Ordinal` are both unique per member); `null` sorts first. |
+| `int IComparable.CompareTo(object? obj)` | `int` | Non-generic comparison; enables members to be used as composite `ValueObject` equality components and sorted by the default comparer. Throws `ArgumentException` when `obj` is non-null and not a `RequiredEnum<TSelf>` (consistent with `Equals(object?)`). |
+| `public static bool operator <(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Less-than by declaration order. |
+| `public static bool operator <=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Less-than-or-equal by declaration order. |
+| `public static bool operator >(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Greater-than by declaration order. |
+| `public static bool operator >=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right)` | `bool` | Greater-than-or-equal by declaration order. |
 
 ### `ParsableJsonConverter<T>`
 
@@ -2231,7 +2174,7 @@ public static explicit operator TSelf(string value)
 static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
 ```
 
-- Built-in validation: rejects `null`, literal empty input, and whitespace-only raw input; trims by default. `[StringLength]` operates on the normalized value after trim. Use `[AllowEmpty]`, `[AllowWhitespace]`, and/or `[NoTrim]` only when the domain explicitly permits those values.
+- Built-in validation: rejects `null`. `""` and whitespace-only input are accepted without trimming by default. Add `[NotDefault]` to also reject `""`, `[Trim]` to enable trimming, or `[Trim, NotDefault]` for strict trim-then-reject-empty. `[StringLength]` operates after any applied trim.
 
 #### `RequiredGuid<TSelf>`
 
@@ -2251,7 +2194,7 @@ public static explicit operator TSelf(Guid value)
 static partial void ValidateAdditional(Guid value, string fieldName, ref string? errorMessage)
 ```
 
-- Built-in validation: rejects `null` and `Guid.Empty`. Use `[AllowEmpty]` only when the all-zero GUID is legitimate persisted domain state.
+- Built-in validation: rejects `null`; `Guid.Empty` is accepted. Add `[NotDefault]` to also reject `Guid.Empty` when the all-zero GUID is not valid domain state.
 - `NewUniqueV7(TimeProvider timeProvider)` uses `timeProvider.GetUtcNow()` as the Version 7 timestamp and throws `ArgumentNullException` when `timeProvider` is `null`.
 
 #### `RequiredInt<TSelf>`
@@ -2270,7 +2213,7 @@ public static explicit operator TSelf(int value)
 static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage)
 ```
 
-- Built-in validation: rejects `null` for nullable inputs and rejects `0`; optional `[Range(int, int)]` and sign-check attributes run after the zero check. Use `[AllowZero]` only when zero is valid.
+- Built-in validation: rejects `null` for nullable inputs; `0` is accepted. Optional `[Range(int, int)]` and sign-check attributes run after the null check. Add `[NotDefault]` to also reject `0`.
 
 #### `RequiredDecimal<TSelf>`
 
@@ -2288,7 +2231,7 @@ public static explicit operator TSelf(decimal value)
 static partial void ValidateAdditional(decimal value, string fieldName, ref string? errorMessage)
 ```
 
-- Built-in validation: rejects `null` for nullable inputs and rejects `0m`; optional `[Range(int, int)]`, `[Range(double, double)]`, and sign-check attributes run after the zero check. Use `[AllowZero]` only when zero is valid.
+- Built-in validation: rejects `null` for nullable inputs; `0m` is accepted. Optional `[Range(int, int)]`, `[Range(double, double)]`, and sign-check attributes run after the null check. Add `[NotDefault]` to also reject `0m`.
 - String parsing: the plain `TryCreate(string?, string?)` overload uses invariant culture; use the `IFormatProvider` overload for culture-aware decimal formats.
 
 #### `RequiredLong<TSelf>`
@@ -2307,7 +2250,7 @@ public static explicit operator TSelf(long value)
 static partial void ValidateAdditional(long value, string fieldName, ref string? errorMessage)
 ```
 
-- Built-in validation: rejects `null` for nullable inputs and rejects `0L`; optional `[Range(long, long)]` and sign-check attributes run after the zero check. Use `[AllowZero]` only when zero is valid.
+- Built-in validation: rejects `null` for nullable inputs; `0L` is accepted. Optional `[Range(long, long)]` and sign-check attributes run after the null check. Add `[NotDefault]` to also reject `0L`.
 
 #### `RequiredBool<TSelf>`
 
@@ -2342,7 +2285,7 @@ public static explicit operator TSelf(DateTime value)
 static partial void ValidateAdditional(DateTime value, string fieldName, ref string? errorMessage)
 ```
 
-- Built-in validation: rejects `null` and `DateTime.MinValue`. Use `[AllowMinValue]` only when the BCL minimum value is legitimate persisted domain state.
+- Built-in validation: rejects `null`; `DateTime.MinValue` is accepted. Add `[NotDefault]` to also reject `DateTime.MinValue` when the BCL minimum value is not valid domain state.
 
 #### `RequiredDateTimeOffset<TSelf>`
 
@@ -2360,7 +2303,7 @@ public static explicit operator TSelf(DateTimeOffset value)
 static partial void ValidateAdditional(DateTimeOffset value, string fieldName, ref string? errorMessage)
 ```
 
-- Built-in validation: rejects `null` and `DateTimeOffset.MinValue`. Use `[AllowMinValue]` only when the BCL minimum value is legitimate persisted domain state.
+- Built-in validation: rejects `null`; `DateTimeOffset.MinValue` is accepted. Add `[NotDefault]` to also reject `DateTimeOffset.MinValue` when the BCL minimum value is not valid domain state.
 
 #### `RequiredEnum<TSelf>`
 

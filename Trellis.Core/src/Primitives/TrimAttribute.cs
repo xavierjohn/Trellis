@@ -3,30 +3,19 @@
 using System;
 
 /// <summary>
-/// <strong>Vestigial under the post-v3 defaults.</strong> Previously the opt-in to trim
-/// before validation on <see cref="RequiredString{TSelf}"/>. After the v3 defaults
-/// realignment, trim runs by default on <see cref="RequiredString{TSelf}"/>, so this
-/// attribute is now a no-op. Existing decorations stay valid (the generator silently ignores
-/// them) so legacy fixtures continue to compile; a generator diagnostic flags them as
-/// redundant.
+/// Opts a <see cref="RequiredString{TSelf}"/>-derived value object into trim-before-validate.
+/// Without this attribute the input string is stored verbatim; with it the generator trims
+/// the input before any other check, so combined with <see cref="NotDefaultAttribute"/> a
+/// whitespace-only input trims to <see cref="string.Empty"/> and is rejected.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Migration: remove <c>[Trim]</c> from existing classes — the trim behavior it used to opt
-/// into is now the default. To <em>opt out</em> of automatic trim, use
-/// <see cref="NoTrimAttribute"/>.
-/// </para>
-/// <para>
-/// The attribute is kept defined (rather than deleted outright) so the v3 migration is a
-/// no-op for fixtures that previously decorated with <c>[Trim]</c> — they continue to express
-/// the trim behavior they always wanted, just via the new default instead of an attribute.
-/// </para>
+/// Only valid on <see cref="RequiredString{TSelf}"/>-derived types; applying it to any other
+/// Required base raises generator error <c>TRLS057</c>. Applying <c>[Trim, NotDefault]</c>
+/// together is the recommended setup for any string mapped to a database column and recovers
+/// the legacy "reject null + empty + whitespace; auto-trim" behavior.
 /// </remarks>
-/// <seealso cref="NoTrimAttribute"/>
-/// <seealso cref="AllowEmptyAttribute"/>
-/// <seealso cref="AllowWhitespaceAttribute"/>
+/// <seealso cref="NotDefaultAttribute"/>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class TrimAttribute : Attribute
 {
 }
-

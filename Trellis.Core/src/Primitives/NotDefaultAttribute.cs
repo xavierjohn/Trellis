@@ -3,34 +3,28 @@
 using System;
 
 /// <summary>
-/// <strong>Vestigial under the post-v3 defaults.</strong> Previously the opt-in to per-type
-/// sentinel-rejection on Required value objects. After the v3 defaults realignment, sentinel
-/// rejection is the default for every applicable base, so this attribute is now a no-op.
-/// Existing decorations stay valid (the generator silently ignores them) so legacy fixtures
-/// continue to compile; a generator diagnostic flags them as redundant.
+/// Opts a <c>Required*</c>-derived value object into per-type sentinel rejection.
+/// Without this attribute the bare base accepts every concrete value and rejects only
+/// <c>null</c>; with it the generator emits a sentinel-rejection check appropriate to the
+/// underlying primitive.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Migration: remove <c>[NotDefault]</c> from existing classes — the strict behavior it used
-/// to opt into is now the default. To <em>opt out</em> of the strict default, use the per-type
-/// attribute: <see cref="AllowEmptyAttribute"/> for <see cref="RequiredString{TSelf}"/> and
-/// <see cref="RequiredGuid{TSelf}"/>, <see cref="AllowZeroAttribute"/> for
-/// <see cref="RequiredInt{TSelf}"/> / <see cref="RequiredLong{TSelf}"/> /
-/// <see cref="RequiredDecimal{TSelf}"/>, <see cref="AllowMinValueAttribute"/> for
-/// <see cref="RequiredDateTime{TSelf}"/> / <see cref="RequiredDateTimeOffset{TSelf}"/>.
+/// The sentinel each base rejects when this attribute is applied:
 /// </para>
+/// <list type="bullet">
+/// <item><see cref="RequiredString{TSelf}"/> — rejects <see cref="string.Empty"/>; combined with <see cref="TrimAttribute"/> a whitespace-only input trims to empty and is rejected.</item>
+/// <item><see cref="RequiredGuid{TSelf}"/> — rejects <see cref="Guid.Empty"/>.</item>
+/// <item><see cref="RequiredInt{TSelf}"/> / <see cref="RequiredLong{TSelf}"/> / <see cref="RequiredDecimal{TSelf}"/> — rejects <c>0</c>.</item>
+/// <item><see cref="RequiredDateTime{TSelf}"/> / <see cref="RequiredDateTimeOffset{TSelf}"/> — rejects <see cref="DateTime.MinValue"/> / <see cref="DateTimeOffset.MinValue"/>.</item>
+/// </list>
 /// <para>
-/// The attribute is kept defined (rather than deleted outright) so the v3 migration is a
-/// no-op for tests and fixtures that previously decorated with <c>[NotDefault]</c> — they
-/// continue to express the strict behavior they always wanted, just via the new default
-/// instead of an attribute.
+/// Invalid on <see cref="RequiredBool{TSelf}"/> and <see cref="RequiredEnum{TSelf}"/> — those
+/// bases have no meaningful sentinel, so applying it there raises generator error <c>TRLS058</c>.
 /// </para>
 /// </remarks>
-/// <seealso cref="AllowEmptyAttribute"/>
-/// <seealso cref="AllowZeroAttribute"/>
-/// <seealso cref="AllowMinValueAttribute"/>
+/// <seealso cref="TrimAttribute"/>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class NotDefaultAttribute : Attribute
 {
 }
-

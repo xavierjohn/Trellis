@@ -4,31 +4,27 @@ using System;
 using Trellis.Testing;
 
 public partial class DefaultGuid : RequiredGuid<DefaultGuid> { }
-[AllowEmpty] public partial class EmptyAllowedGuid : RequiredGuid<EmptyAllowedGuid> { }
+[NotDefault] public partial class NotDefaultRequiredGuid : RequiredGuid<NotDefaultRequiredGuid> { }
 
 public partial class DefaultDateTime : RequiredDateTime<DefaultDateTime> { }
-[AllowMinValue] public partial class MinValueAllowedDateTime : RequiredDateTime<MinValueAllowedDateTime> { }
+[NotDefault] public partial class NotDefaultRequiredDateTime : RequiredDateTime<NotDefaultRequiredDateTime> { }
 
 public partial class DefaultDateTimeOffset : RequiredDateTimeOffset<DefaultDateTimeOffset> { }
-[AllowMinValue] public partial class MinValueAllowedDateTimeOffset : RequiredDateTimeOffset<MinValueAllowedDateTimeOffset> { }
+[NotDefault] public partial class NotDefaultRequiredDateTimeOffset : RequiredDateTimeOffset<NotDefaultRequiredDateTimeOffset> { }
 
 public partial class DefaultString : RequiredString<DefaultString> { }
-[AllowEmpty] public partial class EmptyAllowedString : RequiredString<EmptyAllowedString> { }
-[AllowWhitespace] public partial class WhitespaceAllowedString : RequiredString<WhitespaceAllowedString> { }
-[NoTrim] public partial class NoTrimString : RequiredString<NoTrimString> { }
-[AllowEmpty, AllowWhitespace] public partial class EmptyWhitespaceAllowedString : RequiredString<EmptyWhitespaceAllowedString> { }
-[AllowEmpty, NoTrim] public partial class EmptyNoTrimString : RequiredString<EmptyNoTrimString> { }
-[AllowWhitespace, NoTrim] public partial class WhitespaceNoTrimString : RequiredString<WhitespaceNoTrimString> { }
-[AllowEmpty, AllowWhitespace, NoTrim] public partial class EmptyWhitespaceNoTrimString : RequiredString<EmptyWhitespaceNoTrimString> { }
+[NotDefault] public partial class NotDefaultRequiredString : RequiredString<NotDefaultRequiredString> { }
+[Trim] public partial class TrimRequiredString : RequiredString<TrimRequiredString> { }
+[Trim, NotDefault] public partial class TrimNotDefaultRequiredString : RequiredString<TrimNotDefaultRequiredString> { }
 
 public partial class DefaultInt : RequiredInt<DefaultInt> { }
-[AllowZero] public partial class ZeroAllowedInt : RequiredInt<ZeroAllowedInt> { }
+[NotDefault] public partial class NotDefaultRequiredInt : RequiredInt<NotDefaultRequiredInt> { }
 
 public partial class DefaultLong : RequiredLong<DefaultLong> { }
-[AllowZero] public partial class ZeroAllowedLong : RequiredLong<ZeroAllowedLong> { }
+[NotDefault] public partial class NotDefaultRequiredLong : RequiredLong<NotDefaultRequiredLong> { }
 
 public partial class DefaultDecimal : RequiredDecimal<DefaultDecimal> { }
-[AllowZero] public partial class ZeroAllowedDecimal : RequiredDecimal<ZeroAllowedDecimal> { }
+[NotDefault] public partial class NotDefaultRequiredDecimal : RequiredDecimal<NotDefaultRequiredDecimal> { }
 
 [Range(1, 100)] public partial class DefaultRangedInt : RequiredInt<DefaultRangedInt> { }
 [Range(1L, 100L)] public partial class DefaultRangedLong : RequiredLong<DefaultRangedLong> { }
@@ -37,243 +33,210 @@ public partial class DefaultDecimal : RequiredDecimal<DefaultDecimal> { }
 public class RequiredDefaultsTests
 {
     [Fact]
-    public void RequiredGuid_Default_RejectsGuidEmpty()
+    public void RequiredGuid_Default_AcceptsGuidEmpty()
     {
         var result = DefaultGuid.TryCreate(Guid.Empty);
-
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Guid cannot be Guid.Empty.");
-    }
-
-    [Fact]
-    public void RequiredGuid_Default_RejectsParsedAllZeroString()
-    {
-        var result = DefaultGuid.TryCreate("00000000-0000-0000-0000-000000000000");
-
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Guid cannot be Guid.Empty.");
-    }
-
-    [Fact]
-    public void RequiredGuid_AllowEmpty_AcceptsGuidEmpty()
-    {
-        var result = EmptyAllowedGuid.TryCreate(Guid.Empty);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(Guid.Empty);
     }
 
     [Fact]
-    public void RequiredDateTime_Default_RejectsMinValue()
+    public void RequiredGuid_Default_AcceptsParsedAllZeroString()
     {
-        var result = DefaultDateTime.TryCreate(DateTime.MinValue);
+        var result = DefaultGuid.TryCreate("00000000-0000-0000-0000-000000000000");
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Date Time cannot be DateTime.MinValue.");
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Value.Should().Be(Guid.Empty);
     }
 
     [Fact]
-    public void RequiredDateTime_AllowMinValue_AcceptsMinValue()
+    public void RequiredGuid_NotDefault_RejectsGuidEmpty()
     {
-        var result = MinValueAllowedDateTime.TryCreate(DateTime.MinValue);
+        var result = NotDefaultRequiredGuid.TryCreate(Guid.Empty);
+
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Not Default Required Guid cannot be Guid.Empty.");
+    }
+
+    [Fact]
+    public void RequiredDateTime_Default_AcceptsMinValue()
+    {
+        var result = DefaultDateTime.TryCreate(DateTime.MinValue);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(DateTime.MinValue);
     }
 
     [Fact]
-    public void RequiredDateTimeOffset_Default_RejectsMinValue()
+    public void RequiredDateTime_NotDefault_RejectsMinValue()
     {
-        var result = DefaultDateTimeOffset.TryCreate(DateTimeOffset.MinValue);
+        var result = NotDefaultRequiredDateTime.TryCreate(DateTime.MinValue);
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Date Time Offset cannot be DateTimeOffset.MinValue.");
+        validation.Fields[0].Detail.Should().Be("Not Default Required Date Time cannot be DateTime.MinValue.");
     }
 
     [Fact]
-    public void RequiredDateTimeOffset_AllowMinValue_AcceptsMinValue()
+    public void RequiredDateTimeOffset_Default_AcceptsMinValue()
     {
-        var result = MinValueAllowedDateTimeOffset.TryCreate(DateTimeOffset.MinValue);
+        var result = DefaultDateTimeOffset.TryCreate(DateTimeOffset.MinValue);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(DateTimeOffset.MinValue);
     }
 
     [Fact]
-    public void RequiredString_Default_RejectsSentinelsAndTrims()
+    public void RequiredDateTimeOffset_NotDefault_RejectsMinValue()
+    {
+        var result = NotDefaultRequiredDateTimeOffset.TryCreate(DateTimeOffset.MinValue);
+
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Not Default Required Date Time Offset cannot be DateTimeOffset.MinValue.");
+    }
+
+    [Fact]
+    public void RequiredString_Default_AcceptsAllConcreteValuesVerbatim()
     {
         AssertStringFailure(DefaultString.TryCreate((string?)null), "Default String cannot be null.");
-        AssertStringFailure(DefaultString.TryCreate(""), "Default String cannot be empty.");
-        AssertStringFailure(DefaultString.TryCreate("   "), "Default String cannot be whitespace-only.");
-        DefaultString.TryCreate(" a ").Unwrap().Value.Should().Be("a");
+        DefaultString.TryCreate("").Unwrap().Value.Should().Be("");
+        DefaultString.TryCreate("   ").Unwrap().Value.Should().Be("   ");
+        DefaultString.TryCreate(" a ").Unwrap().Value.Should().Be(" a ");
         DefaultString.TryCreate("a").Unwrap().Value.Should().Be("a");
     }
 
     [Fact]
-    public void RequiredString_AllowEmpty_AcceptsEmptyButRejectsWhitespaceOnly()
+    public void RequiredString_NotDefault_RejectsEmptyString()
     {
-        EmptyAllowedString.TryCreate("").Unwrap().Value.Should().Be("");
-        AssertStringFailure(EmptyAllowedString.TryCreate("   "), "Empty Allowed String cannot be whitespace-only.");
-        EmptyAllowedString.TryCreate(" a ").Unwrap().Value.Should().Be("a");
+        AssertStringFailure(NotDefaultRequiredString.TryCreate(""), "Not Default Required String cannot be empty.");
+        NotDefaultRequiredString.TryCreate("a").Unwrap().Value.Should().Be("a");
+        NotDefaultRequiredString.TryCreate("   ").Unwrap().Value.Should().Be("   ");
     }
 
     [Fact]
-    public void RequiredString_AllowWhitespace_AcceptsWhitespaceOnlyAsTrimmedEmpty()
+    public void RequiredString_Trim_TrimsValue()
     {
-        AssertStringFailure(WhitespaceAllowedString.TryCreate(""), "Whitespace Allowed String cannot be empty.");
-        WhitespaceAllowedString.TryCreate("   ").Unwrap().Value.Should().Be("");
-        WhitespaceAllowedString.TryCreate(" a ").Unwrap().Value.Should().Be("a");
+        TrimRequiredString.TryCreate(" a ").Unwrap().Value.Should().Be("a");
+        TrimRequiredString.TryCreate("   ").Unwrap().Value.Should().Be("");
+        TrimRequiredString.TryCreate("").Unwrap().Value.Should().Be("");
     }
 
     [Fact]
-    public void RequiredString_NoTrim_PreservesPaddingButRejectsSentinels()
+    public void RequiredString_TrimNotDefault_RejectsWhitespaceOnlyAfterTrim()
     {
-        AssertStringFailure(NoTrimString.TryCreate(""), "No Trim String cannot be empty.");
-        AssertStringFailure(NoTrimString.TryCreate("   "), "No Trim String cannot be whitespace-only.");
-        NoTrimString.TryCreate(" a ").Unwrap().Value.Should().Be(" a ");
+        AssertStringFailure(TrimNotDefaultRequiredString.TryCreate(""), "Trim Not Default Required String cannot be empty.");
+        AssertStringFailure(TrimNotDefaultRequiredString.TryCreate("   "), "Trim Not Default Required String cannot be empty.");
+        TrimNotDefaultRequiredString.TryCreate(" a ").Unwrap().Value.Should().Be("a");
     }
 
     [Fact]
-    public void RequiredString_AllowEmptyAndAllowWhitespace_AcceptsBothAsTrimmedEmpty()
-    {
-        EmptyWhitespaceAllowedString.TryCreate("").Unwrap().Value.Should().Be("");
-        EmptyWhitespaceAllowedString.TryCreate("   ").Unwrap().Value.Should().Be("");
-        EmptyWhitespaceAllowedString.TryCreate(" a ").Unwrap().Value.Should().Be("a");
-    }
-
-    [Fact]
-    public void RequiredString_AllowEmptyAndNoTrim_AcceptsEmptyAndPreservesPadding()
-    {
-        EmptyNoTrimString.TryCreate("").Unwrap().Value.Should().Be("");
-        AssertStringFailure(EmptyNoTrimString.TryCreate("   "), "Empty No Trim String cannot be whitespace-only.");
-        EmptyNoTrimString.TryCreate(" a ").Unwrap().Value.Should().Be(" a ");
-    }
-
-    [Fact]
-    public void RequiredString_AllowWhitespaceAndNoTrim_AcceptsWhitespaceAndPreservesPadding()
-    {
-        AssertStringFailure(WhitespaceNoTrimString.TryCreate(""), "Whitespace No Trim String cannot be empty.");
-        WhitespaceNoTrimString.TryCreate("   ").Unwrap().Value.Should().Be("   ");
-        WhitespaceNoTrimString.TryCreate(" a ").Unwrap().Value.Should().Be(" a ");
-    }
-
-    [Fact]
-    public void RequiredString_AllOptOuts_AcceptsAndPreservesSentinelValues()
-    {
-        EmptyWhitespaceNoTrimString.TryCreate("").Unwrap().Value.Should().Be("");
-        EmptyWhitespaceNoTrimString.TryCreate("   ").Unwrap().Value.Should().Be("   ");
-        EmptyWhitespaceNoTrimString.TryCreate(" a ").Unwrap().Value.Should().Be(" a ");
-    }
-
-    [Fact]
-    public void RequiredInt_Default_RejectsZero()
+    public void RequiredInt_Default_AcceptsZero()
     {
         var result = DefaultInt.TryCreate(0);
-
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Int cannot be zero.");
-    }
-
-    [Fact]
-    public void RequiredInt_AllowZero_AcceptsZero()
-    {
-        var result = ZeroAllowedInt.TryCreate(0);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(0);
     }
 
     [Fact]
-    public void RequiredLong_Default_RejectsZero()
+    public void RequiredInt_NotDefault_RejectsZero()
     {
-        var result = DefaultLong.TryCreate(0L);
+        var result = NotDefaultRequiredInt.TryCreate(0);
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Long cannot be zero.");
+        validation.Fields[0].Detail.Should().Be("Not Default Required Int cannot be zero.");
     }
 
     [Fact]
-    public void RequiredLong_AllowZero_AcceptsZero()
+    public void RequiredLong_Default_AcceptsZero()
     {
-        var result = ZeroAllowedLong.TryCreate(0L);
+        var result = DefaultLong.TryCreate(0L);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(0L);
     }
 
     [Fact]
-    public void RequiredDecimal_Default_RejectsZero()
+    public void RequiredLong_NotDefault_RejectsZero()
     {
-        var result = DefaultDecimal.TryCreate(0m);
+        var result = NotDefaultRequiredLong.TryCreate(0L);
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Decimal cannot be zero.");
+        validation.Fields[0].Detail.Should().Be("Not Default Required Long cannot be zero.");
     }
 
     [Fact]
-    public void RequiredDecimal_AllowZero_AcceptsZero()
+    public void RequiredDecimal_Default_AcceptsZero()
     {
-        var result = ZeroAllowedDecimal.TryCreate(0m);
+        var result = DefaultDecimal.TryCreate(0m);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Value.Should().Be(0m);
     }
 
     [Fact]
-    public void RequiredInt_WithRange_ZeroSurfacesDefaultMessageBeforeRange()
+    public void RequiredDecimal_NotDefault_RejectsZero()
+    {
+        var result = NotDefaultRequiredDecimal.TryCreate(0m);
+
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Not Default Required Decimal cannot be zero.");
+    }
+
+    [Fact]
+    public void RequiredInt_WithRange_ZeroSurfacesRangeMessage()
     {
         var result = DefaultRangedInt.TryCreate(0);
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Ranged Int cannot be zero.");
+        validation.Fields[0].Detail.Should().Be("Default Ranged Int must be at least 1.");
     }
 
     [Fact]
-    public void RequiredInt_WithRange_NullableZeroSurfacesDefaultMessageBeforeRange()
+    public void RequiredInt_WithRange_NullableZeroSurfacesRangeMessage()
     {
         var result = DefaultRangedInt.TryCreate((int?)0);
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Ranged Int cannot be zero.");
+        validation.Fields[0].Detail.Should().Be("Default Ranged Int must be at least 1.");
     }
 
     [Fact]
-    public void RequiredInt_WithRange_StringZeroSurfacesDefaultMessageBeforeRange()
+    public void RequiredInt_WithRange_StringZeroSurfacesRangeMessage()
     {
         var result = DefaultRangedInt.TryCreate("0");
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Ranged Int cannot be zero.");
+        validation.Fields[0].Detail.Should().Be("Default Ranged Int must be at least 1.");
     }
 
     [Fact]
-    public void RequiredLong_WithRange_ZeroSurfacesDefaultMessageBeforeRange()
+    public void RequiredLong_WithRange_ZeroSurfacesRangeMessage()
     {
         var result = DefaultRangedLong.TryCreate(0L);
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Ranged Long cannot be zero.");
+        validation.Fields[0].Detail.Should().Be("Default Ranged Long must be at least 1.");
     }
 
     [Fact]
-    public void RequiredDecimal_WithRange_ZeroSurfacesDefaultMessageBeforeRange()
+    public void RequiredDecimal_WithRange_ZeroSurfacesRangeMessage()
     {
         var result = DefaultRangedDecimal.TryCreate(0m);
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Default Ranged Decimal cannot be zero.");
+        validation.Fields[0].Detail.Should().Be("Default Ranged Decimal must be at least 1.");
     }
 
     [Fact]

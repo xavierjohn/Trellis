@@ -50,6 +50,767 @@ public class UnsafeValueAccessAnalyzerTests
         await test.RunAsync();
     }
 
+    #region Early-return / guard-clause — TRLS003
+
+    [Fact]
+    public async Task EarlyReturnGuard_NegatedHasValue_Return_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_HasNoValue_Return_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe.HasNoValue)
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_NegatedHasValue_Throw_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        throw new System.InvalidOperationException();
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_NegatedHasValue_BlockBodyReturn_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                    {
+                        return 0;
+                    }
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_HasValueEqualsFalse_Return_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe.HasValue == false)
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_Loop_NegatedHasValue_Continue_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    int total = 0;
+                    foreach (var i in new[] { 1, 2 })
+                    {
+                        if (!maybe.HasValue)
+                            continue;
+
+                        total += maybe.Value;
+                    }
+                    return total;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_AccessInNestedBlock_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    {
+                        return maybe.Value;
+                    }
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_UnrelatedCondition_StillReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, bool other)
+                {
+                    if (other)
+                        return 0;
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_NonExitingGuardBody_StillReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                    {
+                    }
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedAfterGuard_StillReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    maybe = other;
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_LocalFunctionBody_NotGuardedByEnclosingGuard_StillReportsDiagnostic()
+    {
+        // The enclosing guard does NOT protect the local function body: Read() is invoked before the
+        // guard runs (callFirst branch), so maybe may be empty inside Read.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, bool callFirst)
+                {
+                    if (callFirst)
+                        return Read();
+
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    return 0;
+
+                    int Read() => maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedInNestedBlock_StillReportsDiagnostic()
+    {
+        // Reassignment hidden in a nested block between the guard and the access must invalidate the
+        // guard: 'other' may be empty.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    {
+                        maybe = other;
+                        return maybe.{|#0:Value|};
+                    }
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedViaEmbeddedAssignment_StillReportsDiagnostic()
+    {
+        // The reassignment is embedded in an expression (not a plain `maybe = other;` statement);
+        // it must still invalidate the guard.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    _ = maybe = other;
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_GuardBeforeLoop_NoReassignment_NoDiagnostic()
+    {
+        // Common safe pattern: guard before a loop, value never reassigned inside the loop.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    int total = 0;
+                    foreach (var i in new[] { 1, 2 })
+                    {
+                        total += maybe.Value;
+                    }
+                    return total;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_GuardBeforeLoop_ReassignedInLoop_StillReportsDiagnostic()
+    {
+        // The value is reassigned later in the loop body, so the loop back-edge makes the access
+        // unsafe on the second iteration even though the reassignment is textually after it.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    int total = 0;
+                    foreach (var i in new[] { 1, 2 })
+                    {
+                        total += maybe.{|#0:Value|};
+                        maybe = other;
+                    }
+                    return total;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedReceiverChainPrefix_StillReportsDiagnostic()
+    {
+        // Reassigning a prefix of the receiver chain (the holder) defeats a guard on holder.Opt.
+        const string source = """
+            public class TestClass
+            {
+                public sealed class Holder { public Maybe<int> Opt; }
+
+                public int TestMethod(Holder holder, Holder other)
+                {
+                    if (!holder.Opt.HasValue)
+                        return 0;
+
+                    holder = other;
+                    return holder.Opt.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedParenthesizedReceiverPrefix_StillReportsDiagnostic()
+    {
+        // Parentheses around the receiver chain must not hide the prefix write.
+        const string source = """
+            public class TestClass
+            {
+                public sealed class Holder { public Maybe<int> Opt; }
+
+                public int TestMethod(Holder holder, Holder other)
+                {
+                    if (!holder.Opt.HasValue)
+                        return 0;
+
+                    holder = other;
+                    return (holder.Opt).{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedViaOutArgument_StillReportsDiagnostic()
+    {
+        // An out argument rewrites the receiver, defeating the guard.
+        const string source = """
+            public class TestClass
+            {
+                private static void Reset(out Maybe<int> m) => m = default;
+
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    Reset(out maybe);
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedViaTupleDeconstruction_StillReportsDiagnostic()
+    {
+        // Tuple deconstruction rewrites the receiver, defeating the guard.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    int x;
+                    (maybe, x) = (other, 0);
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ParenthesizedCondition_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if ((!(maybe.HasValue)))
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_LiteralOnLeftEquality_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (false == maybe.HasValue)
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_HasValueNotEqualTrue_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe.HasValue != true)
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_Loop_NegatedHasValue_Break_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    int total = 0;
+                    foreach (var i in new[] { 1, 2 })
+                    {
+                        if (!maybe.HasValue)
+                            break;
+
+                        total += maybe.Value;
+                    }
+                    return total;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_TupleWriteToOtherVariables_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    int a, b;
+                    (a, b) = (1, 2);
+                    return maybe.Value + a + b;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_UnrelatedBooleanEquality_StillReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, bool flag)
+                {
+                    if (flag == true)
+                        return 0;
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_DifferentReceiverHasValueEquality_StillReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (other.HasValue == false)
+                        return 0;
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_HasValueComparedToDefaultLiteral_StillReportsDiagnostic()
+    {
+        // `== default` is not recognized as a boolean-literal comparison, so the guard is conservatively
+        // not honored and the access is still reported.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe.HasValue == default)
+                        return 0;
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_NegatedNonMaybeCondition_StillReportsDiagnostic()
+    {
+        // Negating a non-Maybe condition is not a presence guard; the access is still reported.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, bool flag)
+                {
+                    if (!flag)
+                        return 0;
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_GuardInsideLoop_ReassignedLaterInLoop_NoDiagnostic()
+    {
+        // The guard is INSIDE the loop, so it re-runs every iteration before the access; a
+        // reassignment later in the same loop body is re-checked on the next iteration and must NOT
+        // invalidate the guard. (The loop-carried scan only covers loops that enclose the access but
+        // not the guard; here the guard's block is the loop body, so the loop is not scanned.)
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    int total = 0;
+                    foreach (var i in new[] { 1, 2 })
+                    {
+                        if (!maybe.HasValue)
+                            continue;
+
+                        total += maybe.Value;
+                        maybe = other;
+                    }
+                    return total;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_ReassignedViaRefLocalAlias_StillReportsDiagnostic()
+    {
+        // A writable ref-local alias of the receiver can rewrite it, defeating the guard.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    ref var alias = ref maybe;
+                    alias = other;
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess).WithLocation(0));
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_RefReadonlyAlias_NoDiagnostic()
+    {
+        // A `ref readonly` alias cannot rewrite the receiver, so the guard stays valid.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    ref readonly var alias = ref maybe;
+                    _ = alias;
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task EarlyReturnGuard_RefAliasOfUnrelatedVariable_NoDiagnostic()
+    {
+        // A writable ref-local that aliases a different variable does not touch the receiver.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (!maybe.HasValue)
+                        return 0;
+
+                    int x = 0;
+                    ref var r = ref x;
+                    r = 5;
+                    return maybe.Value + x;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    #endregion
+
     [Fact]
     public async Task TernaryGuardedMaybeValueAccess_HasValue_NoDiagnostic()
     {

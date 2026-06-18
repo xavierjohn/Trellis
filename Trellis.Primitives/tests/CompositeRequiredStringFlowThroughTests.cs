@@ -8,9 +8,8 @@ using Trellis.Primitives;
 using Trellis.Testing;
 using Xunit;
 
-// --- Inner scalar value objects: one lenient, one strict ---
+// --- Inner scalar value objects: both bare lenient under the new defaults ---
 
-[AllowEmpty]
 public partial class FlowThroughLenientName : RequiredString<FlowThroughLenientName> { }
 
 public partial class FlowThroughStrictName : RequiredString<FlowThroughStrictName> { }
@@ -70,15 +69,15 @@ public sealed class FlowThroughStrictComposite : ValueObject
 /// <summary>
 /// Cross-cutting regression coverage: when a <see cref="CompositeValueObject{T}"/>-shaped
 /// type contains a <see cref="RequiredString{TSelf}"/> field, the composite's <c>TryCreate</c>
-/// delegates to the inner <c>TryCreate</c> — so the inner type's strict-by-default validation
-/// flows through. Inner types decorated with <c>[AllowEmpty]</c> accept <c>""</c>; undecorated
-/// strict inner types keep rejecting.
+/// delegates to the inner <c>TryCreate</c> — so the inner type's validation flows through.
+/// Inner types under the lenient default accept <c>""</c>; types decorated with
+/// <c>[NotDefault]</c> opt back into per-type sentinel rejection.
 /// </summary>
 /// <remarks>
 /// This is the composite-VO mirror of the EF rehydration test
 /// (<see cref="RequiredXxxRehydrationLenienceTests"/> in Trellis.EntityFrameworkCore.Tests):
-/// both prove that the strict-by-default "inner type decides" rule holds at every layer that
-/// invokes <c>TryCreate</c> on the inner scalar.
+/// both prove that the "inner type decides" rule holds at every layer that invokes
+/// <c>TryCreate</c> on the inner scalar.
 /// </remarks>
 public class CompositeRequiredStringFlowThroughTests
 {
@@ -93,12 +92,12 @@ public class CompositeRequiredStringFlowThroughTests
     }
 
     [Fact]
-    public void Strict_composite_TryCreate_rejects_empty_inner_string()
+    public void Strict_composite_TryCreate_accepts_empty_inner_string()
     {
+        // Lenient default — empty inner string is accepted by the bare RequiredString base.
         var result = FlowThroughStrictComposite.TryCreate("", 5);
-        result.IsFailure.Should().BeTrue();
-        var ve = (Error.InvalidInput)result.UnwrapError();
-        ve.Fields[0].Detail.Should().Be("Flow Through Strict Name cannot be empty.");
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Name.Value.Should().Be("");
     }
 
     // ---- JSON deserialize flow-through ----
@@ -114,12 +113,14 @@ public class CompositeRequiredStringFlowThroughTests
     }
 
     [Fact]
-    public void Strict_composite_JSON_deserialize_rejects_empty_inner_string()
+    public void Strict_composite_JSON_deserialize_accepts_empty_inner_string()
     {
+        // Lenient default — empty inner string deserializes successfully.
         var json = "{\"name\":\"\",\"quantity\":5}";
-        Action act = () => JsonSerializer.Deserialize<FlowThroughStrictComposite>(json);
-        act.Should().Throw<TrellisJsonValidationException>()
-            .WithMessage("*Flow Through Strict Name cannot be empty*");
+        var vo = JsonSerializer.Deserialize<FlowThroughStrictComposite>(json);
+        vo.Should().NotBeNull();
+        vo!.Name.Value.Should().Be("");
+        vo.Quantity.Should().Be(5);
     }
 
     // ---- Non-sentinel happy paths to prove the composite still works ----

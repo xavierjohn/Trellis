@@ -275,6 +275,78 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
+    public void TrimOnRequiredInt_Reports_TRLS057()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Trim]
+            public partial class Quantity : RequiredInt<Quantity>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().Contain(d => d.Id == "TRLS057");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS057");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Quantity");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[Trim]");
+    }
+
+    [Fact]
+    public void NotDefaultOnRequiredBool_Reports_TRLS058()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [NotDefault]
+            public partial class IsActive : RequiredBool<IsActive>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().Contain(d => d.Id == "TRLS058");
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS058");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("IsActive");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[NotDefault]");
+    }
+
+    [Fact]
+    public void TrimAndNotDefaultOnRequiredString_ReportsNoPlacementDiagnostic()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Trim, NotDefault]
+            public partial class Name : RequiredString<Name>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS057");
+        diagnostics.Should().NotContain(d => d.Id == "TRLS058");
+    }
+
+    [Fact]
     public void NegativeOnRequiredGuid_Reports_TRLS043()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -364,207 +436,6 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
 
         diagnostics.Should().Contain(d => d.Id == "TRLS045");
-    }
-
-    [Fact]
-    public void NotDefaultIsVestigial_Reports_TRLS046_Info()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [NotDefault]
-            public partial class OrderId : RequiredGuid<OrderId>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS046");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS046");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Info);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("OrderId");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[NotDefault]");
-    }
-
-    [Fact]
-    public void TrimIsVestigial_Reports_TRLS047_Info()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [Trim]
-            public partial class CustomerName : RequiredString<CustomerName>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS047");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS047");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Info);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("CustomerName");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[Trim]");
-    }
-
-    [Fact]
-    public void AllowZeroOnRequiredString_Reports_TRLS048()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [AllowZero]
-            public partial class CustomerName : RequiredString<CustomerName>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS048");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS048");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("CustomerName");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("RequiredString");
-    }
-
-    [Fact]
-    public void AllowEmptyOnRequiredInt_Reports_TRLS049()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [AllowEmpty]
-            public partial class Quantity : RequiredInt<Quantity>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS049");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS049");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Quantity");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("RequiredInt");
-    }
-
-    [Fact]
-    public void AllowMinValueOnRequiredGuid_Reports_TRLS050()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [AllowMinValue]
-            public partial class OrderId : RequiredGuid<OrderId>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS050");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS050");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("OrderId");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("RequiredGuid");
-    }
-
-    [Fact]
-    public void AllowWhitespaceOnRequiredGuid_Reports_TRLS051()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [AllowWhitespace]
-            public partial class OrderId : RequiredGuid<OrderId>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS051");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS051");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("OrderId");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("RequiredGuid");
-    }
-
-    [Fact]
-    public void NoTrimOnRequiredInt_Reports_TRLS052()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [NoTrim]
-            public partial class Quantity : RequiredInt<Quantity>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS052");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS052");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Quantity");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("RequiredInt");
-    }
-
-    [Fact]
-    public void AllowZeroWithPositive_Reports_TRLS053()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            [AllowZero, Positive]
-            public partial class Quantity : RequiredInt<Quantity>
-            {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().Contain(d => d.Id == "TRLS053");
-        var diagnostic = diagnostics.Single(d => d.Id == "TRLS053");
-        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Quantity");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[AllowZero]");
-        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("[Positive]");
     }
 
     [Fact]

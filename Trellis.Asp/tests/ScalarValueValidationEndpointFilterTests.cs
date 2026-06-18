@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Xunit;
 
@@ -71,6 +72,26 @@ public class ScalarValueValidationEndpointFilterTests
 
             var validationProblem = (ProblemHttpResult)result!;
             validationProblem.StatusCode.Should().Be(422);
+        }
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithErrors_HonorsMappedInvalidInputStatus()
+    {
+        // The Minimal-API endpoint filter must honor MapError<Error.InvalidInput>(400) instead of
+        // a hardcoded 422, matching the MVC binder seams and handler-level Error.InvalidInput.
+        var filter = new ScalarValueValidationEndpointFilter();
+        EndpointFilterDelegate next = _ => ValueTask.FromResult<object?>(Results.Ok());
+        var context = CreateEndpointFilterContext(o => o.MapError<Error.InvalidInput>(400));
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.AddError("Email", "Email is required.");
+
+            var result = await filter.InvokeAsync(context, next);
+
+            result.Should().BeOfType<ProblemHttpResult>();
+            ((ProblemHttpResult)result!).StatusCode.Should().Be(400);
         }
     }
 
@@ -257,9 +278,17 @@ public class ScalarValueValidationEndpointFilterTests
 
     #region Helper Methods
 
-    private static DefaultEndpointFilterInvocationContext CreateEndpointFilterContext()
+    private static DefaultEndpointFilterInvocationContext CreateEndpointFilterContext(
+        System.Action<TrellisAspOptions>? configure = null)
     {
         var httpContext = new DefaultHttpContext();
+        if (configure is not null)
+        {
+            var services = new ServiceCollection();
+            services.AddTrellisAsp(configure);
+            httpContext.RequestServices = services.BuildServiceProvider();
+        }
+
         return new DefaultEndpointFilterInvocationContext(httpContext);
     }
 

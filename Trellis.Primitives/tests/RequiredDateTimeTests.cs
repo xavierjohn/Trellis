@@ -34,15 +34,12 @@ public class RequiredDateTimeTests
     }
 
     [Fact]
-    public void TryCreate_MinValue_ReturnsFailure()
+    public void TryCreate_MinValue_ReturnsSuccess()
     {
         var result = OrderDate.TryCreate(DateTime.MinValue);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Field.Path.Should().Be("/orderDate");
-        validation.Fields[0].Detail.Should().Be("Order Date cannot be DateTime.MinValue.");
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Value.Should().Be(DateTime.MinValue);
     }
 
     [Fact]
