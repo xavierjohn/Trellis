@@ -463,6 +463,7 @@ app.MapGet("/blobs/{id:guid}", async (Guid id, IBlobRepository repo, Cancellatio
 **Problem.** Resource-based ownership check on an update command (the 90% case) plus a static permission gate on a delete command, all via the mediator pipeline.
 
 ```csharp
+using Mediator;
 using Trellis;
 using Trellis.Asp.Authorization;
 using Trellis.Authorization;
@@ -991,8 +992,9 @@ public sealed partial class Customer : Aggregate<CustomerId>
 }
 
 // CONFIGURATION — note the absence of OwnsOne(c => c.ShippingAddress).
-// CompositeValueObjectConvention picks up composite ValueObject types (the ones you mark
-// [OwnedEntity]) automatically through the source-generated ApplyTrellisConventionsFor<TContext>().
+// CompositeValueObjectConvention discovers composite ValueObject types by their inheritance
+// from ValueObject (NOT the [OwnedEntity] attribute) through the source-generated
+// ApplyTrellisConventionsFor<TContext>().
 internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
@@ -2002,6 +2004,7 @@ The naive workaround is a per-handler ownership guard (e.g. cricket's old `Match
 using Mediator;
 using Trellis;
 using Trellis.Authorization;
+using Trellis.Mediator;
 
 public sealed partial class MatchId : RequiredGuid<MatchId>;
 public sealed partial class TeamId  : RequiredGuid<TeamId>;
