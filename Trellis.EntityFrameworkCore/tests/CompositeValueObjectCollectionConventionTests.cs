@@ -102,6 +102,29 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
         StoreColumn(inningType, nameof(CricketInning.Team)).Should().Be("Inning_Team");
     }
 
+    [Fact]
+    public void MaybeScalarInsideOwnedVoCollection_UsesCleanColumnName()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<ContactRosterDbContext>()
+            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
+            .Options;
+
+        using var context = new ContactRosterDbContext(options);
+
+        var rosterType = context.Model.FindEntityType(typeof(ContactRosterEntity))!
+            .FindNavigation(nameof(ContactRosterEntity.Roster))!.TargetEntityType;
+        var entryType = rosterType.FindNavigation(nameof(ContactRoster.Entries))!.TargetEntityType;
+
+        // TestContactInfo lives in its own (collection) table, so no navigation prefix applies and
+        // its plain scalar stays bare. Its Maybe<scalar> backing field (_phone) must keep
+        // MaybeConvention's clean public name (Phone) — not the raw _camelCase field.
+        StoreColumn(entryType, nameof(TestContactInfo.Name)).Should().Be("Name");
+        StoreColumn(entryType, "_phone").Should().Be("Phone");
+    }
+
     private static string? StoreColumn(
         Microsoft.EntityFrameworkCore.Metadata.IReadOnlyEntityType entityType, string propertyName)
     {
@@ -270,5 +293,39 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions(typeof(TestStateCode).Assembly);
+    }
+
+    [OwnedEntity]
+    public partial class ContactRoster : ValueObject
+    {
+        private readonly List<TestContactInfo> _entries = [];
+
+        public TestStateCode Captain { get; private set; } = null!;
+        public IReadOnlyList<TestContactInfo> Entries => _entries;
+
+        public ContactRoster(TestStateCode captain, IEnumerable<TestContactInfo> entries)
+        {
+            Captain = captain;
+            _entries.AddRange(entries);
+        }
+
+        protected override IEnumerable<IComparable?> GetEqualityComponents()
+        {
+            yield return Captain;
+        }
+    }
+
+    private sealed class ContactRosterEntity
+    {
+        public int Id { get; set; }
+        public ContactRoster Roster { get; set; } = null!;
+    }
+
+    private sealed class ContactRosterDbContext(DbContextOptions<ContactRosterDbContext> options) : DbContext(options)
+    {
+        public DbSet<ContactRosterEntity> Rosters => Set<ContactRosterEntity>();
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestContactInfo).Assembly);
     }
 }
