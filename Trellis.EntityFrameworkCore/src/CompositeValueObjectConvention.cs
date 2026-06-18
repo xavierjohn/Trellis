@@ -221,7 +221,7 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
             // nested-owned separate-table fallback). EF Core's navigation prefix does not apply
             // there, and MaybeConvention's clean {PropertyName} for a Maybe<T> backing field is
             // already the correct column — leave it untouched. Clearing it would leak the raw
-            // _camelCase backing-field name (e.g. _subDivisionName instead of SubDivisionName).
+            // _camelCase backing-field name (e.g. _phone instead of Phone).
         }
 
         foreach (var nestedNavigation in ownedEntityType.GetDeclaredNavigations())

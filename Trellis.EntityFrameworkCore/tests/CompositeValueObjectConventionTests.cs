@@ -833,8 +833,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
             .FindNavigation(nameof(RequiredContactInfoEntity.Contact))!.TargetEntityType;
 
         // Required inner scalar → {Nav}_{Prop}; the Maybe<scalar> backing field (_phone) stays
-        // nullable and becomes {Nav}__{field}, mirroring ArclDb's owned-composite columns
-        // (e.g., WaiverRecord_ParticipantName and WaiverRecord__parentName).
+        // nullable and becomes {Nav}__{field}, matching EF Core's owned-type table-splitting.
         GetColumnName(ownedType.FindProperty(nameof(TestContactInfo.Name))!)
             .Should().Be("Contact_Name");
 
@@ -861,8 +860,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         // The owned VO maps to its OWN table (ToTable), so EF Core's table-splitting prefix does
         // not apply — its columns are named directly. The Maybe<scalar> backing field (_phone) must
         // keep MaybeConvention's clean public name (Phone); it must NOT leak the raw _camelCase
-        // field name. (Separate-table owned VOs are the case the table-split fix originally missed —
-        // see ARCL Innings/TeamAssignment.)
+        // field name.
         GetColumnName(ownedType.FindProperty(nameof(TestContactInfo.Name))!)
             .Should().Be("Name");
         GetColumnName(ownedType.FindProperty("_phone")!)

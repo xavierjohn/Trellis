@@ -120,8 +120,7 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
 
         // TestContactInfo lives in its own (collection) table, so no navigation prefix applies and
         // its plain scalar stays bare. Its Maybe<scalar> backing field (_phone) must keep
-        // MaybeConvention's clean public name (Phone) — not the raw _camelCase field. This is the
-        // exact ARCL Innings/TeamAssignment shape the original table-split fix missed.
+        // MaybeConvention's clean public name (Phone) — not the raw _camelCase field.
         StoreColumn(entryType, nameof(TestContactInfo.Name)).Should().Be("Name");
         StoreColumn(entryType, "_phone").Should().Be("Phone");
     }
