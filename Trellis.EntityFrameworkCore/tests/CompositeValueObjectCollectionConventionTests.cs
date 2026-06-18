@@ -85,6 +85,33 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
     }
 
     [Fact]
+    public void RequiredComposite_OwnedVoCollection_UsesBareColumns_WhileTableSplitScalarIsPrefixed()
+    {
+        var owner = Context.Model.FindEntityType(typeof(RequiredScorecardEntity))!;
+        var inningType = owner.FindNavigation(nameof(RequiredScorecardEntity.Inning))!.TargetEntityType;
+        var lineType = inningType.FindNavigation(nameof(CricketInning.Lines))!.TargetEntityType;
+
+        // An owned VO collection maps to its own table (RequiredScorecards_Lines), so EF Core's
+        // table-splitting prefix does not apply — the columns keep their bare conventional names.
+        // The convention must defer to EF here and NOT stamp the owner-navigation prefix on them.
+        StoreColumn(lineType, nameof(CricketLine.Bowler)).Should().Be("Bowler");
+        StoreColumn(lineType, nameof(CricketLine.Runs)).Should().Be("Runs");
+
+        // A required composite scalar table-splits into the owner's table, so EF Core prefixes it
+        // with the owner navigation name.
+        StoreColumn(inningType, nameof(CricketInning.Team)).Should().Be("Inning_Team");
+    }
+
+    private static string? StoreColumn(
+        Microsoft.EntityFrameworkCore.Metadata.IReadOnlyEntityType entityType, string propertyName)
+    {
+        var property = entityType.FindProperty(propertyName)!;
+        var table = Microsoft.EntityFrameworkCore.Metadata.StoreObjectIdentifier.Create(
+            entityType, Microsoft.EntityFrameworkCore.Metadata.StoreObjectType.Table);
+        return table.HasValue ? property.GetColumnName(table.Value) : property.GetColumnName();
+    }
+
+    [Fact]
     public void RequiredComposite_OwningVoCollection_RoundTrips_OnSqlServer()
     {
         if (!SqlServerAvailable())

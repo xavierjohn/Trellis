@@ -97,11 +97,12 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
         "value object recipe (Recipe 13) in trellis-api-cookbook.md.";
 
     /// <summary>
-    /// After the model is built, configures the correct column-name prefix for composite value
-    /// object owned navigations so that table-shared composites use the owner navigation name as
-    /// the column prefix (e.g., <c>ShippingAddress_City</c>). <see cref="Maybe{T}"/> composites are
-    /// additionally marked nullable. This matches EF Core's owned-type table-splitting, explicit
-    /// <c>OwnsOne</c>, and avoids bare-name column collisions between two same-type composites.
+    /// After the model is built, reconciles composite value object owned navigations with EF Core's
+    /// table-splitting column naming. EF Core already prefixes owned columns with the owner
+    /// navigation name (e.g., <c>ShippingAddress_City</c>); this convention removes the bare column
+    /// names <see cref="MaybeConvention"/> stamps on <see cref="Maybe{T}"/> scalar backing fields
+    /// (which would otherwise bypass that prefix), marks <see cref="Maybe{T}"/> composites nullable,
+    /// and hands nested <see cref="Money"/> navigations the chained prefix for <see cref="MoneyConvention"/>.
     /// </summary>
     public void ProcessModelFinalizing(
         IConventionModelBuilder modelBuilder,
@@ -134,7 +135,8 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
 
                 if (maybePropertyName is null)
                 {
-                    // Required composite: prefix owned columns with the navigation name.
+                    // Required composite: EF Core prefixes the owned columns; clear any bare
+                    // Maybe<T> names and hand nested Money its chained prefix.
                     ConfigureOwnedColumns(
                         navigation.TargetEntityType, navigation.Name, optional: false, processed);
                     continue;
@@ -165,13 +167,18 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
     }
 
     /// <summary>
-    /// Sets owned-type column names using <paramref name="prefix"/> as the navigation prefix
-    /// (e.g., <c>ShippingAddress_Street</c>), recursing through nested owned navigations so the
-    /// prefix chains through the whole owned graph. When <paramref name="optional"/> is
-    /// <see langword="true"/> the columns are also marked nullable (table-splitting for
-    /// <see cref="Maybe{T}"/>); otherwise nullability is left untouched. Nested <see cref="Money"/>
-    /// navigations receive the chained prefix via an annotation that <see cref="MoneyConvention"/>
-    /// reads.
+    /// Reconciles a composite owned type with EF Core's table-splitting column naming. For
+    /// <b>required</b> composites (navigated by the public property name) EF Core already prefixes
+    /// owned columns with the owner navigation name (e.g., <c>ShippingAddress_Street</c>), chaining
+    /// through nested owners, so this method only removes the bare column names
+    /// <see cref="MaybeConvention"/> stamps on <see cref="Maybe{T}"/> scalar backing fields (which
+    /// would otherwise bypass that prefix) and leaves plain scalars to EF Core. For <b>optional</b>
+    /// composites (<paramref name="optional"/> is <see langword="true"/>) the navigation is a
+    /// <see cref="Maybe{T}"/> backing field, so EF Core would prefix with the field name; this
+    /// method instead sets the clean public-name prefix explicitly and marks the columns nullable.
+    /// Nested <see cref="Money"/> navigations receive the chained <paramref name="prefix"/> via an
+    /// annotation that <see cref="MoneyConvention"/> reads. Removal uses the convention configuration
+    /// source, so user-configured column names survive.
     /// </summary>
     private void ConfigureOwnedColumns(
         IConventionEntityType ownedEntityType, string prefix, bool optional,
@@ -186,10 +193,24 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
                 continue;
 
             if (optional)
+            {
+                // Optional composites table-split through a Maybe<T> backing-field navigation, so
+                // EF Core would prefix columns with the field name (e.g. _shippingAddress_City).
+                // Set the clean public-name prefix explicitly and mark the column nullable.
                 property.Builder.IsRequired(false);
-            property.Builder.HasAnnotation(
-                RelationalAnnotationNames.ColumnName,
-                $"{prefix}_{property.Name}");
+                property.Builder.HasAnnotation(
+                    RelationalAnnotationNames.ColumnName,
+                    $"{prefix}_{property.Name}");
+            }
+            else
+            {
+                // Required composites navigate by the public property name, so EF Core's
+                // table-splitting already produces the right prefix (e.g. ShippingAddress_City).
+                // Just drop any bare column name MaybeConvention stamps on a Maybe<T> backing field
+                // so it doesn't bypass that prefix. No-op for plain scalars (no annotation) and for
+                // user-configured names (higher config source).
+                property.Builder.HasNoAnnotation(RelationalAnnotationNames.ColumnName);
+            }
         }
 
         foreach (var nestedNavigation in ownedEntityType.GetDeclaredNavigations())
