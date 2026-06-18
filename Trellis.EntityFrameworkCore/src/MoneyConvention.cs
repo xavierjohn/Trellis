@@ -66,7 +66,10 @@ internal sealed class MoneyConvention : IModelInitializedConvention, IModelFinal
                 // Check if this navigation was created by MaybeConvention for a Maybe<Money> property.
                 // If so, use the original property name for column naming and mark columns nullable.
                 var maybePropertyName = navigation.FindAnnotation(MaybeConvention.MaybeOwnedPropertyNameAnnotation)?.Value as string;
-                var columnPrefix = maybePropertyName ?? navigation.Name;
+                // A required Money nested inside a composite value object carries a chained prefix
+                // (set by CompositeValueObjectConvention) without implying optionality.
+                var requiredPrefix = navigation.FindAnnotation(CompositeValueObjectConvention.OwnedColumnPrefixAnnotation)?.Value as string;
+                var columnPrefix = maybePropertyName ?? requiredPrefix ?? navigation.Name;
 
                 ConfigureMoneyColumns(navigation.TargetEntityType, columnPrefix, isOptional: maybePropertyName is not null);
             }
