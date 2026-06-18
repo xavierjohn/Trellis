@@ -58,9 +58,13 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     {
         var ownedType = GetOwnedType<AddressEntity>(nameof(AddressEntity.ShippingAddress));
 
-        // Required composites use the navigation name as the column prefix, matching EF Core's
-        // owned-type table-splitting, the Maybe<composite> path, and explicit OwnsOne — and
-        // preventing bare-name collisions when two same-type composites share a table.
+        // EF Core's owned-type table-splitting maps a required owned scalar to a PREFIXED store
+        // column (ShippingAddress_City), chaining the owner navigation name — see
+        // RelationalPropertyExtensions.GetDefaultColumnName(property, storeObject). GetColumnName
+        // below resolves that real store column; the parameterless GetColumnName() returns EF's
+        // base name (bare "City"), which is not what lands in the table. The convention defers to
+        // EF for these plain scalars; the prefix also matches the Maybe<composite> path and
+        // explicit OwnsOne, and prevents collisions when two same-type composites share a table.
         GetColumnName(ownedType.FindProperty(nameof(TestAddress.Street))!)
             .Should().Be("ShippingAddress_Street");
         GetColumnName(ownedType.FindProperty(nameof(TestAddress.City))!)
