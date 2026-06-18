@@ -54,19 +54,21 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     }
 
     [Fact]
-    public void RequiredAddress_ColumnsUsePropertyNames()
+    public void RequiredAddress_ColumnsUseNavigationPrefix()
     {
         var ownedType = GetOwnedType<AddressEntity>(nameof(AddressEntity.ShippingAddress));
 
-        // EF Core's default owned-type column naming uses property names directly
+        // Required composites use the navigation name as the column prefix, matching EF Core's
+        // owned-type table-splitting, the Maybe<composite> path, and explicit OwnsOne — and
+        // preventing bare-name collisions when two same-type composites share a table.
         GetColumnName(ownedType.FindProperty(nameof(TestAddress.Street))!)
-            .Should().Be("Street");
+            .Should().Be("ShippingAddress_Street");
         GetColumnName(ownedType.FindProperty(nameof(TestAddress.City))!)
-            .Should().Be("City");
+            .Should().Be("ShippingAddress_City");
         GetColumnName(ownedType.FindProperty(nameof(TestAddress.State))!)
-            .Should().Be("State");
+            .Should().Be("ShippingAddress_State");
         GetColumnName(ownedType.FindProperty(nameof(TestAddress.ZipCode))!)
-            .Should().Be("ZipCode");
+            .Should().Be("ShippingAddress_ZipCode");
     }
 
     [Fact]
@@ -346,6 +348,24 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         loaded.Destination.City.Should().Be("Boston");
         loaded.Destination.DeliveryFee.Amount.Should().Be(15.00m);
         loaded.Destination.DeliveryFee.Currency.Value.Should().Be("USD");
+    }
+
+    [Fact]
+    public void RequiredNestedComposite_Money_UsesChainedPrefix()
+    {
+        var ownedType = GetOwnedType<NestedCompositeEntity>(nameof(NestedCompositeEntity.Destination));
+
+        GetColumnName(ownedType.FindProperty(nameof(TestAddressWithMoney.Street))!)
+            .Should().Be("Destination_Street");
+        GetColumnName(ownedType.FindProperty(nameof(TestAddressWithMoney.City))!)
+            .Should().Be("Destination_City");
+
+        // The nested required Money chains the owner-navigation prefix, matching explicit OwnsOne.
+        var moneyType = ownedType.FindNavigation(nameof(TestAddressWithMoney.DeliveryFee))!.TargetEntityType;
+        GetColumnName(moneyType.FindProperty(nameof(Money.Amount))!)
+            .Should().Be("Destination_DeliveryFee");
+        GetColumnName(moneyType.FindProperty(nameof(Money.Currency))!)
+            .Should().Be("Destination_DeliveryFeeCurrency");
     }
 
     [Fact]
@@ -783,6 +803,32 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         loaded.Should().NotBeNull();
         loaded!.Contact.Name.Should().Be("Bob");
         loaded.Contact.Phone.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void MaybeScalarInsideRequiredCompositeVo_ColumnsUseChainedPrefix()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<RequiredContactInfoDbContext>()
+            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
+            .Options;
+
+        using var context = new RequiredContactInfoDbContext(options);
+
+        var ownedType = context.Model.FindEntityType(typeof(RequiredContactInfoEntity))!
+            .FindNavigation(nameof(RequiredContactInfoEntity.Contact))!.TargetEntityType;
+
+        // Required inner scalar → {Nav}_{Prop}; the Maybe<scalar> backing field (_phone) stays
+        // nullable and becomes {Nav}__{field}, mirroring ArclDb's owned-composite columns
+        // (e.g., WaiverRecord_ParticipantName and WaiverRecord__parentName).
+        GetColumnName(ownedType.FindProperty(nameof(TestContactInfo.Name))!)
+            .Should().Be("Contact_Name");
+
+        var phone = ownedType.FindProperty("_phone")!;
+        GetColumnName(phone).Should().Be("Contact__phone");
+        phone.IsNullable.Should().BeTrue();
     }
 
     private class RequiredContactInfoEntity
