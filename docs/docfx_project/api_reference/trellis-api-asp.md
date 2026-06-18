@@ -1185,7 +1185,7 @@ public sealed class WidgetsController(ISender sender) : ControllerBase
 
     // DELETE — 204 No Content. Body-less, so return IResult directly (no AsActionResultAsync).
     // Fully-qualify Microsoft.AspNetCore.Http.IResult — it clashes with Trellis.IResult under `using Trellis;`.
-    // ToHttpResponseAsync() returns ValueTask<IResult>, so await it and return Task<IResult>.
+    // ToHttpResponseAsync() returns ValueTask<Microsoft.AspNetCore.Http.IResult>, so await it and return Task<Microsoft.AspNetCore.Http.IResult>.
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
