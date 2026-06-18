@@ -843,6 +843,59 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         phone.IsNullable.Should().BeTrue();
     }
 
+    [Fact]
+    public void MaybeScalarInsideSeparateTableOwnedVo_ColumnUsesCleanName()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<SeparateTableContactDbContext>()
+            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
+            .Options;
+
+        using var context = new SeparateTableContactDbContext(options);
+
+        var ownedType = context.Model.FindEntityType(typeof(SeparateTableContactEntity))!
+            .FindNavigation(nameof(SeparateTableContactEntity.Contact))!.TargetEntityType;
+
+        // The owned VO maps to its OWN table (ToTable), so EF Core's table-splitting prefix does
+        // not apply — its columns are named directly. The Maybe<scalar> backing field (_phone) must
+        // keep MaybeConvention's clean public name (Phone); it must NOT leak the raw _camelCase
+        // field name. (Separate-table owned VOs are the case the table-split fix originally missed —
+        // see ARCL Innings/TeamAssignment.)
+        GetColumnName(ownedType.FindProperty(nameof(TestContactInfo.Name))!)
+            .Should().Be("Name");
+        GetColumnName(ownedType.FindProperty("_phone")!)
+            .Should().Be("Phone");
+    }
+
+    [Fact]
+    public void MoneyInsideSeparateTableOwnedVo_ColumnsUseTableLocalName()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<SeparateTableAddressDbContext>()
+            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
+            .Options;
+
+        using var context = new SeparateTableAddressDbContext(options);
+
+        var ownedType = context.Model.FindEntityType(typeof(SeparateTableAddressEntity))!
+            .FindNavigation(nameof(SeparateTableAddressEntity.Address))!.TargetEntityType;
+
+        // The composite owns its own table, so its columns — including the nested Money — are named
+        // table-locally with no cross-table owner prefix (DeliveryFee, not Address_DeliveryFee).
+        GetColumnName(ownedType.FindProperty(nameof(TestAddressWithMoney.Street))!)
+            .Should().Be("Street");
+
+        var moneyType = ownedType.FindNavigation(nameof(TestAddressWithMoney.DeliveryFee))!.TargetEntityType;
+        GetColumnName(moneyType.FindProperty(nameof(Money.Amount))!)
+            .Should().Be("DeliveryFee");
+        GetColumnName(moneyType.FindProperty(nameof(Money.Currency))!)
+            .Should().Be("DeliveryFeeCurrency");
+    }
+
     private class RequiredContactInfoEntity
     {
         public int Id { get; set; }
@@ -857,6 +910,46 @@ public partial class CompositeValueObjectConventionTests : IDisposable
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions(typeof(TestContactInfo).Assembly);
+    }
+
+    private sealed class SeparateTableContactEntity
+    {
+        public int Id { get; set; }
+        public TestContactInfo Contact { get; set; } = null!;
+    }
+
+    private sealed class SeparateTableContactDbContext : DbContext
+    {
+        public SeparateTableContactDbContext(DbContextOptions<SeparateTableContactDbContext> options) : base(options) { }
+
+        public DbSet<SeparateTableContactEntity> Entities => Set<SeparateTableContactEntity>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            modelBuilder.Entity<SeparateTableContactEntity>()
+                .OwnsOne(e => e.Contact, c => c.ToTable("ContactSeparate"));
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestContactInfo).Assembly);
+    }
+
+    private sealed class SeparateTableAddressEntity
+    {
+        public int Id { get; set; }
+        public TestAddressWithMoney Address { get; set; } = null!;
+    }
+
+    private sealed class SeparateTableAddressDbContext : DbContext
+    {
+        public SeparateTableAddressDbContext(DbContextOptions<SeparateTableAddressDbContext> options) : base(options) { }
+
+        public DbSet<SeparateTableAddressEntity> Entities => Set<SeparateTableAddressEntity>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            modelBuilder.Entity<SeparateTableAddressEntity>()
+                .OwnsOne(e => e.Address, a => a.ToTable("AddressSeparate"));
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestAddressWithMoney).Assembly);
     }
 
     #endregion

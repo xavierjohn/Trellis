@@ -168,11 +168,15 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
 
     /// <summary>
     /// Reconciles a composite owned type with EF Core's table-splitting column naming. For
-    /// <b>required</b> composites (navigated by the public property name) EF Core already prefixes
-    /// owned columns with the owner navigation name (e.g., <c>ShippingAddress_Street</c>), chaining
-    /// through nested owners, so this method only removes the bare column names
-    /// <see cref="MaybeConvention"/> stamps on <see cref="Maybe{T}"/> scalar backing fields (which
-    /// would otherwise bypass that prefix) and leaves plain scalars to EF Core. For <b>optional</b>
+    /// <b>required</b> composites that table-split into their owner (navigated by the public property
+    /// name) EF Core already prefixes owned columns with the owner navigation name (e.g.,
+    /// <c>ShippingAddress_Street</c>), chaining through nested owners, so this method only removes the
+    /// bare column names <see cref="MaybeConvention"/> stamps on <see cref="Maybe{T}"/> scalar backing
+    /// fields (which would otherwise bypass that prefix) and leaves plain scalars to EF Core. A
+    /// composite that maps to its <b>own</b> table (owned collection, <c>ToTable</c>, or the
+    /// nested-owned separate-table fallback) is left untouched — no prefix applies there and
+    /// <see cref="MaybeConvention"/>'s clean <c>{PropertyName}</c> is already correct (clearing it
+    /// would leak the raw <c>_camelCase</c> backing-field name). For <b>optional</b> table-splitting
     /// composites (<paramref name="optional"/> is <see langword="true"/>) the navigation is a
     /// <see cref="Maybe{T}"/> backing field, so EF Core would prefix with the field name; this
     /// method instead sets the clean public-name prefix explicitly and marks the columns nullable.
@@ -186,6 +190,8 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
     {
         if (!processed.Add(ownedEntityType))
             return;
+
+        var sharesOwnerTable = SharesTableWithOwner(ownedEntityType);
 
         foreach (var property in ownedEntityType.GetDeclaredProperties())
         {
@@ -202,15 +208,20 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
                     RelationalAnnotationNames.ColumnName,
                     $"{prefix}_{property.Name}");
             }
-            else
+            else if (sharesOwnerTable)
             {
-                // Required composites navigate by the public property name, so EF Core's
-                // table-splitting already produces the right prefix (e.g. ShippingAddress_City).
-                // Just drop any bare column name MaybeConvention stamps on a Maybe<T> backing field
-                // so it doesn't bypass that prefix. No-op for plain scalars (no annotation) and for
-                // user-configured names (higher config source).
+                // Required composite that table-splits into its owner: EF Core already produces the
+                // right {nav}_ prefix once any bare name is gone, so drop the bare column name
+                // MaybeConvention stamps on a Maybe<T> backing field (which would otherwise bypass
+                // that prefix). No-op for plain scalars (no annotation) and for user-configured
+                // names (higher config source).
                 property.Builder.HasNoAnnotation(RelationalAnnotationNames.ColumnName);
             }
+            // else: the owned VO maps to its OWN table (owned collection, ToTable, or the
+            // nested-owned separate-table fallback). EF Core's navigation prefix does not apply
+            // there, and MaybeConvention's clean {PropertyName} for a Maybe<T> backing field is
+            // already the correct column — leave it untouched. Clearing it would leak the raw
+            // _camelCase backing-field name (e.g. _subDivisionName instead of SubDivisionName).
         }
 
         foreach (var nestedNavigation in ownedEntityType.GetDeclaredNavigations())
@@ -225,7 +236,13 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
             if (nestedNavigation.FindAnnotation(MaybeConvention.MaybeOwnedPropertyNameAnnotation)?.Value is not null)
                 continue;
 
-            var nestedPrefix = $"{prefix}_{nestedNavigation.Name}";
+            // At a table boundary (this composite owns its own table) the column namespace resets:
+            // nested Money / composites table-split into THIS table and are named relative to it,
+            // not the cross-table owner chain (which would wrongly yield e.g. Contact_Fee in the
+            // separate table instead of the table-local Fee).
+            var nestedPrefix = sharesOwnerTable
+                ? $"{prefix}_{nestedNavigation.Name}"
+                : nestedNavigation.Name;
 
             if (nestedNavigation.TargetEntityType.ClrType == s_moneyType)
             {
@@ -242,6 +259,24 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
             if (compositeTypes.Contains(nestedNavigation.TargetEntityType.ClrType))
                 ConfigureOwnedColumns(nestedNavigation.TargetEntityType, nestedPrefix, optional, processed);
         }
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="ownedEntityType"/> table-splits into its
+    /// owner (shares the owner's table). Owned collections, <c>ToTable</c>-separated owned types, and
+    /// the nested-owned separate-table fallback map to their own table, where EF Core's
+    /// <c>{navigation}_</c> prefix does not apply and the convention must leave the existing column
+    /// names (including <see cref="MaybeConvention"/>'s clean <c>{PropertyName}</c>) untouched.
+    /// </summary>
+    private static bool SharesTableWithOwner(IConventionEntityType ownedEntityType)
+    {
+        var ownership = ownedEntityType.FindOwnership();
+        if (ownership is null)
+            return false;
+
+        var ownedTable = StoreObjectIdentifier.Create(ownedEntityType, StoreObjectType.Table);
+        var ownerTable = StoreObjectIdentifier.Create(ownership.PrincipalEntityType, StoreObjectType.Table);
+        return ownedTable is { } owned && ownerTable is { } owner && owned == owner;
     }
 
     /// <summary>
