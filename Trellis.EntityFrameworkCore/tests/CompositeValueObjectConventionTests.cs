@@ -586,8 +586,16 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         return entityType.FindNavigation(backingFieldName)!.TargetEntityType;
     }
 
-    private static string? GetColumnName(IReadOnlyProperty property) =>
-        property.GetColumnName();
+    // Resolves the ACTUAL table column name (the DDL EF Core emits), not the parameterless
+    // GetColumnName() base name — which for table-split owned types is the bare property name and
+    // does not reflect the navigation prefix EF applies in the real schema.
+    private static string? GetColumnName(IReadOnlyProperty property)
+    {
+        var storeObject = StoreObjectIdentifier.Create(property.DeclaringType, StoreObjectType.Table);
+        return storeObject is { } table
+            ? property.GetColumnName(table)
+            : property.GetColumnName();
+    }
 
     #endregion
 
