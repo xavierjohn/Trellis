@@ -270,13 +270,11 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
     /// </summary>
     private static bool SharesTableWithOwner(IConventionEntityType ownedEntityType)
     {
-        var ownership = ownedEntityType.FindOwnership();
-        if (ownership is null)
-            return false;
-
-        var ownedTable = StoreObjectIdentifier.Create(ownedEntityType, StoreObjectType.Table);
-        var ownerTable = StoreObjectIdentifier.Create(ownership.PrincipalEntityType, StoreObjectType.Table);
-        return ownedTable is { } owned && ownerTable is { } owner && owned == owner;
+        var owner = ownedEntityType.FindOwnership()?.PrincipalEntityType;
+        return owner is not null
+            && StoreObjectIdentifier.Create(ownedEntityType, StoreObjectType.Table) is { } ownedTable
+            && StoreObjectIdentifier.Create(owner, StoreObjectType.Table) is { } ownerTable
+            && ownedTable == ownerTable;
     }
 
     /// <summary>
