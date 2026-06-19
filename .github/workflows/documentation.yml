@@ -1,4 +1,4 @@
-﻿name: Publish documentation.
+name: Publish documentation.
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0 # depth is needed for nbgv
         
