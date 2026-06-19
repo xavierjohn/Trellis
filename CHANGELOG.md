@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `Error.InvariantViolation` resource factories (`For` / `ForReason`)
+
+`Error.InvariantViolation` now exposes the same case-scoped convenience factories as the other
+resource-bearing cases: `For<TResource>(reasonCode, id, detail)`, `For(resourceType, reasonCode, id, detail)`,
+and the resourceless `ForReason(reasonCode, detail)`. Previously it was the only `Error` case that carries a
+`ResourceRef` without a factory, so callers had to write
+`new Error.InvariantViolation(reasonCode, ResourceRef.For<T>(id)) { Detail = ... }` by hand while the
+identically-shaped `Error.Conflict` already offered `For`/`ForReason`. `reasonCode` leads the signature (it
+is the invariant's required identity; the resource id is optional, matching `Error.Forbidden.For`). Purely
+additive — the primary constructor is unchanged. The api-reference now documents the organizing rule:
+case-scoped factories exist to remove `ResourceRef`/`InputPointer` construction ceremony, so every
+resource-bearing case (`NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`) has one, while the
+resourceless cases (`AuthenticationRequired`, `RateLimited`, `Unavailable`, `Unexpected`, `TransportFault`)
+intentionally use their already-minimal constructors.
+
 ### Changed — `DevelopmentActorProvider` rejects a malformed `X-Test-Actor` header by default
 
 `DevelopmentActorOptions.ThrowOnMalformedHeader` now defaults to `true`. A malformed `X-Test-Actor`

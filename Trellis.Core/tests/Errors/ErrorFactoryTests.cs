@@ -2,8 +2,9 @@
 
 /// <summary>
 /// Tests for the resource-error convenience factories on <see cref="Error.NotFound"/>,
-/// <see cref="Error.Gone"/>, <see cref="Error.Conflict"/>, and <see cref="Error.Forbidden"/>,
-/// which mirror the existing <see cref="Error.InvalidInput.ForField(string, string, string?)"/> /
+/// <see cref="Error.Gone"/>, <see cref="Error.Conflict"/>, <see cref="Error.Forbidden"/>, and
+/// <see cref="Error.InvariantViolation"/>, which mirror the existing
+/// <see cref="Error.InvalidInput.ForField(string, string, string?)"/> /
 /// <see cref="Error.InvalidInput.ForRule(string, string?)"/> style (trailing optional detail).
 /// </summary>
 public class ErrorFactoryTests
@@ -133,5 +134,53 @@ public class ErrorFactoryTests
         error.PolicyId.Should().Be("team.owner-only");
         error.Resource.Should().BeNull();
         error.Detail.Should().Be("denied");
+    }
+
+    // ── InvariantViolation ─────────────────────────────────────────────────
+
+    [Fact]
+    public void InvariantViolation_For_Generic_BuildsResourceReasonDetail()
+    {
+        var error = Error.InvariantViolation.For<Team>("team.roster_locked", 5, "roster is locked");
+
+        error.Resource.Should().NotBeNull();
+        error.Resource!.Value.Type.Should().Be("Team");
+        error.Resource.Value.Id.Should().Be("5");
+        error.ReasonCode.Should().Be("team.roster_locked");
+        error.Code.Should().Be("team.roster_locked");
+        error.Detail.Should().Be("roster is locked");
+    }
+
+    [Fact]
+    public void InvariantViolation_For_Generic_NoIdNoDetail_DefaultsNull()
+    {
+        var error = Error.InvariantViolation.For<Team>("team.roster_locked");
+
+        error.ReasonCode.Should().Be("team.roster_locked");
+        error.Resource!.Value.Type.Should().Be("Team");
+        error.Resource.Value.Id.Should().BeNull();
+        error.Detail.Should().BeNull();
+    }
+
+    [Fact]
+    public void InvariantViolation_For_StringType_BuildsResourceReason()
+    {
+        var error = Error.InvariantViolation.For("Team", "x.y", 5, "d");
+
+        error.Resource!.Value.Type.Should().Be("Team");
+        error.Resource.Value.Id.Should().Be("5");
+        error.ReasonCode.Should().Be("x.y");
+        error.Detail.Should().Be("d");
+    }
+
+    [Fact]
+    public void InvariantViolation_ForReason_ResourcelessViolation()
+    {
+        var error = Error.InvariantViolation.ForReason("order.must_have_items", "empty order");
+
+        error.Resource.Should().BeNull();
+        error.ReasonCode.Should().Be("order.must_have_items");
+        error.Code.Should().Be("order.must_have_items");
+        error.Detail.Should().Be("empty order");
     }
 }
