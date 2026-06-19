@@ -35,8 +35,8 @@
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
     <PackageVersion Include="Stateless" Version="5.20.1" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.16.3" />
-    <PackageVersion Include="Scalar.AspNetCore.Microsoft" Version="2.16.3" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.16.4" />
+    <PackageVersion Include="Scalar.AspNetCore.Microsoft" Version="2.16.4" />
     <PackageVersion Include="T4.Build" Version="0.2.5" />
   </ItemGroup>
   <!-- Test -->
