@@ -3,7 +3,7 @@ package: Trellis.Http.Abstractions
 namespaces: [Trellis]
 types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "WriteOutcome<T>", WriteOutcome, AggregateETagExtensions]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-06-19
 audience: [llm]
 ---
 # Trellis.Http.Abstractions &mdash; API Reference
