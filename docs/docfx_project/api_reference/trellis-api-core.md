@@ -1648,7 +1648,7 @@ Persistence-infrastructure seam for stamping an aggregate's optimistic-concurren
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `void StampETag(string etag)` | `void` | Sets `IAggregate.ETag` to `etag`, which must be a valid unquoted RFC 9110 opaque tag (e.g. `Guid.NewGuid().ToString("N")`). Throws `ArgumentException` for null/empty/whitespace or non-opaque-tag characters. |
+| `void StampETag(string etag)` | `void` | Sets `IAggregate.ETag` to `etag`, which must be a valid unquoted RFC 9110 opaque tag (e.g. `Guid.NewGuid().ToString("N")`). Throws `ArgumentNullException` for null and `ArgumentException` for empty/whitespace or non-opaque-tag characters. |
 
 ### `IDomainEvent`
 

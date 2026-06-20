@@ -64,11 +64,23 @@ public class AggregateTests
     }
 
     [Fact]
-    public void StampETag_with_null_or_whitespace_throws()
+    public void StampETag_with_null_throws_ArgumentNullException()
     {
         var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
 
-        var act = () => aggregate.StampETag("  ");
+        var act = () => aggregate.StampETag(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void StampETag_with_empty_or_whitespace_throws_ArgumentException(string etag)
+    {
+        var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
+
+        var act = () => aggregate.StampETag(etag);
 
         act.Should().Throw<ArgumentException>();
     }

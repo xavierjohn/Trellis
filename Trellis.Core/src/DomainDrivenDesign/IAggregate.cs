@@ -87,13 +87,13 @@ public interface IAggregate : IChangeTracking
     /// </value>
     /// <remarks>
     /// <para>
-    /// The ETag is managed automatically by the persistence infrastructure:
+    /// The ETag is managed by the persistence layer, never by domain code:
     /// <list type="bullet">
-    /// <item>For SQL databases, the EF Core interceptor generates a new GUID on each save</item>
-    /// <item>For Cosmos DB, the native <c>_etag</c> is stamped after normalizing it to its unquoted opaque form</item>
+    /// <item>The shipped EF Core integration generates a new value on each save via its change-tracker interceptor</item>
+    /// <item>A custom non-EF adapter (Dapper, raw ADO, a Cosmos SDK repository, ...) stamps it through
+    /// <see cref="IETagStampable.StampETag(string)"/> — for a store-native token such as a Cosmos
+    /// <c>_etag</c>, normalize it to its unquoted opaque form first</item>
     /// </list>
-    /// Domain code should not modify this property directly. Non-EF persistence adapters stamp it
-    /// through <see cref="IETagStampable.StampETag(string)"/>.
     /// </para>
     /// </remarks>
     string ETag { get; }

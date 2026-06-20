@@ -38,9 +38,10 @@ public interface IETagStampable
     /// This is the value the HTTP layer emits as a strong <c>ETag</c>, so a store-native quoted token
     /// (such as a Cosmos <c>_etag</c>) must be normalized to its unquoted form first.
     /// </param>
+    /// <exception cref="System.ArgumentNullException"><paramref name="etag"/> is <see langword="null"/>.</exception>
     /// <exception cref="System.ArgumentException">
-    /// <paramref name="etag"/> is <see langword="null"/>, empty, whitespace, or contains characters that are
-    /// not valid in an RFC 9110 opaque tag.
+    /// <paramref name="etag"/> is empty, whitespace, or contains characters that are not valid in an
+    /// RFC 9110 opaque tag.
     /// </exception>
     void StampETag(string etag);
 }
