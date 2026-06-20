@@ -14,7 +14,7 @@ Start with `docs/docfx_project/api_reference/trellis-api-cookbook.md`. Use its t
 
 ### Recommended context size
 
-The full set of API references is ~1,040 KB across 22 reference files (~266K tokens); the cookbook alone is ~228 KB (~58K tokens). These figures grow as the docs do — treat them as approximate and check `docs/docfx_project/api_reference/completeness-report.md` for the current package list. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
+The full set of API references is ~1,040 KB across 22 reference files (~266K tokens); the cookbook alone is ~228 KB (~58K tokens). These figures grow as the docs do — treat them as approximate; the current reference set is the `trellis-api-*.md` files under `docs/docfx_project/api_reference/`. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
 
 | Tier | Context | When this is enough |
 |---|---|---|
