@@ -4,11 +4,12 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 /// <summary>
-/// Mapping of a constructor-bound (get-only) scalar value object property on an aggregate.
+/// Mapping of a constructor-bound (get-only) Trellis value object property on an aggregate.
 /// EF Core discovers a settable value-object property via its setter, but a get-only property bound
-/// only through the constructor must still be discovered and converted. Each test maps the same
-/// <see cref="Widget"/> aggregate — whose non-key <see cref="ScopeId"/> is constructor-bound —
-/// through a different Trellis convention-registration path.
+/// only through the constructor must still be discovered and converted. Most tests map the same
+/// <see cref="Widget"/> aggregate — whose non-key <see cref="ScopeId"/> (a scalar value object) is
+/// constructor-bound — through a different Trellis convention-registration path; a final test covers
+/// the symbolic enum (<see cref="RequiredEnum{TSelf}"/>) category.
 /// </summary>
 public sealed class ConstructorBoundScalarValueObjectTests
 {
@@ -47,6 +48,26 @@ public sealed class ConstructorBoundScalarValueObjectTests
         loaded.Scope.Should().Be(scope);
     }
 
+    // A constructor-bound symbolic (enum) value object also maps: TrellisTypeScanner classifies
+    // RequiredEnum<T> as a value object, so ScalarValueObjectPropertyConvention adds the get-only
+    // property and the registered string converter round-trips it.
+    [Fact]
+    public async Task Symbolic_enum_value_object_bound_through_constructor_maps()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        await using var context = new GizmoContext(connection);
+        await context.Database.EnsureCreatedAsync(ct);
+
+        context.Set<Gizmo>().Add(Gizmo.Create(WidgetStatus.Retired));
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Set<Gizmo>().SingleAsync(ct);
+        loaded.Status.Should().Be(WidgetStatus.Retired);
+    }
+
     private static async Task AssertWidgetRoundTripsAsync<TContext>(
         Func<SqliteConnection, TContext> createContext, CancellationToken ct)
         where TContext : DbContext
@@ -80,6 +101,24 @@ internal sealed class Widget : Aggregate<WidgetId>
     public ScopeId ScopeId { get; }
 
     public static Widget Create(ScopeId scope) => new(WidgetId.NewUniqueV7(), scope);
+}
+
+// Symbolic (enum) value object bound only through the constructor (get-only property).
+internal sealed partial class GizmoId : RequiredGuid<GizmoId>;
+
+internal sealed partial class WidgetStatus : RequiredEnum<WidgetStatus>
+{
+    public static readonly WidgetStatus Active = new();
+    public static readonly WidgetStatus Retired = new();
+}
+
+internal sealed class Gizmo : Aggregate<GizmoId>
+{
+    private Gizmo(GizmoId id, WidgetStatus status) : base(id) => Status = status;
+
+    public WidgetStatus Status { get; }
+
+    public static Gizmo Create(WidgetStatus status) => new(GizmoId.NewUniqueV7(), status);
 }
 
 internal sealed class SettableScopedRecord
@@ -185,4 +224,19 @@ internal sealed class WorkaroundContext : DbContext
             e.HasKey(w => w.Id);
             e.Property(w => w.ScopeId).HasConversion(v => v.Value, v => ScopeId.Create(v));
         });
+}
+
+// Symbolic enum value object mapped through the runtime assembly scan.
+internal sealed class GizmoContext : DbContext
+{
+    public GizmoContext(SqliteConnection connection)
+        : base(CtorBoundContextOptions.For<GizmoContext>(connection)) { }
+
+    public DbSet<Gizmo> Gizmos => Set<Gizmo>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder builder) =>
+        builder.ApplyTrellisConventions(typeof(GizmoContext).Assembly);
+
+    protected override void OnModelCreating(ModelBuilder builder) =>
+        builder.Entity<Gizmo>(e => { e.ToTable("gizmos"); e.HasKey(g => g.Id); });
 }

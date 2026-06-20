@@ -145,7 +145,7 @@ public static class ModelConfigurationBuilderExtensions
     /// <para>
     /// This registers only the value converter. The Trellis conventions — including
     /// <see cref="ScalarValueObjectPropertyConvention"/>, which maps constructor-bound (get-only)
-    /// scalar value-object properties — are installed by <see cref="AddTrellisCoreConventions"/>
+    /// Trellis value-object properties (scalar and symbolic enum) — are installed by <see cref="AddTrellisCoreConventions"/>
     /// (which <see cref="ApplyTrellisConventions(ModelConfigurationBuilder, System.Reflection.Assembly[])"/>
     /// and the generated <c>ApplyTrellisConventionsFor&lt;TContext&gt;</c> both call). A complete setup
     /// must call one of those in addition to any standalone <c>AddTrellisScalarConverter</c> calls.

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 
 /// <summary>
-/// Convention that maps constructor-bound (get-only) scalar value object properties.
+/// Convention that maps constructor-bound (get-only) Trellis value object properties (scalar and symbolic enum).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,7 +21,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 /// </para>
 /// <para>
 /// This convention closes that gap: for every entity type it inspects the constructor parameters whose
-/// CLR type is a Trellis scalar value object and explicitly adds the matching property, so the
+/// CLR type is a Trellis value object — scalar (e.g. <c>RequiredGuid</c>) or symbolic enum (<c>RequiredEnum</c>)
+/// — and explicitly adds the matching property, so the
 /// pre-convention scalar converter applies and the constructor parameter binds — the automated equivalent
 /// of an explicit <c>builder.Property(x =&gt; x.CustomerId).HasConversion(...)</c> in <c>OnModelCreating</c>.
 /// </para>
