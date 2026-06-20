@@ -135,7 +135,7 @@ using System.Text.Json.Serialization;
 /// ServiceDefaults <c>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</c> and
 /// <c>UseTrackedAggregateDomainEvents()</c> slots).
 /// </example>
-public abstract class Aggregate<TId> : Entity<TId>, IAggregate
+public abstract class Aggregate<TId> : Entity<TId>, IAggregate, IETagStampable
     where TId : notnull
 {
     /// <summary>
@@ -181,10 +181,31 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate
     /// <para>
     /// The ETag is managed by <c>AggregateETagConvention</c> (marks it as a concurrency token)
     /// and <c>AggregateETagInterceptor</c> (generates a new value on save). Domain code should
-    /// not modify this property directly.
+    /// not modify this property directly; non-EF persistence adapters stamp it through
+    /// <see cref="IETagStampable.StampETag(string)"/>.
     /// </para>
     /// </remarks>
     public string ETag { get; private set; } = string.Empty;
+
+    /// <inheritdoc />
+    void IETagStampable.StampETag(string etag) => ETag = ValidateETag(etag);
+
+    private static string ValidateETag(string etag)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(etag);
+        foreach (var c in etag)
+        {
+            // RFC 9110 §8.8.1: an unquoted opaque tag may contain only etagc = %x21 / %x23-7E / obs-text
+            // (0x80-FF). Mirrors EntityTagValue's validation so a stamped token is always HTTP ETag-safe.
+            if (c is < '\x21' or '"' or '\x7F' or > '\xFF')
+                throw new ArgumentException(
+                    $"Invalid character in ETag: U+{(int)c:X4}. Must be an unquoted RFC 9110 opaque tag " +
+                    "(e.g. Guid.NewGuid().ToString(\"N\")); normalize quoted store-native tokens before stamping.",
+                    nameof(etag));
+        }
+
+        return etag;
+    }
 
     /// <summary>
     /// Gets a value indicating whether the aggregate has uncommitted changes.

@@ -90,9 +90,10 @@ public interface IAggregate : IChangeTracking
     /// The ETag is managed automatically by the persistence infrastructure:
     /// <list type="bullet">
     /// <item>For SQL databases, the EF Core interceptor generates a new GUID on each save</item>
-    /// <item>For CosmosDB, the native <c>_etag</c> is used directly</item>
+    /// <item>For Cosmos DB, the native <c>_etag</c> is stamped after normalizing it to its unquoted opaque form</item>
     /// </list>
-    /// Domain code should not modify this property directly.
+    /// Domain code should not modify this property directly. Non-EF persistence adapters stamp it
+    /// through <see cref="IETagStampable.StampETag(string)"/>.
     /// </para>
     /// </remarks>
     string ETag { get; }
