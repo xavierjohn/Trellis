@@ -135,7 +135,7 @@ using System.Text.Json.Serialization;
 /// ServiceDefaults <c>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</c> and
 /// <c>UseTrackedAggregateDomainEvents()</c> slots).
 /// </example>
-public abstract class Aggregate<TId> : Entity<TId>, IAggregate, IETagStampable
+public abstract class Aggregate<TId> : Entity<TId>, IAggregate, IETagStampable, IReconstitutionStampable
     where TId : notnull
 {
     /// <summary>
@@ -205,6 +205,15 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate, IETagStampable
         }
 
         return etag;
+    }
+
+    /// <inheritdoc />
+    void IReconstitutionStampable.StampReconstitutedState(DateTimeOffset createdAt, DateTimeOffset lastModified, string etag)
+    {
+        ETag = ValidateETag(etag);
+        CreatedAt = createdAt;
+        LastModified = lastModified;
+        AcceptChanges();
     }
 
     /// <summary>
