@@ -254,6 +254,43 @@ public abstract record Error
 
         /// <inheritdoc />
         public override string Code => ReasonCode;
+
+        /// <summary>
+        /// Convenience factory that builds an <see cref="InvariantViolation"/> against the resource
+        /// type <typeparamref name="TResource"/> (its CLR name becomes the resource name), mirroring
+        /// the <see cref="Conflict"/> factories. <paramref name="reasonCode"/> leads because it is the
+        /// invariant's required identity, with the resource id optional.
+        /// </summary>
+        /// <typeparam name="TResource">The resource the invariant was evaluated against.</typeparam>
+        /// <param name="reasonCode">Stable machine-readable code identifying the violated invariant.</param>
+        /// <param name="id">Identifier of the instance the invariant was evaluated against; pass <see langword="null"/> for an aggregate- or type-level invariant, or use <see cref="ForReason(string, string?)"/>.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>An <see cref="InvariantViolation"/> carrying the resource.</returns>
+        public static InvariantViolation For<TResource>(string reasonCode, object? id = null, string? detail = null) =>
+            new(reasonCode, ResourceRef.For<TResource>(id)) { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory that builds an <see cref="InvariantViolation"/> from an explicit
+        /// resource type name and identifier.
+        /// </summary>
+        /// <param name="resourceType">The resource type name the invariant was evaluated against.</param>
+        /// <param name="reasonCode">Stable machine-readable code identifying the violated invariant.</param>
+        /// <param name="id">Identifier of the instance the invariant was evaluated against.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>An <see cref="InvariantViolation"/> carrying the resource.</returns>
+        public static InvariantViolation For(string resourceType, string reasonCode, object? id = null, string? detail = null) =>
+            new(reasonCode, ResourceRef.For(resourceType, id)) { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory for an invariant violation with no identifiable resource (e.g. a
+        /// cross-field or workflow rule with no aggregate context). Bundles the optional
+        /// <see cref="Error.Detail"/> that the primary constructor cannot set inline.
+        /// </summary>
+        /// <param name="reasonCode">Stable machine-readable code identifying the violated invariant.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A resourceless <see cref="InvariantViolation"/>.</returns>
+        public static InvariantViolation ForReason(string reasonCode, string? detail = null) =>
+            new(reasonCode) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────

@@ -1,4 +1,9 @@
 ﻿<Project>
+  <PropertyGroup>
+    <!-- Allow a central PackageVersion to override a transitively-resolved package
+         (used below to pin the vulnerable SQLite native lib to a patched version). -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
   <!-- Runtime -->
   <ItemGroup>
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
@@ -25,6 +30,12 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.9" />
+    <!-- Security pin (transitive): Microsoft.EntityFrameworkCore.Sqlite 10.0.9 pulls
+         SQLitePCLRaw.lib.e_sqlite3 2.1.11, which has a high-severity vuln
+         (GHSA-2m69-gcr7-jv3q / NU1903; <= 2.1.11 affected). 3.50.3 is the next published
+         release and bundles patched SQLite. Only the native lib is bumped; the managed
+         provider/core stay at 2.1.x and remain compatible (SQLite C ABI is stable). -->
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.50.3" />
     <PackageVersion Include="Microsoft.Extensions.DependencyModel" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
