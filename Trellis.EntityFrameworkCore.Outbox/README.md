@@ -85,7 +85,7 @@ After each outboxed domain event is dispatched, the relay drains the collector a
 
 ## Delivery & Serialization Notes
 - The guarantee is at-least-once **delivery**, not handler success: per the `IDomainEventHandler<TEvent>` contract the publisher logs and swallows handler exceptions, so a failing handler does **not** retry — only infrastructure failures do. Retry-until-handlers-succeed needs a non-swallowing publish path (a planned follow-up).
-- Events are serialized with the default `System.Text.Json` options. Trellis value objects that carry a `[JsonConverter]` attribute round-trip; use a **nullable transport** (not `Maybe<T>`) for optional event payload members.
+- Events are serialized with a Trellis-owned `System.Text.Json` options instance. Value objects that carry a `[JsonConverter]` attribute round-trip, and `Maybe<T>` members are supported (present → value, absent → `null`); use a nullable transport for members that rely on a caller-registered converter.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-outbox.html)

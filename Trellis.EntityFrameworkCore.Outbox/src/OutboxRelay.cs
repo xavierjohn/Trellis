@@ -211,7 +211,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             Guid.CreateVersion7(),
             integrationEvent.OccurredAt,
             eventType,
-            JsonSerializer.Serialize(integrationEvent, type),
+            JsonSerializer.Serialize(integrationEvent, type, OutboxEventSerialization.Options),
             OutboxMessageKind.Integration);
     }
 
@@ -222,7 +222,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             ?? throw new InvalidOperationException(
                 $"Cannot resolve outbox event type '{message.EventType}'. The producing assembly must be loaded by the relay.");
 
-        return JsonSerializer.Deserialize(message.Payload, type) as T
+        return JsonSerializer.Deserialize(message.Payload, type, OutboxEventSerialization.Options) as T
             ?? throw new InvalidOperationException(
                 $"Outbox payload for '{message.EventType}' did not deserialize to an {typeof(T).Name}.");
     }

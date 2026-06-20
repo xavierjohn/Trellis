@@ -78,7 +78,7 @@ The relay drains `IIntegrationEventCollector` after dispatching each domain even
 
 ## Delivery & Serialization Notes
 - The guarantee is at-least-once **delivery**, not handler success: per the `IDomainEventHandler<TEvent>` contract the publisher logs and swallows handler exceptions, so a failing handler does **not** retry — only infrastructure failures do.
-- Events are serialized with the default `System.Text.Json` options. Trellis value objects that carry a `[JsonConverter]` attribute round-trip; use a **nullable transport** (not `Maybe<T>`) for optional event payload members.
+- Events are serialized with a Trellis-owned `System.Text.Json` options instance. Value objects that carry a `[JsonConverter]` attribute round-trip, and `Maybe<T>` members are supported (present → value, absent → `null`); use a nullable transport for members that rely on a caller-registered converter.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-outbox.html)
