@@ -507,13 +507,107 @@ public sealed class OutboxTests
             domain.Attempts.Should().Be(1);
         }
     }
+
+    [Fact]
+    public async Task Relay_roundtrips_a_domain_event_with_a_None_optional_member()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var captured = new List<ThingTagged>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingTagged, TaggedCapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            var thing = Thing.Create(ThingId.NewUniqueV7(), "untagged", DateTimeOffset.UnixEpoch);
+            context.Things.Add(thing);
+            await context.SaveChangesAsync(ct);
+
+            // Capturing an event whose Maybe<T> member is None must not throw: the default serializer
+            // walked Maybe<T>.Value and threw on the absent value.
+            thing.Tag(Maybe<TeamId>.None, DateTimeOffset.UnixEpoch);
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        await relay.DrainAsync(ct);
+
+        var tagged = captured.Should().ContainSingle().Subject;
+        tagged.OwningTeam.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Relay_roundtrips_a_domain_event_with_a_Some_optional_member()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var captured = new List<ThingTagged>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingTagged, TaggedCapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        var teamId = TeamId.NewUniqueV7();
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            var thing = Thing.Create(ThingId.NewUniqueV7(), "tagged", DateTimeOffset.UnixEpoch);
+            context.Things.Add(thing);
+            await context.SaveChangesAsync(ct);
+
+            thing.Tag(Maybe<TeamId>.From(teamId), DateTimeOffset.UnixEpoch);
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        await relay.DrainAsync(ct);
+
+        var tagged = captured.Should().ContainSingle().Subject;
+        tagged.OwningTeam.HasValue.Should().BeTrue();
+        tagged.OwningTeam.Value.Should().Be(teamId);
+    }
 }
 
 // ── Test domain model ──────────────────────────────────────────────────────────
 
 internal sealed partial class ThingId : RequiredGuid<ThingId>;
 
+internal sealed partial class TeamId : RequiredGuid<TeamId>;
+
 internal sealed record ThingCreated(ThingId Id, string Name, DateTimeOffset OccurredAt) : IDomainEvent;
+
+internal sealed record ThingTagged(ThingId Id, Maybe<TeamId> OwningTeam, DateTimeOffset OccurredAt) : IDomainEvent;
 
 internal sealed record ThingCreatedIntegrationEvent(Guid Id, string Name, DateTimeOffset OccurredAt) : IIntegrationEvent;
 
@@ -565,11 +659,23 @@ internal sealed class Thing : Aggregate<ThingId>
         thing.DomainEvents.Add(new ThingCreated(id, name, occurredAt));
         return thing;
     }
+
+    public void Tag(Maybe<TeamId> owningTeam, DateTimeOffset occurredAt) =>
+        DomainEvents.Add(new ThingTagged(Id, owningTeam, occurredAt));
 }
 
 internal sealed class CapturingHandler(List<ThingCreated> captured) : IDomainEventHandler<ThingCreated>
 {
     public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken)
+    {
+        captured.Add(domainEvent);
+        return ValueTask.CompletedTask;
+    }
+}
+
+internal sealed class TaggedCapturingHandler(List<ThingTagged> captured) : IDomainEventHandler<ThingTagged>
+{
+    public ValueTask HandleAsync(ThingTagged domainEvent, CancellationToken cancellationToken)
     {
         captured.Add(domainEvent);
         return ValueTask.CompletedTask;

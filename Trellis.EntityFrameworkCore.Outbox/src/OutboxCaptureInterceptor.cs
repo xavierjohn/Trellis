@@ -23,11 +23,12 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 /// relay becomes the single durable dispatch path.
 /// </para>
 /// <para>
-/// <b>Serialization.</b> Events are serialized with the default <see cref="JsonSerializerOptions"/>.
+/// <b>Serialization.</b> Events are serialized with <see cref="OutboxEventSerialization.Options"/>.
 /// Value objects that carry a <c>[JsonConverter]</c> attribute (the scalar and composite Trellis
-/// primitives) round-trip correctly; events whose properties rely on factory-registered converters
-/// or use <c>Maybe&lt;T&gt;</c> are not supported by this MVP — use a nullable transport in the event
-/// (consistent with TRLS020). A configurable serializer is a planned follow-up.
+/// primitives) round-trip correctly, and <c>Maybe&lt;T&gt;</c> members are supported — a present value
+/// serializes as the underlying value and an absent one as JSON <c>null</c>. Events whose properties rely
+/// on other (non-attribute, caller-registered) converters are not supported by this MVP — use a nullable
+/// transport in the event. A configurable serializer is a planned follow-up.
 /// </para>
 /// </remarks>
 internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
@@ -134,7 +135,7 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
                     Guid.CreateVersion7(),
                     domainEvent.OccurredAt,
                     eventType,
-                    JsonSerializer.Serialize(domainEvent, type),
+                    JsonSerializer.Serialize(domainEvent, type, OutboxEventSerialization.Options),
                     OutboxMessageKind.Domain));
             }
         }

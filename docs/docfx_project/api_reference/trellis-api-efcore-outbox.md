@@ -31,7 +31,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Tune poll interval, batch size, or max attempts | `OutboxOptions` (via the `configure` delegate) | [`OutboxOptions`](#outboxoptions) |
 | Inspect a captured-but-not-yet-relayed message | Query `TContext.Set<OutboxMessage>()` (read-only; rows are produced by the interceptor) | [`OutboxMessage`](#outboxmessage) |
 | Understand why a failing handler does not re-deliver | At-least-once **delivery** semantics; handler exceptions are swallowed by the publisher | [Delivery semantics](#delivery-semantics) |
-| Decide how to shape an event so it round-trips | Use attribute-driven value objects / nullable transports; avoid `Maybe<T>` in payloads | [Serialization](#serialization) |
+| Decide how to shape an event so it round-trips | Use attribute-driven value objects; `Maybe<T>` members are supported (present → value, absent → `null`) | [Serialization](#serialization) |
 | Publish a stable external contract instead of raw domain events | Translate a domain event into an `IIntegrationEvent` via `IIntegrationEventCollector`; the relay routes it to `IIntegrationEventPublisher` | [Integration events](#integration-events) |
 
 ## Common traps
@@ -39,7 +39,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - **The interceptor and the model mapping are *not* optional extras.** `AddTrellisOutbox<TContext>()` only registers the relay. Without `optionsBuilder.AddTrellisOutboxInterceptor()` nothing is captured, and without `modelBuilder.AddTrellisOutbox()` the `TrellisOutboxMessages` table is unmapped. All three calls are required — see [Wiring: three required calls](#wiring-three-required-calls).
 - **The relay host must have the producing assemblies loaded.** The relay rehydrates each event from its assembly-qualified `EventType` via `Type.GetType`. If the worker process does not reference the assembly that declares the event, the message fails deserialization and parks after `MaxAttempts`.
 - **Handlers must be idempotent.** Delivery is at-least-once; a crash between dispatch and the relay's bookkeeping `SaveChanges` re-delivers the message on the next drain.
-- **Do not put `Maybe<T>` in an event payload.** The default serializer cannot round-trip it; use a nullable transport (consistent with TRLS020). See [Serialization](#serialization).
+- **Caller-registered `JsonSerializerOptions` converters do not travel with the payload.** The outbox serializer round-trips `[JsonConverter]`-attributed value objects and `Maybe<T>` members; converters registered only on a caller's own options are not consulted — shape those members with attribute-driven types or nullable transports. See [Serialization](#serialization).
 - **`OutboxMessage` is read-only to application code.** Its constructor is private and its mutators are internal; rows are produced exclusively by the capture interceptor and advanced by the relay.
 - **Post-commit cancellation can defer the event-clear.** The capture interceptor clears aggregate events in `SavedChanges`, which runs *after* the commit. `AggregateETagInterceptor` (registered first by `AddTrellisInterceptors`) throws by design if the save's `CancellationToken` is cancelled in that post-commit window, and EF invokes `SavedChanges` interceptors in registration order, so the outbox clear can be skipped — leaving the aggregate's events in memory while the outbox row is already durable. Reusing the *same* context for another save then re-captures them into a duplicate row. This is bounded and absorbed by the at-least-once + idempotent-handler contract; disposing the context after a cancelled save (the normal per-request lifetime) avoids it entirely.
 - **Persist-on-failure (`FailAfterCommit`) events are dispatched by the outbox.** The capture interceptor cannot see the command `Result`, so it captures events from *every* commit — including the persist-on-failure commits that `TransactionalCommandBehavior` performs. Without the outbox, `DomainEventDispatchBehavior` deliberately does **not** dispatch events for a failed result: the `FailAfterCommit` contract (documented under persist-on-failure in `trellis-api-core.md`) treats those events as discarded, *not* a durable retry buffer. With the outbox enabled, those events are captured and the relay delivers them — so the suppression no longer holds. If you depend on it, do not raise domain events on persist-on-failure paths under the outbox: return a success result for events you want delivered, and model post-failure side effects explicitly (a follow-up command, or a dedicated outbox row).
@@ -177,9 +177,9 @@ Retry-until-handlers-succeed would require a non-swallowing publish path and is 
 
 ## Serialization
 
-Events are serialized and rehydrated with the default `System.Text.Json` options.
+Events are serialized and rehydrated with a Trellis-owned `System.Text.Json` options instance that adds a `Maybe<T>` converter.
 
-- **Supported:** value objects that carry a `[JsonConverter]` attribute (the Trellis scalar and composite primitives) round-trip, because the converter travels with the type.
-- **Not supported:** `Maybe<T>` (internal constructor, throwing `Value` getter) and converters registered only through `JsonSerializerOptions` factories. Use a **nullable transport** in the event (e.g. `string?` rather than `Maybe<string>`), consistent with TRLS020 for event/DTO contracts.
+- **Supported:** value objects that carry a `[JsonConverter]` attribute (the Trellis scalar and composite primitives) round-trip, because the converter travels with the type. `Maybe<T>` members also round-trip — a present value serializes as the underlying value and an absent one as JSON `null`.
+- **Not supported:** converters registered only through a caller-supplied `JsonSerializerOptions` factory (they are not consulted by the outbox serializer). Shape those members with attribute-driven value objects or a **nullable transport** (e.g. `string?`).
 
-A configurable serializer is a planned follow-up; until then, keep event payloads to attribute-driven and primitive-or-nullable members.
+A fully configurable serializer is a planned follow-up; until then, keep event payloads to attribute-driven, `Maybe<T>`, and primitive-or-nullable members.
