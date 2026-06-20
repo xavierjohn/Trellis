@@ -138,8 +138,18 @@ public static class ModelConfigurationBuilderExtensions
     /// <typeparamref name="TClr"/> properties that round-trip to <typeparamref name="TProvider"/>.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Reflection-free: no calls to <see cref="Type.MakeGenericType(Type[])"/> or other
     /// runtime reflection. Intended for source-generated convention registration.
+    /// </para>
+    /// <para>
+    /// This registers only the value converter. The Trellis conventions — including
+    /// <see cref="ScalarValueObjectPropertyConvention"/>, which maps constructor-bound (get-only)
+    /// scalar value-object properties — are installed by <see cref="AddTrellisCoreConventions"/>
+    /// (which <see cref="ApplyTrellisConventions(ModelConfigurationBuilder, System.Reflection.Assembly[])"/>
+    /// and the generated <c>ApplyTrellisConventionsFor&lt;TContext&gt;</c> both call). A complete setup
+    /// must call one of those in addition to any standalone <c>AddTrellisScalarConverter</c> calls.
+    /// </para>
     /// </remarks>
     /// <typeparam name="TClr">The Trellis scalar value object CLR type (e.g. <c>CustomerId</c>).</typeparam>
     /// <typeparam name="TProvider">The provider primitive type (e.g. <c>Guid</c>, <c>string</c>).</typeparam>
@@ -176,6 +186,7 @@ public static class ModelConfigurationBuilderExtensions
         ArgumentNullException.ThrowIfNull(composites);
 
         var compositeSet = composites as HashSet<Type> ?? new HashSet<Type>(composites);
+        configurationBuilder.Conventions.Add(static _ => new ScalarValueObjectPropertyConvention());
         configurationBuilder.Conventions.Add(static _ => new MaybeConvention());
         configurationBuilder.Conventions.Add(_ => new CompositeValueObjectConvention(compositeSet));
         configurationBuilder.Conventions.Add(static _ => new MoneyConvention());
