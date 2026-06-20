@@ -26,7 +26,7 @@ dotnet add package Trellis.Http.Abstractions
 | `AggregateETagExtensions` | `OptionalETag` / `RequireETag` pipeline operators that lift `HttpError.PreconditionFailed` / `PreconditionRequired` into `Error.TransportFault` for `Result<T>` of an `IAggregate`. |
 | `AuthChallenge` | Boundary representation of a `WWW-Authenticate` challenge. |
 | `RetryAfterValue` | HTTP wire representation of `Retry-After` (delay-seconds or HTTP-date). Use `RetryAdvice` in the domain; the boundary translates one to the other. |
-| `RepresentationMetadata`, `WriteOutcome<T>` | Conditional-request and response-shaping helpers shared by server/client packages. |
+| `RepresentationMetadata`, `WriteOutcome<T>` | Conditional-request and response-shaping helpers shared by server/client packages. The static `WriteOutcome` factory (`Updated<T>`, `Created<T>`, `UpdatedNoContent<T>`, `Accepted<T>`, `AcceptedNoContent<T>`) builds each case but returns the base `WriteOutcome<T>`, so results flow through `Result.Map(...)` / `ToHttpResponse(...)` without a `(WriteOutcome<T>)` cast — e.g. `WriteOutcome.Updated(value, metadata)`. |
 
 ## Quick example
 

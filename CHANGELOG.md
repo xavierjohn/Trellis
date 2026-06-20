@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `WriteOutcome` static factory helpers (cast-free case construction)
+
+A non-generic `static class WriteOutcome` (in `Trellis.Http.Abstractions`, namespace `Trellis`) now
+provides `Created<T>`, `Updated<T>`, `UpdatedNoContent<T>`, `Accepted<T>`, and `AcceptedNoContent<T>`
+helpers that build each `WriteOutcome<T>` case but **return the base `WriteOutcome<T>`**. Previously,
+`new WriteOutcome<T>.Updated(...)` had the nested case type, and because `Result<T>` is invariant the
+result could not implicitly upcast to `Result<WriteOutcome<T>>` — so pipelines had to widen it with an
+explicit `(WriteOutcome<T>)` cast (e.g. `.Map(p => (WriteOutcome<Order>)new WriteOutcome<Order>.Updated(p, meta))`).
+The helpers remove that cast: `.Map(p => WriteOutcome.Updated(p, meta))` now infers `T` from the value
+and flows straight into `ToHttpResponse(...)`. (Forgetting the cast was usually a compile error, but the
+no-body-projector path could silently bind the plain-`Result<T>` overload and skip outcome translation —
+the helpers close that gap too.) Mirrors the existing non-generic `Result` / generic `Result<T>` pairing.
+Purely additive; the nested-record construction still works.
+
 ### Added — `Error.InvariantViolation` resource factories (`For` / `ForReason`)
 
 `Error.InvariantViolation` now exposes the same case-scoped convenience factories as the other

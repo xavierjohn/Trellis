@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Http.Abstractions
 namespaces: [Trellis]
-types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "WriteOutcome<T>", AggregateETagExtensions]
+types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "WriteOutcome<T>", WriteOutcome, AggregateETagExtensions]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-06-19
 audience: [llm]
 ---
 # Trellis.Http.Abstractions &mdash; API Reference
@@ -66,7 +66,8 @@ Construct it only in HTTP-aware boundaries and wrap it in `new Error.TransportFa
 | Type | Purpose |
 | --- | --- |
 | `RepresentationMetadata` | Response metadata bag for `ETag`, `Last-Modified`, `Vary`, `Content-Language`, and `Content-Location`. Build with `RepresentationMetadata.Create()` or the convenience helpers `WithETag(...)` / `WithStrongETag(...)`. |
-| `WriteOutcome<T>` | Closed union for HTTP-shaped write results: `Created`, `Updated`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent`. The `Accepted*` cases can still carry `RetryAfterValue`. |
+| `WriteOutcome<T>` | Closed union for HTTP-shaped write results: `Created`, `Updated`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent`. The `Accepted*` cases can still carry `RetryAfterValue`. Construct via the nested records (`new WriteOutcome<T>.Updated(...)`) or — to recover the base type without a cast — the static `WriteOutcome` factory helpers below. |
+| `WriteOutcome` (static) | Factory helpers — `Created<T>`, `Updated<T>`, `UpdatedNoContent<T>`, `Accepted<T>`, `AcceptedNoContent<T>` — that build each case but **return the base `WriteOutcome<T>`**. This lets results flow through generic pipelines such as `Result.Map(...)` / `ToHttpResponse(...)` (which bind on `Result<WriteOutcome<T>>`) **without an explicit `(WriteOutcome<T>)` cast**: `new WriteOutcome<T>.Updated(...)` has the nested case type, and `Result<T>` invariance then blocks the implicit upcast. Mirrors the non-generic `Result` / generic `Result<T>` pairing. `T` is inferred from the value for `Created`/`Updated`/`Accepted`; specify it explicitly for the no-content cases. |
 
 ## `AggregateETagExtensions`
 
