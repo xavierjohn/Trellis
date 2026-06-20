@@ -11,8 +11,8 @@
 /// its <c>Create</c>/<c>TryCreate</c> factory — no invariant re-validation, no new identity, and no
 /// creation events. The aggregate author owns rebuilding the <em>domain</em> state: expose a
 /// <c>Reconstitute(...)</c> factory that calls the (private) constructor and assigns get-only properties
-/// and private child collections directly. This seam owns only the <em>infrastructure</em> metadata that
-/// domain code must not touch.
+/// and private child collections directly. This seam restores only the <em>infrastructure</em> metadata —
+/// the audit timestamps and the concurrency token — and clears any uncommitted domain events.
 /// </para>
 /// <para>
 /// <see cref="Aggregate{TId}"/> implements this interface <b>explicitly</b>, so the method stays off the

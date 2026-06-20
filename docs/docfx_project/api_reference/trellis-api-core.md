@@ -1656,7 +1656,7 @@ Persistence-infrastructure seam for stamping an aggregate's optimistic-concurren
 public interface IReconstitutionStampable
 ```
 
-Persistence-infrastructure seam for restoring a reconstituted aggregate's persistence-managed metadata without exposing setters to domain code. `Aggregate<TId>` implements it **explicitly**. The aggregate author rebuilds *domain* state via its own `Reconstitute(...)` factory (private constructor + assigning get-only properties and private child collections); a non-EF adapter then casts to `IReconstitutionStampable` to restore the *infrastructure* metadata it loaded from storage. Post-conditions: timestamps and ETag restored, no uncommitted domain events (so `IsChanged == false` under the default event-based change tracking). The EF Core integration does the equivalent via its materializer and interceptors.
+Persistence-infrastructure seam for restoring a reconstituted aggregate's persistence-managed metadata (audit timestamps and the optimistic-concurrency token) and clearing its uncommitted domain events, through an explicit infra-only method. `Aggregate<TId>` implements it **explicitly**. The aggregate author rebuilds *domain* state via its own `Reconstitute(...)` factory (private constructor + assigning get-only properties and private child collections); a non-EF adapter then casts to `IReconstitutionStampable` to restore the *infrastructure* metadata it loaded from storage. Post-conditions: timestamps and ETag restored, no uncommitted domain events (so `IsChanged == false` under the default event-based change tracking). The EF Core integration does the equivalent via its materializer and interceptors.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

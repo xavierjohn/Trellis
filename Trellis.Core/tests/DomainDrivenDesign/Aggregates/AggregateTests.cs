@@ -144,7 +144,10 @@ public class AggregateTests
 
         // Act — an invalid (quoted) token must be rejected before any state is mutated.
         var act = () => ((IReconstitutionStampable)aggregate)
-            .StampReconstitutedState(default, default, "\"quoted\"");
+            .StampReconstitutedState(
+                new DateTimeOffset(2025, 5, 5, 0, 0, 0, TimeSpan.Zero),
+                new DateTimeOffset(2025, 6, 6, 0, 0, 0, TimeSpan.Zero),
+                "\"quoted\"");
 
         // Assert — throws, and the ETag, timestamps, and uncommitted event are all left untouched.
         act.Should().Throw<ArgumentException>();
