@@ -42,6 +42,68 @@ public class AggregateTests
 
     #endregion
 
+    #region Concurrency Stamp (ETag) Tests
+
+    [Fact]
+    public void Aggregate_implements_IETagStampable() =>
+        typeof(IETagStampable).IsAssignableFrom(typeof(Aggregate<string>)).Should().BeTrue();
+
+    [Fact]
+    public void StampETag_sets_the_ETag_for_persistence_infrastructure()
+    {
+        // Arrange
+        var aggregate = TestAggregate.Create("agg-1");
+        aggregate.ETag.Should().BeEmpty();
+
+        // Act — a non-EF persistence adapter stamps the concurrency token via the seam.
+        ((IETagStampable)aggregate).StampETag("etag-123");
+
+        // Assert
+        aggregate.ETag.Should().Be("etag-123");
+        aggregate.IsChanged.Should().BeFalse("stamping the concurrency token is not a domain change");
+    }
+
+    [Fact]
+    public void StampETag_with_null_throws_ArgumentNullException()
+    {
+        var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
+
+        var act = () => aggregate.StampETag(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void StampETag_with_empty_or_whitespace_throws_ArgumentException(string etag)
+    {
+        var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
+
+        var act = () => aggregate.StampETag(etag);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void StampETag_with_a_quoted_or_non_opaque_tag_character_throws()
+    {
+        // A store-native token such as a Cosmos _etag arrives quoted; stamping it verbatim would later
+        // break HTTP ETag generation (EntityTagValue rejects quotes per RFC 9110 §8.8.1), so reject it here.
+        var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
+
+        var act = () => aggregate.StampETag("\"quoted-etag\"");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void StampETag_is_explicit_and_not_on_the_public_aggregate_surface() =>
+        typeof(Aggregate<string>).GetMethod("StampETag").Should().BeNull(
+            "StampETag is an infrastructure-only seam implemented explicitly");
+
+    #endregion
+
     #region Domain Events Tests
 
     [Fact]
