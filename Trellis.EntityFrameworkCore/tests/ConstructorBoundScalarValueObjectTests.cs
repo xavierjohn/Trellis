@@ -164,7 +164,10 @@ internal sealed class SettableScopeContext : DbContext
         builder.Entity<SettableScopedRecord>(e => { e.ToTable("settable_records"); e.HasKey(r => r.Id); });
 }
 
-// Known-good workaround: explicit per-property HasConversion in OnModelCreating.
+// Known-good workaround: explicit per-property HasConversion in OnModelCreating, registered WITHOUT
+// ScalarValueObjectPropertyConvention — only the key's scalar converter is registered, not the full
+// Trellis convention set. The explicit mapping below (not the convention) is therefore solely
+// responsible for binding the get-only ScopeId: remove that line and the round-trip fails.
 internal sealed class WorkaroundContext : DbContext
 {
     public WorkaroundContext(SqliteConnection connection)
@@ -173,7 +176,7 @@ internal sealed class WorkaroundContext : DbContext
     public DbSet<Widget> Widgets => Set<Widget>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder) =>
-        builder.ApplyTrellisConventions(typeof(WorkaroundContext).Assembly);
+        builder.AddTrellisScalarConverter<WidgetId, Guid>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>
         builder.Entity<Widget>(e =>
