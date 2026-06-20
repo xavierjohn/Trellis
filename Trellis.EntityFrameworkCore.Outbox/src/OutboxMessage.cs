@@ -67,6 +67,17 @@ public sealed class OutboxMessage
     /// <summary>The most recent relay error, if any.</summary>
     public string? LastError { get; private set; }
 
+    /// <summary>
+    /// The UTC instant until which a relay drain holds an exclusive claim (lease) on this row; <c>null</c>
+    /// when unclaimed. The relay only claims rows whose lease is absent or expired, so concurrent relay
+    /// instances (horizontal scale-out) never publish the same row twice. A crashed instance's rows become
+    /// reclaimable once the lease expires.
+    /// </summary>
+    public DateTime? LockedUntil { get; private set; }
+
+    /// <summary>The claim token of the relay drain that currently holds this row; <c>null</c> when unclaimed.</summary>
+    public Guid? LockedBy { get; private set; }
+
     internal static OutboxMessage Create(Guid id, DateTimeOffset occurredAt, string eventType, string payload, OutboxMessageKind kind) =>
         new(id, occurredAt, eventType, payload, kind);
 
@@ -74,11 +85,20 @@ public sealed class OutboxMessage
     {
         ProcessedAt = processedAt;
         LastError = null;
+        ReleaseLease();
     }
 
     internal void RecordFailure(string error)
     {
         Attempts++;
         LastError = error;
+        ReleaseLease();
+    }
+
+    // Release the claim so a processed row is tidy and a failed row is immediately reclaimable by any instance.
+    private void ReleaseLease()
+    {
+        LockedUntil = null;
+        LockedBy = null;
     }
 }

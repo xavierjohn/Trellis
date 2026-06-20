@@ -32,7 +32,13 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(m => m.Payload).IsRequired();
         builder.Property(m => m.Attempts).IsRequired();
 
-        // Covering index for the relay's "pending, in order" scan.
-        builder.HasIndex(m => new { m.ProcessedAt, m.Sequence });
+        builder.Property(m => m.LockedUntil);
+        builder.Property(m => m.LockedBy);
+
+        // Covering index for the relay's "pending, claimable, in order" scan.
+        builder.HasIndex(m => new { m.ProcessedAt, m.LockedUntil, m.Sequence });
+
+        // Index for loading a drain's just-claimed batch by its claim token.
+        builder.HasIndex(m => m.LockedBy);
     }
 }

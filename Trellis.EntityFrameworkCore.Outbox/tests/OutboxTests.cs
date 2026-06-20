@@ -656,6 +656,143 @@ public sealed class OutboxTests
         captured.Single(e => e.Id == noneId.Value).OwningTeam.HasValue.Should().BeFalse();
         captured.Single(e => e.Id == someId.Value).OwningTeam.Value.Should().Be(teamId);
     }
+
+    [Fact]
+    public async Task Relay_does_not_publish_rows_held_under_another_instances_active_lease()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var captured = new List<ThingCreated>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "beta", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+
+            // Simulate another relay instance holding a live lease on the pending row.
+            await context.Set<OutboxMessage>()
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(m => m.LockedUntil, DateTime.UtcNow.AddMinutes(10))
+                    .SetProperty(m => m.LockedBy, Guid.NewGuid()), ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        drained.Should().Be(0, "a row under another instance's live lease must not be re-claimed");
+        captured.Should().BeEmpty("the leased row must not be double-published by this instance");
+    }
+
+    [Fact]
+    public async Task Relay_reclaims_rows_whose_lease_has_expired()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var captured = new List<ThingCreated>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "gamma", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+
+            // Simulate a crashed instance that left an expired lease behind.
+            await context.Set<OutboxMessage>()
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(m => m.LockedUntil, DateTime.UtcNow.AddMinutes(-10))
+                    .SetProperty(m => m.LockedBy, Guid.NewGuid()), ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        drained.Should().Be(1, "an expired lease must be reclaimed by the relay");
+        captured.Should().ContainSingle().Which.Name.Should().Be("gamma");
+    }
+
+    [Fact]
+    public async Task Relay_releases_the_lease_when_a_message_fails_to_relay()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            // A row whose event type cannot be resolved fails deserialization in the relay.
+            context.Set<OutboxMessage>().Add(OutboxMessage.Create(
+                Guid.NewGuid(), DateTimeOffset.UnixEpoch,
+                "Nonexistent.Type, Nonexistent.Assembly", "{}", OutboxMessageKind.Domain));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        drained.Should().Be(1);
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var row = await context.Set<OutboxMessage>().SingleAsync(ct);
+            row.Attempts.Should().Be(1, "the failed relay attempt was recorded");
+            row.ProcessedAt.Should().BeNull("a failed message stays pending");
+            row.LockedUntil.Should().BeNull("a failed message releases its lease so any instance can retry it");
+            row.LockedBy.Should().BeNull();
+        }
+    }
 }
 
 // ── Test domain model ──────────────────────────────────────────────────────────

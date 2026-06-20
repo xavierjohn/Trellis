@@ -18,6 +18,14 @@ public sealed class OutboxOptions
     public int MaxAttempts { get; set; } = 10;
 
     /// <summary>
+    /// How long a relay drain holds an exclusive claim (lease) on the rows it drains before another
+    /// instance may reclaim them. Set it comfortably above the time to publish one batch so a slow batch
+    /// is not reclaimed mid-flight; a crashed instance's rows become reclaimable once the lease expires.
+    /// Default: 5 minutes. Must be greater than zero.
+    /// </summary>
+    public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
     /// Validates the configured values, failing fast at registration so misconfiguration surfaces there
     /// rather than as a runtime exception inside the relay loop.
     /// </summary>
@@ -29,5 +37,7 @@ public sealed class OutboxOptions
             throw new ArgumentOutOfRangeException(nameof(BatchSize), BatchSize, "OutboxOptions.BatchSize must be greater than zero.");
         if (MaxAttempts <= 0)
             throw new ArgumentOutOfRangeException(nameof(MaxAttempts), MaxAttempts, "OutboxOptions.MaxAttempts must be greater than zero.");
+        if (LeaseDuration <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(LeaseDuration), LeaseDuration, "OutboxOptions.LeaseDuration must be greater than zero.");
     }
 }

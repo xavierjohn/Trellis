@@ -93,12 +93,50 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
 
-        var batch = await context.Set<OutboxMessage>()
-            .Where(m => m.ProcessedAt == null && m.Attempts < _options.MaxAttempts)
+        // DateTime (not DateTimeOffset) so the lease comparison translates on every EF provider, including
+        // SQLite, which cannot compare offset-bearing DateTimeOffset values in SQL.
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var claimToken = Guid.NewGuid();
+        var leaseExpiry = now + _options.LeaseDuration;
+
+        // 1. Find eligible rows (pending, under the attempt cap, not under a live lease), oldest first.
+        var candidates = await context.Set<OutboxMessage>()
+            .Where(m => m.ProcessedAt == null
+                        && m.Attempts < _options.MaxAttempts
+                        && (m.LockedUntil == null || m.LockedUntil <= now))
             .OrderBy(m => m.Sequence)
             .Take(_options.BatchSize)
+            .Select(m => m.Sequence)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        if (candidates.Count == 0)
+            return 0;
+
+        // 2. Atomically claim them for this drain. Two relay instances running this UPDATE are serialized
+        //    by row locks and each re-evaluates the guard, so every row is claimed by exactly one
+        //    instance — the scale-out safety the relay depends on. The predicate mirrors the candidate
+        //    filter (including the attempt cap) so a row another instance just parked between the read and
+        //    this claim is not re-claimed.
+        await context.Set<OutboxMessage>()
+            .Where(m => candidates.Contains(m.Sequence)
+                        && m.ProcessedAt == null
+                        && m.Attempts < _options.MaxAttempts
+                        && (m.LockedUntil == null || m.LockedUntil <= now))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(m => m.LockedBy, claimToken)
+                .SetProperty(m => m.LockedUntil, leaseExpiry), cancellationToken)
+            .ConfigureAwait(false);
+
+        // 3. Load the rows this drain actually won (a competing instance may have claimed some first).
+        var batch = await context.Set<OutboxMessage>()
+            .Where(m => m.LockedBy == claimToken)
+            .OrderBy(m => m.Sequence)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (batch.Count == 0)
+            return 0;
 
         List<(OutboxMessage Message, Exception Error)>? failures = null;
         List<OutboxMessage>? stagedIntegrationRows = null;
@@ -143,16 +181,13 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         if (stagedIntegrationRows is not null)
             context.Set<OutboxMessage>().AddRange(stagedIntegrationRows);
 
-        if (batch.Count > 0)
-        {
-            // Persist MarkProcessed / RecordFailure first, then log. Emitting the failure logs only
-            // after the save succeeds keeps the alertable MessageParked (and the retry Warning) honest:
-            // if this save throws, the Attempts increments never persisted, the message is NOT parked,
-            // ExecuteAsync logs DrainFailed instead, and no false "parked" alert is raised.
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            LogFailures(failures);
-            OutboxRelayLog.DrainCompleted(_logger, batch.Count);
-        }
+        // Persist MarkProcessed / RecordFailure (each releases the lease) first, then log. Emitting the
+        // failure logs only after the save succeeds keeps the alertable MessageParked (and the retry
+        // Warning) honest: if this save throws, the Attempts increments never persisted, the message is
+        // NOT parked, ExecuteAsync logs DrainFailed instead, and no false "parked" alert is raised.
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        LogFailures(failures);
+        OutboxRelayLog.DrainCompleted(_logger, batch.Count);
 
         return batch.Count;
     }

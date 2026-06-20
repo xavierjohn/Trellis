@@ -148,8 +148,12 @@ A persisted event awaiting relay — one row per captured domain event or transl
 | `ProcessedAt` | `DateTimeOffset?` | When the message was relayed; `null` while pending. |
 | `Attempts` | `int` | Relay attempts so far. |
 | `LastError` | `string?` | Most recent relay error, if any. |
+| `LockedUntil` | `DateTime?` | UTC instant until which a relay drain holds an exclusive claim (lease) on the row; `null` when unclaimed. |
+| `LockedBy` | `Guid?` | Claim token of the relay drain that currently holds the row; `null` when unclaimed. |
 
-The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Sequence` primary key (`ValueGeneratedOnAdd`), a unique index on `Id`, the `Kind` discriminator (string, max length 32), and a covering index on `{ ProcessedAt, Sequence }` for the relay scan.
+The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Sequence` primary key (`ValueGeneratedOnAdd`), a unique index on `Id`, the `Kind` discriminator (string, max length 32), a covering index on `{ ProcessedAt, LockedUntil, Sequence }` for the relay's claimable-rows scan, and an index on `LockedBy` for loading a drain's just-claimed batch.
+
+> **Schema migration.** Row-claiming added the nullable `LockedUntil` and `LockedBy` columns. An existing outbox table needs a migration to add them; both are nullable, so in-flight rows default to unclaimed and are picked up normally.
 
 `OutboxMessage` is an infrastructure record, not a domain aggregate. The rows are transient and may be pruned once `ProcessedAt` is set — deleting processed rows loses no source-of-truth state. This is an outbox, **not** an event store.
 
@@ -162,6 +166,7 @@ Tuning for the relay.
 | `PollInterval` | `TimeSpan` | 5 seconds | How long the relay waits before polling again when the outbox is empty. |
 | `BatchSize` | `int` | 100 | Maximum messages drained per poll. |
 | `MaxAttempts` | `int` | 10 | After this many failed attempts a message is parked (left unprocessed but skipped by the scan so it does not block later messages). |
+| `LeaseDuration` | `TimeSpan` | 5 minutes | How long a relay drain holds an exclusive claim (lease) on the rows it drains before another instance may reclaim them. Set comfortably above the time to publish one batch so a slow batch is not reclaimed mid-flight; a crashed instance's rows become reclaimable once the lease expires. |
 
 ## Delivery semantics
 
@@ -171,7 +176,7 @@ The guarantee is at-least-once **delivery**, not handler success.
 - Only infrastructure failures — the event type cannot be resolved, the payload cannot be deserialized, or the relay's own `SaveChanges` fails — leave a message pending. Those retry on later polls up to `MaxAttempts`, after which the message is parked (its `Attempts` reaches the cap and the scan skips it, so later messages are not blocked). `LastError` records the most recent failure.
 - Because the cap parks rather than dead-letters, monitor for rows where `ProcessedAt IS NULL AND Attempts >= MaxAttempts`.
 - **Logs (production support).** The relay emits structured events. `OutboxRelay.MessageParked` (**Error**, `EventId` 5) is the alertable signal that a message exhausted `MaxAttempts` and needs manual intervention — it carries `MessageId`, `EventType`, `Attempts`, and the exception. Transient per-message failures log `OutboxRelay.RelayAttemptFailed` (**Warning**, `EventId` 4, with the attempt number); a whole drain cycle failing logs `OutboxRelay.DrainFailed` (**Error**, `EventId` 3); startup logs `OutboxRelay.Started` (Information) with the configured poll interval, batch size, and max attempts, and `OutboxRelay.DrainCompleted` (Debug) reports the per-cycle count. Alert on `MessageParked`.
-- **Single active relay.** The relay does not lock the rows it drains — it reads pending rows, publishes, then marks them processed. Running more than one relay concurrently (a horizontally-scaled deployment) can deliver the same message from two instances before either marks it processed; the at-least-once + idempotent-handler contract absorbs this. For exactly-one-drain across instances, gate the relay behind leader election or a distributed lock until row-claiming (`FOR UPDATE SKIP LOCKED` / `READPAST`) lands as a follow-up.
+- **Safe to run N-up (row-claiming).** Each drain atomically claims a batch with a lease — a single `UPDATE` sets `LockedBy` (a per-drain token) and `LockedUntil` (now + `LeaseDuration`) on eligible rows. Concurrent relays running that `UPDATE` are serialized by row locks and re-evaluate the lease guard, so every row is claimed by exactly one instance and published once. A crashed instance's rows become reclaimable once their lease expires, so no message is stranded. This makes a horizontally-scaled deployment safe **without** leader election or an external lock. Delivery is still at-least-once and handlers must stay idempotent: a crash between publish and the relay's `SaveChanges`, or a batch that outlives its lease, can re-deliver.
 
 Retry-until-handlers-succeed would require a non-swallowing publish path and is a planned follow-up; today, handlers that must not silently drop work should surface failures through their own durable mechanism.
 
