@@ -104,6 +104,66 @@ public class AggregateTests
 
     #endregion
 
+    #region Reconstitution Tests
+
+    [Fact]
+    public void Aggregate_implements_IReconstitutionStampable() =>
+        typeof(IReconstitutionStampable).IsAssignableFrom(typeof(Aggregate<string>)).Should().BeTrue();
+
+    [Fact]
+    public void StampReconstitutedState_restores_metadata_and_clears_events()
+    {
+        // Arrange — an aggregate carrying an uncommitted event, as if it had been mutated.
+        var aggregate = TestAggregate.Create("agg-1");
+        aggregate.DoSomething();
+        aggregate.IsChanged.Should().BeTrue();
+        var created = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var modified = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero);
+
+        // Act — a non-EF adapter restores persistence metadata after rebuilding the aggregate.
+        ((IReconstitutionStampable)aggregate).StampReconstitutedState(created, modified, "etag-abc");
+
+        // Assert — persisted metadata restored; a reconstituted aggregate carries no uncommitted events.
+        aggregate.ETag.Should().Be("etag-abc");
+        aggregate.CreatedAt.Should().Be(created);
+        aggregate.LastModified.Should().Be(modified);
+        aggregate.UncommittedEvents().Should().BeEmpty();
+        aggregate.IsChanged.Should().BeFalse();
+    }
+
+    [Fact]
+    public void StampReconstitutedState_with_invalid_etag_throws_without_mutating_state()
+    {
+        // Arrange — seed metadata and an uncommitted event, so we can prove nothing is mutated on failure.
+        var aggregate = TestAggregate.Create("agg-1");
+        aggregate.DoSomething();
+        var created = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var modified = new DateTimeOffset(2024, 2, 1, 0, 0, 0, TimeSpan.Zero);
+        aggregate.CreatedAt = created;
+        aggregate.LastModified = modified;
+
+        // Act — an invalid (quoted) token must be rejected before any state is mutated.
+        var act = () => ((IReconstitutionStampable)aggregate)
+            .StampReconstitutedState(
+                new DateTimeOffset(2025, 5, 5, 0, 0, 0, TimeSpan.Zero),
+                new DateTimeOffset(2025, 6, 6, 0, 0, 0, TimeSpan.Zero),
+                "\"quoted\"");
+
+        // Assert — throws, and the ETag, timestamps, and uncommitted event are all left untouched.
+        act.Should().Throw<ArgumentException>();
+        aggregate.ETag.Should().BeEmpty();
+        aggregate.CreatedAt.Should().Be(created);
+        aggregate.LastModified.Should().Be(modified);
+        aggregate.IsChanged.Should().BeTrue();
+    }
+
+    [Fact]
+    public void StampReconstitutedState_is_explicit_and_not_on_the_public_aggregate_surface() =>
+        typeof(Aggregate<string>).GetMethod("StampReconstitutedState").Should().BeNull(
+            "StampReconstitutedState is an infrastructure-only seam implemented explicitly");
+
+    #endregion
+
     #region Domain Events Tests
 
     [Fact]

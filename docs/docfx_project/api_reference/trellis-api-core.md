@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
+types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -1623,7 +1623,7 @@ public interface IAggregate : IChangeTracking
 ### `Aggregate<TId>`
 
 ```csharp
-public abstract class Aggregate<TId> : Entity<TId>, IAggregate, IETagStampable where TId : notnull
+public abstract class Aggregate<TId> : Entity<TId>, IAggregate, IETagStampable, IReconstitutionStampable where TId : notnull
 ```
 
 | Name | Type | Description |
@@ -1649,6 +1649,18 @@ Persistence-infrastructure seam for stamping an aggregate's optimistic-concurren
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `void StampETag(string etag)` | `void` | Sets `IAggregate.ETag` to `etag`, which must be a valid unquoted RFC 9110 opaque tag (e.g. `Guid.NewGuid().ToString("N")`). Throws `ArgumentNullException` for null and `ArgumentException` for empty/whitespace or non-opaque-tag characters. |
+
+### `IReconstitutionStampable`
+
+```csharp
+public interface IReconstitutionStampable
+```
+
+Persistence-infrastructure seam for restoring a reconstituted aggregate's persistence-managed metadata (audit timestamps and the optimistic-concurrency token) and clearing its uncommitted domain events, through an explicit infra-only method. `Aggregate<TId>` implements it **explicitly**. The aggregate author rebuilds *domain* state via its own `Reconstitute(...)` factory (private constructor + assigning get-only properties and private child collections); a non-EF adapter then casts to `IReconstitutionStampable` to restore the *infrastructure* metadata it loaded from storage. Post-conditions: timestamps and ETag restored, no uncommitted domain events (so `IsChanged == false` under the default event-based change tracking). The EF Core integration does the equivalent via its materializer and interceptors.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `void StampReconstitutedState(DateTimeOffset createdAt, DateTimeOffset lastModified, string etag)` | `void` | Restores audit timestamps and the optimistic-concurrency token, and clears uncommitted domain events. `etag` must be a valid unquoted RFC 9110 opaque tag; throws `ArgumentNullException` for null and `ArgumentException` for empty/whitespace or non-opaque-tag characters. |
 
 ### `IDomainEvent`
 
