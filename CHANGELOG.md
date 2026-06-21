@@ -52,10 +52,12 @@ fall-back-to-default behavior. Development-only — the provider already throws 
 transition as `Error.InvariantViolation.ForReason("state.machine.invalid.transition", detail)` instead of
 `Error.InvalidInput`. A rejected lifecycle transition is a domain-invariant breach evaluated against the
 aggregate's current state — the trigger is well-formed; the state forbids it — so `InvariantViolation` is
-the correct classification. The reason code `state.machine.invalid.transition` is unchanged, and both error
-types map to HTTP 422, so the wire status is identical; only the semantic `kind` / `code` changes. Consumers
-that matched on the error type or read `Error.InvalidInput.Rules` must switch to `Error.InvariantViolation`
-and its `ReasonCode`.
+the correct classification. The reason code `state.machine.invalid.transition` is unchanged. HTTP responses
+are also unchanged: both error types map to status 422 and share the on-wire ProblemDetails `kind`
+`unprocessable-content`. What changes is the domain error type — its `Kind` slug (`invalid-input` →
+`invariant-violation`) and its `Code` (now the reason code `state.machine.invalid.transition`, since
+`InvariantViolation.Code` returns its `ReasonCode`). Consumers that matched on the error type or read
+`Error.InvalidInput.Rules` must switch to `Error.InvariantViolation` and its `ReasonCode`.
 
 ### Changed — binder/JSON value-validation status honors `MapError<Error.InvalidInput>`
 
