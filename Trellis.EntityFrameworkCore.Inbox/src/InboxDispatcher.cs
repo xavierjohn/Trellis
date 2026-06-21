@@ -79,7 +79,8 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
         {
             // The duplicate key is either a concurrent dispatch that recorded this (ConsumerId, MessageId)
-            // first (already processed elsewhere -> no-op) or a handler's OWN unique-constraint violation
+            // first (already processed elsewhere -> this call's handlers ran, but their staged writes rolled
+            // back with the failed save) or a handler's OWN unique-constraint violation
             // (which must surface so the message is not falsely marked processed). The failing entry alone
             // cannot tell them apart: EF Core attributes a *batched* SaveChanges failure to every entry in
             // the batch, and the inbox row always shares the batch with the handler writes. So check the
