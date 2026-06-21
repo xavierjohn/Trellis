@@ -16,5 +16,11 @@ public interface IInboxDispatcher
     /// </summary>
     /// <param name="envelope">The message envelope to dispatch.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default);
+    /// <returns>
+    /// <see cref="InboxDispatchOutcome.Processed"/> when the handlers ran in this call, or
+    /// <see cref="InboxDispatchOutcome.SkippedDuplicate"/> when the message had already been processed and the
+    /// call was a no-op. Both outcomes mean the message is durably accounted for, so a pull consumer can
+    /// advance its checkpoint on either.
+    /// </returns>
+    Task<InboxDispatchOutcome> DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default);
 }

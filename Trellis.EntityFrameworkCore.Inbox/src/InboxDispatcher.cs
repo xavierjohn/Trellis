@@ -48,7 +48,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
     }
 
     /// <inheritdoc />
-    public async Task DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default)
+    public async Task<InboxDispatchOutcome> DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
@@ -62,7 +62,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         if (!await store.TryRecordAsync(_options.ConsumerId, envelope, cancellationToken).ConfigureAwait(false))
         {
             InboxDispatcherLog.DuplicateSkipped(_logger, envelope.MessageId, _options.ConsumerId);
-            return;
+            return InboxDispatchOutcome.SkippedDuplicate;
         }
 
         // Run the handlers BEFORE saving: a handler throw then propagates with nothing persisted (no dedup
@@ -74,6 +74,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         try
         {
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return InboxDispatchOutcome.Processed;
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
         {
@@ -87,6 +88,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
                 throw;
 
             InboxDispatcherLog.DuplicateSkipped(_logger, envelope.MessageId, _options.ConsumerId);
+            return InboxDispatchOutcome.SkippedDuplicate;
         }
     }
 

@@ -67,7 +67,13 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
                 dispatcherB.DispatchAsync(e, ct),
             })
             .ToList();
-        await Task.WhenAll(dispatches);
+        var outcomes = await Task.WhenAll(dispatches);
+
+        // Each message races two dispatches: exactly one wins (Processed) and the other is recognized as a
+        // duplicate (SkippedDuplicate) — the loser must never throw, whether it lost in the TryRecord
+        // fast-path or in the duplicate-key catch.
+        outcomes.Count(o => o == InboxDispatchOutcome.Processed).Should().Be(messageCount);
+        outcomes.Count(o => o == InboxDispatchOutcome.SkippedDuplicate).Should().Be(messageCount);
 
         await using var verify = BuildProvider();
         await using var scope = verify.CreateAsyncScope();
