@@ -10,6 +10,38 @@ audience: [developer]
 
 `Trellis.EntityFrameworkCore.Inbox` makes consuming integration events **idempotent**. It is the consume-side complement to the [transactional outbox](integration-outbox.md): the outbox guarantees a message is *published* at least once, and the inbox guarantees that — no matter how many times it is delivered — its handlers' local side effects are *applied* exactly once. The proof of processing and the side effects commit together, in one database transaction, or not at all.
 
+## The big picture
+
+```mermaid
+flowchart LR
+    subgraph PROD["Producer service · committed together"]
+        direction TB
+        AGG[Aggregate state change]
+        OB[(Outbox row)]
+        AGG --- OB
+    end
+
+    RLY([Outbox relay])
+    T{{"Transport<br/>broker / log<br/>at least once"}}
+
+    subgraph CONS["Consumer service · committed together"]
+        direction TB
+        IB[(Inbox dedup row)]
+        FX[Handler side effects]
+        IB --- FX
+    end
+
+    OB --> RLY
+    RLY -->|"publish — MessageId = OutboxMessage.Id"| T
+    T -->|"deliver, maybe more than once"| IB
+
+    style PROD fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    style CONS fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style T fill:#fff4e1,stroke:#f9a825,stroke-width:2px
+```
+
+Two atomic boxes joined by an unreliable wire. The **producer** commits its state change and the outbox row in one transaction, and a relay publishes the row after the commit. The **transport** in between may deliver the same message more than once. The **consumer's** inbox commits a dedup row and its handlers' side effects in one `SaveChanges`, so a repeat delivery finds the dedup row and is skipped. The producer's `OutboxMessage.Id` rides along as the `MessageId` that ties every delivery back to its origin.
+
 ## Why you need it
 
 Every durable transport delivers **at least once**. A broker redelivers when a consumer's lock renewal times out; a log-based transport replays from an offset after a restart; an at-least-once outbox re-publishes a message whose acknowledgement was lost. So your consumer *will* see the same message twice, and the second time it must not charge the card again, send the second confirmation email, or write the duplicate ledger row.
@@ -71,6 +103,25 @@ Trellis deliberately does **not** ship a broker adapter — there are too many t
 4. **Commit.** One `SaveChanges` persists the dedup row and the handler writes together, atomically, under EF Core's implicit transaction. The handlers run *before* this save, so a handler throw leaves nothing persisted and the transport redelivers.
 
 Because the dedup proof and the work land in the same `SaveChanges`, there is no window where one exists without the other. And because the inbox opens no user-initiated transaction, it composes with a retrying execution strategy (`EnableRetryOnFailure`) like the rest of Trellis.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant T as Transport
+    participant D as Inbox dispatcher
+    participant DB as Consumer DB
+    T->>D: deliver envelope (MessageId + event)
+    D->>DB: row for (ConsumerId, MessageId)?
+    alt first delivery
+        DB-->>D: not found
+        D->>DB: stage dedup row + run handlers
+        D->>DB: SaveChanges (atomic)
+        D-->>T: ack
+    else redelivery (duplicate)
+        DB-->>D: found
+        D-->>T: ack — skip, handlers not run
+    end
+```
 
 ## Delivery is at-least-once; processing is effectively-once
 
