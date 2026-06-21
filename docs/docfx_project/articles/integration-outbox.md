@@ -3,7 +3,7 @@ title: Transactional Outbox Integration
 package: Trellis.EntityFrameworkCore.Outbox
 topics: [outbox, domain-events, reliability, efcore, messaging]
 related_api_reference: [trellis-api-efcore-outbox.md, trellis-api-efcore.md, trellis-api-mediator.md]
-last_verified: 2026-06-09
+last_verified: 2026-06-20
 audience: [developer]
 ---
 # Transactional Outbox Integration
@@ -84,10 +84,53 @@ The relay (`OutboxRelay<TContext>`) is a hosted `BackgroundService`. Each poll i
 The guarantee is **at-least-once delivery**, not handler success — an important distinction:
 
 - A message is marked processed once it has been handed to the publisher. Per the `IDomainEventHandler<TEvent>` contract, the publisher logs and swallows non-cancellation handler exceptions, so a **failing handler does not retry**. This matches the in-pipeline dispatch behavior exactly.
-- Only infrastructure failures — an unresolvable event type, a deserialization error, or the relay's own save failing — leave a message pending. Those retry on later polls up to `MaxAttempts`, after which the message is *parked*: left unprocessed but skipped by the scan so it does not block later messages. `LastError` keeps the most recent failure.
+- Only infrastructure failures — an unresolvable event type, a deserialization error, or the relay's own save failing — leave a message pending. Those retry on later polls with an **exponential backoff**, up to `MaxAttempts`, after which the message is **dead-lettered** (see [Retries, dead-lettering, and replay](#retries-dead-lettering-and-replay)). `LastError` keeps the most recent failure.
 - A crash between dispatch and the relay's bookkeeping save re-delivers the message. **Make your handlers idempotent.** The `OutboxMessage.Id` (a UUIDv7) is a stable per-message key you can use for consumer-side de-duplication.
 
 Retry-until-handlers-succeed would need a non-swallowing publish path; that is a planned follow-up. Until then, a handler that must not silently drop work should surface failure through its own durable mechanism (its own outbox row, a dead-letter table, etc.).
+
+## Retries, dead-lettering, and replay
+
+When a message fails for an infrastructure reason, the relay does **not** retry it immediately — that would spin a poison message (or one caught in a brief outage) in a tight claim-fail-retry loop that hammers the database. Instead, each failed attempt leases the row *forward* with an **exponential backoff**: the wait after the *n*th attempt is `RetryBackoff × 2ⁿ⁻¹`, capped at `MaxRetryBackoff`. A transient blip is ridden out by a slightly later retry, while a persistently failing message backs off to a slow, steady cadence.
+
+The backoff also carries a small **per-message jitter** that only ever *shortens* the wait. It is derived deterministically from the message id — no randomness, so behavior is reproducible in tests — and it spreads the retry times of messages that failed together, so when a downed dependency recovers they don't all retry in the same instant and flood it.
+
+After `MaxAttempts` failures the message is **dead-lettered** (the log calls it *parked*): it stays in `TrellisOutboxMessages` with `ProcessedAt` still null, the scan skips it so it never blocks later messages, and the relay logs `OutboxRelay.MessageParked` at **Error** — the signal to alert on. The row is kept for inspection; it is a soft dead-letter, not a separate queue.
+
+### Tuning the retry behavior
+
+Every knob has a sensible default, so set only the ones you want to change:
+
+```csharp
+.UseOutbox<AppDbContext>(o =>
+{
+    o.MaxAttempts        = 10;                        // attempts before dead-lettering
+    o.RetryBackoff       = TimeSpan.FromSeconds(30);  // first backoff; doubles each attempt
+    o.MaxRetryBackoff    = TimeSpan.FromHours(1);     // ceiling on the per-retry wait
+    o.RetryBackoffJitter = 0.5;                       // 0 disables; 0.5 = up to 50% earlier
+});
+```
+
+With the defaults a message keeps retrying for roughly a few hours before it dead-letters.
+
+### Replaying dead-lettered messages
+
+Once you have fixed the cause — deployed the missing handler assembly, corrected a bad payload — re-drive the dead-lettered messages by resolving `IOutboxMaintenance` from a scope (an admin endpoint, a CLI, or a maintenance job):
+
+```csharp
+app.MapGet("/outbox/dead-lettered", (IOutboxMaintenance outbox, CancellationToken ct) =>
+    outbox.GetDeadLetteredAsync(cancellationToken: ct));
+
+app.MapPost("/outbox/dead-lettered/{id:guid}/replay", (Guid id, IOutboxMaintenance outbox, CancellationToken ct) =>
+    outbox.ReplayAsync(id, ct));
+
+app.MapPost("/outbox/dead-lettered/replay-all", (IOutboxMaintenance outbox, CancellationToken ct) =>
+    outbox.ReplayAllAsync(ct));
+```
+
+Replaying resets a message's attempt count and clears its lease so the relay drains it again on the next poll; `ReplayAsync` / `ReplayAllAsync` return how many rows they re-drove. It is safe to run while the relay is live — the relay never touches a dead-lettered row, so there is no race — and it re-runs the handlers, so, as always, keep them idempotent.
+
+> Replay covers only **dead-lettered** messages (those that exhausted `MaxAttempts`). It does not re-emit successfully-processed messages — the outbox is a delivery buffer, not a replayable event log. To re-emit already-delivered events (to rebuild a read model or onboard a new subscriber), replay from your source of truth or from a broker's retained log.
 
 ## Domain events vs. integration events
 
@@ -138,10 +181,10 @@ Events are serialized with the default `System.Text.Json` options:
 
 ## Operating the outbox
 
-- **Monitor and replay dead-lettered messages.** Alert on the `OutboxRelay.MessageParked` error log (and on rows where `ProcessedAt IS NULL AND Attempts >= MaxAttempts`); those events exhausted their retries. Once you have fixed the cause, replay them by resolving `IOutboxMaintenance` (`GetDeadLetteredAsync`, `ReplayAsync`, `ReplayAllAsync`). Transient retries log at Warning (`OutboxRelay.RelayAttemptFailed`) and self-heal with an exponential backoff (`RetryBackoff` doubling up to `MaxRetryBackoff`, with per-message jitter), so they should not page on their own.
+- **Alert on dead-lettered messages.** Page on the `OutboxRelay.MessageParked` error log (or on rows where `ProcessedAt IS NULL AND Attempts >= MaxAttempts`); those exhausted their retries and need a fix plus a [replay](#replaying-dead-lettered-messages). Transient per-attempt failures log at Warning (`OutboxRelay.RelayAttemptFailed`) and self-heal via the backoff, so they should not page on their own.
 - **Prune processed rows.** Rows with a non-null `ProcessedAt` are a spent delivery buffer — a periodic job can delete old ones with no loss of source-of-truth state. The aggregate tables remain authoritative.
 - **Keep the producing assemblies loaded.** The relay resolves each event by its assembly-qualified type name, so the worker process must reference the assemblies that declare your events.
-- **Run as many relay instances as you need.** Each drain atomically claims a batch with a lease (`LockedBy` + `LockedUntil`), and `LockedBy` is an optimistic concurrency token, so concurrent instances never publish the same row twice and a drain that outlived its lease abandons its bookkeeping write — logging `OutboxRelay.LeaseLost` — rather than clobber the instance that reclaimed the row. No leader election or distributed lock is needed. Delivery is still at-least-once — a crash between publish and the relay's `SaveChanges`, or a batch that outlives its lease, can re-deliver — so keep handlers idempotent. Set `LeaseDuration` comfortably above the worst-case batch publish time and keep node clocks reasonably in sync, since the lease is compared against each relay's wall clock.
+- **Run as many relay instances as you need.** Each drain atomically claims a batch with a lease (`LockedBy` + `LockedUntil`), and `LockedBy` is an optimistic concurrency token, so concurrent instances never both own a row's lease at once, and a drain that outlived its lease abandons its bookkeeping write — logging `OutboxRelay.LeaseLost` — rather than clobber the instance that reclaimed the row. No leader election or distributed lock is needed. Delivery is still at-least-once — a crash between publish and the relay's `SaveChanges`, or a batch that outlives its lease, can re-deliver — so keep handlers idempotent. Set `LeaseDuration` comfortably above the worst-case batch publish time and keep node clocks reasonably in sync, since the lease is compared against each relay's wall clock.
 - **One outbox per composition.** `UseOutbox<TContext>()` throws if called twice. Multiple relays in one process are not supported by the builder slot today.
 
 ## Outbox vs. event sourcing
