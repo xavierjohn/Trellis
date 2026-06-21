@@ -183,7 +183,7 @@ That is a different axis from scaling *one* consumer to several **instances**: t
 
 ## Pull consumers and the dispatch outcome
 
-The inbox is **push-fed**: an adapter calls `DispatchAsync` as messages arrive. That call returns an `InboxDispatchOutcome` — `Processed` when the handlers ran in this call, or `SkippedDuplicate` when the message had already been handled. Both mean the message is durably accounted for, so a consumer can advance a checkpoint, count throughput, or log on either outcome without re-querying.
+The inbox is **push-fed**: an adapter calls `DispatchAsync` as messages arrive. That call returns an `InboxDispatchOutcome` — `Processed` when this call committed the handlers' side effects, or `SkippedDuplicate` when the message had already been processed so this call committed nothing (caught on the fast path, or — in a lost race — after the handlers ran but rolled back). Both mean the message is durably accounted for, so a consumer can advance a checkpoint, count throughput, or log on either outcome without re-querying.
 
 A **pull** consumer reads its own durable feed (a log, or a table of published events) instead of subscribing to a broker. For that shape, `IInboxStore.FilterUnprocessedAsync(consumerId, messageIds, ct)` returns the subset of a window's ids that this consumer has not processed yet, in the order you passed them. That enables the **inbox-as-cursor / anti-join** model: scan a window of the feed and dispatch every row whose `MessageId` comes back unprocessed — gap-free *by construction*, with no fragile high-water cursor that could skip a row committed out of sequence order.
 

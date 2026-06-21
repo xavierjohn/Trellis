@@ -135,7 +135,7 @@ public interface IInboxDispatcher
 }
 ```
 
-- A first delivery runs the handlers and commits the dedup row, returning `InboxDispatchOutcome.Processed`. A redelivery of the same `(ConsumerId, MessageId)` is a no-op that returns `InboxDispatchOutcome.SkippedDuplicate` (whether detected by the existence check or by the duplicate-key guard under a race). Both outcomes mean the message is durably accounted for, so a pull consumer can advance its checkpoint on either.
+- A first delivery runs the handlers and commits the dedup row, returning `InboxDispatchOutcome.Processed`. A redelivery of the same `(ConsumerId, MessageId)` returns `InboxDispatchOutcome.SkippedDuplicate` — caught by the existence check on the fast path (no handler runs), or by the duplicate-key guard when a concurrent dispatch won the race (the handlers ran but rolled back). Either way this call commits nothing; both outcomes mean the message is durably accounted for, so a pull consumer can advance its checkpoint on either.
 - A handler exception is **not** swallowed: it rolls the transaction back and propagates out of `DispatchAsync`, so the adapter can let the transport redeliver.
 
 ## InboxDispatchOutcome
@@ -153,7 +153,7 @@ public enum InboxDispatchOutcome
 | Member | Meaning |
 |---|---|
 | `Processed` | The message was new: its handlers ran and their side effects committed atomically with the dedup record in this call. |
-| `SkippedDuplicate` | The `(ConsumerId, MessageId)` pair was already recorded, so this call invoked no handlers and changed nothing — a safe no-op for a redelivery. |
+| `SkippedDuplicate` | The `(ConsumerId, MessageId)` pair was already processed, so this call committed nothing. Usually caught on the fast path before any handler runs; if a concurrent dispatch won the race, the handlers ran but rolled back with the duplicate-key save. |
 
 Both outcomes mean the message is durably accounted for; the distinction is for metrics, logging, and a pull consumer's checkpoint / anti-join bookkeeping. A failure (handler throw, infrastructure error) does not return an outcome — it propagates so the transport redelivers.
 
