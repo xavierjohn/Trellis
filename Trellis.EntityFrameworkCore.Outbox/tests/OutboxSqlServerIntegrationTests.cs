@@ -193,7 +193,8 @@ public sealed class OutboxSqlServerIntegrationTests : IAsyncLifetime
             var relay = provider.GetServices<IHostedService>()
                 .OfType<OutboxRelay<OutboxTestDbContext>>()
                 .Single();
-            while (true)
+            var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(60);
+            while (DateTimeOffset.UtcNow < deadline)
             {
                 var drained = await relay.DrainAsync(ct);
 
@@ -201,10 +202,12 @@ public sealed class OutboxSqlServerIntegrationTests : IAsyncLifetime
                 var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
                 var pending = await context.Set<OutboxMessage>().AnyAsync(m => m.ProcessedAt == null, ct);
                 if (!pending)
-                    break;
+                    return;
                 if (drained == 0)
                     await Task.Delay(20, ct); // lost the race for the in-flight batch; back off briefly
             }
+
+            throw new TimeoutException("Outbox did not drain within the timeout; a regression likely stalled the relay.");
         }
 
         await Task.WhenAll(DrainLoopAsync(providerA), DrainLoopAsync(providerB));

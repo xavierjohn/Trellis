@@ -26,6 +26,33 @@ public sealed class OutboxOptions
     public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>
+    /// The base delay before a failed message is retried. The relay backs off exponentially from this
+    /// base — the wait after the <c>n</c>th failed attempt is <c>RetryBackoff × 2^(n-1)</c>, capped at
+    /// <see cref="MaxRetryBackoff"/> — so a transient failure is retried with growing spacing instead of
+    /// in a tight loop that would hammer the database. Default: 30 seconds. Must be greater than zero.
+    /// </summary>
+    public TimeSpan RetryBackoff { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// The ceiling on the exponential retry backoff: the per-retry wait grows from
+    /// <see cref="RetryBackoff"/> but never exceeds this, so a persistently failing message keeps being
+    /// retried at a steady, bounded cadence (rather than spacing out into many hours) until it reaches
+    /// <see cref="MaxAttempts"/>. Default: 1 hour. Must be greater than or equal to
+    /// <see cref="RetryBackoff"/>.
+    /// </summary>
+    public TimeSpan MaxRetryBackoff { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// How much of the computed exponential backoff is spread by a deterministic, per-message jitter, as
+    /// a fraction in <c>[0, 1]</c>. The jitter only ever <i>subtracts</i> from the delay — the actual wait
+    /// is <c>computed × (1 - RetryBackoffJitter × f(Id))</c> for a stable <c>f(Id) ∈ [0, 1)</c> — so it
+    /// never exceeds <see cref="MaxRetryBackoff"/> while de-correlating messages that failed together, so
+    /// they do not all retry the instant a failed dependency recovers. <c>0</c> disables jitter (every
+    /// message uses the exact computed delay). Default: 0.5. Must be between 0 and 1 inclusive.
+    /// </summary>
+    public double RetryBackoffJitter { get; set; } = 0.5;
+
+    /// <summary>
     /// Validates the configured values, failing fast at registration so misconfiguration surfaces there
     /// rather than as a runtime exception inside the relay loop.
     /// </summary>
@@ -39,5 +66,11 @@ public sealed class OutboxOptions
             throw new ArgumentOutOfRangeException(nameof(MaxAttempts), MaxAttempts, "OutboxOptions.MaxAttempts must be greater than zero.");
         if (LeaseDuration <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(LeaseDuration), LeaseDuration, "OutboxOptions.LeaseDuration must be greater than zero.");
+        if (RetryBackoff <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(RetryBackoff), RetryBackoff, "OutboxOptions.RetryBackoff must be greater than zero.");
+        if (MaxRetryBackoff < RetryBackoff)
+            throw new ArgumentOutOfRangeException(nameof(MaxRetryBackoff), MaxRetryBackoff, "OutboxOptions.MaxRetryBackoff must be greater than or equal to OutboxOptions.RetryBackoff.");
+        if (double.IsNaN(RetryBackoffJitter) || RetryBackoffJitter is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(RetryBackoffJitter), RetryBackoffJitter, "OutboxOptions.RetryBackoffJitter must be a number between 0 and 1 inclusive.");
     }
 }

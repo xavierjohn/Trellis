@@ -139,7 +139,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             return 0;
 
         List<(OutboxMessage Message, Exception Error)>? failures = null;
-        List<OutboxMessage>? stagedIntegrationRows = null;
+        Dictionary<OutboxMessage, List<OutboxMessage>>? stagedBySource = null;
         foreach (var message in batch)
         {
             try
@@ -162,7 +162,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
                         var rows = new List<OutboxMessage>(produced.Count);
                         foreach (var integrationEvent in produced)
                             rows.Add(CreateIntegrationRow(integrationEvent));
-                        (stagedIntegrationRows ??= []).AddRange(rows);
+                        (stagedBySource ??= [])[message] = rows;
                     }
                 }
 
@@ -170,7 +170,17 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                message.RecordFailure(ex.Message);
+                var retryDelay = OutboxRetryBackoff.Compute(
+                    message.Id,
+                    message.Attempts + 1,
+                    _options.RetryBackoff,
+                    _options.MaxRetryBackoff,
+                    _options.RetryBackoffJitter);
+                // Schedule the retry from the time of THIS failure, not the drain-start `now`: a slow batch
+                // could otherwise set a retry time already in the past, defeating the backoff and recreating
+                // the tight retry loop. Deterministic under a fake clock that is not advanced mid-drain.
+                var failureNow = _timeProvider.GetUtcNow().UtcDateTime;
+                message.RecordFailure(ex.Message, failureNow + retryDelay);
                 (failures ??= []).Add((message, ex));
             }
         }
@@ -178,18 +188,62 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         // Integration events translated from the domain events in this batch are staged transactionally
         // with their source messages' MarkProcessed, so a domain event is marked delivered only once the
         // integration rows it produced are durably enrolled. They are picked up on a later drain.
-        if (stagedIntegrationRows is not null)
-            context.Set<OutboxMessage>().AddRange(stagedIntegrationRows);
+        if (stagedBySource is not null)
+            foreach (var rows in stagedBySource.Values)
+                context.Set<OutboxMessage>().AddRange(rows);
 
-        // Persist MarkProcessed / RecordFailure (each releases the lease) first, then log. Emitting the
-        // failure logs only after the save succeeds keeps the alertable MessageParked (and the retry
-        // Warning) honest: if this save throws, the Attempts increments never persisted, the message is
-        // NOT parked, ExecuteAsync logs DrainFailed instead, and no false "parked" alert is raised.
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        // Persist MarkProcessed (releases the lease) / RecordFailure (backs the lease off to the retry
+        // time) under the LockedBy concurrency guard, then log. Emitting the failure logs only after the
+        // save succeeds keeps the alertable MessageParked (and the retry Warning) honest: a write that
+        // never persisted must not raise a false "parked" alert. Rows whose lease was stolen mid-batch are
+        // abandoned by SaveDrainAsync, so they are dropped from the failure logs too.
+        var stolen = await SaveDrainAsync(context, stagedBySource, cancellationToken).ConfigureAwait(false);
+        if (stolen is not null)
+        {
+            failures?.RemoveAll(f => stolen.Contains(f.Message));
+            OutboxRelayLog.LeaseLost(_logger, typeof(TContext).Name, stolen.Count, _options.LeaseDuration);
+        }
+
         LogFailures(failures);
         OutboxRelayLog.DrainCompleted(_logger, batch.Count);
 
-        return batch.Count;
+        return batch.Count - (stolen?.Count ?? 0);
+    }
+
+    // Saves the drain's bookkeeping while honoring the LockedBy concurrency token. If a slow batch
+    // outlived its lease and another instance reclaimed a row, that row's UPDATE matches no row (its
+    // LockedBy changed) and EF raises a concurrency conflict; we abandon our pending changes for that row
+    // — and drop any integration rows it produced, so they are not double-enrolled — rather than clobber
+    // the instance that now owns it, then retry the rest. Returns the abandoned rows, or null when none
+    // (the common case, so a healthy drain pays no extra cost).
+    private static async Task<List<OutboxMessage>?> SaveDrainAsync(
+        TContext context,
+        Dictionary<OutboxMessage, List<OutboxMessage>>? stagedBySource,
+        CancellationToken cancellationToken)
+    {
+        List<OutboxMessage>? stolen = null;
+        while (true)
+        {
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                return stolen;
+            }
+            catch (DbUpdateConcurrencyException ex)
+                when (ex.Entries.Count > 0 && ex.Entries.All(e => e.Entity is OutboxMessage))
+            {
+                foreach (var entry in ex.Entries)
+                {
+                    var source = (OutboxMessage)entry.Entity;
+                    if (stagedBySource is not null && stagedBySource.TryGetValue(source, out var integrationRows))
+                        foreach (var row in integrationRows)
+                            context.Entry(row).State = EntityState.Detached;
+
+                    entry.State = EntityState.Detached;
+                    (stolen ??= []).Add(source);
+                }
+            }
+        }
     }
 
     private void LogFailures(List<(OutboxMessage Message, Exception Error)>? failures)
@@ -294,7 +348,13 @@ internal static class OutboxRelayLog
         LoggerMessage.Define<Guid, string, int>(
             LogLevel.Error,
             new EventId(5, "OutboxRelay.MessageParked"),
-            "Outbox relay parked message {MessageId} ({EventType}) after {Attempts} failed attempts; it will not be retried and requires manual intervention.");
+            "Outbox relay parked message {MessageId} ({EventType}) after {Attempts} failed attempts; it is dead-lettered and will not be retried until replayed via IOutboxMaintenance.");
+
+    private static readonly Action<ILogger, string, int, TimeSpan, Exception?> s_leaseLost =
+        LoggerMessage.Define<string, int, TimeSpan>(
+            LogLevel.Warning,
+            new EventId(6, "OutboxRelay.LeaseLost"),
+            "Outbox relay for {ContextType} lost its lease on {Count} message(s) mid-drain; another instance reclaimed them, so this drain abandoned its writes for them. Increase LeaseDuration (currently {LeaseDuration}) above the worst-case batch publish time.");
 
     public static void Started(ILogger logger, string contextType, TimeSpan pollInterval, int batchSize, int maxAttempts) =>
         s_started(logger, contextType, pollInterval, batchSize, maxAttempts, null);
@@ -310,4 +370,7 @@ internal static class OutboxRelayLog
 
     public static void MessageParked(ILogger logger, Guid messageId, string eventType, int attempts, Exception exception) =>
         s_parked(logger, messageId, eventType, attempts, exception);
+
+    public static void LeaseLost(ILogger logger, string contextType, int count, TimeSpan leaseDuration) =>
+        s_leaseLost(logger, contextType, count, leaseDuration, null);
 }

@@ -33,7 +33,10 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(m => m.Attempts).IsRequired();
 
         builder.Property(m => m.LockedUntil);
-        builder.Property(m => m.LockedBy);
+        // LockedBy is an optimistic concurrency token: the relay's bookkeeping UPDATE only lands while this
+        // drain still owns the row, so a drain that outlived its lease cannot clobber the instance that
+        // reclaimed the row.
+        builder.Property(m => m.LockedBy).IsConcurrencyToken();
 
         // Covering index for the relay's "pending, claimable, in order" scan.
         builder.HasIndex(m => new { m.ProcessedAt, m.LockedUntil, m.Sequence });

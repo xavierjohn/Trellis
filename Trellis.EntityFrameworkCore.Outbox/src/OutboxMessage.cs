@@ -68,10 +68,12 @@ public sealed class OutboxMessage
     public string? LastError { get; private set; }
 
     /// <summary>
-    /// The UTC instant until which a relay drain holds an exclusive claim (lease) on this row; <c>null</c>
-    /// when unclaimed. The relay only claims rows whose lease is absent or expired, so concurrent relay
-    /// instances (horizontal scale-out) never publish the same row twice. A crashed instance's rows become
-    /// reclaimable once the lease expires.
+    /// The UTC instant until which this row is not eligible for draining; <c>null</c> when eligible now.
+    /// It serves two roles: while a drain is publishing the row it is the exclusive claim (lease) expiry, so
+    /// concurrent relay instances (horizontal scale-out) never publish the same row twice and a crashed
+    /// instance's rows become reclaimable once the lease expires; after a failed attempt it is the retry
+    /// time (an exponential backoff), so a failing message is retried with growing spacing rather than in a
+    /// tight loop.
     /// </summary>
     public DateTime? LockedUntil { get; private set; }
 
@@ -88,14 +90,18 @@ public sealed class OutboxMessage
         ReleaseLease();
     }
 
-    internal void RecordFailure(string error)
+    internal void RecordFailure(string error, DateTime retryAt)
     {
         Attempts++;
         LastError = error;
-        ReleaseLease();
+        // Back the lease off to the retry time instead of releasing it: the row stays ineligible until
+        // retryAt, which spaces out retries (no tight claim/fail/reclaim loop that would hammer the DB) yet
+        // leaves it reclaimable by any instance afterwards. LockedBy is cleared — this is a backoff, not a claim.
+        LockedUntil = retryAt;
+        LockedBy = null;
     }
 
-    // Release the claim so a processed row is tidy and a failed row is immediately reclaimable by any instance.
+    // Release the claim so a processed row is tidy; failed rows back the lease off instead (see RecordFailure).
     private void ReleaseLease()
     {
         LockedUntil = null;
