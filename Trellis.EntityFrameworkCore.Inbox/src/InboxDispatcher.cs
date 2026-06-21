@@ -48,7 +48,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
     }
 
     /// <inheritdoc />
-    public async Task DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default)
+    public async Task<InboxDispatchOutcome> DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
@@ -62,7 +62,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         if (!await store.TryRecordAsync(_options.ConsumerId, envelope, cancellationToken).ConfigureAwait(false))
         {
             InboxDispatcherLog.DuplicateSkipped(_logger, envelope.MessageId, _options.ConsumerId);
-            return;
+            return InboxDispatchOutcome.SkippedDuplicate;
         }
 
         // Run the handlers BEFORE saving: a handler throw then propagates with nothing persisted (no dedup
@@ -74,11 +74,13 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         try
         {
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return InboxDispatchOutcome.Processed;
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
         {
             // The duplicate key is either a concurrent dispatch that recorded this (ConsumerId, MessageId)
-            // first (already processed elsewhere -> no-op) or a handler's OWN unique-constraint violation
+            // first (already processed elsewhere -> this call's handlers ran, but their staged writes rolled
+            // back with the failed save) or a handler's OWN unique-constraint violation
             // (which must surface so the message is not falsely marked processed). The failing entry alone
             // cannot tell them apart: EF Core attributes a *batched* SaveChanges failure to every entry in
             // the batch, and the inbox row always shares the batch with the handler writes. So check the
@@ -87,6 +89,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
                 throw;
 
             InboxDispatcherLog.DuplicateSkipped(_logger, envelope.MessageId, _options.ConsumerId);
+            return InboxDispatchOutcome.SkippedDuplicate;
         }
     }
 

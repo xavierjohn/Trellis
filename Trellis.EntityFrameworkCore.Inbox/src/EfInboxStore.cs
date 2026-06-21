@@ -36,4 +36,28 @@ internal sealed class EfInboxStore<TContext> : IInboxStore
             InboxMessage.Create(consumerId, envelope, _timeProvider.GetUtcNow()));
         return true;
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Guid>> FilterUnprocessedAsync(
+        string consumerId, IReadOnlyCollection<Guid> messageIds, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(consumerId);
+        ArgumentNullException.ThrowIfNull(messageIds);
+        if (messageIds.Count == 0)
+            return [];
+
+        // Anti-join: fetch the already-recorded ids from this window in one round trip, then keep the rest
+        // in the caller's order. A pure read — nothing is staged in the unit of work.
+        var processed = (await _context.Set<InboxMessage>()
+            .AsNoTracking()
+            .Where(m => m.ConsumerId == consumerId && messageIds.Contains(m.MessageId))
+            .Select(m => m.MessageId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false))
+            .ToHashSet();
+
+        return processed.Count == 0
+            ? messageIds.ToList()
+            : messageIds.Where(id => !processed.Contains(id)).ToList();
+    }
 }

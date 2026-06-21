@@ -181,6 +181,23 @@ Three consumers are shown; the same fan-out covers any number — five, fifty. T
 
 That is a different axis from scaling *one* consumer to several **instances**: those instances share one `ConsumerId` and one database, and the composite primary key makes exactly one instance win a concurrent or redelivered duplicate — no leader election needed. Fan-out (many `ConsumerId`s) and scale-out (many instances of one `ConsumerId`) compose freely.
 
+## Pull consumers and the dispatch outcome
+
+The inbox is **push-fed**: an adapter calls `DispatchAsync` as messages arrive. That call returns an `InboxDispatchOutcome` — `Processed` when this call committed the handlers' side effects, or `SkippedDuplicate` when the message had already been processed so this call committed nothing (caught on the fast path, or — in a lost race — after the handlers ran but rolled back). Both mean the message is durably accounted for, so a consumer can advance a checkpoint, count throughput, or log on either outcome without re-querying.
+
+A **pull** consumer reads its own durable feed (a log, or a table of published events) instead of subscribing to a broker. For that shape, `IInboxStore.FilterUnprocessedAsync(consumerId, messageIds, ct)` returns the subset of a window's ids that this consumer has not processed yet, in the order you passed them. That enables the **inbox-as-cursor / anti-join** model: scan a window of the feed and dispatch every row whose `MessageId` comes back unprocessed — gap-free *by construction*, with no fragile high-water cursor that could skip a row committed out of sequence order.
+
+```csharp
+var window = await feed.ReadAsync(afterPosition, batchSize, ct);   // your source, your shape
+var ids = window.Select(r => r.MessageId).ToList();
+var todo = (await store.FilterUnprocessedAsync(consumerId, ids, ct)).ToHashSet();
+
+foreach (var row in window.Where(r => todo.Contains(r.MessageId)))
+    await dispatcher.DispatchAsync(new IntegrationEnvelope(row.MessageId, row.Event), ct);
+```
+
+`FilterUnprocessedAsync` is an optimization, not the correctness boundary — between the query and `DispatchAsync` another worker may process a row, and `DispatchAsync` still deduplicates it (returning `SkippedDuplicate`). Correctness always lives in the committed dedup row; the filter just keeps you from invoking handlers for messages you can already see are done.
+
 ## Operating the inbox
 
 - **Prune old rows.** `TrellisInboxMessages` grows by one row per processed message per consumer. Once a row is older than the transport's maximum redelivery window it can never be hit by a redelivery, so a periodic job can delete rows whose `ProcessedAt` is older than that window (the column is indexed for exactly this). Delete too eagerly and a late redelivery would reprocess.

@@ -67,7 +67,13 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
                 dispatcherB.DispatchAsync(e, ct),
             })
             .ToList();
-        await Task.WhenAll(dispatches);
+        var outcomes = await Task.WhenAll(dispatches);
+
+        // Each message races two dispatches: exactly one wins (Processed) and the other is recognized as a
+        // duplicate (SkippedDuplicate) — the loser must never throw, whether it lost in the TryRecord
+        // fast-path or in the duplicate-key catch.
+        outcomes.Count(o => o == InboxDispatchOutcome.Processed).Should().Be(messageCount);
+        outcomes.Count(o => o == InboxDispatchOutcome.SkippedDuplicate).Should().Be(messageCount);
 
         await using var verify = BuildProvider();
         await using var scope = verify.CreateAsyncScope();
@@ -118,6 +124,63 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task A_lost_duplicate_key_race_returns_SkippedDuplicate()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var envelope = new IntegrationEnvelope(
+            Guid.CreateVersion7(), new OrderPlacedIntegrationEvent(Guid.NewGuid(), DateTimeOffset.UnixEpoch));
+
+        // A barrier inside the handler holds BOTH dispatches past TryRecordAsync (i.e. in their handler, with
+        // their dedup row staged but not saved) before either reaches SaveChanges. So neither can short-circuit
+        // on the fast-path existence check, and the loser is guaranteed to take the duplicate-key *catch* path
+        // — the one that re-checks in a fresh scope and returns SkippedDuplicate.
+        var barrier = new DispatchBarrier(participants: 2);
+        await using var providerA = BuildBarrierProvider(barrier);
+        await using var providerB = BuildBarrierProvider(barrier);
+
+        var a = providerA.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct);
+        var b = providerB.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct);
+        var outcomes = await Task.WhenAll(a, b);
+
+        outcomes.Should().BeEquivalentTo(
+            new[] { InboxDispatchOutcome.Processed, InboxDispatchOutcome.SkippedDuplicate },
+            "exactly one dispatch wins the primary key; the loser takes the duplicate-key catch and reports SkippedDuplicate");
+
+        await using var verify = BuildProvider();
+        await using var scope = verify.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
+        (await db.Set<InboxMessage>().CountAsync(ct)).Should().Be(1, "only the winner's dedup row committed");
+        (await db.Receipts.CountAsync(ct)).Should().Be(1, "the loser's handler side effect rolled back with its failed save");
+    }
+
+    [Fact]
+    public async Task FilterUnprocessedAsync_handles_a_window_far_larger_than_the_sql_parameter_limit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var provider = BuildProvider();
+        var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
+
+        // Process a handful, then query a window with far more candidate ids than SQL Server's 2100-parameter
+        // limit. EF Core parameterizes the Contains collection as a single OPENJSON argument, so this must not
+        // fail with "too many parameters" regardless of window size.
+        var processed = Enumerable.Range(0, 5)
+            .Select(_ => new IntegrationEnvelope(
+                Guid.CreateVersion7(), new OrderPlacedIntegrationEvent(Guid.NewGuid(), DateTimeOffset.UnixEpoch)))
+            .ToList();
+        foreach (var e in processed)
+            await dispatcher.DispatchAsync(e, ct);
+
+        var window = new List<Guid>(processed.Select(e => e.MessageId));
+        window.AddRange(Enumerable.Range(0, 5000).Select(_ => Guid.CreateVersion7()));
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var unprocessed = await store.FilterUnprocessedAsync(ConsumerId, window, ct);
+
+        unprocessed.Should().HaveCount(5000, "the 5 processed ids are excluded and the 5000-id window did not hit the parameter limit");
+    }
+
     private static ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
@@ -126,6 +189,44 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
         services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ReceiptHandler>();
         services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = ConsumerId);
         return services.BuildServiceProvider();
+    }
+
+    private static ServiceProvider BuildBarrierProvider(DispatchBarrier barrier)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlServer(ConnectionString));
+        services.AddSingleton(barrier);
+        services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, BarrierReceiptHandler>();
+        services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = ConsumerId);
+        return services.BuildServiceProvider();
+    }
+}
+
+// Releases all participants only once every one of them has arrived, so concurrent dispatches are guaranteed
+// to be past TryRecordAsync (in their handler) before any of them saves.
+internal sealed class DispatchBarrier(int participants)
+{
+    private readonly TaskCompletionSource _allArrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _arrived;
+
+    public Task ArriveAndWaitAsync(CancellationToken cancellationToken)
+    {
+        if (Interlocked.Increment(ref _arrived) >= participants)
+            _allArrived.TrySetResult();
+        return _allArrived.Task.WaitAsync(cancellationToken);
+    }
+}
+
+// Like ReceiptHandler, but waits on the shared barrier first so concurrent dispatches interleave at the
+// SaveChanges boundary rather than running back to back.
+internal sealed class BarrierReceiptHandler(InboxTestDbContext context, DispatchBarrier barrier)
+    : IIntegrationEventHandler<OrderPlacedIntegrationEvent>
+{
+    public async ValueTask HandleAsync(OrderPlacedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    {
+        await barrier.ArriveAndWaitAsync(cancellationToken);
+        context.Receipts.Add(new Receipt { Id = Guid.NewGuid(), OrderId = integrationEvent.OrderId });
     }
 }
 

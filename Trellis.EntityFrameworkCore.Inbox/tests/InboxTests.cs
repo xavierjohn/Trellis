@@ -155,6 +155,124 @@ public sealed class InboxTests
         }
     }
 
+    [Fact]
+    public async Task Dispatch_returns_Processed_for_a_new_message_then_SkippedDuplicate_for_a_redelivery()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+        var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
+        var envelope = Envelope();
+
+        var first = await dispatcher.DispatchAsync(envelope, ct);
+        var second = await dispatcher.DispatchAsync(envelope, ct); // redelivery of the same message
+
+        first.Should().Be(InboxDispatchOutcome.Processed, "the first delivery runs the handlers");
+        second.Should().Be(InboxDispatchOutcome.SkippedDuplicate, "the redelivery is a recognized no-op");
+    }
+
+    [Fact]
+    public async Task FilterUnprocessedAsync_returns_every_id_when_none_are_processed()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+        var ids = new[] { Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7() };
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var unprocessed = await store.FilterUnprocessedAsync("billing", ids, ct);
+
+        unprocessed.Should().Equal(ids, "nothing has been processed yet");
+    }
+
+    [Fact]
+    public async Task FilterUnprocessedAsync_excludes_processed_ids_and_preserves_input_order()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+        var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
+
+        var envelopes = Enumerable.Range(0, 5).Select(_ => Envelope()).ToList();
+        await dispatcher.DispatchAsync(envelopes[1], ct); // process the 2nd
+        await dispatcher.DispatchAsync(envelopes[3], ct); // and the 4th
+
+        // Query in a deliberately scrambled order to prove the result follows the input order, not the table's.
+        var query = new[] { envelopes[4], envelopes[3], envelopes[2], envelopes[1], envelopes[0] }
+            .Select(e => e.MessageId).ToList();
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var unprocessed = await store.FilterUnprocessedAsync("billing", query, ct);
+
+        unprocessed.Should().Equal(envelopes[4].MessageId, envelopes[2].MessageId, envelopes[0].MessageId);
+    }
+
+    [Fact]
+    public async Task FilterUnprocessedAsync_is_scoped_per_consumer()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var providerA = BuildProvider(connection, "consumer-a");
+        await using var providerB = BuildProvider(connection, "consumer-b");
+        await EnsureCreatedAsync(providerA, ct);
+        var envelope = Envelope();
+
+        await providerA.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct);
+
+        await using var scope = providerB.CreateAsyncScope();
+        var storeB = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var unprocessed = await storeB.FilterUnprocessedAsync("consumer-b", new[] { envelope.MessageId }, ct);
+
+        unprocessed.Should().Equal(new[] { envelope.MessageId }, "consumer-b has not processed a message consumer-a did");
+    }
+
+    [Fact]
+    public async Task FilterUnprocessedAsync_returns_empty_for_empty_input()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var unprocessed = await store.FilterUnprocessedAsync("billing", Array.Empty<Guid>(), ct);
+
+        unprocessed.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FilterUnprocessedAsync_requires_a_consumerId()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var act = async () => await store.FilterUnprocessedAsync(" ", new[] { Guid.CreateVersion7() }, ct);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
     private static IntegrationEnvelope Envelope() =>
         new(Guid.CreateVersion7(), new OrderPlacedIntegrationEvent(Guid.NewGuid(), DateTimeOffset.UnixEpoch));
 
