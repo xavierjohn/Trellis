@@ -59,11 +59,10 @@ public class BankAccount : Aggregate<AccountId>
         _lifecycle.Configure(AccountStatus.Frozen)
             .Permit(AccountTrigger.Unfreeze, AccountStatus.Active);
 
-        // Closed is terminal: any further trigger surfaces as Error.Conflict
-        // via FireResult (Stateless throws InvalidOperationException, which
-        // FireResult translates). We deliberately do NOT call .Ignore(...) here:
-        // ignoring a trigger would silently succeed and let the outer Tap(...)
-        // chain emit lifecycle events for a state that did not actually change.
+        // Closed is terminal: any further trigger is rejected by FireResult, which returns
+        // Error.InvariantViolation (HTTP 422). We deliberately do NOT call .Ignore(...) here:
+        // ignoring a trigger would silently succeed and let the outer Tap(...) chain emit
+        // lifecycle events for a state that did not actually change.
         _lifecycle.Configure(AccountStatus.Closed);
     }
 

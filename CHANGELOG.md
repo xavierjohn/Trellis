@@ -46,6 +46,17 @@ non-empty. An **absent** or empty header is unchanged: it still yields the confi
 (intentional dev convenience). Set `ThrowOnMalformedHeader = false` to restore the previous lenient
 fall-back-to-default behavior. Development-only — the provider already throws outside Development.
 
+### Changed — `Trellis.StateMachine` `FireResult` returns `Error.InvariantViolation` for rejected transitions
+
+`StateMachineExtensions.FireResult` (and `LazyStateMachine.FireResult`) now classify a disallowed
+transition as `Error.InvariantViolation.ForReason("state.machine.invalid.transition", detail)` instead of
+`Error.InvalidInput`. A rejected lifecycle transition is a domain-invariant breach evaluated against the
+aggregate's current state — the trigger is well-formed; the state forbids it — so `InvariantViolation` is
+the correct classification. The reason code `state.machine.invalid.transition` is unchanged, and both error
+types map to HTTP 422, so the wire status is identical; only the semantic `kind` / `code` changes. Consumers
+that matched on the error type or read `Error.InvalidInput.Rules` must switch to `Error.InvariantViolation`
+and its `ReasonCode`.
+
 ### Changed — binder/JSON value-validation status honors `MapError<Error.InvalidInput>`
 
 Scalar- and composite-value-object validation failures raised during request binding and JSON body
@@ -219,7 +230,7 @@ The Path B "Microservices" snippet in cookbook Recipe 7 has been updated to show
 
 - **`Trellis.EntityFrameworkCore` `AddTrellisInterceptors(...)` idempotency** — repeated calls on the same `DbContextOptionsBuilder` now install Trellis' query / save interceptors exactly once, using an internal `IDbContextOptionsExtension` marker to detect prior registration. Library-level and application-level composition can both call the helper without double-firing Maybe-equality rewrites, scalar-value rewrites, or timestamp rewrites per query/save; consumer interceptors registered separately via `optionsBuilder.AddInterceptors(...)` are preserved. No migration is required.
 - **`Trellis.Asp` scalar-value JSON converter generator** — nested `JsonSerializerContext` declarations now regenerate the containing-type chain instead of emitting a conflicting top-level partial class, so contexts such as `Outer.InnerContext` compile correctly. Source-generator hint names now include the full namespace and containing-type chain, preventing same-named contexts in different namespaces or owners from colliding. No migration is required.
-- **Behavior change — `Trellis.StateMachine` `FireResult(...)`** — `FireResult` now checks `CanFire(trigger)` before calling Stateless `Fire`, returning a typed `Error.InvalidInput` for impermissible transitions without invoking the consumer's `OnUnhandledTrigger` callback. This keeps guarded result-based transitions from running side-effect callbacks and avoids confusing custom `InvalidOperationException` throws with Stateless' default unhandled-trigger exception; guard exceptions still surface. Consumers that intentionally rely on `OnUnhandledTrigger` side effects for rejected transitions should call `Fire` directly instead of `FireResult`.
+- **Behavior change — `Trellis.StateMachine` `FireResult(...)`** — `FireResult` now checks `CanFire(trigger)` before calling Stateless `Fire`, returning a typed `Error.InvariantViolation` for impermissible transitions without invoking the consumer's `OnUnhandledTrigger` callback. This keeps guarded result-based transitions from running side-effect callbacks and avoids confusing custom `InvalidOperationException` throws with Stateless' default unhandled-trigger exception; guard exceptions still surface. Consumers that intentionally rely on `OnUnhandledTrigger` side effects for rejected transitions should call `Fire` directly instead of `FireResult`.
 - **`Trellis.FluentValidation` scanner diagnostics** — assembly scanning now reports `ReflectionTypeLoadException` details when validator discovery has to drop types because transitive dependencies are missing. If an `ILoggerFactory` is registered, the scanner emits one warning per affected assembly with the assembly name, dropped-type count, and a sample of loader-exception messages; otherwise it falls back to `Debug.WriteLine`. The diagnostics are non-breaking and make previously silent partial discovery failures actionable.
 
 ### Fixed — Post-audit cleanup: resource-auth idempotency, TRLS009 fix correctness, PhoneNumber.GetCountryCode totality, doc sweep

@@ -3,7 +3,7 @@ package: Trellis.StateMachine
 namespaces: [Trellis.StateMachine]
 types: [StateMachineExtensions, "LazyStateMachine<TState, TTrigger>"]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-06-21
 audience: [llm]
 ---
 # Trellis.StateMachine — API Reference
@@ -28,7 +28,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-9--state-mach
 |---|---|---|
 | Fire a Stateless trigger and get a Trellis result | `stateMachine.FireResult(trigger)` | [`StateMachineExtensions`](#statemachineextensions) |
 | Store a state machine inside an aggregate | `LazyStateMachine<TState,TTrigger>` with state accessor/mutator delegates | [`LazyStateMachine<TState, TTrigger>`](#lazystatemachinetstate-ttrigger) |
-| Treat invalid transitions as validation failures | Let `FireResult` short-circuit when `CanFire` returns `false` and return `Error.InvalidInput` | [Behavioral notes](#behavioral-notes) |
+| Treat invalid transitions as domain-invariant breaches | Let `FireResult` short-circuit when `CanFire` returns `false` and return `Error.InvariantViolation` | [Behavioral notes](#behavioral-notes) |
 | Apply business mutations after successful transition | Call `.FireResult(...)`, then mutate/domain-event in a `.Tap(...)` or explicit success branch | [Code examples](#code-examples), [Cookbook Recipe 9](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
 
 ## Common traps
@@ -61,7 +61,7 @@ public static class StateMachineExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<TState> FireResult<TState, TTrigger>(this StateMachine<TState, TTrigger> stateMachine, TTrigger trigger) where TState : notnull where TTrigger : notnull` | `Result<TState>` | Pre-checks with `stateMachine.CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards). When permitted, calls `stateMachine.Fire(trigger)` and returns `Result.Ok(stateMachine.State)`. When not permitted, returns `Error.InvalidInput.ForRule("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422) without invoking `Fire(trigger)`, so user-configured `OnUnhandledTrigger` callbacks do not run through `FireResult`. Consumers who need those callbacks must call Stateless `Fire` directly. `InvalidOperationException` thrown while evaluating a guard is translated to `Error.InvalidInput` with the exception message; other exception types and exceptions from user entry/exit/transition actions propagate untouched. Independent of Stateless's exception message format. |
+| `public static Result<TState> FireResult<TState, TTrigger>(this StateMachine<TState, TTrigger> stateMachine, TTrigger trigger) where TState : notnull where TTrigger : notnull` | `Result<TState>` | Pre-checks with `stateMachine.CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards). When permitted, calls `stateMachine.Fire(trigger)` and returns `Result.Ok(stateMachine.State)`. When not permitted, returns `Error.InvariantViolation.ForReason("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422) without invoking `Fire(trigger)`, so user-configured `OnUnhandledTrigger` callbacks do not run through `FireResult`. Consumers who need those callbacks must call Stateless `Fire` directly. `InvalidOperationException` thrown while evaluating a guard is translated to `Error.InvariantViolation` with the exception message; other exception types and exceptions from user entry/exit/transition actions propagate untouched. Independent of Stateless's exception message format. |
 
 ### `LazyStateMachine<TState, TTrigger>`
 
@@ -108,8 +108,8 @@ public static Result<TState> FireResult<TState, TTrigger>(
 - `StateMachineExtensions.FireResult` null-checks `stateMachine` and throws `ArgumentNullException` for a `null` receiver before any Trellis error conversion occurs.
 - `LazyStateMachine<TState, TTrigger>` is also **not** thread-safe. Its lazy initialization uses `_machine ??= CreateMachine()` with no locking.
 - Invalid-transition detection uses `StateMachine.CanFire(trigger)` (which honors `PermitIf`/`IgnoreIf` guards) — no message-string parsing, so it is resilient to Stateless library upgrades.
-- When `CanFire` returns `false`, `FireResult` returns `Error.InvalidInput.ForRule("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422) without invoking `Fire`, so user-configured `OnUnhandledTrigger` callbacks do not run. Call Stateless `Fire` directly when that callback policy is desired.
-- `InvalidOperationException` thrown while evaluating a guard is translated to `Error.InvalidInput` with the guard exception message. Other exception types and exceptions thrown by user entry, exit, transition, accessor, mutator, or configuration code are not swallowed.
+- When `CanFire` returns `false`, `FireResult` returns `Error.InvariantViolation.ForReason("state.machine.invalid.transition", $"Trigger '{trigger}' is not permitted from state '{stateMachine.State}'.")` (HTTP 422) without invoking `Fire`, so user-configured `OnUnhandledTrigger` callbacks do not run. Call Stateless `Fire` directly when that callback policy is desired.
+- `InvalidOperationException` thrown while evaluating a guard is translated to `Error.InvariantViolation` with the guard exception message. Other exception types and exceptions thrown by user entry, exit, transition, accessor, mutator, or configuration code are not swallowed.
 - `LazyStateMachine<TState, TTrigger>` exists to defer state-machine construction until after entity state is available, which is useful when ORMs materialize an object before populating its state properties.
 
 ## Scope boundary — async and parameterized triggers
@@ -166,13 +166,14 @@ StateMachine<DocumentState, DocumentTrigger> machine = lazyMachine.Machine;
 
 ## Cross-references
 
-- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Result<T>`, `Error.InvalidInput`, `RuleViolation`.
+- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Result<T>`, `Error.InvariantViolation`.
 - [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) — Recipe 9: state-machine `CanFire` + `Fire` pattern with `FireResult`.
-- [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvalidInput` renders as HTTP 422 (top-level `detail` reads `Error.Detail`; per-rule context reads `RuleViolation.Detail`).
+- [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvariantViolation` renders as HTTP 422 (top-level `detail` reads `Error.Detail`).
 
 ## Breaking changes from v1
 
 - **Package renamed:** `Trellis.Stateless` → `Trellis.StateMachine`. Vendor independence in the *name*, not the *implementation* — the underlying [Stateless](https://github.com/dotnet-state-machine/stateless) library is still referenced directly, and `StateMachine<TState, TTrigger>` from the `Stateless` namespace remains visible in user code.
 - **Namespace renamed:** `Trellis.Stateless` → `Trellis.StateMachine`. Replace `using Trellis.Stateless;` with `using Trellis.StateMachine;`.
-- **Public surface is otherwise identical:** `StateMachineExtensions.FireResult<TState, TTrigger>(...)` and `LazyStateMachine<TState, TTrigger>` are unchanged.
+- **Method signatures are unchanged:** `StateMachineExtensions.FireResult<TState, TTrigger>(...)` and `LazyStateMachine<TState, TTrigger>` keep the same shape.
+- **Rejected transitions now return `Error.InvariantViolation`** (reason code `state.machine.invalid.transition`), not `Error.InvalidInput`. A disallowed lifecycle transition is a domain-invariant breach, not inbound-input validation. Both still map to HTTP 422, so the wire status is unchanged; but code that matches on the error type or reads `Error.InvalidInput.Rules` must update to `Error.InvariantViolation` and its `ReasonCode`.
 - **No metapackage redirect.** The old `Trellis.Stateless` package is not shipped and there is no shim. Update your `PackageReference` directly.

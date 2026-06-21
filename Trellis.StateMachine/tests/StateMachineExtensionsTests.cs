@@ -88,7 +88,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Should().BeOfType<Error.InvariantViolation>();
         err!.Detail.Should().Contain("Pause");
         err!.Detail.Should().Contain("Idle");
     }
@@ -119,9 +119,9 @@ public class StateMachineExtensionsTests
 
         // Assert
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Code.Should().Be("invalid-input");
-        var unproc = err!.Should().BeOfType<Error.InvalidInput>().Subject;
-        unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
+        err!.Code.Should().Be("state.machine.invalid.transition");
+        var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
+        invariant.ReasonCode.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Should().BeOfType<Error.InvariantViolation>();
     }
 
     [Fact]
@@ -163,13 +163,12 @@ public class StateMachineExtensionsTests
         var result = machine.FireResult(Trigger.Pause);
 
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Should().BeOfType<Error.InvariantViolation>();
         err!.Detail.Should().Contain("Pause");
         err!.Detail.Should().Contain("Idle");
-        var invalidInput = err!.Should().BeOfType<Error.InvalidInput>().Subject;
-        var rule = invalidInput.Rules.Items.Should().ContainSingle().Which;
-        rule.Detail.Should().Contain("Pause");
-        rule.Detail.Should().Contain("Idle");
+        var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
+        invariant.Detail.Should().Contain("Pause");
+        invariant.Detail.Should().Contain("Idle");
     }
 
     [Fact]
@@ -189,7 +188,7 @@ public class StateMachineExtensionsTests
         result.IsFailure.Should().BeTrue();
         unhandledCallbackInvoked.Should().BeFalse();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Should().BeOfType<Error.InvariantViolation>();
         err!.Detail.Should().Contain("Pause");
         err!.Detail.Should().Contain("Idle");
         err!.Detail.Should().NotContain("custom");
@@ -232,7 +231,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Should().BeOfType<Error.InvariantViolation>();
         err!.Detail.Should().Contain("Start");
         err!.Detail.Should().Contain("Idle");
     }
@@ -264,10 +263,10 @@ public class StateMachineExtensionsTests
 
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Should().BeOfType<Error.InvariantViolation>();
         err!.Detail.Should().Be("guard blocked");
-        var invalidInput = err!.Should().BeOfType<Error.InvalidInput>().Subject;
-        invalidInput.Rules.Items.Should().ContainSingle().Which.Detail.Should().Be("guard blocked");
+        var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
+        invariant.ReasonCode.Should().Be("state.machine.invalid.transition");
         machine.State.Should().Be(State.Idle);
     }
 
@@ -424,7 +423,7 @@ public class StateMachineExtensionsTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvalidInput>();
+        err!.Should().BeOfType<Error.InvariantViolation>();
     }
 
     #endregion

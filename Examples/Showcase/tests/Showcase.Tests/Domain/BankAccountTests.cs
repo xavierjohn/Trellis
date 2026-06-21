@@ -90,7 +90,7 @@ public class BankAccountTests
     }
 
     [Fact]
-    public void Lifecycle_invalid_transition_via_state_machine_returns_conflict()
+    public void Lifecycle_invalid_transition_via_state_machine_returns_invariant_violation()
     {
         var account = NewActiveAccount();
 
@@ -98,8 +98,8 @@ public class BankAccountTests
         var result = account.Unfreeze();
 
         result.IsFailure.Should().BeTrue();
-        var unproc = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
-        unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
+        var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
+        invariant.ReasonCode.Should().Be("state.machine.invalid.transition");
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public class BankAccountTests
     }
 
     [Fact]
-    public void Closed_account_freeze_returns_conflict_and_emits_no_events()
+    public void Closed_account_freeze_returns_invariant_violation_and_emits_no_events()
     {
         var account = NewActiveAccount(0m); // zero balance to allow Close
         account.Close().IsSuccess.Should().BeTrue();
@@ -150,13 +150,13 @@ public class BankAccountTests
         var result = account.Freeze("audit");
 
         result.IsFailure.Should().BeTrue();
-        var unproc = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
-        unproc.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be("state.machine.invalid.transition");
+        var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
+        invariant.ReasonCode.Should().Be("state.machine.invalid.transition");
         account.UncommittedEvents().Should().BeEmpty();
     }
 
     [Fact]
-    public void Closed_account_unfreeze_returns_conflict_and_emits_no_events()
+    public void Closed_account_unfreeze_returns_invariant_violation_and_emits_no_events()
     {
         var account = NewActiveAccount(0m);
         account.Close().IsSuccess.Should().BeTrue();
@@ -165,12 +165,12 @@ public class BankAccountTests
         var result = account.Unfreeze();
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.InvalidInput>();
+        result.Error.Should().BeOfType<Error.InvariantViolation>();
         account.UncommittedEvents().Should().BeEmpty();
     }
 
     [Fact]
-    public void Closed_account_close_again_returns_conflict_and_emits_no_events()
+    public void Closed_account_close_again_returns_invariant_violation_and_emits_no_events()
     {
         var account = NewActiveAccount(0m);
         account.Close().IsSuccess.Should().BeTrue();
@@ -179,7 +179,7 @@ public class BankAccountTests
         var result = account.Close();
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.InvalidInput>();
+        result.Error.Should().BeOfType<Error.InvariantViolation>();
         account.UncommittedEvents().Should().BeEmpty();
     }
 

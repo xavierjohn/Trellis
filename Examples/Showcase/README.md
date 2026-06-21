@@ -17,7 +17,7 @@ the two hosting styles side-by-side over a single, identical contract.
 | `Error.AuthenticationRequired` from a boundary adapter | `Showcase.Application/Services/InMemoryIdentityVerifier.cs` |
 | Plain ROP (`Ensure`/`Bind`/`Tap`/`Map`) | `Showcase.Domain/Aggregates/BankAccount.cs` (money operations) |
 | `Trellis.StateMachine` lifecycle modeling | `Showcase.Domain/Aggregates/BankAccount.cs` (`Freeze`, `Unfreeze`, `Close`) |
-| Invalid state transition → `Error.InvalidInput` via `FireResult` | `BankAccount.Unfreeze` on an Active account |
+| Invalid state transition → `Error.InvariantViolation` via `FireResult` | `BankAccount.Unfreeze` on an Active account |
 | Application/workflow boundary (events → AcceptChanges → persist) | `Showcase.Application/Workflows/BankingWorkflow.cs` |
 | `Trellis.Asp.ToHttpResponse(...).AsActionResult<T>()` mapping (MVC) | `Showcase.Mvc/Controllers/*` |
 | `Trellis.Asp.ToHttpResponseAsync(...)` mapping (Minimal API) | `Showcase.MinimalApi/Endpoints/*` |
