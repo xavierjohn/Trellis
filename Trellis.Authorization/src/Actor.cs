@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Authorization;
 
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 /// <summary>
@@ -293,6 +294,58 @@ public sealed class Actor : IEquatable<Actor>
     {
         ArgumentNullException.ThrowIfNull(key);
         return Attributes.TryGetValue(key, out var value) ? value : null;
+    }
+
+    /// <summary>
+    /// Returns the attribute identified by <paramref name="key"/> parsed into the string-backed scalar
+    /// value object <typeparamref name="TVo"/> through its <c>TryCreate</c> factory, so a claim-sourced
+    /// value is validated by the same domain rule that guards request input.
+    /// </summary>
+    /// <typeparam name="TVo">
+    /// A string-backed scalar value object — for example a <c>RequiredString&lt;T&gt;</c> subclass such as
+    /// <see cref="ActorId"/>. The attribute string is run through the type's own <c>TryCreate</c>.
+    /// </typeparam>
+    /// <param name="key">The attribute key. Use <see cref="ActorAttributes"/> constants for well-known keys.</param>
+    /// <returns>
+    /// A success <see cref="Result{T}"/> with the typed value when the attribute is present and valid;
+    /// otherwise a failed <see cref="Result{T}"/> carrying the value object's <see cref="Error.InvalidInput"/>.
+    /// A missing attribute is treated as a missing value and fails the same way. The error's field is the
+    /// attribute <paramref name="key"/>.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is null.</exception>
+    public Result<TVo> GetRequiredAttribute<TVo>(string key)
+        where TVo : class, IScalarValue<TVo, string>
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return TVo.TryCreate(GetAttribute(key), key);
+    }
+
+    /// <summary>
+    /// Attempts to parse the attribute identified by <paramref name="key"/> into the string-backed scalar
+    /// value object <typeparamref name="TVo"/> through its <c>TryCreate</c> factory.
+    /// </summary>
+    /// <typeparam name="TVo">
+    /// A string-backed scalar value object — for example a <c>RequiredString&lt;T&gt;</c> subclass.
+    /// </typeparam>
+    /// <param name="key">The attribute key. Use <see cref="ActorAttributes"/> constants for well-known keys.</param>
+    /// <param name="value">When this method returns <see langword="true"/>, the parsed value; otherwise <see langword="null"/>.</param>
+    /// <returns>
+    /// <see langword="true"/> when the attribute is present and valid; <see langword="false"/> when it is
+    /// absent or fails the value object's validation.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is null.</exception>
+    public bool TryGetAttribute<TVo>(string key, [NotNullWhen(true)] out TVo? value)
+        where TVo : class, IScalarValue<TVo, string>
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (TVo.TryCreate(GetAttribute(key), key).TryGetValue(out var created))
+        {
+            value = created;
+            return true;
+        }
+
+        value = null;
+        return false;
     }
 
     /// <summary>

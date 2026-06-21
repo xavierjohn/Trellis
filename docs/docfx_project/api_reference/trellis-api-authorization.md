@@ -3,7 +3,7 @@ package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
 types: [Actor, ActorAttributes, ActorId, IActorProvider, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
-last_verified: 2026-06-17
+last_verified: 2026-06-21
 audience: [llm]
 ---
 # Trellis.Authorization — API Reference
@@ -150,6 +150,8 @@ public sealed class Actor : IEquatable<Actor>
 | `public bool IsOwner(string resourceOwnerId)` | `bool` | Convenience overload that compares `Id.Value` and `resourceOwnerId` with `StringComparison.Ordinal`. |
 | `public bool HasAttribute(string key)` | `bool` | `true` when `Attributes` contains `key`. |
 | `public string? GetAttribute(string key)` | `string?` | Returns the attribute value or `null` when absent. |
+| `public Result<TVo> GetRequiredAttribute<TVo>(string key) where TVo : class, IScalarValue<TVo, string>` | `Result<TVo>` | Parses the attribute through the string-backed value object's `TryCreate`: a success `Result` with the typed value when present and valid, otherwise a failed `Result` carrying the value object's `Error.InvalidInput` (a missing attribute fails the same way). The error's field is `key`. Throws `ArgumentNullException` when `key` is null. |
+| `public bool TryGetAttribute<TVo>(string key, out TVo? value) where TVo : class, IScalarValue<TVo, string>` | `bool` | `true` with the parsed `value` when the attribute is present and valid; `false` (and `value` is null) when absent or invalid — deny-closes naturally in an authorization gate. Throws `ArgumentNullException` when `key` is null. |
 
 ### `ActorId`
 
@@ -518,6 +520,11 @@ var actor = new Actor(
 bool canCancel = actor.HasPermission("orders:cancel");
 bool canViewTenant = actor.HasPermission("orders:view", "tenant-1");
 string? tenant = actor.GetAttribute(ActorAttributes.TenantId);
+
+// Typed accessors parse the claim through a string-backed value object's TryCreate
+// (where: public sealed partial class TenantId : RequiredString<TenantId>;):
+Result<TenantId> tenantVo = actor.GetRequiredAttribute<TenantId>(ActorAttributes.TenantId);
+bool hasTenant = actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var typedTenant);
 ```
 
 ## Cross-references

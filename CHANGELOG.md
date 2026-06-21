@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — typed actor attribute accessors (`Actor.GetRequiredAttribute<TVo>` / `TryGetAttribute<TVo>`)
+
+`Trellis.Authorization.Actor` gains two generic accessors that parse an actor attribute (an ABAC claim) into
+a string-backed scalar value object through its own `TryCreate`, removing the `GetAttribute(...)` +
+`TryCreate(...)` ceremony and the magic-string key at every call site:
+
+- **`Result<TVo> GetRequiredAttribute<TVo>(string key)`** returns the typed value when the attribute is
+  present and valid, or a failed `Result` carrying the value object's `Error.InvalidInput` (the error's field
+  is `key`; a missing attribute fails the same way) — suited to railway composition in a handler.
+- **`bool TryGetAttribute<TVo>(string key, out TVo? value)`** returns `true` with the parsed value when
+  present and valid, `false` otherwise — deny-closes naturally in an authorization gate.
+
+Both constrain `TVo` to `class, IScalarValue<TVo, string>` (a `RequiredString<T>` subclass — the natural
+model for a string claim). The existing `string? GetAttribute(string)` is unchanged. New cookbook Recipe 38
+demonstrates the tenant-isolation use: a per-command scope check with no base type.
+
 ### Added — inbox pull-consumer ergonomics (`FilterUnprocessedAsync`, dispatch outcome)
 
 `Trellis.EntityFrameworkCore.Inbox` gains two additions that unlock the gap-free pull / anti-join consumer
