@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — inbox pull-consumer ergonomics (`FilterUnprocessedAsync`, dispatch outcome)
+
+`Trellis.EntityFrameworkCore.Inbox` gains two additions that unlock the gap-free pull / anti-join consumer
+model on top of the existing transactional inbox:
+
+- **`IInboxStore.FilterUnprocessedAsync(consumerId, messageIds, ct)`** returns the subset of a candidate id
+  window that the consumer has not yet processed (those without a `(ConsumerId, MessageId)` dedup row),
+  preserving input order. It enables the **inbox-as-cursor / anti-join** model — scan a window of the source
+  feed and dispatch every row whose `MessageId` comes back unprocessed — which is gap-free by construction,
+  with no fragile high-water cursor that could skip a row committed out of sequence order. `EfInboxStore`
+  implements it as a single `AsNoTracking` anti-join query; it is an optimization, not the correctness
+  boundary (`DispatchAsync` still deduplicates).
+- **`IInboxDispatcher.DispatchAsync` now returns `Task<InboxDispatchOutcome>`** (`Processed` vs
+  `SkippedDuplicate`) instead of `Task`, so a consumer can drive metrics and checkpoint decisions without
+  re-querying. Source-compatible for callers that `await` and discard the result (`Task<T>` is a `Task`); a
+  custom `IInboxStore` implementation must add `FilterUnprocessedAsync`.
+
 ### Added — `WriteOutcome` static factory helpers (cast-free case construction)
 
 A non-generic `static class WriteOutcome` (in `Trellis.Http.Abstractions`, namespace `Trellis`) now
