@@ -67,6 +67,19 @@ public sealed class OutboxMessage
     /// <summary>The most recent relay error, if any.</summary>
     public string? LastError { get; private set; }
 
+    /// <summary>
+    /// The UTC instant until which this row is not eligible for draining; <c>null</c> when eligible now.
+    /// It serves two roles: while a drain is publishing the row it is the exclusive claim (lease) expiry, so
+    /// concurrent relay instances (horizontal scale-out) never publish the same row twice and a crashed
+    /// instance's rows become reclaimable once the lease expires; after a failed attempt it is the retry
+    /// time (an exponential backoff), so a failing message is retried with growing spacing rather than in a
+    /// tight loop.
+    /// </summary>
+    public DateTime? LockedUntil { get; private set; }
+
+    /// <summary>The claim token of the relay drain that currently holds this row; <c>null</c> when unclaimed.</summary>
+    public Guid? LockedBy { get; private set; }
+
     internal static OutboxMessage Create(Guid id, DateTimeOffset occurredAt, string eventType, string payload, OutboxMessageKind kind) =>
         new(id, occurredAt, eventType, payload, kind);
 
@@ -74,11 +87,24 @@ public sealed class OutboxMessage
     {
         ProcessedAt = processedAt;
         LastError = null;
+        ReleaseLease();
     }
 
-    internal void RecordFailure(string error)
+    internal void RecordFailure(string error, DateTime retryAt)
     {
         Attempts++;
         LastError = error;
+        // Back the lease off to the retry time instead of releasing it: the row stays ineligible until
+        // retryAt, which spaces out retries (no tight claim/fail/reclaim loop that would hammer the DB) yet
+        // leaves it reclaimable by any instance afterwards. LockedBy is cleared — this is a backoff, not a claim.
+        LockedUntil = retryAt;
+        LockedBy = null;
+    }
+
+    // Release the claim so a processed row is tidy; failed rows back the lease off instead (see RecordFailure).
+    private void ReleaseLease()
+    {
+        LockedUntil = null;
+        LockedBy = null;
     }
 }

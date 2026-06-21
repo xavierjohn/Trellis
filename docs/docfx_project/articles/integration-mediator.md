@@ -431,7 +431,7 @@ See [FluentValidation Integration](integration-fluentvalidation.md#mediator-inte
 | Cancellation | `cancellationToken` is checked between each event; cancellation propagates and leaves undispatched events on the aggregate. `AcceptChanges()` runs only after clean validation, so a mid-dispatch cancellation does not clear the queue. |
 
 > [!WARNING]
-> **Post-commit throw caveat.** With `AddTrellisUnitOfWork<TContext>()` registered, the database commit is already durable before dispatch starts. If cascade detection throws, the request returns a failure-shaped response even though the write committed; a client retry may encounter "already committed" semantics. Durable at-least-once delivery requires the outbox pattern — planned for a future release, not shipped today.
+> **Post-commit throw caveat.** With `AddTrellisUnitOfWork<TContext>()` registered, the database commit is already durable before dispatch starts. If cascade detection throws, the request returns a failure-shaped response even though the write committed; a client retry may encounter "already committed" semantics. Durable at-least-once delivery requires the [transactional outbox](integration-outbox.md), which captures the event in the same transaction as the write and re-dispatches it after the commit.
 
 ### Registration
 
@@ -487,7 +487,7 @@ Handlers must stay side-effect-only. Do not mutate the source aggregate, mutate 
 - **`OperationCanceledException`** matching the supplied cancellation token propagates so the originating request can abort cleanly.
 - **No handler resolved** for a given runtime event type is logged at `Debug` and treated as a no-op.
 
-Cascade detection does not change handler-exception semantics. A swallowed handler failure can still be followed by clean snapshot validation and `AcceptChanges()`, so the default publisher is best-effort, not durable retry. Durable at-least-once side effects require the outbox pattern — planned for a future release, not shipped today.
+Cascade detection does not change handler-exception semantics. A swallowed handler failure can still be followed by clean snapshot validation and `AcceptChanges()`, so the default publisher is best-effort, not durable retry. Durable at-least-once side effects require the [transactional outbox](integration-outbox.md).
 
 Event-to-handler matching uses `domainEvent.GetType()` exactly. Handlers registered against a base class or interface of the runtime event type are **not** invoked — register one handler per concrete event type (or one type implementing multiple `IDomainEventHandler<TEvent>` interfaces, each of which is wired up separately).
 

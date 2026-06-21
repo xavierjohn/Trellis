@@ -148,8 +148,12 @@ A persisted event awaiting relay — one row per captured domain event or transl
 | `ProcessedAt` | `DateTimeOffset?` | When the message was relayed; `null` while pending. |
 | `Attempts` | `int` | Relay attempts so far. |
 | `LastError` | `string?` | Most recent relay error, if any. |
+| `LockedUntil` | `DateTime?` | UTC instant until which a relay drain holds an exclusive claim (lease) on the row; `null` when unclaimed. |
+| `LockedBy` | `Guid?` | Claim token of the relay drain that currently holds the row; `null` when unclaimed. |
 
-The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Sequence` primary key (`ValueGeneratedOnAdd`), a unique index on `Id`, the `Kind` discriminator (string, max length 32), and a covering index on `{ ProcessedAt, Sequence }` for the relay scan.
+The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Sequence` primary key (`ValueGeneratedOnAdd`), a unique index on `Id`, the `Kind` discriminator (string, max length 32), a covering index on `{ ProcessedAt, LockedUntil, Sequence }` for the relay's claimable-rows scan, and an index on `LockedBy` for loading a drain's just-claimed batch.
+
+> **Schema migration.** Row-claiming added the nullable `LockedUntil` and `LockedBy` columns. An existing outbox table needs a migration to add them; both are nullable, so in-flight rows default to unclaimed and are picked up normally.
 
 `OutboxMessage` is an infrastructure record, not a domain aggregate. The rows are transient and may be pruned once `ProcessedAt` is set — deleting processed rows loses no source-of-truth state. This is an outbox, **not** an event store.
 
@@ -161,19 +165,37 @@ Tuning for the relay.
 |---|---|---|---|
 | `PollInterval` | `TimeSpan` | 5 seconds | How long the relay waits before polling again when the outbox is empty. |
 | `BatchSize` | `int` | 100 | Maximum messages drained per poll. |
-| `MaxAttempts` | `int` | 10 | After this many failed attempts a message is parked (left unprocessed but skipped by the scan so it does not block later messages). |
+| `MaxAttempts` | `int` | 10 | After this many failed attempts a message is dead-lettered (parked): left unprocessed and skipped by the scan so it does not block later messages. With the exponential backoff below this is roughly a few hours of retrying at the defaults. Replay dead-lettered messages with `IOutboxMaintenance` once the cause is fixed. Because the dead-letter set is defined relative to this value, **raising it makes previously dead-lettered rows eligible again**. Must be greater than zero. |
+| `LeaseDuration` | `TimeSpan` | 5 minutes | How long a relay drain holds an exclusive claim (lease) on the rows it drains before another instance may reclaim them. Set comfortably above the time to publish one batch so a slow batch is not reclaimed mid-flight; a crashed instance's rows become reclaimable once the lease expires. Must be greater than zero. |
+| `RetryBackoff` | `TimeSpan` | 30 seconds | Base delay before retrying a failed message. The wait after the *n*th failed attempt is `RetryBackoff × 2^(n-1)`, capped at `MaxRetryBackoff`, so a transient failure (a brief outage) is retried with growing spacing instead of in a tight claim/fail/reclaim loop that would hammer the database. Must be greater than zero. |
+| `MaxRetryBackoff` | `TimeSpan` | 1 hour | Ceiling on the exponential retry backoff, so a persistently failing message keeps retrying at a steady, bounded cadence rather than spacing out into many hours. Must be greater than or equal to `RetryBackoff`. |
+| `RetryBackoffJitter` | `double` | 0.5 | Fraction in `[0, 1]` of deterministic, per-message jitter that only **subtracts** from the computed backoff (so the wait stays at or below the cap) to de-correlate messages that failed together — they don't all retry the instant a failed dependency recovers, which would flood it. `0` disables jitter; the jitter is keyed on the message id, so it is reproducible (no run-to-run randomness). Must be between 0 and 1 inclusive. |
 
 ## Delivery semantics
 
 The guarantee is at-least-once **delivery**, not handler success.
 
 - A message is marked processed once it has been handed to `IDomainEventPublisher`. Per the `IDomainEventHandler<TEvent>` contract the publisher logs and swallows non-cancellation handler exceptions, so a **failing handler does not cause the message to retry**.
-- Only infrastructure failures — the event type cannot be resolved, the payload cannot be deserialized, or the relay's own `SaveChanges` fails — leave a message pending. Those retry on later polls up to `MaxAttempts`, after which the message is parked (its `Attempts` reaches the cap and the scan skips it, so later messages are not blocked). `LastError` records the most recent failure.
-- Because the cap parks rather than dead-letters, monitor for rows where `ProcessedAt IS NULL AND Attempts >= MaxAttempts`.
-- **Logs (production support).** The relay emits structured events. `OutboxRelay.MessageParked` (**Error**, `EventId` 5) is the alertable signal that a message exhausted `MaxAttempts` and needs manual intervention — it carries `MessageId`, `EventType`, `Attempts`, and the exception. Transient per-message failures log `OutboxRelay.RelayAttemptFailed` (**Warning**, `EventId` 4, with the attempt number); a whole drain cycle failing logs `OutboxRelay.DrainFailed` (**Error**, `EventId` 3); startup logs `OutboxRelay.Started` (Information) with the configured poll interval, batch size, and max attempts, and `OutboxRelay.DrainCompleted` (Debug) reports the per-cycle count. Alert on `MessageParked`.
-- **Single active relay.** The relay does not lock the rows it drains — it reads pending rows, publishes, then marks them processed. Running more than one relay concurrently (a horizontally-scaled deployment) can deliver the same message from two instances before either marks it processed; the at-least-once + idempotent-handler contract absorbs this. For exactly-one-drain across instances, gate the relay behind leader election or a distributed lock until row-claiming (`FOR UPDATE SKIP LOCKED` / `READPAST`) lands as a follow-up.
+- Only infrastructure failures — the event type cannot be resolved, the payload cannot be deserialized, or the relay's own `SaveChanges` fails — leave a message pending. Those retry on later polls with an **exponential backoff** (`RetryBackoff` doubling up to `MaxRetryBackoff`, minus a deterministic per-message jitter), up to `MaxAttempts`, after which the message is dead-lettered (parked): its `Attempts` reaches the cap and the scan skips it, so later messages are not blocked. `LastError` records the most recent failure. The backoff means a brief outage is ridden out by a later retry rather than burning every attempt in a tight loop.
+- A dead-lettered message stays in the table for inspection and **replay** — see *Dead-letter and replay* below. Monitor for rows where `ProcessedAt IS NULL AND Attempts >= MaxAttempts`.
+- **Logs (production support).** The relay emits structured events. `OutboxRelay.MessageParked` (**Error**, `EventId` 5) is the alertable signal that a message exhausted `MaxAttempts` and is dead-lettered — it carries `MessageId`, `EventType`, `Attempts`, and the exception. Transient per-message failures log `OutboxRelay.RelayAttemptFailed` (**Warning**, `EventId` 4, with the attempt number); a drain that outlived its lease and was reclaimed by another instance logs `OutboxRelay.LeaseLost` (**Warning**, `EventId` 6); a whole drain cycle failing logs `OutboxRelay.DrainFailed` (**Error**, `EventId` 3); startup logs `OutboxRelay.Started` (Information), and `OutboxRelay.DrainCompleted` (Debug) reports the per-cycle count. Alert on `MessageParked`.
+- **Safe to run N-up (row-claiming + concurrency guard).** Each drain atomically claims a batch with a lease — a single `UPDATE` sets `LockedBy` (a per-drain token) and `LockedUntil` (now + `LeaseDuration`) on eligible rows. Concurrent relays running that `UPDATE` are serialized by row locks and re-evaluate the lease guard, so every row is claimed by exactly one instance. `LockedBy` is additionally an **optimistic concurrency token**: if a slow batch outlives its lease and another instance reclaims a row, the first instance's bookkeeping `UPDATE` matches no row and it abandons its write for that row (dropping any integration rows it produced and logging `OutboxRelay.LeaseLost`) rather than clobber the new owner. This makes a horizontally-scaled deployment safe **without** leader election or an external lock. Delivery is still at-least-once and handlers must stay idempotent: a crash between publish and the relay's `SaveChanges`, or a batch that outlives its lease, can re-deliver. Set `LeaseDuration` comfortably above the worst-case batch publish time, and keep node clocks reasonably in sync — the lease is compared against each relay's wall clock.
 
 Retry-until-handlers-succeed would require a non-swallowing publish path and is a planned follow-up; today, handlers that must not silently drop work should surface failures through their own durable mechanism.
+
+## Dead-letter and replay
+
+A message that exhausts `MaxAttempts` is **dead-lettered** (parked): it stays in `TrellisOutboxMessages` with `ProcessedAt == null` and `Attempts >= MaxAttempts`, is skipped by the relay scan so it does not block later messages, and logs `OutboxRelay.MessageParked` (Error). It is kept in the table for inspection — a soft dead-letter, not a separate queue.
+
+Resolve `IOutboxMaintenance` (registered by `AddTrellisOutbox<TContext>`, scoped) to inspect and replay dead-lettered messages once you have fixed the cause (deployed the missing handler assembly, corrected a bad payload):
+
+| Member | Behavior |
+|---|---|
+| `GetDeadLetteredAsync(limit = 100, ct)` | Returns up to `limit` dead-lettered rows, oldest first, for inspection. |
+| `ReplayAsync(id, ct)` | Replays one message by `Id`: resets `Attempts` to 0, clears `LastError` and the lease so the relay drains it again. Returns the rows affected (0 if it does not exist or is not dead-lettered, 1 otherwise). |
+| `ReplayAllAsync(ct)` | Replays every currently dead-lettered message and returns the count. The set is a snapshot taken when the statement runs — messages that dead-letter afterward are not included. |
+
+Replaying a dead-lettered row is race-free against a running relay because the relay never claims a row whose `Attempts >= MaxAttempts`. Note that the dead-letter set is defined relative to `MaxAttempts`, so lowering or raising that option also changes which rows are considered dead-lettered. `IOutboxMaintenance` targets the single outbox context registered in the container (like `OutboxOptions`); run one outbox per composition.
 
 ## Serialization
 

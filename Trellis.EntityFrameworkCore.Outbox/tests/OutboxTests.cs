@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 #pragma warning disable CA1707 // readable xUnit test names
 
@@ -244,8 +245,10 @@ public sealed class OutboxTests
 
         var captured = new List<ThingCreated>();
         var logs = new List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)>();
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<TimeProvider>(time);
         services.AddSingleton<ILogger<OutboxRelay<OutboxTestDbContext>>>(
             new FakeLogger<OutboxRelay<OutboxTestDbContext>>(logs));
         services.AddSingleton(captured);
@@ -255,7 +258,11 @@ public sealed class OutboxTests
             .AddTrellisOutboxInterceptor());
         services.AddDomainEventDispatch();
         services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
-        services.AddTrellisOutbox<OutboxTestDbContext>(o => o.MaxAttempts = 2);
+        services.AddTrellisOutbox<OutboxTestDbContext>(o =>
+        {
+            o.MaxAttempts = 2;
+            o.RetryBackoffJitter = 0;
+        });
 
         await using var provider = services.BuildServiceProvider();
 
@@ -283,14 +290,20 @@ public sealed class OutboxTests
             .OfType<OutboxRelay<OutboxTestDbContext>>()
             .Single();
 
-        // Drain 1: poison fails (Attempts -> 1, transient); the good message behind it is still dispatched.
+        // Drain 1: poison fails (Attempts -> 1, transient) and backs off; the good message behind it is
+        // still dispatched in the same drain.
         await relay.DrainAsync(ct);
         captured.Should().ContainSingle().Which.Name.Should().Be("good");
+
+        // The backoff makes the poison ineligible until its retry time, so an immediate drain is a no-op.
+        // Advance past the backoff to let the next attempt run.
+        (await relay.DrainAsync(ct)).Should().Be(0, "the poison is still within its backoff window");
+        time.Advance(TimeSpan.FromMinutes(2));
 
         // Drain 2: poison fails again (Attempts -> 2 == MaxAttempts) and is parked thereafter.
         await relay.DrainAsync(ct);
 
-        // Drain 3: poison is now skipped (Attempts == MaxAttempts) and the good row is processed — nothing left.
+        // Drain 3: poison is now skipped (Attempts == MaxAttempts) and nothing else is pending.
         (await relay.DrainAsync(ct)).Should().Be(0);
 
         await using (var verify = provider.CreateAsyncScope())
@@ -655,6 +668,153 @@ public sealed class OutboxTests
         captured.Should().HaveCount(2);
         captured.Single(e => e.Id == noneId.Value).OwningTeam.HasValue.Should().BeFalse();
         captured.Single(e => e.Id == someId.Value).OwningTeam.Value.Should().Be(teamId);
+    }
+
+    [Fact]
+    public async Task Relay_does_not_publish_rows_held_under_another_instances_active_lease()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var captured = new List<ThingCreated>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "beta", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+
+            // Simulate another relay instance holding a live lease on the pending row.
+            await context.Set<OutboxMessage>()
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(m => m.LockedUntil, DateTime.UtcNow.AddMinutes(10))
+                    .SetProperty(m => m.LockedBy, Guid.NewGuid()), ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        drained.Should().Be(0, "a row under another instance's live lease must not be re-claimed");
+        captured.Should().BeEmpty("the leased row must not be double-published by this instance");
+    }
+
+    [Fact]
+    public async Task Relay_reclaims_rows_whose_lease_has_expired()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var captured = new List<ThingCreated>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "gamma", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+
+            // Simulate a crashed instance that left an expired lease behind.
+            await context.Set<OutboxMessage>()
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(m => m.LockedUntil, DateTime.UtcNow.AddMinutes(-10))
+                    .SetProperty(m => m.LockedBy, Guid.NewGuid()), ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        drained.Should().Be(1, "an expired lease must be reclaimed by the relay");
+        captured.Should().ContainSingle().Which.Name.Should().Be("gamma");
+    }
+
+    [Fact]
+    public async Task Relay_backs_off_the_lease_when_a_message_fails_to_relay()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var time = new FakeTimeProvider(start);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<TimeProvider>(time);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddTrellisOutbox<OutboxTestDbContext>(o =>
+        {
+            o.RetryBackoff = TimeSpan.FromSeconds(30);
+            o.RetryBackoffJitter = 0;
+        });
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            // A row whose event type cannot be resolved fails deserialization in the relay.
+            context.Set<OutboxMessage>().Add(OutboxMessage.Create(
+                Guid.NewGuid(), DateTimeOffset.UnixEpoch,
+                "Nonexistent.Type, Nonexistent.Assembly", "{}", OutboxMessageKind.Domain));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        drained.Should().Be(1);
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var row = await context.Set<OutboxMessage>().SingleAsync(ct);
+            row.Attempts.Should().Be(1, "the failed relay attempt was recorded");
+            row.ProcessedAt.Should().BeNull("a failed message stays pending");
+            // The failure backs the lease off (first-attempt backoff = RetryBackoff) instead of releasing
+            // it, so the message is not re-claimed in a tight loop that would hammer the database.
+            row.LockedUntil.Should().Be(start.UtcDateTime.AddSeconds(30));
+            row.LockedBy.Should().BeNull("a backoff gates eligibility but is not an active claim");
+        }
     }
 }
 

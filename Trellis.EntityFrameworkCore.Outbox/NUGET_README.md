@@ -53,7 +53,9 @@ Now `await dbContext.SaveChangesAsync(ct)` commits the `OrderPlaced` row in the 
 ## Key Features
 - **Atomic capture** — one `TrellisOutboxMessages` row per uncommitted domain event, written in the same `SaveChanges` transaction as the aggregate. State and notifications commit together or not at all.
 - **Single dispatch path** — when the outbox is enabled the capture interceptor clears the aggregate's events inside the commit, so the in-pipeline dispatch sees none and the durable relay is the one dispatcher.
-- **At-least-once delivery** — a background relay drains pending rows in `Sequence` order and re-dispatches each event through `IDomainEventPublisher`, retrying infrastructure failures up to `MaxAttempts`.
+- **At-least-once delivery** — a background relay drains pending rows in `Sequence` order and re-dispatches each event through `IDomainEventPublisher`, retrying infrastructure failures with an exponential backoff (`RetryBackoff`…`MaxRetryBackoff`, with per-message jitter) up to `MaxAttempts`.
+- **Safe to scale out** — each drain claims its batch under an optimistic lease (`LockedBy` is a concurrency token), so concurrent relay instances never both own a row at once and a drain that outlives its lease abandons its write instead of clobbering the new owner — no leader election needed. Delivery stays at-least-once (a batch that outlives its lease can re-deliver).
+- **Dead-letter & replay** — a message that exhausts `MaxAttempts` is parked for inspection; re-drive it with `IOutboxMaintenance` once you've fixed the cause.
 - **Crash-safe** — a failed save rolls back the captured rows and preserves the in-memory events for retry; a crash after commit re-delivers on the next drain. Handlers must be idempotent.
 
 ## Integration events

@@ -151,6 +151,73 @@ public sealed class OutboxSqlServerIntegrationTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task Two_concurrent_relays_publish_each_message_exactly_once()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        const int messageCount = 50;
+        var delivered = new System.Collections.Concurrent.ConcurrentBag<Guid>();
+
+        ServiceProvider BuildRelayProvider()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddSingleton(delivered);
+            services.AddDbContext<OutboxTestDbContext>(o => o
+                .UseSqlServer(ConnectionString)
+                .AddTrellisInterceptors()
+                .AddTrellisOutboxInterceptor());
+            services.AddDomainEventDispatch();
+            services.AddDomainEventHandler<ThingCreated, CountingHandler>();
+            // Small batches so the two relays interleave and actually race for rows.
+            services.AddTrellisOutbox<OutboxTestDbContext>(o => o.BatchSize = 5);
+            return services.BuildServiceProvider();
+        }
+
+        // Seed N committed events (N outbox rows).
+        await using (var seed = BuildRelayProvider())
+        {
+            await using var scope = seed.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            for (var i = 0; i < messageCount; i++)
+                context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), $"msg-{i}", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        // Two independent relay instances drain the same outbox concurrently.
+        await using var providerA = BuildRelayProvider();
+        await using var providerB = BuildRelayProvider();
+
+        async Task DrainLoopAsync(ServiceProvider provider)
+        {
+            var relay = provider.GetServices<IHostedService>()
+                .OfType<OutboxRelay<OutboxTestDbContext>>()
+                .Single();
+            var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(60);
+            while (DateTimeOffset.UtcNow < deadline)
+            {
+                var drained = await relay.DrainAsync(ct);
+
+                await using var scope = provider.CreateAsyncScope();
+                var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+                var pending = await context.Set<OutboxMessage>().AnyAsync(m => m.ProcessedAt == null, ct);
+                if (!pending)
+                    return;
+                if (drained == 0)
+                    await Task.Delay(20, ct); // lost the race for the in-flight batch; back off briefly
+            }
+
+            throw new TimeoutException("Outbox did not drain within the timeout; a regression likely stalled the relay.");
+        }
+
+        await Task.WhenAll(DrainLoopAsync(providerA), DrainLoopAsync(providerB));
+
+        // The atomic claim means every message is published exactly once across both instances —
+        // no double-publish despite concurrent draining.
+        delivered.Should().HaveCount(messageCount);
+        delivered.Distinct().Should().HaveCount(messageCount);
+    }
+
     private static async Task<OutboxMessage> WaitForOutboxRowAsync(
         IServiceProvider provider, Func<OutboxMessage, bool> predicate, CancellationToken cancellationToken)
     {
@@ -176,6 +243,16 @@ internal sealed class SignalingHandler(TaskCompletionSource<ThingCreated> signal
     public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken)
     {
         signal.TrySetResult(domainEvent);
+        return ValueTask.CompletedTask;
+    }
+}
+
+internal sealed class CountingHandler(System.Collections.Concurrent.ConcurrentBag<Guid> delivered)
+    : IDomainEventHandler<ThingCreated>
+{
+    public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken)
+    {
+        delivered.Add(domainEvent.Id.Value);
         return ValueTask.CompletedTask;
     }
 }

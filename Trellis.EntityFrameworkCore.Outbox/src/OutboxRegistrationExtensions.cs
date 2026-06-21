@@ -36,6 +36,7 @@ public static class OutboxServiceCollectionExtensions
         services.TryAddSingleton(options);
         services.TryAddSingleton(TimeProvider.System);
         services.AddHostedService<OutboxRelay<TContext>>();
+        services.TryAddScoped<IOutboxMaintenance, OutboxMaintenance<TContext>>();
 
         return services;
     }
