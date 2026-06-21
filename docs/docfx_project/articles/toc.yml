@@ -72,6 +72,8 @@
     href: integration-ef.md
   - name: Transactional Outbox
     href: integration-outbox.md
+  - name: Transactional Inbox
+    href: integration-inbox.md
   - name: Mediator Pipeline
     href: integration-mediator.md
   - name: Service Defaults (Composition Root)

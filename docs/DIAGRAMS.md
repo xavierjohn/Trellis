@@ -33,6 +33,12 @@ This document contains reusable Mermaid diagram scripts for the Trellis document
 3. **Database Command Result** - Exception handling in SaveAsync
 4. **Exception Handling Strategy** - Expected vs unexpected failures
 
+### integration-inbox.md (3 diagrams added)
+
+1. **Outbox-to-inbox flow** - End-to-end: the producer captures + relays, the transport delivers at least once, and the consumer deduplicates and applies its side effects atomically
+2. **Inbox dedup sequence** - First-delivery vs redelivery decision in the dispatcher
+3. **Fan-out to many consumers** - One outbox row, broker fan-out, one dedup row per ConsumerId carrying the same MessageId
+
 ---
 
 ## Architecture Diagrams

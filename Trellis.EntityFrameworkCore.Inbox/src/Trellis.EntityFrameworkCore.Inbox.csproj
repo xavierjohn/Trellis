@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <Description>Transactional inbox for Trellis — the consume-side complement to the outbox. Makes integration-event consumption idempotent: redeliveries of the same message are deduplicated by message id within the consumer's unit of work, so a handler's side effects commit exactly once. EF Core reference store.</Description>
+    <PackageTags>trellis;inbox;efcore;integration-events;idempotency;ddd;reliability;messaging</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>efcore-inbox</TrellisApiRefName>
+    <!-- Bridges Trellis.EntityFrameworkCore (reflection-heavy EF Core) and Trellis.Mediator; opts out of AOT/trim like its siblings. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trellis.EntityFrameworkCore.Inbox.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+</Project>
