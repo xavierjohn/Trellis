@@ -34,7 +34,7 @@ public sealed class OrdersBrokerConsumer(IInboxDispatcher inbox)
 }
 ```
 
-The dispatcher deduplicates on `(ConsumerId, MessageId)` and runs the event's handlers exactly once, committing their side effects together with the dedup record. A duplicate delivery is a no-op.
+The dispatcher deduplicates on `(ConsumerId, MessageId)` so the event's handlers' side effects commit exactly once, together with the dedup record. A duplicate delivery commits nothing.
 
 > Prefer raw DI? Call `services.AddTrellisInbox<AppDbContext>(o => o.ConsumerId = "orders-service")` instead of the `UseInbox` builder slot — the table wiring (step 1) is identical.
 
