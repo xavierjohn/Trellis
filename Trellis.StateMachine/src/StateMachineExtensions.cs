@@ -12,9 +12,10 @@ using Trellis;
 /// <para>
 /// These extensions pre-check the trigger with <see cref="StateMachine{TState, TTrigger}.CanFire(TTrigger)"/>
 /// (which honors <c>PermitIf</c>/<c>IgnoreIf</c> guards) and translate disallowed transitions
-/// into an <see cref="Error.InvalidInput"/> (HTTP 422) — the requested action is a
-/// semantic rule violation against the aggregate's current state, not a concurrent-modification
-/// conflict. Exceptions thrown by user-supplied entry/exit/transition actions are not swallowed.
+/// into an <see cref="Error.InvariantViolation"/> (HTTP 422) — a rejected transition is a
+/// domain-invariant breach against the aggregate's current state, not inbound-input validation
+/// or a concurrent-modification conflict. Exceptions thrown by user-supplied entry/exit/transition
+/// actions are not swallowed.
 /// </para>
 /// <para>
 /// These extensions do not change the concurrency model of <see cref="StateMachine{TState, TTrigger}"/>.
@@ -38,11 +39,11 @@ public static class StateMachineExtensions
 {
     /// <summary>
     /// Fires the trigger and returns the outcome as a <see cref="Result{TState}"/>. Short-circuits
-    /// with <see cref="Error.InvalidInput"/> when the transition is not permitted in the current
+    /// with <see cref="Error.InvariantViolation"/> when the transition is not permitted in the current
     /// state (i.e., <c>CanFire</c> returns <see langword="false"/>), without invoking any
     /// consumer-registered <c>OnUnhandledTrigger</c> callback. Consumers who want their
     /// <c>OnUnhandledTrigger</c> callback to run must call <c>Fire</c> directly — <c>FireResult</c>
-    /// is the guarded entry point that prefers a typed <see cref="Error.InvalidInput"/> over
+    /// is the guarded entry point that prefers a typed <see cref="Error.InvariantViolation"/> over
     /// running side-effect code.
     /// </summary>
     /// <typeparam name="TState">The type representing the states of the state machine.</typeparam>
@@ -51,10 +52,9 @@ public static class StateMachineExtensions
     /// <param name="trigger">The trigger to fire.</param>
     /// <returns>
     /// A <see cref="Result{TState}"/> containing the new state if the transition is valid,
-    /// or an <see cref="Error.InvalidInput"/> carrying a single
-    /// <see cref="RuleViolation"/> with reason code <c>state.machine.invalid.transition</c>
-    /// if the trigger cannot be fired from the current state or a guard throws
-    /// <see cref="InvalidOperationException"/>.
+    /// or an <see cref="Error.InvariantViolation"/> with reason code
+    /// <c>state.machine.invalid.transition</c> if the trigger cannot be fired from the current
+    /// state or a guard throws <see cref="InvalidOperationException"/>.
     /// </returns>
     /// <remarks>
     /// <para>
@@ -65,16 +65,16 @@ public static class StateMachineExtensions
     /// <c>OnUnhandledTrigger</c> callbacks from the typed-result path.
     /// </para>
     /// <para>
-    /// <b>HTTP semantics.</b> An invalid state-machine transition is a semantic rule violation
-    /// (the aggregate cannot honor the requested action from its current state), not a
-    /// concurrent-modification conflict — retry will not succeed. The returned error is therefore
-    /// <see cref="Error.InvalidInput"/> (HTTP 422), not <see cref="Error.Conflict"/>
-    /// (HTTP 409). Callers can still distinguish state-machine rejections from other 422s by
-    /// matching on the <see cref="RuleViolation.ReasonCode"/> value <c>state.machine.invalid.transition</c>.
+    /// <b>HTTP semantics.</b> An invalid state-machine transition is a domain-invariant breach
+    /// (the aggregate cannot honor the requested action from its current state), not inbound-input
+    /// validation or a concurrent-modification conflict — retry will not succeed. The returned error
+    /// is therefore <see cref="Error.InvariantViolation"/> (HTTP 422), not <see cref="Error.InvalidInput"/>
+    /// or <see cref="Error.Conflict"/> (HTTP 409). Callers can distinguish state-machine rejections from
+    /// other 422s by matching on the <c>ReasonCode</c> value <c>state.machine.invalid.transition</c>.
     /// </para>
     /// <para>
     /// <see cref="InvalidOperationException"/> thrown while evaluating a guard is converted to
-    /// <see cref="Error.InvalidInput"/>. Exceptions thrown by user entry, exit, or transition
+    /// <see cref="Error.InvariantViolation"/>. Exceptions thrown by user entry, exit, or transition
     /// actions are not swallowed — they propagate to the caller.
     /// </para>
     /// <para>
@@ -88,13 +88,13 @@ public static class StateMachineExtensions
     /// var machine = new StateMachine&lt;State, Trigger&gt;(State.Idle);
     /// machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
     ///
-    /// // Valid transition
+    /// // Valid transition: Idle permits Trigger.Start, advancing the machine to Running.
     /// Result&lt;State&gt; result = machine.FireResult(Trigger.Start);
     /// // result.IsSuccess == true; result holds State.Running.
     ///
-    /// // Invalid transition — Idle has no Trigger.Start defined here.
+    /// // Invalid transition: Running has no transition configured for Trigger.Pause.
     /// Result&lt;State&gt; invalid = machine.FireResult(Trigger.Pause);
-    /// // invalid.IsFailure == true; invalid.Error is Error.InvalidInput.
+    /// // invalid.IsFailure == true; invalid.Error is Error.InvariantViolation.
     /// </code>
     /// </example>
     public static Result<TState> FireResult<TState, TTrigger>(
@@ -134,8 +134,7 @@ public static class StateMachineExtensions
 
     private static Result<TState> InvalidTransition<TState>(string detail) =>
         Result.Fail<TState>(
-            Error.InvalidInput.ForRule(
+            Error.InvariantViolation.ForReason(
                 reasonCode: "state.machine.invalid.transition",
-                detail: detail) with
-            { Detail = detail });
+                detail: detail));
 }
