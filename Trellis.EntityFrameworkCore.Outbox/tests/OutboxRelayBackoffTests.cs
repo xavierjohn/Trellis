@@ -218,6 +218,61 @@ public sealed class OutboxRelayBackoffTests
         logs.Should().Contain(e => e.EventId.Name == "OutboxRelay.LeaseLost");
     }
 
+    [Fact]
+    public async Task Relay_drops_only_the_stolen_messages_integration_rows_and_enrols_its_siblings()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var logs = new List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<ILogger<OutboxRelay<OutboxTestDbContext>>>(
+            new FakeLogger<OutboxRelay<OutboxTestDbContext>>(logs));
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, StealAndTranslateHandler>();
+        services.AddIntegrationEventDispatch();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            // Both messages translate an integration event; only the first has its lease stolen mid-batch.
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "steal-me", DateTimeOffset.UnixEpoch));
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "keep-me", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = Relay(provider);
+        (await relay.DrainAsync(ct)).Should().Be(1, "one of the two domain rows in the batch was stolen");
+
+        var rows = await AllRowsAsync(provider, ct);
+
+        var stolen = rows.Single(r => r.Kind == OutboxMessageKind.Domain && r.Payload.Contains("steal-me"));
+        stolen.ProcessedAt.Should().BeNull("the stolen domain row was abandoned, not clobbered");
+        stolen.LockedBy.Should().Be(StealAndTranslateHandler.ThiefToken, "the instance that reclaimed it still owns it");
+
+        var sibling = rows.Single(r => r.Kind == OutboxMessageKind.Domain && r.Payload.Contains("keep-me"));
+        sibling.ProcessedAt.Should().NotBeNull("the non-stolen sibling was processed");
+
+        // The crux: only the sibling's integration row is enrolled. The stolen row's produced integration
+        // row is dropped (the instance that now owns it will re-produce it), so it is not double-enrolled.
+        var integrationRows = rows.Where(r => r.Kind == OutboxMessageKind.Integration).ToList();
+        integrationRows.Should().ContainSingle();
+        integrationRows[0].Payload.Should().Contain("keep-me");
+        integrationRows.Should().NotContain(r => r.Payload.Contains("steal-me"));
+
+        logs.Should().Contain(e => e.EventId.Name == "OutboxRelay.LeaseLost");
+    }
+
     // Drives a seeded poison message to its parked (dead-lettered) state with MaxAttempts = 2: one failure,
     // advance past the backoff, a second failure that reaches the attempt cap.
     private static async Task ParkAsync(OutboxRelay<OutboxTestDbContext> relay, FakeTimeProvider time, CancellationToken ct)
@@ -281,4 +336,23 @@ internal sealed class LeaseStealingHandler(OutboxTestDbContext context) : IDomai
         await context.Set<OutboxMessage>()
             .Where(m => m.ProcessedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(m => m.LockedBy, ThiefToken), cancellationToken);
+}
+
+// Translates an integration event for every message, and additionally steals the lease of the "steal-me"
+// row (only) mid-publish — so one batch contains a stolen row and a non-stolen sibling, both producing
+// integration rows. Guards that the relay drops only the stolen row's staged integration rows.
+internal sealed class StealAndTranslateHandler(IIntegrationEventCollector collector, OutboxTestDbContext context)
+    : IDomainEventHandler<ThingCreated>
+{
+    public static readonly Guid ThiefToken = Guid.NewGuid();
+
+    public async ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken)
+    {
+        collector.Add(new ThingCreatedIntegrationEvent(domainEvent.Id.Value, domainEvent.Name, domainEvent.OccurredAt));
+
+        if (domainEvent.Name == "steal-me")
+            await context.Set<OutboxMessage>()
+                .Where(m => m.ProcessedAt == null && m.Payload.Contains("steal-me"))
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.LockedBy, ThiefToken), cancellationToken);
+    }
 }

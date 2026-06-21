@@ -195,7 +195,7 @@ Resolve `IOutboxMaintenance` (registered by `AddTrellisOutbox<TContext>`, scoped
 | `ReplayAsync(id, ct)` | Replays one message by `Id`: resets `Attempts` to 0, clears `LastError` and the lease so the relay drains it again. Returns the rows affected (0 if it does not exist or is not dead-lettered, 1 otherwise). |
 | `ReplayAllAsync(ct)` | Replays every currently dead-lettered message and returns the count. The set is a snapshot taken when the statement runs — messages that dead-letter afterward are not included. |
 
-Replaying a dead-lettered row is race-free against a running relay because the relay never claims a row whose `Attempts >= MaxAttempts`. Note that the dead-letter set is defined relative to `MaxAttempts`, so lowering or raising that option also changes which rows are considered dead-lettered.
+Replaying a dead-lettered row is race-free against a running relay because the relay never claims a row whose `Attempts >= MaxAttempts`. Note that the dead-letter set is defined relative to `MaxAttempts`, so lowering or raising that option also changes which rows are considered dead-lettered. `IOutboxMaintenance` targets the single outbox context registered in the container (like `OutboxOptions`); run one outbox per composition.
 
 ## Serialization
 

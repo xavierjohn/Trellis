@@ -8,6 +8,11 @@ using Microsoft.EntityFrameworkCore;
 /// handler assembly or correcting a bad payload). Resolve it from a scope — an admin endpoint, a CLI, or a
 /// maintenance job — alongside the relay.
 /// </summary>
+/// <remarks>
+/// This targets the single outbox context registered in the service collection. Registering more than one
+/// outbox context in one container is not supported — like <see cref="OutboxOptions"/>, this facade resolves
+/// to the first one registered; run one outbox per composition.
+/// </remarks>
 public interface IOutboxMaintenance
 {
     /// <summary>
