@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Outbox.Tests;
+﻿namespace Trellis.EntityFrameworkCore.Outbox.Tests;
 
 using global::Trellis.Mediator;
 using Microsoft.Data.Sqlite;

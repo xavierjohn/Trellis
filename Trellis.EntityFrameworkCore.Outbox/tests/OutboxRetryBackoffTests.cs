@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Outbox.Tests;
+﻿namespace Trellis.EntityFrameworkCore.Outbox.Tests;
 
 #pragma warning disable CA1707 // readable xUnit test names
 
@@ -88,5 +88,15 @@ public sealed class OutboxRetryBackoffTests
             .Count();
 
         distinct.Should().BeGreaterThan(100, "id-keyed jitter must spread retries across the window");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Compute_rejects_a_non_positive_attempt(int attempt)
+    {
+        var act = () => OutboxRetryBackoff.Compute(Guid.NewGuid(), attempt, Base, Cap, jitter: 0);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 }

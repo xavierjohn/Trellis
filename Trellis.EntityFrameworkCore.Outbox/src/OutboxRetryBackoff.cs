@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.EntityFrameworkCore;
 
 using System.Buffers.Binary;
 
@@ -18,6 +18,8 @@ internal static class OutboxRetryBackoff
     /// </summary>
     public static TimeSpan Compute(Guid id, int attempt, TimeSpan baseDelay, TimeSpan cap, double jitter)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(attempt);
+
         var computedTicks = ExponentialTicks(baseDelay.Ticks, cap.Ticks, attempt);
 
         if (jitter > 0)

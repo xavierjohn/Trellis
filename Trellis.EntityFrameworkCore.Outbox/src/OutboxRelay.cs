@@ -205,9 +205,10 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         }
 
         LogFailures(failures);
-        OutboxRelayLog.DrainCompleted(_logger, batch.Count);
+        var processed = batch.Count - (stolen?.Count ?? 0);
+        OutboxRelayLog.DrainCompleted(_logger, processed);
 
-        return batch.Count - (stolen?.Count ?? 0);
+        return processed;
     }
 
     // Saves the drain's bookkeeping while honoring the LockedBy concurrency token. If a slow batch
