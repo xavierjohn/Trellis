@@ -1,10 +1,13 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
 /// <summary>
-/// Store seam for inbox deduplication — a service-provider interface (SPI) so non-EF persistence can supply
-/// the same idempotency guarantee. It records that a <c>(ConsumerId, MessageId)</c> pair has been processed
-/// <b>within the caller's current unit of work</b>, so the dedup record and the handler side effects commit
-/// together (or not at all).
+/// Store seam for inbox deduplication — a service-provider interface (SPI) for the dedup record. The shipped
+/// EF Core implementation records that a <c>(ConsumerId, MessageId)</c> pair has been processed by enrolling
+/// the row in the consumer's <c>DbContext</c>, so it commits in the dispatcher's single
+/// <c>SaveChanges</c> together with the handler side effects (or not at all). An alternative store may
+/// replace it, but it can preserve that all-or-nothing atomicity only by enrolling the dedup record in the
+/// same unit of work the dispatcher commits; a store on a separate connection/transaction reduces the
+/// guarantee to best-effort.
 /// </summary>
 public interface IInboxStore
 {

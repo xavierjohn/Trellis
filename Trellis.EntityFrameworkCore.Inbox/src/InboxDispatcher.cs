@@ -75,27 +75,33 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         {
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex) && CausedByInboxRow(ex))
+        catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
         {
-            // A concurrent dispatch recorded the same (ConsumerId, MessageId) first; the failed SaveChanges
-            // discarded our handler side effects with it, so the winner's row stands alone. Only an inbox-row
-            // collision is a no-op — a duplicate-key from a handler's OWN unique write is not caught here and
-            // propagates, so a genuinely failed message is never falsely marked processed.
+            // The duplicate key is either a concurrent dispatch that recorded this (ConsumerId, MessageId)
+            // first (already processed elsewhere -> no-op) or a handler's OWN unique-constraint violation
+            // (which must surface so the message is not falsely marked processed). The failing entry alone
+            // cannot tell them apart: EF Core attributes a *batched* SaveChanges failure to every entry in
+            // the batch, and the inbox row always shares the batch with the handler writes. So check the
+            // ground truth in a fresh scope -- the dedup row is committed only if a concurrent dispatch won.
+            if (!await DedupRowExistsAsync(envelope, cancellationToken).ConfigureAwait(false))
+                throw;
+
             InboxDispatcherLog.DuplicateSkipped(_logger, envelope.MessageId, _options.ConsumerId);
         }
     }
 
-    // True only when the duplicate-key failure is the inbox dedup row's own (ConsumerId, MessageId) primary
-    // key — i.e. a concurrent dispatch won the race. EF Core attributes the rejected command to the inbox
-    // entry; a violation from a handler's own unique write reports that handler's entry instead and must
-    // surface. If the provider does not attribute an entry, this returns false and the failure propagates —
-    // the transport redelivers and the existence check then deduplicates, so the message is never lost.
-    private static bool CausedByInboxRow(DbUpdateException exception)
+    // Reads, in a fresh scope so it is unaffected by the aborted SaveChanges, whether the dedup row for this
+    // (ConsumerId, MessageId) has been committed -- true only when a concurrent dispatch recorded it first.
+    // A handler's own unique violation leaves no such row (the whole batch rolled back), so the failure
+    // propagates and the transport redelivers.
+    private async Task<bool> DedupRowExistsAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken)
     {
-        foreach (var entry in exception.Entries)
-            if (entry.Entity is InboxMessage)
-                return true;
-        return false;
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<TContext>();
+        return await context.Set<InboxMessage>()
+            .AsNoTracking()
+            .AnyAsync(m => m.ConsumerId == _options.ConsumerId && m.MessageId == envelope.MessageId, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Resolve and invoke every IIntegrationEventHandler<TConcrete> for the runtime event type. Exceptions
