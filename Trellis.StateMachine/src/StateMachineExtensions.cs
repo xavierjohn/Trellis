@@ -88,11 +88,11 @@ public static class StateMachineExtensions
     /// var machine = new StateMachine&lt;State, Trigger&gt;(State.Idle);
     /// machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
     ///
-    /// // Valid transition
+    /// // Valid transition: Idle permits Trigger.Start, advancing the machine to Running.
     /// Result&lt;State&gt; result = machine.FireResult(Trigger.Start);
     /// // result.IsSuccess == true; result holds State.Running.
     ///
-    /// // Invalid transition — Idle has no Trigger.Start defined here.
+    /// // Invalid transition: Running has no transition configured for Trigger.Pause.
     /// Result&lt;State&gt; invalid = machine.FireResult(Trigger.Pause);
     /// // invalid.IsFailure == true; invalid.Error is Error.InvariantViolation.
     /// </code>
