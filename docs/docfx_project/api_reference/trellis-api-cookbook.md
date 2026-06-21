@@ -3150,7 +3150,7 @@ using Trellis.Mediator;
 public sealed partial class TenantId : RequiredString<TenantId>;
 
 public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
-    : ICommand<Result<Unit>>, IAuthorizeResource<TenantDocument>, IIdentifyResource<TenantDocument, DocumentId>
+    : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<TenantDocument>, IIdentifyResource<TenantDocument, DocumentId>
 {
     public DocumentId GetResourceId() => DocumentId;
 
