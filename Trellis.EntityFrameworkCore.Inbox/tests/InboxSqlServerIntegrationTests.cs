@@ -154,6 +154,33 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
         (await db.Receipts.CountAsync(ct)).Should().Be(1, "the loser's handler side effect rolled back with its failed save");
     }
 
+    [Fact]
+    public async Task FilterUnprocessedAsync_handles_a_window_far_larger_than_the_sql_parameter_limit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var provider = BuildProvider();
+        var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
+
+        // Process a handful, then query a window with far more candidate ids than SQL Server's 2100-parameter
+        // limit. EF Core parameterizes the Contains collection as a single OPENJSON argument, so this must not
+        // fail with "too many parameters" regardless of window size.
+        var processed = Enumerable.Range(0, 5)
+            .Select(_ => new IntegrationEnvelope(
+                Guid.CreateVersion7(), new OrderPlacedIntegrationEvent(Guid.NewGuid(), DateTimeOffset.UnixEpoch)))
+            .ToList();
+        foreach (var e in processed)
+            await dispatcher.DispatchAsync(e, ct);
+
+        var window = new List<Guid>(processed.Select(e => e.MessageId));
+        window.AddRange(Enumerable.Range(0, 5000).Select(_ => Guid.CreateVersion7()));
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var unprocessed = await store.FilterUnprocessedAsync(ConsumerId, window, ct);
+
+        unprocessed.Should().HaveCount(5000, "the 5 processed ids are excluded and the 5000-id window did not hit the parameter limit");
+    }
+
     private static ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
