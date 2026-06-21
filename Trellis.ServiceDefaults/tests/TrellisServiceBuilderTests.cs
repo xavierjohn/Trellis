@@ -861,6 +861,83 @@ public class TrellisServiceBuilderTests
             .WithMessage("*outbox*");
     }
 
+    // -------- Inbox dispatch slot (UseInbox) --------
+
+    [Fact]
+    public void UseInbox_RegistersDispatcherStoreOptionsAndTimeProvider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseEntityFrameworkUnitOfWork<TestDbContext>()
+            .UseInbox<TestDbContext>(o => o.ConsumerId = "orders"));
+
+        services.Should().Contain(d => d.ServiceType == typeof(IInboxDispatcher));
+        services.Should().Contain(d => d.ServiceType == typeof(IInboxStore));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(InboxOptions));
+        services.Should().Contain(d => d.ServiceType == typeof(TimeProvider));
+    }
+
+    [Fact]
+    public void UseInbox_AppliesConfiguredOptions()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseInbox<TestDbContext>(o => o.ConsumerId = "billing"));
+
+        var configured = (InboxOptions)services
+            .Single(d => d.ServiceType == typeof(InboxOptions))
+            .ImplementationInstance!;
+
+        configured.ConsumerId.Should().Be("billing");
+    }
+
+    [Fact]
+    public void UseInbox_DoesNotPerturbPipelineOrder_WhetherRegisteredBeforeOrAfterUnitOfWork()
+    {
+        // The inbox dispatcher is an inbound seam, not a Mediator behavior, so enabling it must leave
+        // the canonical pipeline order identical regardless of where UseInbox is called relative to
+        // UseEntityFrameworkUnitOfWork (the registration-API checklist requirement).
+        static System.Collections.Generic.List<Type?> PipelineOf(Action<TrellisServiceBuilder> compose)
+        {
+            var services = new ServiceCollection();
+            services.AddTrellis(compose);
+            return services
+                .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
+                .Select(d => d.ImplementationType)
+                .ToList();
+        }
+
+        var inboxBeforeUow = PipelineOf(o => o
+            .UseInbox<TestDbContext>(c => c.ConsumerId = "orders")
+            .UseEntityFrameworkUnitOfWork<TestDbContext>());
+
+        var inboxAfterUow = PipelineOf(o => o
+            .UseEntityFrameworkUnitOfWork<TestDbContext>()
+            .UseInbox<TestDbContext>(c => c.ConsumerId = "orders"));
+
+        var withoutInbox = PipelineOf(o => o
+            .UseEntityFrameworkUnitOfWork<TestDbContext>());
+
+        inboxBeforeUow.Should().Equal(inboxAfterUow);
+        inboxBeforeUow.Should().Equal(withoutInbox);
+        inboxBeforeUow.Should().EndWith(typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void UseInbox_Twice_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseInbox<TestDbContext>(o => o.ConsumerId = "orders")
+            .UseInbox<TestDbContext>(o => o.ConsumerId = "orders"));
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*inbox*");
+    }
+
     // -------- Integration-event slot (UseIntegrationEvents) --------
 
     [Fact]

@@ -47,6 +47,7 @@ public sealed class TrellisServiceBuilder
     private Action<IServiceCollection>? _workerActorWrap;
     private Action<IServiceCollection>? _unitOfWorkRegistration;
     private Action<IServiceCollection>? _outboxRegistration;
+    private Action<IServiceCollection>? _inboxRegistration;
     private bool _useAsp;
     private bool _useScalarValueValidation;
     private bool _useProblemDetails;
@@ -478,6 +479,54 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// Registers the transactional inbox for <typeparamref name="TContext"/> so an application-owned
+    /// transport adapter can hand each received integration message to the inbox for
+    /// exactly-once-per-consumer local processing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This slot owns only the service-collection half of the inbox: the <c>IInboxDispatcher</c>, the EF
+    /// <c>IInboxStore</c>, and its <see cref="InboxOptions"/>. The <c>InboxMessage</c> table mapping lives
+    /// on the <see cref="DbContext"/> and must be wired where the context is configured — call
+    /// <c>modelBuilder.AddTrellisInbox()</c> in <c>OnModelCreating</c>. This mirrors how
+    /// <see cref="UseOutbox{TContext}"/> owns the service registration while the table mapping is applied
+    /// on the context.
+    /// </para>
+    /// <para>
+    /// The dispatcher records each message under <c>(ConsumerId, MessageId)</c> and fans it out to the
+    /// registered integration-event handlers inside a single database transaction, so a duplicate delivery
+    /// is skipped and a handler failure rolls back and lets the transport redeliver. Register the handlers
+    /// (for example via <c>AddIntegrationEventHandler&lt;TEvent, THandler&gt;()</c> or
+    /// <see cref="UseIntegrationEvents()"/>) so the dispatcher has consumers to invoke.
+    /// <see cref="InboxOptions.ConsumerId"/> is required, so a <paramref name="configure"/> callback that
+    /// sets it must be supplied.
+    /// </para>
+    /// <para>
+    /// The registration is order-independent: it adds no Mediator behavior, so calling it before or after
+    /// <see cref="UseEntityFrameworkUnitOfWork{TContext}"/> yields the same canonical pipeline order.
+    /// Calling this method more than once throws <see cref="InvalidOperationException"/>; one inbox per
+    /// composition is supported. The method is annotated <see cref="RequiresUnreferencedCodeAttribute"/> /
+    /// <see cref="RequiresDynamicCodeAttribute"/> because the inbox builds on
+    /// <c>Trellis.EntityFrameworkCore</c>, which is intentionally opted out of AOT and trim.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TContext">The consumer's <see cref="DbContext"/> that owns the inbox table.</typeparam>
+    /// <param name="configure">Inbox configuration; <see cref="InboxOptions.ConsumerId"/> is required.</param>
+    /// <returns>The same builder for chaining.</returns>
+    [RequiresUnreferencedCode("Trellis.EntityFrameworkCore is not AOT- or trim-compatible because EF Core requires reflection over entity types and query expression trees. AOT consumers should compose their data access layer outside of this builder.")]
+    [RequiresDynamicCode("Trellis.EntityFrameworkCore is not AOT-compatible because EF Core requires runtime code generation for query compilation. AOT consumers should compose their data access layer outside of this builder.")]
+    public TrellisServiceBuilder UseInbox<TContext>(Action<InboxOptions> configure)
+        where TContext : DbContext
+    {
+        if (_inboxRegistration is not null)
+            throw new InvalidOperationException(
+                "Only one inbox can be configured per Trellis composition.");
+
+        _inboxRegistration = services => services.AddTrellisInbox<TContext>(configure);
+        return this;
+    }
+
+    /// <summary>
     /// Registers the domain-event dispatch behavior and (optionally) scans assemblies for
     /// <see cref="IDomainEventHandler{TEvent}"/> implementations. Implies <see cref="UseMediator"/>.
     /// </summary>
@@ -857,6 +906,7 @@ public sealed class TrellisServiceBuilder
 
         _unitOfWorkRegistration?.Invoke(_services);
         _outboxRegistration?.Invoke(_services);
+        _inboxRegistration?.Invoke(_services);
     }
 
     private void SetActorProvider(ActorProviderKind kind, Action<IServiceCollection> registration)

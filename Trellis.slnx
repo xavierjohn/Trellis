@@ -88,6 +88,13 @@
   </Folder>
   <Folder Name="/Trellis.Core/generator/" />
   <Folder Name="/Trellis.Core/src/" />
+  <Folder Name="/Trellis.EntityFrameworkCore.Inbox/" />
+  <Folder Name="/Trellis.EntityFrameworkCore.Inbox/src/">
+    <Project Path="Trellis.EntityFrameworkCore.Inbox/src/Trellis.EntityFrameworkCore.Inbox.csproj" />
+  </Folder>
+  <Folder Name="/Trellis.EntityFrameworkCore.Inbox/tests/">
+    <Project Path="Trellis.EntityFrameworkCore.Inbox/tests/Trellis.EntityFrameworkCore.Inbox.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.EntityFrameworkCore.Outbox/" />
   <Folder Name="/Trellis.EntityFrameworkCore.Outbox/src/">
     <Project Path="Trellis.EntityFrameworkCore.Outbox/src/Trellis.EntityFrameworkCore.Outbox.csproj" />
