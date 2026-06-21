@@ -145,6 +145,42 @@ Dedup is only as good as the id. The `MessageId` must be **stable across redeliv
 
 Do **not** use a per-delivery id the transport mints fresh on each attempt (some brokers assign a new sequence number per delivery) — every redelivery would look new and defeat the inbox. The envelope's other fields — `MessageSource`, `CausationId`, `CorrelationId` — are lineage and observability only; they are recorded for audit but never affect dedup.
 
+## One message, many consumers
+
+The outbox writes a message **once** — fanning it out to multiple consumers is the broker's job, not the outbox's. A topic (or a log read by several consumer-groups) delivers a copy to each subscriber, and every copy carries the **same `MessageId`**. Each consumer keeps its own `ConsumerId`, so the dedup key `(ConsumerId, MessageId)` gives every consumer an independent row — one effective processing each, with its own retries and its own failures.
+
+```mermaid
+flowchart LR
+    subgraph PROD["Producer service"]
+        direction TB
+        EV[Domain event]
+        OB[("Outbox row<br/>written once · Id = M")]
+        RLY([Relay · publishes once])
+        EV --> OB --> RLY
+    end
+
+    BRK{{"Transport<br/>topic / log<br/>fans out, keeps MessageId = M"}}
+
+    I1[("Consumer orders<br/>dedup row (orders, M)")]
+    I2[("Consumer billing<br/>dedup row (billing, M)")]
+    I3[("Consumer shipping<br/>dedup row (shipping, M)")]
+
+    RLY --> BRK
+    BRK -->|deliver M| I1
+    BRK -->|deliver M| I2
+    BRK -->|deliver M| I3
+
+    style PROD fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    style BRK fill:#fff4e1,stroke:#f9a825,stroke-width:2px
+    style I1 fill:#e8f5e9,stroke:#388e3c
+    style I2 fill:#e8f5e9,stroke:#388e3c
+    style I3 fill:#e8f5e9,stroke:#388e3c
+```
+
+Three consumers are shown; the same fan-out covers any number — five, fifty. The producer is unchanged either way: it still writes a single outbox row and the relay still publishes it once. You add or remove consumers by adding or removing subscriptions on the transport, and each new consumer simply starts its own dedup history under its own `ConsumerId`.
+
+That is a different axis from scaling *one* consumer to several **instances**: those instances share one `ConsumerId` and one database, and the composite primary key makes exactly one instance win a concurrent or redelivered duplicate — no leader election needed. Fan-out (many `ConsumerId`s) and scale-out (many instances of one `ConsumerId`) compose freely.
+
 ## Operating the inbox
 
 - **Prune old rows.** `TrellisInboxMessages` grows by one row per processed message per consumer. Once a row is older than the transport's maximum redelivery window it can never be hit by a redelivery, so a periodic job can delete rows whose `ProcessedAt` is older than that window (the column is indexed for exactly this). Delete too eagerly and a late redelivery would reprocess.
