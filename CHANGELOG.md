@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Mediator lifetime guardrail for the authorization pipeline
+
+`AddTrellisBehaviors()` now fails fast with a clear `InvalidOperationException` when the Mediator is registered
+`Singleton`. Trellis's pipeline behaviors are `Scoped` — `AuthorizationBehavior` reads the per-request `Actor`
+(and resource authorization the per-request loaded resource) — and a root-bound `Singleton` Mediator resolves
+the pipeline from the root service provider, which cannot resolve a `Scoped` service, so the first request
+would otherwise fail with an opaque dependency-injection error. The message names the fix:
+`AddMediator(options => options.ServiceLifetime = ServiceLifetime.Scoped)` (`Transient` also works; only
+`Singleton` is rejected). The check sees the Mediator when `AddMediator` is called before `AddTrellisBehaviors`
+— the canonical order in every example.
+
 ### Added — typed actor attribute accessors (`Actor.GetRequiredAttribute<TVo>` / `TryGetAttribute<TVo>`)
 
 `Trellis.Authorization.Actor` gains two generic accessors that parse an actor attribute (an ABAC claim) into
