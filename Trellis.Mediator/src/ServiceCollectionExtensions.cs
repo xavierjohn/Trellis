@@ -109,7 +109,48 @@ public static class ServiceCollectionExtensions
         // order-independent regardless of which one runs first.
         RelocateResourceAuthorizationBehaviorsBeforeValidation(services);
 
+        AssertMediatorLifetimeSupportsScopedBehaviors(services);
+
         return services;
+    }
+
+    // Trellis's pipeline behaviors are registered Scoped — notably AuthorizationBehavior, which reads the
+    // per-request Actor (and ResourceAuthorizationBehavior, the per-request loaded resource). A Mediator
+    // registered Singleton is root-bound: it resolves the pipeline from the root provider, which cannot
+    // resolve a Scoped service, so the first request fails with an opaque dependency-injection error. Catch
+    // that genuinely broken case and fail fast with an actionable message. Scoped and Transient both resolve
+    // the pipeline within the request scope and work, so only Singleton is rejected. The check sees the
+    // Mediator only when AddMediator ran before AddTrellisBehaviors — the canonical order in every example.
+    private static void AssertMediatorLifetimeSupportsScopedBehaviors(IServiceCollection services)
+    {
+        // IMediator and ISender can carry different lifetimes, so check each independently rather than the
+        // first one found — a Singleton ISender must not be masked by a non-Singleton IMediator.
+        ThrowIfMediatorServiceIsSingleton(services, typeof(IMediator));
+        ThrowIfMediatorServiceIsSingleton(services, typeof(ISender));
+    }
+
+    private static void ThrowIfMediatorServiceIsSingleton(IServiceCollection services, Type mediatorServiceType)
+    {
+        // The last UNKEYED registration for a service type backs the unkeyed GetRequiredService<T>() that the
+        // Mediator pipeline resolves; keyed descriptors don't affect it, so ignore them when picking the
+        // effective descriptor.
+        ServiceDescriptor? effective = null;
+        for (int i = 0; i < services.Count; i++)
+        {
+            if (services[i].ServiceType == mediatorServiceType && !services[i].IsKeyedService)
+                effective = services[i];
+        }
+
+        if (effective is null || effective.Lifetime != ServiceLifetime.Singleton)
+            return;
+
+        throw new InvalidOperationException(
+            $"{mediatorServiceType.Name} is registered with ServiceLifetime.Singleton, which cannot host " +
+            "Trellis's pipeline behaviors. They are Scoped — AuthorizationBehavior reads the per-request Actor " +
+            "(and resource authorization the per-request loaded resource) — and a Singleton Mediator resolves " +
+            "the pipeline from the root service provider, which cannot resolve a Scoped service, so the first " +
+            "request would fail with an opaque dependency-injection error. Register Mediator with " +
+            "AddMediator(options => options.ServiceLifetime = ServiceLifetime.Scoped).");
     }
 
     /// <summary>
