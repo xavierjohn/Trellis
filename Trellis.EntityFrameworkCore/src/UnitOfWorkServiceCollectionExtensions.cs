@@ -39,7 +39,23 @@ public static class UnitOfWorkServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddScoped<IUnitOfWork, EfUnitOfWork<TContext>>();
         AddTrackedAggregateSourceForwarder(services);
-        services.AddTransactionalCommandBehavior();
+
+        // AddTransactionalCommandBehavior throws only when a closed-generic TransactionalCommandBehavior is
+        // already registered. Augment that provider-neutral message with the EF-adapter escape hatch so the
+        // consumer who reached the conflict through this method has a directly actionable resolution.
+        try
+        {
+            services.AddTransactionalCommandBehavior();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new InvalidOperationException(
+                $"{ex.Message} To keep the explicit closed registration, call " +
+                $"AddTrellisUnitOfWorkWithoutBehavior<TContext>() instead of AddTrellisUnitOfWork<TContext>() " +
+                $"and wire the transactional behavior manually.",
+                ex);
+        }
+
         return services;
     }
 

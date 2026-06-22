@@ -43,7 +43,7 @@ public class UnitOfWorkServiceCollectionExtensionsTests
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*TransactionalCommandBehavior*closed*generic*")
-            .WithMessage("*AddTransactionalCommandBehavior*");
+            .WithMessage("*AddTrellisUnitOfWorkWithoutBehavior*");
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class UnitOfWorkServiceCollectionExtensionsTests
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*TransactionalCommandBehavior*closed*generic*")
             .WithMessage("*TransactionalCommandBehavior`2*")
-            .WithMessage("*AddTransactionalCommandBehavior*");
+            .WithMessage("*AddTrellisUnitOfWorkWithoutBehavior*");
     }
 
     private sealed class NoopUnitOfWork : IUnitOfWork
