@@ -19,7 +19,7 @@ using System.Diagnostics;
 /// uninitialized state a typed failure rather than a silent success that would hide a programming error.
 /// Always construct via <see cref="Result.Ok{T}(T)"/>, <see cref="Result.Fail{T}(Error)"/>, or
 /// <see cref="Result.FailAfterCommit{T}(Error)"/> (the persist-on-failure factory consumed by
-/// <c>Trellis.EntityFrameworkCore.TransactionalCommandBehavior</c>); analyzer
+/// <c>Trellis.Mediator.TransactionalCommandBehavior</c>); analyzer
 /// <c>TRLS019</c> flags explicit <c>default(Result&lt;T&gt;)</c> at call sites.
 /// </para>
 /// </remarks>
