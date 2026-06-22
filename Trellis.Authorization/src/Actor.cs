@@ -2,6 +2,7 @@
 
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 /// <summary>
@@ -297,35 +298,41 @@ public sealed class Actor : IEquatable<Actor>
     }
 
     /// <summary>
-    /// Returns the attribute identified by <paramref name="key"/> parsed into the string-backed scalar
-    /// value object <typeparamref name="TVo"/> through its <c>TryCreate</c> factory, so a claim-sourced
-    /// value is validated by the same domain rule that guards request input.
+    /// Returns the attribute identified by <paramref name="key"/> parsed into the value object
+    /// <typeparamref name="TVo"/> through its <see cref="IParsable{TSelf}"/> implementation, so a claim-sourced
+    /// value is validated by the same domain rule that guards request input. Works for any backing primitive —
+    /// <c>string</c>-, <c>Guid</c>-, <c>int</c>-, or <c>decimal</c>-backed value objects alike.
     /// </summary>
     /// <typeparam name="TVo">
-    /// A string-backed scalar value object — for example a <c>RequiredString&lt;T&gt;</c> subclass such as
-    /// <see cref="ActorId"/>. The attribute string is run through the type's own <c>TryCreate</c>.
+    /// A Trellis value object — any source-generated <c>Required*&lt;T&gt;</c> subclass (for example
+    /// <c>RequiredString</c>, <c>RequiredGuid</c>, <c>RequiredInt</c>), which the generator makes
+    /// <see cref="IParsable{TSelf}"/>. The attribute string is parsed and validated through the type's own
+    /// <c>TryParse</c>, which routes through its <c>TryCreate</c> validation.
     /// </typeparam>
     /// <param name="key">The attribute key. Use <see cref="ActorAttributes"/> constants for well-known keys.</param>
     /// <returns>
     /// A success <see cref="Result{T}"/> with the typed value when the attribute is present and valid;
-    /// otherwise a failed <see cref="Result{T}"/> carrying the value object's <see cref="Error.InvalidInput"/>.
-    /// A missing attribute is treated as a missing value and fails the same way. The error's field is the
-    /// attribute <paramref name="key"/>.
+    /// otherwise a failed <see cref="Result{T}"/> with an <see cref="Error.InvalidInput"/> whose field is the
+    /// attribute <paramref name="key"/>. A missing attribute is treated as a missing value and fails the same way.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is null.</exception>
     public Result<TVo> GetRequiredAttribute<TVo>(string key)
-        where TVo : class, IScalarValue<TVo, string>
+        where TVo : class, IParsable<TVo>
     {
         ArgumentNullException.ThrowIfNull(key);
-        return TVo.TryCreate(GetAttribute(key), key);
+        return TVo.TryParse(GetAttribute(key), CultureInfo.InvariantCulture, out var value) && value is not null
+            ? Result.Ok(value)
+            : Result.Fail<TVo>(Error.InvalidInput.ForField(
+                key, "attribute.invalid", $"Attribute '{key}' is missing or is not a valid {typeof(TVo).Name}."));
     }
 
     /// <summary>
-    /// Attempts to parse the attribute identified by <paramref name="key"/> into the string-backed scalar
-    /// value object <typeparamref name="TVo"/> through its <c>TryCreate</c> factory.
+    /// Attempts to parse the attribute identified by <paramref name="key"/> into the value object
+    /// <typeparamref name="TVo"/> through its <see cref="IParsable{TSelf}"/> implementation.
     /// </summary>
     /// <typeparam name="TVo">
-    /// A string-backed scalar value object — for example a <c>RequiredString&lt;T&gt;</c> subclass.
+    /// A Trellis value object — any source-generated <c>Required*&lt;T&gt;</c> subclass (<c>string</c>-,
+    /// <c>Guid</c>-, <c>int</c>-backed, and so on), which the generator makes <see cref="IParsable{TSelf}"/>.
     /// </typeparam>
     /// <param name="key">The attribute key. Use <see cref="ActorAttributes"/> constants for well-known keys.</param>
     /// <param name="value">When this method returns <see langword="true"/>, the parsed value; otherwise <see langword="null"/>.</param>
@@ -335,12 +342,12 @@ public sealed class Actor : IEquatable<Actor>
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is null.</exception>
     public bool TryGetAttribute<TVo>(string key, [NotNullWhen(true)] out TVo? value)
-        where TVo : class, IScalarValue<TVo, string>
+        where TVo : class, IParsable<TVo>
     {
         ArgumentNullException.ThrowIfNull(key);
-        if (TVo.TryCreate(GetAttribute(key), key).TryGetValue(out var created))
+        if (TVo.TryParse(GetAttribute(key), CultureInfo.InvariantCulture, out var parsed) && parsed is not null)
         {
-            value = created;
+            value = parsed;
             return true;
         }
 

@@ -10,18 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — typed actor attribute accessors (`Actor.GetRequiredAttribute<TVo>` / `TryGetAttribute<TVo>`)
 
 `Trellis.Authorization.Actor` gains two generic accessors that parse an actor attribute (an ABAC claim) into
-a string-backed scalar value object through its own `TryCreate`, removing the `GetAttribute(...)` +
+a Trellis value object through its `IParsable` implementation, removing the `GetAttribute(...)` +
 `TryCreate(...)` ceremony and the magic-string key at every call site:
 
 - **`Result<TVo> GetRequiredAttribute<TVo>(string key)`** returns the typed value when the attribute is
-  present and valid, or a failed `Result` carrying the value object's `Error.InvalidInput` (the error's field
-  is `key`; a missing attribute fails the same way) — suited to railway composition in a handler.
+  present and valid, or a failed `Result` with an `Error.InvalidInput` whose field is `key` (a missing
+  attribute fails the same way) — suited to railway composition in a handler.
 - **`bool TryGetAttribute<TVo>(string key, out TVo? value)`** returns `true` with the parsed value when
   present and valid, `false` otherwise — deny-closes naturally in an authorization gate.
 
-Both constrain `TVo` to `class, IScalarValue<TVo, string>` (a `RequiredString<T>` subclass — the natural
-model for a string claim). The existing `string? GetAttribute(string)` is unchanged. New cookbook Recipe 38
-demonstrates the tenant-isolation use: a per-command scope check with no base type.
+Both constrain `TVo` to `class, IParsable<TVo>` — any source-generated `Required*<T>` value object
+(`string`-, `Guid`-, `int`-backed, and so on), so a Guid-backed tenant id works as naturally as a string
+claim. The existing `string? GetAttribute(string)` is unchanged. New cookbook Recipe 38 demonstrates the
+tenant-isolation use: a per-command scope check with no base type.
 
 ### Added — inbox pull-consumer ergonomics (`FilterUnprocessedAsync`, dispatch outcome)
 
