@@ -131,11 +131,13 @@ public static class ServiceCollectionExtensions
 
     private static void ThrowIfMediatorServiceIsSingleton(IServiceCollection services, Type mediatorServiceType)
     {
-        // The last registration for a service type wins resolution, so inspect the effective (last) descriptor.
+        // The last UNKEYED registration for a service type backs the unkeyed GetRequiredService<T>() that the
+        // Mediator pipeline resolves; keyed descriptors don't affect it, so ignore them when picking the
+        // effective descriptor.
         ServiceDescriptor? effective = null;
         for (int i = 0; i < services.Count; i++)
         {
-            if (services[i].ServiceType == mediatorServiceType)
+            if (services[i].ServiceType == mediatorServiceType && !services[i].IsKeyedService)
                 effective = services[i];
         }
 

@@ -92,6 +92,20 @@ public class MediatorLifetimeGuardTests
         act.Should().NotThrow("the guard never touches non-Mediator service registrations");
     }
 
+    [Fact]
+    public void AddTrellisBehaviors_ignores_keyed_Mediator_registrations()
+    {
+        IServiceCollection services = new ServiceCollection();
+        // The unkeyed Mediator (what the pipeline resolves) is Scoped; a keyed Singleton registered after it must
+        // not be mistaken for the effective descriptor — keyed registrations don't back GetRequiredService<T>().
+        services.Add(MediatorDescriptor(typeof(IMediator), ServiceLifetime.Scoped));
+        services.Add(ServiceDescriptor.KeyedSingleton(typeof(IMediator), "special", (_, _) => null!));
+
+        var act = () => services.AddTrellisBehaviors();
+
+        act.Should().NotThrow("a keyed registration does not back the unkeyed Mediator the pipeline resolves");
+    }
+
     // Stand-in for Singleton infrastructure (for example a CosmosClient) the guard must leave untouched.
     private sealed class SingletonInfrastructure;
 }
