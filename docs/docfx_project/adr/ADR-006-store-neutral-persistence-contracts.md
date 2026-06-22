@@ -51,7 +51,7 @@ A spike implemented the three **store** SPIs (`IUnitOfWork`, `IInboxStore`,
 rule: zero EF types — no `DbContext`, no `SaveChanges`, no `DbUpdateException`.
 
 1. **The store contracts are movable now.** The in-memory realization compiles and passes every
-   behavioural assertion using only the BCL and Trellis's own `Result` / `Maybe` / `Unit` types:
+   behavioral assertion using only the BCL and Trellis's own `Result` / `Maybe` / `Unit` types:
    stage a dedup record in the unit of work → commit it atomically → the anti-join reads only
    committed state → dedup keyed per `(ConsumerId, MessageId)` → the checkpoint round-trips an opaque
    cursor → nested-scope commits defer to the outermost scope. No store signature leaks EF. (The
