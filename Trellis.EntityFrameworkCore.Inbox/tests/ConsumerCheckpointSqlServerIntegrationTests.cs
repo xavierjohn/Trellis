@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 /// SQL Server integration coverage for the pull-consumer checkpoint store. The in-memory SQLite unit tests
 /// cover the read/upsert logic; this exercises the round-trip and the advance-updates-in-place behavior
 /// against a real provider (where the upsert is a separate UPDATE rather than a SQLite in-memory write).
-/// Excluded from default runs — use <c>dotnet test --filter-trait "Category=Integration"</c>
+/// Excluded from default runs — use <c>dotnet test -- --filter-trait "Category=Integration"</c>
 /// (requires SQL Server LocalDB).
 /// </summary>
 [Trait("Category", "Integration")]

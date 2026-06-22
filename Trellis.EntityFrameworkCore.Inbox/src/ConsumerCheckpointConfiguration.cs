@@ -19,7 +19,7 @@ public sealed class ConsumerCheckpointConfiguration : IEntityTypeConfiguration<C
         // One row per consumer — the resume cursor is single-valued per subscriber.
         builder.HasKey(c => c.ConsumerId);
 
-        // Same width as the inbox dedup key so a consumer that uses both keys them consistently.
+        // Same width as the inbox dedup key, so the same ConsumerId keys both tables consistently.
         builder.Property(c => c.ConsumerId).HasMaxLength(InboxOptions.MaxConsumerIdLength).IsRequired();
         builder.Property(c => c.Position).IsRequired();
         builder.Property(c => c.UpdatedAt).IsRequired();

@@ -23,10 +23,19 @@ internal sealed class EfConsumerCheckpointStore<TContext> : IConsumerCheckpointS
         _timeProvider = timeProvider;
     }
 
+    private static void ValidateConsumerId(string consumerId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(consumerId);
+        if (consumerId.Length > InboxOptions.MaxConsumerIdLength)
+            throw new ArgumentException(
+                $"consumerId must be at most {InboxOptions.MaxConsumerIdLength} characters; it is stored in a fixed-width key column.",
+                nameof(consumerId));
+    }
+
     /// <inheritdoc />
     public async Task<Maybe<string>> GetAsync(string consumerId, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(consumerId);
+        ValidateConsumerId(consumerId);
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
@@ -43,7 +52,7 @@ internal sealed class EfConsumerCheckpointStore<TContext> : IConsumerCheckpointS
     /// <inheritdoc />
     public async Task SetAsync(string consumerId, string position, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(consumerId);
+        ValidateConsumerId(consumerId);
         ArgumentException.ThrowIfNullOrWhiteSpace(position);
 
         await using var scope = _scopeFactory.CreateAsyncScope();

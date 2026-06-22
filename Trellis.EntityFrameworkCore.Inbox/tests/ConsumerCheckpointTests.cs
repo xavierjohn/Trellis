@@ -147,6 +147,40 @@ public sealed class ConsumerCheckpointTests
     }
 
     [Fact]
+    public async Task GetAsync_rejects_a_consumerId_longer_than_the_key_column()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection);
+        await EnsureCreatedAsync(provider, ct);
+        var store = provider.GetRequiredService<IConsumerCheckpointStore>();
+        var tooLong = new string('x', InboxOptions.MaxConsumerIdLength + 1);
+
+        var act = async () => await store.GetAsync(tooLong, ct);
+
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage($"*{InboxOptions.MaxConsumerIdLength}*");
+    }
+
+    [Fact]
+    public async Task SetAsync_rejects_a_consumerId_longer_than_the_key_column()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection);
+        await EnsureCreatedAsync(provider, ct);
+        var store = provider.GetRequiredService<IConsumerCheckpointStore>();
+        var tooLong = new string('x', InboxOptions.MaxConsumerIdLength + 1);
+
+        var act = async () => await store.SetAsync(tooLong, "cursor-1", ct);
+
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage($"*{InboxOptions.MaxConsumerIdLength}*");
+    }
+
+    [Fact]
     public void AddTrellisConsumerCheckpointStore_registers_the_store()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
