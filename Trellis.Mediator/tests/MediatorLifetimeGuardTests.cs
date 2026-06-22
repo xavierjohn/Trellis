@@ -2,7 +2,6 @@
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 #pragma warning disable CA1707 // readable xUnit test names
 
@@ -22,7 +21,7 @@ public class MediatorLifetimeGuardTests
     [Fact]
     public void AddTrellisBehaviors_throws_when_Mediator_is_registered_Singleton()
     {
-        var services = new ServiceCollection();
+        IServiceCollection services = new ServiceCollection();
         services.Add(MediatorDescriptor(typeof(IMediator), ServiceLifetime.Singleton));
 
         var act = () => services.AddTrellisBehaviors();
@@ -35,7 +34,7 @@ public class MediatorLifetimeGuardTests
     [Fact]
     public void AddTrellisBehaviors_also_detects_a_Singleton_ISender()
     {
-        var services = new ServiceCollection();
+        IServiceCollection services = new ServiceCollection();
         services.Add(MediatorDescriptor(typeof(ISender), ServiceLifetime.Singleton));
 
         var act = () => services.AddTrellisBehaviors();
@@ -48,7 +47,7 @@ public class MediatorLifetimeGuardTests
     [InlineData(ServiceLifetime.Transient)]
     public void AddTrellisBehaviors_succeeds_when_Mediator_is_not_Singleton(ServiceLifetime lifetime)
     {
-        var services = new ServiceCollection();
+        IServiceCollection services = new ServiceCollection();
         services.Add(MediatorDescriptor(typeof(IMediator), lifetime));
 
         var act = () => services.AddTrellisBehaviors();
@@ -59,7 +58,7 @@ public class MediatorLifetimeGuardTests
     [Fact]
     public void AddTrellisBehaviors_throws_for_a_Singleton_ISender_even_when_IMediator_is_not_Singleton()
     {
-        var services = new ServiceCollection();
+        IServiceCollection services = new ServiceCollection();
         // Mixed lifetimes: a non-Singleton IMediator must not mask a Singleton ISender.
         services.Add(MediatorDescriptor(typeof(IMediator), ServiceLifetime.Transient));
         services.Add(MediatorDescriptor(typeof(ISender), ServiceLifetime.Singleton));
@@ -72,7 +71,7 @@ public class MediatorLifetimeGuardTests
     [Fact]
     public void AddTrellisBehaviors_succeeds_when_no_Mediator_is_registered()
     {
-        var services = new ServiceCollection();
+        IServiceCollection services = new ServiceCollection();
 
         var act = () => services.AddTrellisBehaviors();
 
@@ -82,7 +81,7 @@ public class MediatorLifetimeGuardTests
     [Fact]
     public void AddTrellisBehaviors_ignores_unrelated_singleton_registrations()
     {
-        var services = new ServiceCollection();
+        IServiceCollection services = new ServiceCollection();
         // Infrastructure such as a CosmosClient is correctly registered Singleton; the guard inspects only the
         // IMediator/ISender lifetime, so an unrelated Singleton alongside a Scoped Mediator is fine.
         services.AddSingleton<SingletonInfrastructure>();
