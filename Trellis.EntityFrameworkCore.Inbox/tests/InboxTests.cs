@@ -388,6 +388,7 @@ internal sealed class InboxTestDbContext(DbContextOptions<InboxTestDbContext> op
             b.HasIndex(l => l.Entry).IsUnique();
         });
         modelBuilder.AddTrellisInbox();
+        modelBuilder.AddTrellisConsumerCheckpoints();
     }
 }
 
