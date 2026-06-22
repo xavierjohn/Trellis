@@ -150,8 +150,8 @@ public sealed class Actor : IEquatable<Actor>
 | `public bool IsOwner(string resourceOwnerId)` | `bool` | Convenience overload that compares `Id.Value` and `resourceOwnerId` with `StringComparison.Ordinal`. |
 | `public bool HasAttribute(string key)` | `bool` | `true` when `Attributes` contains `key`. |
 | `public string? GetAttribute(string key)` | `string?` | Returns the attribute value or `null` when absent. |
-| `public Result<TVo> GetRequiredAttribute<TVo>(string key) where TVo : class, IScalarValue<TVo, string>` | `Result<TVo>` | Parses the attribute through the string-backed value object's `TryCreate`: a success `Result` with the typed value when present and valid, otherwise a failed `Result` carrying the value object's `Error.InvalidInput` (a missing attribute fails the same way). The error's field is `key`. Throws `ArgumentNullException` when `key` is null. |
-| `public bool TryGetAttribute<TVo>(string key, out TVo? value) where TVo : class, IScalarValue<TVo, string>` | `bool` | `true` with the parsed `value` when the attribute is present and valid; `false` (and `value` is null) when absent or invalid — deny-closes naturally in an authorization gate. Throws `ArgumentNullException` when `key` is null. |
+| `public Result<TVo> GetRequiredAttribute<TVo>(string key) where TVo : class, IParsable<TVo>` | `Result<TVo>` | Parses the attribute through the value object's `IParsable` implementation (any source-generated `Required*` VO — `string`-, `Guid`-, `int`-backed, and so on), validating via its `TryParse` (which routes through `TryCreate`): a success `Result` with the typed value when present and valid, otherwise a failed `Result` with an `Error.InvalidInput` whose field is `key` (a missing attribute fails the same way). Throws `ArgumentNullException` when `key` is null. |
+| `public bool TryGetAttribute<TVo>(string key, out TVo? value) where TVo : class, IParsable<TVo>` | `bool` | `true` with the parsed `value` when the attribute is present and valid; `false` (and `value` is null) when absent or invalid — deny-closes naturally in an authorization gate. Parses through the VO's `IParsable`, so any backing primitive works. Throws `ArgumentNullException` when `key` is null. |
 
 ### `ActorId`
 
@@ -521,8 +521,8 @@ bool canCancel = actor.HasPermission("orders:cancel");
 bool canViewTenant = actor.HasPermission("orders:view", "tenant-1");
 string? tenant = actor.GetAttribute(ActorAttributes.TenantId);
 
-// Typed accessors parse the claim through a string-backed value object's TryCreate
-// (where: public sealed partial class TenantId : RequiredString<TenantId>;):
+// Typed accessors parse the claim through the value object's IParsable — any backing primitive,
+// here a Guid-backed tenant id (where: public sealed partial class TenantId : RequiredGuid<TenantId>;):
 Result<TenantId> tenantVo = actor.GetRequiredAttribute<TenantId>(ActorAttributes.TenantId);
 bool hasTenant = actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var typedTenant);
 ```

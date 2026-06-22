@@ -1,16 +1,17 @@
-namespace Trellis.Authorization.Tests;
+﻿namespace Trellis.Authorization.Tests;
 
 using Trellis.Testing;
 
 #pragma warning disable CA1707 // readable xUnit test names
 
 /// <summary>
-/// Tests for the typed actor-attribute accessors that parse an attribute string into a
-/// string-backed scalar value object through its <c>TryCreate</c> factory.
+/// Tests for the typed actor-attribute accessors that parse an attribute string into a Trellis value object
+/// through its <c>IParsable</c> implementation — covering both string- and Guid-backed value objects.
 /// </summary>
 public class ActorTypedAttributeTests
 {
     private const string ScopeKey = "scope";
+    private const string TenantKey = "tenant_id";
 
     private static Actor WithAttribute(string key, string value) =>
         new("user-1", new HashSet<string>(), new HashSet<string>(), new Dictionary<string, string> { [key] = value });
@@ -105,6 +106,58 @@ public class ActorTypedAttributeTests
 
         act.Should().Throw<ArgumentNullException>();
     }
+
+    [Fact]
+    public void GetRequiredAttribute_parses_a_Guid_backed_value_object()
+    {
+        // The motivating case: a Guid-backed VO (e.g. a tenant id) is IScalarValue<.,Guid>, NOT
+        // IScalarValue<.,string>; the accessor must still parse it from its string form.
+        var id = Guid.NewGuid();
+        var actor = WithAttribute(TenantKey, id.ToString());
+
+        var result = actor.GetRequiredAttribute<TestScopeId>(TenantKey);
+
+        result.IsSuccess.Should().BeTrue("a Guid-backed VO parses from its string representation");
+        result.Unwrap().Value.Should().Be(id);
+    }
+
+    [Fact]
+    public void GetRequiredAttribute_Guid_backed_invalid_returns_failure_referencing_the_key()
+    {
+        var actor = WithAttribute(TenantKey, "not-a-guid");
+
+        var result = actor.GetRequiredAttribute<TestScopeId>(TenantKey);
+
+        result.IsFailure.Should().BeTrue();
+        var invalid = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        invalid.Fields[0].Field.Path.Should().Be("/tenant_id", "the failed attribute key identifies the error field");
+    }
+
+    [Fact]
+    public void TryGetAttribute_parses_a_Guid_backed_value_object()
+    {
+        var id = Guid.NewGuid();
+        var actor = WithAttribute(TenantKey, id.ToString());
+
+        var ok = actor.TryGetAttribute<TestScopeId>(TenantKey, out var scope);
+
+        ok.Should().BeTrue();
+        scope!.Value.Should().Be(id);
+    }
+
+    [Fact]
+    public void TryGetAttribute_Guid_backed_invalid_returns_false_and_null()
+    {
+        var actor = WithAttribute(TenantKey, "not-a-guid");
+
+        var ok = actor.TryGetAttribute<TestScopeId>(TenantKey, out var scope);
+
+        ok.Should().BeFalse();
+        scope.Should().BeNull();
+    }
 }
+
+// A Guid-backed value object — the motivating tenant-id case the accessor must support.
+public sealed partial class TestScopeId : RequiredGuid<TestScopeId>;
 
 #pragma warning restore CA1707
