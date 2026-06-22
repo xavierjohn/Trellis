@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <Description>Store-agnostic persistence contracts for Trellis: the unit-of-work commit boundary and the idempotent-consumer inbox store SPIs (dedup record and resume checkpoint). Implement these over EF Core, Dapper, ADO, Cosmos DB, or any store — they depend only on Trellis.Core.</Description>
+    <PackageTags>trellis;persistence;abstractions;unit-of-work;inbox;idempotency;spi;result</PackageTags>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\NUGET_README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
+  </ItemGroup>
+
+</Project>

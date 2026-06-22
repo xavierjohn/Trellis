@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis;
 
 /// <summary>
 /// Store seam for a pull consumer's durable resume cursor — a service-provider interface (SPI) for the

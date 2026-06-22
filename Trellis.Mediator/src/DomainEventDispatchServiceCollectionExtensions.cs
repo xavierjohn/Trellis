@@ -159,16 +159,12 @@ public static class DomainEventDispatchServiceCollectionExtensions
         }
     }
 
-    // Trellis.Mediator does not reference Trellis.EntityFrameworkCore, so detect the
-    // transactional behavior by full type name to keep the package boundary clean.
-    private const string TransactionalBehaviorTypeName = "Trellis.EntityFrameworkCore.TransactionalCommandBehavior`2";
-
     internal static ServiceDescriptor? TryRemoveTransactionalBehavior(IServiceCollection services)
     {
         for (var i = 0; i < services.Count; i++)
         {
             if (services[i].ServiceType == typeof(IPipelineBehavior<,>)
-                && services[i].ImplementationType?.FullName == TransactionalBehaviorTypeName)
+                && services[i].ImplementationType == typeof(TransactionalCommandBehavior<,>))
             {
                 var descriptor = services[i];
                 services.RemoveAt(i);

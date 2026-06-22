@@ -121,6 +121,9 @@
     <Project Path="Trellis.Http.Abstractions/src/Trellis.Http.Abstractions.csproj" />
     <Project Path="Trellis.Http.Abstractions/tests/Trellis.Http.Abstractions.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Persistence.Abstractions/">
+    <Project Path="Trellis.Persistence.Abstractions/src/Trellis.Persistence.Abstractions.csproj" />
+  </Folder>
   <Folder Name="/Trellis.Mediator/">
     <Project Path="Trellis.Mediator/src/Trellis.Mediator.csproj" />
     <Project Path="Trellis.Mediator/tests/Trellis.Mediator.Tests.csproj" />

@@ -100,6 +100,7 @@ dotnet new trellis-asp -n MyService
 | [Trellis.Http](https://www.nuget.org/packages/Trellis.Http) | `HttpClient` extensions that stay inside the Result pipeline |
 | [Trellis.Http.Abstractions](https://www.nuget.org/packages/Trellis.Http.Abstractions) | HTTP-aware boundary primitives (`HttpError.*` cases, `EntityTagValue`, `PreconditionKind`, `RetryAfterValue`, `AuthChallenge`) shared by `Trellis.Asp` and `Trellis.Http` |
 | [Trellis.Mediator](https://www.nuget.org/packages/Trellis.Mediator) | Result-aware pipeline behaviors for [Mediator](https://github.com/martinothamar/Mediator) |
+| [Trellis.Persistence.Abstractions](https://www.nuget.org/packages/Trellis.Persistence.Abstractions) | Store-agnostic persistence contracts (`IUnitOfWork`, `IInboxStore`, `IConsumerCheckpointStore`) implementable over EF Core, Dapper, Cosmos DB, or any store |
 | [Trellis.FluentValidation](https://www.nuget.org/packages/Trellis.FluentValidation) | FluentValidation output converted into Trellis results |
 | [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, and safe save helpers (bundles the `Maybe<T>` / owned value-object source generator) |
 | [Trellis.EntityFrameworkCore.Outbox](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Outbox) | Transactional outbox that captures domain events in the same transaction and relays them after commit, with domain/integration-event routing |

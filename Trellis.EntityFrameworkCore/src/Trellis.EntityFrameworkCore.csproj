@@ -24,6 +24,8 @@
     <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
+    <ProjectReference Include="..\..\Trellis.Persistence.Abstractions\src\Trellis.Persistence.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Mediator.Abstractions" />

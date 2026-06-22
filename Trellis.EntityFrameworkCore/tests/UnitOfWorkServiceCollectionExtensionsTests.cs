@@ -3,6 +3,7 @@
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Trellis.Mediator;
 using static RepositoryBaseTests;
 
 public class UnitOfWorkServiceCollectionExtensionsTests
@@ -42,7 +43,7 @@ public class UnitOfWorkServiceCollectionExtensionsTests
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*TransactionalCommandBehavior*closed*generic*")
-            .WithMessage("*AddTrellisUnitOfWorkWithoutBehavior*");
+            .WithMessage("*AddTransactionalCommandBehavior*");
     }
 
     [Fact]
@@ -110,7 +111,7 @@ public class UnitOfWorkServiceCollectionExtensionsTests
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*TransactionalCommandBehavior*closed*generic*")
             .WithMessage("*TransactionalCommandBehavior`2*")
-            .WithMessage("*AddTrellisUnitOfWorkWithoutBehavior*");
+            .WithMessage("*AddTransactionalCommandBehavior*");
     }
 
     private sealed class NoopUnitOfWork : IUnitOfWork

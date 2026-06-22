@@ -1,7 +1,7 @@
 ﻿# ADR-006 — Re-home Persistence and Messaging Contracts out of the EF Core Packages
 
-> **Status:** Proposed. On acceptance, **supersedes ADR-002 §2 (Proposed Package Map) and §5.1 item 7**
-> (which pins `TransactionalCommandBehavior` to `Trellis.EntityFrameworkCore`) for the persistence and
+> **Status:** Accepted. **Supersedes ADR-002 §2 (Proposed Package Map) and §5.1 item 7**
+> (which pinned `TransactionalCommandBehavior` to `Trellis.EntityFrameworkCore`) for the persistence and
 > inbox messaging contracts named below.
 >
 > **Context:** Trellis declares its persistence and consume-side messaging contracts (`IUnitOfWork`,

@@ -1,4 +1,5 @@
-﻿using Trellis.Testing;
+using Trellis.Mediator;
+using Trellis.Testing;
 namespace Trellis.EntityFrameworkCore.Tests;
 
 public class TransactionalCommandBehaviorTests
@@ -329,9 +330,9 @@ public class TransactionalCommandBehaviorTests
         }
     }
 
-    private sealed record FakeCommand : Mediator.ICommand<Result<string>>;
+    private sealed record FakeCommand : global::Mediator.ICommand<Result<string>>;
 
-    private sealed record FakeUnitCommand : Mediator.ICommand<Result<Unit>>;
+    private sealed record FakeUnitCommand : global::Mediator.ICommand<Result<Unit>>;
 
     /// <summary>
     /// Constructor null-guard test (PR #459-style discipline applied here too).

@@ -13,7 +13,7 @@ new files; superseded decisions stay in place with a status update.
 | 002 | [Trellis v2 — Forward-Looking Architectural Redesign](ADR-002-v2-redesign-plan.md) | Accepted, in execution (PR #401 = Phase 1a shipped; PR #403 = Phase 2 in flight) |
 | 003 | [Trellis v3 Fluent API Improvements](ADR-003-fluent-api-improvements.md) | Accepted for v3 implementation |
 | 005 | [Re-introduce `Trellis.Unit` and Collapse Non-Generic `Result` to a Static Factory](ADR-005-reintroduce-unit.md) | Proposed (counter-ADR to ADR-002 §3) |
-| 006 | [Re-home Persistence and Messaging Contracts out of the EF Core Packages](ADR-006-store-neutral-persistence-contracts.md) | Proposed |
+| 006 | [Re-home Persistence and Messaging Contracts out of the EF Core Packages](ADR-006-store-neutral-persistence-contracts.md) | Accepted |
 
 ## When to write an ADR
 

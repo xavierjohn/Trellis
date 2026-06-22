@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
+    <ProjectReference Include="..\..\Trellis.Persistence.Abstractions\src\Trellis.Persistence.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Mediator.Abstractions" />
