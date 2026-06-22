@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.EntityFrameworkCore.Inbox
 namespaces: [Trellis.EntityFrameworkCore]
-types: [InboxMessage, InboxOptions, IntegrationEnvelope, InboxDispatchOutcome, IInboxStore, IInboxDispatcher, InboxServiceCollectionExtensions, InboxModelBuilderExtensions]
+types: [InboxMessage, InboxOptions, IntegrationEnvelope, InboxDispatchOutcome, IInboxStore, IInboxDispatcher, InboxServiceCollectionExtensions, InboxModelBuilderExtensions, IConsumerCheckpointStore, ConsumerCheckpoint, ConsumerCheckpointConfiguration, CheckpointServiceCollectionExtensions, CheckpointModelBuilderExtensions]
 version: v1
 last_verified: 2026-06-21
 audience: [llm]
@@ -29,6 +29,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Make a consumer idempotent against redeliveries | `services.AddTrellisInbox<TContext>(o => o.ConsumerId = "...")` or `trellis.UseInbox<TContext>(...)` + `modelBuilder.AddTrellisInbox()` | [Wiring: two required calls](#wiring-two-required-calls), [InboxServiceCollectionExtensions](#inboxservicecollectionextensions) |
 | Hand a received message to the inbox | `IInboxDispatcher.DispatchAsync(envelope, ct)` from your transport adapter — returns `Processed` or `SkippedDuplicate` | [IInboxDispatcher](#iinboxdispatcher), [InboxDispatchOutcome](#inboxdispatchoutcome) |
 | Drive a gap-free pull / anti-join consumer | `IInboxStore.FilterUnprocessedAsync(consumerId, ids, ct)` to skip already-processed feed rows | [IInboxStore](#iinboxstore) |
+| Resume a pull consumer without rescanning the whole feed | `services.AddTrellisConsumerCheckpointStore<TContext>()` + `modelBuilder.AddTrellisConsumerCheckpoints()`; `IConsumerCheckpointStore.GetAsync` / `SetAsync` | [Pull-consumer checkpoint](#pull-consumer-checkpoint-resume-cursor) |
 | Map the deduplication table | `modelBuilder.AddTrellisInbox()` in `OnModelCreating` | [InboxModelBuilderExtensions](#inboxmodelbuilderextensions), [InboxMessage](#inboxmessage) |
 | Identify this subscriber for per-consumer dedup | `InboxOptions.ConsumerId` (required) | [InboxOptions](#inboxoptions) |
 | Supply the same guarantee over a non-EF store | Implement `IInboxStore` | [IInboxStore](#iinboxstore) |
@@ -43,6 +44,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - **The guarantee is local-side-effects-only.** The dedup row and the handlers' writes through the injected `TContext` commit in one `SaveChanges`. Effects that are *not* part of that save — sending an email, calling a downstream API, writing through a different `DbContext`/connection — are not covered and need their own idempotency. A handler that writes through a second context escapes the dedup unit of work.
 - **Handlers run before the save and must propagate failures.** Unlike the default `IIntegrationEventPublisher` (which logs and swallows handler exceptions), the inbox dispatcher is non-swallowing: a handler throw aborts the unit of work before anything is saved — no dedup row, no side effects — and propagates so the transport redelivers. Make handlers safe to re-run, and do not call `SaveChanges` inside a handler (it would break the single-save atomicity).
 - **An absent `ConsumerId` fails fast at registration.** `AddTrellisInbox` calls `InboxOptions.Validate()`, which throws `InvalidOperationException` if `ConsumerId` is blank, so the misconfiguration surfaces at startup rather than on the first message.
+- **The checkpoint is not a dedup substitute.** `IConsumerCheckpointStore` is a performance resume cursor, not the correctness boundary — a high-water cursor can skip a row committed out of order. Always pair it with an overlap window **and** `FilterUnprocessedAsync`; never advance it past rows that aren't known processed. See [Pull-consumer checkpoint](#pull-consumer-checkpoint-resume-cursor).
 
 ## How the inbox works
 
@@ -174,6 +176,40 @@ public interface IInboxStore
 `TryRecordAsync` records the message as processed by `consumerId` **inside the caller's current unit of work**, so the dedup record and the handler side effects commit together. Returns `true` if newly recorded, or `false` if the `(ConsumerId, MessageId)` pair was already processed — a duplicate the dispatcher skips. `EfInboxStore` does an existence check for the fast path and stages an `InboxMessage` for the slow path; the composite primary key is the authoritative guard under concurrency.
 
 `FilterUnprocessedAsync` returns the subset of `messageIds` that `consumerId` has **not** yet processed (those without a dedup row), preserving the input order. It powers the gap-free **inbox-as-cursor / anti-join** pull model: read a window of the source feed and dispatch every row whose `MessageId` this query returns, rather than tracking a fragile high-water cursor that can skip a row committed out of sequence order. It is an optimization, not the correctness boundary — a row may be processed by another worker between this query and `DispatchAsync`, which still deduplicates — and it is a pure read that stages nothing. `EfInboxStore` runs it as a single anti-join query (`AsNoTracking`); it throws `ArgumentException` if `consumerId` is blank.
+
+## Pull-consumer checkpoint (resume cursor)
+
+`IConsumerCheckpointStore` is an optional, durable **resume cursor** for a pull consumer — it remembers per-`ConsumerId` where in the source feed the consumer last advanced to, so it resumes there instead of rescanning the whole log on every poll or restart.
+
+```csharp
+public interface IConsumerCheckpointStore
+{
+    Task<Maybe<string>> GetAsync(string consumerId, CancellationToken cancellationToken);
+    Task SetAsync(string consumerId, string position, CancellationToken cancellationToken);
+}
+```
+
+**Performance, not correctness.** The checkpoint narrows the scan window; it is **not** the deduplication boundary. A high-water cursor can skip a row that was assigned a low position but committed *late* — after the cursor advanced past it — which a cursor alone can never recover. Correctness stays with `FilterUnprocessedAsync` (the anti-join) plus the dedup row. The safe pattern:
+
+1. `GetAsync(consumerId)` → the resume position (`Maybe.None` the first time → start from the feed's beginning).
+2. Scan a window that **overlaps** the checkpoint — re-read a visibility-lag margin *behind* it, so a late-committed row is still inside the window.
+3. `FilterUnprocessedAsync(consumerId, window.Ids, ct)` → the not-yet-processed ids; `DispatchAsync` each.
+4. `SetAsync(consumerId, position)` → advance the cursor, only to a position whose predecessors are all known processed.
+
+```csharp
+var resume = await checkpoints.GetAsync(consumerId, ct);              // Maybe<string>
+var since = resume.GetValueOrDefault(FeedStart);
+var window = await feed.ReadFrom(Rewind(since, overlapMargin), ct);   // overlap behind the checkpoint
+var todo = await inbox.FilterUnprocessedAsync(consumerId, window.Ids, ct);
+foreach (var id in todo)
+    await dispatcher.DispatchAsync(window.Envelope(id), ct);
+await checkpoints.SetAsync(consumerId, window.HighWaterMark, ct);     // advance the cursor
+```
+
+- **Opaque `position`.** Trellis does not interpret it — encode whatever cursor the feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp, a composite token) as a string. The store round-trips it verbatim.
+- **Wiring (two calls).** `services.AddTrellisConsumerCheckpointStore<TContext>()` registers the store; `modelBuilder.AddTrellisConsumerCheckpoints()` maps the `TrellisConsumerCheckpoints` table (PK `ConsumerId`, width matching the inbox key). It is a **leaf store** — no `TrellisServiceBuilder` slot, like `AddInMemoryIdempotencyStore`.
+- **Durable + isolated.** `EfConsumerCheckpointStore<TContext>` reads and upserts on its own fresh DI scope and `SaveChanges`, so an advance is persisted on return and never entangles the caller's unit of work. One logical advancer per `ConsumerId` is assumed (the usual pull-consumer shape); the cursor is not a coordination primitive.
+- `GetAsync` / `SetAsync` throw `ArgumentException` for a blank `consumerId`; `SetAsync` also for a blank `position`.
 
 ## IntegrationEnvelope
 

@@ -198,6 +198,21 @@ foreach (var row in window.Where(r => todo.Contains(r.MessageId)))
 
 `FilterUnprocessedAsync` is an optimization, not the correctness boundary — between the query and `DispatchAsync` another worker may process a row, and `DispatchAsync` still deduplicates it (returning `SkippedDuplicate`). Correctness always lives in the committed dedup row; the filter just keeps you from invoking handlers for messages you can already see are done.
 
+### Optional: a resume checkpoint
+
+The anti-join keeps a scanned window gap-free, but on each poll you still choose where the window starts — and rescanning a large feed from the beginning every time is wasteful. `IConsumerCheckpointStore` is an optional, durable resume cursor — `GetAsync(consumerId)` / `SetAsync(consumerId, position)` — that remembers where you advanced to. Register it with `services.AddTrellisConsumerCheckpointStore<TContext>()` plus `modelBuilder.AddTrellisConsumerCheckpoints()`.
+
+```csharp
+var since = (await checkpoints.GetAsync(consumerId, ct)).GetValueOrDefault(FeedStart);
+var window = await feed.ReadFrom(Rewind(since, overlapMargin), ct);   // overlap BEHIND the checkpoint
+var todo = (await store.FilterUnprocessedAsync(consumerId, window.Ids, ct)).ToHashSet();
+foreach (var msg in window.Where(m => todo.Contains(m.Id)))
+    await dispatcher.DispatchAsync(msg.Envelope, ct);
+await checkpoints.SetAsync(consumerId, window.HighWaterMark, ct);     // advance the cursor
+```
+
+The checkpoint is **performance, not correctness** — it is the *same* kind of cursor the anti-join frees you from depending on for gap-freedom. A high-water cursor can skip a row assigned a low position but committed late, so always scan a window that **overlaps** the checkpoint (rewind a visibility-lag margin) and let `FilterUnprocessedAsync` + the dedup row provide once-effective processing. Used that way the checkpoint can only widen or narrow a rescan, never skip a row. The `position` is opaque — encode whatever cursor your feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp) as a string.
+
 ## Operating the inbox
 
 - **Prune old rows.** `TrellisInboxMessages` grows by one row per processed message per consumer. Once a row is older than the transport's maximum redelivery window it can never be hit by a redelivery, so a periodic job can delete rows whose `ProcessedAt` is older than that window (the column is indexed for exactly this). Delete too eagerly and a late redelivery would reprocess.

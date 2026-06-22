@@ -53,6 +53,7 @@ The dispatcher deduplicates on `(ConsumerId, MessageId)` so the event's handlers
 - **Store-agnostic seam** — `IInboxStore` is an SPI, so the same idempotency guarantee can be backed by a non-EF store. `EfInboxStore<TContext>` is the shipped implementation.
 - **Stable dedup key** — use the producer's outbox `OutboxMessage.Id` (a UUIDv7) carried verbatim by the transport as the `MessageId`.
 - **Pull-consumer ready** — `DispatchAsync` returns `Processed` vs `SkippedDuplicate`, and `IInboxStore.FilterUnprocessedAsync(consumerId, ids, ct)` returns a window's not-yet-processed ids for the gap-free inbox-as-cursor / anti-join model — no fragile high-water cursor.
+- **Resume cursor (optional)** — `IConsumerCheckpointStore` (`AddTrellisConsumerCheckpointStore<TContext>()` + `AddTrellisConsumerCheckpoints()`) durably remembers a pull consumer's position so it resumes instead of rescanning the whole feed. A performance optimization, not a dedup substitute — pair it with an overlap window and `FilterUnprocessedAsync` for correctness.
 
 ## Delivery & idempotency notes
 - The guarantee covers **local transactional side effects only** — writes through the injected `DbContext`. External calls (emails, downstream APIs) happen outside the transaction and still need their own idempotency (an idempotency key, or push them back out through an outbox).
