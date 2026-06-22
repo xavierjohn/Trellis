@@ -124,6 +124,7 @@ Tests are organized by source area:
 | FluentValidation (standalone) | `Trellis.FluentValidation/src/` | `Trellis.FluentValidation/tests/` |
 | FluentValidation (Mediator) | `Trellis.Mediator.FluentValidation/src/` | `Trellis.Mediator.FluentValidation/tests/` |
 | HTTP abstractions | `Trellis.Http.Abstractions/src/` | `Trellis.Http.Abstractions/tests/` |
+| Persistence abstractions | `Trellis.Persistence.Abstractions/src/` | — |
 | API versioning | `Trellis.Asp.ApiVersioning/src/` | `Trellis.Asp.ApiVersioning/tests/` |
 | Service defaults / composition root | `Trellis.ServiceDefaults/src/` | `Trellis.ServiceDefaults/tests/` |
 | Analyzers | `Trellis.Analyzers/src/` | `Trellis.Analyzers/tests/` |

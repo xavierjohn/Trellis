@@ -273,6 +273,43 @@ public sealed class InboxTests
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
+    [Fact]
+    public async Task Dispatch_persists_the_dedup_row_lineage_metadata()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+
+        var occurredAt = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
+        var messageId = Guid.CreateVersion7();
+        var causationId = Guid.NewGuid();
+        var envelope = new IntegrationEnvelope(messageId, new OrderPlacedIntegrationEvent(Guid.NewGuid(), occurredAt))
+        {
+            MessageSource = "orders-service",
+            CausationId = causationId,
+            CorrelationId = "corr-123",
+        };
+
+        await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct);
+
+        await using var scope = provider.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
+        var row = await db.Set<InboxMessage>().SingleAsync(ct);
+
+        // The envelope -> InboxRecord -> InboxMessage mapping must persist every column, not just the dedup key.
+        row.ConsumerId.Should().Be("billing");
+        row.MessageId.Should().Be(messageId);
+        row.MessageSource.Should().Be("orders-service");
+        row.EventType.Should().Be(typeof(OrderPlacedIntegrationEvent).AssemblyQualifiedName);
+        row.OccurredAt.Should().Be(occurredAt);
+        row.CausationId.Should().Be(causationId);
+        row.CorrelationId.Should().Be("corr-123");
+        row.ProcessedAt.Should().NotBe(default);
+    }
+
     private static IntegrationEnvelope Envelope() =>
         new(Guid.CreateVersion7(), new OrderPlacedIntegrationEvent(Guid.NewGuid(), DateTimeOffset.UnixEpoch));
 

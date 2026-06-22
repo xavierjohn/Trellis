@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.Mediator;
 
 using global::Mediator;
 
@@ -9,7 +9,7 @@ using global::Mediator;
 /// runs the handler (which stages changes via repositories), then calls
 /// <see cref="IUnitOfWork.CommitAsync"/> if the handler returned success. If the handler returned
 /// a failure <see cref="Result{T}"/>, no commit occurs and the staged changes are discarded when
-/// the <see cref="Microsoft.EntityFrameworkCore.DbContext"/> is disposed.
+/// the underlying store/context is disposed.
 /// </para>
 /// <para>
 /// <b>Persist-on-failure outcomes.</b> If the response implements <see cref="IPersistOnFailure"/>
@@ -24,24 +24,23 @@ using global::Mediator;
 /// are not wrapped and incur no overhead.
 /// </para>
 /// <para>
-/// <b>Atomicity:</b> EF Core wraps each <c>SaveChanges</c> call in an implicit database
-/// transaction, so all staged changes within a single handler are committed atomically.
-/// Cross-aggregate operations that share the same <see cref="Microsoft.EntityFrameworkCore.DbContext"/>
-/// are automatically transactional.
+/// <b>Atomicity:</b> the unit of work persists all staged changes within a single handler atomically
+/// (the shipped EF Core adapter does so through the <c>DbContext</c>'s implicit transaction). Cross-aggregate
+/// operations that share the same unit of work are automatically transactional.
 /// </para>
 /// <para>
 /// <b>Nested-command semantics.</b> When a command handler dispatches another command via
 /// <c>IMediator</c>, the inner command flows through the same pipeline and the inner
 /// <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> opens a nested
 /// <see cref="IUnitOfWork.BeginScope"/>. The inner <see cref="IUnitOfWork.CommitAsync"/> defers
-/// (returns success without touching the database) until the outermost scope unwinds. This
+/// (returns success without touching the store) until the outermost scope unwinds. This
 /// prevents a successful inner command from committing a partially-completed outer command's
 /// staged changes. <b>Caveat:</b> if the inner command returns a failure but the outer handler
 /// ignores it and returns success, the outer's commit will persist any changes the inner staged
 /// before failing — handlers that need to discard inner failures' staged work must detach the
 /// affected entities themselves. Every <see cref="IUnitOfWork"/> implementation must implement
-/// <see cref="IUnitOfWork.BeginScope"/> with depth-aware semantics; the default
-/// <see cref="EfUnitOfWork{TContext}"/> does this with an internal depth counter.
+/// <see cref="IUnitOfWork.BeginScope"/> with depth-aware semantics; the shipped EF Core unit of
+/// work does this with an internal depth counter.
 /// </para>
 /// </summary>
 /// <typeparam name="TMessage">The command type.</typeparam>

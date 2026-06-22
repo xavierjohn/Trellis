@@ -20,12 +20,12 @@ internal sealed class EfInboxStore<TContext> : IInboxStore
     }
 
     /// <inheritdoc />
-    public async Task<bool> TryRecordAsync(string consumerId, IntegrationEnvelope envelope, CancellationToken cancellationToken)
+    public async Task<bool> TryRecordAsync(string consumerId, InboxRecord record, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(envelope);
+        ArgumentNullException.ThrowIfNull(record);
 
         var alreadyProcessed = await _context.Set<InboxMessage>()
-            .AnyAsync(m => m.ConsumerId == consumerId && m.MessageId == envelope.MessageId, cancellationToken)
+            .AnyAsync(m => m.ConsumerId == consumerId && m.MessageId == record.MessageId, cancellationToken)
             .ConfigureAwait(false);
         if (alreadyProcessed)
             return false;
@@ -33,7 +33,7 @@ internal sealed class EfInboxStore<TContext> : IInboxStore
         // Enrol the dedup row in the caller's unit of work — it is persisted by the dispatcher's SaveChanges
         // alongside the handler side effects. The composite primary key still guards a concurrent duplicate.
         _context.Set<InboxMessage>().Add(
-            InboxMessage.Create(consumerId, envelope, _timeProvider.GetUtcNow()));
+            InboxMessage.Create(consumerId, record, _timeProvider.GetUtcNow()));
         return true;
     }
 

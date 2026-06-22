@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.Mediator;
 
 /// <summary>
 /// The outcome of dispatching one message through <see cref="IInboxDispatcher.DispatchAsync"/>: whether this

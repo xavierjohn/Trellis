@@ -3,6 +3,7 @@
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Trellis.Mediator;
 using static RepositoryBaseTests;
 
 public class UnitOfWorkServiceCollectionExtensionsTests

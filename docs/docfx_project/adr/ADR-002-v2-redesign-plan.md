@@ -436,6 +436,8 @@ There are **17** publishable NuGet packages today in `TrellisFramework`. The red
 - **2 packages explicitly NOT merged** to avoid forcing third-party transitive deps: `Trellis.FluentValidation`, `Trellis.Testing.AspNetCore`.
 - **0 new packages** added in `TrellisFramework`. (`Trellis.AspTemplate` continues to be published from its own repo; not counted here.)
 
+> **Superseded in part by [ADR-006](ADR-006-store-neutral-persistence-contracts.md) (Accepted).** ADR-006 adds **one** new package — `Trellis.Persistence.Abstractions` (the store-agnostic `IUnitOfWork` and inbox store SPIs) — and relocates `TransactionalCommandBehavior` plus the inbox dispatch contracts (`IInboxDispatcher`, `IntegrationEnvelope`, `InboxDispatchOutcome`) into `Trellis.Mediator`. The "0 new packages" count above and row 7's "`Trellis.EntityFrameworkCore`" home for `TransactionalCommandBehavior` no longer hold for those contracts.
+
 ### Guiding principles
 
 > **Principle: no forced third-party transitive dependencies.** Where a merger would push a third-party package (e.g., FluentValidation, ASP.NET Core test infrastructure) onto consumers who don't want it, the merger is rejected and the package stays separate and opt-in.
@@ -865,7 +867,7 @@ Keep as a thin package providing pipeline behaviors. The canonical pipeline (out
 4. `AuthorizationBehavior` — checks `[Authorize]` permissions via `IActorProvider`.
 5. `ResourceAuthorizationBehavior` — *opt-in*; checks `IAuthorizeResource<T>`. Inserted by `AddResourceAuthorization(...)` immediately before `ValidationBehavior` so the loaded resource is checked once per request.
 6. `ValidationBehavior` — **unified validation stage**. Runs `IValidate.Validate()` when the message implements it AND every `IMessageValidator<TMessage>` registered in DI for the message, aggregating `Error.UnprocessableContent` failures (both `Fields` and `Rules`) into a single response. **External validation sources plug in here through `IMessageValidator<TMessage>` instead of occupying their own pipeline slot** — in particular, `Trellis.FluentValidation` contributes a `FluentValidationMessageValidatorAdapter<TMessage>` registered by `AddTrellisFluentValidation()`. Empty `UnprocessableContent` failures still short-circuit; calling `AddTrellisFluentValidation()` is idempotent.
-7. `TransactionalCommandBehavior` — *opt-in*; lives in `Trellis.EntityFrameworkCore`. Wraps commands in `IUnitOfWork.CommitAsync`. Opt in via `AddTrellisUnitOfWork<TContext>()` after all other behavior registrations so it lands innermost (closest to the handler).
+7. `TransactionalCommandBehavior` — *opt-in*; lives in `Trellis.Mediator` (relocated from `Trellis.EntityFrameworkCore` by [ADR-006](ADR-006-store-neutral-persistence-contracts.md)). Wraps commands in `IUnitOfWork.CommitAsync`. Install via `AddTransactionalCommandBehavior()`, or via the EF Core adapter's `AddTrellisUnitOfWork<TContext>()` (which calls it), after all other behavior registrations so it lands innermost (closest to the handler).
 
 `AddTrellisMediator(...)` (or `MediatorOptions.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors.ToArray()` in the AOT path) registers the always-on behaviors (1–4 + 6) in this fixed canonical order. Users add their own behaviors but cannot reorder the built-ins (most production CQRS bugs come from reordering).
 

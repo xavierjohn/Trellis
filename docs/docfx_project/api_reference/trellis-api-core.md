@@ -282,7 +282,7 @@ Opt-in marker carried by result types whose **failure** outcome should still tri
 
 | Behavior | Persist-on-failure handling |
 | --- | --- |
-| `TransactionalCommandBehavior` (`Trellis.EntityFrameworkCore`) | Commits staged changes on success **or** persist-on-failure. Commit error on a persist-on-failure outcome replaces the handler error in the returned response. |
+| `TransactionalCommandBehavior` (`Trellis.Mediator`) | Commits staged changes on success **or** persist-on-failure. Commit error on a persist-on-failure outcome replaces the handler error in the returned response. |
 | `DomainEventDispatchBehavior` (`Trellis.Mediator`) | Treats persist-on-failure as failure: events are **not** dispatched. Events the handler raised on aggregates remain on those in-memory instances and are discarded with the request scope — they are not a durable retry buffer. Model post-failure side effects via an outbox row or a dedicated follow-up command. |
 
 #### Anti-pattern — composing `FailAfterCommit` with aggregating operators

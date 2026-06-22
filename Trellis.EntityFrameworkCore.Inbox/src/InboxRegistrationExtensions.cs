@@ -3,6 +3,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Trellis.Mediator;
 
 /// <summary>
 /// Registers the transactional inbox for a <see cref="DbContext"/>.

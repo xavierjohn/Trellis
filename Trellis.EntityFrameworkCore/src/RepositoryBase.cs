@@ -24,7 +24,7 @@ using Microsoft.EntityFrameworkCore;
 /// <b>Staging vs. Committing:</b> Methods like <see cref="Add"/>, <see cref="Remove"/>,
 /// and <see cref="RemoveByIdAsync"/> stage changes in the EF Core change tracker but never
 /// call <c>SaveChanges</c>. The commit boundary is owned by the pipeline
-/// (see <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/>) or by explicitly
+/// (see <c>TransactionalCommandBehavior</c>) or by explicitly
 /// calling <see cref="IUnitOfWork.CommitAsync"/>.
 /// </para>
 /// </remarks>

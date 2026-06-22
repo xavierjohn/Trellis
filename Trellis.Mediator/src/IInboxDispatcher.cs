@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.Mediator;
 
 /// <summary>
 /// The inbound entry point for idempotent integration-event consumption. A transport adapter — a broker

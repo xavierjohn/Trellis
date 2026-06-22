@@ -1,4 +1,4 @@
-﻿namespace Trellis.EntityFrameworkCore;
+﻿namespace Trellis.Mediator;
 
 /// <summary>
 /// The consume-side envelope handed to <see cref="IInboxDispatcher"/>: a stable <see cref="MessageId"/>

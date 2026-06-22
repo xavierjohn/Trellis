@@ -56,12 +56,7 @@ public sealed class InboxMessage
     /// <summary>Optional lineage: the workflow / conversation id.</summary>
     public string? CorrelationId { get; private set; }
 
-    internal static InboxMessage Create(string consumerId, IntegrationEnvelope envelope, DateTimeOffset processedAt)
-    {
-        var type = envelope.Event.GetType();
-        var eventType = type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
-        return new InboxMessage(
-            consumerId, envelope.MessageId, envelope.MessageSource, eventType,
-            envelope.Event.OccurredAt, processedAt, envelope.CausationId, envelope.CorrelationId);
-    }
+    internal static InboxMessage Create(string consumerId, InboxRecord record, DateTimeOffset processedAt) =>
+        new(consumerId, record.MessageId, record.MessageSource, record.EventType,
+            record.OccurredAt, processedAt, record.CausationId, record.CorrelationId);
 }

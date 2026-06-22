@@ -1,4 +1,4 @@
-namespace Trellis.Mediator.Tests;
+﻿namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -149,7 +149,7 @@ public class DomainEventDispatchRegistrationTests
         services.AddTrellisBehaviors();
         services.AddSingleton(
             typeof(IPipelineBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
 
         services.AddDomainEventDispatch();
 
@@ -165,7 +165,7 @@ public class DomainEventDispatchRegistrationTests
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(DomainEventDispatchBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class DomainEventDispatchRegistrationTests
         AddNullLogging(services);
         services.AddSingleton(
             typeof(IPipelineBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
 
         services.AddDomainEventDispatch();
 
@@ -194,7 +194,7 @@ public class DomainEventDispatchRegistrationTests
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(DomainEventDispatchBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
     }
 
     [Fact]
@@ -210,7 +210,7 @@ public class DomainEventDispatchRegistrationTests
         // Simulate AddTrellisUnitOfWork's behavior: append TX innermost.
         services.AddSingleton(
             typeof(IPipelineBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
 
         var pipeline = services
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
@@ -224,7 +224,7 @@ public class DomainEventDispatchRegistrationTests
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(DomainEventDispatchBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
     }
 
     private static void AddNullLogging(IServiceCollection services)

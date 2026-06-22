@@ -14,6 +14,9 @@ audience: [llm]
 
 This package composes `Trellis.EntityFrameworkCore` (the `DbContext`, transaction, and table mapping) with `Trellis.Mediator` (the `IIntegrationEvent` / `IIntegrationEventHandler<TEvent>` contracts it fans out to). It opts out of AOT/trim, exactly like `Trellis.EntityFrameworkCore`.
 
+> [!NOTE]
+> The **contracts** are store-agnostic and live outside the EF Core packages. The store SPIs — `IUnitOfWork`, `IInboxStore`, `IConsumerCheckpointStore`, and `InboxRecord` — are in `Trellis.Persistence.Abstractions` (namespace `Trellis`); the consume-side dispatch contracts — `IInboxDispatcher`, `IntegrationEnvelope`, `InboxDispatchOutcome` — are in `Trellis.Mediator`. This page documents the EF Core **adapter** (`EfInboxStore`, `EfConsumerCheckpointStore`, `InboxDispatcher<TContext>`, `InboxMessage`, and the registration extensions) that implements them.
+
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package.
 
 ## Use this file when
@@ -52,7 +55,7 @@ The inbox turns at-least-once **delivery** into effectively-once **processing** 
 
 1. **Receive.** An application-owned transport adapter (a broker consumer, or an in-process channel) deserializes the message into an [IntegrationEnvelope](#integrationenvelope) — a stable `MessageId` plus the `IIntegrationEvent` — and calls `IInboxDispatcher.DispatchAsync(envelope, ct)`.
 2. **Open a unit of work.** The dispatcher creates a DI scope and resolves the consumer's `TContext` and the scoped `IInboxStore`.
-3. **Deduplicate.** `IInboxStore.TryRecordAsync(consumerId, envelope, ct)` checks for an existing `(ConsumerId, MessageId)` row. If one exists the dispatcher returns immediately — a no-op; nothing was staged. Otherwise it stages a new `InboxMessage` row (without saving).
+3. **Deduplicate.** The dispatcher maps the envelope to an `InboxRecord` and calls `IInboxStore.TryRecordAsync(consumerId, record, ct)`, which checks for an existing `(ConsumerId, MessageId)` row. If one exists the dispatcher returns immediately — a no-op; nothing was staged. Otherwise it stages a new `InboxMessage` row (without saving).
 4. **Fan out (non-swallowing).** The dispatcher resolves every `IIntegrationEventHandler<TConcrete>` for the runtime event type from the *same* scope and awaits each. Because the handlers share the scope, a handler that injects `TContext` writes through the very context that holds the staged dedup row. Handler exceptions **propagate** — and because nothing has been saved yet, a throw leaves no dedup row and no side effects, so the transport redelivers.
 5. **Commit.** One `SaveChangesAsync` persists the dedup row and the handler writes together, atomically, under EF Core's implicit transaction. No user-initiated transaction is opened, so the inbox composes with a retrying execution strategy (`EnableRetryOnFailure`) like the rest of Trellis. A concurrent dispatch that recorded the same `(ConsumerId, MessageId)` first makes this save fail with a duplicate-key `DbUpdateException`; the dispatcher then re-checks, in a fresh scope, whether the dedup row was actually committed — if so the message is already processed and the failure is swallowed — this call commits nothing, the handlers' staged writes having rolled back with the save; if not, the duplicate came from a handler's own unique write and propagates so the transport redelivers.
 
@@ -166,7 +169,7 @@ Service-provider interface (SPI) for the dedup record, so a non-EF store can sup
 ```csharp
 public interface IInboxStore
 {
-    Task<bool> TryRecordAsync(string consumerId, IntegrationEnvelope envelope, CancellationToken cancellationToken);
+    Task<bool> TryRecordAsync(string consumerId, InboxRecord record, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Guid>> FilterUnprocessedAsync(
         string consumerId, IReadOnlyCollection<Guid> messageIds, CancellationToken cancellationToken);

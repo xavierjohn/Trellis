@@ -120,7 +120,7 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
         services.AddTrellisBehaviors();
         services.AddSingleton(
             typeof(IPipelineBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
 
         services.AddTrackedAggregateDomainEventDispatch();
 
@@ -136,7 +136,7 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TrackedAggregateDomainEventDispatchBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
         services.AddTrackedAggregateDomainEventDispatch();
         services.AddSingleton(
             typeof(IPipelineBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
 
         var pipeline = services
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
@@ -163,7 +163,7 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TrackedAggregateDomainEventDispatchBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
         AddNullLogging(services);
         services.AddSingleton(
             typeof(IPipelineBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
 
         services.AddTrackedAggregateDomainEventDispatch();
 
@@ -192,7 +192,7 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TrackedAggregateDomainEventDispatchBehavior<,>),
-            typeof(EntityFrameworkCore.TransactionalCommandBehavior<,>));
+            typeof(TransactionalCommandBehavior<,>));
     }
 
     [Fact]

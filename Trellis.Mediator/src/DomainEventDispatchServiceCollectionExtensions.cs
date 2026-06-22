@@ -26,7 +26,7 @@ public static class DomainEventDispatchServiceCollectionExtensions
     /// The behavior is inserted as the innermost of the always-on Trellis behaviors,
     /// running after <c>ValidationBehavior</c>
     /// (Exception → Tracing → Logging → Authorization → Validation → DomainEventDispatch).
-    /// If <c>TransactionalCommandBehavior</c> (from <c>Trellis.EntityFrameworkCore</c>) is
+    /// If <c>TransactionalCommandBehavior</c> (from <c>Trellis.Mediator</c>) is
     /// already registered, this method temporarily yanks it, ensures the always-on Trellis
     /// behaviors are present, appends dispatch, and re-appends the transactional behavior as
     /// innermost. The result is order-independent: events fire after the transaction commits
@@ -159,16 +159,12 @@ public static class DomainEventDispatchServiceCollectionExtensions
         }
     }
 
-    // Trellis.Mediator does not reference Trellis.EntityFrameworkCore, so detect the
-    // transactional behavior by full type name to keep the package boundary clean.
-    private const string TransactionalBehaviorTypeName = "Trellis.EntityFrameworkCore.TransactionalCommandBehavior`2";
-
     internal static ServiceDescriptor? TryRemoveTransactionalBehavior(IServiceCollection services)
     {
         for (var i = 0; i < services.Count; i++)
         {
             if (services[i].ServiceType == typeof(IPipelineBehavior<,>)
-                && services[i].ImplementationType?.FullName == TransactionalBehaviorTypeName)
+                && services[i].ImplementationType == typeof(TransactionalCommandBehavior<,>))
             {
                 var descriptor = services[i];
                 services.RemoveAt(i);

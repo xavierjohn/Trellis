@@ -59,7 +59,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
 
         // Fast path: the dedup row already exists, so this is a redelivery we have processed. Nothing is
         // staged, so there is nothing to save.
-        if (!await store.TryRecordAsync(_options.ConsumerId, envelope, cancellationToken).ConfigureAwait(false))
+        if (!await store.TryRecordAsync(_options.ConsumerId, ToInboxRecord(envelope), cancellationToken).ConfigureAwait(false))
         {
             InboxDispatcherLog.DuplicateSkipped(_logger, envelope.MessageId, _options.ConsumerId);
             return InboxDispatchOutcome.SkippedDuplicate;
@@ -105,6 +105,18 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
             .AsNoTracking()
             .AnyAsync(m => m.ConsumerId == _options.ConsumerId && m.MessageId == envelope.MessageId, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    // Maps the consume-side envelope to the persistence-native dedup record the store records. The
+    // event's stable type name (assembly-qualified) is captured here so the store contract carries no
+    // messaging type.
+    private static InboxRecord ToInboxRecord(IntegrationEnvelope envelope)
+    {
+        var type = envelope.Event.GetType();
+        var eventType = type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
+        return new InboxRecord(
+            envelope.MessageId, eventType, envelope.Event.OccurredAt,
+            envelope.MessageSource, envelope.CausationId, envelope.CorrelationId);
     }
 
     // Resolve and invoke every IIntegrationEventHandler<TConcrete> for the runtime event type. Exceptions

@@ -1,6 +1,6 @@
-﻿using Trellis.Testing;
+using Trellis.Mediator;
+using Trellis.Testing;
 namespace Trellis.EntityFrameworkCore.Tests;
-
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
