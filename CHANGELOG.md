@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — Mediator lifetime guardrail for the authorization pipeline
 
-`AddTrellisBehaviors()` now fails fast with a clear `InvalidOperationException` when the Mediator is registered
-`Singleton`. Trellis's pipeline behaviors are `Scoped` — `AuthorizationBehavior` reads the per-request `Actor`
+`AddTrellisBehaviors()` now fails fast with a clear `InvalidOperationException` when the Mediator (`IMediator` or
+`ISender`) is registered `Singleton`. Trellis's pipeline behaviors are `Scoped` — `AuthorizationBehavior` reads the per-request `Actor`
 (and resource authorization the per-request loaded resource) — and a root-bound `Singleton` Mediator resolves
 the pipeline from the root service provider, which cannot resolve a `Scoped` service, so the first request
 would otherwise fail with an opaque dependency-injection error. The message names the fix:
