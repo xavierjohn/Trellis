@@ -78,6 +78,23 @@ public class MediatorLifetimeGuardTests
 
         act.Should().NotThrow("the guard only fires for an already-registered Singleton Mediator");
     }
+
+    [Fact]
+    public void AddTrellisBehaviors_ignores_unrelated_singleton_registrations()
+    {
+        var services = new ServiceCollection();
+        // Infrastructure such as a CosmosClient is correctly registered Singleton; the guard inspects only the
+        // IMediator/ISender lifetime, so an unrelated Singleton alongside a Scoped Mediator is fine.
+        services.AddSingleton<SingletonInfrastructure>();
+        services.Add(MediatorDescriptor(typeof(IMediator), ServiceLifetime.Scoped));
+
+        var act = () => services.AddTrellisBehaviors();
+
+        act.Should().NotThrow("the guard never touches non-Mediator service registrations");
+    }
+
+    // Stand-in for Singleton infrastructure (for example a CosmosClient) the guard must leave untouched.
+    private sealed class SingletonInfrastructure;
 }
 
 #pragma warning restore CA1707
