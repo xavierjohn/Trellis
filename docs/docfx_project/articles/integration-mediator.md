@@ -104,7 +104,16 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 ```
 
 > [!IMPORTANT]
-> Pass `opts => opts.ServiceLifetime = ServiceLifetime.Scoped`. The Trellis behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>` adapters). Mediator's default lifetime is `Singleton`, which fails ASP.NET's root-scope validation as soon as a behavior tries to resolve a scoped dependency.
+> Pass `opts => opts.ServiceLifetime = ServiceLifetime.Scoped`. The Trellis behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>` adapters). Mediator's default lifetime is `Singleton`, which fails ASP.NET's root-scope validation as soon as a behavior tries to resolve a scoped dependency. `AddTrellisBehaviors()` fails fast with an actionable message if it sees a `Singleton` Mediator.
+
+> [!NOTE]
+> A file that imports both the `Trellis` and `Mediator` namespaces has two `Unit` types in scope — `Trellis.Unit` (the success-without-payload value a command returns) and `Mediator.Unit` — so a bare `Result<Unit>` is *ambiguous*. The examples here abbreviate it; in real code either qualify it as `Result<Trellis.Unit>` (what the compiled samples do) or add a one-line alias to your `GlobalUsings.cs` so the short form keeps working:
+>
+> ```csharp
+> global using TrellisUnit = Trellis.Unit;   // then write Result<TrellisUnit>
+> // or, since Trellis consumers never reference Mediator.Unit directly:
+> global using Unit = Trellis.Unit;           // then write Result<Unit>
+> ```
 
 ## Pipeline order
 

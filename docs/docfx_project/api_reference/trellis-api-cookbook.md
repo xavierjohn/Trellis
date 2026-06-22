@@ -43,6 +43,7 @@ Conventions used throughout:
 - `Result.Ok` / `Result.Fail` are *the* construction APIs. `default(Result<T>)` is a typed failure; do not rely on it as success.
 - Every async pipeline uses `*Async` extensions; mixing sync chain methods with `Task<Result<T>>` triggers `TRLS009`.
 - Examples reference an `OrderId : RequiredGuid<OrderId>` value object and an `Order` aggregate. Substitute your own types without changing the structure.
+- A command without a payload returns `Result<Trellis.Unit>` — qualified because a file that imports both `Trellis` and `Mediator` has two `Unit` types in scope (`Trellis.Unit` and `Mediator.Unit`). Add `global using TrellisUnit = Trellis.Unit;` (or `global using Unit = Trellis.Unit;`, since Trellis code never references `Mediator.Unit`) to your `GlobalUsings.cs` to drop the qualification.
 
 ## LLM preflight: load the smallest correct reference set
 
