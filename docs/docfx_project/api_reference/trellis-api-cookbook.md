@@ -3155,7 +3155,7 @@ public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
     public DocumentId GetResourceId() => DocumentId;
 
     // The per-command scope check. No base class — the rule stays explicit and lives with the
-    // command. Actor.TryGetAttribute<TenantId> parses the "tid" claim through TenantId.TryCreate,
+    // command. Actor.TryGetAttribute<TenantId> parses the "tid" claim through the VO's IParsable (validating via TryCreate),
     // so the gate deny-closes (Forbidden) on a missing, malformed, or mismatched tenant claim.
     public IResult Authorize(Actor actor, TenantDocument resource) =>
         actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId

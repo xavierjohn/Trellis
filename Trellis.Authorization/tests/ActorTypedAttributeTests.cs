@@ -115,7 +115,7 @@ public class ActorTypedAttributeTests
         var id = Guid.NewGuid();
         var actor = WithAttribute(TenantKey, id.ToString());
 
-        var result = actor.GetRequiredAttribute<TestScopeId>(TenantKey);
+        var result = actor.GetRequiredAttribute<TestTenantId>(TenantKey);
 
         result.IsSuccess.Should().BeTrue("a Guid-backed VO parses from its string representation");
         result.Unwrap().Value.Should().Be(id);
@@ -126,7 +126,7 @@ public class ActorTypedAttributeTests
     {
         var actor = WithAttribute(TenantKey, "not-a-guid");
 
-        var result = actor.GetRequiredAttribute<TestScopeId>(TenantKey);
+        var result = actor.GetRequiredAttribute<TestTenantId>(TenantKey);
 
         result.IsFailure.Should().BeTrue();
         var invalid = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
@@ -139,10 +139,10 @@ public class ActorTypedAttributeTests
         var id = Guid.NewGuid();
         var actor = WithAttribute(TenantKey, id.ToString());
 
-        var ok = actor.TryGetAttribute<TestScopeId>(TenantKey, out var scope);
+        var ok = actor.TryGetAttribute<TestTenantId>(TenantKey, out var tenant);
 
         ok.Should().BeTrue();
-        scope!.Value.Should().Be(id);
+        tenant!.Value.Should().Be(id);
     }
 
     [Fact]
@@ -150,14 +150,14 @@ public class ActorTypedAttributeTests
     {
         var actor = WithAttribute(TenantKey, "not-a-guid");
 
-        var ok = actor.TryGetAttribute<TestScopeId>(TenantKey, out var scope);
+        var ok = actor.TryGetAttribute<TestTenantId>(TenantKey, out var tenant);
 
         ok.Should().BeFalse();
-        scope.Should().BeNull();
+        tenant.Should().BeNull();
     }
 }
 
 // A Guid-backed value object — the motivating tenant-id case the accessor must support.
-public sealed partial class TestScopeId : RequiredGuid<TestScopeId>;
+public sealed partial class TestTenantId : RequiredGuid<TestTenantId>;
 
 #pragma warning restore CA1707
