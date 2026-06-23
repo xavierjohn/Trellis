@@ -35,6 +35,15 @@ audience: [developer]
 - You want repository methods that return `Maybe<T>` / `Result<T>` instead of `null` and exceptions.
 - You need a deterministic commit boundary — repositories stage, the mediator pipeline commits.
 
+## Persistence-readiness checklist
+
+Moving an aggregate from in-memory to EF Core surfaces a few constraints that don't exist in memory and aren't obvious until the mapping step. Check these before persisting a new aggregate:
+
+- **`Maybe<T>` properties must be `partial` on a `partial` type.** A non-`partial` `Maybe<T>` property raises `TRLS035`; the declaring type must also be `partial` so the convention generator can emit the storage member (a `partial` property inside a non-`partial` type is a C# compile error). See [Querying Maybe properties](#querying-maybe-properties).
+- **Model single-column value objects as scalars, not composites.** A *composite* `ValueObject` (a multi-member VO) in the scanned assembly is auto-mapped as an owned composite, so a composite VO that exposes *derived* members (a computed `Segments` collection, a `Parent`) makes EF try to map a collection. Model single-column values as a scalar `Required*<TSelf>` (mapped via a value converter, not owned) and expose derived data as **methods**, not mapped properties. See [Owned composites](#owned-composites).
+- **Owned composites need a parameterless constructor.** Mark the `partial ValueObject` with `[OwnedEntity]` so the generator emits the private parameterless constructor EF requires; a hand-written owned type must declare one itself. See [Owned composites](#owned-composites).
+- **Register the conventions and interceptors.** `ApplyTrellisConventions(...)` (or the source-generated `ApplyTrellisConventionsFor<TContext>()`) plus `AddTrellisInterceptors()` wire scalar / `Maybe<T>` / composite / ETag mapping. See [Conventions and interceptors](#conventions-and-interceptors).
+
 ## Surface at a glance
 
 `Trellis.EntityFrameworkCore` exposes one configuration entry point, one interceptor entry point, a query/save extension surface, an aggregate repository base, and a unit-of-work abstraction.

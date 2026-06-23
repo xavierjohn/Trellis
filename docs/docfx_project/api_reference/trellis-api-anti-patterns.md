@@ -442,5 +442,5 @@ public sealed class OrderWorkflow(IMediator mediator)
 
 > Do not move the `mediator.Send(new ChangeOrderStatusCommand(...))` call into the `IDomainEventHandler<TEvent>`. The tracked-dispatch reentrancy guard skips nested tracked dispatch, so events raised by the nested command can be stranded. Queue post-commit work or issue the follow-up command from the application layer after the originating command completes.
 
-Default handler exceptions are still **logged and swallowed** by `MediatorDomainEventPublisher`; cascade detection only catches handler-raised events. Durable side effects and durable at-least-once retry require the outbox pattern — planned for a future release, not shipped today.
+Default handler exceptions are still **logged and swallowed** by `MediatorDomainEventPublisher`; cascade detection only catches handler-raised events. Durable side effects and durable at-least-once retry require the transactional outbox, which **is shipped** in `Trellis.EntityFrameworkCore.Outbox` — wire it via `AddTrellisOutbox<TContext>()`, `AddTrellisOutbox(ModelBuilder)`, and `AddTrellisOutboxInterceptor(...)`. See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#use-this-file-when).
 
