@@ -674,7 +674,7 @@ public sealed class EntraActorOptions
 | Name | Type | Description |
 | --- | --- | --- |
 | `IdClaimType` | `string` | Claim type used for actor ID. Default: `"http://schemas.microsoft.com/identity/claims/objectidentifier"`. |
-| `MapPermissions` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Default returns the values of every `roles` / `ClaimTypes.Role` claim (case-insensitive type match). |
+| `MapPermissions` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Default returns the values of every `roles` / `ClaimTypes.Role` claim (case-insensitive type match). To flatten roles into granular permissions from an app-supplied map, assign [`RolePermissionProjection.ForRoleClaims(map)`](#rolepermissionprojection) instead of hand-rolling the mapping. |
 | `MapForbiddenPermissions` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Default returns an empty `HashSet<string>`. |
 | `MapAttributes` | `Func<IEnumerable<Claim>, HttpContext, IReadOnlyDictionary<string, string>>` | Default extracts `tid`, `preferred_username`, `azp`, `azpacr`, `acrs`, plus `ip_address` from `Connection.RemoteIpAddress` and `mfa = "true"|"false"` from the `amr` claim. |
 
@@ -690,6 +690,34 @@ public sealed class EntraActorProvider : ClaimsActorProvider
 | --- | --- | --- |
 | `public EntraActorProvider(IHttpContextAccessor httpContextAccessor, IOptions<EntraActorOptions> options)` | — | Builds the Entra-specific provider; passes `ActorIdClaim = options.Value.IdClaimType` and `PermissionsClaim = "roles"` to the base. |
 | `public override Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Returns `Maybe<Actor>.None` when no authenticated identity exists or the configured ID claim is missing — the mediator pipeline maps that to `Error.AuthenticationRequired` (HTTP 401). When `IdClaimType` is the long objectidentifier claim, falls back to the short `"oid"` claim before returning `None`. Throws `InvalidOperationException` only when `HttpContext` is missing (configuration bug, surfaces as HTTP 500); any exception from `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` is rewrapped in `InvalidOperationException` naming the failing delegate. |
+
+### `RolePermissionProjection`
+
+Static helper (namespace `Trellis.Asp.Authorization`) that flattens coarse role names into the granular permission set an `Actor` carries, using an application-supplied role→permissions map. Replaces the hand-rolled `roles.SelectMany(r => map[r])` shape — which throws on an unmapped role — with a skip-unknown, ordinal, deduplicated projection consistent with the pre-flatten guidance in [`trellis-api-authorization.md`](trellis-api-authorization.md#actor).
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `static IReadOnlySet<string> ExpandRoles(IEnumerable<string> roles, IReadOnlyDictionary<string, IReadOnlyCollection<string>> rolePermissions)` | `IReadOnlySet<string>` | Provider-agnostic core: expands role names into a flattened, ordinal-deduplicated permission set. Roles absent from the map are skipped (no throw); null/whitespace role names and permission values are ignored. Lookups use the map's own key comparer, so a case-insensitive map matches case-variant roles. Throws `ArgumentNullException` when either argument is null. |
+| `static Func<IEnumerable<Claim>, IReadOnlySet<string>> ForRoleClaims(IReadOnlyDictionary<string, IReadOnlyCollection<string>> rolePermissions, string? roleClaimType = null, bool keepRolesAsPermissions = false)` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Builds an `EntraActorOptions.MapPermissions`-compatible delegate that reads role claims and expands them via the map. `roleClaimType` null (default) matches both the short `roles` claim and `ClaimTypes.Role` (case-insensitive), tolerating `JwtBearerOptions.MapInboundClaims` either way; pass a type to match only that. `keepRolesAsPermissions = true` also adds each matched role name to the result. Throws `ArgumentNullException` when the map is null, `ArgumentException` when `roleClaimType` is non-null but blank. |
+
+The map is application-owned data captured by reference — supply a stable, effectively-immutable map (it is read once per request, concurrently). Roles the map does not contain are silently skipped, so a token carrying a role the service does not recognize yields the recognized permissions rather than a 500.
+
+```csharp
+// Application-owned role→permissions catalog.
+var rolePermissions = new Dictionary<string, IReadOnlyCollection<string>>
+{
+    ["orders.reader"] = ["orders:read"],
+    ["orders.manager"] = ["orders:read", "orders:write", "orders:cancel"],
+};
+
+builder.Services.AddEntraActorProvider(options =>
+{
+    options.MapPermissions = RolePermissionProjection.ForRoleClaims(rolePermissions);
+});
+
+// Or, from a custom IActorProvider / gateway that already has the role names:
+IReadOnlySet<string> permissions = RolePermissionProjection.ExpandRoles(roleNames, rolePermissions);
+```
 
 ### `TrellisInternalJwtActorOptions` / `TrellisInternalJwtActorProvider`
 

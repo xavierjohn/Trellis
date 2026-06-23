@@ -145,12 +145,11 @@ public static class ServiceCollectionExtensions
     /// </remarks>
     /// <example>
     /// <code>
+    /// // RolePermissionProjection flattens role claims into permissions from an app-supplied
+    /// // map, skipping any role the service does not recognize (no throw on an unmapped role).
     /// builder.Services.AddEntraActorProvider(options =>
     /// {
-    ///     options.MapPermissions = claims => claims
-    ///         .Where(c => c.Type == "roles")
-    ///         .SelectMany(role => RolePermissionMap[role.Value])
-    ///         .ToHashSet();
+    ///     options.MapPermissions = RolePermissionProjection.ForRoleClaims(rolePermissionMap);
     /// });
     /// </code>
     /// </example>
