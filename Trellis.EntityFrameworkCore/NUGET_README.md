@@ -27,6 +27,7 @@ Result<int> saved = await dbContext.SaveChangesResultAsync(cancellationToken);
 
 ## Key Features
 - Apply Trellis value converters and owned-type conventions with one registration point.
+- Owned-collection (`OwnsMany`) children that declare their own primary key are treated as **domain-assigned**: the key is marked `ValueGenerated.Never`, so an application-supplied `Guid`/`long`/`int` key persists on every provider (no SQL Server IDENTITY `544` error, no spurious 409 when adding a child to an already-loaded parent). Opt back into store generation with an explicit `ValueGeneratedOnAdd()` or `[DatabaseGenerated(DatabaseGeneratedOption.Identity)]`.
 - Query `Maybe<T>` naturally instead of dropping to storage-specific null handling.
 - Return `Result<int>` or `Result` from save operations instead of throwing on expected failures.
 - Idempotent inserts on a unique constraint via `db.TryInsertUniqueAsync(entity, ct)` — duplicate-key violations surface as a failed `Result<TEntity>` carrying an `Error.Conflict` with reason code `"duplicate.key"` and the provider-extracted `ConstraintName` / `ConstraintTableName` telemetry fields, so worker outboxes and "save unless exists" deduplication never throw on redelivery.

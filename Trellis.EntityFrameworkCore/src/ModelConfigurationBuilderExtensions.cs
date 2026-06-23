@@ -168,7 +168,8 @@ public static class ModelConfigurationBuilderExtensions
     /// <summary>
     /// Adds the fixed Trellis EF Core conventions: <c>MaybeConvention</c>,
     /// <c>CompositeValueObjectConvention</c>, <c>MoneyConvention</c>, <c>AggregateETagConvention</c>,
-    /// <c>AggregateTransientPropertyConvention</c>, and <c>ValueObjectMappingGuardConvention</c>.
+    /// <c>AggregateTransientPropertyConvention</c>, <c>ValueObjectMappingGuardConvention</c>, and
+    /// <c>OwnedCollectionKeyConvention</c>.
     /// </summary>
     /// <remarks>
     /// Reflection-free: no calls to <see cref="Type.MakeGenericType(Type[])"/>. The
@@ -193,6 +194,7 @@ public static class ModelConfigurationBuilderExtensions
         configurationBuilder.Conventions.Add(static _ => new AggregateETagConvention());
         configurationBuilder.Conventions.Add(static _ => new AggregateTransientPropertyConvention());
         configurationBuilder.Conventions.Add(static _ => new ValueObjectMappingGuardConvention());
+        configurationBuilder.Conventions.Add(static _ => new OwnedCollectionKeyConvention());
 
         return configurationBuilder;
     }
