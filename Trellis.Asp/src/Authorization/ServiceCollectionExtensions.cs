@@ -145,11 +145,17 @@ public static class ServiceCollectionExtensions
     /// </remarks>
     /// <example>
     /// <code>
-    /// // RolePermissionProjection flattens role claims into permissions from an app-supplied
+    /// // Application-owned role→permissions catalog.
+    /// var rolePermissions = new Dictionary&lt;string, IReadOnlyCollection&lt;string&gt;&gt;
+    /// {
+    ///     ["orders.manager"] = ["orders:read", "orders:write"],
+    /// };
+    ///
+    /// // RolePermissionProjection flattens role claims into permissions from the app-supplied
     /// // map, skipping any role the service does not recognize (no throw on an unmapped role).
     /// builder.Services.AddEntraActorProvider(options =>
     /// {
-    ///     options.MapPermissions = RolePermissionProjection.ForRoleClaims(rolePermissionMap);
+    ///     options.MapPermissions = RolePermissionProjection.ForRoleClaims(rolePermissions);
     /// });
     /// </code>
     /// </example>
