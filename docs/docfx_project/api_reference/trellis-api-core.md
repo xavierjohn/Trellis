@@ -350,6 +350,8 @@ Use the static `Result` type.
 
 Non-generic helpers for creating `Maybe<T>` and optional result flows.
 
+> **Factory naming.** The factory is `Maybe.From(value)` / `Maybe<T>.From(value)` — there is **no** `Some` factory. Writing `Maybe.Some(...)` (a common habit from other option types) raises `CS0117`. Use `From` for presence and `Maybe<T>.None` for absence.
+
 #### Properties
 
 None.
