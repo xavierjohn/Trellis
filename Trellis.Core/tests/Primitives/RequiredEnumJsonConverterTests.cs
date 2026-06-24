@@ -78,7 +78,4 @@ public sealed class RequiredEnumJsonConverterTestState :
 {
     public static readonly RequiredEnumJsonConverterTestState Active = new();
     public static readonly RequiredEnumJsonConverterTestState Archived = new();
-
-    public static Result<RequiredEnumJsonConverterTestState> TryCreate(string? value, string? fieldName = null) =>
-        TryFromName(value, fieldName);
 }

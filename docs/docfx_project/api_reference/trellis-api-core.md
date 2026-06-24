@@ -1840,7 +1840,7 @@ Every `Required*<TSelf>` base is **lenient by default**. The generated `TryCreat
 | `RequiredLong<TSelf>` | `null` only (accepts `0L`) | `[NotDefault]` rejects `0L` |
 | `RequiredDecimal<TSelf>` | `null` only (accepts `0m`) | `[NotDefault]` rejects `0m` |
 | `RequiredBool<TSelf>` | `null` | (no sentinel — `false` remains valid) |
-| `RequiredEnum<TSelf>` | `null`, undeclared member names | (smart-enum lookup via `TryFromName`) |
+| `RequiredEnum<TSelf>` | `null`, undeclared member names | (smart-enum lookup via `TryCreate`) |
 
 `RequiredString<TSelf>` validation order: `null` check → trim (only if `[Trim]` present) → empty check (only if `[NotDefault]` present) → `[StringLength]` → `ValidateAdditional`. `[Trim]` without `[NotDefault]` trims the value before storage but does not reject `""` or whitespace-only input. Combine `[Trim, NotDefault]` for trim-then-reject-empty behavior.
 
@@ -1992,7 +1992,7 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public override bool HandleNull` | `bool` | `true`; routes JSON `null` tokens through the converter so required enums can reject them explicitly. |
-| `public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TRequiredEnum?` | Accepts only JSON `string`; string values are resolved through `RequiredEnum<TRequiredEnum>.TryFromName(name)`, and `null` throws `JsonException`. |
+| `public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TRequiredEnum?` | Accepts only JSON `string`; string values are resolved through `TRequiredEnum.TryCreate(name)`, and `null` throws `JsonException`. |
 | `public override void Write(Utf8JsonWriter writer, TRequiredEnum value, JsonSerializerOptions options)` | `void` | Writes `value.Value` as a JSON string. |
 
 ### `RequiredString<TSelf>`
@@ -2141,7 +2141,6 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IReadOnlyCollection<TSelf> GetAll()` | `IReadOnlyCollection<TSelf>` | Returns all discovered public static readonly members. |
-| `public static Result<TSelf> TryFromName(string? name, string? fieldName = null)` | `Result<TSelf>` | Case-insensitive symbolic lookup. |
 | `public bool Is(params TSelf[] values)` | `bool` | True when this instance matches any provided member. |
 | `public bool IsNot(params TSelf[] values)` | `bool` | Negation of `Is(params TSelf[])`. |
 | `public override string ToString()` | `string` | Returns `Value`. |
@@ -2344,8 +2343,8 @@ public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? prov
 public static TSelf Create(string value)
 ```
 
-- Generated `TryCreate` delegates only to `TryFromName`.
-- The enum JSON converter also uses only `TryFromName`; there is no `TryFromValue` path.
+- `TryCreate(string)` / `TryCreate(string?, string?)` are inherited from the `RequiredEnum<TSelf>` base — an enum's creation is a uniform symbolic lookup, so it is not generated per type. `Create`, `Parse`, and `TryParse` are generated and route through `TryCreate`.
+- The enum JSON converter resolves through `TryCreate`; there is no `TryFromValue` or `TryFromName` API.
 
 ### Building your own primitive
 

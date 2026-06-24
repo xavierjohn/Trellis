@@ -44,7 +44,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 /// <item><c>RequiredBool</c> — accepts true/false; rejects null</item>
 /// <item><c>RequiredDateTime</c> — rejects <c>DateTime.MinValue</c> only when <c>[NotDefault]</c> is applied; ISO 8601 round-trip <c>ToString</c></item>
 /// <item><c>RequiredDateTimeOffset</c> — rejects <c>DateTimeOffset.MinValue</c> only when <c>[NotDefault]</c> is applied; ISO 8601 round-trip <c>ToString</c></item>
-/// <item><c>RequiredEnum</c> — smart enum; delegates to <c>TryFromName</c></item>
+/// <item><c>RequiredEnum</c> — smart enum; <c>TryCreate</c> is inherited from the base, only <c>Parse</c>/<c>TryParse</c>/<c>Create</c> are generated</item>
 /// </list>
 /// </para>
 /// <para>
@@ -605,30 +605,6 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     [JsonConverter(typeof(RequiredEnumJsonConverter<{g.ClassName}>))]
     {g.Accessibility} partial class {g.ClassName} : IScalarValue<{g.ClassName}, string>, IParsable<{g.ClassName}>
     {{{privateConstructor}
-        /// <summary>
-        /// Creates a validated instance from a string by looking up the enum member by symbolic value.
-        /// Required by IScalarValue interface for model binding and JSON deserialization.
-        /// </summary>
-        /// <param name=""value"">The symbolic value to look up.</param>
-        /// <returns>Success with the enum member, or Failure with validation errors.</returns>
-        public static Result<{g.ClassName}> TryCreate(string value)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            return TryFromName(value, null);
-        }}
-
-        /// <summary>
-        /// Creates a validated instance from a string by looking up the enum member by symbolic value.
-        /// </summary>
-        /// <param name=""value"">The symbolic value to look up.</param>
-        /// <param name=""fieldName"">Optional field name for validation error messages.</param>
-        /// <returns>Success with the enum member, or Failure with validation errors.</returns>
-        public static Result<{g.ClassName}> TryCreate(string? value, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            return TryFromName(value, fieldName);
-        }}
-
         /// <summary>
         /// Parses the input into a <see cref=""{g.ClassName}""/> by symbolic name lookup,
         /// or throws <see cref=""FormatException""/> when no member matches.

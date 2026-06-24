@@ -90,7 +90,7 @@ public static class AnalyzerTestHelper
             {
                 public string Value => string.Empty;
 
-                public static Result<TSelf> TryFromName(string? name, string? fieldName = null) => default;
+                public static Result<TSelf> TryCreate(string? value, string? fieldName = null) => default;
             }
 
             // IScalarValue interface stub

@@ -124,7 +124,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <item><c>RequiredString</c>: Generates TryCreate(string?)</item>
     /// <item><c>RequiredInt</c>: Generates TryCreate(int?), TryParse(string?)</item>
     /// <item><c>RequiredDecimal</c>: Generates TryCreate(decimal?), TryParse(string?)</item>
-    /// <item><c>RequiredEnum</c>: Generates TryCreate(string?) delegating to TryFromName()</item>
+    /// <item><c>RequiredEnum</c>: Generates Parse/TryParse/Create; TryCreate is inherited from the base</item>
     /// </list>
     /// </remarks>
     public readonly string ClassBase;
