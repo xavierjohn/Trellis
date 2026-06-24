@@ -592,7 +592,7 @@ public class MaybePropertyTests : IDisposable
         var ex = await act.Should().ThrowAsync<TrellisPersistenceMappingException>();
         ex.Which.Message.Should().Contain("TestOrderStatus");
         ex.Which.Message.Should().Contain("NotAStatus");
-        ex.Which.Message.Should().Contain("TryFromName");
+        ex.Which.Message.Should().Contain("TryCreate");
     }
 
     #endregion

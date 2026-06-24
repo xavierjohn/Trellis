@@ -133,7 +133,7 @@ A custom primitive is a `partial class` that inherits the appropriate `Required*
 | `RequiredBool<TSelf>` | `bool` | `null` rejected for nullable inputs; `false` is valid | string parsing of `"true"`/`"false"` |
 | `RequiredDateTime<TSelf>` | `DateTime` | `null` and `DateTime.MinValue` rejected | invariant round-trip `"O"` formatting |
 | `RequiredDateTimeOffset<TSelf>` | `DateTimeOffset` | `null` and `DateTimeOffset.MinValue` rejected | invariant round-trip `"O"` formatting |
-| `RequiredEnum<TSelf>` | `string` | `TryFromName` lookup against `public static readonly TSelf` fields; undeclared names rejected | `[EnumValue("...")]` on each field overrides the wire name |
+| `RequiredEnum<TSelf>` | `string` | `TryCreate` lookup against `public static readonly TSelf` fields; undeclared names rejected | `[EnumValue("...")]` on each field overrides the wire name |
 
 > [!NOTE]
 > The base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`) and shared bases (`ValueObject`, `ScalarValueObject<TSelf, T>`) live in `Trellis.Core`. `ScalarValueObject<TSelf, T>` implements `IConvertible` and `IFormattable` so scalar primitives behave naturally in formatting and conversion scenarios.
@@ -208,7 +208,7 @@ public partial class OrderState : RequiredEnum<OrderState>
 }
 ```
 
-`EnumValueAttribute` is the only Trellis primitive attribute that targets a field (each `public static readonly TSelf`). Without it, the wire name is the field identifier. See [trellis-api-core.md](../api_reference/trellis-api-core.md#requiredenumtself) for `GetAll`, `TryFromName`, `Is(...)`, and equality semantics, and the dedicated [required-enum.md](required-enum.md) article for usage patterns.
+`EnumValueAttribute` is the only Trellis primitive attribute that targets a field (each `public static readonly TSelf`). Without it, the wire name is the field identifier. See [trellis-api-core.md](../api_reference/trellis-api-core.md#requiredenumtself) for `GetAll`, `Is(...)`, and equality semantics, and the dedicated [required-enum.md](required-enum.md) article for usage patterns.
 
 ## Validation
 
@@ -275,7 +275,7 @@ Every non-enum `Required*<TSelf>` partial gets `[JsonConverter(typeof(ParsableJs
 - Writes JSON numbers for numeric scalars and JSON strings for everything else.
 - Throws on JSON `null` because Trellis scalars are non-nullable.
 
-The enum converter is string in, string out via `TryFromName`.
+The enum converter is string in, string out via `TryCreate`.
 
 ### Composite value objects — opt in
 

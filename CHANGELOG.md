@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — `RequiredEnum<TSelf>.TryFromName` (use `TryCreate`)
+
+`RequiredEnum<TSelf>.TryFromName(...)` has been removed. An enum's creation is a uniform symbolic
+lookup, so `TryCreate` now lives on the `RequiredEnum<TSelf>` base (it is no longer generated per
+type), and an enum value object's public creation surface is identical to `RequiredString` /
+`RequiredInt` / etc. Direct callers of `SomeEnum.TryFromName(name)` switch to `SomeEnum.TryCreate(name)`
+— same signature, same `Result<TSelf>`, same case-insensitive lookup and error message. The JSON
+converter, EF Core converter, and `Parse` / `TryParse` already route through `TryCreate`.
+
 ### Added — Mediator lifetime guardrail for the authorization pipeline
 
 `AddTrellisBehaviors()` now fails fast with a clear `InvalidOperationException` when the Mediator (`IMediator` or

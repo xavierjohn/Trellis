@@ -60,7 +60,7 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     private static TRequiredEnum ReadFromString(ref Utf8JsonReader reader)
     {
         var name = reader.GetString();
-        return RequiredEnum<TRequiredEnum>.TryFromName(name).Match(
+        return TRequiredEnum.TryCreate(name).Match(
             onSuccess: value => value,
             onFailure: _ =>
             {

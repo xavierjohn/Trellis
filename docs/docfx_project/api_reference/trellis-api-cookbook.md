@@ -3116,7 +3116,7 @@ public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
         var order = Order.Reconstitute(
             OrderId.TryCreate(row.Id).GetValueOrThrow($"Corrupt Order.Id in row {row.Id}"),
             CustomerId.TryCreate(row.CustomerId).GetValueOrThrow($"Corrupt Order.CustomerId in row {row.Id}"),
-            OrderStatus.TryFromName(row.Status).GetValueOrThrow($"Corrupt Order.Status in row {row.Id}"),
+            OrderStatus.TryCreate(row.Status).GetValueOrThrow($"Corrupt Order.Status in row {row.Id}"),
             lines);
 
         // Restore the infrastructure metadata loaded from the row. A store-native quoted token (e.g. a

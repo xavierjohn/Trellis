@@ -158,7 +158,7 @@ public class ApplyTrellisConventionsTests : IDisposable
         var ex = await act.Should().ThrowAsync<TrellisPersistenceMappingException>();
         ex.Which.Message.Should().Contain("TestOrderStatus");
         ex.Which.Message.Should().Contain("NotAStatus");
-        ex.Which.Message.Should().Contain("TryFromName");
+        ex.Which.Message.Should().Contain("TryCreate");
         ex.Which.Message.Should().Contain("Valid values");
     }
 
@@ -175,7 +175,7 @@ public class ApplyTrellisConventionsTests : IDisposable
         // Assert
         var ex = act.Should().Throw<TrellisPersistenceMappingException>();
         ex.Which.Message.Should().Contain("TestOrderStatus");
-        ex.Which.Message.Should().Contain("TryFromName");
+        ex.Which.Message.Should().Contain("TryCreate");
         ex.Which.Message.Should().Contain("null");
     }
 

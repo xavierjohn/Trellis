@@ -19,9 +19,9 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
 {
     private static readonly TrellisValueObjectInfo s_valueObject = ResolveValueObject();
     private static readonly Func<TProvider, Result<TModel>>? s_tryCreate =
-        s_valueObject.Category == TrellisValueObjectCategory.Scalar ? BuildTryCreateDelegate() : null;
-    private static readonly Func<string, Result<TModel>>? s_tryFromName =
-        s_valueObject.Category == TrellisValueObjectCategory.Symbolic ? BuildTryFromNameDelegate() : null;
+        s_valueObject.Category is TrellisValueObjectCategory.Scalar or TrellisValueObjectCategory.Symbolic
+            ? BuildTryCreateDelegate()
+            : null;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TrellisScalarConverter{TModel, TProvider}"/> class.
@@ -149,20 +149,6 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
         return Expression.Lambda<Func<TProvider, Result<TModel>>>(body, param).Compile();
     }
 
-    private static Func<string, Result<TModel>> BuildTryFromNameDelegate()
-    {
-        var param = Expression.Parameter(typeof(string), "v");
-        var tryFromNameMethod = typeof(TModel).GetMethod(
-                "TryFromName",
-                BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy,
-                [typeof(string), typeof(string)])
-            ?? throw new InvalidOperationException(
-                $"{typeof(TModel).Name} must have a static TryFromName(string, string?) method.");
-
-        var body = Expression.Call(tryFromNameMethod, param, Expression.Constant(null, typeof(string)));
-        return Expression.Lambda<Func<string, Result<TModel>>>(body, param).Compile();
-    }
-
     private static TModel MaterializeScalar(TProvider value)
     {
         try
@@ -193,11 +179,11 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
                 throw new TrellisPersistenceMappingException(
                     typeof(TModel),
                     null,
-                    "TryFromName",
+                    "TryCreate",
                     "Received null from database for non-nullable symbolic value object.");
 
-            var result = s_tryFromName!((string)(object)value);
-            return MaterializeResult(result, value, "TryFromName");
+            var result = s_tryCreate!(value);
+            return MaterializeResult(result, value, "TryCreate");
         }
         catch (TrellisPersistenceMappingException)
         {
@@ -208,7 +194,7 @@ public class TrellisScalarConverter<TModel, TProvider> : ValueConverter<TModel, 
             throw new TrellisPersistenceMappingException(
                 typeof(TModel),
                 value,
-                "TryFromName",
+                "TryCreate",
                 "The factory threw an exception before returning a validation result.",
                 ex);
         }

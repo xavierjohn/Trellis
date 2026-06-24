@@ -197,24 +197,38 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     public static IReadOnlyCollection<TSelf> GetAll() => GetCache().Members;
 
     /// <summary>
-    /// Attempts to find a member by its symbolic value (case-insensitive).
+    /// Creates a validated member from its symbolic value (case-insensitive). This is the public
+    /// factory every <c>Required*</c> primitive exposes; the JSON converter, EF converter, and
+    /// <c>Parse</c>/<c>TryParse</c> all route through it. Provided by the base because an enum's
+    /// creation is a uniform name lookup, so — unlike the scalar primitives — it needs no
+    /// per-derived-type generation.
     /// </summary>
-    /// <param name="name">The symbolic value to search for.</param>
+    /// <param name="value">The symbolic value to look up.</param>
+    /// <returns>A <see cref="Result{TSelf}"/> containing the matching member or a validation error.</returns>
+    public static Result<TSelf> TryCreate(string value) => TryCreate(value, null);
+
+    /// <summary>
+    /// Creates a validated member from its symbolic value (case-insensitive), reporting validation
+    /// failures against <paramref name="fieldName"/>.
+    /// </summary>
+    /// <param name="value">The symbolic value to look up.</param>
     /// <param name="fieldName">Optional field name for validation error messages.</param>
     /// <returns>A <see cref="Result{TSelf}"/> containing the matching member or a validation error.</returns>
-    public static Result<TSelf> TryFromName(string? name, string? fieldName = null)
+    public static Result<TSelf> TryCreate(string? value, string? fieldName = null)
     {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity($"{typeof(TSelf).Name}.TryCreate");
+
         var field = NormalizeFieldName(fieldName, typeof(TSelf).Name);
 
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(value))
             return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, "validation.error", $"{typeof(TSelf).Name} cannot be empty."));
 
         var cache = GetCache();
-        if (cache.ByName.TryGetValue(name, out var member))
+        if (cache.ByName.TryGetValue(value, out var member))
             return Result.Ok(member);
 
         var validNames = string.Join(", ", cache.ByName.Keys.OrderBy(n => n));
-        return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, "validation.error", $"'{name}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
+        return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, "validation.error", $"'{value}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Primitives.Tests;
 
+using System.Reflection;
 using System.Text.Json;
 using Trellis;
 using Trellis.Testing;
@@ -629,6 +630,29 @@ public class RequiredEnumTests
     public void RequiredEnum_WithParameterizedConstructor_ExposesNoPublicConstructor() =>
         typeof(TestPaymentMethod).GetConstructors()
             .Should().BeEmpty("a behavior enum's own constructor must be non-public so non-member instances cannot be created");
+
+    #endregion
+
+    #region Public Surface Tests
+
+    [Fact]
+    public void RequiredEnum_DoesNotDeclareTryFromName_AtAnyVisibility() =>
+        typeof(TestOrderState)
+            .GetMethod("TryFromName", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+            .Should().BeNull("TryFromName was removed entirely; TryCreate is the factory, matching the other Required* primitives");
+
+    [Fact]
+    public void RequiredEnum_InheritsPublicTryCreate_FromBase()
+    {
+        var tryCreate = typeof(TestOrderState).GetMethod(
+            "TryCreate",
+            BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy,
+            [typeof(string), typeof(string)]);
+
+        tryCreate.Should().NotBeNull();
+        tryCreate!.DeclaringType.Should().Be<RequiredEnum<TestOrderState>>(
+            "TryCreate is provided by the RequiredEnum base, not generated per-type");
+    }
 
     #endregion
 }

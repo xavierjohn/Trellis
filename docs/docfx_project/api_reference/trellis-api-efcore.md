@@ -467,7 +467,7 @@ where TModel : class
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public TrellisScalarConverter()` | — | Builds expressions that persist `Value` and materialize via `TryCreate` or `TryFromName`; invalid persisted data throws `TrellisPersistenceMappingException`. |
+| `public TrellisScalarConverter()` | — | Builds expressions that persist `Value` and materialize via `TryCreate`; invalid persisted data throws `TrellisPersistenceMappingException`. |
 
 ### `OwnedEntityAttribute`
 

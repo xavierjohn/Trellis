@@ -18,7 +18,7 @@ audience: [developer]
 | Override the wire / serialized name for one member | `[EnumValue("...")]` on the field | [Symbolic value names](#symbolic-value-names) |
 | Parse user input safely (nullable, with field name) | `TryCreate(string?, fieldName?)` → `Result<TSelf>` | [Parsing and creation](#parsing-and-creation) |
 | Throwing factory for trusted input | `Create(string)` | [Parsing and creation](#parsing-and-creation) |
-| Look up by symbolic name (case-insensitive) | `TryFromName(string?, fieldName?)` | [Parsing and creation](#parsing-and-creation) |
+| Look up by symbolic name (case-insensitive) | `TryCreate(string?, fieldName?)` | [Parsing and creation](#parsing-and-creation) |
 | `IParsable<TSelf>` for ASP.NET binding pipelines | `Parse(s, provider)` / `TryParse(s, provider, out)` | [Parsing and creation](#parsing-and-creation) |
 | JSON round-trip in `System.Text.Json` | Auto-applied `[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]` | [JSON serialization](#json-serialization) |
 | Membership and negated membership | `Is(params TSelf[])` / `IsNot(params TSelf[])` | [Equality and membership](#equality-and-membership) |
@@ -40,10 +40,9 @@ audience: [developer]
 | `Value` (`string`) | base | Canonical symbolic identity. Defaults to the field name unless `[EnumValue]` overrides it. |
 | `Ordinal` (`int`) | base | Declaration-order metadata. Not a wire / storage identity. |
 | `static GetAll()` | base | All discovered `public static readonly TSelf` members, in declaration order. |
-| `static TryFromName(string? name, string? fieldName = null)` | base | Case-insensitive lookup → `Result<TSelf>`. |
 | `Is(params TSelf[])` / `IsNot(params TSelf[])` | base | Membership / negated membership. |
 | `Equals` / `==` / `!=` / `GetHashCode` | base | Case-insensitive symbolic equality on `Value`. |
-| `static TryCreate(string)` and `static TryCreate(string?, string? fieldName = null)` | generated | Result-returning factories; both delegate to `TryFromName`. |
+| `static TryCreate(string)` and `static TryCreate(string?, string? fieldName = null)` | base | Result-returning factories; the public entry point for symbolic creation and case-insensitive name lookup. Inherited from the base, not generated per type. |
 | `static Create(string)` | generated | Throwing factory. |
 | `static Parse(string, IFormatProvider?)` / `TryParse(...)` | generated | `IParsable<TSelf>` implementation for binding pipelines. |
 | `[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]` | generated | Applied to the derived class — no manual registration needed. |
@@ -51,7 +50,7 @@ audience: [developer]
 Full signatures: [`trellis-api-core.md` → `RequiredEnum<TSelf>`](../api_reference/trellis-api-core.md#requiredenumtself) and the [source-generated members section](../api_reference/trellis-api-core.md#requiredenumtself-1). Package scope: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md).
 
 > [!NOTE]
-> Generated `TryCreate` delegates only to `TryFromName`. There is no `TryFromValue` API path; the JSON converter and parser also resolve through `TryFromName`.
+> `TryCreate` is the public result-returning factory — the replacement for the old `TryFromName`, and the same lookup surface every other `Required*` primitive exposes. It is provided by the `RequiredEnum<TSelf>` base (an enum's creation is a uniform symbolic lookup), not generated per type. There is no `TryFromValue` or `TryFromName` API; the JSON converter and parser resolve the symbolic name through `TryCreate`.
 
 ## Installation
 
@@ -113,7 +112,7 @@ Members are `public static readonly` fields of type `TSelf`. The base type disco
 | Class must be `partial` | The generator augments it with `IScalarValue<TSelf, string>`, the factories, and the `[JsonConverter]` attribute. |
 | Fields must be `public static readonly TSelf` | Reflection inspects only `Public \| Static \| DeclaredOnly` init-only fields whose type equals `TSelf`. |
 | Constructors should be `private` (or `protected`) | Prevents external instantiation outside the declared set. |
-| Each `Value` must be unique (case-insensitive) | Duplicate detection runs the first time `GetAll` / `TryFromName` / `Value` is touched and throws `InvalidOperationException` naming the duplicate. |
+| Each `Value` must be unique (case-insensitive) | Duplicate detection runs the first time `GetAll` / `TryCreate` / `Value` is touched and throws `InvalidOperationException` naming the duplicate. |
 
 `Ordinal` is assigned during discovery in declaration order (0, 1, 2, …). Reordering fields changes ordinals — do not persist or transmit them.
 
@@ -138,13 +137,12 @@ OrderStatus.AwaitingPayment.Value == "awaiting-payment"; // true
 
 ## Parsing and creation
 
-The generator emits five entry points; all of them resolve through the base-type `TryFromName`.
+`TryCreate` is inherited from the base; the generator emits `Create`, `Parse`, and `TryParse`, all of which route through it.
 
 | API | Returns | Failure mode |
 |---|---|---|
 | `TryCreate(string value)` | `Result<TSelf>` | `Fail` with `Error.InvalidInput` for null, empty, whitespace, or unknown name. |
 | `TryCreate(string? value, string? fieldName = null)` | `Result<TSelf>` | Same; `fieldName` is included in the field violation. |
-| `TryFromName(string? name, string? fieldName = null)` | `Result<TSelf>` | Base-type lookup that all generated factories delegate to. |
 | `Create(string value)` | `TSelf` | Throws on failure. Use only for trusted, internally-known names. |
 | `Parse(string s, IFormatProvider? provider)` / `TryParse(...)` | `TSelf` / `bool` | `IParsable<TSelf>` for ASP.NET model binding pipelines. |
 
@@ -164,7 +162,7 @@ The generator emits `[JsonConverter(typeof(RequiredEnumJsonConverter<TSelf>))]` 
 
 | Direction | Behavior |
 |---|---|
-| Read | Accepts JSON `string`; resolves the string through `TryFromName`. JSON `null` and other token types (number, object, array, bool) throw `JsonException`. |
+| Read | Accepts JSON `string`; resolves the string through `TryCreate`. JSON `null` and other token types (number, object, array, bool) throw `JsonException`. |
 | Write | Emits `value.Value` as a JSON string. |
 
 ```csharp
@@ -197,7 +195,7 @@ bool notDone = paid.IsNot(OrderStatus.Cancelled);
 
 | Input or condition | Outcome |
 |---|---|
-| `null` or whitespace name passed to `TryCreate` / `TryFromName` | `Fail` with `Error.InvalidInput.ForField(field, "validation.error", "{Type} cannot be empty.")` |
+| `null` or whitespace name passed to `TryCreate` | `Fail` with `Error.InvalidInput.ForField(field, "validation.error", "{Type} cannot be empty.")` |
 | Unknown name | `Fail` with message `'{name}' is not a valid {Type}. Valid values: {alphabetised list}` |
 | Two members declared with the same `Value` (case-insensitive) | `InvalidOperationException` thrown by the base class on first cache build, naming the duplicate symbol |
 | `[EnumValue]` on a non-`TSelf` field, an instance member, or a non-`readonly` field | Silently ignored — only `public static readonly TSelf` init-only fields are discovered |
