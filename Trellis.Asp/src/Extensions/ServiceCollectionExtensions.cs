@@ -2,6 +2,7 @@
 
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -164,28 +165,44 @@ public static class ServiceCollectionExtensions
                 continue;
             }
 
-            // Check if it's a direct value object (IScalarValue<TSelf, T>)
-            if (!IsScalarValueProperty(property))
-                continue;
-
-            // Create a validating converter for this value object
-            var innerScalarConverter = CreateValidatingConverter(propertyType);
-            if (innerScalarConverter is null)
-                continue;
-
-            // Wrap it with property name awareness. In Native AOT this returns null because
-            // runtime closed-generic converter construction is disabled; source-generated
-            // converters are expected to own scalar JSON conversion there.
-            var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
-            if (wrappedScalarConverter is not null)
-                property.CustomConverter = wrappedScalarConverter;
-
-            // Track non-nullable scalar VO properties for missing-property detection
-            if (!property.IsGetNullable && property.Get is not null)
+            // Direct scalar value object (IScalarValue<TSelf, T>)?
+            if (IsScalarValueProperty(property))
             {
-                requiredScalarProperties ??= [];
-                requiredScalarProperties.Add((property.Name, property.Get));
+                // Create a validating converter for this value object
+                var innerScalarConverter = CreateValidatingConverter(propertyType);
+                if (innerScalarConverter is null)
+                    continue;
+
+                // Wrap it with property name awareness. In Native AOT this returns null because
+                // runtime closed-generic converter construction is disabled; source-generated
+                // converters are expected to own scalar JSON conversion there.
+                var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
+                if (wrappedScalarConverter is not null)
+                    property.CustomConverter = wrappedScalarConverter;
+
+                // Track non-nullable scalar VO properties for missing-property detection
+                if (!property.IsGetNullable && property.Get is not null)
+                {
+                    requiredScalarProperties ??= [];
+                    requiredScalarProperties.Add((property.Name, property.Get));
+                }
+
+                continue;
             }
+
+            // A container property (collection or nested object) whose graph transitively contains a
+            // scalar value object. Wrapping it pushes the property name (and, for collections, the
+            // element index) onto the validation ancestor path so a nested value-object failure reports
+            // an index-precise field path (e.g. /members/0/email) instead of just the leaf name.
+            // Respect an explicit property-level converter (e.g. a [JsonConverter] attribute): only
+            // install the wrapper when the property uses default, type-based conversion, so a consumer's
+            // converter is never silently bypassed.
+            if (property.CustomConverter is not null)
+                continue;
+
+            var containerConverter = CreatePathTrackingContainerConverter(property);
+            if (containerConverter is not null)
+                property.CustomConverter = containerConverter;
         }
 
         // Add post-deserialization callback to detect missing required scalar VO properties.
@@ -219,7 +236,7 @@ public static class ServiceCollectionExtensions
     /// Used to avoid double-reporting when an explicit JSON null was already caught by the converter.
     /// </summary>
     private static bool HasExistingErrorForField(string fieldName) =>
-        ValidationErrorsContext.Current?.HasErrorForField(fieldName) ?? false;
+        ValidationErrorsContext.HasErrorForField(fieldName);
 
     [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyType comes from JSON serialization infrastructure which preserves type information")]
     [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "PropertyType comes from JSON serialization infrastructure which preserves type information")]
@@ -265,6 +282,126 @@ public static class ServiceCollectionExtensions
         var wrapperType = typeof(PropertyNameAwareConverter<>).MakeGenericType(type);
         return Activator.CreateInstance(wrapperType, innerConverter, propertyName) as JsonConverter;
     }
+
+    // Wraps a container property (collection or nested object) whose graph transitively contains a
+    // scalar value object so its path segment(s) are pushed during deserialization. Returns null under
+    // Native AOT (no runtime generic construction) and for containers with no value object inside.
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "Guarded by RuntimeFeature.IsDynamicCodeSupported; Native AOT returns null before constructing a closed generic wrapper.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2055",
+        Justification = "Reflection-enabled fallback only; constructed for property/element types already present in JSON serialization metadata.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2072",
+        Justification = "Property and element types come from JSON serialization metadata which preserves type information.")]
+    private static JsonConverter? CreatePathTrackingContainerConverter(JsonPropertyInfo property)
+    {
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+            return null;
+
+        var propertyType = property.PropertyType;
+        if (!ContainsScalarValueTransitively(propertyType, []))
+            return null;
+
+        var elementType = GetWrappableCollectionElementType(propertyType);
+        if (elementType is not null)
+        {
+            var collectionWrapper = typeof(PathTrackingCollectionConverter<,>).MakeGenericType(propertyType, elementType);
+            return Activator.CreateInstance(collectionWrapper, property.Name) as JsonConverter;
+        }
+
+        if (!IsUserObjectType(propertyType))
+            return null;
+
+        // Nested object: the wrapper pushes the property name and deserializes the object through
+        // JsonSerializer (its own type converter), so a self-referential DTO graph cannot re-enter
+        // metadata resolution while this converter is being constructed.
+        var objectWrapper = typeof(PathTrackingObjectConverter<>).MakeGenericType(propertyType);
+        return Activator.CreateInstance(objectWrapper, property.Name) as JsonConverter;
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2067",
+        Justification = "Reflection-mode-only DTO graph walk; ScalarValueTypeHelper.IsScalarValue inspects interfaces preserved by JSON metadata.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "Walks the public properties of user DTO types to decide whether to install a path-tracking wrapper; reflection-mode fallback only.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2072",
+        Justification = "Walks the public properties of user DTO types to decide whether to install a path-tracking wrapper; reflection-mode fallback only.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2075",
+        Justification = "Walks the public properties of user DTO types to decide whether to install a path-tracking wrapper; reflection-mode fallback only.")]
+    private static bool ContainsScalarValueTransitively(Type type, HashSet<Type> visited)
+    {
+        if (!visited.Add(type))
+            return false;
+
+        if (ScalarValueTypeHelper.IsScalarValue(type) || ScalarValueTypeHelper.IsMaybeScalarValue(type))
+            return true;
+
+        var element = GetEnumerableElementType(type);
+        if (element is not null)
+            return ContainsScalarValueTransitively(element, visited);
+
+        if (!IsUserObjectType(type))
+            return false;
+
+        foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.GetIndexParameters().Length != 0)
+                continue;
+
+            if (ContainsScalarValueTransitively(prop.PropertyType, visited))
+                return true;
+        }
+
+        return false;
+    }
+
+    // The element type to wrap for index tracking — only when a List<element> is assignable back to the
+    // property type (List<T> itself, an array, or the IList/ICollection/IEnumerable/IReadOnlyList/
+    // IReadOnlyCollection<T> interfaces). Other collection shapes are left to STJ (leaf-only paths).
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "Reflection-mode-only; reached only when RuntimeFeature.IsDynamicCodeSupported via CreatePathTrackingContainerConverter.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2055",
+        Justification = "Reflection-mode-only; List<element> is built only to test assignability to the property type already present in JSON metadata.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "Reflection-mode-only inspection of collection property types from JSON metadata.")]
+    private static Type? GetWrappableCollectionElementType(Type type)
+    {
+        if (type.IsArray)
+            return type.GetElementType();
+
+        var element = GetEnumerableElementType(type);
+        if (element is null)
+            return null;
+
+        var listType = typeof(List<>).MakeGenericType(element);
+        return type.IsAssignableFrom(listType) ? element : null;
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "Inspects generic IEnumerable<T> interfaces on collection property types from JSON metadata; reflection-mode fallback only.")]
+    private static Type? GetEnumerableElementType(Type type)
+    {
+        if (type == typeof(string))
+            return null;
+
+        if (type.IsArray)
+            return type.GetElementType();
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            return type.GetGenericArguments()[0];
+
+        foreach (var iface in type.GetInterfaces())
+        {
+            if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                return iface.GetGenericArguments()[0];
+        }
+
+        return null;
+    }
+
+    private static bool IsUserObjectType(Type type) =>
+        type is { IsClass: true, IsArray: false }
+        && type != typeof(string)
+        && type != typeof(object)
+        && (type.Namespace is null || !type.Namespace.StartsWith("System", StringComparison.Ordinal));
 
     /// <summary>
     /// Adds automatic value object validation for both MVC Controllers and Minimal APIs.

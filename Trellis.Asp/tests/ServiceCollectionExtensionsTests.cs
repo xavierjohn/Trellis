@@ -526,9 +526,10 @@ public class ServiceCollectionExtensionsTests
             var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
             error!.Fields.Items.Should().HaveCountGreaterOrEqualTo(2);
-            // Nested properties get their field names from the JSON property names (lowercase)
-            error.Fields.Items.Should().Contain(e => e.Field.Path == "/street");
-            error.Fields.Items.Should().Contain(e => e.Field.Path == "/city");
+            // Nested value objects now report the full path (container property + leaf), from the JSON
+            // property names (camelCase), at parity with the FluentValidation integration.
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/address/street");
+            error.Fields.Items.Should().Contain(e => e.Field.Path == "/address/city");
         }
     }
 
