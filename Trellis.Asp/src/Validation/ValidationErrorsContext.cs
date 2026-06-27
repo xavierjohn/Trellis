@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Asp;
 
+using System.Collections.Immutable;
+using System.Text;
 using Trellis;
 
 /// <summary>
@@ -37,6 +39,7 @@ public static class ValidationErrorsContext
 {
     private static readonly AsyncLocal<ErrorCollector?> s_current = new();
     private static readonly AsyncLocal<string?> s_currentPropertyName = new();
+    private static readonly AsyncLocal<ImmutableList<string>?> s_ancestorPath = new();
 
     /// <summary>
     /// Gets the current error collector for the async context, or null if no scope is active.
@@ -72,9 +75,46 @@ public static class ValidationErrorsContext
     {
         var previous = s_current.Value;
         var previousPropertyName = s_currentPropertyName.Value;
+        var previousAncestorPath = s_ancestorPath.Value;
         s_current.Value = new ErrorCollector();
-        return new Scope(previous, previousPropertyName);
+        s_ancestorPath.Value = null;
+        return new Scope(previous, previousPropertyName, previousAncestorPath);
     }
+
+    /// <summary>
+    /// Pushes a path segment (a container property name or a collection index) onto the current
+    /// ancestor path; disposing the returned scope pops it. Container and collection converters use
+    /// this so a value object nested inside a collection or another object reports an index-precise
+    /// field path (e.g. <c>/members/0/email</c>) rather than just the leaf property name.
+    /// </summary>
+    /// <param name="segment">The unescaped path segment to push.</param>
+    /// <returns>An <see cref="IDisposable"/> that pops the segment when disposed.</returns>
+    internal static IDisposable PushPathSegment(string segment)
+    {
+        var previous = s_ancestorPath.Value ?? ImmutableList<string>.Empty;
+        s_ancestorPath.Value = previous.Add(segment);
+        return new PathSegmentScope(previous);
+    }
+
+    // Builds the RFC 6901 JSON Pointer for a leaf field, prefixed with the current ancestor path.
+    private static string BuildPointer(string fieldName) => AncestorPointer() + "/" + EscapeSegment(fieldName);
+
+    private static string AncestorPointer()
+    {
+        var path = s_ancestorPath.Value;
+        if (path is null || path.Count == 0)
+            return string.Empty;
+
+        var sb = new StringBuilder();
+        foreach (var segment in path)
+            sb.Append('/').Append(EscapeSegment(segment));
+
+        return sb.ToString();
+    }
+
+    // RFC 6901 §3: '~' is escaped first (to '~0'), then '/' (to '~1').
+    private static string EscapeSegment(string segment) =>
+        segment.Replace("~", "~0", StringComparison.Ordinal).Replace("/", "~1", StringComparison.Ordinal);
 
     /// <summary>
     /// Adds a validation error for a specific field to the current scope.
@@ -87,7 +127,8 @@ public static class ValidationErrorsContext
     /// failures as 422 responses via <see cref="ScalarValueValidationMiddleware"/>.
     /// </remarks>
     public static void AddError(string fieldName, string errorMessage) =>
-        s_current.Value?.AddError(fieldName, errorMessage);
+        s_current.Value?.AddFieldViolation(
+            new FieldViolation(new InputPointer(BuildPointer(fieldName)), "validation.error") { Detail = errorMessage });
 
     /// <summary>
     /// Adds all field violations and rule violations from an existing <see cref="Error.InvalidInput"/> to the current scope.
@@ -104,8 +145,42 @@ public static class ValidationErrorsContext
     /// rich, structured validation failures.
     /// </para>
     /// </remarks>
-    public static void AddError(Error.InvalidInput unprocessableContent) =>
-        s_current.Value?.AddError(unprocessableContent);
+    public static void AddError(Error.InvalidInput unprocessableContent)
+    {
+        var collector = s_current.Value;
+        if (collector is null)
+            return;
+
+        var ancestor = AncestorPointer();
+        foreach (var fieldViolation in unprocessableContent.Fields)
+        {
+            var prefixed = ancestor.Length == 0
+                ? fieldViolation
+                : fieldViolation with { Field = new InputPointer(ancestor + fieldViolation.Field.Path) };
+            collector.AddFieldViolation(prefixed);
+        }
+
+        foreach (var ruleViolation in unprocessableContent.Rules)
+        {
+            var prefixedRule = ancestor.Length == 0 || ruleViolation.Fields.IsEmpty
+                ? ruleViolation
+                : ruleViolation with
+                {
+                    Fields = ruleViolation.Fields.Items
+                        .Select(pointer => new InputPointer(ancestor + pointer.Path))
+                        .ToImmutableArray(),
+                };
+            collector.AddRuleViolation(prefixedRule);
+        }
+    }
+
+    /// <summary>
+    /// Gets whether an error has already been collected for the given leaf field at the current
+    /// ancestor path. Used to avoid double-reporting a property as both invalid and "required".
+    /// </summary>
+    /// <param name="fieldName">The leaf field name to check.</param>
+    internal static bool HasErrorForField(string fieldName) =>
+        s_current.Value?.HasErrorForPath(BuildPointer(fieldName)) ?? false;
 
     /// <summary>
     /// Gets the aggregated <see cref="Error.InvalidInput"/> from the current scope, or null if no errors were collected.
@@ -126,18 +201,30 @@ public static class ValidationErrorsContext
     {
         private readonly ErrorCollector? _previous;
         private readonly string? _previousPropertyName;
+        private readonly ImmutableList<string>? _previousAncestorPath;
 
-        public Scope(ErrorCollector? previous, string? previousPropertyName)
+        public Scope(ErrorCollector? previous, string? previousPropertyName, ImmutableList<string>? previousAncestorPath)
         {
             _previous = previous;
             _previousPropertyName = previousPropertyName;
+            _previousAncestorPath = previousAncestorPath;
         }
 
         public void Dispose()
         {
             s_current.Value = _previous;
             s_currentPropertyName.Value = _previousPropertyName;
+            s_ancestorPath.Value = _previousAncestorPath;
         }
+    }
+
+    private sealed class PathSegmentScope : IDisposable
+    {
+        private readonly ImmutableList<string> _previous;
+
+        public PathSegmentScope(ImmutableList<string> previous) => _previous = previous;
+
+        public void Dispose() => s_ancestorPath.Value = _previous;
     }
 
     internal sealed class ErrorCollector
@@ -157,57 +244,39 @@ public static class ValidationErrorsContext
             }
         }
 
-        public bool HasErrorForField(string fieldName)
+        public bool HasErrorForPath(string path)
         {
             lock (_lock)
             {
-                return _fieldErrors.ContainsKey(fieldName);
+                return _fieldErrors.ContainsKey(path);
             }
         }
 
-        public void AddError(string fieldName, string errorMessage)
+        public void AddFieldViolation(FieldViolation violation)
         {
             lock (_lock)
             {
-                if (!_fieldErrors.TryGetValue(fieldName, out var errors))
+                var key = violation.Field.Path;
+                if (!_fieldErrors.TryGetValue(key, out var errors))
                 {
                     errors = [];
-                    _fieldErrors[fieldName] = errors;
+                    _fieldErrors[key] = errors;
                 }
 
-                var violation = new FieldViolation(InputPointer.ForProperty(fieldName), "validation.error") { Detail = errorMessage };
-                if (!ContainsByDetail(errors, errorMessage))
+                if (!errors.Contains(violation))
                 {
                     errors.Add(violation);
                 }
             }
         }
 
-        public void AddError(Error.InvalidInput unprocessableContent)
+        public void AddRuleViolation(RuleViolation violation)
         {
             lock (_lock)
             {
-                foreach (var fieldViolation in unprocessableContent.Fields)
+                if (!_ruleErrors.Contains(violation))
                 {
-                    var fieldName = fieldViolation.Field.Path.TrimStart('/');
-                    if (!_fieldErrors.TryGetValue(fieldName, out var errors))
-                    {
-                        errors = [];
-                        _fieldErrors[fieldName] = errors;
-                    }
-
-                    if (!errors.Contains(fieldViolation))
-                    {
-                        errors.Add(fieldViolation);
-                    }
-                }
-
-                foreach (var ruleViolation in unprocessableContent.Rules)
-                {
-                    if (!_ruleErrors.Contains(ruleViolation))
-                    {
-                        _ruleErrors.Add(ruleViolation);
-                    }
+                    _ruleErrors.Add(violation);
                 }
             }
         }
@@ -232,17 +301,6 @@ public static class ValidationErrorsContext
                     Detail = "One or more validation errors occurred.",
                 };
             }
-        }
-
-        private static bool ContainsByDetail(List<FieldViolation> existing, string detail)
-        {
-            foreach (var v in existing)
-            {
-                if (string.Equals(v.Detail, detail, StringComparison.Ordinal))
-                    return true;
-            }
-
-            return false;
         }
     }
 }

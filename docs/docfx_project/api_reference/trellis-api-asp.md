@@ -187,6 +187,8 @@ Default mappings: `Error.InvalidInput=422`, `Error.InvariantViolation=422`, `Err
 
 The `Error.InvalidInput` mapping also governs **binder- and JSON-body value-validation failures** (`ScalarValueValidationMiddleware`, `ScalarValueValidationFilter`, and `ScalarValueValidationEndpointFilter`), so a single `MapError<Error.InvalidInput>(status)` applies uniformly to scalar/value-object validation at the route/query binder, the JSON request body, and domain handlers (default `422`). Syntactically malformed JSON is exempt — it stays `400` per RFC 9110 §15.5.1.
 
+JSON-body value-object validation reports an **index-precise field key** for a value object nested inside a collection or another object — e.g. `members[0].email` (RFC 6901 pointer `/members/0/email`) rather than the bare leaf `email` — at parity with the FluentValidation integration. This applies to the reflection-mode pipeline (`List<T>`, arrays, and nested objects whose graph transitively contains a value object); Native-AOT source-generated converters currently report the leaf field name only.
+
 ### Domain → HTTP boundary mapping
 
 Trellis.Core.Error is transport-neutral. The ASP boundary translates domain failures to HTTP per the table below.
