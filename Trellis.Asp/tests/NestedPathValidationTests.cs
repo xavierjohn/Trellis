@@ -218,4 +218,31 @@ public sealed class NestedPathValidationTests
             ValidationErrorsContext.CurrentPropertyName = null;
         }
     }
+
+    [Fact]
+    public void AddError_with_an_already_formed_pointer_is_not_re_escaped()
+    {
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.AddError("/members/0/email", "bad");
+
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            // A value already starting with '/' is a fully-formed pointer; its slashes must not be escaped.
+            error!.Fields[0].Field.Path.Should().Be("/members/0/email");
+        }
+    }
+
+    [Fact]
+    public void AddError_with_an_empty_field_name_targets_the_root()
+    {
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.AddError(string.Empty, "bad");
+
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            error!.Fields[0].Field.Path.Should().Be(string.Empty);
+        }
+    }
 }

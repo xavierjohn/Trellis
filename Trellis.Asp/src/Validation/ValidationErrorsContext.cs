@@ -99,8 +99,19 @@ public static class ValidationErrorsContext
         return new PathSegmentScope(previous);
     }
 
-    // Builds the RFC 6901 JSON Pointer for a leaf field, prefixed with the current ancestor path.
-    private static string BuildPointer(string fieldName) => AncestorPointer() + "/" + EscapeSegment(fieldName);
+    // Builds the RFC 6901 JSON Pointer for a field, prefixed with the current ancestor path. Mirrors
+    // InputPointer.ForProperty so the public AddError(string, ...) contract is preserved: a value that
+    // already starts with '/' is treated as a fully-formed pointer (its segments are not re-escaped),
+    // and an empty value targets the ancestor (the document root when there is no ancestor).
+    private static string BuildPointer(string fieldName)
+    {
+        var ancestor = AncestorPointer();
+        if (string.IsNullOrEmpty(fieldName))
+            return ancestor;
+        if (fieldName[0] == '/')
+            return ancestor + fieldName;
+        return ancestor + "/" + EscapeSegment(fieldName);
+    }
 
     private static string AncestorPointer()
     {
