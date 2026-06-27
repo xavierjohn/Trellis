@@ -271,6 +271,17 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     public static bool operator !=(RequiredEnum<TSelf>? left, RequiredEnum<TSelf>? right) => !(left == right);
 
     /// <summary>
+    /// Implicitly converts the enum value object to its symbolic <see cref="Value"/>. This mirrors the
+    /// implicit unwrap that <see cref="ScalarValueObject{TSelf, T}"/>-derived primitives provide, so every
+    /// <c>Required*</c> value object can be used transparently as its underlying primitive. Member-to-member
+    /// equality is unaffected: the <c>==</c> operator above is an exact match and wins over a double
+    /// conversion to <see cref="string"/>, so it keeps its case-insensitive <see cref="Value"/> semantics.
+    /// </summary>
+    /// <param name="value">The enum value object to convert.</param>
+    /// <returns>The member's symbolic <see cref="Value"/>.</returns>
+    public static implicit operator string(RequiredEnum<TSelf> value) => value.Value;
+
+    /// <summary>
     /// Compares this instance with another by <see cref="Ordinal"/> (declaration order), so members
     /// sort in the order they are declared — matching how the C# <see langword="enum"/> this type
     /// replaces would sort by its underlying value. Equality remains keyed on <see cref="Value"/>;
