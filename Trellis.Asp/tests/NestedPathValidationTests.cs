@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -68,6 +69,23 @@ public sealed class NestedPathValidationTests
 
     public sealed record CreateRuleMembersCommand(List<RuleMemberDto> Members);
 
+    // A consumer-supplied converter on a container property: it consumes the value itself, so Trellis
+    // must not overwrite it with a path-tracking wrapper (which would bypass the consumer's converter).
+    private sealed class SkippingAddressConverter : JsonConverter<AddressDto?>
+    {
+        public override AddressDto? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            reader.Skip();
+            return null;
+        }
+
+        public override void Write(Utf8JsonWriter writer, AddressDto? value, JsonSerializerOptions options) =>
+            writer.WriteNullValue();
+    }
+
+    public sealed record PersonWithCustomContact(
+        [property: JsonConverter(typeof(SkippingAddressConverter))] AddressDto? Contact);
+
     private static JsonSerializerOptions BuildOptions()
     {
         var services = new ServiceCollection();
@@ -94,7 +112,7 @@ public sealed class NestedPathValidationTests
     }
 
     [Fact]
-    public void Value_object_in_a_nested_object_reports_the_dotted_path()
+    public void Value_object_in_a_nested_object_reports_the_json_pointer_path()
     {
         var options = BuildOptions();
         const string json = """{ "contact": { "email": "not-an-email" } }""";
@@ -158,6 +176,46 @@ public sealed class NestedPathValidationTests
             error!.Rules.Items.Should().ContainSingle();
             error.Rules.Items[0].Fields.Items.Should().ContainSingle();
             error.Rules.Items[0].Fields.Items[0].Path.Should().Be("/members/0/email");
+        }
+    }
+
+    [Fact]
+    public void Explicit_property_level_converter_on_a_container_is_not_overwritten()
+    {
+        var options = BuildOptions();
+        const string json = """{ "contact": { "email": "not-an-email" } }""";
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var result = JsonSerializer.Deserialize<PersonWithCustomContact>(json, options);
+
+            // The consumer's [JsonConverter] owns the property, so the path-tracking wrapper is not
+            // installed over it: it consumed the (invalid) nested email without our pipeline validating it.
+            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            result!.Contact.Should().BeNull();
+        }
+    }
+
+    [Fact]
+    public void BeginScope_clears_a_stale_current_property_name()
+    {
+        var options = BuildOptions();
+        ValidationErrorsContext.CurrentPropertyName = "stale";
+        try
+        {
+            using (ValidationErrorsContext.BeginScope())
+            {
+                JsonSerializer.Deserialize<TestEmail>("\"not-an-email\"", options);
+
+                var error = ValidationErrorsContext.GetUnprocessableContent();
+                error.Should().NotBeNull();
+                // A new scope starts at the document root: the stale leaf name must not leak into the path.
+                error!.Fields[0].Field.Path.Should().NotContain("stale");
+            }
+        }
+        finally
+        {
+            ValidationErrorsContext.CurrentPropertyName = null;
         }
     }
 }

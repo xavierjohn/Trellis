@@ -69,7 +69,9 @@ public static class ValidationErrorsContext
     /// <returns>An <see cref="IDisposable"/> that ends the scope when disposed.</returns>
     /// <remarks>
     /// Always use this in a using statement or block to ensure proper cleanup.
-    /// Nested scopes are supported; each scope maintains its own error collection.
+    /// Nested scopes are supported; each scope maintains its own error collection and starts at the
+    /// document root, so the ambient current-property name and ancestor path are reset for the new
+    /// scope and restored when it is disposed.
     /// </remarks>
     public static IDisposable BeginScope()
     {
@@ -77,6 +79,7 @@ public static class ValidationErrorsContext
         var previousPropertyName = s_currentPropertyName.Value;
         var previousAncestorPath = s_ancestorPath.Value;
         s_current.Value = new ErrorCollector();
+        s_currentPropertyName.Value = null;
         s_ancestorPath.Value = null;
         return new Scope(previous, previousPropertyName, previousAncestorPath);
     }

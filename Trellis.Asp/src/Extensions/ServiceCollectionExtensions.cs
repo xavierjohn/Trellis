@@ -194,6 +194,12 @@ public static class ServiceCollectionExtensions
             // scalar value object. Wrapping it pushes the property name (and, for collections, the
             // element index) onto the validation ancestor path so a nested value-object failure reports
             // an index-precise field path (e.g. /members/0/email) instead of just the leaf name.
+            // Respect an explicit property-level converter (e.g. a [JsonConverter] attribute): only
+            // install the wrapper when the property uses default, type-based conversion, so a consumer's
+            // converter is never silently bypassed.
+            if (property.CustomConverter is not null)
+                continue;
+
             var containerConverter = CreatePathTrackingContainerConverter(property);
             if (containerConverter is not null)
                 property.CustomConverter = containerConverter;
