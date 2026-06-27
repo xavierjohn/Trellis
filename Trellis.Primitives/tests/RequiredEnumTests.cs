@@ -317,6 +317,41 @@ public class RequiredEnumTests
 
     #endregion
 
+    #region Implicit Conversion Tests
+
+    [Fact]
+    public void ImplicitConversion_ToString_ReturnsValue()
+    {
+        // Act
+        string value = TestOrderState.Confirmed;
+
+        // Assert
+        value.Should().Be("Confirmed");
+    }
+
+    [Fact]
+    public void ImplicitConversion_OverriddenMember_ReturnsExternalName()
+    {
+        // Act
+        string value = TestOverriddenOrderState.AwaitingPayment;
+
+        // Assert
+        value.Should().Be("payment-pending");
+    }
+
+    [Fact]
+    public void ImplicitConversion_FlowsThroughStringParameter()
+    {
+        // A RequiredEnum can be passed wherever a string is expected, matching the implicit unwrap that
+        // ScalarValueObject-derived primitives provide.
+        static string Echo(string value) => value;
+
+        // Assert
+        Echo(TestOrderState.Shipped).Should().Be("Shipped");
+    }
+
+    #endregion
+
     #region Create Tests
 
     [Fact]

@@ -93,7 +93,7 @@ Single-`DateTimeOffset` value object; prefer over `RequiredDateTime<TSelf>` when
 
 ### `RequiredEnum<TSelf>`
 
-**Symbolic** smart-enum that replaces a C# `enum`; members are `public static readonly` singletons. Identity is the string `Value` (equality is case-insensitive); ordering (`IComparable`) is by `Ordinal` = **declaration order**, like the underlying enum it replaces. String-backed in JSON and EF Core. Use `GetAll()` / `TryCreate(...)` for lookup and `[EnumValue("...")]` to override a member's external name. Stands apart from `ScalarValueObject<TSelf, T>`.
+**Symbolic** smart-enum that replaces a C# `enum`; members are `public static readonly` singletons. Identity is the string `Value` (equality is case-insensitive); ordering (`IComparable`) is by `Ordinal` = **declaration order**, like the underlying enum it replaces. String-backed in JSON and EF Core. Use `GetAll()` / `TryCreate(...)` for lookup and `[EnumValue("...")]` to override a member's external name. Stands apart from `ScalarValueObject<TSelf, T>` architecturally, but — like the scalar primitives — provides an implicit unwrap to its `string` `Value`.
 
 ### `MonetaryAmount`
 
@@ -134,7 +134,7 @@ Concrete **structured** value object (`Amount` + `Currency`) for multi-currency;
     - `Slug`
     - `Url`
 - **Symbolic value objects**
-  - `RequiredEnum<TSelf>` is separate from `ScalarValueObject<TSelf, T>` but still uses `Value` as its canonical public identity.
+  - `RequiredEnum<TSelf>` is separate from `ScalarValueObject<TSelf, T>` but still uses `Value` as its canonical public identity and implicitly unwraps to it.
 - **Structured value objects**
   - `Money` -> `ValueObject`
 - **Optionality wrappers**
