@@ -398,6 +398,28 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// Registers <see cref="EasyAuthClaimsActorProvider"/> as the scoped
+    /// <see cref="IActorProvider"/> for requests authenticated by Azure App Service /
+    /// Container Apps built-in authentication ("Easy Auth").
+    /// </summary>
+    /// <param name="configure">
+    /// Optional delegate to customize <see cref="ClaimsActorOptions"/>. Set
+    /// <c>ActorIdClaim</c> / <c>PermissionsClaim</c> to the claim types the upstream identity
+    /// provider emits inside the Easy Auth principal.
+    /// </param>
+    /// <remarks>
+    /// Registers the actor mapping only; pair with
+    /// <c>AddAuthentication(...).AddEasyAuth()</c> and <c>UseAuthentication()</c> so the
+    /// principal header is decoded onto <c>HttpContext.User</c> first. Mutually exclusive with
+    /// the other actor-provider selectors.
+    /// </remarks>
+    public TrellisServiceBuilder UseEasyAuthActorProvider(Action<ClaimsActorOptions>? configure = null)
+    {
+        SetActorProvider(ActorProviderKind.EasyAuth, services => services.AddEasyAuthActorProvider(configure));
+        return this;
+    }
+
+    /// <summary>
     /// Registers EF Core Unit of Work and the transactional command behavior.
     /// Implies <see cref="UseMediator"/> and is always applied after all other behavior registrations.
     /// </summary>
@@ -949,5 +971,6 @@ public sealed class TrellisServiceBuilder
         Entra,
         Development,
         NestedJsonPathClaims,
+        EasyAuth,
     }
 }

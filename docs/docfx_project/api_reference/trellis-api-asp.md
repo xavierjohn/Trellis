@@ -531,6 +531,7 @@ The bundled providers implement this:
 
 - `ClaimsActorProvider` (and `EntraActorProvider` via inheritance) — `virtual VaryByHeaders => ["Authorization"]`. Subclass and override for non-bearer auth (cookies, mTLS, forwarded headers); leaving the JWT-bearer default in place against a non-Bearer service allows the same cache-poisoning that `VaryForActor()` exists to prevent.
 - `DevelopmentActorProvider` — `[X-Test-Actor]` (the test header).
+- `EasyAuthClaimsActorProvider` — the Azure "Easy Auth" principal headers (`X-MS-CLIENT-PRINCIPAL`, `-ID`, `-NAME`, `-IDP`) rather than `Authorization`, because the actor is derived from the platform-injected principal, not a bearer token.
 - `CachingActorProvider` — delegates to the wrapped provider's `VaryByHeaders`; surfaces an empty collection when the wrapped provider does not implement the interface, so `VaryForActor()` throws fail-closed pointing at the inner provider as the remediation site (the writer unwraps caching wrappers via the internal `IDecoratingActorProvider` interface so the diagnostic names the right type).
 
 Custom providers that derive actor identity from request data that cannot be cleanly named by an HTTP header (mTLS, IP-based, etc.) should NOT implement this interface; consumers using such providers must mark cache-eligible endpoints with `Cache-Control: private, no-store` instead of calling `VaryForActor()`.
@@ -590,6 +591,7 @@ public static class ServiceCollectionExtensions
 | `public static IServiceCollection AddClaimsActorProvider(this IServiceCollection services, Action<ClaimsActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `ClaimsActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `ClaimsActorProvider`. |
 | `public static IServiceCollection AddNestedJsonPathClaimsActorProvider(this IServiceCollection services, Action<NestedJsonPathClaimsActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures and startup-validates `NestedJsonPathClaimsActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `NestedJsonPathClaimsActorProvider`. When `configure` is omitted, the default empty JSON paths make the provider behave like `ClaimsActorProvider`. |
 | `public static IServiceCollection AddEntraActorProvider(this IServiceCollection services, Action<EntraActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `EntraActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `EntraActorProvider`. |
+| `public static IServiceCollection AddEasyAuthActorProvider(this IServiceCollection services, Action<ClaimsActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor`, configures `ClaimsActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `EasyAuthClaimsActorProvider` (Azure "Easy Auth"). Actor mapping only — pair with `AddAuthentication(...).AddEasyAuth()` so the principal header is decoded onto `HttpContext.User` first. |
 | `public static IServiceCollection AddDevelopmentActorProvider(this IServiceCollection services, Action<DevelopmentActorOptions>? configure = null)` | `IServiceCollection` | Adds `IHttpContextAccessor` + logging, configures `DevelopmentActorOptions`, and **replaces** the `IActorProvider` registration with a scoped `DevelopmentActorProvider`. The provider itself throws outside the Development environment. |
 | `public static IServiceCollection AddCachingActorProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(this IServiceCollection services) where T : class, IActorProvider` | `IServiceCollection` | Registers concrete provider `T` as scoped, then **replaces** the `IActorProvider` registration with a scoped `CachingActorProvider` wrapping `T`. |
 | `public static IServiceCollection AddTrellisWorkerActor(this IServiceCollection services, Actor systemActor)` | `IServiceCollection` | Captures the existing unkeyed `IActorProvider` registration and **replaces** the slot with a scoped `WorkerComposedActorProvider` that returns `systemActor` when `IHttpContextAccessor.HttpContext` is `null` and delegates to the inner provider otherwise. Throws when there is no prior unkeyed `IActorProvider` registration, when more than one is registered, when the helper has already been called, or when the prior descriptor is singleton-lifetime via implementation type or factory (would silently downgrade to per-wrapper-scope — use `services.AddSingleton<IActorProvider>(instance)` or re-register as scoped) or transient-lifetime (would silently upgrade to scoped-per-wrapper — re-register as scoped). Keyed `IActorProvider` registrations are ignored and remain untouched. Registers an `IHostedLifecycleService` validator that throws in `StartingAsync` (before any `BackgroundService.ExecuteAsync` runs) if a later registration overwrites the wrapper. On synchronous scope disposal, the wrapper disposes inner providers that implement `IDisposable`; async-only `IAsyncDisposable` inners are skipped with a once-per-application-lifetime warning to avoid sync-over-async deadlocks, so consumers with async-only resources must dispose scopes asynchronously (`DisposeAsync` / `await using`). |
@@ -692,6 +694,35 @@ public sealed class EntraActorProvider : ClaimsActorProvider
 | --- | --- | --- |
 | `public EntraActorProvider(IHttpContextAccessor httpContextAccessor, IOptions<EntraActorOptions> options)` | — | Builds the Entra-specific provider; passes `ActorIdClaim = options.Value.IdClaimType` and `PermissionsClaim = "roles"` to the base. |
 | `public override Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Returns `Maybe<Actor>.None` when no authenticated identity exists or the configured ID claim is missing — the mediator pipeline maps that to `Error.AuthenticationRequired` (HTTP 401). When `IdClaimType` is the long objectidentifier claim, falls back to the short `"oid"` claim before returning `None`. Throws `InvalidOperationException` only when `HttpContext` is missing (configuration bug, surfaces as HTTP 500); any exception from `MapPermissions`, `MapForbiddenPermissions`, or `MapAttributes` is rewrapped in `InvalidOperationException` naming the failing delegate. |
+
+### Azure "Easy Auth" — `EasyAuthAuthenticationHandler` / `EasyAuthClaimsActorProvider`
+
+For apps behind Azure App Service / Container Apps built-in authentication ("Easy Auth"), the platform authenticates the user and injects the principal as request headers (`X-MS-CLIENT-PRINCIPAL`, `-ID`, `-NAME`, `-IDP`), stripping any client-supplied copies at the boundary. Trellis models this as two layers — **authentication** and **actor mapping** — rather than a bespoke header-parsing `IActorProvider`:
+
+- `EasyAuthAuthenticationHandler : AuthenticationHandler<EasyAuthAuthenticationOptions>` decodes the base64-JSON `X-MS-CLIENT-PRINCIPAL` (honoring `auth_typ` / `name_typ` / `role_typ` and the `{ "typ", "val" }` claim shape) onto `HttpContext.User`, falling back to `-ID` / `-NAME` when the principal header is absent. No Easy Auth header → `AuthenticateResult.NoResult()` (anonymous); malformed header → `Fail(...)` (fail closed). Register with `AddAuthentication(...).AddEasyAuth()`.
+- `EasyAuthClaimsActorProvider : ClaimsActorProvider` maps those `HttpContext.User` claims to the `Actor` exactly like `ClaimsActorProvider`, overriding only `VaryByHeaders` to name the Easy Auth principal headers so `VaryForActor()` partitions caches by the platform principal instead of `Authorization`. Register with `AddEasyAuthActorProvider(...)` / `UseEasyAuthActorProvider(...)`.
+
+**Trust precondition.** These headers are trustworthy only when the app is reachable exclusively through the Easy Auth front end. If a path bypasses Easy Auth (a misconfigured ingress or local development), a client can forge them and impersonate any actor. Enable the handler only when that boundary holds — it is never auto-registered.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public EasyAuthAuthenticationHandler(IOptionsMonitor<EasyAuthAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder)` | — | Standard `AuthenticationHandler` constructor. |
+| `protected override Task<AuthenticateResult> HandleAuthenticateAsync()` | `Task<AuthenticateResult>` | Decodes the principal header (or `-ID` / `-NAME` fallback) into an authenticated `ClaimsPrincipal`. `NoResult` when no Easy Auth header is present; `Fail` on invalid base64/JSON or a payload without a usable `claims` array. |
+| `public sealed class EasyAuthClaimsActorProvider : ClaimsActorProvider` | — | Inherits actor resolution from `ClaimsActorProvider`; overrides `VaryByHeaders` to return `EasyAuthDefaults.PrincipalHeaders`. |
+| `public static AuthenticationBuilder AddEasyAuth(this AuthenticationBuilder builder, ...)` | `AuthenticationBuilder` | Registers the `EasyAuthAuthenticationHandler` scheme (default name `EasyAuthDefaults.AuthenticationScheme = "EasyAuth"`). Overloads: `()`, `(Action<EasyAuthAuthenticationOptions>)`, and `(string authenticationScheme, Action<EasyAuthAuthenticationOptions>)`. |
+
+`EasyAuthAuthenticationOptions` carries only the standard `AuthenticationSchemeOptions` surface (events, forwarding); the Easy Auth principal header names are fixed by the Azure platform contract (`EasyAuthDefaults`), so the handler and `EasyAuthClaimsActorProvider.VaryByHeaders` always agree.
+
+```csharp
+builder.Services.AddAuthentication(EasyAuthDefaults.AuthenticationScheme).AddEasyAuth();
+builder.Services.AddEasyAuthActorProvider(opts =>
+{
+    opts.ActorIdClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+    opts.PermissionsClaim = "roles";
+});
+// ...
+app.UseAuthentication();
+```
 
 ### `RolePermissionProjection`
 

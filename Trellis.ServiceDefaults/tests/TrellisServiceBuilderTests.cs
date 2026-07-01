@@ -357,6 +357,31 @@ public class TrellisServiceBuilderTests
     }
 
     [Fact]
+    public void UseEasyAuthActorProvider_RegistersEasyAuthProvider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options.UseEasyAuthActorProvider());
+
+        var descriptor = services.Single(d => d.ServiceType == typeof(IActorProvider));
+        descriptor.ImplementationType?.Name.Should().Be("EasyAuthClaimsActorProvider");
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void UseEasyAuthActorProvider_AfterUseClaimsActorProvider_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseClaimsActorProvider()
+            .UseEasyAuthActorProvider());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Only one actor provider*");
+    }
+
+    [Fact]
     public void UseNestedJsonPathClaimsActorProvider_RegistersNestedProviderInActorProviderSlot()
     {
         var services = new ServiceCollection();
