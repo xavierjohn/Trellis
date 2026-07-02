@@ -38,21 +38,28 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
     /// <param name="value">ISO 4217 currency code.</param>
     private CurrencyCode(string value) : base(value) { }
 
+    // Field-normalization + InvalidInput failure in one place (default field name: "currencyCode").
+    private static Result<CurrencyCode> Invalid(string? fieldName, string message) =>
+        Result.Fail<CurrencyCode>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("currencyCode"), "validation.error", message));
+
     /// <summary>
     /// Attempts to create a currency code from a 3-letter ISO 4217 code.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "currencyCode" as the field name.
     /// </summary>
+    /// <param name="value">The string value to validate.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "currencyCode".</param>
+    /// <returns>Success with the CurrencyCode if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
     public static Result<CurrencyCode> TryCreate(string? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(CurrencyCode) + '.' + nameof(TryCreate));
 
-        var field = fieldName.NormalizeFieldName("currencyCode");
-
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<CurrencyCode>(Error.InvalidInput.ForField(field, "validation.error", "Currency code is required."));
+            return Invalid(fieldName, "Currency code is required.");
 
         var code = value.Trim();
         if (code.Length != 3 || !code.All(char.IsAsciiLetter))
-            return Result.Fail<CurrencyCode>(Error.InvalidInput.ForField(field, "validation.error", "Currency code must be a 3-letter ISO 4217 code."));
+            return Invalid(fieldName, "Currency code must be a 3-letter ISO 4217 code.");
 
         var upper = code.ToUpperInvariant();
         return Result.Ok(new CurrencyCode(upper));

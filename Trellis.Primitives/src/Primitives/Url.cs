@@ -61,11 +61,17 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
     private Url(Uri uri) : base(uri.AbsoluteUri)
         => _uri = uri;
 
+    // Field-normalization + InvalidInput failure in one place (default field name: "url").
+    private static Result<Url> Invalid(string? fieldName, string message) =>
+        Result.Fail<Url>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("url"), "validation.error", message));
+
     /// <summary>
     /// Attempts to create a <see cref="Url"/> from the specified string.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "url" as the field name.
     /// </summary>
     /// <param name="value">The URL string to validate.</param>
-    /// <param name="fieldName">Optional field name to use in validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "url".</param>
     /// <returns>
     /// Success with the Url if the string is a valid HTTP/HTTPS URL; otherwise Failure with <see cref="Error.InvalidInput"/>.
     /// </returns>
@@ -73,19 +79,17 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Url) + '.' + nameof(TryCreate));
 
-        var field = fieldName.NormalizeFieldName("url");
-
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Url>(Error.InvalidInput.ForField(field, "validation.error", "URL is required."));
+            return Invalid(fieldName, "URL is required.");
 
         // Normalize input to avoid issues with accidental whitespace
         var trimmed = value.Trim();
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
-            return Result.Fail<Url>(Error.InvalidInput.ForField(field, "validation.error", "URL must be a valid absolute HTTP or HTTPS URL."));
+            return Invalid(fieldName, "URL must be a valid absolute HTTP or HTTPS URL.");
 
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-            return Result.Fail<Url>(Error.InvalidInput.ForField(field, "validation.error", "URL must use HTTP or HTTPS scheme."));
+            return Invalid(fieldName, "URL must use HTTP or HTTPS scheme.");
 
         return Result.Ok(new Url(uri));
     }

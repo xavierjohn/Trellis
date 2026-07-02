@@ -83,101 +83,96 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// </summary>
     public static Percentage Full => _full;
 
+    // Field-normalization + InvalidInput failure in one place (default field name: "percentage").
+    private static Result<Percentage> Invalid(string? fieldName, string message) =>
+        Result.Fail<Percentage>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("percentage"), "validation.error", message));
+
+    // Field-normalization + InvalidInput failure in one place (default field name: "fraction").
+    private static Result<Percentage> InvalidFraction(string? fieldName, string message) =>
+        Result.Fail<Percentage>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("fraction"), "validation.error", message));
+
+    // No-span validation core. Every public factory opens exactly one span, then delegates here.
+    private static Result<Percentage> Validate(decimal value, string? fieldName) =>
+        value is < 0m or > 100m
+            ? Invalid(fieldName, "Percentage must be between 0 and 100.")
+            : Result.Ok(new Percentage(value));
+
     /// <summary>
     /// Attempts to create a <see cref="Percentage"/> from the specified decimal.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "percentage" as the field name.
     /// </summary>
     /// <param name="value">The decimal value to validate (0-100).</param>
-    /// <param name="fieldName">Optional field name to use in validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "percentage".</param>
     /// <returns>
     /// Success with the Percentage if the value is between 0 and 100; otherwise Failure with <see cref="Error.InvalidInput"/>.
     /// </returns>
     public static Result<Percentage> TryCreate(decimal value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
-
-        var field = fieldName.NormalizeFieldName("percentage");
-
-        if (value is < 0m or > 100m)
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Percentage must be between 0 and 100."));
-
-        return Result.Ok(new Percentage(value));
+        return Validate(value, fieldName);
     }
 
     /// <summary>
     /// Attempts to create a <see cref="Percentage"/> from the specified nullable decimal.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "percentage" as the field name.
     /// </summary>
     /// <param name="value">The nullable decimal value to validate (0-100).</param>
-    /// <param name="fieldName">Optional field name to use in validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "percentage".</param>
     /// <returns>
     /// Success with the Percentage if the value is between 0 and 100; otherwise Failure with <see cref="Error.InvalidInput"/>.
     /// </returns>
     public static Result<Percentage> TryCreate(decimal? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
-
-        var field = fieldName.NormalizeFieldName("percentage");
-
-        if (value is null)
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Percentage is required."));
-
-        if (value.Value is < 0m or > 100m)
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Percentage must be between 0 and 100."));
-
-        return Result.Ok(new Percentage(value.Value));
+        return value is null
+            ? Invalid(fieldName, "Percentage is required.")
+            : Validate(value.Value, fieldName);
     }
 
     /// <summary>
     /// Attempts to create a <see cref="Percentage"/> from a string representation.
     /// Strips a trailing <c>%</c> suffix if present before parsing.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "percentage" as the field name.
     /// </summary>
     /// <param name="value">The string value to parse (must be a valid decimal, optionally with a trailing %).</param>
-    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "percentage".</param>
     /// <returns>Success with the Percentage if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
-    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
-    public static Result<Percentage> TryCreate(string? value, string? fieldName = null)
-    {
-        var field = fieldName.NormalizeFieldName("percentage");
-
-        if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Percentage is required."));
-
-        var trimmed = value.TrimEnd('%', ' ');
-
-        if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Percentage must be a valid decimal."));
-
-        return TryCreate(parsed, fieldName);
-    }
+    /// <remarks>Delegates to the <see cref="TryCreate(string?, IFormatProvider?, string?)"/> overload using the invariant culture.</remarks>
+    public static Result<Percentage> TryCreate(string? value, string? fieldName = null) =>
+        TryCreate(value, null, fieldName);
 
     /// <summary>
     /// Attempts to create a <see cref="Percentage"/> from a string using the specified format provider.
     /// Strips a trailing <c>%</c> suffix if present before parsing.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "percentage" as the field name.
     /// </summary>
     /// <param name="value">The string value to parse (must be a valid decimal, optionally with a trailing %).</param>
     /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
-    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "percentage".</param>
     /// <returns>Success with the Percentage if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
-    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
     public static Result<Percentage> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
     {
-        var field = fieldName.NormalizeFieldName("percentage");
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Percentage is required."));
+            return Invalid(fieldName, "Percentage is required.");
 
         var trimmed = value.TrimEnd('%', ' ');
 
         if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Percentage must be a valid decimal."));
+            return Invalid(fieldName, "Percentage must be a valid decimal.");
 
-        return TryCreate(parsed, fieldName);
+        return Validate(parsed, fieldName);
     }
 
     /// <summary>
     /// Creates a <see cref="Percentage"/> from a fraction (0.0 to 1.0).
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "fraction" as the field name.
     /// </summary>
     /// <param name="fraction">The fraction value (0.0 to 1.0).</param>
-    /// <param name="fieldName">Optional field name to use in validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "fraction".</param>
     /// <returns>
     /// Success with the Percentage; otherwise Failure with <see cref="Error.InvalidInput"/>.
     /// </returns>
@@ -185,12 +180,10 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(FromFraction));
 
-        var field = fieldName.NormalizeFieldName("fraction");
-
         if (fraction is < 0m or > 1m)
-            return Result.Fail<Percentage>(Error.InvalidInput.ForField(field, "validation.error", "Fraction must be between 0 and 1."));
+            return InvalidFraction(fieldName, "Fraction must be between 0 and 1.");
 
-        return TryCreate(fraction * 100m, fieldName);
+        return Validate(fraction * 100m, fieldName);
     }
 
     /// <summary>

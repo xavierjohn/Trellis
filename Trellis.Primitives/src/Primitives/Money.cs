@@ -39,6 +39,7 @@ public class Money : ValueObject
 
     /// <summary>
     /// Creates a Money instance with the specified amount and currency code.
+    /// If <paramref name="fieldName"/> is not provided, amount validation errors use "amount" and currency validation errors use "currencyCode" as the field name.
     /// </summary>
     /// <remarks>
     /// Currency validation is delegated to <see cref="CurrencyCode.TryCreate"/> and is
@@ -52,7 +53,7 @@ public class Money : ValueObject
     /// </remarks>
     /// <param name="amount">The monetary amount.</param>
     /// <param name="currencyCode">ISO 4217 currency code (e.g., "USD", "EUR"); case-insensitive.</param>
-    /// <param name="fieldName">Optional field name for validation errors.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "amount" for amount validation and "currencyCode" for currency validation.</param>
     /// <returns>Result containing the Money instance or validation errors.</returns>
     public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null)
     {

@@ -24,18 +24,26 @@ public class IpAddress : ScalarValueObject<IpAddress, string>, IScalarValue<IpAd
     /// <param name="ip">The parsed <see cref="System.Net.IPAddress"/>.</param>
     private IpAddress(string value, IPAddress ip) : base(value) => _ip = ip;
 
+    // Field-normalization + InvalidInput failure in one place (default field name: "ipAddress").
+    private static Result<IpAddress> Invalid(string? fieldName, string message) =>
+        Result.Fail<IpAddress>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("ipAddress"), "validation.error", message));
+
     /// <summary>
     /// Attempts to create an IP address.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "ipAddress" as the field name.
     /// </summary>
+    /// <param name="value">The string value to validate.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "ipAddress".</param>
+    /// <returns>Success with the IpAddress if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
     public static Result<IpAddress> TryCreate(string? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(IpAddress) + '.' + nameof(TryCreate));
-        var field = fieldName.NormalizeFieldName("ipAddress");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<IpAddress>(Error.InvalidInput.ForField(field, "validation.error", "IP address is required."));
+            return Invalid(fieldName, "IP address is required.");
         var trimmed = value.Trim();
         if (!IPAddress.TryParse(trimmed, out var ip))
-            return Result.Fail<IpAddress>(Error.InvalidInput.ForField(field, "validation.error", "IP address must be a valid IPv4 or IPv6."));
+            return Invalid(fieldName, "IP address must be a valid IPv4 or IPv6.");
         return Result.Ok(new IpAddress(trimmed, ip));
     }
 
