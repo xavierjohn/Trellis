@@ -205,20 +205,21 @@ See [Cache partitioning across actors (`VaryForActor()`)](#cache-partitioning-ac
 
 ## Surface at a glance
 
-`Trellis.Asp.Authorization` (namespace inside the `Trellis.Asp` package) exposes one set of DI extensions plus four `IActorProvider` implementations and matching options classes.
+`Trellis.Asp.Authorization` (namespace inside the `Trellis.Asp` package) exposes one set of DI extensions plus five `IActorProvider` implementations and matching options classes.
 
 | API | Kind | Returns / Lifetime | Purpose |
 |---|---|---|---|
 | `AddEntraActorProvider(this IServiceCollection, Action<EntraActorOptions>?)` | DI extension | Scoped `IActorProvider` → `EntraActorProvider` | Entra v2.0 (`oid`/`roles`/`tid`/`amr` ...) → `Actor`. |
 | `AddClaimsActorProvider(this IServiceCollection, Action<ClaimsActorOptions>?)` | DI extension | Scoped `IActorProvider` → `ClaimsActorProvider` | Generic flat-claim mapping (configurable `ActorIdClaim`, `PermissionsClaim`). |
 | `AddDevelopmentActorProvider(this IServiceCollection, Action<DevelopmentActorOptions>?)` | DI extension | Scoped `IActorProvider` → `DevelopmentActorProvider` | Reads `X-Test-Actor` JSON header; throws outside `IsDevelopment()`. |
+| `AddEasyAuthActorProvider(this IServiceCollection, Action<ClaimsActorOptions>?)` + `AddEasyAuth(this AuthenticationBuilder, ...)` | DI extensions | Scoped `IActorProvider` → `EasyAuthClaimsActorProvider` (+ Easy Auth scheme) | Azure "Easy Auth": decode `X-MS-CLIENT-PRINCIPAL` → `HttpContext.User` → `Actor`; varies cache by the principal headers, not `Authorization`. |
 | `AddCachingActorProvider<T>(this IServiceCollection)` | DI extension | Scoped `IActorProvider` → `CachingActorProvider` wrapping `T` | Caches one resolution task per request scope. |
 | `AddTrellisWorkerActor(this IServiceCollection, Actor)` | DI extension | Scoped `IActorProvider` → `WorkerComposedActorProvider` wrapping the prior slot | Returns the supplied system actor when `IHttpContextAccessor.HttpContext` is null; delegates to the inner provider otherwise. |
 | `ClaimsActorProvider` | Class | Scoped, virtual `GetCurrentActorAsync` | Subclass for custom flat-claim providers. Permissions resolved via literal `FindAll(PermissionsClaim)` plus the well-known short↔long counterpart from the JWT inbound claim-name map; matches are merged into a deduplicated `FrozenSet<string>`. |
 | `EntraActorProvider` | Class | Scoped, sealed | Falls back to short `oid` when `IdClaimType` is the default; rewraps mapper exceptions in `InvalidOperationException`. |
 | `DevelopmentActorProvider` | Class | Scoped, sealed partial | Throws on a malformed header by default (`ThrowOnMalformedHeader = true`); set it to `false` to log a warning and fall back to the default actor. |
 | `CachingActorProvider` | Class | Scoped, sealed | Uses `LazyInitializer.EnsureInitialized` + `HttpContext.RequestAborted`; honors per-call `CancellationToken` via `Task.WaitAsync`. |
-| `EntraActorOptions` / `ClaimsActorOptions` / `DevelopmentActorOptions` | Options | — | Mapping delegates / claim-type strings / dev defaults. |
+| `EntraActorOptions` / `ClaimsActorOptions` / `DevelopmentActorOptions` / `EasyAuthAuthenticationOptions` | Options | — | Mapping delegates / claim-type strings / dev defaults / Easy Auth scheme options. |
 
 Full signatures: [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md).
 
@@ -372,6 +373,39 @@ else
 > `DevelopmentActorProvider.GetCurrentActorAsync` throws `InvalidOperationException` whenever `IHostEnvironment.IsDevelopment()` is `false` — even when the header is absent. Registering it in Production is a fail-fast safety net.
 
 For test clients, the `WebApplicationFactoryExtensions.CreateClientWithActor(...)` helper in `Trellis.Testing.AspNetCore` writes the same header for you; see [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md).
+
+## Easy Auth provider (Azure App Service / Container Apps)
+
+When your app runs behind Azure App Service or Container Apps **built-in authentication ("Easy Auth")**, the platform authenticates the user and injects the principal as request headers — `X-MS-CLIENT-PRINCIPAL` (base64 JSON of the claims), plus `X-MS-CLIENT-PRINCIPAL-ID` / `-NAME` / `-IDP` — stripping any client-supplied copies at the boundary. Trellis handles this in two layers, mirroring the standard `AddJwtBearer` + actor-provider split:
+
+1. **Authentication** — `AddEasyAuth()` registers an `AuthenticationHandler` that decodes `X-MS-CLIENT-PRINCIPAL` onto `HttpContext.User` (honoring `auth_typ` / `name_typ` / `role_typ`), falling back to `-ID` / `-NAME` when the principal header is absent. A missing header is anonymous (`NoResult`); a malformed header fails closed.
+2. **Actor mapping** — `AddEasyAuthActorProvider(...)` maps those `HttpContext.User` claims to the `Actor` exactly like the generic claims provider, but varies the response cache by the Easy Auth principal headers instead of `Authorization`. If you register this provider but forget the authentication scheme, a startup validator fails fast rather than letting every request silently 401.
+
+```csharp
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services
+    .AddAuthentication(EasyAuthDefaults.AuthenticationScheme)
+    .AddEasyAuth();
+
+builder.Services.AddEasyAuthActorProvider(options =>
+{
+    // Match the claim types your upstream identity provider emits inside the principal.
+    options.ActorIdClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+    options.PermissionsClaim = "roles";
+});
+
+// ... later:
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+> [!WARNING]
+> **Trust precondition.** The `X-MS-CLIENT-PRINCIPAL*` headers are trustworthy only when the app is reachable *exclusively* through the Easy Auth front end — the platform strips inbound client copies at that boundary. If any path bypasses Easy Auth (a misconfigured ingress, a side-car port, or local development), a client can forge these headers and impersonate any actor. The provider is never auto-registered; enable it only when that boundary holds.
+
+`EasyAuthAuthenticationOptions` carries only the standard `AuthenticationSchemeOptions` surface (events, forwarding). The Easy Auth principal header names are fixed by the Azure platform contract (`EasyAuthDefaults`) and are not configurable, so the decoded identity and the provider's `VaryForActor()` cache key can never drift out of sync.
 
 ## Caching wrapper
 
@@ -827,6 +861,8 @@ public sealed class CookieClaimsActorProvider(
     public override IReadOnlyCollection<string> VaryByHeaders { get; } = ["Cookie"];
 }
 ```
+
+The framework ships exactly this shape as `EasyAuthClaimsActorProvider` (see [Easy Auth provider](#easy-auth-provider-azure-app-service--container-apps)) — it subclasses `ClaimsActorProvider` and overrides `VaryByHeaders` to the Azure `X-MS-CLIENT-PRINCIPAL*` principal headers, so `AddEasyAuthActorProvider(...)` gets the correct cache partitioning without the consumer wiring it by hand.
 
 Register the subclass — `AddClaimsActorProvider(...)` registers the base type and won't pick up the subclass on its own. The cleanest shape is to wire the options once via `AddClaimsActorProvider` (which configures `IOptions<ClaimsActorOptions>`) and then replace the provider with your subclass via `AddCachingActorProvider<TInner>()` (also gets you per-request caching for free):
 

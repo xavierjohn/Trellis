@@ -176,6 +176,71 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers <see cref="EasyAuthClaimsActorProvider"/> as the scoped
+    /// <see cref="IActorProvider"/> for requests authenticated by Azure App Service /
+    /// Container Apps built-in authentication ("Easy Auth").
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configure">
+    /// Optional delegate to customize <see cref="ClaimsActorOptions"/> — set
+    /// <see cref="ClaimsActorOptions.ActorIdClaim"/> and
+    /// <see cref="ClaimsActorOptions.PermissionsClaim"/> to the claim types your upstream
+    /// identity provider emits inside the Easy Auth principal.
+    /// </param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// This registers the actor <em>mapping</em> only. It does NOT authenticate the request —
+    /// pair it with <c>AddAuthentication(...).AddEasyAuth()</c> and <c>UseAuthentication()</c>
+    /// so <see cref="EasyAuthAuthenticationHandler"/> populates <c>HttpContext.User</c> from the
+    /// <c>X-MS-CLIENT-PRINCIPAL</c> header first. Unlike the bearer providers, the resolved
+    /// provider varies its response cache by the Easy Auth principal headers (see
+    /// <see cref="EasyAuthClaimsActorProvider.VaryByHeaders"/>). A startup validator fails fast
+    /// when this provider is registered but no Easy Auth authentication scheme is, surfacing the
+    /// missing-scheme misconfiguration loudly instead of silently 401-ing every request.
+    /// </para>
+    /// <para>
+    /// <b>Trust precondition:</b> only register when the app is reachable exclusively through
+    /// the Easy Auth front end — see <see cref="EasyAuthDefaults"/>. Never auto-enable it.
+    /// </para>
+    /// <para>
+    /// <b>Replaces</b> any prior <see cref="IActorProvider"/> registration — actor-provider
+    /// helpers do not stack; the last <c>AddXxxActorProvider</c> call wins.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddAuthentication(EasyAuthDefaults.AuthenticationScheme).AddEasyAuth();
+    /// builder.Services.AddEasyAuthActorProvider(opts =>
+    /// {
+    ///     opts.ActorIdClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+    ///     opts.PermissionsClaim = "roles";
+    /// });
+    /// // ... app.UseAuthentication();
+    /// </code>
+    /// </example>
+    public static IServiceCollection AddEasyAuthActorProvider(
+        this IServiceCollection services,
+        Action<ClaimsActorOptions>? configure = null)
+    {
+        services.AddHttpContextAccessor();
+
+        if (configure is not null)
+            services.Configure(configure);
+        else
+            services.Configure<ClaimsActorOptions>(_ => { });
+
+        services.Replace(ServiceDescriptor.Scoped<IActorProvider, EasyAuthClaimsActorProvider>());
+
+        // Fail fast at host start if the Easy Auth authentication scheme is missing: the provider
+        // maps HttpContext.User but does not authenticate, so an absent scheme would otherwise
+        // silently 401 every actor-requiring endpoint. TryAddEnumerable dedupes repeated calls.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, EasyAuthSchemeRegistrationValidator>());
+
+        return services;
+    }
+
+    /// <summary>
     /// Registers <see cref="DevelopmentActorProvider"/> as the scoped <see cref="IActorProvider"/>
     /// for development and testing environments. Reads actor identity from the
     /// <c>X-Test-Actor</c> HTTP header and falls back to a configurable default actor.

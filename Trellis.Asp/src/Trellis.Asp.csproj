@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
-    <Description>ASP.NET Core integration for Trellis. Result-to-HTTP response mapping, scalar value validation, JSON converters (with bundled AOT source generator), and ASP.NET actor providers (Claims, Entra, Development) for Trellis.Authorization.</Description>
-    <PackageTags>trellis;aspnetcore;mvc;minimal-api;web-api;railway-oriented;result;http;error-handling;authorization;actor;entra;claims</PackageTags>
+    <Description>ASP.NET Core integration for Trellis. Result-to-HTTP response mapping, scalar value validation, JSON converters (with bundled AOT source generator), and ASP.NET actor providers (Claims, Entra, Easy Auth, Development) for Trellis.Authorization.</Description>
+    <PackageTags>trellis;aspnetcore;mvc;minimal-api;web-api;railway-oriented;result;http;error-handling;authorization;actor;entra;claims;easy-auth</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>asp</TrellisApiRefName>
