@@ -379,7 +379,7 @@ For test clients, the `WebApplicationFactoryExtensions.CreateClientWithActor(...
 When your app runs behind Azure App Service or Container Apps **built-in authentication ("Easy Auth")**, the platform authenticates the user and injects the principal as request headers — `X-MS-CLIENT-PRINCIPAL` (base64 JSON of the claims), plus `X-MS-CLIENT-PRINCIPAL-ID` / `-NAME` / `-IDP` — stripping any client-supplied copies at the boundary. Trellis handles this in two layers, mirroring the standard `AddJwtBearer` + actor-provider split:
 
 1. **Authentication** — `AddEasyAuth()` registers an `AuthenticationHandler` that decodes `X-MS-CLIENT-PRINCIPAL` onto `HttpContext.User` (honoring `auth_typ` / `name_typ` / `role_typ`), falling back to `-ID` / `-NAME` when the principal header is absent. A missing header is anonymous (`NoResult`); a malformed header fails closed.
-2. **Actor mapping** — `AddEasyAuthActorProvider(...)` maps those `HttpContext.User` claims to the `Actor` exactly like the generic claims provider, but varies the response cache by the Easy Auth principal headers instead of `Authorization`.
+2. **Actor mapping** — `AddEasyAuthActorProvider(...)` maps those `HttpContext.User` claims to the `Actor` exactly like the generic claims provider, but varies the response cache by the Easy Auth principal headers instead of `Authorization`. If you register this provider but forget the authentication scheme, a startup validator fails fast rather than letting every request silently 401.
 
 ```csharp
 using Microsoft.AspNetCore.Authentication;

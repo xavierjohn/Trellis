@@ -14,6 +14,9 @@ public class EasyAuthAuthenticationHandlerTests
 {
     private static string Encode(string json) => Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
+    private static string EncodeUrl(string json) =>
+        Convert.ToBase64String(Encoding.UTF8.GetBytes(json)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
     private static async Task<AuthenticateResult> AuthenticateAsync(
         Action<HttpRequest> configureRequest,
         EasyAuthAuthenticationOptions? options = null)
@@ -151,6 +154,20 @@ public class EasyAuthAuthenticationHandlerTests
         result.Principal!.Identity!.IsAuthenticated.Should().BeTrue();
         result.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value.Should().Be("user-42");
         result.Principal.Identity.AuthenticationType.Should().Be("aad");
+    }
+
+    [Fact]
+    public async Task Authenticate_Base64UrlEncodedPrincipal_Authenticates()
+    {
+        // Easy Auth emits standard base64, but the handler must also accept base64url
+        // (URL-safe alphabet, unpadded) — which Convert.FromBase64String alone would reject.
+        var json = """{ "auth_typ": "aad", "claims": [ { "typ": "sub", "val": "user-1" } ] }""";
+
+        var result = await AuthenticateAsync(req =>
+            req.Headers[EasyAuthDefaults.PrincipalHeaderName] = EncodeUrl(json));
+
+        result.Succeeded.Should().BeTrue();
+        result.Principal!.FindFirst("sub")!.Value.Should().Be("user-1");
     }
 
     private sealed class StaticOptionsMonitor(EasyAuthAuthenticationOptions value)

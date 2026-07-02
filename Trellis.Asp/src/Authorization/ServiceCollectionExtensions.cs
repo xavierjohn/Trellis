@@ -195,7 +195,9 @@ public static class ServiceCollectionExtensions
     /// so <see cref="EasyAuthAuthenticationHandler"/> populates <c>HttpContext.User</c> from the
     /// <c>X-MS-CLIENT-PRINCIPAL</c> header first. Unlike the bearer providers, the resolved
     /// provider varies its response cache by the Easy Auth principal headers (see
-    /// <see cref="EasyAuthClaimsActorProvider.VaryByHeaders"/>).
+    /// <see cref="EasyAuthClaimsActorProvider.VaryByHeaders"/>). A startup validator fails fast
+    /// when this provider is registered but no Easy Auth authentication scheme is, surfacing the
+    /// missing-scheme misconfiguration loudly instead of silently 401-ing every request.
     /// </para>
     /// <para>
     /// <b>Trust precondition:</b> only register when the app is reachable exclusively through
@@ -229,6 +231,11 @@ public static class ServiceCollectionExtensions
             services.Configure<ClaimsActorOptions>(_ => { });
 
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, EasyAuthClaimsActorProvider>());
+
+        // Fail fast at host start if the Easy Auth authentication scheme is missing: the provider
+        // maps HttpContext.User but does not authenticate, so an absent scheme would otherwise
+        // silently 401 every actor-requiring endpoint. TryAddEnumerable dedupes repeated calls.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, EasyAuthSchemeRegistrationValidator>());
 
         return services;
     }

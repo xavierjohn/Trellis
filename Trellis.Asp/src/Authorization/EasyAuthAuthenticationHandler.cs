@@ -67,16 +67,9 @@ public sealed class EasyAuthAuthenticationHandler : AuthenticationHandler<EasyAu
 
     private AuthenticateResult DecodePrincipalHeader(string headerValue)
     {
-        byte[] payload;
-        try
-        {
-            payload = Convert.FromBase64String(headerValue);
-        }
-        catch (FormatException)
-        {
+        if (!TryDecodeBase64(headerValue, out var payload))
             return AuthenticateResult.Fail(
                 $"The '{EasyAuthDefaults.PrincipalHeaderName}' header is not valid base64.");
-        }
 
         ClaimsIdentity? identity;
         try
@@ -158,4 +151,27 @@ public sealed class EasyAuthAuthenticationHandler : AuthenticationHandler<EasyAu
         => element.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+
+    // App Service / Container Apps Easy Auth emits standard base64 today, but also accept
+    // base64url (URL-safe '-'/'_' alphabet, optional padding) so the handler stays correct if
+    // the platform variant differs. The substitutions are no-ops for standard base64; re-padding
+    // is required because Convert.FromBase64String rejects unpadded input.
+    private static bool TryDecodeBase64(string value, out byte[] payload)
+    {
+        var normalized = value.Replace('-', '+').Replace('_', '/');
+        var remainder = normalized.Length % 4;
+        if (remainder != 0)
+            normalized += new string('=', 4 - remainder);
+
+        try
+        {
+            payload = Convert.FromBase64String(normalized);
+            return true;
+        }
+        catch (FormatException)
+        {
+            payload = [];
+            return false;
+        }
+    }
 }

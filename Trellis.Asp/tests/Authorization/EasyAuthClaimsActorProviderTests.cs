@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Trellis.Authorization;
 using Trellis.Testing;
@@ -127,5 +128,50 @@ public class EasyAuthClaimsActorProviderTests
 
         scheme.Should().NotBeNull();
         scheme!.HandlerType.Should().Be<EasyAuthAuthenticationHandler>();
+    }
+
+    [Fact]
+    public void AddEasyAuthActorProvider_RegistersSchemeValidatorHostedService()
+    {
+        var services = new ServiceCollection();
+
+        services.AddEasyAuthActorProvider();
+
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IHostedService) &&
+            d.ImplementationType == typeof(EasyAuthSchemeRegistrationValidator));
+    }
+
+    [Fact]
+    public async Task SchemeValidator_Throws_WhenEasyAuthSchemeNotRegistered()
+    {
+        // Actor provider selected but AddEasyAuth()/UseAuthentication() forgotten: HttpContext.User
+        // would never be populated and every actor-requiring endpoint would silently 401. The
+        // startup validator must surface this loudly instead.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddEasyAuthActorProvider();
+        var provider = services.BuildServiceProvider();
+        var validator = new EasyAuthSchemeRegistrationValidator(provider);
+
+        var act = async () => await validator.StartingAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Easy Auth authentication scheme*");
+    }
+
+    [Fact]
+    public async Task SchemeValidator_Passes_WhenEasyAuthSchemeRegistered()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddAuthentication(EasyAuthDefaults.AuthenticationScheme).AddEasyAuth();
+        services.AddEasyAuthActorProvider();
+        var provider = services.BuildServiceProvider();
+        var validator = new EasyAuthSchemeRegistrationValidator(provider);
+
+        var act = async () => await validator.StartingAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
     }
 }
