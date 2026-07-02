@@ -45,7 +45,7 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyModel" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Identity.Client" Version="4.85.1" />
+    <PackageVersion Include="Microsoft.Identity.Client" Version="4.85.2" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.9.50" />
     <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
