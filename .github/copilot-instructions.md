@@ -186,8 +186,8 @@ Documentation-only changes do not require a build or test run unless they affect
 ## Git and PR rules
 
 - Do not commit without explicit user approval.
-- Do not push branches.
-- Do not create or merge pull requests.
+- Do not push branches unless the user explicitly asks.
+- Do not create pull requests unless the user explicitly asks. Do not merge pull requests.
 - Do not amend commits, rebase pushed history, or force-push unless the user explicitly asks and confirms the history is safe to rewrite.
 - If asked for a PR summary, output this copy-paste-ready format:
 

@@ -28,79 +28,79 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// <summary>A zero monetary amount.</summary>
     public static MonetaryAmount Zero => s_zero;
 
-    /// <summary>
-    /// Attempts to create a <see cref="MonetaryAmount"/> from the specified decimal.
-    /// </summary>
-    /// <param name="value">The decimal value (must be non-negative).</param>
-    /// <param name="fieldName">Optional field name for validation error messages.</param>
-    /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.InvalidInput"/> if negative.</returns>
-    public static Result<MonetaryAmount> TryCreate(decimal value, string? fieldName = null)
+    // Field-normalization + InvalidInput failure in one place (default field name: "amount").
+    private static Result<MonetaryAmount> Invalid(string? fieldName, string message) =>
+        Result.Fail<MonetaryAmount>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("amount"), "validation.error", message));
+
+    // No-span validation core. Every public factory opens exactly one span, then delegates here.
+    private static Result<MonetaryAmount> Validate(decimal value, string? fieldName)
     {
-        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
-
-        var field = fieldName.NormalizeFieldName("amount");
-
         if (value < 0)
-            return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field, "validation.error", "Amount cannot be negative."));
+            return Invalid(fieldName, "Amount cannot be negative.");
 
         var rounded = Math.Round(value, DefaultDecimalPlaces, MidpointRounding.AwayFromZero);
         return Result.Ok(new MonetaryAmount(rounded));
     }
 
     /// <summary>
-    /// Attempts to create a <see cref="MonetaryAmount"/> from the specified nullable decimal.
+    /// Attempts to create a <see cref="MonetaryAmount"/> from the specified decimal.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "amount" as the field name.
     /// </summary>
+    /// <param name="value">The decimal value (must be non-negative).</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "amount".</param>
+    /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.InvalidInput"/> if negative.</returns>
+    public static Result<MonetaryAmount> TryCreate(decimal value, string? fieldName = null)
+    {
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
+        return Validate(value, fieldName);
+    }
+
+    /// <summary>
+    /// Attempts to create a <see cref="MonetaryAmount"/> from the specified nullable decimal.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "amount" as the field name.
+    /// </summary>
+    /// <param name="value">The decimal value (must be non-negative). A null value fails validation.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "amount".</param>
+    /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.InvalidInput"/> if null or negative.</returns>
     public static Result<MonetaryAmount> TryCreate(decimal? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
-
-        var field = fieldName.NormalizeFieldName("amount");
-
-        if (value is null)
-            return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field, "validation.error", "Amount is required."));
-
-        return TryCreate(value.Value, fieldName);
+        return value is null
+            ? Invalid(fieldName, "Amount is required.")
+            : Validate(value.Value, fieldName);
     }
 
     /// <summary>
     /// Attempts to create a <see cref="MonetaryAmount"/> from a string representation.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "amount" as the field name.
     /// </summary>
     /// <param name="value">The string value to parse (must be a valid decimal).</param>
-    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "amount".</param>
     /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
-    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
-    public static Result<MonetaryAmount> TryCreate(string? value, string? fieldName = null)
-    {
-        var field = fieldName.NormalizeFieldName("amount");
-
-        if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field, "validation.error", "Amount is required."));
-
-        if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field, "validation.error", "Amount must be a valid decimal."));
-
-        return TryCreate(parsed, fieldName);
-    }
+    /// <remarks>Delegates to the <see cref="TryCreate(string?, IFormatProvider?, string?)"/> overload using the invariant culture.</remarks>
+    public static Result<MonetaryAmount> TryCreate(string? value, string? fieldName = null) =>
+        TryCreate(value, null, fieldName);
 
     /// <summary>
     /// Attempts to create a <see cref="MonetaryAmount"/> from a string using the specified format provider.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "amount" as the field name.
     /// </summary>
     /// <param name="value">The string value to parse (must be a valid decimal).</param>
     /// <param name="provider">The format provider for culture-sensitive parsing. Defaults to <see cref="System.Globalization.CultureInfo.InvariantCulture"/> when null.</param>
-    /// <param name="fieldName">Optional field name for validation error messages.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "amount".</param>
     /// <returns>Success with the MonetaryAmount if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
-    /// <remarks>The activity is opened by the leaf <c>TryCreate(decimal, ...)</c> overload to avoid double-nested telemetry spans.</remarks>
     public static Result<MonetaryAmount> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
     {
-        var field = fieldName.NormalizeFieldName("amount");
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field, "validation.error", "Amount is required."));
+            return Invalid(fieldName, "Amount is required.");
 
         if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field, "validation.error", "Amount must be a valid decimal."));
+            return Invalid(fieldName, "Amount must be a valid decimal.");
 
-        return TryCreate(parsed, fieldName);
+        return Validate(parsed, fieldName);
     }
 
     /// <summary>Adds two monetary amounts.</summary>

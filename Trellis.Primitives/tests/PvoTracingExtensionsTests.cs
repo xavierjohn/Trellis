@@ -186,6 +186,121 @@ public class PvoTracingExtensionsTests : IDisposable
             .Should().Throw<ArgumentNullException>()
             .Where(ex => ex.ParamName == "builder");
 
+    // --- Single-span invariant: every public factory call emits exactly one activity,
+    //     on both success and failure, regardless of which overload is the entry point. ---
+
+    [Fact]
+    public void MonetaryAmount_NullableDecimal_Null_EmitsSingleErrorActivity()
+    {
+        var result = MonetaryAmount.TryCreate((decimal?)null);
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("a validation failure must still emit one activity");
+        result.IsFailure.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"exactly one span per call; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("MonetaryAmount.TryCreate");
+        activities[0].Status.Should().Be(ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void MonetaryAmount_NullableDecimal_Valid_EmitsSingleOkActivity()
+    {
+        var result = MonetaryAmount.TryCreate((decimal?)10.5m);
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("activity should be captured");
+        result.IsSuccess.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"a non-leaf overload must not nest a second span; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("MonetaryAmount.TryCreate");
+        activities[0].Status.Should().Be(ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public void MonetaryAmount_String_Invalid_EmitsSingleErrorActivity()
+    {
+        var result = MonetaryAmount.TryCreate("not-a-number");
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("a parse failure must still emit one activity");
+        result.IsFailure.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"exactly one span per call; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("MonetaryAmount.TryCreate");
+        activities[0].Status.Should().Be(ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void Age_String_Invalid_EmitsSingleErrorActivity()
+    {
+        var result = Age.TryCreate("not-a-number");
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("a parse failure must still emit one activity");
+        result.IsFailure.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"exactly one span per call; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("Age.TryCreate");
+        activities[0].Status.Should().Be(ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void Age_String_Valid_EmitsSingleOkActivity()
+    {
+        var result = Age.TryCreate("42");
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("activity should be captured");
+        result.IsSuccess.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"a non-leaf overload must not nest a second span; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("Age.TryCreate");
+        activities[0].Status.Should().Be(ActivityStatusCode.Ok);
+    }
+
+    [Fact]
+    public void Percentage_String_Invalid_EmitsSingleErrorActivity()
+    {
+        var result = Percentage.TryCreate("not-a-number");
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("a parse failure must still emit one activity");
+        result.IsFailure.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"exactly one span per call; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("Percentage.TryCreate");
+        activities[0].Status.Should().Be(ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void Percentage_FromFraction_OutOfRange_EmitsSingleErrorActivity()
+    {
+        var result = Percentage.FromFraction(2m);
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("an out-of-range fraction must still emit one activity");
+        result.IsFailure.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"exactly one span per call; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("Percentage.FromFraction");
+        activities[0].Status.Should().Be(ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void Percentage_FromFraction_Valid_EmitsSingleOkActivity()
+    {
+        var result = Percentage.FromFraction(0.5m);
+
+        _activityHelper.WaitForActivityCount(1).Should().BeTrue("activity should be captured");
+        result.IsSuccess.Should().BeTrue();
+
+        var activities = _activityHelper.CapturedActivities;
+        activities.Should().ContainSingle($"FromFraction must emit exactly one span; got {activities.Count}");
+        activities[0].DisplayName.Should().Be("Percentage.FromFraction");
+        activities[0].Status.Should().Be(ActivityStatusCode.Ok);
+    }
+
     public void Dispose()
     {
         _activityHelper.Dispose();

@@ -28,19 +28,27 @@ public partial class Slug : ScalarValueObject<Slug, string>, IScalarValue<Slug, 
     /// </summary>
     private Slug(string value) : base(value) { }
 
+    // Field-normalization + InvalidInput failure in one place (default field name: "slug").
+    private static Result<Slug> Invalid(string? fieldName, string message) =>
+        Result.Fail<Slug>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("slug"), "validation.error", message));
+
     /// <summary>
     /// Attempts to create a slug.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "slug" as the field name.
     /// </summary>
+    /// <param name="value">The string value to validate.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "slug".</param>
+    /// <returns>Success with the Slug if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
     public static Result<Slug> TryCreate(string? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Slug) + '.' + nameof(TryCreate));
-        var field = fieldName.NormalizeFieldName("slug");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<Slug>(Error.InvalidInput.ForField(field, "validation.error", "Slug is required."));
+            return Invalid(fieldName, "Slug is required.");
         var trimmed = value.Trim();
         // lower-case, numbers, hyphens, single hyphen separators
         if (!SlugRegex().IsMatch(trimmed))
-            return Result.Fail<Slug>(Error.InvalidInput.ForField(field, "validation.error", "Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens."));
+            return Invalid(fieldName, "Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
         return Result.Ok(new Slug(trimmed));
     }
 

@@ -26,18 +26,26 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
     /// </summary>
     private CountryCode(string value) : base(value) { }
 
+    // Field-normalization + InvalidInput failure in one place (default field name: "countryCode").
+    private static Result<CountryCode> Invalid(string? fieldName, string message) =>
+        Result.Fail<CountryCode>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("countryCode"), "validation.error", message));
+
     /// <summary>
     /// Attempts to create a country code.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "countryCode" as the field name.
     /// </summary>
+    /// <param name="value">The string value to validate.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "countryCode".</param>
+    /// <returns>Success with the CountryCode if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
     public static Result<CountryCode> TryCreate(string? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(CountryCode) + '.' + nameof(TryCreate));
-        var field = fieldName.NormalizeFieldName("countryCode");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<CountryCode>(Error.InvalidInput.ForField(field, "validation.error", "Country code is required."));
+            return Invalid(fieldName, "Country code is required.");
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsAsciiLetter))
-            return Result.Fail<CountryCode>(Error.InvalidInput.ForField(field, "validation.error", "Country code must be an ISO 3166-1 alpha-2 code."));
+            return Invalid(fieldName, "Country code must be an ISO 3166-1 alpha-2 code.");
         return Result.Ok(new CountryCode(code.ToUpperInvariant()));
     }
 

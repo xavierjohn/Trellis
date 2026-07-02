@@ -22,18 +22,26 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
     /// </summary>
     private LanguageCode(string value) : base(value) { }
 
+    // Field-normalization + InvalidInput failure in one place (default field name: "languageCode").
+    private static Result<LanguageCode> Invalid(string? fieldName, string message) =>
+        Result.Fail<LanguageCode>(
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("languageCode"), "validation.error", message));
+
     /// <summary>
     /// Attempts to create a language code.
+    /// If <paramref name="fieldName"/> is not provided, validation errors use "languageCode" as the field name.
     /// </summary>
+    /// <param name="value">The string value to validate.</param>
+    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "languageCode".</param>
+    /// <returns>Success with the LanguageCode if valid; Failure with <see cref="Error.InvalidInput"/> otherwise.</returns>
     public static Result<LanguageCode> TryCreate(string? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(LanguageCode) + '.' + nameof(TryCreate));
-        var field = fieldName.NormalizeFieldName("languageCode");
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<LanguageCode>(Error.InvalidInput.ForField(field, "validation.error", "Language code is required."));
+            return Invalid(fieldName, "Language code is required.");
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsAsciiLetter))
-            return Result.Fail<LanguageCode>(Error.InvalidInput.ForField(field, "validation.error", "Language code must be an ISO 639-1 alpha-2 code."));
+            return Invalid(fieldName, "Language code must be an ISO 639-1 alpha-2 code.");
         return Result.Ok(new LanguageCode(code.ToLowerInvariant()));
     }
 
