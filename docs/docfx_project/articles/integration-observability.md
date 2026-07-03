@@ -116,7 +116,7 @@ Trellis ships three independent `ActivitySource`s. Subscribe to each on its own 
 | Source | Constant | Volume | When to subscribe |
 |---|---|---|---|
 | `"Trellis.Mediator"` | `TracingBehavior<,>.ActivitySourceName` | One span per mediator message | Always — this is the primary failure-localisation surface. |
-| `"Trellis.Primitives"` | (internal — use `AddPrimitiveValueObjectInstrumentation()`) | Exactly one span per value-object factory call (`TryCreate` / `Parse` / `FromFraction`) | When you need to see *why* input validation rejected a request at the edge. |
+| `"Trellis.Primitives"` | (internal — use `AddPrimitiveValueObjectInstrumentation()`) | Exactly one span per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call is traced under `.TryCreate`) | When you need to see *why* input validation rejected a request at the edge. |
 | `"Trellis.Core"` | `RopTrace.ActivitySourceName` (= `"Trellis.Core"`) | One span per individual `Result` operation (`Bind`, `Map`, `Tap`, …) | Only for break-glass diagnostics — high cardinality, high volume. |
 
 `TracingBehavior<,>` writes the following on every dispatched message:
