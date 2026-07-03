@@ -13,8 +13,10 @@ updates:
 
   - package-ecosystem: "nuget"
     directory: "/"
+    # Monthly (not weekly) to cut PR volume; Dependabot security updates
+    # still fire promptly for advisories regardless of this schedule.
     schedule:
-      interval: "weekly"
+      interval: "monthly"
 
     ignore:
       # FluentAssertions 8.0.0+ switched to the XCEED commercial license.
@@ -29,8 +31,17 @@ updates:
       - dependency-name: "Microsoft.Testing.Extensions.TrxReport"
         update-types: ["version-update:semver-major"]
 
-    # Group weekly NuGet bumps so the schedule produces ~5 PRs instead of
-    # 20+ unrelated single-package PRs.
+      # Microsoft.Testing.Extensions.CodeCoverage newer than 18.0.6 (e.g. 18.8.0)
+      # pulls Microsoft.Testing.Platform 2.2.x, whose TestHost.IDataConsumer ABI
+      # is incompatible with the Microsoft.Testing.Platform that xunit.v3 3.2.2
+      # bundles -> TypeLoadException at test-host startup, 0 tests run, build
+      # fails (see PR #611). This is a MINOR-version break, so a semver-major
+      # rule would miss it -> ignore all version updates. Bump manually (and relax
+      # this) once xunit.v3 targets Microsoft.Testing.Platform 2.2.x.
+      - dependency-name: "Microsoft.Testing.Extensions.CodeCoverage"
+
+    # Group monthly NuGet bumps so the schedule produces a handful of PRs
+    # instead of 20+ unrelated single-package PRs.
     groups:
       microsoft-platform:
         patterns:
@@ -61,3 +72,10 @@ updates:
       scalar:
         patterns:
           - "Scalar.*"
+      # Catch-all MUST stay last: Dependabot assigns each package to the first
+      # group whose patterns match, so this folds every remaining ungrouped
+      # package (Nerdbank.GitVersioning, T4.Build, Stateless, SQLitePCLRaw,
+      # Microsoft.Extensions.DependencyModel, etc.) into one PR.
+      other:
+        patterns:
+          - "*"
