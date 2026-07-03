@@ -102,7 +102,7 @@ public static Result<User> RegisterUser(RegisterUserInput input, Func<CustomerEm
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." });
+        .Ensure(user => !emailExists(user.Email), Error.Conflict.ForReason("conflict", "Email already registered."));
 }
 ```
 
@@ -336,7 +336,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." })
+        .Ensure(user => !emailExists(user.Email), Error.Conflict.ForReason("conflict", "Email already registered."))
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }

@@ -102,7 +102,7 @@ Behavior:
 
 - Success → `200 OK` with the projected `UserResponse` body.
 - `Error.NotFound` → `404 Not Found` Problem Details.
-- `Error.InvalidInput` → `422 Unprocessable Content` validation Problem Details.
+- `Error.InvalidInput` → `422 Unprocessable Content` validation Problem Details (the default; configurable via `MapError<Error.InvalidInput>(status)`, which applies uniformly to route/query binder, JSON-body, and handler validation failures — syntactically malformed JSON stays `400`).
 - Any other failure → status from `TrellisAspOptions` (default `500`).
 
 ## `Result<Unit>` → 204 No Content

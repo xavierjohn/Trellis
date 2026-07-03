@@ -204,20 +204,21 @@ private static Result<Unit> Validate(ProductName name, Sku sku)
 ```
 
 > [!TIP]
-> Per-field invariants (length, range, non-empty/non-whitespace, non-zero, non-default IDs/dates) belong on the value-object primitive itself via strict `Required*` defaults plus `[StringLength]`, `[Range]`, etc. The aggregate `Validate` method is for *cross-field* rules that no single primitive can enforce.
+> Per-field invariants (length, range, non-empty/non-whitespace, non-zero, non-default IDs/dates) belong on the value-object primitive itself. `Required*` primitives reject only `null` by default; opt into empty/whitespace rejection and trimming with `[NotDefault]` / `[Trim]`, plus `[StringLength]`, `[Range]`, etc. The aggregate `Validate` method is for *cross-field* rules that no single primitive can enforce.
 
 ## Composing primitives
 
 Strong-typed inputs eliminate most aggregate-level validation. By the time `TryCreate` runs, every primitive has already passed its own invariants.
 
 ```csharp
-[StringLength(200)]
-public partial class ProductName : RequiredString<ProductName> { }   // strict default: empty/whitespace rejection + trim; length
+[StringLength(200), Trim, NotDefault]
+public partial class ProductName : RequiredString<ProductName> { }   // null rejected by default; [Trim]/[NotDefault] opt into empty/whitespace rejection + trim; length
 
-[StringLength(64)]
-public partial class Sku : RequiredString<Sku> { }                   // strict default: empty/whitespace rejection + trim; length
+[StringLength(64), Trim, NotDefault]
+public partial class Sku : RequiredString<Sku> { }                   // [Trim, NotDefault] is the recommended default for DB-mapped strings
 
-public partial class ProductId : RequiredGuid<ProductId> { }         // strict default: Guid.Empty rejection
+[NotDefault]
+public partial class ProductId : RequiredGuid<ProductId> { }         // null rejected by default; [NotDefault] opts into Guid.Empty rejection
 ```
 
 The source generator emits `TryCreate` / `Create` / `Parse` / `JsonConverter` for each primitive — full surface in the [`Required*` source-generated members table](../api_reference/trellis-api-core.md#source-generated-members). Callers convert raw input once at the boundary:
