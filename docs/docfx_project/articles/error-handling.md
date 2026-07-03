@@ -95,6 +95,16 @@ new Error.NotFound(ResourceRef.For<Order>("42")) { Detail = "Order 42 not found"
 
 `Detail` is an init-only property on the base record; set it via object-initializer when you want to override the boundary renderer's default human-readable text. `Kind` is the stable domain slug and `Code` is the per-instance machine identifier exposed by that case.
 
+For the common single-payload shapes, the resource-bearing cases (`NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`) and `InvalidInput` also expose **case-scoped** convenience factories that bundle the typed payload while still naming the case — they only remove the `ResourceRef` / `InputPointer` construction ceremony:
+
+```csharp
+Error.NotFound.For<Order>(id, "Order not found")            // wraps id in ResourceRef.For<Order>(id)
+Error.Conflict.ForReason("duplicate.key", "Email in use")   // resourceless; ForReason leads with the reason code
+Error.Forbidden.ForPolicy("orders.write", "Admin required") // resourceless; or For<TResource>(policyId, id, detail)
+Error.InvariantViolation.ForReason("cross_aggregate_rule")  // resourceless; or For<TResource>(reasonCode, id, detail)
+Error.InvalidInput.ForField("email", "invalid", "Bad email")// or ForRule(code, detail)
+```
+
 | Pattern | Example |
 |---|---|
 | Resource not found | `new Error.NotFound(ResourceRef.For<Order>(id)) { Detail = $"Order {id} not found" }` |

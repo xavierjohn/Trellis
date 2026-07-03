@@ -174,10 +174,10 @@ The capture interceptor cannot see the command result, so with the outbox enable
 
 ## Serialization constraints
 
-Events are serialized with the default `System.Text.Json` options:
+Events are serialized and rehydrated with a Trellis-owned `System.Text.Json` options instance that adds a `Maybe<T>` converter:
 
-- **Round-trips:** value objects that carry a `[JsonConverter]` attribute (the Trellis scalar and composite primitives) — the converter travels with the type.
-- **Does not round-trip:** `Maybe<T>` and converters registered only through `JsonSerializerOptions` factories. Use a **nullable transport** in the event (`string?`, `decimal?`, …) rather than `Maybe<string>`. This is the same guidance the TRLS020 analyzer gives for event and DTO contracts.
+- **Round-trips:** value objects that carry a `[JsonConverter]` attribute (the Trellis scalar and composite primitives) — the converter travels with the type. `Maybe<T>` members also round-trip: a present value serializes as the underlying value and an absent one as JSON `null`.
+- **Does not round-trip:** converters registered only through a caller-supplied `JsonSerializerOptions` factory — they are not consulted by the outbox serializer. Shape those members with attribute-driven value objects or a **nullable transport** (`string?`, `decimal?`, …).
 
 ## Operating the outbox
 

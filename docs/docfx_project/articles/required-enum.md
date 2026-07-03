@@ -42,6 +42,7 @@ audience: [developer]
 | `static GetAll()` | base | All discovered `public static readonly TSelf` members, in declaration order. |
 | `Is(params TSelf[])` / `IsNot(params TSelf[])` | base | Membership / negated membership. |
 | `Equals` / `==` / `!=` / `GetHashCode` | base | Case-insensitive symbolic equality on `Value`. |
+| `implicit operator string` | base | Implicit conversion to the symbolic `Value` string (e.g. pass a `RequiredEnum` where a `string` is expected). |
 | `static TryCreate(string)` and `static TryCreate(string?, string? fieldName = null)` | base | Result-returning factories; the public entry point for symbolic creation and case-insensitive name lookup. Inherited from the base, not generated per type. |
 | `static Create(string)` | generated | Throwing factory. |
 | `static Parse(string, IFormatProvider?)` / `TryParse(...)` | generated | `IParsable<TSelf>` implementation for binding pipelines. |
