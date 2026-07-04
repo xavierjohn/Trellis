@@ -438,6 +438,8 @@ The middleware pipeline surface for `Trellis.Asp` (in folder `Extensions/`).
 
 Opt-in IETF `Idempotency-Key` middleware for `POST` / `PATCH` retry safety. See cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency).
 
+The status codes follow [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header) §2.7 (Error Handling): a **missing** key on an opted-in endpoint → `400` (`RequireKeyOnOptedInEndpoints`); a key **reused with a different request payload** → `422` (`MismatchStatusCode`, per RFC 9110 §15.5.21); and a retry **while the original is still in flight** → `409` (`AlreadyInFlight`). A **malformed** key (duplicate header, invalid `sf-string`, or over-length) is a request-syntax error and stays `400`.
+
 ### `IdempotentAttribute`
 
 **Declaration**
