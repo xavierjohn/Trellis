@@ -88,6 +88,8 @@
     href: clean-architecture.md
 - name: AI & Automation
   items:
+  - name: Writing Specifications
+    href: writing-specs.md
   - name: Trellis for AI Code Generation
     href: ai-code-generation.md
   - name: "Study: With vs Without Trellis"
