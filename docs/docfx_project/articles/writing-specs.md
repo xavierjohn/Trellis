@@ -1,8 +1,8 @@
----
+﻿---
 title: Writing Specifications for AI-Generated Services
 package: Trellis (multiple)
 topics: [ai, llm, specification, spec-authoring, status-codes, value-objects, prompting]
-related_api_reference: [trellis-api-core.md, trellis-api-asp.md, trellis-api-authorization.md, trellis-api-efcore.md, trellis-api-statemachine.md]
+related_api_reference: [trellis-api-core.md, trellis-api-primitives.md, trellis-value-object-taxonomy.md, trellis-api-asp.md, trellis-api-authorization.md, trellis-api-efcore.md, trellis-api-statemachine.md]
 last_verified: 2026-07-04
 audience: [developer]
 ---
@@ -144,9 +144,11 @@ Fill this in from your business context. It is the proven shape; keep the sectio
 
 ## 4. Endpoints
 | Method | Path | Operation | Permission | Success | Error Codes |
+|--------|------|-----------|-----------|---------|-------------|
 
 ## 5. Error Behavior
 | Situation | Expected Error | HTTP Status |
+|-----------|---------------|-------------|
 <plus the status-code convention note from §3>
 
 ## 6. State Machine  (if a workflow exists)
