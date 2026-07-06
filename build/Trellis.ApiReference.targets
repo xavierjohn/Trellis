@@ -109,22 +109,35 @@
     <_NoGitLt9 Condition="'$(_NoGitLt8)' == 'true' AND !Exists('$(_Tp8Git)')">true</_NoGitLt9>
     <_NoGitLt10 Condition="'$(_NoGitLt9)' == 'true' AND !Exists('$(_Tp9Git)')">true</_NoGitLt10>
 
-    <!-- Nearest existing .github at or below the repo root (first match wins). -->
-    <_TrellisNearestGitHub Condition="'$(_NoGitLt0)' == 'true' AND Exists('$(_Tp0GitHub)')">$(_Tp0GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt1)' == 'true' AND Exists('$(_Tp1GitHub)')">$(_Tp1GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt2)' == 'true' AND Exists('$(_Tp2GitHub)')">$(_Tp2GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt3)' == 'true' AND Exists('$(_Tp3GitHub)')">$(_Tp3GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt4)' == 'true' AND Exists('$(_Tp4GitHub)')">$(_Tp4GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt5)' == 'true' AND Exists('$(_Tp5GitHub)')">$(_Tp5GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt6)' == 'true' AND Exists('$(_Tp6GitHub)')">$(_Tp6GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt7)' == 'true' AND Exists('$(_Tp7GitHub)')">$(_Tp7GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt8)' == 'true' AND Exists('$(_Tp8GitHub)')">$(_Tp8GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt9)' == 'true' AND Exists('$(_Tp9GitHub)')">$(_Tp9GitHub)</_TrellisNearestGitHub>
-    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt10)' == 'true' AND Exists('$(_Tp10GitHub)')">$(_Tp10GitHub)</_TrellisNearestGitHub>
+    <!--
+      Nearest existing .github at or below the repo root (first match wins).
+      Uses Directory.Exists (not the generic Exists() used for .git above)
+      because .github must be a real directory to be a valid copy
+      destination - unlike .git, it has no legitimate "plain file" form, so a
+      stray file named .github must not be mistaken for a usable directory.
+    -->
+    <_TrellisNearestGitHub Condition="'$(_NoGitLt0)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp0GitHub)'))">$(_Tp0GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt1)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp1GitHub)'))">$(_Tp1GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt2)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp2GitHub)'))">$(_Tp2GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt3)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp3GitHub)'))">$(_Tp3GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt4)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp4GitHub)'))">$(_Tp4GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt5)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp5GitHub)'))">$(_Tp5GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt6)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp6GitHub)'))">$(_Tp6GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt7)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp7GitHub)'))">$(_Tp7GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt8)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp8GitHub)'))">$(_Tp8GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt9)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp9GitHub)'))">$(_Tp9GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt10)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp10GitHub)'))">$(_Tp10GitHub)</_TrellisNearestGitHub>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(_TrellisApiOutputDir)' == ''">
-    <_TrellisApiOutputDir Condition="'$(_TrellisNearestGitHub)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_TrellisNearestGitHub)'))</_TrellisApiOutputDir>
+    <!--
+      Require _TrellisRepoRoot to be non-empty here too: if no .git was found
+      within the 11 scanned levels, _NoGitLtN never gets falsified and would
+      otherwise "match" a .github belonging to an unrelated ancestor outside
+      any known repo. Without a confirmed .git boundary there is nothing to
+      bound the search by, so fall through to the "not found" message instead.
+    -->
+    <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != '' AND '$(_TrellisNearestGitHub)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_TrellisNearestGitHub)'))</_TrellisApiOutputDir>
     <_TrellisApiOutputDir Condition="'$(_TrellisApiOutputDir)' == '' AND '$(_TrellisRepoRoot)' != ''">$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::Combine('$(_TrellisRepoRoot)', '.github'))))</_TrellisApiOutputDir>
   </PropertyGroup>
 
