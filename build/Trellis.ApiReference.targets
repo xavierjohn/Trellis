@@ -2,8 +2,9 @@
   <!--
     Shared targets file packed into each Trellis NuGet package.
     Declares TrellisApiReference items pointing to the API reference markdown
-    shipped in the package's trellis/ folder, and copies them to .github/
-    in the repository root so GitHub Copilot can consume them.
+    shipped in the package's trellis/ folder, and copies them to the nearest
+    .github/ directory (walking up from the project, bounded by the .git repo
+    root) so GitHub Copilot can consume them.
 
     Override TrellisApiReferenceRoot to change the destination root.
     Set TrellisDisableApiReferenceSync=true to disable automatic sync.
@@ -29,16 +30,20 @@
   </ItemGroup>
 
   <!--
-    Locate the repository root by walking up from the project directory
-    looking for a .git directory.  MSBuild's GetDirectoryNameOfFileAbove
-    only matches files, so we walk up explicitly using Exists() which
-    checks both files and directories.
+    Destination = the NEAREST existing .github directory, found by walking up
+    from the project directory - but never above the .git repository root, so
+    the copy can't escape the repo into an unrelated parent. If no .github
+    exists between the project and the repo root, fall back to creating
+    .github/ at the repo root. Set TrellisApiReferenceRoot to force a root.
+
+    MSBuild has no loop, so the walk is unrolled to a fixed depth (11 levels);
+    Exists() checks both files and directories.
   -->
   <PropertyGroup Condition="'$(TrellisApiReferenceRoot)' != ''">
-    <_TrellisRepoRoot>$(TrellisApiReferenceRoot)</_TrellisRepoRoot>
+    <_TrellisApiOutputDir>$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::Combine('$(TrellisApiReferenceRoot)', '.github'))))</_TrellisApiOutputDir>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(_TrellisRepoRoot)' == ''">
+  <PropertyGroup Condition="'$(_TrellisApiOutputDir)' == ''">
     <_Tp0>$(MSBuildProjectDirectory)</_Tp0>
     <_Tp1>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp0)', '..'))))</_Tp1>
     <_Tp2>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(_Tp1)', '..'))))</_Tp2>
@@ -72,10 +77,68 @@
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp8Git)')">$(_Tp8)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp9Git)')">$(_Tp9)</_TrellisRepoRoot>
     <_TrellisRepoRoot Condition="'$(_TrellisRepoRoot)' == '' AND Exists('$(_Tp10Git)')">$(_Tp10)</_TrellisRepoRoot>
+
+    <!-- Candidate .github directory at each level. -->
+    <_Tp0GitHub>$([System.IO.Path]::Combine('$(_Tp0)', '.github'))</_Tp0GitHub>
+    <_Tp1GitHub>$([System.IO.Path]::Combine('$(_Tp1)', '.github'))</_Tp1GitHub>
+    <_Tp2GitHub>$([System.IO.Path]::Combine('$(_Tp2)', '.github'))</_Tp2GitHub>
+    <_Tp3GitHub>$([System.IO.Path]::Combine('$(_Tp3)', '.github'))</_Tp3GitHub>
+    <_Tp4GitHub>$([System.IO.Path]::Combine('$(_Tp4)', '.github'))</_Tp4GitHub>
+    <_Tp5GitHub>$([System.IO.Path]::Combine('$(_Tp5)', '.github'))</_Tp5GitHub>
+    <_Tp6GitHub>$([System.IO.Path]::Combine('$(_Tp6)', '.github'))</_Tp6GitHub>
+    <_Tp7GitHub>$([System.IO.Path]::Combine('$(_Tp7)', '.github'))</_Tp7GitHub>
+    <_Tp8GitHub>$([System.IO.Path]::Combine('$(_Tp8)', '.github'))</_Tp8GitHub>
+    <_Tp9GitHub>$([System.IO.Path]::Combine('$(_Tp9)', '.github'))</_Tp9GitHub>
+    <_Tp10GitHub>$([System.IO.Path]::Combine('$(_Tp10)', '.github'))</_Tp10GitHub>
+
+    <!--
+      _NoGitLtN = no .git directory at any level closer than N. Because the repo
+      root is the nearest .git, this is true exactly for the levels at or below
+      the root - so gating a .github candidate on it stops the search at the
+      repo boundary and never selects a .github above the root.
+    -->
+    <_NoGitLt0>true</_NoGitLt0>
+    <_NoGitLt1 Condition="'$(_NoGitLt0)' == 'true' AND !Exists('$(_Tp0Git)')">true</_NoGitLt1>
+    <_NoGitLt2 Condition="'$(_NoGitLt1)' == 'true' AND !Exists('$(_Tp1Git)')">true</_NoGitLt2>
+    <_NoGitLt3 Condition="'$(_NoGitLt2)' == 'true' AND !Exists('$(_Tp2Git)')">true</_NoGitLt3>
+    <_NoGitLt4 Condition="'$(_NoGitLt3)' == 'true' AND !Exists('$(_Tp3Git)')">true</_NoGitLt4>
+    <_NoGitLt5 Condition="'$(_NoGitLt4)' == 'true' AND !Exists('$(_Tp4Git)')">true</_NoGitLt5>
+    <_NoGitLt6 Condition="'$(_NoGitLt5)' == 'true' AND !Exists('$(_Tp5Git)')">true</_NoGitLt6>
+    <_NoGitLt7 Condition="'$(_NoGitLt6)' == 'true' AND !Exists('$(_Tp6Git)')">true</_NoGitLt7>
+    <_NoGitLt8 Condition="'$(_NoGitLt7)' == 'true' AND !Exists('$(_Tp7Git)')">true</_NoGitLt8>
+    <_NoGitLt9 Condition="'$(_NoGitLt8)' == 'true' AND !Exists('$(_Tp8Git)')">true</_NoGitLt9>
+    <_NoGitLt10 Condition="'$(_NoGitLt9)' == 'true' AND !Exists('$(_Tp9Git)')">true</_NoGitLt10>
+
+    <!--
+      Nearest existing .github at or below the repo root (first match wins).
+      Uses Directory.Exists (not the generic Exists() used for .git above)
+      because .github must be a real directory to be a valid copy
+      destination - unlike .git, it has no legitimate "plain file" form, so a
+      stray file named .github must not be mistaken for a usable directory.
+    -->
+    <_TrellisNearestGitHub Condition="'$(_NoGitLt0)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp0GitHub)'))">$(_Tp0GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt1)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp1GitHub)'))">$(_Tp1GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt2)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp2GitHub)'))">$(_Tp2GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt3)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp3GitHub)'))">$(_Tp3GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt4)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp4GitHub)'))">$(_Tp4GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt5)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp5GitHub)'))">$(_Tp5GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt6)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp6GitHub)'))">$(_Tp6GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt7)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp7GitHub)'))">$(_Tp7GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt8)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp8GitHub)'))">$(_Tp8GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt9)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp9GitHub)'))">$(_Tp9GitHub)</_TrellisNearestGitHub>
+    <_TrellisNearestGitHub Condition="'$(_TrellisNearestGitHub)' == '' AND '$(_NoGitLt10)' == 'true' AND $([System.IO.Directory]::Exists('$(_Tp10GitHub)'))">$(_Tp10GitHub)</_TrellisNearestGitHub>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != ''">$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::Combine('$(_TrellisRepoRoot)', '.github'))))</_TrellisApiOutputDir>
+  <PropertyGroup Condition="'$(_TrellisApiOutputDir)' == ''">
+    <!--
+      Require _TrellisRepoRoot to be non-empty here too: if no .git was found
+      within the 11 scanned levels, _NoGitLtN never gets falsified and would
+      otherwise "match" a .github belonging to an unrelated ancestor outside
+      any known repo. Without a confirmed .git boundary there is nothing to
+      bound the search by, so fall through to the "not found" message instead.
+    -->
+    <_TrellisApiOutputDir Condition="'$(_TrellisRepoRoot)' != '' AND '$(_TrellisNearestGitHub)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_TrellisNearestGitHub)'))</_TrellisApiOutputDir>
+    <_TrellisApiOutputDir Condition="'$(_TrellisApiOutputDir)' == '' AND '$(_TrellisRepoRoot)' != ''">$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::Combine('$(_TrellisRepoRoot)', '.github'))))</_TrellisApiOutputDir>
   </PropertyGroup>
 
   <!--
