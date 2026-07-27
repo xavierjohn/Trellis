@@ -1,10 +1,10 @@
 ﻿namespace Trellis.Asp.Tests;
 
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -203,19 +203,7 @@ public sealed class TrellisHttpResultMetadataTests
     [Fact]
     public async Task CreatedAtRoute_with_registered_route_emits_201_with_Location_header()
     {
-        // Exercise the successful LinkGenerator.GetUriByName / GetPathByName path that the
-        // "unknown-route returns 500" test skips.
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddRouting();
-        services.AddSingleton<IProblemDetailsService, NoopPds>();
-        var source = new TestEndpointDataSource();
-        source.AddNamedRoute("GetThing", "/things/{id}");
-        services.AddSingleton<EndpointDataSource>(source);
-        var sp = services.BuildServiceProvider();
-
-        var ctx = new DefaultHttpContext { RequestServices = sp };
-        ctx.Response.Body = new MemoryStream();
+        var ctx = NewRouteContext();
 
         var r = Result.Ok(new Thing(42, "t"));
         await r.ToHttpResponse(t => new ThingBody(t.Id),
@@ -223,27 +211,173 @@ public sealed class TrellisHttpResultMetadataTests
             .ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(201);
-        ctx.Response.Headers.Location.ToString().Should().Contain("/things/42");
+        ctx.Response.Headers.Location.ToString().Should().Be("/things/42");
     }
 
-    // Minimal custom EndpointDataSource exposing one named endpoint so LinkGenerator can resolve it.
-    private sealed class TestEndpointDataSource : EndpointDataSource
+    [Fact]
+    public async Task CreatedAtRoute_with_registered_route_and_missing_origin_emits_relative_Location_header()
     {
-        private readonly List<Endpoint> _endpoints = new();
-        public void AddNamedRoute(string name, string pattern)
+        var ctx = NewRouteContext();
+
+        var r = Result.Ok(new Thing(42, "t"));
+        await r.ToHttpResponse(t => new ThingBody(t.Id),
+                o => o.CreatedAtRoute("GetThing", t => new RouteValueDictionary(new { id = t.Id })))
+            .ExecuteAsync(ctx);
+
+        var location = ctx.Response.Headers.Location.ToString();
+        location.Should().Be("/things/42");
+        location.Should().NotStartWith("://");
+        location.Should().NotContain(":///");
+    }
+
+    [Fact]
+    public async Task CreatedAtRoute_with_registered_route_and_origin_emits_relative_Location_header()
+    {
+        var ctx = NewRouteContext();
+        ctx.Request.Scheme = "https";
+        ctx.Request.Host = new HostString("api.example.com");
+
+        var r = Result.Ok(new Thing(42, "t"));
+        await r.ToHttpResponse(t => new ThingBody(t.Id),
+                o => o.CreatedAtRoute("GetThing", t => new RouteValueDictionary(new { id = t.Id })))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.Headers.Location.ToString().Should().Be("/things/42");
+    }
+
+    [Fact]
+    public async Task WithLocation_with_registered_route_emits_relative_Location_header_without_changing_status_code()
+    {
+        var ctx = NewRouteContext();
+        ctx.Request.Scheme = "https";
+        ctx.Request.Host = new HostString("api.example.com");
+
+        var r = Result.Ok(new Thing(42, "t"));
+        await r.ToHttpResponse(t => new ThingBody(t.Id),
+                o => o.WithLocation("GetThing", t => new RouteValueDictionary(new { id = t.Id })))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(200);
+        ctx.Response.Headers.Location.ToString().Should().Be("/things/42");
+    }
+
+    [Fact]
+    public async Task CreatedAtAction_with_registered_action_and_missing_origin_emits_relative_Location_header()
+    {
+        var ctx = NewActionContext();
+
+        var r = Result.Ok(new Thing(42, "t"));
+        await r.ToHttpResponse(t => new ThingBody(t.Id),
+                o => o.CreatedAtAction("Get", t => new RouteValueDictionary(new { id = t.Id }), "Things"))
+            .ExecuteAsync(ctx);
+
+        var location = ctx.Response.Headers.Location.ToString();
+        location.Should().Be("/things/42");
+        location.Should().NotStartWith("://");
+        location.Should().NotContain(":///");
+    }
+
+    [Fact]
+    public async Task CreatedAtAction_with_registered_action_and_origin_emits_relative_Location_header()
+    {
+        var ctx = NewActionContext();
+        ctx.Request.Scheme = "https";
+        ctx.Request.Host = new HostString("api.example.com");
+
+        var r = Result.Ok(new Thing(42, "t"));
+        await r.ToHttpResponse(t => new ThingBody(t.Id),
+                o => o.CreatedAtAction("Get", t => new RouteValueDictionary(new { id = t.Id }), "Things"))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.Headers.Location.ToString().Should().Be("/things/42");
+    }
+
+    private static DefaultHttpContext NewRouteContext()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddRouting();
+        services.AddSingleton<IProblemDetailsService, NoopPds>();
+        var source = new TestEndpointDataSource();
+        source.AddNamedRoute("GetThing", "/things/{id}");
+        services.AddSingleton<EndpointDataSource>(source);
+        var ctx = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        ctx.Response.Body = new MemoryStream();
+        return ctx;
+    }
+
+    private static DefaultHttpContext NewActionContext()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IProblemDetailsService, NoopPds>();
+        services.AddSingleton<LinkGenerator>(new ActionLinkGenerator());
+        var ctx = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        ctx.Response.Body = new MemoryStream();
+        return ctx;
+    }
+
+    private sealed class ActionLinkGenerator : LinkGenerator
+    {
+        public override string? GetPathByAddress<TAddress>(
+            HttpContext httpContext,
+            TAddress address,
+            RouteValueDictionary values,
+            RouteValueDictionary? ambientValues = null,
+            PathString? pathBase = null,
+            FragmentString fragment = default,
+            LinkOptions? options = null)
+            => ResolvePath(values);
+
+        public override string? GetPathByAddress<TAddress>(
+            TAddress address,
+            RouteValueDictionary values,
+            PathString pathBase = default,
+            FragmentString fragment = default,
+            LinkOptions? options = null)
+            => ResolvePath(values);
+
+        public override string? GetUriByAddress<TAddress>(
+            HttpContext httpContext,
+            TAddress address,
+            RouteValueDictionary values,
+            RouteValueDictionary? ambientValues = null,
+            string? scheme = null,
+            HostString? host = null,
+            PathString? pathBase = null,
+            FragmentString fragment = default,
+            LinkOptions? options = null)
         {
-            var eb = new RouteEndpointBuilder(
-                _ => Task.CompletedTask,
-                RoutePatternFactory.Parse(pattern),
-                order: 0);
-            eb.Metadata.Add(new RouteNameMetadata(name));
-            eb.Metadata.Add(new EndpointNameMetadata(name));
-            _endpoints.Add(eb.Build());
+            var path = ResolvePath(values);
+            return path is null ? null : $"{scheme}://{host}{path}";
         }
 
-        public override IReadOnlyList<Endpoint> Endpoints => _endpoints;
+        public override string? GetUriByAddress<TAddress>(
+            TAddress address,
+            RouteValueDictionary values,
+            string scheme,
+            HostString host,
+            PathString pathBase = default,
+            FragmentString fragment = default,
+            LinkOptions? options = null)
+        {
+            var path = ResolvePath(values);
+            return path is null ? null : $"{scheme}://{host}{path}";
+        }
 
-        public override Microsoft.Extensions.Primitives.IChangeToken GetChangeToken()
-            => new Microsoft.Extensions.Primitives.CancellationChangeToken(System.Threading.CancellationToken.None);
+        private static string? ResolvePath(RouteValueDictionary values)
+        {
+            if (!values.TryGetValue("action", out var action) || action is not string { } actionName || actionName != "Get")
+                return null;
+
+            if (!values.TryGetValue("controller", out var controller) || controller is not string { } controllerName || controllerName != "Things")
+                return null;
+
+            if (!values.TryGetValue("id", out var id) || id is not int idValue)
+                return null;
+
+            return string.Create(CultureInfo.InvariantCulture, $"/things/{idValue}");
+        }
     }
+
 }

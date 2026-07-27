@@ -172,7 +172,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     }
 
     /// <summary>
-    /// Returns 201 Created with a Location header generated via <c>LinkGenerator.GetUriByName</c>
+    /// Returns 201 Created with a relative Location path generated via <c>LinkGenerator.GetPathByName</c>
     /// (resolved from <c>HttpContext.RequestServices</c> at execute time).
     /// </summary>
     /// <param name="routeName">The route name.</param>
@@ -208,7 +208,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
 
     /// <summary>
     /// Adds a <c>Location</c> header to the response (status code unchanged — typically 200 OK),
-    /// generated via <c>LinkGenerator.GetUriByName</c> at execute time. RFC 9110 §10.2.2 permits
+    /// generated as a relative path via <c>LinkGenerator.GetPathByName</c> at execute time. RFC 9110 §10.2.2 permits
     /// <c>Location</c> on any 2xx response that identifies a related resource; use this on
     /// state-transition endpoints that mutate an existing resource and want to point clients at
     /// the canonical URL (e.g. <c>POST /orders/{id}/return</c> returning 200 OK).
@@ -263,7 +263,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     }
 
     /// <summary>
-    /// Returns 201 Created with a Location header generated via <c>LinkGenerator.GetUriByAction</c>
+    /// Returns 201 Created with a relative Location path generated via <c>LinkGenerator.GetPathByAction</c>
     /// (resolved from <c>HttpContext.RequestServices</c> at execute time). Equivalent to MVC's <c>CreatedAtAction</c>.
     /// </summary>
     /// <param name="actionName">The action method name.</param>

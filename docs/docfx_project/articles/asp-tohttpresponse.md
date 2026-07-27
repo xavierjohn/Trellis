@@ -61,7 +61,7 @@ Full signatures: [trellis-api-asp.md](../api_reference/trellis-api-asp.md).
 | `WithCacheControl(CacheControlHeaderValue)` | Sets `Cache-Control` on success (200 / 201 / 204 / 304 / WriteOutcome / paged) **and on failure** responses, so a sensitive endpoint declaring `WithCacheControl(CacheControl.NoStore())` protects 404 / 403 / 412 / 422 from intermediate-cache leakage just as much as the 200. Throws `ArgumentNullException` on null. Use the [`CacheControl`](../api_reference/trellis-api-asp.md#cachecontrol) presets (`NoStore()`, `NoCache()`, `Public(TimeSpan)`, `Private(TimeSpan)`, `Immutable(TimeSpan)`) for common shapes. |
 | `WithCacheControl(Func<T, CacheControlHeaderValue?>)` | Per-domain selector — success path only (failures carry no domain value, and no-payload write outcomes like `UpdatedNoContent` / `AcceptedNoContent` also skip the selector since they carry no `T`). Returning `null` from the selector skips the per-domain header; when the static-value overload is also configured, the static value remains in place. |
 | `Created(string literal)` / `Created(Func<T, string>)` | `201 Created` with literal or value-derived `Location`. |
-| `CreatedAtRoute(name, Func<T, RouteValueDictionary>)` | `201 Created` via `LinkGenerator.GetUriByName`. AOT-safe. |
+| `CreatedAtRoute(name, Func<T, RouteValueDictionary>)` | `201 Created` with relative `Location` via `LinkGenerator.GetPathByName`. AOT-safe. |
 | `CreatedAtAction(action, Func<T, RouteValueDictionary>, controller?)` | MVC `CreatedAtAction` equivalent. **Not trim/AOT-safe** — `RequiresUnreferencedCode` / `RequiresDynamicCode`. |
 | `EvaluatePreconditions()` | On `GET`/`HEAD`, evaluates `If-Match`, `If-Unmodified-Since`, `If-None-Match`, `If-Modified-Since` against the configured ETag/`Last-Modified`. **Not on by default.** |
 | `HonorPrefer()` | Honors RFC 7240 `Prefer: return=minimal` / `return=representation`. Always emits `Vary: Prefer`; emits `Preference-Applied` only when honored. **Not on by default.** |
@@ -219,7 +219,7 @@ app.MapPut("/todos/{id:guid}", async (Guid id, UpdateTodo cmd, ITodoService svc,
 |---|---|
 | `opts.Created("/orders/123")` | `201 Created`, literal `Location`. |
 | `opts.Created(o => $"/orders/{o.Id}")` | `201 Created`, value-derived `Location`. |
-| `opts.CreatedAtRoute("Orders_GetById", o => new RouteValueDictionary { ["id"] = o.Id })` | `201 Created`, link via `LinkGenerator.GetUriByName`. AOT-safe. |
+| `opts.CreatedAtRoute("Orders_GetById", o => new RouteValueDictionary { ["id"] = o.Id })` | `201 Created`, relative link via `LinkGenerator.GetPathByName`. AOT-safe. |
 | `opts.CreatedAtAction("GetById", o => new RouteValueDictionary { ["id"] = o.Id })` | `201 Created`, MVC link. **Not trim/AOT-safe.** |
 
 ```csharp
