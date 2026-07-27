@@ -201,7 +201,7 @@ public sealed class TrellisHttpResultMetadataTests
     }
 
     [Fact]
-    public async Task CreatedAtRoute_with_registered_route_emits_201_with_Location_header()
+    public async Task CreatedAtRoute_with_registered_route_and_missing_origin_emits_201_with_relative_Location_header()
     {
         var ctx = NewRouteContext();
 
@@ -212,22 +212,6 @@ public sealed class TrellisHttpResultMetadataTests
 
         ctx.Response.StatusCode.Should().Be(201);
         ctx.Response.Headers.Location.ToString().Should().Be("/things/42");
-    }
-
-    [Fact]
-    public async Task CreatedAtRoute_with_registered_route_and_missing_origin_emits_relative_Location_header()
-    {
-        var ctx = NewRouteContext();
-
-        var r = Result.Ok(new Thing(42, "t"));
-        await r.ToHttpResponse(t => new ThingBody(t.Id),
-                o => o.CreatedAtRoute("GetThing", t => new RouteValueDictionary(new { id = t.Id })))
-            .ExecuteAsync(ctx);
-
-        var location = ctx.Response.Headers.Location.ToString();
-        location.Should().Be("/things/42");
-        location.Should().NotStartWith("://");
-        location.Should().NotContain(":///");
     }
 
     [Fact]
