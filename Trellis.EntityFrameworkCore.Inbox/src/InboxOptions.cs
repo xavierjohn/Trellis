@@ -19,7 +19,8 @@ public sealed class InboxOptions
     /// <summary>
     /// Creates an independent copy so a repeated registration can apply its <c>configure</c> callback
     /// and validate the result before the new state is committed to the container. Keep in sync with
-    /// the properties above; <c>InboxOptionsCloneTests</c> fails if a property is added and not copied.
+    /// the properties above; <c>InboxRegistrationTests.InboxOptions_Clone_copies_every_public_settable_property</c>
+    /// fails if a property is added and not copied.
     /// </summary>
     internal InboxOptions Clone() => new()
     {
