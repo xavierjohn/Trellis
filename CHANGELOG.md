@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — aggregate ETag post-commit cancellation no longer reports a committed save as canceled
+
+`AggregateETagInterceptor.SavedChangesAsync` now always syncs aggregate ETag `OriginalValue`
+after a successful database commit, even if the ambient cancellation token is canceled before
+the post-commit hook runs. This prevents committed async saves from surfacing as
+`OperationCanceledException` and keeps subsequent saves on the same `DbContext` from using a
+stale optimistic-concurrency token.
+
 ### Fixed — ROP results no longer rewrite ambient tracing span status
 
 `Result<T>` construction and ROP operators now set OpenTelemetry status and `result.error.code` only on spans
