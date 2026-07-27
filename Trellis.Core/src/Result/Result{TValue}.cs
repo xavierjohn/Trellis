@@ -104,16 +104,27 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
         _value = ok;
         _persistOnFailure = persistOnFailure;
 
-        Activity.Current?.SetStatus(IsFailure ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
-
-        // Optional enrichment (safe no-op if no activity)
-        if (IsFailure && Activity.Current is { } act && error is not null)
-        {
-            act.SetTag("result.error.code", error.Code);
-        }
+        LogActivityStatus();
     }
 
-    internal void LogActivityStatus() => Activity.Current?.SetStatus(IsFailure ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+    internal void LogActivityStatus()
+    {
+        if (Activity.Current is not { } current || !IsTrellisOwnedSource(current.Source))
+            return;
+
+        current.SetStatus(IsFailure ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+
+        if (IsFailure && _error is not null)
+            current.SetTag("result.error.code", _error.Code);
+    }
+
+    // Only spans started by Trellis's own ROP / primitive-value-object sources may be stamped from a
+    // Result construction. Writing to an arbitrary Activity.Current would mutate the caller's ambient
+    // request span, where the last Result constructed anywhere in the request would win. Trellis.Mediator's
+    // source is deliberately excluded: TracingBehavior sets that span's status itself with semantics a
+    // Result cannot know (e.g. request-token cancellations must stay Unset).
+    private static bool IsTrellisOwnedSource(ActivitySource source) =>
+        source == RopTrace.ActivitySource || source == PrimitiveValueObjectTrace.ActivitySource;
 
     private readonly bool _isOk;
     private readonly TValue? _value;

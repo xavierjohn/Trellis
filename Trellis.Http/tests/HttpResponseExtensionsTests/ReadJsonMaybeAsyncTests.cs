@@ -3,7 +3,6 @@
 using System;
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Trellis;
@@ -97,7 +96,7 @@ public class ReadJsonMaybeAsyncTests
     }
 
     [Fact]
-    public async Task Success_with_invalid_json_throws_JsonException_and_disposes_response()
+    public async Task Success_with_invalid_json_returns_Fail_and_disposes_response_and_does_not_leak_JsonException()
     {
         var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK)
         {
@@ -105,10 +104,29 @@ public class ReadJsonMaybeAsyncTests
         };
         var task = Task.FromResult(Result.Ok<HttpResponseMessage>(tracker));
 
-        var act = async () => await task.ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+        var result = await task.ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        await act.Should().ThrowAsync<JsonException>();
+        result.Should().BeFailureOfType<Error.Unexpected>();
         tracker.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Invalid_json_detail_uses_structured_position_not_response_body()
+    {
+        var bodyWithUserData = "{ \"firstName\": \"Maya\", \"age\": \"not-a-number-67890\" }";
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(bodyWithUserData),
+        };
+        var task = Task.FromResult(Result.Ok<HttpResponseMessage>(tracker));
+
+        var result = await task.ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+
+        var err = result.Should().BeFailureOfType<Error.Unexpected>().Subject;
+        err.Detail.Should().NotContain("Maya", "user data from the response body must not appear in the failure detail");
+        err.Detail.Should().NotContain("not-a-number-67890", "user data from the response body must not appear in the failure detail");
+        err.Detail.Should().NotContain("$.", "JsonException.Path can contain user-controlled dictionary keys; do not surface it");
+        err.Detail.Should().Contain("camelcasePerson", "type name is acceptable diagnostic detail");
     }
 
     [Fact]

@@ -176,10 +176,12 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeSuccess(because, becauseArgs);
 
-        Subject.TryGetValue(out var actualValue);
+        if (!Subject.TryGetValue(out var actualValue))
+            return new AndConstraint<ResultAssertions<TValue>>(this);
+
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(predicate(actualValue!))
+            .ForCondition(predicate(actualValue))
             .FailWith("Expected {context:result} value to match predicate{reason}, but it did not. Value: {0}",
                 actualValue);
 
@@ -226,8 +228,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeFailure(because, becauseArgs);
 
-        Subject.TryGetError(out var error);
-        error!.Code.Should().Be(expectedCode, because, becauseArgs);
+        if (Subject.TryGetError(out var error))
+            error.Code.Should().Be(expectedCode, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -249,8 +251,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeFailure(because, becauseArgs);
 
-        Subject.TryGetError(out var error);
-        error!.Detail!.Should().Be(expectedDetail, because, becauseArgs);
+        if (Subject.TryGetError(out var error))
+            error.Detail!.Should().Be(expectedDetail, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }
@@ -272,8 +274,8 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     {
         BeFailure(because, becauseArgs);
 
-        Subject.TryGetError(out var error);
-        error!.Detail!.Should().Contain(substring, because, becauseArgs);
+        if (Subject.TryGetError(out var error))
+            error.Detail!.Should().Contain(substring, because, becauseArgs);
 
         return new AndConstraint<ResultAssertions<TValue>>(this);
     }

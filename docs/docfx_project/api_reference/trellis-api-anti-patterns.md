@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-06-17
@@ -75,6 +75,21 @@ b.HasIndex(c => c.Email);                          // TRLS016 — silently no-op
 b.HasTrellisIndex(c => new { c.Email });
 ```
 
+## TRLS021 — EF configuration duplicates Trellis conventions
+
+When a `DbContext` opts into Trellis conventions, manual mapping for `Maybe<T>` and `[OwnedEntity]` properties is redundant.
+
+```csharp
+// WRONG — in a context with ApplyTrellisConventions wired
+builder.Property(o => o.SubmittedAt).HasConversion<DateTime?>(); // TRLS021
+builder.OwnsOne(o => o.Total);                                  // TRLS021
+
+// FIX — let Trellis conventions own those properties
+configurationBuilder.ApplyTrellisConventions();
+```
+
+> TRLS021 correlates direct `DbContext` configuration with the specific context that wires conventions. Standalone `IEntityTypeConfiguration<TEntity>` classes are attributed through `ApplyConfiguration(new TConfig())`, `ApplyConfigurationsFromAssembly(...)`, or matching `DbSet<TEntity>` properties. Separate contexts in the same compilation are not flagged merely because one context opted in, and unattributable configuration classes are ignored.
+
 ## TRLS018 — Unsafe `Result<T>` deconstruction
 
 ```csharp
@@ -102,7 +117,7 @@ return Maybe<Email>.None;
 
 ## TRLS013 — Unsafe `Maybe<T>.Value` in LINQ projection
 
-Direct `.Value` access on `Maybe<T>` inside Select-family LINQ projections throws for `None` elements unless an earlier `.Where(...)` lambda mentions `HasValue`.
+Direct `.Value` access on `Maybe<T>` inside System.Linq `Enumerable` / `Queryable` Select-family LINQ projections throws for `None` elements unless an earlier `.Where(...)` lambda mentions `HasValue`.
 
 Pick FIX 1 for in-memory or analyzer-clean projection pipelines: filter first, then project.
 
@@ -126,6 +141,24 @@ IQueryable<Order> submitted = db.Orders.WhereHasValue(o => o.SubmittedAt);
 ```
 
 > TRLS013 suppression is keyword-presence based: the prior `.Where(...)` body only has to mention `HasValue`, so predicate-shape verification (for example, distinguishing `m => m.HasValue` from `m => !m.HasValue`) is a known limitation. The analyzer recognizes prior `.Where(...)` chains for projections; `MaybeQueryableExtensions` are the EF translation path, not a general-purpose TRLS013 suppression mechanism.
+> User-defined methods named `Select`, `GroupBy`, `OrderBy`, etc. are not LINQ for TRLS013 unless they resolve to `System.Linq.Enumerable` or `System.Linq.Queryable`.
+
+## TRLS014 — Combine chain exceeds maximum supported tuple size
+
+Trellis `Result.Combine` / `CombineAsync` supports up to nine elements.
+
+```csharp
+// WRONG
+var combined = r1.Combine(r2).Combine(r3).Combine(r4).Combine(r5)
+    .Combine(r6).Combine(r7).Combine(r8).Combine(r9).Combine(r10); // TRLS014
+
+// FIX
+var identity = r1.Combine(r2).Combine(r3).Combine(r4).Combine(r5);
+var contact = r6.Combine(r7).Combine(r8).Combine(r9).Combine(r10);
+var combined = identity.Combine(contact);
+```
+
+> The analyzer resolves the method symbol and only counts Trellis combine extension methods; user-defined `Combine` / `CombineAsync` methods are ignored.
 
 ## TRLS054 — `Maybe<T>.Equals` in an `IQueryable` expression
 
@@ -443,4 +476,3 @@ public sealed class OrderWorkflow(IMediator mediator)
 > Do not move the `mediator.Send(new ChangeOrderStatusCommand(...))` call into the `IDomainEventHandler<TEvent>`. The tracked-dispatch reentrancy guard skips nested tracked dispatch, so events raised by the nested command can be stranded. Queue post-commit work or issue the follow-up command from the application layer after the originating command completes.
 
 Default handler exceptions are still **logged and swallowed** by `MediatorDomainEventPublisher`; cascade detection only catches handler-raised events. Durable side effects and durable at-least-once retry require the transactional outbox, which **is shipped** in `Trellis.EntityFrameworkCore.Outbox` — wire it via `AddTrellisOutbox<TContext>()`, `AddTrellisOutbox(ModelBuilder)`, and `AddTrellisOutboxInterceptor(...)`. See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#use-this-file-when).
-

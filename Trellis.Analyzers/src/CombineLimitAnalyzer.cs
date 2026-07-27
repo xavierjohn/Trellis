@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Analyzers;
 
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -23,10 +24,22 @@ public sealed class CombineLimitAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
+
+        context.RegisterCompilationStartAction(compilationContext =>
+        {
+            var combineExtensions = compilationContext.Compilation.GetTypeByMetadataName("Trellis.CombineExtensions");
+            var combineExtensionsAsync = compilationContext.Compilation.GetTypeByMetadataName("Trellis.CombineExtensionsAsync");
+
+            compilationContext.RegisterSyntaxNodeAction(
+                context => AnalyzeInvocation(context, combineExtensions, combineExtensionsAsync),
+                SyntaxKind.InvocationExpression);
+        });
     }
 
-    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeInvocation(
+        SyntaxNodeAnalysisContext context,
+        INamedTypeSymbol? combineExtensions,
+        INamedTypeSymbol? combineExtensionsAsync)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
 
@@ -36,6 +49,9 @@ public sealed class CombineLimitAnalyzer : DiagnosticAnalyzer
 
         var methodName = memberAccess.Name.Identifier.Text;
         if (methodName is not ("Combine" or "CombineAsync"))
+            return;
+
+        if (!IsTrellisCombineInvocation(context, invocation, methodName, combineExtensions, combineExtensionsAsync))
             return;
 
         // Only analyze the outermost Combine in a chain to avoid duplicate reports.
@@ -54,6 +70,29 @@ public sealed class CombineLimitAnalyzer : DiagnosticAnalyzer
             elementCount);
 
         context.ReportDiagnostic(diagnostic);
+    }
+
+    private static bool IsTrellisCombineInvocation(
+        SyntaxNodeAnalysisContext context,
+        InvocationExpressionSyntax invocation,
+        string methodName,
+        INamedTypeSymbol? combineExtensions,
+        INamedTypeSymbol? combineExtensionsAsync)
+    {
+        var symbolInfo = context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken);
+        var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+
+        if (methodSymbol is null)
+            return false;
+
+        var originalMethod = methodSymbol.ReducedFrom ?? methodSymbol;
+        if (originalMethod.Name != methodName)
+            return false;
+
+        var expectedType = methodName == "Combine" ? combineExtensions : combineExtensionsAsync;
+        return expectedType is not null &&
+               SymbolEqualityComparer.Default.Equals(originalMethod.ContainingType, expectedType);
     }
 
     /// <summary>

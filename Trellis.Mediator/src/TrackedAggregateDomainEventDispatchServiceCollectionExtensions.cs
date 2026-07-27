@@ -63,13 +63,13 @@ public static class TrackedAggregateDomainEventDispatchServiceCollectionExtensio
 
         // Same yank-and-reappend dance as AddDomainEventDispatch so the transactional behavior
         // stays innermost regardless of registration order.
-        var transactionalDescriptor = DomainEventDispatchServiceCollectionExtensions.TryRemoveTransactionalBehavior(services);
+        var transactionalDescriptors = DomainEventDispatchServiceCollectionExtensions.RemoveTransactionalBehaviors(services);
 
         services.AddTrellisBehaviors();
         AppendTrackedDispatchBehavior(services);
 
-        if (transactionalDescriptor is not null)
-            services.Add(transactionalDescriptor);
+        foreach (var descriptor in transactionalDescriptors)
+            services.Add(descriptor);
 
         return services;
     }

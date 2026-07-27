@@ -56,6 +56,90 @@ public class PipelineOrderingTests
     }
 
     [Fact]
+    public void AddTransactionalCommandBehavior_AfterAddTrellisBehaviors_PlacesTransactionInnermost()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellisBehaviors();
+        services.AddTransactionalCommandBehavior();
+
+        PipelineImplementationTypes(services).Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void AddTransactionalCommandBehavior_BeforeAddTrellisBehaviors_PlacesTransactionInnermost()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTransactionalCommandBehavior();
+        services.AddTrellisBehaviors();
+
+        PipelineImplementationTypes(services).Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void AddTransactionalCommandBehavior_CalledTwice_DoesNotDuplicateDescriptor()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTransactionalCommandBehavior();
+        services.AddTransactionalCommandBehavior();
+        services.AddTrellisBehaviors();
+        services.AddTransactionalCommandBehavior();
+
+        PipelineImplementationTypes(services).Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void AddTransactionalCommandBehavior_ClosedTransactionalBehaviorPreRegistered_ThrowsWithActionableMessage()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<
+            IPipelineBehavior<AggregateCommand, Result<TestAggregate>>,
+            TransactionalCommandBehavior<AggregateCommand, Result<TestAggregate>>>();
+
+        var act = () => services.AddTransactionalCommandBehavior();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*TransactionalCommandBehavior*closed*generic*")
+            .WithMessage("*skip AddTransactionalCommandBehavior*");
+    }
+
+    [Fact]
+    public void AddTransactionalCommandBehavior_OpenAndClosedTransactionalBehaviorsPreRegistered_ThrowsWithActionableMessage()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
+        services.AddScoped<
+            IPipelineBehavior<AggregateCommand, Result<TestAggregate>>,
+            TransactionalCommandBehavior<AggregateCommand, Result<TestAggregate>>>();
+
+        var act = () => services.AddTransactionalCommandBehavior();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*TransactionalCommandBehavior*closed*generic*")
+            .WithMessage("*two commits per command*");
+    }
+
+    [Fact]
     public void AddDomainEventDispatch_appends_after_validation_when_resource_auth_is_already_present()
     {
         var services = new ServiceCollection();
@@ -182,4 +266,12 @@ public class PipelineOrderingTests
         options.IncludeErrorDetail.Should().BeTrue(
             "an explicit configure call must win over an earlier default-only registration");
     }
+
+    private static Type?[] PipelineImplementationTypes(IServiceCollection services) =>
+        services
+            .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>)
+                || (d.ServiceType.IsGenericType
+                    && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
+            .Select(d => d.ImplementationType)
+            .ToArray();
 }

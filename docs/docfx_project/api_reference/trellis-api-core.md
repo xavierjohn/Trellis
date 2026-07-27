@@ -690,7 +690,7 @@ The per-operation tracing is essentially free when no listener is registered. `A
 | 10-step `Map` chain | ~115 ns, 0 B | ~2,227 ns, 4,000 B |
 | 10-step `Tap` chain | ~176 ns, 0 B | ~2,281 ns, 4,096 B |
 
-**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source, and the `Result<T>` constructor's `Activity.Current?.SetStatus(...)` updates the ambient activity in place without allocating (subsequent `SetTag` calls update the same dictionary entry; the steady-state allocation count is zero).
+**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source. Trellis does not set status or `result.error.code` on an ambient ASP.NET or Mediator activity from ROP operators unless that activity was started by the Trellis ROP `ActivitySource`.
 
 **With `AddResultsInstrumentation` registered:** each combinator costs ~200 ns and allocates ~400 B (the Activity object + name + tags). At 10 000 RPS with a 10-step pipeline that's ~22 ms/sec of CPU and ~40 MB/sec of GC pressure — material at high throughput.
 
@@ -1714,18 +1714,18 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `protected abstract IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Returns the ordered components used for equality, comparison, and hash-code generation. |
+| `protected abstract IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Returns the ordered components used for equality, comparison, and hash-code generation. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. |
 | `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. |
 | `public override bool Equals(object? obj)` | `bool` | Delegates to `Equals(ValueObject? other)`. |
 | `public bool Equals(ValueObject? other)` | `bool` | Structural equality check against the same runtime type. |
 | `public override int GetHashCode()` | `int` | Computes and caches a hash code from the equality components. |
-| `public virtual int CompareTo(ValueObject? other)` | `int` | Compares equality components in order. |
+| `public virtual int CompareTo(ValueObject? other)` | `int` | Compares equality components in order. Null sorts before non-null (`value.CompareTo(null) > 0`). Throws `ArgumentException` for a non-null value object of a different runtime type. |
 | `public static bool operator ==(ValueObject? a, ValueObject? b)` | `bool` | Structural equality operator. |
 | `public static bool operator !=(ValueObject? a, ValueObject? b)` | `bool` | Structural inequality operator. |
-| `public static bool operator <(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
-| `public static bool operator <=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
-| `public static bool operator >(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
-| `public static bool operator >=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`. |
+| `public static bool operator <(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
+| `public static bool operator <=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
+| `public static bool operator >(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
+| `public static bool operator >=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
 
 ### `ScalarValueObject<TSelf, T>`
 
@@ -2484,4 +2484,3 @@ var spec = new ExpiredSubscriptionSpec(DateTimeOffset.UtcNow)
 - [Trellis.Http.Abstractions API reference](trellis-api-http-abstractions.md#use-this-file-when) — `HttpError`, `EntityTagValue`, `RetryAfterValue`, `RepresentationMetadata`, `WriteOutcome<T>`, and `AggregateETagExtensions`
 - [Trellis.Primitives API reference](trellis-api-primitives.md#trellis-api-primitives) — built-in scalar and composite value objects that build on these DDD primitives
 - [Trellis.EntityFrameworkCore API reference](trellis-api-efcore.md#trellisentityframeworkcore) — EF Core conventions and interceptors for `IEntity`, `IAggregate`, `ValueObject`, and `Maybe<T>`
-

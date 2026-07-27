@@ -143,8 +143,9 @@ public class IResultAssertions : ReferenceTypeAssertions<IResult, IResultAsserti
         if (RequireNonNullSubject(because, becauseArgs))
         {
             BeFailure(because, becauseArgs);
-            Subject!.TryGetError(out var error);
-            error!.Code.Should().Be(expectedCode, because, becauseArgs);
+
+            if (Subject!.TryGetError(out var error))
+                error.Code.Should().Be(expectedCode, because, becauseArgs);
         }
 
         return new AndConstraint<IResultAssertions>(this);
@@ -159,8 +160,9 @@ public class IResultAssertions : ReferenceTypeAssertions<IResult, IResultAsserti
         if (RequireNonNullSubject(because, becauseArgs))
         {
             BeFailure(because, becauseArgs);
-            Subject!.TryGetError(out var error);
-            error!.Detail!.Should().Be(expectedDetail, because, becauseArgs);
+
+            if (Subject!.TryGetError(out var error))
+                error.Detail!.Should().Be(expectedDetail, because, becauseArgs);
         }
 
         return new AndConstraint<IResultAssertions>(this);
@@ -175,8 +177,9 @@ public class IResultAssertions : ReferenceTypeAssertions<IResult, IResultAsserti
         if (RequireNonNullSubject(because, becauseArgs))
         {
             BeFailure(because, becauseArgs);
-            Subject!.TryGetError(out var error);
-            error!.Detail!.Should().Contain(substring, because, becauseArgs);
+
+            if (Subject!.TryGetError(out var error))
+                error.Detail!.Should().Contain(substring, because, becauseArgs);
         }
 
         return new AndConstraint<IResultAssertions>(this);

@@ -196,6 +196,49 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
     }
 
     [Fact]
+    public void AddTrackedAggregateDomainEventDispatch_ClosedTransactionalBehaviorPreRegistered_PlacesDispatchOutsideTransaction()
+    {
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        services.AddScoped<
+            IPipelineBehavior<AggregateCommand, Result<TestAggregate>>,
+            TransactionalCommandBehavior<AggregateCommand, Result<TestAggregate>>>();
+
+        services.AddTrackedAggregateDomainEventDispatch();
+
+        PipelineImplementationTypes(services).Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(TrackedAggregateDomainEventDispatchBehavior<,>),
+            typeof(TransactionalCommandBehavior<AggregateCommand, Result<TestAggregate>>));
+    }
+
+    [Fact]
+    public void AddTrackedAggregateDomainEventDispatch_CalledTwiceWithPreRegisteredTransaction_DoesNotDuplicateDescriptors()
+    {
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        services.AddSingleton(
+            typeof(IPipelineBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+
+        services.AddTrackedAggregateDomainEventDispatch();
+        services.AddTrackedAggregateDomainEventDispatch();
+
+        PipelineImplementationTypes(services).Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(TrackedAggregateDomainEventDispatchBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
     public void AddTrackedAggregateDomainEventDispatch_null_services_throws()
     {
         var act = () => TrackedAggregateDomainEventDispatchServiceCollectionExtensions
@@ -209,4 +252,12 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
     }
+
+    private static Type?[] PipelineImplementationTypes(IServiceCollection services) =>
+        services
+            .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>)
+                || (d.ServiceType.IsGenericType
+                    && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
+            .Select(d => d.ImplementationType)
+            .ToArray();
 }

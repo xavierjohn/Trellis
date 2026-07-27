@@ -227,9 +227,60 @@ public class DomainEventDispatchRegistrationTests
             typeof(TransactionalCommandBehavior<,>));
     }
 
+    [Fact]
+    public void AddDomainEventDispatch_ClosedTransactionalBehaviorPreRegistered_PlacesDispatchOutsideTransaction()
+    {
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        services.AddScoped<
+            IPipelineBehavior<AggregateCommand, Result<TestAggregate>>,
+            TransactionalCommandBehavior<AggregateCommand, Result<TestAggregate>>>();
+
+        services.AddDomainEventDispatch();
+
+        PipelineImplementationTypes(services).Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(DomainEventDispatchBehavior<,>),
+            typeof(TransactionalCommandBehavior<AggregateCommand, Result<TestAggregate>>));
+    }
+
+    [Fact]
+    public void AddDomainEventDispatch_CalledTwiceWithPreRegisteredTransaction_DoesNotDuplicateDescriptors()
+    {
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        services.AddSingleton(
+            typeof(IPipelineBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+
+        services.AddDomainEventDispatch();
+        services.AddDomainEventDispatch();
+
+        PipelineImplementationTypes(services).Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(DomainEventDispatchBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+    }
+
     private static void AddNullLogging(IServiceCollection services)
     {
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
     }
+
+    private static Type?[] PipelineImplementationTypes(IServiceCollection services) =>
+        services
+            .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>)
+                || (d.ServiceType.IsGenericType
+                    && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
+            .Select(d => d.ImplementationType)
+            .ToArray();
 }

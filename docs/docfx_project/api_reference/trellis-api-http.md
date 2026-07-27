@@ -37,7 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-19--http-clie
 ## Common traps
 
 - Once you call any `ReadJson*` terminal helper, the response is disposed by the helper.
-- `ReadJsonMaybeAsync` treats `204`, `205`, empty body, and JSON `null` as `Maybe.None`; invalid JSON intentionally throws.
+- `ReadJsonMaybeAsync` treats `204`, `205`, empty body, and JSON `null` as `Maybe.None`; invalid JSON returns `Fail<Unexpected>`.
 - Use `ReadJsonOrNoneOn404Async` for optional reads. Do not hand-roll a separate 404 branch unless you need custom behavior.
 
 ## Type
@@ -56,7 +56,7 @@ public static class HttpResponseExtensions
 | `HandleConflictAsync(this Task<HttpResponseMessage> response, Error.Conflict error)` | `Task<Result<HttpResponseMessage>>` | Maps `409` to `Fail(error)` (response disposed); pass through otherwise. Throws `ArgumentNullException` when `error` is null. |
 | `HandleUnauthorizedAsync(this Task<HttpResponseMessage> response, Error.AuthenticationRequired error)` | `Task<Result<HttpResponseMessage>>` | Maps `401` to `Fail(error)` (response disposed); pass through otherwise. Throws `ArgumentNullException` when `error` is null. |
 | `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<T>>` | Already-failed input short-circuits with the upstream error. Otherwise reads the body and deserializes; non-success status, `204`, `205`, empty body, null payload, or `JsonException` (caught) all map to `Fail<Unexpected>`. JSON-parse failures use only `JsonException.LineNumber` / `BytePositionInLine` — never `Message`, never `Path` (which can include user-controlled dictionary keys), never the response body — so user data echoed by the upstream cannot leak into the failure detail. **Always disposes** the response after reading, including on the null-`jsonTypeInfo` path. |
-| `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Already-failed input short-circuits. Non-success status -> `Fail<Unexpected>`. `204`, `205`, empty body, JSON `null` -> `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). **Always disposes** the response, including on the null-`jsonTypeInfo` path. |
+| `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Already-failed input short-circuits. Non-success status -> `Fail<Unexpected>`. `204`, `205`, empty body, JSON `null` -> `Ok(Maybe.None)`. Invalid JSON maps to `Fail<Unexpected>` using only `JsonException.LineNumber` / `BytePositionInLine` — never `Message`, never `Path`, never the response body — matching `ReadJsonAsync<T>`'s sanitization policy. **Always disposes** the response, including on the null-`jsonTypeInfo` path. |
 | `ReadJsonOrNoneOn404Async<T>(this Task<HttpResponseMessage> response, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct = default) where T : notnull` | `Task<Result<Maybe<T>>>` | Terminal optional-resource helper. `404` -> `Ok(Maybe.None)`; other non-2xx statuses use strict status mapping; `204`, `205`, empty body, and JSON `null` keep `ReadJsonMaybeAsync` semantics. **Always disposes** the response. |
 
 > **Business API default.** Bare `ToResultAsync()` is now the safe default for domain-facing HTTP clients. Use `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync`, or an explicit `statusMap` only when the endpoint needs domain-specific error payloads.
@@ -95,7 +95,7 @@ The Trellis.Http extensions deliberately do **not** swallow non-Result-shaped ex
 
 - **`HttpRequestException`** — propagates from any extension when the underlying `Task<HttpResponseMessage>` faults (DNS failure, connection refused, TLS handshake error, etc.).
 - **`OperationCanceledException` / `TaskCanceledException`** — propagates when the `CancellationToken` is signaled or the upstream `HttpClient` times out.
-- **`JsonException`** — caught and mapped to `Fail<Unexpected>` only by `ReadJsonAsync<T>`. Both `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` (which delegates to `ReadJsonMaybeAsync<T>` after the 404 check) let it propagate (intentional — see method docs).
+- **`JsonException`** — caught and mapped to `Fail<Unexpected>` by `ReadJsonAsync<T>`, `ReadJsonMaybeAsync<T>`, and `ReadJsonOrNoneOn404Async<T>` (which delegates to `ReadJsonMaybeAsync<T>` after the 404 check). Parser details are sanitized to structured line / byte position only.
 
 Any of these cases that surface inside a `try` block where a response has already been awaited still trigger the disposal contract described below before the exception escapes.
 
@@ -109,7 +109,7 @@ The library owns the `HttpResponseMessage` lifecycle on terminal or transformati
 
 - `ToResultAsync` (both overloads) dispose the response on the `Fail` path.
 - `HandleNotFoundAsync`, `HandleConflictAsync`, `HandleUnauthorizedAsync` dispose on the matched-status `Fail` path.
-- `ReadJsonAsync`, `ReadJsonMaybeAsync`, and `ReadJsonOrNoneOn404Async` **always** dispose after reading, success or failure (including when `JsonException` propagates from the `Maybe` overload).
+- `ReadJsonAsync`, `ReadJsonMaybeAsync`, and `ReadJsonOrNoneOn404Async` **always** dispose after reading, success or failure.
 - Pass-through paths (success from bare `ToResultAsync`, non-matching `Handle*`, mapper returning `null`) leave disposal to the caller.
 
 In practice: once you call `ReadJson*`, you no longer need to dispose the response yourself.

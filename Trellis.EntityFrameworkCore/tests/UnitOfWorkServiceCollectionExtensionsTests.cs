@@ -192,26 +192,49 @@ public class UnitOfWorkServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddTrellisUnitOfWork_before_other_behaviors_appends_at_end()
+    public void AddTrellisUnitOfWork_BeforeAddTrellisBehaviors_PlacesTransactionInnermost()
     {
-        // Arrange — UoW registered first, then "other" behaviors added later
         var services = new ServiceCollection();
         services.AddDbContext<RepoTestDbContext>(o => o.UseSqlite("DataSource=:memory:").IgnoreManyServiceProvidersCreatedWarning());
 
-        // Act — register UoW first (no other behaviors yet), then add another behavior
         services.AddTrellisUnitOfWork<RepoTestDbContext>();
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(FakeBehavior<,>));
+        services.AddTrellisBehaviors();
 
-        // Assert — TransactionalCommandBehavior was appended first (only behavior at that time),
-        // then FakeBehavior was appended after. Order: Transaction, Fake.
-        // For correct ordering, AddTrellisUnitOfWork should be called AFTER other behaviors.
-        var behaviorDescriptors = services
+        var behaviorTypes = services
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
-            .ToList();
+            .Select(d => d.ImplementationType)
+            .ToArray();
 
-        behaviorDescriptors.Should().HaveCount(2);
-        behaviorDescriptors[0].ImplementationType.Should().Be(typeof(TransactionalCommandBehavior<,>));
-        behaviorDescriptors[1].ImplementationType.Should().Be(typeof(FakeBehavior<,>));
+        behaviorTypes.Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void AddTrellisUnitOfWork_AfterAddTrellisBehaviors_PlacesTransactionInnermost()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<RepoTestDbContext>(o => o.UseSqlite("DataSource=:memory:").IgnoreManyServiceProvidersCreatedWarning());
+
+        services.AddTrellisBehaviors();
+        services.AddTrellisUnitOfWork<RepoTestDbContext>();
+
+        var behaviorTypes = services
+            .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
+            .Select(d => d.ImplementationType)
+            .ToArray();
+
+        behaviorTypes.Should().Equal(
+            typeof(ExceptionBehavior<,>),
+            typeof(TracingBehavior<,>),
+            typeof(LoggingBehavior<,>),
+            typeof(AuthorizationBehavior<,>),
+            typeof(ValidationBehavior<,>),
+            typeof(TransactionalCommandBehavior<,>));
     }
 
     [Fact]

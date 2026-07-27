@@ -89,11 +89,33 @@ public static class TransactionalCommandBehaviorServiceCollectionExtensions
         || (serviceType.IsGenericType
             && serviceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>));
 
+    internal static bool IsTransactionalCommandBehaviorRegistration(ServiceDescriptor descriptor) =>
+        IsOpenTransactionalCommandBehaviorRegistration(descriptor)
+        || IsClosedTransactionalCommandBehaviorRegistration(descriptor);
+
+    internal static List<ServiceDescriptor> RemoveTransactionalCommandBehaviorRegistrations(IServiceCollection services)
+    {
+        var descriptors = new List<ServiceDescriptor>();
+        for (var i = 0; i < services.Count; i++)
+        {
+            if (IsTransactionalCommandBehaviorRegistration(services[i]))
+                descriptors.Add(services[i]);
+        }
+
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            if (IsTransactionalCommandBehaviorRegistration(services[i]))
+                services.RemoveAt(i);
+        }
+
+        return descriptors;
+    }
+
     private static bool IsOpenTransactionalCommandBehaviorRegistration(ServiceDescriptor descriptor) =>
         descriptor.ServiceType == typeof(IPipelineBehavior<,>)
         && descriptor.ImplementationType == typeof(TransactionalCommandBehavior<,>);
 
-    private static bool IsClosedTransactionalCommandBehaviorRegistration(ServiceDescriptor descriptor)
+    internal static bool IsClosedTransactionalCommandBehaviorRegistration(ServiceDescriptor descriptor)
     {
         if (descriptor.ServiceType is not { IsGenericType: true } serviceType
             || serviceType.GetGenericTypeDefinition() != typeof(IPipelineBehavior<,>))
