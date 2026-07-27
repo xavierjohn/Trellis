@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — post-commit domain-event dispatch is no longer cancellable
+
+`DomainEventDispatchBehavior<,>`, `TrackedAggregateDomainEventDispatchBehavior<,>`, and the
+`DispatchAggregateEventsAsync` helper no longer observe the caller's `CancellationToken`, and now pass
+`CancellationToken.None` to each `IDomainEventPublisher.PublishAsync` call. All three run *after*
+`TransactionalCommandBehavior` has committed — `AddDomainEventDispatch` and
+`AddTrackedAggregateDomainEventDispatch` re-append the transactional behavior as the innermost behavior, so
+the commit happens inside `next(...)`. Previously a client disconnect mid-fan-out threw
+`OperationCanceledException` between events, leaving an already-durable write with only part of its domain
+events published and `AcceptChanges()` never called — a state no retry could repair, because the write had
+already succeeded. Handlers that honored the token would have reintroduced the same partial fan-out one level
+lower, so the token is no longer propagated to them either.
+
+This is an observable behavior change. Dispatch now always runs to completion once the transaction commits;
+a domain-event handler that must abort early has to own that decision internally. The `cancellationToken`
+parameter on the public `DispatchAggregateEventsAsync` helper is retained for source compatibility but is
+documented as not observed. Cascade detection and `DomainEventHandlerCascadedException` are unchanged.
+
 ### Changed — ASP route/action Location headers are now relative paths
 
 `CreatedAtRoute(...)`, `CreatedAtAction(...)`, and `WithLocation(...)` now emit relative `Location` paths from

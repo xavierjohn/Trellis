@@ -261,8 +261,14 @@ public class DomainEventDispatchBehaviorTests
             "reference-equality validation catches handlers that clear the original snapshot before raising a replacement event");
     }
 
+    /// <summary>
+    /// Dispatch runs after <c>TransactionalCommandBehavior</c> has committed (the transactional
+    /// behavior is re-appended as innermost by <c>AddDomainEventDispatch</c>), so honoring the
+    /// caller's token here would abandon the fan-out for a write that is already durable. A token
+    /// that was already canceled before the command ran must therefore not suppress dispatch.
+    /// </summary>
     [Fact]
-    public async Task Handle_CancellationBeforeDispatch_DoesNotPublish_PreservesEvents_AndPropagates()
+    public async Task Handle_PreCanceledToken_StillDispatchesAllEvents_AndAcceptsChanges()
     {
         var aggregate = new TestAggregate(Id1);
         var preserved = new TestEventA("payload", DateTimeOffset.UtcNow);
@@ -274,22 +280,21 @@ public class DomainEventDispatchBehaviorTests
             NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance);
 
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
-        var act = async () => await behavior.Handle(
+        var response = await behavior.Handle(
             new AggregateCommand(aggregate),
             (_, _) => new ValueTask<Result<TestAggregate>>(Result.Ok(aggregate)),
             cts.Token);
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        publisher.Published.Should().BeEmpty();
-        aggregate.UncommittedEvents().Should().ContainSingle().Which.Should().BeSameAs(preserved,
-            "cancellation must not strip events from the aggregate — they remain available for retry");
-        aggregate.IsChanged.Should().BeTrue();
+        response.IsSuccess.Should().BeTrue();
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(preserved);
+        aggregate.UncommittedEvents().Should().BeEmpty("the committed write's events were all published, so AcceptChanges runs");
+        aggregate.IsChanged.Should().BeFalse();
     }
 
     [Fact]
-    public async Task Handle_CancellationMidDispatch_PreservesUndispatchedEvents()
+    public async Task Handle_CancellationMidDispatch_CompletesFanOut_AndAcceptsChanges()
     {
         var aggregate = new TestAggregate(Id1);
         var first = new TestEventA("first", DateTimeOffset.UtcNow);
@@ -301,7 +306,8 @@ public class DomainEventDispatchBehaviorTests
 
         using var cts = new CancellationTokenSource();
         var publisher = new RecordingPublisher();
-        // Cancel after the second event is published; the third must remain on the aggregate.
+        // A client disconnect mid-fan-out must not strand the already-committed write with
+        // only some of its events published.
         publisher.OnPublishing = e =>
         {
             if (ReferenceEquals(e, second))
@@ -312,27 +318,55 @@ public class DomainEventDispatchBehaviorTests
             publisher,
             NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance);
 
-        var act = async () => await behavior.Handle(
+        var response = await behavior.Handle(
             new AggregateCommand(aggregate),
             (_, _) => new ValueTask<Result<TestAggregate>>(Result.Ok(aggregate)),
             cts.Token);
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        publisher.Published.Should().Equal(first, second);
-        aggregate.UncommittedEvents().Should().Equal(
-            new IDomainEvent[] { first, second, third },
-            "AcceptChanges() never runs on cancellation, so the entire event list stays on the aggregate. Handlers must be idempotent because a retry will re-publish events that already fired before cancellation.");
+        response.IsSuccess.Should().BeTrue();
+        publisher.Published.Should().Equal(first, second, third);
+        aggregate.UncommittedEvents().Should().BeEmpty("the full fan-out completed, so AcceptChanges runs");
+    }
+
+    /// <summary>
+    /// Post-commit dispatch is fully decoupled from the caller's token: handlers must not
+    /// observe a canceled token, because a handler that honors it would abort its own side
+    /// effect one level below the behavior and reintroduce the partial-fan-out bug.
+    /// </summary>
+    [Fact]
+    public async Task Handle_DoesNotPropagateCallersToken_ToHandlers()
+    {
+        var aggregate = new TestAggregate(Id1);
+        aggregate.RaiseEvent(new TestEventA("payload", DateTimeOffset.UtcNow));
+
+        var publisher = new RecordingPublisher();
+        var behavior = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
+            publisher,
+            NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance);
+
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await behavior.Handle(
+            new AggregateCommand(aggregate),
+            (_, _) => new ValueTask<Result<TestAggregate>>(Result.Ok(aggregate)),
+            cts.Token);
+
+        publisher.ObservedTokens.Should().ContainSingle()
+            .Which.CanBeCanceled.Should().BeFalse("post-commit dispatch passes CancellationToken.None so handlers always run to completion");
     }
 
     private sealed class RecordingPublisher : IDomainEventPublisher
     {
         public List<IDomainEvent> Published { get; } = [];
+        public List<CancellationToken> ObservedTokens { get; } = [];
         public Action<IDomainEvent>? OnPublishing { get; set; }
 
         public ValueTask PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)
         {
             OnPublishing?.Invoke(domainEvent);
             Published.Add(domainEvent);
+            ObservedTokens.Add(cancellationToken);
             return ValueTask.CompletedTask;
         }
     }

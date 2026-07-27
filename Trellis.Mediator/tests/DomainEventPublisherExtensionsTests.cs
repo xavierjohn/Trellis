@@ -128,8 +128,12 @@ public class DomainEventPublisherExtensionsTests
         aggregate.UncommittedEvents().Should().ContainSingle().Which.Should().BeSameAs(replacement);
     }
 
+    /// <summary>
+    /// The helper is documented for post-commit call sites, so a token canceled mid-loop must
+    /// not strand an already-durable write with a partially published event set.
+    /// </summary>
     [Fact]
-    public async Task Cancellation_mid_loop_throws_and_skips_accept_changes()
+    public async Task Cancellation_mid_loop_completes_fan_out_and_accepts_changes()
     {
         var aggregate = new TestAggregate(Id1);
         var first = new TestEventA("first", DateTimeOffset.UtcNow);
@@ -149,30 +153,43 @@ public class DomainEventPublisherExtensionsTests
             },
         };
 
-        var act = async () => await publisher.DispatchAggregateEventsAsync(aggregate, cts.Token);
+        await publisher.DispatchAggregateEventsAsync(aggregate, cts.Token);
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        publisher.Published.Should().Equal(first, second);
-        aggregate.UncommittedEvents().Should().Equal(
-            new IDomainEvent[] { first, second, third },
-            "AcceptChanges never runs on cancellation, so the entire event list stays on the aggregate; handlers must be idempotent because a retry will re-publish events that already fired before cancellation");
+        publisher.Published.Should().Equal(first, second, third);
+        aggregate.UncommittedEvents().Should().BeEmpty("the full fan-out completed, so AcceptChanges runs");
     }
 
     [Fact]
-    public async Task Pre_canceled_token_throws_before_any_publish()
+    public async Task Pre_canceled_token_still_publishes_and_accepts_changes()
     {
         var aggregate = new TestAggregate(Id1);
-        aggregate.RaiseEvent(new TestEventA("should-not-publish", DateTimeOffset.UtcNow));
+        var only = new TestEventA("should-publish", DateTimeOffset.UtcNow);
+        aggregate.RaiseEvent(only);
 
         var publisher = new RecordingPublisher();
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        var act = async () => await publisher.DispatchAggregateEventsAsync(aggregate, cts.Token);
+        await publisher.DispatchAggregateEventsAsync(aggregate, cts.Token);
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        publisher.Published.Should().BeEmpty();
-        aggregate.UncommittedEvents().Should().HaveCount(1);
+        publisher.Published.Should().ContainSingle().Which.Should().BeSameAs(only);
+        aggregate.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Does_not_propagate_callers_token_to_handlers()
+    {
+        var aggregate = new TestAggregate(Id1);
+        aggregate.RaiseEvent(new TestEventA("payload", DateTimeOffset.UtcNow));
+
+        var publisher = new RecordingPublisher();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await publisher.DispatchAggregateEventsAsync(aggregate, cts.Token);
+
+        publisher.ObservedTokens.Should().ContainSingle()
+            .Which.CanBeCanceled.Should().BeFalse("post-commit dispatch passes CancellationToken.None so handlers always run to completion");
     }
 
     [Fact]
@@ -249,12 +266,15 @@ public class DomainEventPublisherExtensionsTests
     {
         public List<IDomainEvent> Published { get; } = [];
 
+        public List<CancellationToken> ObservedTokens { get; } = [];
+
         public Action<IDomainEvent>? OnPublishing { get; set; }
 
         public ValueTask PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)
         {
             OnPublishing?.Invoke(domainEvent);
             Published.Add(domainEvent);
+            ObservedTokens.Add(cancellationToken);
             return ValueTask.CompletedTask;
         }
     }
