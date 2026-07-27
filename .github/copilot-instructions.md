@@ -40,6 +40,7 @@ For any non-trivial Trellis work, load these **before** writing the first line o
 | ASP.NET Core API versioning (versioned `Location`/route + pagination URLs) | `docs/docfx_project/api_reference/trellis-api-asp-apiversioning.md` |
 | EF Core integration | `docs/docfx_project/api_reference/trellis-api-efcore.md` |
 | Transactional outbox and domain/integration event publishing | `docs/docfx_project/api_reference/trellis-api-efcore-outbox.md` |
+| Inbox and idempotent message consumption | `docs/docfx_project/api_reference/trellis-api-efcore-inbox.md` |
 | Authorization | `docs/docfx_project/api_reference/trellis-api-authorization.md` |
 | FluentValidation integration | `docs/docfx_project/api_reference/trellis-api-fluentvalidation.md` |
 | HttpClient extensions | `docs/docfx_project/api_reference/trellis-api-http.md` |
@@ -119,6 +120,7 @@ Tests are organized by source area:
 | HTTP | `Trellis.Http/src/` | `Trellis.Http/tests/` |
 | EF Core | `Trellis.EntityFrameworkCore/src/` | `Trellis.EntityFrameworkCore/tests/` |
 | EF Core outbox | `Trellis.EntityFrameworkCore.Outbox/src/` | `Trellis.EntityFrameworkCore.Outbox/tests/` |
+| EF Core inbox | `Trellis.EntityFrameworkCore.Inbox/src/` | `Trellis.EntityFrameworkCore.Inbox/tests/` |
 | State machine | `Trellis.StateMachine/src/` | `Trellis.StateMachine/tests/` |
 | Testing helpers | `Trellis.Testing*/src/` | `Trellis.Testing*/tests/` |
 | FluentValidation (standalone) | `Trellis.FluentValidation/src/` | `Trellis.FluentValidation/tests/` |

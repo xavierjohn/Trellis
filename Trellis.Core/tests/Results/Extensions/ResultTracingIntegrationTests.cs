@@ -171,6 +171,57 @@ public class ResultTracingIntegrationTests
         recoverActivities.First().Status.Should().Be(ActivityStatusCode.Ok);
     }
 
+    [Fact]
+    public void RecoverOnFailure_NoResultsListener_WithAmbientActivity_LeavesAmbientStatusUnmodified()
+    {
+        // Arrange
+        using var ambient = new Activity("Ambient request").Start();
+
+        // Act
+        var result = Result.Fail<int>(new Error.Unexpected("transient") { Detail = "Recoverable failure" })
+            .RecoverOnFailure(() => Result.Ok(42));
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be(42);
+        ambient.Status.Should().Be(ActivityStatusCode.Unset);
+        ambient.TagObjects.Should().NotContain(tag => tag.Key == "result.error.code");
+    }
+
+    [Fact]
+    public void ResultOk_NoResultsListener_WithAmbientActivity_DoesNotResetExistingAmbientErrorStatus()
+    {
+        // Arrange
+        using var ambient = new Activity("Ambient request").Start();
+        ambient.SetStatus(ActivityStatusCode.Error);
+
+        // Act
+        var result = Result.Ok(42);
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be(42);
+        ambient.Status.Should().Be(ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void RecoverOnFailure_WithResultsListener_RecordsOwnedChildSpanStatuses()
+    {
+        // Arrange
+        using var activityTest = new ActivityTestHelper();
+        var error = new Error.Unexpected("transient") { Detail = "Recoverable failure" };
+
+        // Act
+        var result = Result.Ok(5)
+            .Ensure(value => value > 10, error)
+            .RecoverOnFailure(() => Result.Ok(42))
+            .Bind(value => Result.Ok(value + 1));
+
+        // Assert
+        result.Should().BeSuccess().Which.Should().Be(43);
+        activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);
+        activityTest.AssertActivityCapturedWithStatus("RecoverOnFailure", ActivityStatusCode.Ok);
+        activityTest.AssertActivityCapturedWithStatus("Bind", ActivityStatusCode.Ok);
+    }
+
     #endregion
 
     #region Complex Real-World Scenarios

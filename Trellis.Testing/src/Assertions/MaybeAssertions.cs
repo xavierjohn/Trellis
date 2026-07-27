@@ -44,12 +44,13 @@ public class MaybeAssertions<T> : ReferenceTypeAssertions<Maybe<T>, MaybeAsserti
         string because = "",
         params object[] becauseArgs)
     {
+        var hasValue = Subject.TryGetValue(out var value);
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(Subject.HasValue)
+            .ForCondition(hasValue)
             .FailWith("Expected {context:maybe} to have a value{reason}, but it was None");
 
-        return new AndWhichConstraint<MaybeAssertions<T>, T>(this, Subject.Value);
+        return new AndWhichConstraint<MaybeAssertions<T>, T>(this, hasValue ? value! : default!);
     }
 
     /// <summary>
@@ -90,7 +91,9 @@ public class MaybeAssertions<T> : ReferenceTypeAssertions<Maybe<T>, MaybeAsserti
         params object[] becauseArgs)
     {
         HaveValue(because, becauseArgs);
-        Subject.Value.Should().Be(expectedValue, because, becauseArgs);
+
+        if (Subject.TryGetValue(out var actualValue))
+            actualValue.Should().Be(expectedValue, because, becauseArgs);
 
         return new AndConstraint<MaybeAssertions<T>>(this);
     }
@@ -112,11 +115,14 @@ public class MaybeAssertions<T> : ReferenceTypeAssertions<Maybe<T>, MaybeAsserti
     {
         HaveValue(because, becauseArgs);
 
+        if (!Subject.TryGetValue(out var actualValue))
+            return new AndConstraint<MaybeAssertions<T>>(this);
+
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(predicate(Subject.Value))
+            .ForCondition(predicate(actualValue))
             .FailWith("Expected {context:maybe} value to match predicate{reason}, but it did not. Value: {0}",
-                Subject.Value);
+                actualValue);
 
         return new AndConstraint<MaybeAssertions<T>>(this);
     }
@@ -137,7 +143,9 @@ public class MaybeAssertions<T> : ReferenceTypeAssertions<Maybe<T>, MaybeAsserti
         params object[] becauseArgs)
     {
         HaveValue(because, becauseArgs);
-        Subject.Value.Should().BeEquivalentTo(expectedValue, because, becauseArgs);
+
+        if (Subject.TryGetValue(out var actualValue))
+            actualValue.Should().BeEquivalentTo(expectedValue, because, becauseArgs);
 
         return new AndConstraint<MaybeAssertions<T>>(this);
     }

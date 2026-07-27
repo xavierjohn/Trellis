@@ -1,4 +1,4 @@
-namespace Trellis.Mediator;
+﻿namespace Trellis.Mediator;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -45,11 +45,11 @@ public static class DomainEventDispatchServiceCollectionExtensions
 
         services.TryAddScoped<IDomainEventPublisher, MediatorDomainEventPublisher>();
 
-        // Temporarily yank an already-registered transactional behavior so subsequent
-        // appends (always-on behaviors + dispatch) land before it; re-append it as
+        // Temporarily yank already-registered transactional behaviors so subsequent
+        // appends (always-on behaviors + dispatch) land before them; re-append them as
         // innermost at the end. This makes the result order-independent vs the consumer's
         // call to AddTrellisUnitOfWork<TContext>().
-        var transactionalDescriptor = TryRemoveTransactionalBehavior(services);
+        var transactionalDescriptors = RemoveTransactionalBehaviors(services);
 
         services.AddTrellisBehaviors();
 
@@ -61,8 +61,8 @@ public static class DomainEventDispatchServiceCollectionExtensions
         if (!HasTrackedAggregateDispatchBehavior(services))
             AppendDispatchBehavior(services);
 
-        if (transactionalDescriptor is not null)
-            services.Add(transactionalDescriptor);
+        foreach (var descriptor in transactionalDescriptors)
+            services.Add(descriptor);
 
         return services;
     }
@@ -159,21 +159,8 @@ public static class DomainEventDispatchServiceCollectionExtensions
         }
     }
 
-    internal static ServiceDescriptor? TryRemoveTransactionalBehavior(IServiceCollection services)
-    {
-        for (var i = 0; i < services.Count; i++)
-        {
-            if (services[i].ServiceType == typeof(IPipelineBehavior<,>)
-                && services[i].ImplementationType == typeof(TransactionalCommandBehavior<,>))
-            {
-                var descriptor = services[i];
-                services.RemoveAt(i);
-                return descriptor;
-            }
-        }
-
-        return null;
-    }
+    internal static List<ServiceDescriptor> RemoveTransactionalBehaviors(IServiceCollection services)
+        => TransactionalCommandBehaviorServiceCollectionExtensions.RemoveTransactionalCommandBehaviorRegistrations(services);
 
     private static void AppendDispatchBehavior(IServiceCollection services)
     {

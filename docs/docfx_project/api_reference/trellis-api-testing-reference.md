@@ -262,6 +262,10 @@ public class MaybeAssertions<T> : ReferenceTypeAssertions<Maybe<T>, MaybeAsserti
 }
 ```
 
+When a value assertion is evaluated inside a FluentAssertions `AssertionScope`, a `None`
+receiver records the normal "Expected Maybe to have a value..." assertion failure and
+does not dereference `Maybe<T>.Value`.
+
 #### `ErrorAssertionsExtensions`
 ```csharp
 public static class ErrorAssertionsExtensions

@@ -58,6 +58,16 @@ public class MaybeAssertionsTests
     }
 
     [Fact]
+    public void HaveValue_MaybeWithNoValue_InsideAssertionScope_ReportsAssertionFailureWithoutInvalidOperationException()
+    {
+        Maybe<string> maybe = Maybe<string>.None;
+
+        Action act = () => maybe.Should().HaveValue();
+
+        AssertNoneFailureSurfacesMaybeMessage(act);
+    }
+
+    [Fact]
     public void HaveValue_IntegerType_Succeeds()
     {
         // Arrange
@@ -178,6 +188,16 @@ public class MaybeAssertionsTests
     }
 
     [Fact]
+    public void HaveValueEqualTo_MaybeWithNoValue_InsideAssertionScope_ReportsAssertionFailureWithoutInvalidOperationException()
+    {
+        Maybe<string> maybe = Maybe<string>.None;
+
+        Action act = () => maybe.Should().HaveValueEqualTo("expected value");
+
+        AssertNoneFailureSurfacesMaybeMessage(act);
+    }
+
+    [Fact]
     public void HaveValueEqualTo_IntegerValue_Succeeds()
     {
         // Arrange
@@ -246,11 +266,21 @@ public class MaybeAssertionsTests
         var maybe = Maybe<int>.None;
 
         // Act
-        var act = () => maybe.Should().HaveValueMatching(x => x > 0);
+        Action act = () => maybe.Should().HaveValueMatching(x => x > 0);
 
         // Assert
         act.Should().Throw<Exception>()
             .WithMessage("*to have a value*");
+    }
+
+    [Fact]
+    public void HaveValueMatching_MaybeWithNoValue_InsideAssertionScope_ReportsAssertionFailureWithoutInvalidOperationException()
+    {
+        var maybe = Maybe<int>.None;
+
+        Action act = () => maybe.Should().HaveValueMatching(x => x > 0);
+
+        AssertNoneFailureSurfacesMaybeMessage(act);
     }
 
     #endregion
@@ -278,6 +308,16 @@ public class MaybeAssertionsTests
 
         // Assert
         act.Should().Throw<Exception>();
+    }
+
+    [Fact]
+    public void HaveValueEquivalentTo_MaybeWithNoValue_InsideAssertionScope_ReportsAssertionFailureWithoutInvalidOperationException()
+    {
+        Maybe<Person> maybe = Maybe<Person>.None;
+
+        Action act = () => maybe.Should().HaveValueEquivalentTo(new Person { Name = "Jane", Age = 25 });
+
+        AssertNoneFailureSurfacesMaybeMessage(act);
     }
 
     #endregion
@@ -433,6 +473,18 @@ public class MaybeAssertionsTests
     }
 
     #endregion
+
+    private static void AssertNoneFailureSurfacesMaybeMessage(Action act)
+    {
+        using var scope = new FluentAssertions.Execution.AssertionScope();
+
+        var exception = Record.Exception(act);
+        var failures = scope.Discard();
+
+        exception.Should().BeNull();
+        failures.Should().Contain(failure =>
+            failure.Contains("Expected maybe to have a value") && failure.Contains("but it was None"));
+    }
 
     // Helper classes for testing
     private class Person

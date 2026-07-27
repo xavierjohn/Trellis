@@ -17,10 +17,9 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// implementation and adds the <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/>
     /// pipeline behavior so that command handlers automatically commit on success.
     /// <para>
-    /// The behavior is inserted after the last existing <see cref="IPipelineBehavior{TMessage,TResponse}"/>
-    /// registration (innermost position, closest to the handler). For correct ordering, call this
-    /// method <b>after</b> <c>AddTrellisBehaviors()</c> and any other behavior registrations so that
-    /// commit failures are visible to outer behaviors (logging, tracing, exception handling).
+    /// The behavior is inserted innermost (closest to the handler). Ordering is independent
+    /// versus <c>AddTrellisBehaviors()</c> and domain-event dispatch registration, so commit
+    /// failures remain visible to outer behaviors (logging, tracing, exception handling).
     /// </para>
     /// </summary>
     /// <typeparam name="TContext">The concrete <see cref="DbContext"/> type.</typeparam>
@@ -29,7 +28,7 @@ public static class UnitOfWorkServiceCollectionExtensions
     /// <example>
     /// <code>
     /// services.AddDbContext&lt;AppDbContext&gt;(...);
-    /// services.AddTrellisBehaviors();           // register other behaviors first
+    /// services.AddTrellisBehaviors();
     /// services.AddTrellisUnitOfWork&lt;AppDbContext&gt;(); // commit behavior goes innermost
     /// </code>
     /// </example>

@@ -524,10 +524,9 @@ public static class HttpResponseExtensions
     /// <see cref="Maybe.From{T}(T)"/> or <see cref="Maybe{T}.None"/>.
     /// </returns>
     /// <remarks>
-    /// Unlike <see cref="ReadJsonAsync"/>, an invalid JSON body is **not** caught:
-    /// <see cref="JsonException"/> propagates to the caller. The response is still
-    /// disposed before that exception escapes. Whenever a response is read
-    /// (success or exception), it is disposed before returning.
+    /// Invalid JSON is caught and returned as <see cref="Error.Unexpected"/> using
+    /// structured parser position only. Whenever a response is read (success or failure),
+    /// it is disposed before returning.
     /// </remarks>
     public static async Task<Result<Maybe<T>>> ReadJsonMaybeAsync<T>(
         this Task<Result<HttpResponseMessage>> response,
@@ -565,7 +564,23 @@ public static class HttpResponseExtensions
             if (bytes.Length == 0)
                 return Result.Ok(Maybe<T>.None);
 
-            var value = JsonSerializer.Deserialize(bytes, jsonTypeInfo);
+            T? value;
+            try
+            {
+                value = JsonSerializer.Deserialize(bytes, jsonTypeInfo);
+            }
+            catch (JsonException ex)
+            {
+                var location = ex.LineNumber.HasValue
+                    ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
+                    : string.Empty;
+
+                return Result.Fail<Maybe<T>>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                {
+                    Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
+                });
+            }
+
             return Result.Ok(value is null ? Maybe<T>.None : Maybe.From(value));
         }
         finally

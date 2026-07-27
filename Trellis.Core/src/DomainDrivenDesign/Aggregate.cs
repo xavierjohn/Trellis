@@ -312,30 +312,19 @@ public abstract class Aggregate<TId> : Entity<TId>, IAggregate, IETagStampable, 
     /// // In a repository or unit of work
     /// public async Task<Result> SaveAsync(Order order, CancellationToken ct)
     /// {
-    ///     using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
-    ///     try
+    ///     var saveResult = await _orders.SaveAsync(order, ct).ConfigureAwait(false);
+    ///     if (saveResult.IsFailure)
+    ///         return saveResult.Error;
+    ///
+    ///     foreach (var evt in order.UncommittedEvents())
     ///     {
-    ///         // 1. Save aggregate
-    ///         _dbContext.Orders.Update(order);
-    ///         await _dbContext.SaveChangesAsync(ct);
-    ///         
-    ///         // 2. Publish events
-    ///         foreach (var evt in order.UncommittedEvents())
-    ///         {
-    ///             await _eventBus.PublishAsync(evt, ct);
-    ///         }
-    ///         
-    ///         // 3. Only after successful publish
-    ///         order.AcceptChanges();
-    ///         
-    ///         await transaction.CommitAsync(ct);
-    ///         return Result.Ok();
+    ///         var publishResult = await _eventBus.PublishAsync(evt, ct).ConfigureAwait(false);
+    ///         if (publishResult.IsFailure)
+    ///             return publishResult.Error;
     ///     }
-    ///     catch (Exception ex)
-    ///     {
-    ///         await transaction.RollbackAsync(ct);
-    ///         return new Error.Unexpected("transaction_failed") { Detail = "Transaction failed. See logs for details." };
-    ///     }
+    ///
+    ///     order.AcceptChanges();
+    ///     return Result.Ok();
     /// }
     /// ]]></code>
     /// </example>

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — ROP results no longer rewrite ambient tracing span status
+
+`Result<T>` construction and ROP operators now set OpenTelemetry status and `result.error.code` only on spans
+started by Trellis's `"Trellis.Core"` ROP `ActivitySource`. In the default configuration, where
+`AddResultsInstrumentation()` is not registered, recovered intermediate failures no longer mark the ambient
+ASP.NET request or Mediator span as `Error`, and later `Result.Ok(...)` construction no longer resets an
+existing ambient `Error` status back to `Ok`. The outer `Trellis.Mediator.TracingBehavior` span remains the
+authoritative status setter for mediator dispatches.
+
+### Fixed — mediator transaction behavior pipeline ordering is registration-order independent
+
+`AddTrellisBehaviors()`, `AddDomainEventDispatch(...)`, and
+`AddTrackedAggregateDomainEventDispatch()` now rehome pre-existing open- or closed-generic
+`TransactionalCommandBehavior` descriptors so the transaction remains the innermost mediator
+behavior regardless of call order. This keeps commit failures inside the standard exception,
+tracing, and logging envelope and ensures domain-event dispatch stays outside the commit boundary.
+
+### Fixed — optional HTTP JSON reader preserves Result failures for malformed JSON
+
+`ReadJsonMaybeAsync<T>` now mirrors `ReadJsonAsync<T>` when a successful HTTP response contains malformed JSON:
+it catches `JsonException` and returns `Result.Fail<Maybe<T>>(Error.Unexpected)` with sanitized line / byte
+position detail instead of letting the parser exception escape. `ReadJsonOrNoneOn404Async<T>` inherits the same
+behavior after its 404 check because it delegates to `ReadJsonMaybeAsync<T>`. Callers that previously caught
+`JsonException` around optional JSON reads should now handle the returned failed `Result` in the normal Trellis
+railway pipeline.
+
 ### Removed — `RequiredEnum<TSelf>.TryFromName` (use `TryCreate`)
 
 `RequiredEnum<TSelf>.TryFromName(...)` has been removed. An enum's creation is a uniform symbolic

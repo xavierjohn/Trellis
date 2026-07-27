@@ -35,9 +35,9 @@ public static class ResultsTraceProviderBuilderExtensions
     ///   <item><description>
     /// <b>No listener registered</b> (default): a 10-step <c>Bind</c> chain costs ~242 ns total
     /// (~19 ns per <c>Bind</c>) with <b>0 bytes allocated</b>. The per-extension
-    /// <c>using var activity = ActivitySource.StartActivity(...)</c> returns null almost immediately,
-    /// and the <c>Result&lt;T&gt;</c> constructor's <c>Activity.Current?.SetStatus(...)</c>
-    /// updates the ambient activity in place without allocating.
+    /// <c>using var activity = ActivitySource.StartActivity(...)</c> returns null almost immediately.
+    /// Trellis does not update an ambient ASP.NET or Mediator activity from ROP operators unless
+    /// that activity was started by the Trellis ROP <c>ActivitySource</c>.
     ///   </description></item>
     ///   <item><description>
     /// <b>With listener registered</b> via <c>AddResultsInstrumentation</c> and

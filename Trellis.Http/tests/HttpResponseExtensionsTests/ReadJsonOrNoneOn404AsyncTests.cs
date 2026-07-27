@@ -73,6 +73,21 @@ public class ReadJsonOrNoneOn404AsyncTests
     }
 
     [Fact]
+    public async Task Success_with_invalid_json_returns_Fail_and_disposes_response()
+    {
+        var tracker = new TrackingHttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("Not JSON"),
+        };
+        var task = Task.FromResult<HttpResponseMessage>(tracker);
+
+        var result = await task.ReadJsonOrNoneOn404Async(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
+
+        result.Should().BeFailureOfType<Error.Unexpected>();
+        tracker.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Non_not_found_failure_returns_strict_status_error_and_disposes_response()
     {
         var tracker = new TrackingHttpResponseMessage(HttpStatusCode.Conflict);

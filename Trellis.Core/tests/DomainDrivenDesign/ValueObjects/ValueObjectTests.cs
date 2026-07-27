@@ -172,13 +172,11 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void CompareTo_with_null_throws_ArgumentNullException()
+    public void CompareTo_WithNull_ReturnsPositive()
     {
         var money = new Money(100m);
 
-        var act = () => money.CompareTo(null);
-
-        act.Should().Throw<ArgumentNullException>();
+        money.CompareTo(null).Should().BePositive();
     }
 
     [Fact]
@@ -202,17 +200,30 @@ public class ValueObjectTests
         money1.CompareTo(money2).Should().Be(0);
     }
 
+    [Fact]
+    public void CompareTo_WithDifferentRuntimeComponentTypes_OrdersByComponentTypeName()
+    {
+        var number = new ConditionallyTypedComponentValueObject(1);
+        var text = new ConditionallyTypedComponentValueObject("1");
+        var expectedSign = Math.Sign(string.CompareOrdinal(
+            typeof(int).AssemblyQualifiedName,
+            typeof(string).AssemblyQualifiedName));
+
+        Math.Sign(number.CompareTo(text)).Should().Be(expectedSign);
+        Math.Sign(text.CompareTo(number)).Should().Be(-expectedSign);
+    }
+
     #endregion
 
     #region Null Comparison Operator Edge Cases
 
     [Fact]
-    public void LessThan_null_on_left_with_value_on_right_is_false()
+    public void LessThan_NullOnLeftWithValueOnRight_IsTrue()
     {
         Address? nullAddress = null;
         var address = new Address("Street", "City");
 
-        (nullAddress < address).Should().BeFalse();
+        (nullAddress < address).Should().BeTrue();
     }
 
     [Fact]
@@ -234,12 +245,12 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void LessThanOrEqual_null_on_left_with_value_on_right_is_false()
+    public void LessThanOrEqual_NullOnLeftWithValueOnRight_IsTrue()
     {
         Address? nullAddress = null;
         var address = new Address("Street", "City");
 
-        (nullAddress <= address).Should().BeFalse();
+        (nullAddress <= address).Should().BeTrue();
     }
 
     [Fact]
@@ -261,51 +272,87 @@ public class ValueObjectTests
     }
 
     [Fact]
-    public void LessThan_value_on_left_null_on_right_should_not_throw()
+    public void LessThan_ValueOnLeftNullOnRight_IsFalse()
     {
         var address = new Address("Street", "City");
         Address? nullAddress = null;
 
-        var act = () => address < nullAddress;
-
-        act.Should().NotThrow();
         (address < nullAddress).Should().BeFalse();
     }
 
     [Fact]
-    public void GreaterThan_value_on_left_null_on_right_should_not_throw()
+    public void GreaterThan_ValueOnLeftNullOnRight_IsTrue()
     {
         var address = new Address("Street", "City");
         Address? nullAddress = null;
 
-        var act = () => address > nullAddress;
-
-        act.Should().NotThrow();
-        (address > nullAddress).Should().BeFalse();
+        (address > nullAddress).Should().BeTrue();
     }
 
     [Fact]
-    public void LessThanOrEqual_value_on_left_null_on_right_should_not_throw()
+    public void LessThanOrEqual_ValueOnLeftNullOnRight_IsFalse()
     {
         var address = new Address("Street", "City");
         Address? nullAddress = null;
 
-        var act = () => address <= nullAddress;
-
-        act.Should().NotThrow();
         (address <= nullAddress).Should().BeFalse();
     }
 
     [Fact]
-    public void GreaterThanOrEqual_value_on_left_null_on_right_should_not_throw()
+    public void GreaterThanOrEqual_ValueOnLeftNullOnRight_IsTrue()
     {
         var address = new Address("Street", "City");
         Address? nullAddress = null;
 
-        var act = () => address >= nullAddress;
+        (address >= nullAddress).Should().BeTrue();
+    }
 
-        act.Should().NotThrow();
-        (address >= nullAddress).Should().BeFalse();
+    [Fact]
+    public void LessThan_WithDifferentRuntimeTypes_ThrowsArgumentException()
+    {
+        var address = new Address("Street", "City");
+        var money = new Money(100m);
+
+        var act = () => address < money;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Cannot compare objects of different types*");
+    }
+
+    [Fact]
+    public void LessThanOrEqual_WithDifferentRuntimeTypes_ThrowsArgumentException()
+    {
+        var address = new Address("Street", "City");
+        var money = new Money(100m);
+
+        var act = () => address <= money;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Cannot compare objects of different types*");
+    }
+
+    [Fact]
+    public void GreaterThan_WithDifferentRuntimeTypes_ThrowsArgumentException()
+    {
+        var address = new Address("Street", "City");
+        var money = new Money(100m);
+
+        var act = () => address > money;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Cannot compare objects of different types*");
+    }
+
+    [Fact]
+    public void GreaterThanOrEqual_WithDifferentRuntimeTypes_ThrowsArgumentException()
+    {
+        var address = new Address("Street", "City");
+        var money = new Money(100m);
+
+        var act = () => address >= money;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Cannot compare objects of different types*");
     }
 
     #endregion
@@ -479,4 +526,14 @@ internal class CityName : ScalarValueObject<CityName, string>, IScalarValue<City
         string.IsNullOrWhiteSpace(value)
             ? Result.Fail<CityName>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "city"), "validation.error") { Detail = "City is required" })))
             : Result.Ok(new CityName(value));
+}
+
+internal sealed class ConditionallyTypedComponentValueObject(IComparable component) : ValueObject
+{
+    public IComparable Component { get; } = component;
+
+    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    {
+        yield return Component;
+    }
 }

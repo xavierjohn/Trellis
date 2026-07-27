@@ -66,6 +66,9 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         if (methodName == null || !LinqSelectMethods.Contains(methodName))
             return;
 
+        if (!IsLinqProjectionInvocation(invocation, context.SemanticModel, context.CancellationToken))
+            return;
+
         // Get the lambda parameter
         var lambdaParameter = LambdaSyntaxHelpers.GetLambdaParameter(lambda);
         if (lambdaParameter == null)
@@ -180,6 +183,22 @@ public sealed class UnsafeValueInLinqAnalyzer : DiagnosticAnalyzer
         }
 
         return false;
+    }
+
+    private static bool IsLinqProjectionInvocation(
+        InvocationExpressionSyntax invocation,
+        SemanticModel semanticModel,
+        System.Threading.CancellationToken cancellationToken)
+    {
+        var symbolInfo = semanticModel.GetSymbolInfo(invocation, cancellationToken);
+        var methodSymbol = symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+
+        if (methodSymbol is null)
+            return false;
+
+        var originalMethod = methodSymbol.ReducedFrom ?? methodSymbol;
+        return originalMethod.ContainingType?.ToDisplayString() is "System.Linq.Enumerable" or "System.Linq.Queryable";
     }
 
     private static bool IsQueryableLinqInvocation(

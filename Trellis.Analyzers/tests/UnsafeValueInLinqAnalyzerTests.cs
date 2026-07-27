@@ -49,6 +49,42 @@ public class UnsafeValueInLinqAnalyzerTests
     }
 
     [Fact]
+    public async Task Select_CustomNonLinqMethodWithMaybeValue_NoDiagnostic()
+    {
+        const string source = """
+            using MyCompany;
+
+            public class TestClass
+            {
+                public void TestMethod(CustomQuery<Maybe<int>> maybes)
+                {
+                    var values = maybes.Select(m => m.Value);
+                }
+            }
+
+            namespace MyCompany
+            {
+                using System;
+
+                public sealed class CustomQuery<T>
+                {
+                }
+
+                public static class CustomQueryExtensions
+                {
+                    public static CustomQuery<TResult> Select<T, TResult>(
+                        this CustomQuery<T> source,
+                        Func<T, TResult> selector)
+                        => new CustomQuery<TResult>();
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueInLinqAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task Select_MaybeValue_WithWhereHasValue_NoDiagnostic()
     {
         const string source = """

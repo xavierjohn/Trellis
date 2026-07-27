@@ -281,17 +281,21 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// A value less than zero if this instance is less than <paramref name="other"/>;
     /// zero if they are equal; or greater than zero if this instance is greater than <paramref name="other"/>.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="other"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="other"/> is not of the same type as this instance.
     /// </exception>
     /// <remarks>
     /// Components are compared in order. The first non-equal component determines the result.
-    /// This enables value objects to be sorted and used in ordered collections.
+    /// Null sorts before non-null, so a non-null value object is greater than <c>null</c>.
+    /// Components with different runtime types at the same position are ordered by type name before
+    /// same-typed components use their native comparison. This enables value objects to be sorted
+    /// and used in ordered collections.
     /// </remarks>
     public virtual int CompareTo(ValueObject? other)
     {
-        ArgumentNullException.ThrowIfNull(other);
+        if (other is null)
+            return 1;
+
         var thisType = GetType();
         var otherType = other.GetType();
 
@@ -330,7 +334,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
         _ => throw new ArgumentException($"Cannot compare {GetType()} to {obj.GetType()}")
     };
 
-    private static int CompareComponents(object? object1, object? object2)
+    private static int CompareComponents(IComparable? object1, IComparable? object2)
     {
         if (object1 is null && object2 is null)
             return 0;
@@ -341,10 +345,30 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
         if (object2 is null)
             return 1;
 
-        if (object1 is IComparable comparable1 && object2 is IComparable comparable2)
-            return comparable1.CompareTo(comparable2);
+        var type1 = object1.GetType();
+        var type2 = object2.GetType();
 
-        return object1.Equals(object2) ? 0 : -1;
+        if (type1 != type2)
+        {
+            var typeComparison = string.CompareOrdinal(type1.AssemblyQualifiedName, type2.AssemblyQualifiedName);
+            return typeComparison;
+        }
+
+        return object1.CompareTo(object2);
+    }
+
+    private static int CompareNullable(ValueObject? left, ValueObject? right)
+    {
+        if (left is null && right is null)
+            return 0;
+
+        if (left is null)
+            return -1;
+
+        if (right is null)
+            return 1;
+
+        return left.CompareTo(right);
     }
 
     /// <summary>
@@ -378,12 +402,12 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// <param name="left">The first value object to compare.</param>
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is less than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-    public static bool operator <(ValueObject? left, ValueObject? right)
-    {
-        if (left is null || right is null) return false;
-        if (left.GetType() != right.GetType()) return false;
-        return left.CompareTo(right) < 0;
-    }
+    /// <exception cref="ArgumentException">Thrown when both operands are non-null and have different runtime types.</exception>
+    /// <remarks>
+    /// This operator uses the same ordering as <see cref="CompareTo(ValueObject?)"/>: null sorts before non-null,
+    /// and different runtime types are not comparable.
+    /// </remarks>
+    public static bool operator <(ValueObject? left, ValueObject? right) => CompareNullable(left, right) < 0;
 
     /// <summary>
     /// Determines whether the first value object is less than or equal to the second.
@@ -391,12 +415,12 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// <param name="left">The first value object to compare.</param>
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is less than or equal to <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-    public static bool operator <=(ValueObject? left, ValueObject? right)
-    {
-        if (left is null || right is null) return left is null && right is null;
-        if (left.GetType() != right.GetType()) return false;
-        return left.CompareTo(right) <= 0;
-    }
+    /// <exception cref="ArgumentException">Thrown when both operands are non-null and have different runtime types.</exception>
+    /// <remarks>
+    /// This operator uses the same ordering as <see cref="CompareTo(ValueObject?)"/>: null sorts before non-null,
+    /// and different runtime types are not comparable.
+    /// </remarks>
+    public static bool operator <=(ValueObject? left, ValueObject? right) => CompareNullable(left, right) <= 0;
 
     /// <summary>
     /// Determines whether the first value object is greater than the second.
@@ -404,12 +428,12 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// <param name="left">The first value object to compare.</param>
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is greater than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-    public static bool operator >(ValueObject? left, ValueObject? right)
-    {
-        if (left is null || right is null) return false;
-        if (left.GetType() != right.GetType()) return false;
-        return left.CompareTo(right) > 0;
-    }
+    /// <exception cref="ArgumentException">Thrown when both operands are non-null and have different runtime types.</exception>
+    /// <remarks>
+    /// This operator uses the same ordering as <see cref="CompareTo(ValueObject?)"/>: null sorts before non-null,
+    /// and different runtime types are not comparable.
+    /// </remarks>
+    public static bool operator >(ValueObject? left, ValueObject? right) => CompareNullable(left, right) > 0;
 
     /// <summary>
     /// Determines whether the first value object is greater than or equal to the second.
@@ -417,10 +441,10 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// <param name="left">The first value object to compare.</param>
     /// <param name="right">The second value object to compare.</param>
     /// <returns><c>true</c> if <paramref name="left"/> is greater than or equal to <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-    public static bool operator >=(ValueObject? left, ValueObject? right)
-    {
-        if (left is null || right is null) return left is null && right is null;
-        if (left.GetType() != right.GetType()) return false;
-        return left.CompareTo(right) >= 0;
-    }
+    /// <exception cref="ArgumentException">Thrown when both operands are non-null and have different runtime types.</exception>
+    /// <remarks>
+    /// This operator uses the same ordering as <see cref="CompareTo(ValueObject?)"/>: null sorts before non-null,
+    /// and different runtime types are not comparable.
+    /// </remarks>
+    public static bool operator >=(ValueObject? left, ValueObject? right) => CompareNullable(left, right) >= 0;
 }

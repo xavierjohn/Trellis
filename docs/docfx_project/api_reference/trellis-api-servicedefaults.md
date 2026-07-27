@@ -133,7 +133,7 @@ public sealed class TrellisServiceBuilder
 12. Transactional outbox relay (when `UseOutbox<TContext>()` is selected).
 13. Transactional inbox dispatch registration (when `UseInbox<TContext>()` is selected).
 
-That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors.
+That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. The lower-level registration helpers are also order-independent: if a transaction behavior is present before `AddTrellisBehaviors()` or domain-event dispatch runs, it is rehomed to the innermost slot.
 
 ### Order-independence for explicit resource-authorization registrations
 

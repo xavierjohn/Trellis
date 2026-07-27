@@ -10,8 +10,46 @@ public class RedundantEfConfigurationAnalyzerTests
     private const string EfCoreBuilderStubSource = """
         namespace Microsoft.EntityFrameworkCore
         {
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
             public class ModelConfigurationBuilder
             {
+            }
+
+            public abstract class DbContext
+            {
+                protected virtual void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                }
+
+                protected virtual void OnModelCreating(ModelBuilder modelBuilder)
+                {
+                }
+            }
+
+            public class DbSet<TEntity>
+                where TEntity : class
+            {
+            }
+
+            public class ModelBuilder
+            {
+                public EntityTypeBuilder<TEntity> Entity<TEntity>()
+                    where TEntity : class
+                    => new EntityTypeBuilder<TEntity>();
+
+                public ModelBuilder ApplyConfiguration<TEntity>(IEntityTypeConfiguration<TEntity> configuration)
+                    where TEntity : class
+                    => this;
+
+                public ModelBuilder ApplyConfigurationsFromAssembly(System.Reflection.Assembly assembly)
+                    => this;
+            }
+
+            public interface IEntityTypeConfiguration<TEntity>
+                where TEntity : class
+            {
+                void Configure(EntityTypeBuilder<TEntity> builder);
             }
         }
 
@@ -51,6 +89,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 where TRelatedEntity : class
             {
             }
+
         }
 
         namespace Trellis.EntityFrameworkCore
@@ -95,7 +134,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 public Maybe<string> PhoneNumber { get; set; }
             }
 
-            public class OrderConfig
+            public class OrderConfig : IEntityTypeConfiguration<Order>
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
@@ -105,6 +144,8 @@ public class RedundantEfConfigurationAnalyzerTests
 
             public class AppDbContext
             {
+                public DbSet<Order> Orders { get; set; } = null!;
+
                 protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
                 {
                     configurationBuilder.ApplyTrellisConventions(typeof(Order).Assembly);
@@ -142,7 +183,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 public decimal Amount { get; set; }
             }
 
-            public class OrderConfig
+            public class OrderConfig : IEntityTypeConfiguration<Order>
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
@@ -152,6 +193,8 @@ public class RedundantEfConfigurationAnalyzerTests
 
             public class AppDbContext
             {
+                public DbSet<Order> Orders { get; set; } = null!;
+
                 protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
                 {
                     configurationBuilder.ApplyTrellisConventionsFor<AppDbContext>();
@@ -183,7 +226,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 public Maybe<string> PhoneNumber { get; set; }
             }
 
-            public class OrderConfig
+            public class OrderConfig : IEntityTypeConfiguration<Order>
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
@@ -193,6 +236,8 @@ public class RedundantEfConfigurationAnalyzerTests
 
             public class AppDbContext
             {
+                public DbSet<Order> Orders { get; set; } = null!;
+
                 protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
                 {
                     configurationBuilder.ApplyTrellisConventions();
@@ -238,6 +283,201 @@ public class RedundantEfConfigurationAnalyzerTests
     }
 
     [Fact]
+    public async Task HasConversion_OnMaybeProperty_InDbContextWithoutTrellisConventions_NoDiagnostic()
+    {
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Trellis.EntityFrameworkCore;
+
+            public class TrellisOrder
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class LegacyOrder
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class TrellisDbContext : DbContext
+            {
+                protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                    configurationBuilder.ApplyTrellisConventions();
+                }
+            }
+
+            public class LegacyDbContext : DbContext
+            {
+                protected override void OnModelCreating(ModelBuilder modelBuilder)
+                {
+                    modelBuilder.Entity<LegacyOrder>()
+                        .Property(e => e.PhoneNumber)
+                        .HasConversion<string>();
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<RedundantEfConfigurationAnalyzer>(source);
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task HasConversion_OnStandaloneConfigurations_WithMixedContexts_ReportsOnlyTrellisContextConfiguration()
+    {
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            using Trellis.EntityFrameworkCore;
+
+            public class TrellisEntity
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class LegacyEntity
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class TrellisEntityConfig : IEntityTypeConfiguration<TrellisEntity>
+            {
+                public void Configure(EntityTypeBuilder<TrellisEntity> builder)
+                {
+                    builder.Property(e => e.PhoneNumber).{|#0:HasConversion<string>|}();
+                }
+            }
+
+            public class LegacyEntityConfig : IEntityTypeConfiguration<LegacyEntity>
+            {
+                public void Configure(EntityTypeBuilder<LegacyEntity> builder)
+                {
+                    builder.Property(e => e.PhoneNumber).HasConversion<string>();
+                }
+            }
+
+            public class TrellisContext : DbContext
+            {
+                protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                    configurationBuilder.ApplyTrellisConventions();
+                }
+
+                protected override void OnModelCreating(ModelBuilder modelBuilder)
+                {
+                    modelBuilder.ApplyConfiguration(new TrellisEntityConfig());
+                }
+            }
+
+            public class LegacyContext : DbContext
+            {
+                protected override void OnModelCreating(ModelBuilder modelBuilder)
+                {
+                    modelBuilder.ApplyConfiguration(new LegacyEntityConfig());
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
+                .WithLocation(0)
+                .WithArguments("HasConversion", "TrellisEntity.PhoneNumber"));
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task HasConversion_OnUnattributedStandaloneConfiguration_WithTrellisConventions_NoDiagnostic()
+    {
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            using Trellis.EntityFrameworkCore;
+
+            public class Order
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class OrderConfig : IEntityTypeConfiguration<Order>
+            {
+                public void Configure(EntityTypeBuilder<Order> builder)
+                {
+                    builder.Property(e => e.PhoneNumber).HasConversion<string>();
+                }
+            }
+
+            public class AppDbContext : DbContext
+            {
+                protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                    configurationBuilder.ApplyTrellisConventions();
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<RedundantEfConfigurationAnalyzer>(source);
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task HasConversion_OnAssemblyAppliedStandaloneConfiguration_WithTrellisConventions_ProducesWarning()
+    {
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            using Trellis.EntityFrameworkCore;
+
+            public class Order
+            {
+                public int Id { get; set; }
+                public Maybe<string> PhoneNumber { get; set; }
+            }
+
+            public class OrderConfig : IEntityTypeConfiguration<Order>
+            {
+                public void Configure(EntityTypeBuilder<Order> builder)
+                {
+                    builder.Property(e => e.PhoneNumber).{|#0:HasConversion<string>|}();
+                }
+            }
+
+            public class AppDbContext : DbContext
+            {
+                protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+                {
+                    configurationBuilder.ApplyTrellisConventions();
+                }
+
+                protected override void OnModelCreating(ModelBuilder modelBuilder)
+                {
+                    modelBuilder.ApplyConfigurationsFromAssembly(typeof(Order).Assembly);
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<RedundantEfConfigurationAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.RedundantEfConfiguration)
+                .WithLocation(0)
+                .WithArguments("HasConversion", "Order.PhoneNumber"));
+        test.TestState.Sources.Add(("EfCoreBuilderStubs.cs", EfCoreBuilderStubSource));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task HasConversion_OnMaybeProperty_WithUnrelatedApplyTrellisConventionsName_NoDiagnostic()
     {
         const string source = """
@@ -261,7 +501,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 public Maybe<string> PhoneNumber { get; set; }
             }
 
-            public class OrderConfig
+            public class OrderConfig : IEntityTypeConfiguration<Order>
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
@@ -271,6 +511,8 @@ public class RedundantEfConfigurationAnalyzerTests
 
             public class AppDbContext
             {
+                public DbSet<Order> Orders { get; set; } = null!;
+
                 protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
                 {
                     configurationBuilder.ApplyTrellisConventions();
@@ -298,7 +540,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 public Maybe<string> PhoneNumber { get; set; }
             }
 
-            public class OrderConfig
+            public class OrderConfig : IEntityTypeConfiguration<Order>
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
@@ -308,6 +550,8 @@ public class RedundantEfConfigurationAnalyzerTests
 
             public class AppDbContext
             {
+                public DbSet<Order> Orders { get; set; } = null!;
+
                 protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
                 {
                     configurationBuilder.ApplyTrellisConventions();
@@ -339,7 +583,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 public Maybe<string> PhoneNumber { get; set; }
             }
 
-            public class OrderConfig
+            public class OrderConfig : IEntityTypeConfiguration<Order>
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
@@ -539,7 +783,7 @@ public class RedundantEfConfigurationAnalyzerTests
                 public Maybe<string> PhoneNumber { get; set; }
             }
 
-            public class OrderConfig
+            public class OrderConfig : IEntityTypeConfiguration<Order>
             {
                 public void Configure(EntityTypeBuilder<Order> builder)
                 {
@@ -549,6 +793,8 @@ public class RedundantEfConfigurationAnalyzerTests
 
             public class AppDbContext
             {
+                public DbSet<Order> Orders { get; set; } = null!;
+
                 protected void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
                 {
                     // Calls the TRELLIS-owned overload (takes assemblies); user method takes none.

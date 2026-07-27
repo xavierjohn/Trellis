@@ -90,6 +90,55 @@ public class CombineLimitAnalyzerTests
     }
 
     [Fact]
+    public async Task Combine_UserDefinedExtensionPastLimit_NoDiagnostic()
+    {
+        const string source = """
+            using MyCompany;
+
+            public class TestClass
+            {
+                public void TestMethod()
+                {
+                    Result<int> r1 = default;
+                    Result<int> r2 = default;
+                    Result<int> r3 = default;
+                    Result<int> r4 = default;
+                    Result<int> r5 = default;
+                    Result<int> r6 = default;
+                    Result<int> r7 = default;
+                    Result<int> r8 = default;
+                    Result<int> r9 = default;
+
+                    var result = r1
+                        .Combine(r2)
+                        .Combine(r3)
+                        .Combine(r4)
+                        .Combine(r5)
+                        .Combine(r6)
+                        .Combine(r7)
+                        .Combine(r8)
+                        .Combine(r9)
+                        .Combine(10);
+                }
+            }
+
+            namespace MyCompany
+            {
+                public static class CustomCombineExtensions
+                {
+                    public static Result<(T1, T2, T3, T4, T5, T6, T7, T8, T9, int)> Combine<T1, T2, T3, T4, T5, T6, T7, T8, T9>(
+                        this Result<(T1, T2, T3, T4, T5, T6, T7, T8, T9)> result,
+                        int value)
+                        => default;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<CombineLimitAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
     public async Task Combine_2Elements_NoDiagnostic()
     {
         // Simple 2-element combine — well within limit
