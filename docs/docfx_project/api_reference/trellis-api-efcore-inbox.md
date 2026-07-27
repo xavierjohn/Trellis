@@ -105,6 +105,8 @@ public static IServiceCollection AddTrellisInbox<TContext>(
 
 - Runs `configure`, calls `InboxOptions.Validate()` (throws if `ConsumerId` is blank), and registers the validated `InboxOptions` as a singleton, `TimeProvider.System` (via `TryAdd`), the scoped `IInboxStore` → `EfInboxStore<TContext>`, and the singleton `IInboxDispatcher` → `InboxDispatcher<TContext>`.
 - `configure` is **required** (not optional) because `ConsumerId` has no safe default.
+- **Repeated calls accumulate configuration.** Each call applies its `configure` callback on top of the already-registered `InboxOptions` instance and re-runs `Validate()`, so a later callback wins per setting rather than being silently discarded by `TryAdd`. Configuration is applied to a clone and committed only after `Validate()` succeeds, so a rejected callback leaves the container's options untouched.
+- **Do not register `InboxOptions` yourself via a factory or implementation type.** The helper layers onto the *last* `InboxOptions` descriptor, which is the one the container resolves. If that descriptor is a factory or type registration it cannot be cloned, so the call throws `InvalidOperationException` rather than silently configuring an instance the dispatcher would never receive.
 - The dispatcher is a singleton that opens a fresh DI scope per `DispatchAsync`; the store and handlers are scoped, so each dispatch gets its own `TContext` and transaction.
 
 This is the service-collection half only. Pair with `AddTrellisInbox(ModelBuilder)` and a transport adapter that calls `IInboxDispatcher`.

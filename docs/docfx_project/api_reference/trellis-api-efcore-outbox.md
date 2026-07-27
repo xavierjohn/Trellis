@@ -100,8 +100,9 @@ public static IServiceCollection AddTrellisOutbox<TContext>(
 ```
 
 - Registers `OutboxRelay<TContext>` as an `IHostedService`, the (configured) `OutboxOptions` as a singleton, and `TimeProvider.System` if no `TimeProvider` is already registered.
-- `OutboxOptions` and `TimeProvider` are added with `TryAdd`, so a single shared `OutboxOptions` instance backs all relays in the container. Configure the outbox for one `DbContext` per composition (the `UseOutbox` slot enforces this).
-- Idempotent on the hosted service only in the sense that calling it twice for the same `TContext` registers two relays — prefer the `UseOutbox<TContext>()` builder slot, which fails fast on a duplicate.
+- `TimeProvider` is added with `TryAdd`. A single shared `OutboxOptions` instance backs all relays in the container. Configure the outbox for one `DbContext` per composition (the `UseOutbox` slot enforces this).
+- **Repeated calls accumulate configuration.** `AddHostedService` dedupes by service + implementation type, so calling this twice for the same `TContext` yields exactly one relay. Each call applies its `configure` callback on top of the already-registered `OutboxOptions` instance and re-runs `Validate()`, so a later callback wins per setting rather than being silently discarded. Configuration is applied to a clone and committed only after `Validate()` succeeds, so a rejected callback leaves the container's options untouched. Prefer the `UseOutbox<TContext>()` builder slot, which fails fast on a duplicate.
+- **Do not register `OutboxOptions` yourself via a factory or implementation type.** The helper layers onto the *last* `OutboxOptions` descriptor, which is the one the container resolves. If that descriptor is a factory or type registration it cannot be cloned, so passing a `configure` callback throws `InvalidOperationException` rather than silently configuring an instance the relay would never receive. Calling `AddTrellisOutbox<TContext>()` with no callback leaves your registration intact.
 
 This is the service-collection half only. Pair with `AddTrellisOutbox(ModelBuilder)` and `AddTrellisOutboxInterceptor(DbContextOptionsBuilder)`.
 

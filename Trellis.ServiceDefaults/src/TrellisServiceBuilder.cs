@@ -350,6 +350,97 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// AOT-safe per-command registration for <b>indirect</b> resource authorization: commands that
+    /// implement <see cref="IAuthorizeResourceVia{TOwner}"/> and authorize against an owner reached
+    /// by a single hop from the leaf resource the command identifies. This is the via-command
+    /// counterpart to <see cref="UseResourceAuthorization{TMessage, TResource, TResponse}()"/>,
+    /// which only covers direct <see cref="IAuthorizeResource{TResource}"/> commands. Implies
+    /// <see cref="UseMediator"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The consumer owns the loaders: register <c>SharedResourceLoaderById&lt;TLeaf, TLeafId&gt;</c>,
+    /// <c>SharedResourceLoaderById&lt;TOwner, TOwnerId&gt;</c>, and an
+    /// <see cref="IResourceLoader{TMessage, TResource}"/> for the leaf. The behavior fails fast at
+    /// request time when any is missing rather than masking the gap as a 403.
+    /// </para>
+    /// <para>
+    /// Multi-hop chains, plural-terminal fan-out, and hand-built shapes use the
+    /// <see cref="UseRelatedResourceAuthorization{TMessage, TLeaf, TOwner, TResponse}(ResolvedAuthorizationPath)"/>
+    /// overload instead.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TMessage">The command type implementing <see cref="IAuthorizeResourceVia{TOwner}"/>.</typeparam>
+    /// <typeparam name="TLeaf">The leaf resource type the command identifies.</typeparam>
+    /// <typeparam name="TLeafId">The leaf resource identifier type.</typeparam>
+    /// <typeparam name="TOwner">The owner resource type authorization is evaluated against.</typeparam>
+    /// <typeparam name="TOwnerId">The owner resource identifier type.</typeparam>
+    /// <typeparam name="TResponse">The command's response type.</typeparam>
+    /// <param name="extractOwnerId">
+    /// Delegate that, given a loaded <typeparamref name="TLeaf"/>, returns the
+    /// <typeparamref name="TOwnerId"/> identifying the owner to authorize against. Returning
+    /// <see langword="null"/> short-circuits authorization to <see cref="Error.Forbidden"/>.
+    /// </param>
+    /// <returns>The builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="extractOwnerId"/> is null.</exception>
+    public TrellisServiceBuilder UseRelatedResourceAuthorization<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage,
+        TLeaf,
+        TLeafId,
+        TOwner,
+        TOwnerId,
+        TResponse>(Func<TLeaf, TOwnerId?> extractOwnerId)
+        where TMessage : IAuthorizeResourceVia<TOwner>, IIdentifyResource<TLeaf, TLeafId>, IMessage
+        where TLeaf : class
+        where TOwner : class
+        where TOwnerId : notnull
+        where TResponse : IResult, IFailureFactory<TResponse>
+    {
+        ArgumentNullException.ThrowIfNull(extractOwnerId);
+
+        _useResourceAuthorization = true;
+        _useMediator = true;
+        _typedResourceAuthorizationRegistrations.Add(services =>
+            services.AddRelatedResourceAuthorization<TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse>(extractOwnerId));
+        return this;
+    }
+
+    /// <summary>
+    /// AOT-safe per-command registration for indirect resource authorization using a fully-built
+    /// <see cref="ResolvedAuthorizationPath"/>. Use this when the single-hop overload is
+    /// insufficient — multi-hop chains, plural-terminal fan-out, or composite shapes built by hand.
+    /// Implies <see cref="UseMediator"/>.
+    /// </summary>
+    /// <typeparam name="TMessage">The command type implementing <see cref="IAuthorizeResourceVia{TOwner}"/>.</typeparam>
+    /// <typeparam name="TLeaf">The leaf resource type.</typeparam>
+    /// <typeparam name="TOwner">The owner resource type.</typeparam>
+    /// <typeparam name="TResponse">The command's response type.</typeparam>
+    /// <param name="path">
+    /// The resolved path. Its <see cref="ResolvedAuthorizationPath.MessageType"/>,
+    /// <see cref="ResolvedAuthorizationPath.LeafType"/>, and
+    /// <see cref="ResolvedAuthorizationPath.OwnerType"/> must agree with the generic arguments.
+    /// </param>
+    /// <returns>The builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="path"/> is null.</exception>
+    public TrellisServiceBuilder UseRelatedResourceAuthorization<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage,
+        TLeaf,
+        TOwner,
+        TResponse>(ResolvedAuthorizationPath path)
+        where TMessage : IAuthorizeResourceVia<TOwner>, IMessage
+        where TLeaf : class
+        where TResponse : IResult, IFailureFactory<TResponse>
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        _useResourceAuthorization = true;
+        _useMediator = true;
+        _typedResourceAuthorizationRegistrations.Add(services =>
+            services.AddRelatedResourceAuthorization<TMessage, TLeaf, TOwner, TResponse>(path));
+        return this;
+    }
+
+    /// <summary>
     /// Registers <see cref="ClaimsActorProvider"/> as the scoped actor provider.
     /// </summary>
     public TrellisServiceBuilder UseClaimsActorProvider(Action<ClaimsActorOptions>? configure = null)

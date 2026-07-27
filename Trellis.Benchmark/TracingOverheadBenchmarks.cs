@@ -11,12 +11,23 @@ using Trellis;
 /// extension's using var activity = ActivitySource.StartActivity(...)).
 /// </summary>
 /// <remarks>
-/// Four cells across (ListenerOn=false/true) × (Depth=1/5/10) measure the
+/// Six cells across (ListenerOn=false/true) × (Depth=1/5/10) measure the
 /// per-call cost both when no consumer has registered a listener (the production
 /// default) and when an OpenTelemetry listener is sampling everything (worst case).
-/// An ambient Activity.Current is always installed via the BenchAmbient source so
-/// the constructor side-effect is exercised on every Result allocation regardless of
-/// whether the Trellis.Core source itself has a listener.
+/// <para>
+/// An ambient Activity.Current is always installed via the BenchAmbient source, matching
+/// the typical ASP.NET case where a request activity is active. BenchAmbient is deliberately
+/// <b>not</b> a Trellis-owned source, so it measures the cost of the source-ownership guard
+/// in <c>Result&lt;T&gt;.LogActivityStatus()</c> rejecting a foreign ambient span — which is
+/// exactly what happens on every Result allocation inside a request. The guard exists so a
+/// Result construction cannot stamp status onto the caller's request span.
+/// </para>
+/// <para>
+/// The guarded <c>SetStatus</c> / <c>SetTag</c> writes themselves are exercised by the chain
+/// benchmarks when ListenerOn=true: Bind/Map/Tap start a Trellis.Core ROP activity, so Results
+/// constructed inside the chain see a Trellis-owned Activity.Current and take the write path.
+/// JustOk runs outside any ROP activity and therefore measures constructor + guard rejection only.
+/// </para>
 /// </remarks>
 [MemoryDiagnoser]
 [ShortRunJob]
@@ -28,8 +39,9 @@ public class TracingOverheadBenchmarks
     static TracingOverheadBenchmarks()
     {
         // Always-on listener for the BenchAmbient source ensures Activity.Current is non-null
-        // during all benchmark runs so the Result<T> constructor's SetStatus side effect
-        // actually does work (matching the typical ASP.NET case where a request activity is active).
+        // during all benchmark runs, matching the typical ASP.NET case where a request activity
+        // is active. BenchAmbient is not a Trellis-owned source, so Result<T>.LogActivityStatus()
+        // takes its guard-rejection path — the cost paid on every Result allocation in a request.
         var ambientListener = new ActivityListener
         {
             ShouldListenTo = src => src.Name == "BenchAmbient",
@@ -57,7 +69,7 @@ public class TracingOverheadBenchmarks
         _success = Result.Ok(42);
         _failure = Result.Fail<int>(new Error.Unexpected("benchmark"));
 
-        // Ambient activity ensures the Result<T> constructor's SetStatus path is exercised.
+        // Ambient activity models a live request span; see the class remarks for what it exercises.
         _ambient = AmbientSource.StartActivity("bench-ambient");
 
         if (ListenerOn)
@@ -80,7 +92,7 @@ public class TracingOverheadBenchmarks
         _ambient?.Dispose();
     }
 
-    /// <summary>Just constructs Results — no extensions. Measures pure constructor cost (incl. Activity side-effect).</summary>
+    /// <summary>Just constructs Results — no extensions. Measures constructor cost plus the ambient-source guard rejection.</summary>
     [Benchmark]
     public Result<int> JustOk()
     {

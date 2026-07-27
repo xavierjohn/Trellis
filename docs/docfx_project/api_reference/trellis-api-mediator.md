@@ -754,6 +754,8 @@ public static IServiceCollection AddRelatedResourceAuthorization<TMessage, TLeaf
     where TResponse : IResult, IFailureFactory<TResponse>
 ```
 
+Both `AddRelatedResourceAuthorization` overloads have matching `TrellisServiceBuilder` slots — `UseRelatedResourceAuthorization<TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse>(extractOwnerId)` and `UseRelatedResourceAuthorization<TMessage, TLeaf, TOwner, TResponse>(path)` — so AOT/trim consumers can wire via-commands through the builder instead of dropping to the service collection. See [trellis-api-servicedefaults.md](trellis-api-servicedefaults.md#trellisservicebuilder).
+
 ### Trellis.Mediator.DomainEventDispatchServiceCollectionExtensions
 
 ```csharp

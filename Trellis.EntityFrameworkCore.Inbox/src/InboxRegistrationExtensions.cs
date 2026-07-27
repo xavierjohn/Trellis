@@ -29,16 +29,55 @@ public static class InboxServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var options = new InboxOptions();
+        // Configure and validate a copy so a failed Validate() cannot leave the container holding a
+        // half-applied options instance; the new state is committed only after it is known good.
+        var existingIndex = FindLastOptionsIndex(services);
+        if (existingIndex >= 0 && services[existingIndex].ImplementationInstance is not InboxOptions)
+        {
+            // A consumer owns the InboxOptions registration via a factory or implementation type, so
+            // this helper cannot layer onto it. Applying configure to a fresh instance would register a
+            // second descriptor the container never resolves, silently dropping the caller's ConsumerId.
+            throw new InvalidOperationException(
+                "InboxOptions is already registered by a factory or implementation type, so AddTrellisInbox " +
+                "cannot apply its configure callback — the configured instance would not be the one resolved " +
+                "for the dispatcher. Remove the custom InboxOptions registration and configure it here.");
+        }
+
+        var options = existingIndex < 0
+            ? new InboxOptions()
+            : ((InboxOptions)services[existingIndex].ImplementationInstance!).Clone();
+
         configure(options);
         options.Validate();
 
-        services.TryAddSingleton(options);
+        if (existingIndex < 0)
+            services.AddSingleton(options);
+        else
+            services[existingIndex] = ServiceDescriptor.Singleton(options);
+
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<IInboxStore, EfInboxStore<TContext>>();
         services.TryAddSingleton<IInboxDispatcher, InboxDispatcher<TContext>>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Returns the index of the <b>last</b> unkeyed <see cref="InboxOptions"/> descriptor, or <c>-1</c>
+    /// when none is registered. The last one is what <c>GetRequiredService&lt;InboxOptions&gt;()</c>
+    /// resolves, so layering a repeated <c>configure</c> callback onto any earlier descriptor would
+    /// configure an instance the dispatcher never sees. Keyed descriptors are skipped: they do not take
+    /// part in unkeyed resolution, and reading <c>ImplementationInstance</c> on one throws.
+    /// </summary>
+    private static int FindLastOptionsIndex(IServiceCollection services)
+    {
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            if (services[i].ServiceType == typeof(InboxOptions) && !services[i].IsKeyedService)
+                return i;
+        }
+
+        return -1;
     }
 }
 

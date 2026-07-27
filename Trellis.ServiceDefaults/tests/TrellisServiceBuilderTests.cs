@@ -1,6 +1,7 @@
 ﻿namespace Trellis.ServiceDefaults.Tests;
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -571,7 +572,198 @@ public class TrellisServiceBuilderTests
         }
     }
 
+    [Fact]
+    public void UseRelatedResourceAuthorizationTyped_RegistersClosedGenericViaBehaviorWithoutScanning()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, string, ProtectedTenant, string, Result<string>>(
+                invoice => invoice.TenantId));
+
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderViaTenantCommand, Result<string>>) &&
+            d.ImplementationType == typeof(ResourceAuthorizationViaBehavior<UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, ProtectedTenant, Result<string>>));
+    }
+
+    [Fact]
+    public void UseRelatedResourceAuthorizationTyped_RegistersV4AccessorForTheLeaf()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, string, ProtectedTenant, string, Result<string>>(
+                invoice => invoice.TenantId));
+
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IAuthorizedResource<UpdateProtectedOrderViaTenantCommand, ProtectedInvoice>),
+            "handlers inject the LEAF (the mutation target), not the owner authorization was evaluated against");
+    }
+
+    [Fact]
+    public void UseRelatedResourceAuthorizationTyped_CalledTwice_RegistersBehaviorOnce()
+    {
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, string, ProtectedTenant, string, Result<string>>(
+                invoice => invoice.TenantId)
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, string, ProtectedTenant, string, Result<string>>(
+                invoice => invoice.TenantId));
+
+        services.Count(d =>
+            d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderViaTenantCommand, Result<string>>) &&
+            d.ImplementationType == typeof(ResourceAuthorizationViaBehavior<UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, ProtectedTenant, Result<string>>))
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public void UseRelatedResourceAuthorizationPath_RegistersClosedGenericViaBehavior()
+    {
+        var services = new ServiceCollection();
+        var path = BuildTenantPath();
+
+        services.AddTrellis(options => options
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, ProtectedTenant, Result<string>>(path));
+
+        services.Should().ContainSingle(d =>
+            d.ServiceType == typeof(IPipelineBehavior<UpdateProtectedOrderViaTenantCommand, Result<string>>) &&
+            d.ImplementationType == typeof(ResourceAuthorizationViaBehavior<UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, ProtectedTenant, Result<string>>));
+    }
+
+    [Fact]
+    public void UseRelatedResourceAuthorization_NullExtractOwnerId_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, string, ProtectedTenant, string, Result<string>>(
+                null!));
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void UseRelatedResourceAuthorization_NullPath_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellis(options => options
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, ProtectedTenant, Result<string>>(null!));
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void UseRelatedResourceAuthorization_DoesNotPerturbPipelineOrder_WhetherRegisteredBeforeOrAfterUnitOfWork()
+    {
+        // Registration-API checklist requirement: the via behavior must land in the same
+        // canonical position regardless of where the slot is chained relative to
+        // UseEntityFrameworkUnitOfWork, and TransactionalCommandBehavior must stay innermost.
+        static List<Type?> PipelineOf(Action<TrellisServiceBuilder> compose)
+        {
+            var services = new ServiceCollection();
+            services.AddTrellis(compose);
+            return services
+                .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
+                .Select(d => d.ImplementationType)
+                .ToList();
+        }
+
+        static TrellisServiceBuilder AddVia(TrellisServiceBuilder builder) => builder
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, string, ProtectedTenant, string, Result<string>>(
+                invoice => invoice.TenantId);
+
+        var viaBeforeUow = PipelineOf(o => AddVia(o).UseEntityFrameworkUnitOfWork<TestDbContext>());
+        var viaAfterUow = PipelineOf(o => AddVia(o.UseEntityFrameworkUnitOfWork<TestDbContext>()));
+        var withoutVia = PipelineOf(o => o.UseEntityFrameworkUnitOfWork<TestDbContext>());
+
+        viaBeforeUow.Should().Equal(viaAfterUow);
+        viaBeforeUow.Should().Equal(withoutVia,
+            "the via behavior is registered as a closed generic, so it must not appear in the open-generic pipeline list");
+        viaBeforeUow.Should().EndWith(typeof(TransactionalCommandBehavior<,>));
+    }
+
+    [Fact]
+    public void UseRelatedResourceAuthorization_ClosedViaBehaviorPrecedesValidation_WhetherRegisteredBeforeOrAfterUnitOfWork()
+    {
+        static (int Via, int Validation) IndicesOf(Action<TrellisServiceBuilder> compose)
+        {
+            var services = new ServiceCollection();
+            services.AddTrellis(compose);
+
+            var via = services.ToList().FindIndex(d =>
+                d.ImplementationType == typeof(ResourceAuthorizationViaBehavior<UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, ProtectedTenant, Result<string>>));
+            var validation = services.ToList().FindIndex(d =>
+                d.ServiceType == typeof(IPipelineBehavior<,>) &&
+                d.ImplementationType == typeof(ValidationBehavior<,>));
+
+            return (via, validation);
+        }
+
+        static TrellisServiceBuilder AddVia(TrellisServiceBuilder builder) => builder
+            .UseFluentValidation()
+            .UseRelatedResourceAuthorization<
+                UpdateProtectedOrderViaTenantCommand, ProtectedInvoice, string, ProtectedTenant, string, Result<string>>(
+                invoice => invoice.TenantId);
+
+        var before = IndicesOf(o => AddVia(o).UseEntityFrameworkUnitOfWork<TestDbContext>());
+        var after = IndicesOf(o => AddVia(o.UseEntityFrameworkUnitOfWork<TestDbContext>()));
+
+        before.Via.Should().BeGreaterThanOrEqualTo(0);
+        before.Validation.Should().BeGreaterThanOrEqualTo(0);
+        before.Via.Should().BeLessThan(before.Validation,
+            "authorization must run before validation so an unauthorized caller cannot probe validation messages");
+        after.Via.Should().BeLessThan(after.Validation);
+    }
+
+    private static ResolvedAuthorizationPath BuildTenantPath() =>
+        new(
+            messageType: typeof(UpdateProtectedOrderViaTenantCommand),
+            leafType: typeof(ProtectedInvoice),
+            ownerType: typeof(ProtectedTenant),
+            hops:
+            [
+                new ResolvedAuthorizationHop(
+                    fromType: typeof(ProtectedInvoice),
+                    toType: typeof(ProtectedTenant),
+                    toIdType: typeof(string),
+                    extractIds: src => [((ProtectedInvoice)src).TenantId],
+                    loadAsync: (sp, id, ct) =>
+                        Task.FromResult(HopLoadResult.Success(new ProtectedTenant((string)id, "owner-1"))),
+                    isPlural: false),
+            ]);
+
     public sealed record ProtectedOrder(string Id, string OwnerId);
+
+    public sealed record ProtectedTenant(string Id, string OwnerId);
+
+    public sealed record ProtectedInvoice(string Id, string TenantId)
+        : IIdentifyRelatedResource<ProtectedTenant, string>
+    {
+        public string GetRelatedResourceId() => TenantId;
+    }
+
+    public sealed record UpdateProtectedOrderViaTenantCommand(string ResourceId)
+        : ICommand<Result<string>>,
+          IIdentifyResource<ProtectedInvoice, string>,
+          IAuthorizeResourceVia<ProtectedTenant>
+    {
+        public string GetResourceId() => ResourceId;
+
+        public IResult Authorize(Actor actor, IReadOnlyList<ProtectedTenant> owners) =>
+            owners.Any(t => t.OwnerId == actor.Id)
+                ? Result.Ok()
+                : Result.Fail(new Error.Forbidden("protected-tenant.owner") { Detail = "Only the tenant owner can update the order." });
+    }
 
     public sealed record UpdateProtectedOrderCommand(string ResourceId)
         : ICommand<Result<string>>, IAuthorizeResource<ProtectedOrder>
