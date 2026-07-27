@@ -150,7 +150,7 @@ public class AggregateETagTests : IDisposable
     }
 
     [Fact]
-    public async Task SavedChangesAsync_CanceledToken_ThrowsWithoutOriginalValueSync()
+    public async Task SavedChangesAsync_CanceledToken_StillSyncsOriginalValuesBecauseCommitAlreadySucceeded()
     {
         var ct = TestContext.Current.CancellationToken;
         var interceptor = new AggregateETagInterceptor();
@@ -159,7 +159,6 @@ public class AggregateETagTests : IDisposable
         await _context.SaveChangesResultAsync(ct);
         var entry = _context.Entry(aggregate);
         var etagProperty = entry.Property(nameof(IAggregate.ETag));
-        var originalETag = etagProperty.OriginalValue;
         etagProperty.CurrentValue = "pending-etag";
         etagProperty.IsModified = true;
         var eventData = new SaveChangesCompletedEventData(null!, (_, _) => string.Empty, _context, 1);
@@ -168,8 +167,35 @@ public class AggregateETagTests : IDisposable
 
         var act = () => interceptor.SavedChangesAsync(eventData, 1, cts.Token).AsTask();
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        etagProperty.OriginalValue.Should().Be(originalETag, "the pre-canceled async hook must not sync the current ETag");
+        await act.Should().NotThrowAsync();
+        etagProperty.OriginalValue.Should().Be("pending-etag", "the post-commit hook must sync the current ETag even when cancellation is requested");
+    }
+
+    [Fact]
+    public async Task SaveChangesResultAsync_PostCommitCancellation_SyncsOriginalValuesSoSubsequentSaveSucceeds()
+    {
+        using var postCommitCancellation = new CancellationTokenSource();
+        var postCommitCancellationInterceptor = new CancelTokenAfterCommitInterceptor(postCommitCancellation);
+        var (context, connection) = ConcurrencyTestDbContext.CreateInMemory(postCommitCancellationInterceptor);
+        using (context)
+        using (connection)
+        {
+            var aggregate = TestAggregate.Create("cancel-saved-2", "Initial");
+            context.TestAggregates.Add(aggregate);
+            await context.SaveChangesResultAsync(TestContext.Current.CancellationToken);
+
+            aggregate.Rename("Updated");
+            postCommitCancellationInterceptor.Enable();
+            var firstResult = await context.SaveChangesResultAsync(acceptAllChangesOnSuccess: false, postCommitCancellation.Token);
+
+            firstResult.IsSuccess.Should().BeTrue("the database commit already succeeded before post-commit cancellation was observed");
+            postCommitCancellation.IsCancellationRequested.Should().BeTrue();
+
+            aggregate.Rename("Updated again");
+            var secondResult = await context.SaveChangesResultAsync(TestContext.Current.CancellationToken);
+
+            secondResult.IsSuccess.Should().BeTrue("the post-commit hook synced OriginalValue before the next save");
+        }
     }
 
     #endregion
@@ -318,10 +344,20 @@ internal class ConcurrencyTestDbContext : DbContext
         var connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
 
-        var options = new DbContextOptionsBuilder<ConcurrencyTestDbContext>()
-            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
-            .AddTrellisInterceptors()
-            .Options;
+        var options = CreateOptions(connection);
+
+        var context = new ConcurrencyTestDbContext(options);
+        context.Database.EnsureCreated();
+
+        return (context, connection);
+    }
+
+    public static (ConcurrencyTestDbContext Context, SqliteConnection Connection) CreateInMemory(CancelTokenAfterCommitInterceptor postCommitCancellationInterceptor)
+    {
+        var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = CreateOptions(connection, postCommitCancellationInterceptor);
 
         var context = new ConcurrencyTestDbContext(options);
         context.Database.EnsureCreated();
@@ -331,14 +367,44 @@ internal class ConcurrencyTestDbContext : DbContext
 
     public static (ConcurrencyTestDbContext Context, IDisposable Noop) CreateFromConnection(SqliteConnection connection)
     {
-        var options = new DbContextOptionsBuilder<ConcurrencyTestDbContext>()
-            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
-            .AddTrellisInterceptors()
-            .Options;
+        var options = CreateOptions(connection);
 
         var context = new ConcurrencyTestDbContext(options);
         return (context, context);
     }
+
+    private static DbContextOptions<ConcurrencyTestDbContext> CreateOptions(
+        SqliteConnection connection,
+        CancelTokenAfterCommitInterceptor? postCommitCancellationInterceptor = null)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<ConcurrencyTestDbContext>()
+            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning();
+
+        if (postCommitCancellationInterceptor is not null)
+            optionsBuilder.AddInterceptors(postCommitCancellationInterceptor);
+
+        return optionsBuilder
+            .AddTrellisInterceptors()
+            .Options;
+    }
 }
 
 #endregion
+
+internal sealed class CancelTokenAfterCommitInterceptor(CancellationTokenSource cancellation) : SaveChangesInterceptor
+{
+    private bool _enabled;
+
+    public void Enable() => _enabled = true;
+
+    public override ValueTask<int> SavedChangesAsync(
+        SaveChangesCompletedEventData eventData,
+        int result,
+        CancellationToken cancellationToken = default)
+    {
+        if (_enabled)
+            cancellation.Cancel();
+
+        return base.SavedChangesAsync(eventData, result, cancellationToken);
+    }
+}
