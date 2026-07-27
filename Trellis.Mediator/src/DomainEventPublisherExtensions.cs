@@ -20,8 +20,10 @@ public static class DomainEventPublisherExtensions
     /// </summary>
     /// <param name="publisher">The publisher used to fan out each event to its registered handlers.</param>
     /// <param name="aggregate">The aggregate whose <see cref="IAggregate.UncommittedEvents"/> are dispatched.</param>
-    /// <param name="cancellationToken">A token to observe. Cancellation propagates before
-    /// <see cref="IChangeTracking.AcceptChanges"/> so undispatched events stay on the aggregate.</param>
+    /// <param name="cancellationToken">Accepted for signature compatibility but deliberately not
+    /// observed. This helper is <b>post-commit only</b>, so honoring cancellation here would strand
+    /// an already-durable write with a partially published event set. Retained rather than removed
+    /// to avoid a source-breaking change for existing callers.</param>
     /// <returns>A <see cref="Task"/> that completes once every snapshotted event has been published and
     /// <see cref="IChangeTracking.AcceptChanges"/> has cleared the aggregate's pending list.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="publisher"/> or <paramref name="aggregate"/> is null.</exception>
@@ -31,10 +33,6 @@ public static class DomainEventPublisherExtensions
     /// reference equality), so any mutation of the pending list during dispatch trips it.
     /// <see cref="IChangeTracking.AcceptChanges"/> is not called in this case so the caller can
     /// inspect the aggregate's current pending events.</exception>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/>
-    /// is canceled. Dispatched events stay dispatched (handlers must be idempotent for retry);
-    /// <see cref="IChangeTracking.AcceptChanges"/> is not called so undispatched events remain on
-    /// the aggregate.</exception>
     /// <remarks>
     /// <para>
     /// <b>POST-COMMIT ONLY.</b> Domain events must be published only after the underlying unit of
@@ -82,8 +80,7 @@ public static class DomainEventPublisherExtensions
         var snapshot = aggregate.UncommittedEvents().ToArray();
         foreach (var domainEvent in snapshot)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+            await publisher.PublishAsync(domainEvent, CancellationToken.None).ConfigureAwait(false);
         }
 
         var offender = DomainEventCascadeDetector.Detect(aggregate, snapshot);

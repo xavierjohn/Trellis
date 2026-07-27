@@ -362,12 +362,14 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
         responseAggregate.UncommittedEvents().Should().HaveCount(1);
     }
 
+    /// <summary>
+    /// Tracked dispatch runs after <c>TransactionalCommandBehavior</c> commits (the registration
+    /// re-appends the transactional behavior as innermost), so a mid-fan-out cancellation must not
+    /// leave the committed aggregates with only some of their events published.
+    /// </summary>
     [Fact]
-    public async Task Cancellation_during_dispatch_propagates_and_skips_accept_changes()
+    public async Task Cancellation_during_dispatch_completes_fan_out_and_accepts_changes()
     {
-        // Cancellation requested between events: the loop throws above AcceptChanges, so
-        // already-dispatched events stay on the publisher record and undispatched events
-        // remain on the aggregate. Handlers must be idempotent for the retry.
         var aggregate = new TestAggregate(Id1);
         var first = new TestEventA("first", DateTimeOffset.UtcNow);
         var second = new TestEventB(2, DateTimeOffset.UtcNow);
@@ -388,15 +390,35 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
         };
         var behavior = NewBehavior<OutcomeDtoCommand, Result<OutcomeDto>>(source, publisher);
 
-        var act = async () => await behavior.Handle(
+        var response = await behavior.Handle(
             new OutcomeDtoCommand("x"),
             (_, _) => new ValueTask<Result<OutcomeDto>>(Result.Ok(new OutcomeDto("done"))),
             cts.Token);
 
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        publisher.Published.Should().Equal(first, second);
-        aggregate.UncommittedEvents().Should().Equal(new IDomainEvent[] { first, second, third },
-            "cancellation propagates above AcceptChanges, so undispatched events remain on the aggregate.");
+        response.IsSuccess.Should().BeTrue();
+        publisher.Published.Should().Equal(first, second, third);
+        aggregate.UncommittedEvents().Should().BeEmpty("the full fan-out completed, so AcceptChanges runs");
+    }
+
+    [Fact]
+    public async Task Dispatch_does_not_propagate_callers_token_to_handlers()
+    {
+        var aggregate = new TestAggregate(Id1);
+        aggregate.RaiseEvent(new TestEventA("payload", DateTimeOffset.UtcNow));
+
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        var source = new FakeTrackedAggregateSource(aggregate);
+        var publisher = new RecordingPublisher();
+        var behavior = NewBehavior<OutcomeDtoCommand, Result<OutcomeDto>>(source, publisher);
+
+        await behavior.Handle(
+            new OutcomeDtoCommand("x"),
+            (_, _) => new ValueTask<Result<OutcomeDto>>(Result.Ok(new OutcomeDto("done"))),
+            cts.Token);
+
+        publisher.ObservedTokens.Should().ContainSingle()
+            .Which.CanBeCanceled.Should().BeFalse("post-commit dispatch passes CancellationToken.None so handlers always run to completion");
     }
 
     [Fact]
@@ -487,6 +509,7 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
     private sealed class RecordingPublisher : IDomainEventPublisher
     {
         public List<IDomainEvent> Published { get; } = [];
+        public List<CancellationToken> ObservedTokens { get; } = [];
         public Func<IDomainEvent, Task>? OnPublishingAsync { get; set; }
         public Action<IDomainEvent>? OnPublishing { get; set; }
 
@@ -498,6 +521,7 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
             if (OnPublishingAsync is not null)
                 await OnPublishingAsync(domainEvent).ConfigureAwait(false);
             Published.Add(domainEvent);
+            ObservedTokens.Add(cancellationToken);
         }
     }
 }

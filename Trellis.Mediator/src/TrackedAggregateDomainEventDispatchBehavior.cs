@@ -122,7 +122,7 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
         TrackedAggregateDispatchReentrancyGuard.IsInDispatch = true;
         try
         {
-            await DispatchAllAsync(aggregates, cancellationToken).ConfigureAwait(false);
+            await DispatchAllAsync(aggregates).ConfigureAwait(false);
         }
         finally
         {
@@ -132,7 +132,7 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
         return response;
     }
 
-    private async Task DispatchAllAsync(IAggregate[] aggregates, CancellationToken cancellationToken)
+    private async Task DispatchAllAsync(IAggregate[] aggregates)
     {
         var snapshots = new (IAggregate Aggregate, IDomainEvent[] Events)[aggregates.Length];
         for (var i = 0; i < aggregates.Length; i++)
@@ -142,8 +142,10 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
         {
             foreach (var domainEvent in events)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await _publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+                // Post-commit: the registration re-appends TransactionalCommandBehavior as the
+                // innermost behavior, so these aggregates are already durable. Passing the
+                // caller's token would let a client disconnect abandon part of the fan-out.
+                await _publisher.PublishAsync(domainEvent, CancellationToken.None).ConfigureAwait(false);
             }
         }
 

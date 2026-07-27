@@ -27,8 +27,9 @@ using Microsoft.Extensions.Logging;
 /// not raise additional events on the same aggregate. If the aggregate's pending-event list
 /// no longer exactly matches the snapshot after dispatch, <see cref="DomainEventHandlerCascadedException"/>
 /// is thrown and <see cref="IChangeTracking.AcceptChanges"/> is not called so the current
-/// aggregate state remains available for inspection. Cancellation propagates above the
-/// <see cref="IChangeTracking.AcceptChanges"/> call so undispatched events stay on the aggregate.
+/// aggregate state remains available for inspection. Dispatch runs after the transaction has
+/// committed and is therefore not cancellable: the caller's token is not observed and handlers
+/// receive <see cref="CancellationToken.None"/>.
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The command type. Must implement <see cref="ICommand{TResponse}"/>.</typeparam>
@@ -95,8 +96,11 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
         var snapshot = aggregate.UncommittedEvents().ToArray();
         foreach (var domainEvent in snapshot)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await _publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+            // Post-commit: TransactionalCommandBehavior is re-appended as the innermost behavior
+            // by AddDomainEventDispatch, so next() has already committed. Honoring the caller's
+            // token here — or handing it to a handler that honors it — would strand a durable
+            // write with only part of its fan-out published, which no retry can repair.
+            await _publisher.PublishAsync(domainEvent, CancellationToken.None).ConfigureAwait(false);
         }
 
         var offender = DomainEventCascadeDetector.Detect(aggregate, snapshot);
