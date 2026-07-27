@@ -29,16 +29,60 @@ public static class OutboxServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var options = new OutboxOptions();
-        configure?.Invoke(options);
-        options.Validate();
+        // Configure and validate a copy so a failed Validate() cannot leave the container holding a
+        // half-applied options instance; the new state is committed only after it is known good.
+        var existingIndex = FindLastOptionsIndex(services);
+        if (existingIndex >= 0 && services[existingIndex].ImplementationInstance is not OutboxOptions)
+        {
+            // A consumer owns the OutboxOptions registration via a factory or implementation type, so
+            // this helper cannot layer onto it. Applying configure to a fresh instance would register a
+            // second descriptor the container never resolves, silently dropping the caller's tuning.
+            if (configure is not null)
+                throw new InvalidOperationException(
+                    "OutboxOptions is already registered by a factory or implementation type, so " +
+                    "AddTrellisOutbox cannot apply its configure callback — the configured instance would " +
+                    "not be the one resolved for the relay. Either remove the custom OutboxOptions " +
+                    "registration and configure it here, or call AddTrellisOutbox<TContext>() without a " +
+                    "configure callback and keep owning the options registration.");
+        }
+        else
+        {
+            var options = existingIndex < 0
+                ? new OutboxOptions()
+                : ((OutboxOptions)services[existingIndex].ImplementationInstance!).Clone();
 
-        services.TryAddSingleton(options);
+            configure?.Invoke(options);
+            options.Validate();
+
+            if (existingIndex < 0)
+                services.AddSingleton(options);
+            else
+                services[existingIndex] = ServiceDescriptor.Singleton(options);
+        }
+
         services.TryAddSingleton(TimeProvider.System);
         services.AddHostedService<OutboxRelay<TContext>>();
         services.TryAddScoped<IOutboxMaintenance, OutboxMaintenance<TContext>>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Returns the index of the <b>last</b> unkeyed <see cref="OutboxOptions"/> descriptor, or <c>-1</c>
+    /// when none is registered. The last one is what <c>GetRequiredService&lt;OutboxOptions&gt;()</c>
+    /// resolves, so layering a repeated <c>configure</c> callback onto any earlier descriptor would
+    /// configure an instance the relay never sees. Keyed descriptors are skipped: they do not take part
+    /// in unkeyed resolution, and reading <c>ImplementationInstance</c> on one throws.
+    /// </summary>
+    private static int FindLastOptionsIndex(IServiceCollection services)
+    {
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            if (services[i].ServiceType == typeof(OutboxOptions) && !services[i].IsKeyedService)
+                return i;
+        }
+
+        return -1;
     }
 }
 

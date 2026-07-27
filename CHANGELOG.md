@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — builder slot for indirect (via) resource authorization
+
+`TrellisServiceBuilder` gains `UseRelatedResourceAuthorization<TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse>(extractOwnerId)`
+and `UseRelatedResourceAuthorization<TMessage, TLeaf, TOwner, TResponse>(path)`, mirroring the two existing
+`services.AddRelatedResourceAuthorization(...)` overloads. Previously the builder modelled only *direct*
+`IAuthorizeResource<TResource>` commands via `UseResourceAuthorization<TMessage, TResource, TResponse>()`;
+commands using `IAuthorizeResourceVia<TOwner>` had no builder slot. Assembly-scanning consumers were unaffected
+(`AddResourceAuthorization(assemblies)` already discovers via-commands), but AOT/trim consumers following the
+AOT compatibility table found no overload that fit — and because a missing registration means *no* authorization
+behavior runs for that command, the gap failed silently. The new slots register the closed-generic
+`ResourceAuthorizationViaBehavior<,,,>` plus the `IAuthorizedResource<TMessage, TLeaf>` accessor, and are
+order-independent relative to `UseEntityFrameworkUnitOfWork<TContext>()`.
+
+### Fixed — repeated outbox/inbox registration no longer discards later configuration
+
+`AddTrellisOutbox<TContext>(configure)` and `AddTrellisInbox<TContext>(configure)` registered their options with
+`TryAddSingleton`, so a second call's `configure` callback was silently discarded and the first call's
+configuration won. A library that registered the outbox with defaults would silently defeat an application's
+later tuning (or vice versa, depending on call order). Both helpers now apply each `configure` callback on top of
+the already-registered options instance and re-run `Validate()`, so a later callback wins per setting. The update is
+atomic: the callback is applied to a copy and committed only after `Validate()` succeeds, so a rejected registration
+cannot leave the container holding half-applied options. Configuration layers onto the *last* registered options
+descriptor — the one the container actually resolves — and if a consumer owns that registration through a factory or
+implementation type (which cannot be copied), the call now throws `InvalidOperationException` instead of registering a
+second instance that would never reach the relay or dispatcher. The relay itself was already deduplicated —
+`AddHostedService` uses `TryAddEnumerable` — so this never produced duplicate relays; the outbox reference doc
+previously claimed otherwise and has been corrected.
+
 ### Changed — post-commit domain-event dispatch is no longer cancellable
 
 `DomainEventDispatchBehavior<,>`, `TrackedAggregateDomainEventDispatchBehavior<,>`, and the

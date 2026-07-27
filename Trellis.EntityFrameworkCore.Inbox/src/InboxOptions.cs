@@ -17,6 +17,16 @@ public sealed class InboxOptions
     public string ConsumerId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Creates an independent copy so a repeated registration can apply its <c>configure</c> callback
+    /// and validate the result before the new state is committed to the container. Keep in sync with
+    /// the properties above; <c>InboxOptionsCloneTests</c> fails if a property is added and not copied.
+    /// </summary>
+    internal InboxOptions Clone() => new()
+    {
+        ConsumerId = ConsumerId,
+    };
+
+    /// <summary>
     /// Validates the configured values, failing fast at registration so misconfiguration surfaces there
     /// rather than as a runtime error on the first message.
     /// </summary>

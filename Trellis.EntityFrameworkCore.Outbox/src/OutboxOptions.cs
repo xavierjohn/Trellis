@@ -53,6 +53,22 @@ public sealed class OutboxOptions
     public double RetryBackoffJitter { get; set; } = 0.5;
 
     /// <summary>
+    /// Creates an independent copy so a repeated registration can apply its <c>configure</c> callback
+    /// and validate the result before the new state is committed to the container. Keep in sync with
+    /// the properties above; <c>OutboxOptionsCloneTests</c> fails if a property is added and not copied.
+    /// </summary>
+    internal OutboxOptions Clone() => new()
+    {
+        PollInterval = PollInterval,
+        BatchSize = BatchSize,
+        MaxAttempts = MaxAttempts,
+        LeaseDuration = LeaseDuration,
+        RetryBackoff = RetryBackoff,
+        MaxRetryBackoff = MaxRetryBackoff,
+        RetryBackoffJitter = RetryBackoffJitter,
+    };
+
+    /// <summary>
     /// Validates the configured values, failing fast at registration so misconfiguration surfaces there
     /// rather than as a runtime exception inside the relay loop.
     /// </summary>
