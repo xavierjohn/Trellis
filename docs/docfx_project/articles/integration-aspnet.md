@@ -299,8 +299,8 @@ Three options for `201 Created`. Pick by your AOT requirement and the link sourc
 |---|---|---|
 | `Created(string locationLiteral)` | Caller-supplied literal | Yes |
 | `Created(Func<TDomain, string> selector)` | Selector over the domain value | Yes |
-| `CreatedAtRoute(string routeName, Func<TDomain, RouteValueDictionary> routeValues)` | `LinkGenerator.GetUriByName` (resolved at execute time) | Yes |
-| `CreatedAtAction(string actionName, Func<TDomain, RouteValueDictionary> routeValues, string? controllerName = null)` | `LinkGenerator.GetUriByAction` | **No** — `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` |
+| `CreatedAtRoute(string routeName, Func<TDomain, RouteValueDictionary> routeValues)` | Relative path from `LinkGenerator.GetPathByName` (resolved at execute time) | Yes |
+| `CreatedAtAction(string actionName, Func<TDomain, RouteValueDictionary> routeValues, string? controllerName = null)` | Relative path from `LinkGenerator.GetPathByAction` | **No** — `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` |
 
 ```csharp
 app.MapPost("/products", async (CreateProduct cmd, IProductWriter writer, CancellationToken ct) =>

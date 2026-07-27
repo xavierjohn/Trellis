@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — ASP route/action Location headers are now relative paths
+
+`CreatedAtRoute(...)`, `CreatedAtAction(...)`, and `WithLocation(...)` now emit relative `Location` paths from
+ASP.NET Core `LinkGenerator.GetPathByName` / `GetPathByAction` instead of absolute URIs. Relative `Location`
+is explicitly permitted by RFC 9110 §10.2.2, avoids malformed `:///...` values when a request has no public
+scheme/host, avoids leaking internal reverse-proxy or TLS-terminator origins, and matches the existing
+`Result<WriteOutcome<T>>` response path. This is an observable HTTP behavior change for consumers that
+previously received absolute URIs. Consumers that need an absolute `Location` on a 201 should use
+`Created(Func<TDomain, string>)` to build the URI from the domain value, or `Created(string)` with a literal.
+Note that the 200-plus-`Location` path has no literal or selector overload — `WithLocation` is route-based
+only — so it always emits a relative path. Behind proxies, configure `ForwardedHeaders` and build the public
+absolute URI explicitly.
+
 ### Fixed — aggregate ETag post-commit cancellation no longer reports a committed save as canceled
 
 `AggregateETagInterceptor.SavedChangesAsync` now always syncs aggregate ETag `OriginalValue`

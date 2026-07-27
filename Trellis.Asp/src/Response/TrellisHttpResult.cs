@@ -366,8 +366,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
                 {
                     var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
                     var rv = ApplyRouteValueResolvers(_options.RouteValuesSelector!(domain), httpContext);
-                    return lg.GetUriByName(httpContext, _options.RouteName!, rv)
-                        ?? lg.GetPathByName(httpContext, _options.RouteName!, rv);
+                    return lg.GetPathByName(httpContext, _options.RouteName!, rv);
                 }
 
             case LocationKind.Action:
@@ -422,8 +421,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
         var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
         var rv = ApplyRouteValueResolvers(_options.RouteValuesSelector!(domain), httpContext);
-        return lg.GetUriByAction(httpContext, _options.ActionName!, _options.ControllerName, rv)
-            ?? lg.GetPathByAction(httpContext, _options.ActionName!, _options.ControllerName, rv);
+        return lg.GetPathByAction(httpContext, _options.ActionName!, _options.ControllerName, rv);
     }
 
     /// <summary>
