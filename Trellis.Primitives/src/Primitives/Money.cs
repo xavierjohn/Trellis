@@ -302,10 +302,10 @@ public class Money : ValueObject
     /// <summary>
     /// Gets the equality components for value comparison.
     /// </summary>
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Math.Round(Amount, GetDecimalPlaces(Currency));
-        yield return (string)Currency;
+        components.Add(Math.Round(Amount, GetDecimalPlaces(Currency)));
+        components.Add((string)Currency);
     }
 
     /// <summary>

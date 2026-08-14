@@ -672,10 +672,10 @@ public partial class Address : ValueObject
     private static InputPointer Pointer(string? owner, string leaf) =>
         owner is null ? InputPointer.ForProperty(leaf) : new InputPointer($"/{owner}/{leaf}");
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
+        components.Add(Street);
+        components.Add(City);
     }
 }
 

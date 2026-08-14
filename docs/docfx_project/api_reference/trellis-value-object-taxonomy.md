@@ -45,7 +45,7 @@ This section is a **selection guide** — one or two distinguishing facts per ty
 
 ### `ValueObject`
 
-Base for **structured** value objects: override `GetEqualityComponents()` to define identity from multiple fields. Provides structural equality, hashing, and ordering (`IComparable`); yielded components must be `IComparable?` — use `MaybeComponent<T>(...)` to yield an optional field.
+Base for **structured** value objects: override `GetEqualityComponents(ref EqualityComponents)` to define identity from multiple fields. Provides structural equality, hashing, and ordering (`IComparable`); added components must be `IComparable?` — `components.Add(maybe)` (or `MaybeComponent<T>(...)`) adds an optional field.
 
 ### `ScalarValueObject<TSelf, T>`
 

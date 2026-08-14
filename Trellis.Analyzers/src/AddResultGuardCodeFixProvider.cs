@@ -141,9 +141,11 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
 
         // Check if the wrapped statements contain a return statement and there are no statements after
         // If so, add a default return to ensure all code paths return a value
+        var wrappedReturn = statementsToWrap.OfType<ReturnStatementSyntax>().FirstOrDefault();
         var needsDefaultReturn = IsTopLevelFunctionBlock(containingBlock) &&
             !statementsAfterWrapped.Any() &&
-            statementsToWrap.Any(s => s is ReturnStatementSyntax);
+            wrappedReturn != null &&
+            await CanDefaultSatisfyReturnTypeAsync(document, containingBlock, cancellationToken).ConfigureAwait(false);
 
         IEnumerable<StatementSyntax> newStatements = statementsBeforeGuard
             .Append(ifStatement)
@@ -171,6 +173,46 @@ public sealed class AddResultGuardCodeFixProvider : CodeFixProvider
 
     private static bool IsTopLevelFunctionBlock(BlockSyntax block) =>
         block.Parent is MethodDeclarationSyntax or LocalFunctionStatementSyntax or AccessorDeclarationSyntax;
+
+    /// <summary>
+    /// Decides whether a synthesized <c>return default;</c> yields a usable value for the enclosing
+    /// function's return type.
+    /// </summary>
+    /// <remarks>
+    /// For a non-nullable reference return type <c>default</c> is <see langword="null"/>, which either
+    /// trips CS8603 or silently escapes a null the type system claims is impossible. Omitting the
+    /// return instead surfaces CS0161, which cannot be ignored and forces an explicit decision.
+    /// The declared return type is used rather than the return expression's converted type, because
+    /// the latter carries the expression's nullable flow state instead of the declaration's annotation.
+    /// </remarks>
+    private static async Task<bool> CanDefaultSatisfyReturnTypeAsync(
+        Document document,
+        BlockSyntax containingBlock,
+        CancellationToken cancellationToken)
+    {
+        var functionDeclaration = containingBlock.Parent;
+        if (functionDeclaration == null)
+            return true;
+
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (semanticModel == null)
+            return true;
+
+        if (semanticModel.GetDeclaredSymbol(functionDeclaration, cancellationToken) is not IMethodSymbol method)
+            return true;
+
+        var returnType = method.ReturnType;
+
+        // An async method returns default(T), not default(Task<T>).
+        if (method.IsAsync && returnType is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } awaitable)
+            returnType = awaitable.TypeArguments[0];
+
+        if (returnType.TypeKind == TypeKind.Error)
+            return true;
+
+        return !returnType.IsReferenceType
+            || returnType.NullableAnnotation == NullableAnnotation.Annotated;
+    }
 
     // Get the base identifier from an expression (e.g., "result" from "result.Error")
     // Recursive, but limited by realistic code depth

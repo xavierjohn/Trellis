@@ -12,8 +12,6 @@ internal class Money : ScalarValueObject<Money, decimal>, IScalarValue<Money, de
     public static Result<Money> TryCreate(string? value, string? fieldName = null) =>
         throw new NotImplementedException();
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
-    {
-        yield return Math.Round(Value, 2);
-    }
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+        => components.Add(Math.Round(Value, 2));
 }

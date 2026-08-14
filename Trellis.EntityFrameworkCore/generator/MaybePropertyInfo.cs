@@ -19,8 +19,11 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
     /// <summary>The accessibility of the containing type (e.g., "public").</summary>
     public readonly string TypeAccessibility;
 
-    /// <summary>Whether the containing type is a record.</summary>
-    public readonly bool IsRecord;
+    /// <summary>
+    /// The keyword sequence that declares the containing type (e.g., "class", "record struct").
+    /// Must match the user's declaration exactly or the emitted partial cannot merge with it.
+    /// </summary>
+    public readonly string TypeKeyword;
 
     /// <summary>The property name (e.g., "Phone").</summary>
     public readonly string PropertyName;
@@ -53,7 +56,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         string @namespace,
         string typeName,
         string typeAccessibility,
-        bool isRecord,
+        string typeKeyword,
         string propertyName,
         string propertyAccessibility,
         string setterAccessibility,
@@ -67,7 +70,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         Namespace = @namespace;
         TypeName = typeName;
         TypeAccessibility = typeAccessibility;
-        IsRecord = isRecord;
+        TypeKeyword = typeKeyword;
         PropertyName = propertyName;
         PropertyAccessibility = propertyAccessibility;
         SetterAccessibility = setterAccessibility;
@@ -87,7 +90,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
         return Namespace == other.Namespace
             && TypeName == other.TypeName
             && TypeAccessibility == other.TypeAccessibility
-            && IsRecord == other.IsRecord
+            && TypeKeyword == other.TypeKeyword
             && PropertyName == other.PropertyName
             && PropertyAccessibility == other.PropertyAccessibility
             && SetterAccessibility == other.SetterAccessibility
@@ -114,7 +117,7 @@ internal sealed class MaybePropertyInfo : IEquatable<MaybePropertyInfo>
             hash = (hash * 31) + InnerTypeIsValueType.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(SetterAccessibility);
             hash = (hash * 31) + IsInitOnly.GetHashCode();
-            hash = (hash * 31) + IsRecord.GetHashCode();
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypeKeyword);
             return hash;
         }
     }

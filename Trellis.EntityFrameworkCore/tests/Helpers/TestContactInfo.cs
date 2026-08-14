@@ -29,9 +29,9 @@ public partial class TestContactInfo : ValueObject
     public static TestContactInfo Create(string name, Maybe<PhoneNumber> phone) =>
         new(name, phone);
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Name;
-        yield return Phone.HasValue ? (string)Phone.Value : null;
+        components.Add(Name);
+        components.Add(Phone.HasValue ? (string)Phone.Value : null);
     }
 }

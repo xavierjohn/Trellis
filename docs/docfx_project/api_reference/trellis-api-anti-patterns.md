@@ -245,10 +245,10 @@ public sealed partial class Money : ValueObject
     public string Currency { get; }
     public decimal Amount { get; }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Currency;
-        yield return Amount;
+        components.Add(Currency);
+        components.Add(Amount);
     }
 }
 

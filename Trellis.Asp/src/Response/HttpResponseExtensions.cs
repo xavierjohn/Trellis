@@ -329,7 +329,11 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
             httpContext.Response.Headers["Cache-Control"] = staticCc.ToString();
 
         var statusCode = ResolveStatusCode(httpContext, _error);
-        return ResponseFailureWriter.WriteAsync(httpContext, _error, statusCode);
+        return ResponseFailureWriter.WriteAsync(
+            httpContext,
+            _error,
+            statusCode,
+            err => ResolveStatusCode(httpContext, err));
     }
 
     private int ResolveStatusCode(HttpContext httpContext, Error error) =>

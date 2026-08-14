@@ -730,10 +730,10 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         public T From { get; private set; } = default!;
         public T To { get; private set; } = default!;
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
+        protected override void GetEqualityComponents(ref EqualityComponents components)
         {
-            yield return From;
-            yield return To;
+            components.Add(From);
+            components.Add(To);
         }
     }
 

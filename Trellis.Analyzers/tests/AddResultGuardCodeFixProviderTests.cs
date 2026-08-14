@@ -123,5 +123,165 @@ public class AddResultGuardCodeFixProviderTests
         await test.RunAsync();
     }
 
+    [Fact]
+    public async Task MaybeValue_InReturnStatement_NonNullableReferenceType_OmitsSynthesizedReturn()
+    {
+        const string source = """
+            #nullable enable
+            public class TestClass
+            {
+                public string TestMethod(Maybe<string> maybe)
+                {
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        // No 'return default;' is synthesized: default is null for a non-nullable reference
+        // return type. CS0161 forces an explicit decision instead of a silent null escaping.
+        const string fixedSource = """
+            #nullable enable
+            public class TestClass
+            {
+                public string {|CS0161:TestMethod|}(Maybe<string> maybe)
+                {
+                    if (maybe.HasValue)
+                    {
+                        return maybe.Value;
+                    }
+                }
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<UnsafeValueAccessAnalyzer, AddResultGuardCodeFixProvider>(
+            source,
+            fixedSource,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
+                .WithLocation(0));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task MaybeValue_InReturnStatement_NullableReferenceType_KeepsSynthesizedReturn()
+    {
+        const string source = """
+            #nullable enable
+            public class TestClass
+            {
+                public string? TestMethod(Maybe<string> maybe)
+                {
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        const string fixedSource = """
+            #nullable enable
+            public class TestClass
+            {
+                public string? TestMethod(Maybe<string> maybe)
+                {
+                    if (maybe.HasValue)
+                    {
+                        return maybe.Value;
+                    }
+
+                    return default;
+                }
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<UnsafeValueAccessAnalyzer, AddResultGuardCodeFixProvider>(
+            source,
+            fixedSource,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
+                .WithLocation(0));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task MaybeValue_InReturnStatement_AsyncNonNullableReferenceType_OmitsSynthesizedReturn()
+    {
+        const string source = """
+            #nullable enable
+            public class TestClass
+            {
+                public async Task<string> TestMethod(Maybe<string> maybe)
+                {
+                    await Task.Delay(1);
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        // An async method returns default(string), not default(Task<string>), so the async
+        // return type must be unwrapped before deciding whether default is usable.
+        const string fixedSource = """
+            #nullable enable
+            public class TestClass
+            {
+                public async Task<string> {|CS0161:TestMethod|}(Maybe<string> maybe)
+                {
+                    await Task.Delay(1);
+                    if (maybe.HasValue)
+                    {
+                        return maybe.Value;
+                    }
+                }
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<UnsafeValueAccessAnalyzer, AddResultGuardCodeFixProvider>(
+            source,
+            fixedSource,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
+                .WithLocation(0));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task MaybeValue_InReturnStatement_AsyncValueType_KeepsSynthesizedReturn()
+    {
+        const string source = """
+            #nullable enable
+            public class TestClass
+            {
+                public async Task<int> TestMethod(Maybe<int> maybe)
+                {
+                    await Task.Delay(1);
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        const string fixedSource = """
+            #nullable enable
+            public class TestClass
+            {
+                public async Task<int> TestMethod(Maybe<int> maybe)
+                {
+                    await Task.Delay(1);
+                    if (maybe.HasValue)
+                    {
+                        return maybe.Value;
+                    }
+
+                    return default;
+                }
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<UnsafeValueAccessAnalyzer, AddResultGuardCodeFixProvider>(
+            source,
+            fixedSource,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
+                .WithLocation(0));
+
+        await test.RunAsync();
+    }
+
     #endregion
 }

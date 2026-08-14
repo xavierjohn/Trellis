@@ -235,10 +235,10 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
             Runs = runs;
         }
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
+        protected override void GetEqualityComponents(ref EqualityComponents components)
         {
-            yield return Bowler;
-            yield return Runs;
+            components.Add(Bowler);
+            components.Add(Runs);
         }
     }
 
@@ -256,10 +256,8 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
             _lines.AddRange(lines);
         }
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
-        {
-            yield return Team;
-        }
+        protected override void GetEqualityComponents(ref EqualityComponents components)
+            => components.Add(Team);
     }
 
     private sealed class RequiredScorecardEntity
@@ -309,10 +307,8 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
             _entries.AddRange(entries);
         }
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
-        {
-            yield return Captain;
-        }
+        protected override void GetEqualityComponents(ref EqualityComponents components)
+            => components.Add(Captain);
     }
 
     private sealed class ContactRosterEntity

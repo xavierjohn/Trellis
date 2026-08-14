@@ -90,7 +90,8 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     /// </summary>
     internal async Task<int> DrainAsync(CancellationToken cancellationToken)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using var scopeLifetime = scope.ConfigureAwait(false);
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
 
         // DateTime (not DateTimeOffset) so the lease comparison translates on every EF provider, including
@@ -273,7 +274,8 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     private async Task<IReadOnlyList<IIntegrationEvent>> PublishDomainAndCollectAsync(
         IDomainEvent domainEvent, CancellationToken cancellationToken)
     {
-        await using var publishScope = _scopeFactory.CreateAsyncScope();
+        var publishScope = _scopeFactory.CreateAsyncScope();
+        await using var publishScopeLifetime = publishScope.ConfigureAwait(false);
         var publisher = publishScope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
         await publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
 
@@ -285,7 +287,8 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
 
     private async Task PublishIntegrationAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
     {
-        await using var publishScope = _scopeFactory.CreateAsyncScope();
+        var publishScope = _scopeFactory.CreateAsyncScope();
+        await using var publishScopeLifetime = publishScope.ConfigureAwait(false);
         var publisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
         await publisher.PublishAsync(integrationEvent, cancellationToken).ConfigureAwait(false);
     }

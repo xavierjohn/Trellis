@@ -24,10 +24,10 @@ public partial class TestAddressWithMoney : ValueObject
     public static TestAddressWithMoney Create(string street, string city, decimal fee, string currency) =>
         new(street, city, Money.Create(fee, currency));
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
-        yield return DeliveryFee;
+        components.Add(Street);
+        components.Add(City);
+        components.Add(DeliveryFee);
     }
 }

@@ -178,11 +178,11 @@ public partial class Address : ValueObject
         State  = state;
     }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
-        yield return State;
+        components.Add(Street);
+        components.Add(City);
+        components.Add(State);
     }
 }
 ```

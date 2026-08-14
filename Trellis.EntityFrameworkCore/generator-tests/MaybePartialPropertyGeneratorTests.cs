@@ -461,6 +461,62 @@ public class MaybePartialPropertyGeneratorTests
 
     #endregion
 
+    #region Declaring type kind
+
+    [Theory]
+    [InlineData("record struct", "record struct")]
+    [InlineData("struct", "struct")]
+    [InlineData("record", "record class")]
+    [InlineData("record class", "record class")]
+    [InlineData("class", "class")]
+    public void Generated_Partial_Declaration_Matches_The_Declaring_Type_Kind(string declaredKind, string expectedEmittedKind)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var source = $$"""
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial {{declaredKind}} Holder
+            {
+                public partial Maybe<string> NickName { get; set; }
+            }
+            """;
+
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("a partial declaration of a different kind cannot merge with the user's declaration");
+
+        generatedSources.Should().Contain(s => s.Contains($"partial {expectedEmittedKind} Holder"),
+            "the generated partial must repeat the declaring type's kind");
+    }
+
+    [Fact]
+    public void Keyword_Named_Types_And_Properties_Are_Escaped_In_Generated_Code()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class @class
+            {
+                public partial Maybe<string> @event { get; set; }
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
+
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("identifiers that collide with keywords must be emitted with an '@' prefix");
+    }
+
+    #endregion
+
     private static (List<string> Sources, IReadOnlyList<Diagnostic> Diagnostics, List<string> HintNames) RunGenerator(
         string source, CancellationToken cancellationToken)
     {

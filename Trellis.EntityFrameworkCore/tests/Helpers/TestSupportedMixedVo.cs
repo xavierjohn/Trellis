@@ -73,14 +73,14 @@ public partial class TestSupportedMixedVo : ValueObject
         TestOrderStatus.TryCreate(status)
             .Map(s => new TestSupportedMixedVo(s, label, count, id, createdAt, score, isActive));
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Status.Value;
-        yield return Label;
-        yield return Count;
-        yield return Id;
-        yield return CreatedAt;
-        yield return Score;
-        yield return IsActive;
+        components.Add(Status.Value);
+        components.Add(Label);
+        components.Add(Count);
+        components.Add(Id);
+        components.Add(CreatedAt);
+        components.Add(Score);
+        components.Add(IsActive);
     }
 }

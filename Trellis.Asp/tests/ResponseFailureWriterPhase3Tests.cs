@@ -159,6 +159,50 @@ public sealed class ResponseFailureWriterPhase3Tests
     }
 
     [Fact]
+    public async Task Aggregate_child_status_honors_per_call_typed_error_mapping()
+    {
+        // Per-call mappings sit at the top of the status precedence chain, so an aggregate's
+        // errors[] children must be projected through the same chain as the outer status.
+        // Rendering children from ambient options only makes the child status contradict the
+        // endpoint's own mapping.
+        var ctx = NewContext();
+        var agg = new Error.Aggregate(
+            new Error.NotFound(ResourceRef.For("Item", "42")),
+            new Error.Conflict(ResourceRef.For("Item", "42"), "duplicate_key"));
+        var r = Result.Fail<T>(agg);
+
+        await r.ToHttpResponse(t => t, o => o.WithErrorMapping<Error.NotFound>(StatusCodes.Status410Gone))
+            .ExecuteAsync(ctx);
+
+        using var body = await ReadBody(ctx);
+        var errors = body.RootElement.GetProperty("errors");
+        errors[0].GetProperty("status").GetInt32().Should().Be(410);
+        errors[1].GetProperty("status").GetInt32().Should().Be(409);
+    }
+
+    [Fact]
+    public async Task Aggregate_child_status_honors_per_call_error_mapper_delegate()
+    {
+        var ctx = NewContext();
+        var agg = new Error.Aggregate(
+            new Error.NotFound(ResourceRef.For("Item", "42")),
+            new Error.Conflict(ResourceRef.For("Item", "42"), "duplicate_key"));
+        var r = Result.Fail<T>(agg);
+
+        await r.ToHttpResponse(
+                t => t,
+                o => o.WithErrorMapping(e => e is Error.NotFound ? StatusCodes.Status410Gone : default))
+            .ExecuteAsync(ctx);
+
+        using var body = await ReadBody(ctx);
+        var errors = body.RootElement.GetProperty("errors");
+        errors[0].GetProperty("status").GetInt32().Should().Be(410);
+
+        // The unmatched arm returns `default`; the child must fall through to its ambient status.
+        errors[1].GetProperty("status").GetInt32().Should().Be(409);
+    }
+
+    [Fact]
     public async Task Aggregate_single_InvalidInput_outer_kind_stays_multi()
     {
         var ctx = NewContext();

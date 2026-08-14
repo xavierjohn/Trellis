@@ -373,4 +373,53 @@ public sealed class PagedResponseOptionsTests
         ctx.Response.Headers["Content-Location"].ToString().Should().Be("/todos");
         ctx.Response.Headers.CacheControl.ToString().Should().Be("public, max-age=60");
     }
+
+    [Theory]
+    [InlineData(">")]
+    [InlineData("<")]
+    [InlineData("\"")]
+    [InlineData(" ")]
+    public async Task Link_header_percent_encodes_characters_that_would_break_rfc8288_parsing(string hostile)
+    {
+        // Cursor tokens are opaque server-defined strings and nextUrlBuilder is caller-supplied,
+        // so an unencoded delimiter can escape the <URI-Reference> and forge extra link params.
+        var ctx = NewContext();
+        var page = new Page<Todo>(
+            Items: [new Todo(1, "a", "e1")],
+            Next: new Cursor($"tok{hostile}en"),
+            Previous: null,
+            RequestedLimit: 50,
+            AppliedLimit: 50);
+
+        await Result.Ok(page)
+            .ToHttpResponse((c, limit) => $"https://api.test/todos?cursor={c.Token}&limit={limit}", t => t)
+            .ExecuteAsync(ctx);
+
+        var link = ctx.Response.Headers["Link"].ToString();
+
+        link.Should().StartWith("<").And.EndWith("; rel=\"next\"");
+        link.Should().NotContain($"tok{hostile}en", "the raw delimiter must not survive into the header");
+        link.Count(c => c == '>').Should().Be(1, "a single next link must close exactly one URI-Reference");
+        link.Count(c => c == '<').Should().Be(1, "a single next link must open exactly one URI-Reference");
+    }
+
+    [Fact]
+    public async Task Link_header_leaves_ordinary_urls_untouched()
+    {
+        var ctx = NewContext();
+        var page = new Page<Todo>(
+            Items: [new Todo(1, "a", "e1")],
+            Next: new Cursor("abc123"),
+            Previous: new Cursor("xyz789"),
+            RequestedLimit: 50,
+            AppliedLimit: 50);
+
+        await Result.Ok(page)
+            .ToHttpResponse((c, limit) => $"https://api.test/todos?cursor={c.Token}&limit={limit}", t => t)
+            .ExecuteAsync(ctx);
+
+        ctx.Response.Headers["Link"].ToString().Should().Be(
+            "<https://api.test/todos?cursor=abc123&limit=50>; rel=\"next\", " +
+            "<https://api.test/todos?cursor=xyz789&limit=50>; rel=\"prev\"");
+    }
 }

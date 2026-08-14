@@ -254,13 +254,13 @@ public class DomainDrivenDesignSamplesTests
                        new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(country)), "validation.error") { Detail = "Country is required" })))
                 .Map(x => new Address(x.street, x.city, x.state, x.postalCode, x.country));
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
+        protected override void GetEqualityComponents(ref EqualityComponents components)
         {
-            yield return Street;
-            yield return City;
-            yield return State;
-            yield return PostalCode;
-            yield return Country;
+            components.Add(Street);
+            components.Add(City);
+            components.Add(State);
+            components.Add(PostalCode);
+            components.Add(Country);
         }
 
         public string GetFullAddress() => $"{Street}, {City}, {State} {PostalCode}, {Country}";
@@ -336,10 +336,8 @@ public class DomainDrivenDesignSamplesTests
         public static Temperature FromFahrenheit(decimal fahrenheit) => new((fahrenheit - 32) * 5 / 9);
         public static Temperature FromKelvin(decimal kelvin) => new(kelvin - 273.15m);
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
-        {
-            yield return Math.Round(Value, 2);
-        }
+        protected override void GetEqualityComponents(ref EqualityComponents components)
+            => components.Add(Math.Round(Value, 2));
 
         public Temperature Add(Temperature other) => new(Value + other.Value);
         public Temperature Subtract(Temperature other) => new(Value - other.Value);
@@ -457,10 +455,10 @@ public class DomainDrivenDesignSamplesTests
 
         public static Money Zero(string currency = "USD") => new(0, currency);
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
+        protected override void GetEqualityComponents(ref EqualityComponents components)
         {
-            yield return Amount;
-            yield return Currency;
+            components.Add(Amount);
+            components.Add(Currency);
         }
 
         public Result<Money> Add(Money other) =>

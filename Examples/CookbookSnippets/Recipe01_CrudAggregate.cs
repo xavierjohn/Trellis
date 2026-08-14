@@ -20,10 +20,10 @@ public sealed class Money(decimal amount, CurrencyCode currency) : ValueObject
     public decimal Amount { get; } = amount;
     public CurrencyCode Currency { get; } = currency;
 
-    protected override IEnumerable<System.IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Amount;
-        yield return Currency;
+        components.Add(Amount);
+        components.Add(Currency);
     }
 }
 

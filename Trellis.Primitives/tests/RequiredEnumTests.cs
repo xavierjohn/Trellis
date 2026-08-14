@@ -86,10 +86,10 @@ public sealed class TestEnumHolder : ValueObject
 
     public TestPaymentMethod Method { get; }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return State;
-        yield return Method;
+        components.Add(State);
+        components.Add(Method);
     }
 }
 
