@@ -142,9 +142,7 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         StringExtensions.TryParseScalarValue(s, out result);
 
     /// <inheritdoc/>
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
-    {
-        // Normalize URL comparison by using the absolute URI
-        yield return _uri.AbsoluteUri;
-    }
+    /// <remarks>Normalizes URL comparison by using the absolute URI.</remarks>
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+        => components.Add(_uri.AbsoluteUri);
 }

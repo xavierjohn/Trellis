@@ -209,7 +209,6 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
             parent = parent.ContainingType;
         }
 
-        var isRecord = prop.Parent is RecordDeclarationSyntax;
         var typePath = BuildTypePath(containingType);
 
         return new MaybePropertyInfo(
@@ -218,7 +217,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                 : containingType.ContainingNamespace?.ToString() ?? "",
             typeName: FormatTypeName(containingType),
             typeAccessibility: AccessibilityToString(containingType.DeclaredAccessibility),
-            isRecord: isRecord,
+            typeKeyword: TypeKindKeyword(containingType),
             propertyName: symbol.Name,
             propertyAccessibility: AccessibilityToString(symbol.DeclaredAccessibility),
             setterAccessibility: setterAccessibility,
@@ -319,7 +318,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                 indent += "    ";
             }
 
-            var typeKeyword = first.IsRecord ? "record class" : "class";
+            var typeKeyword = first.TypeKeyword;
             sb.Append(indent);
             sb.Append(first.TypeAccessibility);
             sb.Append(" partial ");
@@ -353,7 +352,7 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
                 sb.Append(" partial Maybe<");
                 sb.Append(prop.InnerTypeName);
                 sb.Append("> ");
-                sb.AppendLine(prop.PropertyName);
+                sb.AppendLine(EscapeIdentifier(prop.PropertyName));
                 sb.Append(memberIndent);
                 sb.AppendLine("{");
 
@@ -491,6 +490,17 @@ public sealed class MaybePartialPropertyGenerator : IIncrementalGenerator
 
     private static string FormatTypeName(INamedTypeSymbol type) =>
         type.TypeParameters.Length > 0
-            ? $"{type.Name}<{string.Join(", ", type.TypeParameters.Select(tp => tp.Name))}>"
-            : type.Name;
+            ? $"{EscapeIdentifier(type.Name)}<{string.Join(", ", type.TypeParameters.Select(tp => EscapeIdentifier(tp.Name)))}>"
+            : EscapeIdentifier(type.Name);
+
+    /// <summary>
+    /// Prefixes an identifier with <c>@</c> when it collides with a C# keyword.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ISymbol.Name"/> reports the undecorated name, so a user type declared as
+    /// <c>@class</c> round-trips as <c>class</c> and would emit unparsable code.
+    /// Contextual keywords are safe unescaped in the positions this generator emits.
+    /// </remarks>
+    private static string EscapeIdentifier(string name) =>
+        SyntaxFacts.GetKeywordKind(name) == SyntaxKind.None ? name : "@" + name;
 }

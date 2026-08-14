@@ -37,7 +37,8 @@ internal sealed class EfConsumerCheckpointStore<TContext> : IConsumerCheckpointS
     {
         ValidateConsumerId(consumerId);
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using var scopeLifetime = scope.ConfigureAwait(false);
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
         var position = await context.Set<ConsumerCheckpoint>()
             .AsNoTracking()
@@ -55,7 +56,8 @@ internal sealed class EfConsumerCheckpointStore<TContext> : IConsumerCheckpointS
         ValidateConsumerId(consumerId);
         ArgumentException.ThrowIfNullOrWhiteSpace(position);
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using var scopeLifetime = scope.ConfigureAwait(false);
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
         var checkpoints = context.Set<ConsumerCheckpoint>();
 

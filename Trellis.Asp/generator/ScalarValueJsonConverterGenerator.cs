@@ -190,16 +190,19 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             // Check if any base type text matches known value object base types or interface.
             // The semantic transform (GetValueObjectInfo) walks the full type hierarchy,
             // but this syntax predicate must let candidates through first.
+            //
+            // Every Trellis scalar primitive base is named Required* and derives from
+            // ScalarValueObject<TSelf, TPrimitive>, so match the whole family by prefix rather
+            // than enumerating individual names — an enumerated list silently drops any base it
+            // forgets (RequiredLong/RequiredBool/RequiredDateTime/RequiredDateTimeOffset were all
+            // missed this way, yielding no converter and no TRLS039). Over-matching here is safe:
+            // the semantic transform rejects anything that is not a real CRTP scalar base.
             foreach (var baseType in c.BaseList.Types)
             {
-                var typeName = baseType.Type.ToString();
-                if (typeName.Contains(ScalarValueInterfaceName)
-                    || typeName.Contains("RequiredString")
-                    || typeName.Contains("RequiredGuid")
-                    || typeName.Contains("RequiredInt")
-                    || typeName.Contains("RequiredDecimal")
-                    || typeName.Contains("RequiredEnum")
-                    || typeName.Contains("ScalarValueObject"))
+                var simpleName = GetSimpleBaseTypeName(baseType.Type.ToString());
+                if (simpleName.StartsWith("Required", StringComparison.Ordinal)
+                    || simpleName == "ScalarValueObject"
+                    || simpleName == ScalarValueInterfaceName)
                 {
                     return true;
                 }
@@ -207,6 +210,24 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Reduces a base-type syntax string to its simple generic-free name, so
+    /// <c>Trellis.RequiredLong&lt;Weight&gt;</c> and <c>RequiredLong&lt;Weight&gt;</c> both
+    /// reduce to <c>RequiredLong</c>.
+    /// </summary>
+    private static string GetSimpleBaseTypeName(string typeName)
+    {
+        var genericStart = typeName.IndexOf('<');
+        if (genericStart >= 0)
+            typeName = typeName.Substring(0, genericStart);
+
+        var lastDot = typeName.LastIndexOf('.');
+        if (lastDot >= 0)
+            typeName = typeName.Substring(lastDot + 1);
+
+        return typeName.Trim();
     }
 
     /// <summary>

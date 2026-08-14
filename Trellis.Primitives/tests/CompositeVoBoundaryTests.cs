@@ -31,7 +31,7 @@ public partial class CompositeVoBoundaryTests
     // Shared base — every fixture composite VO derives from this.
     public abstract class BoundaryVo : ValueObject
     {
-        protected override IEnumerable<IComparable?> GetEqualityComponents() => [];
+        protected override void GetEqualityComponents(ref EqualityComponents components) { }
     }
 
     // ---------------------------------------------------------------------

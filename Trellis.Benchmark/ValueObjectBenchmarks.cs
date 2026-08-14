@@ -61,12 +61,12 @@ public class ValueObjectBenchmarks
             Zip = zip;
         }
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
+        protected override void GetEqualityComponents(ref EqualityComponents components)
         {
-            yield return Street;
-            yield return City;
-            yield return State;
-            yield return Zip;
+            components.Add(Street);
+            components.Add(City);
+            components.Add(State);
+            components.Add(Zip);
         }
 
     }

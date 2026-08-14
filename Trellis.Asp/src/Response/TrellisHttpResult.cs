@@ -85,7 +85,11 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
         return _result.IsSuccess
             ? ExecuteSuccessAsync(httpContext)
-            : ResponseFailureWriter.WriteAsync(httpContext, _result.Error!, ResolveErrorStatusCode(httpContext, _result.Error!, _options));
+            : ResponseFailureWriter.WriteAsync(
+                httpContext,
+                _result.Error!,
+                ResolveErrorStatusCode(httpContext, _result.Error!, _options),
+                err => ResolveErrorStatusCode(httpContext, err, _options));
     }
 
     private Task ExecuteSuccessAsync(HttpContext httpContext)

@@ -11,9 +11,9 @@ internal class Address : ValueObject
         City = city;
     }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
+        components.Add(Street);
+        components.Add(City);
     }
 }

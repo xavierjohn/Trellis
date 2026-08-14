@@ -33,10 +33,10 @@ public sealed class FlowThroughLenientComposite : ValueObject
         FlowThroughLenientName.TryCreate(name, "name")
             .Map(n => new FlowThroughLenientComposite(n, quantity));
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Name.Value;
-        yield return Quantity;
+        components.Add(Name.Value);
+        components.Add(Quantity);
     }
 }
 
@@ -59,10 +59,10 @@ public sealed class FlowThroughStrictComposite : ValueObject
         FlowThroughStrictName.TryCreate(name, "name")
             .Map(n => new FlowThroughStrictComposite(n, quantity));
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Name.Value;
-        yield return Quantity;
+        components.Add(Name.Value);
+        components.Add(Quantity);
     }
 }
 

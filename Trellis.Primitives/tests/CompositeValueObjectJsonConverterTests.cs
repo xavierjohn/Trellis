@@ -332,7 +332,7 @@ public class CompositeValueObjectJsonConverterTests
 
     public abstract class TestVo : ValueObject
     {
-        protected override IEnumerable<IComparable?> GetEqualityComponents() => Array.Empty<IComparable?>();
+        protected override void GetEqualityComponents(ref EqualityComponents components) => Array.Empty<IComparable?>();
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<IntStringVo>))]

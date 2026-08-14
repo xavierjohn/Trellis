@@ -1,4 +1,4 @@
-# Trellis.EntityFrameworkCore.Generator
+﻿# Trellis.EntityFrameworkCore.Generator
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.EntityFrameworkCore.Generator.svg)](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Generator)
 
@@ -19,7 +19,7 @@ using Trellis.EntityFrameworkCore;
 [OwnedEntity]
 public partial class Address : ValueObject
 {
-    protected override IEnumerable<IComparable?> GetEqualityComponents() => [];
+    protected override void GetEqualityComponents(ref EqualityComponents components) { }
 }
 
 public partial class Customer

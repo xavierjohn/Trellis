@@ -154,10 +154,10 @@ public sealed class Money : ValueObject
     public Money(decimal amount, CurrencyCode currency) { Amount = amount; Currency = currency; }
     public decimal Amount { get; }
     public CurrencyCode Currency { get; }
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Amount;
-        yield return Currency;
+        components.Add(Amount);
+        components.Add(Currency);
     }
 }
 
@@ -203,7 +203,7 @@ public interface IOrderRepository
 
 - `RequiredGuid<TSelf>` source-generates `TryCreate` overloads, `Parse`/`TryParse`, an explicit `Guid` → `TSelf` operator, the `Value` accessor, equality / `GetHashCode` / `IComparable`, JSON and EF Core converters, plus the `NewUniqueV4()`, `NewUniqueV7()`, and `NewUniqueV7(TimeProvider)` factories. It rejects `null` only by default; `Guid.Empty` is accepted. Add `[NotDefault]` to also reject `Guid.Empty`. Do not write your own `TryCreate`, equality members, parse/convert helpers, or JSON/EF converters.
 - `RequiredString<TSelf>` source-generates `TryCreate(string?, string?)`, `Parse`/`TryParse`, an explicit `string` → `TSelf` operator, the `Value` accessor, equality, JSON and EF Core converters, plus `Length`/`StartsWith`/`Contains`/`EndsWith` pass-throughs. It rejects `null` only by default; `""` and whitespace-only input are accepted and stored as-is (no auto-trim). Add `[NotDefault]` to also reject `""`, `[Trim]` to enable trimming, or both for strict trim-then-reject-empty behavior. Same rule applies: derived classes add only domain-specific helpers (e.g., a custom `TryCreateWithValidation` that layers extra rules on top of the generated `TryCreate`).
-- `ValueObject` (the base of `Money`, `Address`, etc.) supplies `Equals(object?)`, `Equals(ValueObject?)`, `GetHashCode`, `CompareTo`, and the `==`/`!=`/`<`/`<=`/`>`/`>=` operators — all derived from `GetEqualityComponents()`. Your derived type implements **only** `protected override IEnumerable<IComparable?> GetEqualityComponents()`. Do not override `Equals`/`GetHashCode`/`CompareTo` or write equality operators yourself — that breaks the contract the base class establishes. For `Maybe<T>` components, use the inherited `protected static IComparable? MaybeComponent<T>(Maybe<T>)` helper rather than unwrapping manually.
+- `ValueObject` (the base of `Money`, `Address`, etc.) supplies `Equals(object?)`, `Equals(ValueObject?)`, `GetHashCode`, `CompareTo`, and the `==`/`!=`/`<`/`<=`/`>`/`>=` operators — all derived from `GetEqualityComponents()`. Your derived type implements **only** `protected override void GetEqualityComponents(ref EqualityComponents components)`. Do not override `Equals`/`GetHashCode`/`CompareTo` or write equality operators yourself — that breaks the contract the base class establishes. For `Maybe<T>` components, use the inherited `protected static IComparable? MaybeComponent<T>(Maybe<T>)` helper rather than unwrapping manually.
 - `Aggregate<TId>` already supplies inherited infrastructure members: `Id`, protected `DomainEvents`, persistence-managed `ETag`, `IsChanged` based on pending domain events, and the `CreatedAt`/`LastModified` timestamps (inherited from `Entity<TId>`, managed by `EntityTimestampInterceptor`). Do not redeclare those members on every aggregate; use the inherited surface and add only domain-specific state. Domain events are added via `DomainEvents.Add(...)` from inside the aggregate; the public read-only view is `IAggregate.UncommittedEvents()`.
 
 > **Compiled contract.** The exact signatures of every member listed above are exercised in `Examples/CookbookSnippets/Recipe01_CrudAggregate.cs` → `Recipe1InheritedSurface`. That file is compiled in CI, so if a signature changes in the framework, the build fails and this callout MUST be updated to match. When you need to confirm an exact overload, read the demonstrator — never paraphrase signatures from memory.
@@ -958,9 +958,9 @@ public partial class ShippingAddress : ValueObject
             : Result.Ok(new ShippingAddress(street.Trim(), city.Trim(), state.Trim(), postalCode.Trim(), country.Trim()));
     }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street; yield return City; yield return State; yield return PostalCode; yield return Country;
+        components.Add(Street); components.Add(City); components.Add(State); components.Add(PostalCode); components.Add(Country);
     }
 
     private static void AddIfBlank(List<FieldViolation> v, string value, string? owner, string part)

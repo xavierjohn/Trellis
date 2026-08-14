@@ -23,10 +23,10 @@ public partial class TestDateRange : ValueObject
     public static TestDateRange Create(DateTime start, DateTime end, string label) =>
         new(start, end, label);
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Start;
-        yield return End;
-        yield return Label;
+        components.Add(Start);
+        components.Add(End);
+        components.Add(Label);
     }
 }

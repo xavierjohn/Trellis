@@ -43,13 +43,13 @@ public partial class ShippingAddress : ValueObject
             : Result.Ok(new ShippingAddress(street.Trim(), city.Trim(), state.Trim(), postalCode.Trim(), country.Trim()));
     }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
-        yield return State;
-        yield return PostalCode;
-        yield return Country;
+        components.Add(Street);
+        components.Add(City);
+        components.Add(State);
+        components.Add(PostalCode);
+        components.Add(Country);
     }
 
     private static void AddIfBlank(List<FieldViolation> v, string value, string? owner, string part)
@@ -138,10 +138,10 @@ public partial class LineItem : ValueObject
             ? Result.Fail<LineItem>(Error.InvalidInput.ForRule("line.item.invalid"))
             : Result.Ok(new LineItem(sku.Trim(), quantity));
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Sku;
-        yield return Quantity;
+        components.Add(Sku);
+        components.Add(Quantity);
     }
 }
 

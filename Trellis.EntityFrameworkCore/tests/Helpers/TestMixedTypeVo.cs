@@ -63,22 +63,22 @@ public partial class TestMixedTypeVo : ValueObject
         TestOrderStatus.TryCreate(status)
             .Map(s => new TestMixedTypeVo(s, count, label, snapshots));
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Status.Value;
-        yield return Count.HasValue ? (int?)Count.Value : null;
-        yield return Label.HasValue ? Label.Value : null;
+        components.Add(Status.Value);
+        components.Add(Count.HasValue ? (int?)Count.Value : null);
+        components.Add(Label.HasValue ? Label.Value : null);
         // Yield each element so structural equality compares arrays element-wise
         // (length-only comparison would let two arrays with the same length but
         // different contents compare equal — wrong for a ValueObject).
         if (Snapshots.HasValue)
         {
             foreach (var dt in Snapshots.Value)
-                yield return dt;
+                components.Add(dt);
         }
         else
         {
-            yield return null;
+            components.Add(null);
         }
     }
 }

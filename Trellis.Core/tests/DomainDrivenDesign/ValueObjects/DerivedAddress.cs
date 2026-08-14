@@ -7,11 +7,10 @@ internal class DerivedAddress : Address
     public DerivedAddress(string street, string city, string country) : base(street, city)
         => Country = country;
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        foreach (var s in base.GetEqualityComponents())
-            yield return s;
+        base.GetEqualityComponents(ref components);
 
-        yield return Country;
+        components.Add(Country);
     }
 }

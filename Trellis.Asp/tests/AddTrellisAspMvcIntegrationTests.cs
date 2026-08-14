@@ -340,11 +340,11 @@ public sealed class TestAddress : ValueObject
             : Result.Ok(new TestAddress(street, city, state));
     }
 
-    protected override System.Collections.Generic.IEnumerable<System.IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
-        yield return State;
+        components.Add(Street);
+        components.Add(City);
+        components.Add(State);
     }
 }
 

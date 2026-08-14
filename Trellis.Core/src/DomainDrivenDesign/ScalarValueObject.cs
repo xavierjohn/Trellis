@@ -81,9 +81,9 @@
 ///             : Result.Fail<Temperature>(Error.InvalidInput.ForField(fieldName ?? "temperature", "invalid", "Temperature must be a decimal"));
 ///     
 ///     // Custom equality - round to 2 decimal places
-///     protected override IEnumerable<IComparable?> GetEqualityComponents()
+///     protected override void GetEqualityComponents(ref EqualityComponents components)
 ///     {
-///         yield return Math.Round(Value, 2);
+///         components.Add(Math.Round(Value, 2));
 ///     }
 ///     
 ///     // Domain operations
@@ -152,10 +152,9 @@ where T : IComparable
     protected ScalarValueObject(T value) => Value = value;
 
     /// <summary>
-    /// Returns the components used for equality comparison.
-    /// By default, returns the wrapped <see cref="Value"/>.
+    /// Adds the components used for equality comparison. By default, adds only the wrapped <see cref="Value"/>.
     /// </summary>
-    /// <returns>An enumerable containing the scalar value.</returns>
+    /// <param name="components">The sink that collects this value object's equality components.</param>
     /// <remarks>
     /// <para>
     /// Override this method to customize equality comparison.
@@ -165,16 +164,14 @@ where T : IComparable
     /// <example>
     /// <code><![CDATA[
     /// // Custom equality for Temperature - round to 2 decimal places
-    /// protected override IEnumerable<IComparable?> GetEqualityComponents()
+    /// protected override void GetEqualityComponents(ref EqualityComponents components)
     /// {
-    ///     yield return Math.Round(Value, 2);
+    ///     components.Add(Math.Round(Value, 2));
     /// }
     /// ]]></code>
     /// </example>
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
-    {
-        yield return Value;
-    }
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+        => components.Add(Value);
 
     /// <summary>
     /// Returns a string representation of the wrapped value.

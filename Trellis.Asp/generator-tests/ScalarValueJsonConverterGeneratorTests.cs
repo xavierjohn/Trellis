@@ -121,6 +121,45 @@ public class ScalarValueJsonConverterGeneratorTests
     }
 
     /// <summary>
+    /// Every <c>Required*&lt;TSelf&gt;</c> scalar primitive base wraps a primitive that is already in the
+    /// AOT-safe reader/writer set, so each must be discovered by the syntax predicate and emit a converter.
+    /// The predicate previously hard-coded a subset of base names, silently skipping RequiredLong,
+    /// RequiredBool, RequiredDateTime, and RequiredDateTimeOffset with no converter and no TRLS039.
+    /// </summary>
+    [Theory]
+    [InlineData("RequiredLong", "Weight", "reader.GetInt64()")]
+    [InlineData("RequiredBool", "IsActive", "reader.GetBoolean()")]
+    [InlineData("RequiredDateTime", "OccurredAt", "reader.GetDateTime()")]
+    [InlineData("RequiredDateTimeOffset", "SubmittedAt", "reader.GetDateTimeOffset()")]
+    [InlineData("RequiredInt", "Quantity", "reader.GetInt32()")]
+    [InlineData("RequiredDecimal", "Price", "reader.GetDecimal()")]
+    [InlineData("RequiredGuid", "OrderId", "reader.GetGuid()")]
+    [InlineData("RequiredString", "FirstName", "reader.GetString()")]
+    public void Every_Required_Scalar_Base_Is_Discovered_And_Uses_Direct_Reader(
+        string baseType,
+        string typeName,
+        string expectedReaderCall)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var source = $$"""
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class {{typeName}} : {{baseType}}<{{typeName}}>
+            {
+            }
+            """;
+
+        var generatedSources = RunGenerator(source, cancellationToken);
+
+        generatedSources.Should().Contain(
+            s => s.Contains($"{typeName}JsonConverter") && s.Contains(expectedReaderCall),
+            $"the generator should discover {typeName} : {baseType}<{typeName}> and emit a converter using {expectedReaderCall}");
+    }
+
+    /// <summary>
     /// RequiredEnum derivatives must serialize using the string Value.
     /// </summary>
     [Fact]

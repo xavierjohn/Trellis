@@ -14,10 +14,8 @@ public sealed class Money(decimal amount) : ValueObject
 {
     public decimal Amount { get; } = amount;
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
-    {
-        yield return Amount;
-    }
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+        => components.Add(Amount);
 }
 
 public partial class OrderStatus : RequiredEnum<OrderStatus>

@@ -52,7 +52,8 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using var scopeLifetime = scope.ConfigureAwait(false);
         var provider = scope.ServiceProvider;
         var context = provider.GetRequiredService<TContext>();
         var store = provider.GetRequiredService<IInboxStore>();
@@ -99,7 +100,8 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
     // propagates and the transport redelivers.
     private async Task<bool> DedupRowExistsAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using var scopeLifetime = scope.ConfigureAwait(false);
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
         return await context.Set<InboxMessage>()
             .AsNoTracking()

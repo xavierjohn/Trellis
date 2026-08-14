@@ -24,11 +24,11 @@ public partial class TestAddress : ValueObject
     public static TestAddress Create(string street, string city, string state, string zipCode) =>
         new(street, city, state, zipCode);
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
-        yield return State;
-        yield return ZipCode;
+        components.Add(Street);
+        components.Add(City);
+        components.Add(State);
+        components.Add(ZipCode);
     }
 }

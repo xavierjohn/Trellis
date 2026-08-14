@@ -74,12 +74,12 @@
 ///             .Map(x => new Address(x.street, x.city, x.state, x.postalCode));
 ///
 ///     // Define what makes two addresses equal
-///     protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+///     protected override void GetEqualityComponents(ref EqualityComponents components)
 ///     {
-///         yield return Street;
-///         yield return City;
-///         yield return State;
-///         yield return PostalCode;
+///         components.Add(Street);
+///         components.Add(City);
+///         components.Add(State);
+///         components.Add(PostalCode);
 ///     }
 ///     
 ///     // Domain behavior
@@ -118,10 +118,10 @@
 ///                    Error.InvalidInput.ForField("currency", "invalid", "Currency must be 3-letter ISO code"))
 ///             .Map(x => new Money(x.amount, x.currency.ToUpperInvariant()));
 ///     
-///     protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+///     protected override void GetEqualityComponents(ref EqualityComponents components)
 ///     {
-///         yield return Amount;
-///         yield return Currency;
+///         components.Add(Amount);
+///         components.Add(Currency);
 ///     }
 ///     
 ///     // Domain operations return new instances (immutability)
@@ -151,57 +151,64 @@
 ///     }
 ///
 ///     // Include base components plus additional ones
-///     protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+///     protected override void GetEqualityComponents(ref EqualityComponents components)
 ///     {
-///         foreach (var component in base.GetEqualityComponents())
-///             yield return component;
-///         yield return Country;
+///         base.GetEqualityComponents(ref components);
+///         components.Add(Country);
 ///     }
 /// }
 /// </code>
 /// </example>
 public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEquatable<ValueObject>
 {
-    // NOTE: Not volatile/locked intentionally. Value objects are immutable and DDD aggregates are
-    // single-threaded consistency boundaries. The worst-case race is two threads computing the same
-    // hash simultaneously and writing the same value — harmless on 64-bit CLR where int? writes are
-    // atomic. Add Interlocked/volatile if value objects are ever used as keys in concurrent collections.
-    private int? _cachedHashCode;
+    // The lazily computed hash is published with a single plain int store, which the CLI spec
+    // guarantees to be atomic, so a racing reader observes either UncomputedHashCode or the whole
+    // value — never a torn one. Two threads may compute concurrently, but both derive the same
+    // result from the same immutable components, so the duplicated work is benign and lock-free.
+    private const int UncomputedHashCode = 0;
+
+    // Sized so realistic value objects never touch the ArrayPool fallback in EqualityComponents.
+    private const int InlineComponentCapacity = 8;
+
+    private int _cachedHashCode;
+
+    [System.Runtime.CompilerServices.InlineArray(InlineComponentCapacity)]
+    private struct ComponentBuffer
+    {
+        private IComparable? element0;
+    }
 
     /// <summary>
-    /// When overridden in a derived class, returns the components that define equality for this value object.
+    /// When overridden in a derived class, adds the components that define equality for this value object.
     /// </summary>
-    /// <returns>
-    /// An enumerable of comparable objects that represent the value object's attributes.
-    /// Two value objects are equal if their equality components are equal in the same order.
-    /// </returns>
+    /// <param name="components">The sink that collects this value object's equality components.</param>
     /// <remarks>
     /// <para>
-    /// This method is used by <see cref="Equals(ValueObject)"/> and <see cref="GetHashCode"/> to determine equality.
-    /// Components should be returned in a consistent order.
+    /// This method is used by <see cref="Equals(ValueObject)"/>, <see cref="GetHashCode"/>, and
+    /// <see cref="CompareTo(ValueObject?)"/> to determine equality and ordering. Components must be
+    /// added in a consistent order.
     /// </para>
     /// <para>
     /// Guidelines:
     /// <list type="bullet">
-    /// <item>Return all properties that define the value object's identity</item>
-    /// <item>Use yield return for lazy evaluation</item>
-    /// <item>For derived classes, include base.GetEqualityComponents() first</item>
-    /// <item>Return components in a consistent, deterministic order</item>
-    /// <item>Include all properties that should affect equality comparison</item>
+    /// <item>Add all properties that define the value object's identity</item>
+    /// <item>For derived classes, call <c>base.GetEqualityComponents(ref components)</c> first</item>
+    /// <item>Add components in a consistent, deterministic order</item>
+    /// <item>Do not allocate: the sink exists so comparisons stay allocation-free</item>
     /// </list>
     /// </para>
     /// </remarks>
     /// <example>
     /// <code>
-    /// protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    /// protected override void GetEqualityComponents(ref EqualityComponents components)
     /// {
-    ///     yield return Street;
-    ///     yield return City;
-    ///     yield return PostalCode;
+    ///     components.Add(Street);
+    ///     components.Add(City);
+    ///     components.Add(PostalCode);
     /// }
     /// </code>
     /// </example>
-    protected abstract IEnumerable<IComparable?> GetEqualityComponents();
+    protected abstract void GetEqualityComponents(ref EqualityComponents components);
 
     /// <summary>
     /// Converts a <see cref="Maybe{T}"/> to an <see cref="IComparable"/> for use in
@@ -210,12 +217,15 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// <typeparam name="T">The type of the optional value. Must implement <see cref="IComparable"/>.</typeparam>
     /// <param name="maybe">The optional value to convert.</param>
     /// <returns>The underlying value as <see cref="IComparable"/>, or <c>null</c> if the Maybe is empty.</returns>
+    /// <remarks>
+    /// Prefer <see cref="EqualityComponents.Add{T}(Maybe{T})"/>, which does the same conversion inline.
+    /// </remarks>
     /// <example>
     /// <code>
-    /// protected override IEnumerable&lt;IComparable?&gt; GetEqualityComponents()
+    /// protected override void GetEqualityComponents(ref EqualityComponents components)
     /// {
-    ///     yield return Street;
-    ///     yield return MaybeComponent(Apartment);
+    ///     components.Add(Street);
+    ///     components.Add(MaybeComponent(Apartment));
     /// }
     /// </code>
     /// </example>
@@ -246,11 +256,33 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// </remarks>
     public bool Equals(ValueObject? other)
     {
+        if (ReferenceEquals(this, other)) return true;
         if (other is null) return false;
         if (GetType() != other.GetType())
             return false;
 
-        return GetEqualityComponents().SequenceEqual(other.GetEqualityComponents());
+        // Two materialized, differing hashes prove inequality without touching components.
+        var thisHash = _cachedHashCode;
+        var otherHash = other._cachedHashCode;
+        if (thisHash != UncomputedHashCode && otherHash != UncomputedHashCode && thisHash != otherHash)
+            return false;
+
+        ComponentBuffer leftStorage = default;
+        ComponentBuffer rightStorage = default;
+        var left = new EqualityComponents(leftStorage);
+        var right = new EqualityComponents(rightStorage);
+
+        try
+        {
+            GetEqualityComponents(ref left);
+            other.GetEqualityComponents(ref right);
+            return left.AsSpan().SequenceEqual(right.AsSpan());
+        }
+        finally
+        {
+            left.Return();
+            right.Return();
+        }
     }
 
     /// <summary>
@@ -264,13 +296,34 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// </remarks>
     public override int GetHashCode()
     {
-        if (!_cachedHashCode.HasValue)
+        var cached = _cachedHashCode;
+        if (cached != UncomputedHashCode)
+            return cached;
+
+        ComponentBuffer storage = default;
+        var components = new EqualityComponents(storage);
+        int computed;
+
+        try
         {
-            _cachedHashCode = GetEqualityComponents()
-                .Aggregate(1, (current, obj) => HashCode.Combine(current, obj?.GetHashCode() ?? 0));
+            GetEqualityComponents(ref components);
+
+            computed = 1;
+            foreach (var component in components.AsSpan())
+                computed = HashCode.Combine(computed, component?.GetHashCode() ?? 0);
+        }
+        finally
+        {
+            components.Return();
         }
 
-        return _cachedHashCode.Value;
+        // Remapping a genuine zero keeps it cacheable; the sentinel would otherwise force
+        // recomputation on every call for those instances.
+        if (computed == UncomputedHashCode)
+            computed = 1;
+
+        _cachedHashCode = computed;
+        return computed;
     }
 
     /// <summary>
@@ -293,6 +346,9 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// </remarks>
     public virtual int CompareTo(ValueObject? other)
     {
+        if (ReferenceEquals(this, other))
+            return 0;
+
         if (other is null)
             return 1;
 
@@ -302,24 +358,34 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
         if (thisType != otherType)
             throw new ArgumentException($"Cannot compare objects of different types: {thisType} and {otherType}");
 
-        using var e1 = GetEqualityComponents().GetEnumerator();
-        using var e2 = other.GetEqualityComponents().GetEnumerator();
+        ComponentBuffer leftStorage = default;
+        ComponentBuffer rightStorage = default;
+        var left = new EqualityComponents(leftStorage);
+        var right = new EqualityComponents(rightStorage);
 
-        while (true)
+        try
         {
-            var has1 = e1.MoveNext();
-            var has2 = e2.MoveNext();
+            GetEqualityComponents(ref left);
+            other.GetEqualityComponents(ref right);
 
-            if (!has1 && !has2)
-                return 0;
-            if (!has1)
-                return -1;
-            if (!has2)
-                return 1;
+            var leftComponents = left.AsSpan();
+            var rightComponents = right.AsSpan();
+            var shared = Math.Min(leftComponents.Length, rightComponents.Length);
 
-            var comparison = CompareComponents(e1.Current, e2.Current);
-            if (comparison != 0)
-                return comparison;
+            for (var i = 0; i < shared; i++)
+            {
+                var comparison = CompareComponents(leftComponents[i], rightComponents[i]);
+                if (comparison != 0)
+                    return comparison;
+            }
+
+            // A prefix-equal shorter component list sorts first, matching enumeration order.
+            return leftComponents.Length.CompareTo(rightComponents.Length);
+        }
+        finally
+        {
+            left.Return();
+            right.Return();
         }
     }
 

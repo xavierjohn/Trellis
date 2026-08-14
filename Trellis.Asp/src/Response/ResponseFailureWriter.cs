@@ -39,7 +39,23 @@ internal static class ResponseFailureWriter
     /// </summary>
     internal static void ResetDiagnosticThrottlesForTests() => _loggedExceptionTypes.Clear();
 
-    public static async Task WriteAsync(HttpContext httpContext, Error error, int statusCode)
+    /// <summary>
+    /// Writes an <see cref="Error"/> to the response as an RFC 9457 problem document.
+    /// </summary>
+    /// <param name="httpContext">The current request context.</param>
+    /// <param name="error">The failing error.</param>
+    /// <param name="statusCode">The already-resolved status code for <paramref name="error"/>.</param>
+    /// <param name="resolveChildStatus">
+    /// Optional projection used for <see cref="Error.Aggregate"/> children rendered into the
+    /// <c>errors[]</c> extension. Callers pass the same per-call → ambient precedence chain used
+    /// for <paramref name="statusCode"/> so a child status cannot contradict the endpoint's own
+    /// <c>WithErrorMapping</c> configuration. Falls back to ambient options when null.
+    /// </param>
+    public static async Task WriteAsync(
+        HttpContext httpContext,
+        Error error,
+        int statusCode,
+        Func<Error, int>? resolveChildStatus = null)
     {
         EmitCompanionHeaders(httpContext.Response, error);
 
@@ -89,7 +105,9 @@ internal static class ResponseFailureWriter
                     return (object?)new Dictionary<string, object?>(StringComparer.Ordinal)
                     {
                         ["type"] = childKind,
-                        ["status"] = options.GetStatusCode(child),
+                        ["status"] = resolveChildStatus is not null
+                            ? resolveChildStatus(child)
+                            : options.GetStatusCode(child),
                         ["code"] = childCode,
                         ["kind"] = childKind,
                         ["detail"] = GetPublicDetail(child),

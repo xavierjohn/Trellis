@@ -463,6 +463,175 @@ public class ValueObjectTests
     }
 
     #endregion
+
+    #region Hash Cache
+
+    [Fact]
+    public void GetHashCode_is_stable_across_repeated_calls()
+    {
+        var address = new Address("Street", "City");
+
+        var first = address.GetHashCode();
+
+        for (var i = 0; i < 10; i++)
+            address.GetHashCode().Should().Be(first);
+    }
+
+    [Fact]
+    public void GetHashCode_collects_components_only_once_across_repeated_calls()
+    {
+        var address = new CountingComponentsValueObject("a", "b");
+
+        for (var i = 0; i < 10; i++)
+            address.GetHashCode();
+
+        address.EnumerationCount.Should().Be(1, "the cached hash must short-circuit component collection");
+    }
+
+    [Fact]
+    public void GetHashCode_under_concurrent_first_access_never_publishes_a_torn_value()
+    {
+        // The lazy hash cache is written without a lock. It must be a single atomic store so a
+        // racing reader either sees "not computed" or the whole value - never half of it.
+        const int Threads = 16;
+        const int Rounds = 400;
+
+        for (var round = 0; round < Rounds; round++)
+        {
+            var subject = new SlowHashingValueObject("street", "city");
+            var expected = new SlowHashingValueObject("street", "city").GetHashCode();
+            var observed = new int[Threads];
+
+            using var gate = new Barrier(Threads);
+            var workers = new Thread[Threads];
+            for (var t = 0; t < Threads; t++)
+            {
+                var slot = t;
+                workers[slot] = new Thread(() =>
+                {
+                    gate.SignalAndWait();
+                    observed[slot] = subject.GetHashCode();
+                });
+                workers[slot].Start();
+            }
+
+            foreach (var worker in workers)
+                worker.Join();
+
+            observed.Should().AllBeEquivalentTo(expected, "round {0} observed a torn or inconsistent hash", round);
+        }
+    }
+
+    [Fact]
+    public void Equals_returns_true_for_the_same_instance_without_enumerating_components()
+    {
+        var address = new CountingComponentsValueObject("a", "b");
+
+        address.Equals(address).Should().BeTrue();
+
+        address.EnumerationCount.Should().Be(0, "reference equality must short-circuit before component enumeration");
+    }
+
+    [Fact]
+    public void Equals_of_distinct_but_equal_instances_does_not_allocate()
+    {
+        var left = new Address("Street", "City");
+        var right = new Address("Street", "City");
+
+        Warm(() => left.Equals(right));
+
+        MeasureAllocations(() => left.Equals(right)).Should().Be(0);
+    }
+
+    [Fact]
+    public void Equals_of_unequal_instances_does_not_allocate()
+    {
+        var left = new Address("Street", "City");
+        var right = new Address("Other", "City");
+
+        Warm(() => left.Equals(right));
+
+        MeasureAllocations(() => left.Equals(right)).Should().Be(0);
+    }
+
+    [Fact]
+    public void CompareTo_does_not_allocate()
+    {
+        var left = new Address("Street", "City");
+        var right = new Address("Other", "City");
+
+        Warm(() => left.CompareTo(right));
+
+        MeasureAllocations(() => left.CompareTo(right)).Should().Be(0);
+    }
+
+    [Fact]
+    public void Value_objects_with_more_components_than_the_inline_buffer_still_compare_correctly()
+    {
+        var left = new WideValueObject(12);
+        var right = new WideValueObject(12);
+        var different = new WideValueObject(12, differentAtIndex: 11);
+
+        left.Equals(right).Should().BeTrue();
+        left.GetHashCode().Should().Be(right.GetHashCode());
+        left.CompareTo(right).Should().Be(0);
+
+        left.Equals(different).Should().BeFalse();
+        left.CompareTo(different).Should().BeNegative();
+    }
+
+    /// <summary>Keeps measured results alive without boxing, so the JIT cannot elide the call.</summary>
+    private static class Sink<T>
+    {
+        public static T? Value;
+    }
+
+    private static void Warm<T>(Func<T> operation)
+    {
+        for (var i = 0; i < 64; i++) Sink<T>.Value = operation();
+    }
+
+    private static long MeasureAllocations<T>(Func<T> operation)
+    {
+        const int Iterations = 200;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < Iterations; i++) Sink<T>.Value = operation();
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
+
+    [Fact]
+    public void CompareTo_returns_zero_for_the_same_instance_without_enumerating_components()
+    {
+        var address = new CountingComponentsValueObject("a", "b");
+
+        address.CompareTo(address).Should().Be(0);
+
+        address.EnumerationCount.Should().Be(0, "reference equality must short-circuit before component enumeration");
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Value object with more components than the base class's inline buffer holds, so the
+/// pooled-growth path is exercised.
+/// </summary>
+internal sealed class WideValueObject : ValueObject
+{
+    private readonly string[] parts;
+
+    public WideValueObject(int count, int differentAtIndex = -1)
+    {
+        this.parts = new string[count];
+        for (var i = 0; i < count; i++)
+            this.parts[i] = i == differentAtIndex ? "zzz" : $"part-{i:D2}";
+    }
+
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+    {
+        foreach (var part in this.parts)
+            components.Add(part);
+    }
 }
 
 /// <summary>
@@ -479,10 +648,10 @@ internal class AddressWithNullable : ValueObject
         City = city;
     }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City; // Allow null for testing
+        components.Add(Street);
+        components.Add(City); // Allow null for testing
     }
 }
 
@@ -501,10 +670,10 @@ internal class CompositeAddress : ValueObject
         City = city;
     }
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Street;
-        yield return City;
+        components.Add(Street);
+        components.Add(City);
     }
 }
 
@@ -532,8 +701,38 @@ internal sealed class ConditionallyTypedComponentValueObject(IComparable compone
 {
     public IComparable Component { get; } = component;
 
-    protected override IEnumerable<IComparable?> GetEqualityComponents()
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+        => components.Add(Component);
+}
+
+/// <summary>
+/// Value object whose equality-component enumeration is deliberately slow, widening the window
+/// in which a concurrent reader could observe a partially-published lazy hash cache.
+/// </summary>
+internal sealed class SlowHashingValueObject(string a, string b) : ValueObject
+{
+    protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        yield return Component;
+        for (var i = 0; i < 40; i++) Thread.SpinWait(20);
+        components.Add(a);
+        components.Add(b);
+    }
+}
+
+/// <summary>
+/// Records how many times its equality components were enumerated so tests can assert that
+/// reference-equality fast paths short-circuit before any component work happens.
+/// </summary>
+internal sealed class CountingComponentsValueObject(string a, string b) : ValueObject
+{
+    private int enumerationCount;
+
+    public int EnumerationCount => this.enumerationCount;
+
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+    {
+        Interlocked.Increment(ref this.enumerationCount);
+        components.Add(a);
+        components.Add(b);
     }
 }

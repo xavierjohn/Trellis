@@ -1714,8 +1714,8 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `protected abstract IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Returns the ordered components used for equality, comparison, and hash-code generation. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. |
-| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. |
+| `protected abstract void GetEqualityComponents(ref EqualityComponents components)` | `void` | Appends the ordered components used for equality, comparison, and hash-code generation onto `components`. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. Allocation-free: the base class supplies stack storage for up to 8 components and rents from `ArrayPool<IComparable?>.Shared` beyond that. |
+| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. Prefer `components.Add(maybe)`, which does the same conversion inline. |
 | `public override bool Equals(object? obj)` | `bool` | Delegates to `Equals(ValueObject? other)`. |
 | `public bool Equals(ValueObject? other)` | `bool` | Structural equality check against the same runtime type. |
 | `public override int GetHashCode()` | `int` | Computes and caches a hash code from the equality components. |
@@ -1726,6 +1726,48 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 | `public static bool operator <=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
 | `public static bool operator >(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
 | `public static bool operator >=(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
+
+### `EqualityComponents`
+
+```csharp
+public ref struct EqualityComponents
+```
+
+The sink passed to `ValueObject.GetEqualityComponents(ref EqualityComponents)`. It is a `ref struct`, so it cannot be boxed, captured in a lambda, stored in a field, or used across an `await` — collect components and return.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public void Add(IComparable? component)` | `void` | Appends one component. Order is significant: equality compares positionally and `CompareTo` returns on the first differing position. |
+| `public void Add<T>(Maybe<T> component) where T : notnull, IComparable` | `void` | Appends an optional component, adding the inner value when present and `null` when empty. |
+| `public readonly int Count` | `int` | Number of components added so far. |
+
+```csharp
+public sealed class Address(string street, string city) : ValueObject
+{
+    public string Street { get; } = street;
+    public string City { get; } = city;
+    public Maybe<string> Apartment { get; private set; } = Maybe<string>.None;
+
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+    {
+        components.Add(Street);
+        components.Add(City);
+        components.Add(Apartment);
+    }
+}
+```
+
+Derived types forward to their base before adding their own components, so base components keep the lower positions:
+
+```csharp
+protected override void GetEqualityComponents(ref EqualityComponents components)
+{
+    base.GetEqualityComponents(ref components);
+    components.Add(Country);
+}
+```
+
+> **Breaking change.** `GetEqualityComponents` previously returned `IEnumerable<IComparable?>` and was written with `yield return`. The iterator allocated on every `Equals`, `CompareTo`, and uncached `GetHashCode` call. Migrate by changing the signature to `protected override void GetEqualityComponents(ref EqualityComponents components)`, replacing each `yield return X;` with `components.Add(X);`, and replacing `foreach (var c in base.GetEqualityComponents()) yield return c;` with `base.GetEqualityComponents(ref components);`. Equality and ordering results are unchanged, and the hashing algorithm is unchanged. `GetHashCode` values were never stable across processes (`HashCode.Combine` and `string.GetHashCode` are seeded per process), so they must not be persisted or asserted as literals.
 
 ### `ScalarValueObject<TSelf, T>`
 
@@ -1742,7 +1784,7 @@ where T : IComparable
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `protected ScalarValueObject(T value)` | — | Stores the wrapped scalar value. |
-| `protected override IEnumerable<IComparable?> GetEqualityComponents()` | `IEnumerable<IComparable?>` | Default scalar equality uses only `Value`. |
+| `protected override void GetEqualityComponents(ref EqualityComponents components)` | `void` | Default scalar equality uses only `Value`. |
 | `public override string ToString()` | `string` | Returns `Value?.ToString() ?? string.Empty`. |
 | `public static implicit operator T(ScalarValueObject<TSelf, T> valueObject)` | `T` | Unwraps the scalar value object to its primitive value. |
 | `public static TSelf Create(T value)` | `TSelf` | Calls `TSelf.TryCreate(value)` and throws `InvalidOperationException` on failure. This is the **concrete-type dispatch** entry point — invoked when the call site names a derived class (e.g. `EmailAddress.Create("…")`). The `IScalarValue<TSelf, TPrimitive>.Create(TPrimitive)` static-virtual member on the interface is the **generic-constraint dispatch** entry point used from generic code (`T.Create(value)` where `T : IScalarValue<T, P>`); the two methods coexist because C# does not route concrete-type calls through interface static-virtual defaults. |

@@ -50,10 +50,8 @@ public class CompositeValueObjectMissingConstructorGuardTests
 
         public string Value { get; }
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
-        {
-            yield return Value;
-        }
+        protected override void GetEqualityComponents(ref EqualityComponents components)
+            => components.Add(Value);
     }
 
     private sealed class MissingCtorEntity
@@ -79,10 +77,8 @@ public class CompositeValueObjectMissingConstructorGuardTests
 
         public string Label { get; private set; }
 
-        protected override IEnumerable<IComparable?> GetEqualityComponents()
-        {
-            yield return Label;
-        }
+        protected override void GetEqualityComponents(ref EqualityComponents components)
+            => components.Add(Label);
     }
 
     private sealed class HandWrittenCtorEntity

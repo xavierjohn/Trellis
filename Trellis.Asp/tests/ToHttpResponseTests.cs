@@ -75,6 +75,63 @@ public sealed class ToHttpResponseTests
     }
 
     [Fact]
+    public async Task Per_call_error_mapper_returning_default_falls_through_to_ambient_status()
+    {
+        // The documented per-call mapping idiom uses `default` as the "not my error" arm:
+        //     .WithErrorMapping(err => err is OutOfStockError ? 410 : default)
+        // `default` is 0, which is not a legal HTTP status. It must be treated as "no match"
+        // and fall through the precedence chain rather than being written to the response.
+        var ctx = NewContext();
+        var r = Result.Fail<Todo>(new Error.NotFound(new ResourceRef("Todo", "1")));
+
+        await r.ToHttpResponse(TodoResponse.From, o => o.WithErrorMapping(_ => default)).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task Per_call_error_mapper_returning_status_is_honored()
+    {
+        var ctx = NewContext();
+        var r = Result.Fail<Todo>(new Error.NotFound(new ResourceRef("Todo", "1")));
+
+        await r.ToHttpResponse(TodoResponse.From, o => o.WithErrorMapping(_ => StatusCodes.Status410Gone))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(410);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(99)]
+    [InlineData(600)]
+    [InlineData(-1)]
+    public async Task Per_call_error_mapper_returning_out_of_range_status_falls_through(int mapped)
+    {
+        var ctx = NewContext();
+        var r = Result.Fail<Todo>(new Error.NotFound(new ResourceRef("Todo", "1")));
+
+        await r.ToHttpResponse(TodoResponse.From, o => o.WithErrorMapping(_ => mapped)).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task Per_call_error_mapper_returning_default_falls_through_to_typed_override()
+    {
+        // A non-matching mapper arm must not shadow a WithErrorMapping<TError>(status) override.
+        var ctx = NewContext();
+        var r = Result.Fail<Todo>(new Error.NotFound(new ResourceRef("Todo", "1")));
+
+        await r.ToHttpResponse(
+                TodoResponse.From,
+                o => o.WithErrorMapping(_ => default).WithErrorMapping<Error.NotFound>(StatusCodes.Status410Gone))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(410);
+    }
+
+    [Fact]
     public async Task Result_failure_422_UnprocessableContent_uses_problem_plus_json_and_populates_instance()
     {
         // RFC 9457 §3 mandates application/problem+json for problem responses. The 422 path

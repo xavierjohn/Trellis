@@ -14,20 +14,20 @@ Start with `docs/docfx_project/api_reference/trellis-api-cookbook.md`. Use its t
 
 ### Recommended context size
 
-The full set of API references is ~1,040 KB across 22 reference files (~266K tokens); the cookbook alone is ~228 KB (~58K tokens). These figures grow as the docs do — treat them as approximate; the current reference set is the `trellis-api-*.md` files under `docs/docfx_project/api_reference/`. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
+The reference set is the 23 `*.md` files under `docs/docfx_project/api_reference/` — 22 `trellis-api-*.md` files plus `trellis-value-object-taxonomy.md` — totalling ~1,115 KB (~285K tokens); the cookbook alone is ~238 KB (~61K tokens). These figures grow as the docs do — treat them as approximate. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
 
 | Tier | Context | When this is enough |
 |---|---|---|
 | **Minimum** | 200K | Narrow, single-file tasks. Forces a strict "load only the area-specific reference per task" discipline; cross-cutting work is error-prone at this tier. |
 | **Recommended** | 400–500K | Most consumer projects. Lets the cookbook + 5–6 area-specific references stay resident through a PR-sized session. |
-| **Comfortable** | 1M | Framework-internal work and greenfield projects with multiple integration points. Lets all 22 references stay resident from turn 1 without eviction. |
+| **Comfortable** | 1M | Framework-internal work and greenfield projects with multiple integration points. Lets all 23 references stay resident from turn 1 without eviction. |
 
 ### Mandatory loads at session start
 
 For any non-trivial Trellis work, load these **before** writing the first line of code or running the first sub-agent:
 
 1. `trellis-api-cookbook.md` — always. Its task lookup table is the entry point.
-2. `trellis-api-servicedefaults.md` — always. **Most** pipeline-module `services.AddXxx()` extensions have a matching `TrellisServiceBuilder.UseXxx()` slot — but leaf/store registrations are deliberate exceptions with **no** slot (e.g. `AddInMemoryIdempotencyStore`, `AddTrellisRouteConstraint`/`AddTrellisRouteConstraints`). Designing or modifying a registration helper without reading this file either silently misses a builder slot that should exist, or wrongly adds one where none belongs.
+2. `trellis-api-servicedefaults.md` — always. Composition-root features have a matching `TrellisServiceBuilder.UseXxx()` slot for their `services.AddXxx()` extension; leaf/store/adapter-author registrations deliberately have **no** slot. See "Adding a new public registration API" below for the rule and the current exception list. Designing or modifying a registration helper without reading this file either silently misses a builder slot that should exist, or wrongly adds one where none belongs.
 3. The area-specific reference for the package being modified (from the table below).
 4. The reference for **every package whose pipeline this work composes with**. Specifically: anything touching the Mediator pipeline must also load `trellis-api-efcore.md` (transactional behavior) and `trellis-api-authorization.md` (resource-authorization behavior); anything touching ASP must also load `trellis-api-mediator.md`.
 
@@ -52,7 +52,10 @@ For any non-trivial Trellis work, load these **before** writing the first line o
 | Testing helpers | `docs/docfx_project/api_reference/trellis-api-testing-reference.md` |
 | ASP.NET Core integration-test helpers | `docs/docfx_project/api_reference/trellis-api-testing-aspnetcore.md` |
 | Worker / `BackgroundService` test harness | `docs/docfx_project/api_reference/trellis-api-testing-worker.md` |
+| Persistence abstractions (`IUnitOfWork`, provider-neutral contracts) | `docs/docfx_project/api_reference/trellis-api-persistence-abstractions.md` |
 | Analyzer rules and diagnostic IDs | `docs/docfx_project/api_reference/trellis-api-anti-patterns.md` for ready-to-apply WRONG/FIX shapes, then `docs/docfx_project/api_reference/trellis-api-analyzers.md` for the formal spec |
+| Analyzer implementations and code fixes | `Trellis.Analyzers/src/` + `docs/docfx_project/api_reference/trellis-api-analyzers.md` |
+| Source generators (`Trellis.Asp/generator`, `Trellis.EntityFrameworkCore/generator`, `Trellis.Primitives/generator`, `Trellis.StateMachine/generator`) | the area reference for the package that **hosts** the generator, plus the generator's own `generator-tests/` project. There is no separate generator API reference — generated output is part of the hosting package's public surface, so any change to emitted code is an API-reference change. |
 
 ### Preflight verification — required before generating non-trivial code
 
@@ -68,12 +71,19 @@ If you cannot answer any of these, stop and load the missing reference before co
 
 ### Adding a new public registration API (`AddXxx` / `UseXxx`)
 
-When adding a new `services.AddTrellisXxx()` or `services.AddXxxDispatch()` style extension, the work is **not complete** until:
+When adding a new `services.AddTrellisXxx()` or `services.AddXxxDispatch()` style extension, first decide whether it needs a builder slot at all:
+
+- **Composition-root features** — anything an application author turns on (pipeline behaviors, dispatchers, actor providers, outbox/inbox) — **must** get a `TrellisServiceBuilder.UseXxx(...)` slot.
+- **Leaf, store, and adapter-author extension points** get **no** slot. These are called by another `AddXxx` that *is* surfaced, or by an adapter author wiring a non-shipped provider. Existing examples: `AddInMemoryIdempotencyStore`, `AddTrellisRouteConstraint`/`AddTrellisRouteConstraints`, and `AddTransactionalCommandBehavior` (provider-neutral; invoked by `AddTrellisUnitOfWork<TContext>()`, which is surfaced as `UseEntityFrameworkUnitOfWork<TContext>()`).
+
+If the new helper falls in the first category, the work is **not complete** until:
 
 1. The matching `TrellisServiceBuilder.UseXxx(...)` slot is added in `Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs`, with the call site placed correctly inside `Apply()` so canonical pipeline ordering is preserved.
 2. The new helper is order-independent vs the other `AddTrellis*` extensions. If pipeline placement matters (e.g., the new behavior must wrap or be wrapped by `TransactionalCommandBehavior`), the registration must detect existing relevant behaviors and insert/yank-restore correctly — not just `TryAddEnumerable` and hope.
 3. Both `trellis-api-mediator.md` (or the relevant area reference) **and** `trellis-api-servicedefaults.md` are updated. The two layers must stay in sync.
 4. A test asserts the canonical pipeline order with the new registration both **before** and **after** `AddTrellisUnitOfWork<TContext>()` is called.
+
+If it falls in the second category, say so explicitly in the PR description and add the helper to the "no slot" list above, so the next session does not re-litigate the decision.
 
 ### Validating sub-agent findings
 
@@ -130,6 +140,9 @@ Tests are organized by source area:
 | API versioning | `Trellis.Asp.ApiVersioning/src/` | `Trellis.Asp.ApiVersioning/tests/` |
 | Service defaults / composition root | `Trellis.ServiceDefaults/src/` | `Trellis.ServiceDefaults/tests/` |
 | Analyzers | `Trellis.Analyzers/src/` | `Trellis.Analyzers/tests/` |
+| Core source generator | `Trellis.Core/generator/` | — (covered indirectly by `Trellis.Primitives/tests/`) |
+| ASP source generators | `Trellis.Asp/generator/` | `Trellis.Asp/generator-tests/` |
+| EF Core source generators | `Trellis.EntityFrameworkCore/generator/` | `Trellis.EntityFrameworkCore/generator-tests/` |
 
 Async extension tests use this file naming convention:
 
@@ -173,6 +186,8 @@ $utf8Bom = New-Object System.Text.UTF8Encoding $true
 
 Avoid `Set-Content` for repository files because it can change encoding.
 
+`[System.IO.File]` resolves relative paths against the *process* working directory, not PowerShell's current location, so always pass an absolute path — e.g. `$path = Join-Path (Get-Location) 'Trellis.Core\src\Foo.cs'` or `Resolve-Path`. A bare relative path silently writes somewhere unexpected.
+
 ## Validation before handoff
 
 Before considering code work complete:
@@ -181,7 +196,9 @@ Before considering code work complete:
 2. Run `dotnet test` from the repository root.
 3. Confirm public API changes are reflected in the API references and related package docs.
 
-Before committing, also complete the **Pre-commit checklist** below — it adds the `gpt-5.5` code review and the diff check.
+Tests run on **Microsoft.Testing.Platform** (xUnit v3), not VSTest. `--nologo` and `--filter` are **not** valid arguments and make the run exit with code 5 and "Zero tests ran" — which looks like a passing no-op. Invoke as `dotnet test <project-or-Trellis.slnx> -c <config>` and narrow output with `Select-String` instead. To iterate quickly, run the single affected test project rather than the solution.
+
+Before committing, also complete the **Pre-commit checklist** below — it adds the code review and the diff check.
 
 Documentation-only changes do not require a build or test run unless they affect generated docs, examples that are compiled, or documented public API behavior.
 
@@ -207,5 +224,5 @@ Before committing any changes after explicit approval:
 
 1. Confirm the **Validation before handoff** steps passed (build, test, docs in sync).
 2. Confirm the diff contains only intended changes.
-3. Run a code-review agent with `model: gpt-5.5` for changed code and address substantive findings.
+3. Run a code-review agent over the changed code with a high-capability reasoning model (currently `gpt-5.5`; substitute the strongest available if that ID is retired) and address substantive findings. Apply the **Validating sub-agent findings** rule above to each one.
 4. Present the final summary to the user.

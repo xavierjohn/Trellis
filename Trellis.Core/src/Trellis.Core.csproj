@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <!--
-    Bundle the Trellis.Primitives.Generator into Trellis.Core.nupkg under
+    Bundle Trellis.Core.Generator into Trellis.Core.nupkg under
     analyzers/dotnet/cs. Source-tree consumers
     reference the generator csproj directly via OutputItemType="Analyzer"
     (see Examples/*, Trellis.Primitives.Tests, etc.). NuGet consumers get
