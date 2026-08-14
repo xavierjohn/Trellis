@@ -223,6 +223,23 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 - **Inside `Expression<Func<...>>` lambdas (EF Core, Specifications, FluentValidation):** the rule is *not* relaxed. The analyzer recognizes the immediate short-circuit shape `e.SubmittedAt.HasValue && e.SubmittedAt.Value < cutoff`; when the `Maybe<T>` check is part of a longer predicate, keep that pair parenthesized or prefer an analyzer-clean sentinel form such as `e.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < cutoff`. For ad-hoc EF `IQueryable<T>` queries, prefer the `MaybeQueryableExtensions.WhereXxx` helpers when one matches the predicate.
 - Code fix: `AddResultGuardCodeFixProvider`.
 
+##### Synthesized fallback return
+
+When the guarded statements end the method with a `return`, the wrapped code no longer returns on every path, so the fix appends a fallback:
+
+| Declared return type | Fix emits | Rationale |
+|---|---|---|
+| Value type (`int`, `DateTime`, …) | `return default;` | `default` is a real value. |
+| `Result<T>` | `return default;` | `default(Result<T>)` is a failure carrying the `default_initialized` sentinel. |
+| `Maybe<T>` | `return default;` | `default(Maybe<T>)` is `None`. |
+| Unconstrained generic `T` | `return default;` | `default(T)` is valid for any substitution. |
+| Nullable reference (`string?`) | `return default;` | `null` is in the type's domain. |
+| **Non-nullable reference (`string`, `Task<T>`)** | **nothing** | `default` would be `null`. Omitting the return raises **CS0161** ("not all code paths return a value"), which cannot be ignored, instead of CS8603 (a warning that may be suppressed) or a silent `null` where the type system says one is impossible. Replace the missing branch with a real value or a `throw`. |
+
+`async` methods are judged on the awaited type, so `async Task<int>` gets `return default;` while `async Task<string>` does not. A non-`async` method declared to return `Task<T>` is treated as a non-nullable reference type, because `default` there is a `null` task that would throw on `await`.
+
+`default!` is deliberately not emitted: it silences the compiler while planting a `null` the type system claims cannot exist.
+
 > **Result accessors:** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` and `Result<T>.Error`. Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
 
 #### `ResultDoubleWrappingAnalyzer` — `TRLS004`
@@ -406,7 +423,7 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
 
 | Code fix provider | Fixes | Behavior |
 |---|---|---|
-| `AddResultGuardCodeFixProvider` | `TRLS003` | Wraps the current statement block in `if (maybe.HasValue)` and tracks consecutive statements that keep using the guarded value. |
+| `AddResultGuardCodeFixProvider` | `TRLS003` | Wraps the current statement block in `if (maybe.HasValue)` and tracks consecutive statements that keep using the guarded value. When the wrapped statements end the method with a `return`, it appends `return default;` only if `default` is a usable value for the declared return type; see [synthesized fallback return](#synthesized-fallback-return). |
 | `UseBindInsteadOfMapCodeFixProvider` | `TRLS002` | Replaces `Map` with `Bind` and `MapAsync` with `BindAsync`. |
 | `UseAsyncMethodVariantCodeFixProvider` | `TRLS009` | Replaces sync method names with async variants, awaits the rewritten call, and adds `async` to Task/ValueTask-returning methods when that is locally safe. It withholds the fix for chained/nested calls and scopes that require manual delegate, parameter, or return-flow changes. |
 | `UseSaveChangesResultCodeFixProvider` | `TRLS015` | Replaces `SaveChangesAsync` / `SaveChanges` with `SaveChangesResultAsync` or `SaveChangesResultUnitAsync`, adds `await`/`async` for sync `SaveChanges`, and adds `using Trellis.EntityFrameworkCore;` when needed. |
