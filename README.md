@@ -58,6 +58,12 @@ return EmailAddress.TryCreate(request.Email)
 
 > **AOT:** per-package APIs are trim- and AOT-safe; `Trellis.ServiceDefaults` exposes both AOT-safe per-type overloads and assembly-scanning overloads (annotated so the AOT analyzer flags the choice). `Trellis.EntityFrameworkCore` follows EF Core's own AOT policy. See the [docs](https://xavierjohn.github.io/Trellis/) for details.
 
+## Requirements
+
+Trellis requires the **.NET SDK 10.0.300 or later** (Roslyn 5.6+).
+
+`Trellis.Core`, `Trellis.Asp`, and `Trellis.EntityFrameworkCore` ship source generators, and `Trellis.Analyzers` ships analyzers, all compiled against Roslyn 5.6. On an older SDK the compiler reports `CS9057` and skips them — the generated members simply never appear, which surfaces as confusing "missing member" build errors rather than an obvious version complaint.
+
 ## Quick Start
 
 **Add the library:**
