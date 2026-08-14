@@ -290,9 +290,16 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// </summary>
     /// <returns>A hash code combining all equality components.</returns>
     /// <remarks>
+    /// <para>
     /// The hash code is cached for performance since value objects are immutable.
     /// This ensures consistent hash codes for the lifetime of the object and improves
     /// performance when used as dictionary keys or in hash-based collections.
+    /// </para>
+    /// <para>
+    /// The cache reserves <c>0</c> as its "not yet computed" sentinel, so components that
+    /// combine to exactly <c>0</c> report <c>1</c> instead. Equal instances still report equal
+    /// hash codes. Hash codes are not stable across processes and must not be persisted.
+    /// </para>
     /// </remarks>
     public override int GetHashCode()
     {
