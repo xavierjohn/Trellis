@@ -313,7 +313,8 @@ public class PhoneNumberTests
         Action act = () => JsonSerializer.Deserialize<PhoneNumber>(json);
 
         // Assert
-        act.Should().Throw<FormatException>()
+        act.Should().Throw<JsonException>()
+            .WithInnerException<FormatException>()
             .WithMessage("Phone number must be in E.164 format (e.g., +14155551234).");
     }
 

@@ -137,7 +137,8 @@ public class EmailAddressTests
         Action act = () => JsonSerializer.Deserialize<EmailAddress>(json);
 
         // Assert
-        act.Should().Throw<FormatException>()
+        act.Should().Throw<JsonException>()
+            .WithInnerException<FormatException>()
             .WithMessage("Email address is not valid.");
     }
 
@@ -158,6 +159,60 @@ public class EmailAddressTests
         "John Doe <example@email.com>",
         "CAT…123@email.com"
     ];
+
+    #region RFC 5321 length limits
+
+    [Fact]
+    public void TryCreate_accepts_an_address_at_the_RFC_5321_maximum_length()
+    {
+        // Arrange — 64-char local part + '@' + 189-char domain = 254 characters.
+        var address = $"{new string('a', 64)}@{new string('b', 63)}.{new string('c', 63)}.{new string('d', 61)}";
+        address.Length.Should().Be(254);
+
+        // Act
+        var result = EmailAddress.TryCreate(address);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cannot_create_EmailAddress_longer_than_the_RFC_5321_maximum()
+    {
+        // Arrange — one character over the 254-character limit.
+        var address = $"{new string('a', 64)}@{new string('b', 63)}.{new string('c', 63)}.{new string('d', 62)}";
+        address.Length.Should().Be(255);
+
+        // Act
+        var result = EmailAddress.TryCreate(address);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+    }
+
+    [Fact]
+    public void TryCreate_accepts_a_local_part_at_the_RFC_5321_maximum_length()
+    {
+        // Act
+        var result = EmailAddress.TryCreate($"{new string('a', 64)}@example.com");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cannot_create_EmailAddress_with_a_local_part_over_64_characters()
+    {
+        // Act
+        var result = EmailAddress.TryCreate($"{new string('a', 65)}@example.com");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+    }
+
+    #endregion
 
     [Fact]
     public void Create_returns_EmailAddress_for_valid_value()

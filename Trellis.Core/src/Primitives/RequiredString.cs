@@ -64,7 +64,7 @@ using System.Diagnostics;
 /// FirstName.TryCreate("");            // Success("") — stored verbatim
 /// FirstName.TryCreate("   ");         // Success("   ") — whitespace preserved
 /// FirstName.TryCreate("  John  ");    // Success("  John  ") — no auto-trim
-/// FirstName.TryCreate(null);          // Failure: "First Name cannot be empty."
+/// FirstName.TryCreate(null);          // Failure: "First Name cannot be null."
 /// </code>
 /// </example>
 /// <example>
@@ -88,7 +88,7 @@ using System.Diagnostics;
 /// FirstName.TryCreate("  John  ");    // Success("John") — trimmed
 /// FirstName.TryCreate("   ");         // Failure: trim → "" → [NotDefault]
 /// FirstName.TryCreate("");            // Failure: "First Name cannot be empty."
-/// FirstName.TryCreate(null);          // Failure: "First Name cannot be empty."
+/// FirstName.TryCreate(null);          // Failure: "First Name cannot be null."
 ///
 /// // With custom field name for validation errors
 /// FirstName.TryCreate(input, "user.firstName");
@@ -277,7 +277,7 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     /// </para>
     /// <para>
     /// The generated <c>TryCreate</c> method always rejects <c>null</c> with
-    /// <c>"&lt;FieldName&gt; cannot be empty."</c>. Additional behavior is opt-in per attribute:
+    /// <c>"&lt;FieldName&gt; cannot be null."</c>. Additional behavior is opt-in per attribute:
     /// <list type="bullet">
     /// <item><see cref="TrimAttribute"/> — trims leading and trailing whitespace before any subsequent check.</item>
     /// <item><see cref="NotDefaultAttribute"/> — rejects <see cref="string.Empty"/> (operates on the post-trim value when <c>[Trim]</c> is also present).</item>

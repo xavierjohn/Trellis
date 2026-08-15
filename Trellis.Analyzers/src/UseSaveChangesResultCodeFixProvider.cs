@@ -70,10 +70,11 @@ public sealed class UseSaveChangesResultCodeFixProvider : CodeFixProvider
         // Determine replacement: SaveChangesResultUnitAsync (standalone) vs SaveChangesResultAsync (value used)
         var replacementName = GetReplacementMethodName(identifierNode);
 
-        // Skip the fix when SaveChangesAsync return value is used in a return statement —
-        // the method return type would need to change (e.g., Task<int> to Task<Result<int>>)
-        if (replacementName == "SaveChangesResultAsync" &&
-            identifierNode.FirstAncestorOrSelf<ReturnStatementSyntax>() is not null)
+        // SaveChangesResultAsync returns Result<int>, not int. A mechanical rename only compiles
+        // where the consuming context can rebind to the new type, which in practice means an
+        // implicitly-typed local. Anywhere else (explicit int locals, assignments, conditions,
+        // arguments, return statements) the caller must restructure into the railway by hand.
+        if (replacementName == "SaveChangesResultAsync" && !IsRebindableTarget(identifierNode))
             return;
 
         var title = $"Use {replacementName}";
@@ -90,20 +91,42 @@ public sealed class UseSaveChangesResultCodeFixProvider : CodeFixProvider
     /// Determines whether to use SaveChangesResultUnitAsync or SaveChangesResultAsync.
     /// If the return value of SaveChangesAsync is used (assignment, return, condition, etc.),
     /// SaveChangesResultAsync (returning Result&lt;int&gt;) is the correct replacement.
-    /// Walks up through chained method calls (e.g. .ConfigureAwait(false)) to find the
-    /// outermost invocation before checking whether the value is discarded.
     /// </summary>
     private static string GetReplacementMethodName(IdentifierNameSyntax identifierNode)
     {
         if (identifierNode.Identifier.Text != "SaveChangesAsync")
             return "SaveChangesResultUnitAsync";
 
-        // Walk up: Identifier → MemberAccess → Invocation → possibly chained calls → possibly Await → check parent
-        var invocation = identifierNode.FirstAncestorOrSelf<InvocationExpressionSyntax>();
-        if (invocation is null)
+        var effectiveNode = FindEffectiveExpression(identifierNode);
+        if (effectiveNode is null)
             return "SaveChangesResultUnitAsync";
 
-        // Walk up through chained method calls (e.g. .ConfigureAwait(false))
+        // If the effective expression is a direct child of an ExpressionStatement, the value is discarded
+        return effectiveNode.Parent is ExpressionStatementSyntax
+            ? "SaveChangesResultUnitAsync"
+            : "SaveChangesResultAsync";
+    }
+
+    /// <summary>
+    /// Determines whether the consuming context can absorb a change of the expression's type from
+    /// <c>int</c> to <c>Result&lt;int&gt;</c>. Only an implicitly-typed local declaration rebinds,
+    /// so that is the sole shape where the mechanical rename is guaranteed to compile.
+    /// </summary>
+    private static bool IsRebindableTarget(IdentifierNameSyntax identifierNode) =>
+        FindEffectiveExpression(identifierNode)?.Parent is EqualsValueClauseSyntax equalsValue
+        && equalsValue.Parent is VariableDeclaratorSyntax declarator
+        && declarator.Parent is VariableDeclarationSyntax { Type.IsVar: true };
+
+    /// <summary>
+    /// Walks up from the method-name identifier through chained calls (e.g. <c>.ConfigureAwait(false)</c>)
+    /// and any enclosing <c>await</c> to the outermost expression node whose type the caller observes.
+    /// </summary>
+    private static SyntaxNode? FindEffectiveExpression(IdentifierNameSyntax identifierNode)
+    {
+        var invocation = identifierNode.FirstAncestorOrSelf<InvocationExpressionSyntax>();
+        if (invocation is null)
+            return null;
+
         // Pattern: InvocationExpression is the expression of a MemberAccessExpression,
         //          which is the expression of another InvocationExpression
         SyntaxNode current = invocation;
@@ -114,15 +137,7 @@ public sealed class UseSaveChangesResultCodeFixProvider : CodeFixProvider
             current = outerInvocation;
         }
 
-        // The effective node is the await expression if present, otherwise the outermost invocation
-        SyntaxNode effectiveNode = current.Parent is AwaitExpressionSyntax awaitExpr
-            ? awaitExpr
-            : current;
-
-        // If the effective expression is a direct child of an ExpressionStatement, the value is discarded
-        return effectiveNode.Parent is ExpressionStatementSyntax
-            ? "SaveChangesResultUnitAsync"
-            : "SaveChangesResultAsync";
+        return current.Parent is AwaitExpressionSyntax awaitExpr ? awaitExpr : current;
     }
 
     private static async Task<Document> ApplyFixAsync(

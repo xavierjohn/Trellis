@@ -16,6 +16,15 @@ public class ParsableJsonConverter<T> : JsonConverter<T>
     where T : IParsable<T>
 {
     private static readonly bool s_isNumericType = IsNumericScalarType();
+    private static readonly bool s_isBooleanType = IsBooleanScalarType();
+
+    /// <summary>
+    /// Tells System.Text.Json to call <see cref="JsonConverter{T}.Read"/> even when the JSON
+    /// token is <c>null</c>. Without this, the serializer bypasses the converter for null tokens
+    /// on reference-type targets and yields a null reference, silently violating the
+    /// non-nullable contract of a generated primitive.
+    /// </summary>
+    public override bool HandleNull => true;
 
     /// <inheritdoc />
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -35,7 +44,18 @@ public class ParsableJsonConverter<T> : JsonConverter<T>
         if (raw is null)
             throw new JsonException($"Cannot deserialize null JSON value to non-nullable type '{typeof(T).Name}'.");
 
-        return T.Parse(raw, default);
+        // IParsable<T>.Parse signals malformed input with FormatException (and the generated
+        // primitives surface validation failures the same way). Callers of a converter expect
+        // JsonException, which is what every other failure path here throws, so translate rather
+        // than leaking the parser's exception type through the serializer.
+        try
+        {
+            return T.Parse(raw, CultureInfo.InvariantCulture);
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException or OverflowException)
+        {
+            throw new JsonException($"Cannot deserialize '{raw}' to '{typeof(T).Name}'.", ex);
+        }
     }
 
     /// <inheritdoc />
@@ -49,7 +69,12 @@ public class ParsableJsonConverter<T> : JsonConverter<T>
 
         var stringValue = value.ToString();
 
-        if (s_isNumericType
+        if (s_isBooleanType
+            && bool.TryParse(stringValue, out var booleanValue))
+        {
+            writer.WriteBooleanValue(booleanValue);
+        }
+        else if (s_isNumericType
             && stringValue is not null
             && decimal.TryParse(stringValue, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent, CultureInfo.InvariantCulture, out var numericValue))
         {
@@ -61,26 +86,34 @@ public class ParsableJsonConverter<T> : JsonConverter<T>
         }
     }
 
-    private static bool IsNumericScalarType()
+    private static bool IsNumericScalarType() =>
+        TryGetScalarPrimitiveType(out var primitiveType)
+        && (primitiveType == typeof(int)
+            || primitiveType == typeof(long)
+            || primitiveType == typeof(decimal)
+            || primitiveType == typeof(double)
+            || primitiveType == typeof(float)
+            || primitiveType == typeof(short)
+            || primitiveType == typeof(byte));
+
+    private static bool IsBooleanScalarType() =>
+        TryGetScalarPrimitiveType(out var primitiveType) && primitiveType == typeof(bool);
+
+    private static bool TryGetScalarPrimitiveType(out Type? primitiveType)
     {
         var type = typeof(T);
         while (type is not null)
         {
             if (type.IsGenericType && type.GetGenericTypeDefinition().Name.StartsWith("ScalarValueObject", StringComparison.Ordinal))
             {
-                var primitiveType = type.GetGenericArguments()[1];
-                return primitiveType == typeof(int)
-                    || primitiveType == typeof(long)
-                    || primitiveType == typeof(decimal)
-                    || primitiveType == typeof(double)
-                    || primitiveType == typeof(float)
-                    || primitiveType == typeof(short)
-                    || primitiveType == typeof(byte);
+                primitiveType = type.GetGenericArguments()[1];
+                return true;
             }
 
             type = type.BaseType;
         }
 
+        primitiveType = null;
         return false;
     }
 }

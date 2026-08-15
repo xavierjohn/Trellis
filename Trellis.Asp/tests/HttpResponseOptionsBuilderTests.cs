@@ -147,4 +147,41 @@ public sealed class HttpResponseOptionsBuilderTests
             .WithErrorMapping<Error.Conflict>(409)
             .Should().BeSameAs(b);
     }
+
+    // A delegate mapper cannot fail fast because `default` (0) is the documented "not mine" arm,
+    // so the resolver skips out-of-range results at resolution time. A typed override has no such
+    // idiom — every registration is a deliberate request — so an unwritable status must be rejected
+    // at composition time instead of silently reaching the response.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(99)]
+    [InlineData(600)]
+    [InlineData(-1)]
+    public void WithErrorMapping_typed_overload_rejects_out_of_range_status(int statusCode)
+    {
+        var b = new HttpResponseOptionsBuilder<Thing>();
+        FluentActions.Invoking(() => b.WithErrorMapping<Error.Conflict>(statusCode))
+            .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(99)]
+    [InlineData(600)]
+    public void NonGeneric_WithErrorMapping_typed_overload_rejects_out_of_range_status(int statusCode)
+    {
+        var b = new HttpResponseOptionsBuilder();
+        FluentActions.Invoking(() => b.WithErrorMapping<Error.Conflict>(statusCode))
+            .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData(100)]
+    [InlineData(410)]
+    [InlineData(599)]
+    public void WithErrorMapping_typed_overload_accepts_in_range_status(int statusCode)
+    {
+        var b = new HttpResponseOptionsBuilder<Thing>();
+        b.WithErrorMapping<Error.Conflict>(statusCode).Should().BeSameAs(b);
+    }
 }

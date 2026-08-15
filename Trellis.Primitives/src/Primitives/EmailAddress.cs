@@ -160,6 +160,20 @@ using Trellis;
 [JsonConverter(typeof(ParsableJsonConverter<EmailAddress>))]
 public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, IScalarValue<EmailAddress, string>, IParsable<EmailAddress>
 {
+    /// <summary>
+    /// The maximum length of an address, per RFC 5321 section 4.5.3.1.3: the 256-octet forward-path
+    /// limit less the two angle brackets that delimit it.
+    /// </summary>
+    private const int MaxLength = 254;
+
+    /// <summary>
+    /// The maximum length of the local part (the text before the '@'), per RFC 5321 section 4.5.3.1.1.
+    /// </summary>
+    private const int MaxLocalPartLength = 64;
+
+    private static bool HasValidLocalPartLength(string address) =>
+        address.IndexOf('@') <= MaxLocalPartLength;
+
     private EmailAddress(string value) : base(value) { }
 
     /// <summary>
@@ -180,7 +194,8 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
     /// <remarks>
     /// <para>
     /// This method performs comprehensive email validation using a regex pattern that matches
-    /// RFC 5322 email address syntax. The validation is case-insensitive.
+    /// RFC 5322 email address syntax. The validation is case-insensitive. Addresses are also
+    /// bounded by the RFC 5321 limits — 254 characters overall and 64 for the local part.
     /// </para>
     /// <para>
     /// Activity tracing is automatically enabled for this method, allowing you to monitor
@@ -210,7 +225,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
             // Normalize input: trim whitespace
             var trimmed = value.Trim();
 
-            if (trimmed.Length > 0)
+            if (trimmed.Length is > 0 and <= MaxLength && HasValidLocalPartLength(trimmed))
             {
                 var isEmail = EmailRegEx().IsMatch(trimmed);
                 if (isEmail)

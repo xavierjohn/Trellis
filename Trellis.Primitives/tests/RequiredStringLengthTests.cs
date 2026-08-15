@@ -221,11 +221,11 @@ public class RequiredStringLengthTests
     }
 
     [Fact]
-    public void JsonDeserialize_ExceedsMaxLength_ThrowsFormatException()
+    public void JsonDeserialize_ExceedsMaxLength_ThrowsJsonException()
     {
         var json = JsonSerializer.Serialize("12345678901");
         Action act = () => JsonSerializer.Deserialize<ShortCode>(json);
-        act.Should().Throw<FormatException>();
+        act.Should().Throw<JsonException>().WithInnerException<FormatException>();
     }
 
     #endregion

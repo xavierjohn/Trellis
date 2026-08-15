@@ -1379,4 +1379,213 @@ public class UnsafeValueAccessAnalyzerTests
     }
 
     #endregion
+
+    #region Property-pattern guard — TRLS003
+
+    [Fact]
+    public async Task PropertyPatternGuard_ThenBranch_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe is { HasValue: true })
+                        return maybe.Value;
+
+                    return 0;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task PropertyPatternGuard_HasNoValueFalse_ThenBranch_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe is { HasNoValue: false })
+                        return maybe.Value;
+
+                    return 0;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task NegatedPropertyPatternGuard_ElseBranch_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe is not { HasValue: true })
+                        return 0;
+                    else
+                        return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task NegatedPropertyPatternGuard_EarlyReturn_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe is not { HasValue: true })
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task PropertyPatternGuard_HasValueFalse_EarlyReturn_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe is { HasValue: false })
+                        return 0;
+
+                    return maybe.Value;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task PropertyPatternGuard_Ternary_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                    => maybe is { HasValue: true } ? maybe.Value : 0;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task PropertyPatternGuard_ShortCircuitAnd_NoDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public bool TestMethod(Maybe<int> maybe)
+                    => maybe is { HasValue: true } && maybe.Value > 0;
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<UnsafeValueAccessAnalyzer>(source);
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task PropertyPatternGuard_WrongBranch_ReportsDiagnostic()
+    {
+        // The pattern asserts a value in the then-branch, so the else-branch access is unguarded.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe is { HasValue: true })
+                        return 0;
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
+                .WithLocation(0));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task PropertyPatternGuard_OnDifferentReceiver_ReportsDiagnostic()
+    {
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe, Maybe<int> other)
+                {
+                    if (other is { HasValue: true })
+                        return maybe.{|#0:Value|};
+
+                    return 0;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
+                .WithLocation(0));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task PropertyPatternGuard_WithAdditionalSubpattern_ReportsDiagnostic()
+    {
+        // A multi-subpattern clause is not decidable in both directions, so the analyzer stays
+        // conservative and keeps reporting rather than silently trusting a partial match.
+        const string source = """
+            public class TestClass
+            {
+                public int TestMethod(Maybe<int> maybe)
+                {
+                    if (maybe is not { HasValue: true, Value: > 0 })
+                        return 0;
+
+                    return maybe.{|#0:Value|};
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<UnsafeValueAccessAnalyzer>(
+            source,
+            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.UnsafeMaybeValueAccess)
+                .WithLocation(0));
+
+        await test.RunAsync();
+    }
+
+    #endregion
 }

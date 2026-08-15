@@ -192,7 +192,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<EmailAddress> TryCreate(string? value, string? fieldName = null)` | `Result<EmailAddress>` | Regex-based email validation. |
+| `public static Result<EmailAddress> TryCreate(string? value, string? fieldName = null)` | `Result<EmailAddress>` | Regex-based email validation, bounded by the RFC 5321 limits: 254 characters overall and 64 for the local part. |
 | `public static EmailAddress Parse(string? s, IFormatProvider? provider)` | `EmailAddress` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out EmailAddress result)` | `bool` | Safe parse helper. |
 
@@ -354,7 +354,9 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
 | `public static Percentage Parse(string? s, IFormatProvider? provider)` | `Percentage` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Percentage result)` | `bool` | Safe parse helper. |
 | `public static explicit operator Percentage(decimal value)` | `Percentage` | Explicit cast using `Create(decimal)`. |
-| `public override string ToString()` | `string` | Appends `%` to `Value`. |
+| `public override string ToString()` | `string` | Appends `%` to `Value` formatted with `CultureInfo.InvariantCulture`. |
+
+> **`ToString()` is the wire format, not a display format.** It is deliberately invariant so it round-trips through `TryCreate(string?)` and `Parse`, which read with `CultureInfo.InvariantCulture`. Under a culture with a comma decimal separator, a culture-sensitive `ToString()` would emit `"1,5%"`, which the invariant reader re-parses as `15`. For user-facing display, format `Value` explicitly with the desired culture.
 
 ### `PhoneNumber`
 

@@ -200,6 +200,35 @@ public class TrellisAspOptionsTests
         options.GetStatusCode(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Bad data" }))).Should().Be(StatusCodes.Status422UnprocessableEntity);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(99)]
+    [InlineData(600)]
+    [InlineData(-1)]
+    public void MapError_rejects_out_of_range_status(int statusCode)
+    {
+        // A status outside 100-599 cannot be written to the response. Rejecting it at
+        // configuration time surfaces the mistake at startup instead of on the first
+        // request that happens to produce the mapped error.
+        var options = new TrellisAspOptions();
+
+        FluentActions.Invoking(() => options.MapError<Error.Conflict>(statusCode))
+            .Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void MapError_rejecting_an_invalid_status_leaves_the_previous_mapping_intact()
+    {
+        var options = new TrellisAspOptions();
+        options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
+
+        FluentActions.Invoking(() => options.MapError<Error.Conflict>(0))
+            .Should().Throw<ArgumentOutOfRangeException>();
+
+        options.GetStatusCode(new Error.Conflict(null, "domain.violation") { Detail = "x" })
+            .Should().Be(StatusCodes.Status400BadRequest);
+    }
+
     #endregion
 
     #region AddTrellisAsp Registration

@@ -52,11 +52,130 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
     private static bool IsGuardedByHasValueCheck(MemberAccessExpressionSyntax memberAccess, SemanticModel semanticModel) =>
         IsGuardedByCheck(memberAccess, semanticModel, "HasValue", true) ||
         IsGuardedByCheck(memberAccess, semanticModel, "HasNoValue", false) ||
+        IsGuardedByPropertyPattern(memberAccess, semanticModel) ||
         IsGuardedByShortCircuitAnd(memberAccess, semanticModel) ||
         IsGuardedByPriorAssignment(memberAccess, semanticModel) ||
         IsGuardedByEarlyReturn(memberAccess, semanticModel) ||
         IsInsideTryGetValueBlock(memberAccess, semanticModel, "TryGetValue") ||
         IsInsideTrackSafeLambda(memberAccess, semanticModel);
+
+    /// <summary>
+    /// Recognizes the property-pattern spelling of the <c>HasValue</c> guard —
+    /// <c>if (m is { HasValue: true }) ... m.Value</c> and its negated / <c>HasNoValue</c> /
+    /// ternary forms — which is equivalent to <c>if (m.HasValue)</c> but is not a
+    /// <see cref="MemberAccessExpressionSyntax"/> condition, so <see cref="IsGuardedByCheck"/>
+    /// cannot see it.
+    /// </summary>
+    private static bool IsGuardedByPropertyPattern(
+        MemberAccessExpressionSyntax memberAccess,
+        SemanticModel semanticModel)
+    {
+        var current = memberAccess.Parent;
+        while (current != null)
+        {
+            if (current is IfStatementSyntax ifStatement &&
+                TryGetMaybePatternState(ifStatement.Condition, memberAccess.Expression, semanticModel, out var ifAssertsValue))
+            {
+                if (ifAssertsValue && IsInThenBranch(memberAccess, ifStatement))
+                    return true;
+                if (!ifAssertsValue && IsInElseBranch(memberAccess, ifStatement))
+                    return true;
+            }
+
+            if (current is ConditionalExpressionSyntax conditionalExpression &&
+                TryGetMaybePatternState(conditionalExpression.Condition, memberAccess.Expression, semanticModel, out var ternaryAssertsValue))
+            {
+                if (ternaryAssertsValue && IsInWhenTrueBranch(memberAccess, conditionalExpression))
+                    return true;
+                if (!ternaryAssertsValue && IsInWhenFalseBranch(memberAccess, conditionalExpression))
+                    return true;
+            }
+
+            current = current.Parent;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Matches <c>receiver is [not] { HasValue: true|false }</c> (and the <c>HasNoValue</c>
+    /// spelling, parentheses transparent) and reports via <paramref name="assertsHasValue"/>
+    /// whether the pattern succeeds exactly when the <c>Maybe&lt;T&gt;</c> carries a value.
+    /// <c>Maybe&lt;T&gt;</c> is a non-nullable struct, so a negated pattern is the exact
+    /// complement and both branches are decidable.
+    /// </summary>
+    private static bool TryGetMaybePatternState(
+        ExpressionSyntax condition,
+        ExpressionSyntax receiver,
+        SemanticModel semanticModel,
+        out bool assertsHasValue)
+    {
+        assertsHasValue = false;
+
+        while (condition is ParenthesizedExpressionSyntax parenthesized)
+            condition = parenthesized.Expression;
+
+        return condition is IsPatternExpressionSyntax isPattern
+            && AreSameVariable(isPattern.Expression, receiver, semanticModel)
+            && TryGetPatternState(isPattern.Pattern, out assertsHasValue);
+    }
+
+    private static bool TryGetPatternState(PatternSyntax pattern, out bool assertsHasValue)
+    {
+        assertsHasValue = false;
+
+        switch (pattern)
+        {
+            case ParenthesizedPatternSyntax parenthesized:
+                return TryGetPatternState(parenthesized.Pattern, out assertsHasValue);
+
+            case UnaryPatternSyntax unary when unary.IsKind(SyntaxKind.NotPattern):
+                if (!TryGetPatternState(unary.Pattern, out var negated))
+                    return false;
+                assertsHasValue = !negated;
+                return true;
+
+            case RecursivePatternSyntax { PropertyPatternClause: { } clause } when clause.Subpatterns.Count == 1:
+                return TryGetSubpatternState(clause.Subpatterns[0], out assertsHasValue);
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Reads a single <c>HasValue</c>/<c>HasNoValue</c> boolean subpattern. Only a lone subpattern
+    /// is accepted: <c>{ HasValue: true, Value: &gt; 0 }</c> still implies a value, but its negation
+    /// does not imply an empty one, and the caller needs both branches to be exact.
+    /// </summary>
+    private static bool TryGetSubpatternState(SubpatternSyntax subpattern, out bool assertsHasValue)
+    {
+        assertsHasValue = false;
+
+        if (subpattern.NameColon?.Name.Identifier.Text is not { } propertyName ||
+            subpattern.Pattern is not ConstantPatternSyntax { Expression: LiteralExpressionSyntax literal })
+            return false;
+
+        bool literalIsTrue;
+        if (literal.IsKind(SyntaxKind.TrueLiteralExpression))
+            literalIsTrue = true;
+        else if (literal.IsKind(SyntaxKind.FalseLiteralExpression))
+            literalIsTrue = false;
+        else
+            return false;
+
+        switch (propertyName)
+        {
+            case "HasValue":
+                assertsHasValue = literalIsTrue;
+                return true;
+            case "HasNoValue":
+                assertsHasValue = !literalIsTrue;
+                return true;
+            default:
+                return false;
+        }
+    }
 
     private static bool IsGuardedByCheck(
         MemberAccessExpressionSyntax memberAccess,
@@ -470,6 +589,9 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             return true;
         }
 
+        if (TryGetMaybePatternState(expr, targetReceiver, semanticModel, out var patternAssertsHasValue))
+            return patternAssertsHasValue;
+
         if (expr is BinaryExpressionSyntax binExpr &&
             binExpr.IsKind(SyntaxKind.LogicalAndExpression))
         {
@@ -709,6 +831,9 @@ public sealed class UnsafeValueAccessAnalyzer : DiagnosticAnalyzer
             (binaryExpression.IsKind(SyntaxKind.EqualsExpression) || binaryExpression.IsKind(SyntaxKind.NotEqualsExpression)) &&
             TryGetHasValueLiteralComparison(binaryExpression, receiver, semanticModel, out var assertsEmpty))
             return assertsEmpty;
+
+        if (TryGetMaybePatternState(condition, receiver, semanticModel, out var patternAssertsHasValue))
+            return !patternAssertsHasValue;
 
         return false;
     }

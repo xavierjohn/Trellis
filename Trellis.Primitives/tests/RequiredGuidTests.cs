@@ -333,7 +333,8 @@ public class RequiredGuidTests
         Action act = () => JsonSerializer.Deserialize<EmployeeId>(strGuid);
 
         // Assert
-        act.Should().Throw<FormatException>()
+        act.Should().Throw<JsonException>()
+            .WithInnerException<FormatException>()
             .WithMessage("Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)");
     }
 }

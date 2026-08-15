@@ -311,6 +311,47 @@ public class PercentageTests
     }
 
     [Fact]
+    public void ToString_uses_invariant_culture_regardless_of_current_culture()
+    {
+        // ToString() is the wire format: ParsableJsonConverter writes it and Parse reads it back
+        // with InvariantCulture. A culture-sensitive separator makes that round-trip lossy —
+        // "1,5%" is re-read as 15 because NumberStyles.Number treats the comma as a group separator.
+        var originalCulture = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+
+            Percentage.TryCreate(1.5m).Unwrap().ToString().Should().Be("1.5%");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    [Fact]
+    public void Json_round_trip_is_culture_stable()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+
+            var original = Percentage.TryCreate(1.5m).Unwrap();
+            var json = JsonSerializer.Serialize(original);
+
+            json.Should().Be("\"1.5%\"");
+            JsonSerializer.Deserialize<Percentage>(json).Should().Be(original);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    [Fact]
     public void ConvertToJson()
     {
         // Arrange
@@ -360,7 +401,8 @@ public class PercentageTests
         Action act = () => JsonSerializer.Deserialize<Percentage>(json);
 
         // Assert
-        act.Should().Throw<FormatException>()
+        act.Should().Throw<JsonException>()
+            .WithInnerException<FormatException>()
             .WithMessage("Percentage must be between 0 and 100.");
     }
 
@@ -374,7 +416,8 @@ public class PercentageTests
         Action act = () => JsonSerializer.Deserialize<Percentage>(json);
 
         // Assert
-        act.Should().Throw<FormatException>()
+        act.Should().Throw<JsonException>()
+            .WithInnerException<FormatException>()
             .WithMessage("Percentage must be between 0 and 100.");
     }
 

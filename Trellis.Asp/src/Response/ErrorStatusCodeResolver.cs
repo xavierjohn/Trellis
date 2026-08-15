@@ -66,6 +66,21 @@ internal static class ErrorStatusCodeResolver
         return ambient.GetStatusCode(error);
     }
 
+    /// <summary>
+    /// Throws when <paramref name="statusCode"/> falls outside the writable HTTP range. Used by the
+    /// typed registration helpers, where every call is a deliberate request for a specific status —
+    /// unlike a delegate mapper, whose out-of-range return is the documented "not mine" signal and
+    /// is therefore skipped at resolution time rather than rejected.
+    /// </summary>
+    internal static void ValidateStatusCode(int statusCode, string paramName)
+    {
+        if (statusCode is < MinHttpStatusCode or > MaxHttpStatusCode)
+            throw new ArgumentOutOfRangeException(
+                paramName,
+                statusCode,
+                $"HTTP status code must be between {MinHttpStatusCode} and {MaxHttpStatusCode}.");
+    }
+
     private static bool IsValidHttpStatusCode(int candidate, out int statusCode)
     {
         statusCode = candidate;
