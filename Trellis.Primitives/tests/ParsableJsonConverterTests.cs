@@ -34,6 +34,28 @@ public class ParsableJsonConverterTests
         FluentActions.Invoking(() => JsonSerializer.Deserialize<TicketNumber>("[]"))
             .Should().Throw<JsonException>();
 
+    // Null is rejected by the converter itself rather than being handed to Parse, so there is
+    // no inner exception to unwrap.
+    [Fact]
+    public void Deserializing_null_throws_JsonException_without_attempting_a_parse() =>
+        FluentActions.Invoking(() => JsonSerializer.Deserialize<TicketNumber>("null"))
+            .Should().Throw<JsonException>()
+            .Which.InnerException.Should().BeNull();
+
+    // Regression: the converter must opt into HandleNull, otherwise System.Text.Json bypasses
+    // Read for null tokens on reference-type targets and a non-nullable primitive silently
+    // deserializes to null.
+    [Fact]
+    public void Deserializing_a_null_property_throws_rather_than_yielding_a_null_primitive() =>
+        FluentActions.Invoking(() => JsonSerializer.Deserialize<TicketHolder>("""{"Number":null}"""))
+            .Should().Throw<JsonException>();
+
+    [Fact]
+    public void Serializing_a_null_property_writes_a_JSON_null() =>
+        JsonSerializer.Serialize(new TicketHolder(null!)).Should().Be("""{"Number":null}""");
+
+    private sealed record TicketHolder(TicketNumber Number);
+
     [Fact]
     public void Numeric_backed_primitives_serialize_as_JSON_numbers() =>
         JsonSerializer.Serialize(TicketNumber.TryCreate(42).Unwrap()).Should().Be("42");

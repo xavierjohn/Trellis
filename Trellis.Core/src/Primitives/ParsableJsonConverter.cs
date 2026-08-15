@@ -18,6 +18,14 @@ public class ParsableJsonConverter<T> : JsonConverter<T>
     private static readonly bool s_isNumericType = IsNumericScalarType();
     private static readonly bool s_isBooleanType = IsBooleanScalarType();
 
+    /// <summary>
+    /// Tells System.Text.Json to call <see cref="JsonConverter{T}.Read"/> even when the JSON
+    /// token is <c>null</c>. Without this, the serializer bypasses the converter for null tokens
+    /// on reference-type targets and yields a null reference, silently violating the
+    /// non-nullable contract of a generated primitive.
+    /// </summary>
+    public override bool HandleNull => true;
+
     /// <inheritdoc />
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
