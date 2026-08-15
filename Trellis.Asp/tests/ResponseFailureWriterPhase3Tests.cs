@@ -218,6 +218,59 @@ public sealed class ResponseFailureWriterPhase3Tests
         ctx.Response.StatusCode.Should().Be(422);
     }
 
+    [Fact]
+    public async Task Aggregate_child_detail_is_scrubbed_for_5xx_children()
+    {
+        // The outer detail is scrubbed at >= 500, but each child carries its own status. A 5xx
+        // child's detail must be scrubbed with the same rule or the errors[] array becomes a
+        // disclosure channel for internal context the outer detail deliberately withholds.
+        var ctx = NewContext();
+        var agg = new Error.Aggregate(
+            new Error.NotFound(ResourceRef.For("Item", "42")) { Detail = "Item 42 does not exist." },
+            new Error.Unexpected("boom") { Detail = "Sensitive internal context that must not leak." });
+        var r = Result.Fail<T>(agg);
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(500);
+        using var body = await ReadBody(ctx);
+        var errors = body.RootElement.GetProperty("errors");
+
+        errors[0].GetProperty("status").GetInt32().Should().Be(404);
+        errors[0].GetProperty("detail").GetString().Should().Be("Item 42 does not exist.");
+
+        errors[1].GetProperty("status").GetInt32().Should().Be(500);
+        errors[1].GetProperty("detail").GetString().Should().Be("An internal error occurred.");
+    }
+
+    [Fact]
+    public async Task Aggregate_child_detail_scrubbing_follows_the_mapped_child_status()
+    {
+        // Scrubbing keys off the resolved child status, so a per-call mapping that promotes a
+        // 4xx child into the 5xx range must scrub it, and one that demotes a 5xx child must not.
+        var ctx = NewContext();
+        var agg = new Error.Aggregate(
+            new Error.NotFound(ResourceRef.For("Item", "42")) { Detail = "Leaks once promoted to 5xx." },
+            new Error.Unexpected("boom") { Detail = "Safe once demoted to 4xx." });
+        var r = Result.Fail<T>(agg);
+
+        await r.ToHttpResponse(
+                t => t,
+                o => o
+                    .WithErrorMapping<Error.NotFound>(StatusCodes.Status500InternalServerError)
+                    .WithErrorMapping<Error.Unexpected>(StatusCodes.Status400BadRequest))
+            .ExecuteAsync(ctx);
+
+        using var body = await ReadBody(ctx);
+        var errors = body.RootElement.GetProperty("errors");
+
+        errors[0].GetProperty("status").GetInt32().Should().Be(500);
+        errors[0].GetProperty("detail").GetString().Should().Be("An internal error occurred.");
+
+        errors[1].GetProperty("status").GetInt32().Should().Be(400);
+        errors[1].GetProperty("detail").GetString().Should().Be("Safe once demoted to 4xx.");
+    }
+
     // ----------------- Concurrent modification override -----------------
 
     [Fact]

@@ -23,6 +23,15 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 /// relay becomes the single durable dispatch path.
 /// </para>
 /// <para>
+/// <b>Interceptor constraint.</b> No other <see cref="SaveChangesInterceptor"/> may raise domain events
+/// on a tracked aggregate between this interceptor's <c>SavingChanges</c> and <c>SavedChanges</c>
+/// callbacks. Capture reads each aggregate's uncommitted events during <c>SavingChanges</c>, while
+/// <c>SavedChanges</c> clears them with <c>AcceptChanges</c>, which empties the whole list — so any
+/// event raised in between is discarded without ever reaching the outbox. No Trellis interceptor
+/// raises domain events, so this only applies to caller-supplied interceptors. Raise events from the
+/// domain model before <c>SaveChanges</c> is called instead.
+/// </para>
+/// <para>
 /// <b>Serialization.</b> Events are serialized with <see cref="OutboxEventSerialization.Options"/>.
 /// Value objects that carry a <c>[JsonConverter]</c> attribute (the scalar and composite Trellis
 /// primitives) round-trip correctly, and <c>Maybe&lt;T&gt;</c> members are supported — a present value
@@ -146,6 +155,14 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
             context.Set<OutboxMessage>().AddRange(messages);
     }
 
+    /// <summary>
+    /// Clears the uncommitted events of every tracked aggregate once the save has succeeded.
+    /// </summary>
+    /// <remarks>
+    /// <c>AcceptChanges</c> empties an aggregate's entire event list, so this clears any event raised
+    /// after <see cref="Capture"/> ran as well as the ones it captured. See the interceptor constraint
+    /// documented on the class.
+    /// </remarks>
     private static void ClearCapturedAggregateEvents(DbContext? context)
     {
         if (context is null)

@@ -231,5 +231,9 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     /// <summary>
     /// Returns a string representation of the percentage with a % suffix.
     /// </summary>
-    public override string ToString() => $"{Value}%";
+    /// <remarks>
+    /// The numeric part is formatted with <see cref="System.Globalization.CultureInfo.InvariantCulture"/>
+    /// because this is the wire format <see cref="Parse"/> reads back with the invariant culture.
+    /// </remarks>
+    public override string ToString() => $"{Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}%";
 }

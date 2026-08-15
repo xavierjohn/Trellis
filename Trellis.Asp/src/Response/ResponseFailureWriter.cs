@@ -94,7 +94,7 @@ internal static class ResponseFailureWriter
         if (error is Error.Aggregate aggregate)
         {
             var options = aspOptions;
-            var detail = effectiveStatus >= 500 ? "An internal error occurred." : GetPublicDetail(error);
+            var detail = PublicDetailForStatus(error, effectiveStatus);
             var extensions = BuildExtensions(error, default, wireKindOverride);
             if (originalRequest is not null)
                 extensions["request"] = originalRequest;
@@ -102,15 +102,16 @@ internal static class ResponseFailureWriter
                 .Select(child =>
                 {
                     var (childCode, childKind) = GetCodeAndKind(child);
+                    var childStatus = resolveChildStatus is not null
+                        ? resolveChildStatus(child)
+                        : options.GetStatusCode(child);
                     return (object?)new Dictionary<string, object?>(StringComparer.Ordinal)
                     {
                         ["type"] = childKind,
-                        ["status"] = resolveChildStatus is not null
-                            ? resolveChildStatus(child)
-                            : options.GetStatusCode(child),
+                        ["status"] = childStatus,
                         ["code"] = childCode,
                         ["kind"] = childKind,
-                        ["detail"] = GetPublicDetail(child),
+                        ["detail"] = PublicDetailForStatus(child, childStatus),
                     };
                 })
                 .ToArray();
@@ -128,7 +129,7 @@ internal static class ResponseFailureWriter
                 .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path))
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
 
-            var validationDetail = effectiveStatus >= 500 ? "An internal error occurred." : unprocessable.Detail;
+            var validationDetail = effectiveStatus >= 500 ? RedactedServerDetail : unprocessable.Detail;
             var extensions = BuildExtensions(error, unprocessable.Rules, wireKindOverride);
             if (originalRequest is not null)
                 extensions["request"] = originalRequest;
@@ -141,7 +142,7 @@ internal static class ResponseFailureWriter
         }
         else
         {
-            var detail = effectiveStatus >= 500 ? "An internal error occurred." : GetPublicDetail(error);
+            var detail = PublicDetailForStatus(error, effectiveStatus);
             var rules = error is Error.InvalidInput uc ? uc.Rules : default;
             var extensions = BuildExtensions(error, rules, wireKindOverride);
             if (originalRequest is not null)
@@ -417,6 +418,17 @@ internal static class ResponseFailureWriter
 
         httpContext.Response.Headers.Append("WWW-Authenticate", scheme.Name);
     }
+
+    private const string RedactedServerDetail = "An internal error occurred.";
+
+    /// <summary>
+    /// Applies the server-failure redaction rule: a 5xx detail describes an internal condition the
+    /// caller cannot act on, so it is replaced with a fixed message. Applied per error and per
+    /// resolved status so an aggregate's <c>errors[]</c> children are redacted on their own status
+    /// rather than inheriting the outer one.
+    /// </summary>
+    private static string? PublicDetailForStatus(Error error, int status) =>
+        status >= 500 ? RedactedServerDetail : GetPublicDetail(error);
 
     private static string? GetPublicDetail(Error error) =>
         error.Detail

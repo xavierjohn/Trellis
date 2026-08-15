@@ -900,4 +900,64 @@ public class UseSaveChangesResultCodeFixProviderTests
 
         await test.RunAsync();
     }
+
+    #region Result-incompatible targets — the fix must not produce uncompilable code
+
+    [Fact]
+    public async Task SaveChangesAsync_AssignedToExplicitIntLocal_NoCodeFixOffered() =>
+        await VerifyNoCodeFixForAsyncBodyAsync("int count = await _dbContext.{|#0:SaveChangesAsync|}(ct);");
+
+    [Fact]
+    public async Task SaveChangesAsync_UsedInCondition_NoCodeFixOffered() =>
+        await VerifyNoCodeFixForAsyncBodyAsync("if (await _dbContext.{|#0:SaveChangesAsync|}(ct) > 0) { }");
+
+    [Fact]
+    public async Task SaveChangesAsync_PassedAsArgument_NoCodeFixOffered() =>
+        await VerifyNoCodeFixForAsyncBodyAsync("System.Console.WriteLine(await _dbContext.{|#0:SaveChangesAsync|}(ct));");
+
+    [Fact]
+    public async Task SaveChangesAsync_AssignedToExistingIntLocal_NoCodeFixOffered() =>
+        await VerifyNoCodeFixForAsyncBodyAsync("""
+                    int count = 0;
+                    count = await _dbContext.{|#0:SaveChangesAsync|}(ct);
+        """);
+
+    /// <summary>
+    /// Runs the analyzer and code fix over <paramref name="body"/> placed inside an async method and
+    /// asserts the source is left unchanged — the mechanical rename to <c>SaveChangesResultAsync</c>
+    /// would return <c>Result&lt;int&gt;</c> into a context that only accepts <c>int</c>.
+    /// </summary>
+    private static async Task VerifyNoCodeFixForAsyncBodyAsync(string body)
+    {
+        var source = $$"""
+            using Microsoft.EntityFrameworkCore;
+            using Trellis.EntityFrameworkCore;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            public class TestService
+            {
+                private readonly DbContext _dbContext;
+                public TestService(DbContext dbContext) => _dbContext = dbContext;
+
+                public async Task DoWork(CancellationToken ct)
+                {
+                    {{body}}
+                }
+            }
+            """;
+
+        var test = CodeFixTestHelper.CreateCodeFixTest<UseSaveChangesResultAnalyzer, UseSaveChangesResultCodeFixProvider>(
+            source,
+            source,
+            CodeFixTestHelper.Diagnostic(DiagnosticDescriptors.UseSaveChangesResult)
+                .WithLocation(0)
+                .WithArguments("SaveChangesAsync"));
+        test.TestState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
+        test.FixedState.Sources.Add(("EfCoreStubs.cs", EfCoreTestStubs.Source));
+
+        await test.RunAsync();
+    }
+
+    #endregion
 }

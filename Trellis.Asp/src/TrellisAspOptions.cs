@@ -152,6 +152,7 @@ public sealed class TrellisAspOptions
     /// <typeparam name="TError">The error type to map. Must derive from <see cref="Error"/>.</typeparam>
     /// <param name="statusCode">The HTTP status code to return for this error type.</param>
     /// <returns>The options instance for fluent chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="statusCode"/> is outside 100–599.</exception>
     /// <example>
     /// <code>
     /// options.MapError&lt;Error.Conflict&gt;(StatusCodes.Status400BadRequest)
@@ -160,6 +161,7 @@ public sealed class TrellisAspOptions
     /// </example>
     public TrellisAspOptions MapError<TError>(int statusCode) where TError : Error
     {
+        ErrorStatusCodeResolver.ValidateStatusCode(statusCode, nameof(statusCode));
         _errorMappings[typeof(TError)] = statusCode;
         return this;
     }

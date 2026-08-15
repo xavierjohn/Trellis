@@ -304,7 +304,8 @@ public class UrlTests
         Action act = () => JsonSerializer.Deserialize<Url>(json);
 
         // Assert
-        act.Should().Throw<FormatException>()
+        act.Should().Throw<JsonException>()
+            .WithInnerException<FormatException>()
             .WithMessage("URL must be a valid absolute HTTP or HTTPS URL.");
     }
 

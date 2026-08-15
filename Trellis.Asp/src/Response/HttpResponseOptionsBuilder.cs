@@ -347,8 +347,10 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     }
 
     /// <summary>Per-call override for a single error type. Higher precedence than the global <see cref="TrellisAspOptions"/>.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="statusCode"/> is outside 100–599.</exception>
     public HttpResponseOptionsBuilder<TDomain> WithErrorMapping<TError>(int statusCode) where TError : Error
     {
+        ErrorStatusCodeResolver.ValidateStatusCode(statusCode, nameof(statusCode));
         _errorOverrides ??= new();
         _errorOverrides[typeof(TError)] = statusCode;
         return this;
@@ -474,8 +476,10 @@ public sealed class HttpResponseOptionsBuilder
     }
 
     /// <summary>Per-call override for a single error type.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="statusCode"/> is outside 100–599.</exception>
     public HttpResponseOptionsBuilder WithErrorMapping<TError>(int statusCode) where TError : Error
     {
+        ErrorStatusCodeResolver.ValidateStatusCode(statusCode, nameof(statusCode));
         _errorOverrides ??= new();
         _errorOverrides[typeof(TError)] = statusCode;
         return this;

@@ -2206,12 +2206,14 @@ public class ParsableJsonConverter<T> : JsonConverter<T>
     where T : IParsable<T>
 ```
 
-Core-owned JSON converter emitted by the `Required*<TSelf>` source generator for non-enum generated primitives. It reads JSON strings, numbers, and booleans; JSON `null` is routed to the generated parse path and fails because generated scalar value objects are non-nullable. Numeric scalar value objects write JSON numbers when their string representation parses invariantly as a decimal; all other values write JSON strings.
+Core-owned JSON converter emitted by the `Required*<TSelf>` source generator for non-enum generated primitives. It reads JSON strings, numbers, and booleans; JSON `null` is routed to the generated parse path and fails because generated scalar value objects are non-nullable. Numeric scalar value objects write JSON numbers when their string representation parses invariantly as a decimal, `bool`-backed scalars write JSON `true`/`false`, and all other values write JSON strings.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Converts supported JSON token types to invariant strings and calls `T.Parse(raw, default)`. |
-| `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes numeric scalar primitives as numbers when possible; otherwise writes `value.ToString()` as a JSON string. |
+| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Converts supported JSON token types to invariant strings and calls `T.Parse(raw, CultureInfo.InvariantCulture)`. A parse or validation failure is wrapped in a `JsonException` whose `InnerException` is the original `FormatException`. |
+| `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes numeric scalar primitives as numbers and `bool`-backed scalars as JSON booleans when possible; otherwise writes `value.ToString()` as a JSON string. |
+
+> **Failures surface as `JsonException`.** `Parse` itself still throws `FormatException` (the `IParsable<T>` contract), but deserialization wraps it so every converter failure — bad token type, `null` for a non-nullable target, malformed value, failed validation — reaches the caller as `JsonException`. This matters at HTTP boundaries: minimal APIs and `ReadFromJsonAsync` translate `JsonException` into a `400 Bad Request`, whereas an escaping `FormatException` becomes a `500`.
 
 ### `PrimitiveValueObjectTrace`
 
@@ -2338,6 +2340,7 @@ static partial void ValidateAdditional(bool value, string fieldName, ref string?
 ```
 
 - Built-in validation: rejects `null` for nullable inputs; both `true` and `false` are valid. There is no strictness opt-out for `RequiredBool<TSelf>`.
+- JSON wire format: serializes as a JSON boolean (`true` / `false`). Deserialization accepts both JSON booleans and the JSON strings `"true"` / `"false"`.
 
 #### `RequiredDateTime<TSelf>`
 

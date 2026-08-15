@@ -126,7 +126,34 @@ public class RequiredBoolTests
     {
         GiftWrap giftWrap = GiftWrap.TryCreate(true).Unwrap();
         var actual = JsonSerializer.Serialize(giftWrap);
-        actual.Should().Be("\"True\"");
+        actual.Should().Be("true");
+    }
+
+    [Fact]
+    public void ConvertToJson_FalseValue()
+    {
+        GiftWrap giftWrap = GiftWrap.TryCreate(false).Unwrap();
+        var actual = JsonSerializer.Serialize(giftWrap);
+        actual.Should().Be("false");
+    }
+
+    [Fact]
+    public void Json_round_trips_as_a_boolean()
+    {
+        // A bool-backed scalar serializes as a JSON boolean, matching how numeric-backed scalars
+        // serialize as JSON numbers. Reading still accepts the legacy string spelling.
+        GiftWrap original = GiftWrap.TryCreate(true).Unwrap();
+
+        var json = JsonSerializer.Serialize(original);
+
+        JsonSerializer.Deserialize<GiftWrap>(json).Should().Be(original);
+    }
+
+    [Fact]
+    public void ConvertFromJson_BooleanToken()
+    {
+        JsonSerializer.Deserialize<GiftWrap>("true")!.Value.Should().BeTrue();
+        JsonSerializer.Deserialize<GiftWrap>("false")!.Value.Should().BeFalse();
     }
 
     [Fact]

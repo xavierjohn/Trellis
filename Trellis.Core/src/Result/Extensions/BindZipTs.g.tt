@@ -226,7 +226,6 @@ public static partial class BindZipExtensionsAsync
         this ValueTask<Result<(<# WriteTs(i); #>)>> resultTask,
         Func<<# WriteTs(i); #>, ValueTask<Result<T<#= outputSize #>>>> func)
     {
-        ArgumentNullException.ThrowIfNull(resultTask);
         ArgumentNullException.ThrowIfNull(func);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(BindZipExtensions.BindZip));
 
