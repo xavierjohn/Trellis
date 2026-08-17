@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <Description>Azure Service Bus transport for Trellis — the wire between the transactional outbox and the deduplicating inbox. Publishes integration events with the outbox row id as the Service Bus MessageId so redeliveries stay idempotent end to end, and consumes them back into the inbox dispatcher.</Description>
+    <PackageTags>trellis;azure-service-bus;messaging;integration-events;outbox;inbox;idempotency;ddd;reliability</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TrellisApiRefName>messaging-azureservicebus</TrellisApiRefName>
+    <!-- Azure.Messaging.ServiceBus is not annotated for trimming, and the wire-name map resolves
+         types by reflection; opts out of AOT/trim like the EF Core siblings. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
+    <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trellis.Messaging.AzureServiceBus.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+</Project>

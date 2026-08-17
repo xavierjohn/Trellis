@@ -124,6 +124,10 @@
     <Project Path="Trellis.Http.Abstractions/src/Trellis.Http.Abstractions.csproj" />
     <Project Path="Trellis.Http.Abstractions/tests/Trellis.Http.Abstractions.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Messaging.AzureServiceBus/">
+    <Project Path="Trellis.Messaging.AzureServiceBus/src/Trellis.Messaging.AzureServiceBus.csproj" />
+    <Project Path="Trellis.Messaging.AzureServiceBus/tests/Trellis.Messaging.AzureServiceBus.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.Persistence.Abstractions/">
     <Project Path="Trellis.Persistence.Abstractions/src/Trellis.Persistence.Abstractions.csproj" />
   </Folder>

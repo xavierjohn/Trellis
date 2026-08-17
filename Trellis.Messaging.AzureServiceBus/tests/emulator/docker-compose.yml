@@ -1,0 +1,48 @@
+name: trellis-servicebus-emulator
+
+# Repo-owned Azure Service Bus emulator for the Trellis.Messaging.AzureServiceBus integration tests.
+#
+# The emulator cannot create entities at runtime — every topic and subscription must be declared in
+# Config.json before the container starts. That is why this file exists rather than the tests
+# provisioning what they need: the entity list *is* part of the test fixture.
+#
+#   docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml up -d
+#
+# The tests skip visibly when nothing is listening on localhost:5672, so this is optional for a
+# normal build.
+
+services:
+  emulator:
+    container_name: trellis-servicebus-emulator
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    volumes:
+      - "./Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
+    ports:
+      - "5672:5672"
+      - "5300:5300"
+    environment:
+      SQL_SERVER: sqledge
+      MSSQL_SA_PASSWORD: "TrellisEmulator1!"
+      ACCEPT_EULA: "Y"
+    depends_on:
+      sqledge:
+        condition: service_started
+    networks:
+      servicebus:
+        aliases:
+          - "sb-emulator"
+
+  # The emulator keeps its entity state in SQL; it will not start without this sidecar.
+  sqledge:
+    container_name: trellis-servicebus-emulator-sql
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    networks:
+      servicebus:
+        aliases:
+          - "sqledge"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "TrellisEmulator1!"
+
+networks:
+  servicebus:

@@ -24,7 +24,8 @@
             "Trellis.Mediator.FluentValidation/src/Trellis.Mediator.FluentValidation.csproj",
             "Trellis.EntityFrameworkCore/src/Trellis.EntityFrameworkCore.csproj",
             "Trellis.EntityFrameworkCore.Outbox/src/Trellis.EntityFrameworkCore.Outbox.csproj",
-            "Trellis.EntityFrameworkCore.Inbox/src/Trellis.EntityFrameworkCore.Inbox.csproj"
+            "Trellis.EntityFrameworkCore.Inbox/src/Trellis.EntityFrameworkCore.Inbox.csproj",
+            "Trellis.Messaging.AzureServiceBus/src/Trellis.Messaging.AzureServiceBus.csproj"
           ]
         }
       ],

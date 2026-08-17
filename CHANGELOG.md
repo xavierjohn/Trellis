@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `Trellis.Messaging.AzureServiceBus`, the wire between the outbox and the inbox
+
+Trellis shipped both ends of reliable cross-service messaging — a transactional outbox that stages integration
+events with the business change, and an inbox that deduplicates them on `(ConsumerId, MessageId)` — and no
+transport in between. This package is that transport.
+
+Its central obligation is a single value. Outbox relay delivery is at-least-once, so one row can be published
+more than once; the consumer's inbox only collapses those copies if they arrive under the same message id.
+The publisher therefore stamps the producer's outbox row id onto `ServiceBusMessage.MessageId` verbatim. A
+transport that minted its own id per attempt would leave the inbox in place, looking correct, deduplicating
+nothing.
+
+The wire format prefers standard Service Bus members over custom application properties: `MessageId` for the
+dedup key and `Subject` for the event's stable wire name (from `[IntegrationEventName]`). Both are indexed by
+the broker, visible in the portal and Service Bus Explorer, and usable in subscription filters, so messages
+stay diagnosable and routable by tools that know nothing about Trellis. The default topology is one topic per
+contract; `TopicNameResolver` collapses or prefixes that when a deployment needs something else.
+
+Settlement follows from what the inbox reports, so `AutoCompleteMessages` is off. `Processed` and
+`SkippedDuplicate` both **complete** the message — both mean it is durably accounted for, and abandoning a
+duplicate would redeliver it forever because every attempt reaches the same conclusion. A handler exception
+**abandons**, since the dispatcher rolled back and nothing was applied. A message that is unusable in itself —
+no parseable id, no `Subject`, an unknown contract, a malformed body — is **dead-lettered immediately** with a
+reason code, because retrying the same bytes cannot produce a different outcome; abandoning would only burn
+the delivery count and dead-letter anyway, with no diagnosis attached.
+
+`AddAzureServiceBusIntegrationEventPublisher` **replaces** any existing `IIntegrationEventPublisher` rather
+than appending to it. In-process fan-out and broker publication are alternatives, not layers: registering both
+would deliver each event locally *and* over the wire, so a service subscribed to its own topic would handle
+everything twice. Replacing also makes the call order-independent.
+
+Neither registration gets a `TrellisServiceBuilder.UseXxx()` slot, matching `Trellis.Asp.Idempotency.Cosmos`.
+A builder slot is a compile-time reference, and surfacing one here would make every `Trellis.ServiceDefaults`
+consumer carry the Azure SDK in order to use features unrelated to Azure.
+
+The integration tests run against the real Azure Service Bus emulator, with a repo-owned compose file and
+`Config.json` (the emulator declares entities at startup and cannot create them at runtime, so the entity list
+is part of the fixture). Duplicate detection is deliberately **off** on the test topic: if the broker collapsed
+duplicate ids, the suite would pass even if the transport invented a fresh id per publish. The tests skip
+visibly when no emulator is reachable rather than passing against a substitute.
+
 ### Added — cross-service messaging contracts on the outbox publish seam
 
 Groundwork that makes a message-broker adapter possible to write correctly. Both ends of reliable messaging
