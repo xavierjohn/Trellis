@@ -14,6 +14,7 @@ new files; superseded decisions stay in place with a status update.
 | 003 | [Trellis v3 Fluent API Improvements](ADR-003-fluent-api-improvements.md) | Accepted for v3 implementation |
 | 005 | [Re-introduce `Trellis.Unit` and Collapse Non-Generic `Result` to a Static Factory](ADR-005-reintroduce-unit.md) | Proposed (counter-ADR to ADR-002 §3) |
 | 006 | [Re-home Persistence and Messaging Contracts out of the EF Core Packages](ADR-006-store-neutral-persistence-contracts.md) | Accepted |
+| 007 | [Keep Outbox, Inbox, and Broker Transports in the Framework Repository](ADR-007-messaging-repository-boundary.md) | Accepted |
 
 ## When to write an ADR
 

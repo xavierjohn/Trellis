@@ -84,7 +84,15 @@
          The properties below cover what it does NOT enable by default.
          DebugType=embedded puts the PDB inside the DLL, so symbols travel with
          the binary and there is nothing left to ship in a .snupkg — symbol
-         packages are intentionally disabled. -->
+         packages are intentionally disabled, permanently. IncludeSymbols is set
+         explicitly rather than left to its default so the rule is enforced by the
+         build rather than by this comment. Verified behaviour when it is turned on:
+         pack succeeds and emits a legacy .symbols.nupkg (SymbolPackageFormat
+         defaults to symbols.nupkg, not snupkg) containing the same set of files as
+         the main package — no PDB and no sources, because the PDB is already
+         embedded in the DLL. The failure mode is therefore a silently redundant
+         package rather than an error, which is why this is pinned here. -->
+    <IncludeSymbols>false</IncludeSymbols>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
