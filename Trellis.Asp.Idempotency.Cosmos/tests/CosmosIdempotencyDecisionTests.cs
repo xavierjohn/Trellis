@@ -69,6 +69,28 @@ public class CosmosIdempotencyDecisionTests
         decision.RetryAfter.Should().Be(TimeSpan.FromSeconds(25));
     }
 
+    /// <summary>
+    /// A reservation written by a host whose clock runs ahead lands in the future, making the
+    /// elapsed time negative. Left unclamped, <c>ReservationTimeout - elapsed</c> would exceed the
+    /// configured timeout and break the contract rule that <c>RetryAfter</c> falls within
+    /// <c>(0, ReservationTimeout]</c> — telling the client to wait longer than the reservation can
+    /// possibly live. The conformance suite cannot catch this, because it drives a single fake
+    /// clock and so has no skew to produce.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(30)]
+    [InlineData(3600)]
+    public void Reservation_from_a_clock_ahead_of_ours_clamps_retry_after(int skewSeconds)
+    {
+        var decision = CosmosIdempotencyDecision.Classify(
+            Reserved("fp", Now + TimeSpan.FromSeconds(skewSeconds)), "fp", Now, Options);
+
+        decision.Action.Should().Be(IdempotencyDocumentAction.AlreadyInFlight);
+        decision.RetryAfter.Should().BePositive();
+        decision.RetryAfter.Should().BeLessThanOrEqualTo(Options.ReservationTimeout);
+    }
+
     [Fact]
     public void Live_reservation_with_different_fingerprint_is_a_mismatch() =>
         CosmosIdempotencyDecision.Classify(

@@ -1,6 +1,5 @@
 ﻿<Solution>
   <Folder Name="/.github/">
-    <File Path=".github/codecov.yml" />
     <File Path=".github/copilot-instructions.md" />
     <File Path=".github/dependabot.yml" />
   </Folder>

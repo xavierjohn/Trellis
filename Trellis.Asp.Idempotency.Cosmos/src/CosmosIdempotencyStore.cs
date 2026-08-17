@@ -52,7 +52,9 @@ using Microsoft.Azure.Cosmos;
 /// the boundary. Set <see cref="IdempotencyOptions.ReservationTimeout"/> comfortably above the
 /// slowest expected handler <em>plus</em> the skew tolerated across the fleet, and keep hosts
 /// NTP-synchronised. A single-instance store such as <c>InMemoryIdempotencyStore</c> reads one
-/// clock and is not exposed to this.
+/// clock and is not exposed to this. The <c>Retry-After</c> value returned for an in-flight
+/// reservation is clamped so that skew cannot push it beyond
+/// <see cref="IdempotencyOptions.ReservationTimeout"/>.
 /// </para>
 /// <para>
 /// <b>Cost.</b> Request-unit charge scales with item size, so an idempotency entry costs roughly

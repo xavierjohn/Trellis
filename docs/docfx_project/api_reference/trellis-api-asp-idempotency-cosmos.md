@@ -84,6 +84,10 @@ slow rather than dead — but it moves the boundary. Set `ReservationTimeout` co
 slowest expected handler *plus* the skew tolerated across the fleet, and keep hosts NTP-synchronised.
 `InMemoryIdempotencyStore` reads one clock and is not exposed to this.
 
+A skewed clock can also make a reservation appear to have been made in the *future*, which would
+otherwise produce a `Retry-After` longer than the reservation can possibly live. The value is
+clamped into `(0, ReservationTimeout]`, so a client is never told to wait longer than the timeout.
+
 **Abandon never deletes a completed entry.** The middleware calls `AbandonAsync` from the failure
 paths around `CompleteAsync`, so an unconditional delete would destroy a response that was already
 durably recorded and let the retry re-run the handler.

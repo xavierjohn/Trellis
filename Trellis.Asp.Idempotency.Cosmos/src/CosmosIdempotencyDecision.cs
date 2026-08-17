@@ -27,7 +27,8 @@ internal enum IdempotencyDocumentAction
 /// <param name="Action">What the store should do next.</param>
 /// <param name="RetryAfter">
 /// How long the caller should wait, meaningful only for
-/// <see cref="IdempotencyDocumentAction.AlreadyInFlight"/>.
+/// <see cref="IdempotencyDocumentAction.AlreadyInFlight"/>, where it always falls within
+/// <c>(0, ReservationTimeout]</c>.
 /// </param>
 internal readonly record struct IdempotencyDocumentDecision(
     IdempotencyDocumentAction Action,
@@ -75,8 +76,16 @@ internal static class CosmosIdempotencyDecision
             return new(IdempotencyDocumentAction.BodyHashMismatch, TimeSpan.Zero);
 
         var elapsed = now - DateTimeOffset.FromUnixTimeMilliseconds(document.ReservedAtUnixMs);
-        return elapsed >= options.ReservationTimeout
-            ? new(IdempotencyDocumentAction.TakeOver, TimeSpan.Zero)
-            : new(IdempotencyDocumentAction.AlreadyInFlight, options.ReservationTimeout - elapsed);
+        if (elapsed >= options.ReservationTimeout)
+            return new(IdempotencyDocumentAction.TakeOver, TimeSpan.Zero);
+
+        // A reservation written by a host whose clock runs ahead lands in the future, making
+        // elapsed negative and the remainder longer than the timeout itself. Clamping keeps
+        // RetryAfter within (0, ReservationTimeout] as the contract requires, so a client is never
+        // told to wait longer than the reservation can possibly live.
+        var retryAfter = options.ReservationTimeout - elapsed;
+        return new(
+            IdempotencyDocumentAction.AlreadyInFlight,
+            retryAfter > options.ReservationTimeout ? options.ReservationTimeout : retryAfter);
     }
 }
