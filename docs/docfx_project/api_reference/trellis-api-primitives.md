@@ -297,6 +297,13 @@ Apply via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on 
 Reflection is performed once per generic instantiation and cached. **Not Native AOT compatible** — for AOT
 scenarios, hand-write a `JsonConverter<T>`.
 
+Under Native AOT the converter throws `NotSupportedException` on first use, naming the offending type and
+pointing at the hand-written-converter remedy. It deliberately does not attempt to bind: declaration order
+comes from `MetadataToken` and inner primitives are unwrapped through an `IScalarValue<,>` interface lookup,
+and neither survives an AOT image, so any binding it produced would be silently misordered. The failure is
+eager and per-type, not per-payload. This applies to `Money` and every other composite value object that
+relies on this converter.
+
 > **Pattern reference.** For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO (`ShippingAddress`-style), see [Cookbook Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership). Without this `[JsonConverter]` attribute on a request DTO's composite `[OwnedEntity]` property, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer.
 
 ### `Money`

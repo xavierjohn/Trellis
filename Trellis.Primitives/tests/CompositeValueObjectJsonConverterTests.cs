@@ -281,9 +281,7 @@ public class CompositeValueObjectJsonConverterTests
     public void Throws_when_no_matching_TryCreate_exists()
     {
         Action act = () => JsonSerializer.Serialize(new MissingTryCreateVo());
-        // Static field init wraps the InvalidOperationException in TypeInitializationException.
-        act.Should().Throw<TypeInitializationException>()
-            .WithInnerException<InvalidOperationException>()
+        act.Should().Throw<InvalidOperationException>()
             .WithMessage("*requires a public static 'TryCreate'*");
     }
 
@@ -301,9 +299,21 @@ public class CompositeValueObjectJsonConverterTests
     public void Throws_when_TryCreate_overloads_are_ambiguous()
     {
         Action act = () => JsonSerializer.Serialize(new AmbiguousTryCreateVo(1));
-        act.Should().Throw<TypeInitializationException>()
-            .WithInnerException<InvalidOperationException>()
+        act.Should().Throw<InvalidOperationException>()
             .WithMessage("*found multiple ambiguous 'TryCreate' overloads*");
+    }
+
+    [Fact]
+    public void Fails_fast_with_actionable_message_when_dynamic_code_is_unavailable()
+    {
+        using (CompositeValueObjectAotSimulation.Force())
+        {
+            Action act = () => JsonSerializer.Serialize(AotProbeVo.Create(1, "x"));
+
+            act.Should().Throw<NotSupportedException>()
+                .WithMessage("*cannot run under Native AOT*")
+                .WithMessage("*Hand-write a JsonConverter<AotProbeVo>*");
+        }
     }
 
     [Fact]
@@ -350,6 +360,23 @@ public class CompositeValueObjectJsonConverterTests
 
         public static Result<IntStringVo> TryCreate(int number, string label, string? fieldName = null) =>
             Result.Ok(new IntStringVo(number, label));
+    }
+
+    [JsonConverter(typeof(CompositeValueObjectJsonConverter<AotProbeVo>))]
+    public class AotProbeVo : TestVo
+    {
+        public int Number { get; private set; }
+
+        public string Label { get; private set; } = string.Empty;
+
+        private AotProbeVo() { }
+
+        private AotProbeVo(int n, string l) { Number = n; Label = l; }
+
+        public static AotProbeVo Create(int n, string l) => new(n, l);
+
+        public static Result<AotProbeVo> TryCreate(int number, string label, string? fieldName = null) =>
+            Result.Ok(new AotProbeVo(number, label));
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<SameTypedPropertiesVo>))]

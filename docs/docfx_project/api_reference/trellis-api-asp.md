@@ -989,7 +989,7 @@ public sealed class ValidatingJsonConverterFactory : JsonConverterFactory
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public override bool CanConvert(Type typeToConvert)` | `bool` | `true` when `typeToConvert` is a scalar value type. |
-| `public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)` | `JsonConverter?` | Builds a `ValidatingJsonConverter<TValue, TPrimitive>` for supported scalar value types. Annotated `[RequiresDynamicCode]` — `JsonConverterFactory` is not Native AOT compatible. |
+| `public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)` | `JsonConverter?` | Builds a `ValidatingJsonConverter<TValue, TPrimitive>` for supported scalar value types. Suppresses IL3050 — `JsonConverterFactory` dynamic converter creation is not Native AOT compatible, and Trellis only registers this factory when `JsonSerializer.IsReflectionEnabledByDefault` is `true`, so the path is unreachable under AOT. |
 
 ### `MaybeScalarValueJsonConverter<TValue, TPrimitive>`
 

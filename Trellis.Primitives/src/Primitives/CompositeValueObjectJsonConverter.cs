@@ -6,9 +6,38 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using Trellis;
+
+/// <summary>
+/// Test seam that lets the suite exercise the Native AOT fail-fast path on a platform where
+/// <see cref="RuntimeFeature.IsDynamicCodeSupported"/> is <see langword="true"/>.
+/// </summary>
+/// <remarks>
+/// Checked only after the <see cref="RuntimeFeature.IsDynamicCodeSupported"/> constant, so it can
+/// never prevent the trimmer from folding the reflection path away in a real AOT image.
+/// <see cref="AsyncLocal{T}"/> rather than a plain static because test classes run in parallel.
+/// </remarks>
+internal static class CompositeValueObjectAotSimulation
+{
+    private static readonly AsyncLocal<bool> ForcedUnsupported = new();
+
+    internal static bool IsForced => ForcedUnsupported.Value;
+
+    internal static IDisposable Force()
+    {
+        ForcedUnsupported.Value = true;
+        return new Scope();
+    }
+
+    private sealed class Scope : IDisposable
+    {
+        public void Dispose() => ForcedUnsupported.Value = false;
+    }
+}
 
 /// <summary>
 /// Convention-based <see cref="JsonConverter{T}"/> for composite value objects.
@@ -41,8 +70,12 @@ using Trellis;
 /// message on failure.
 /// </para>
 /// <para>
-/// This converter uses reflection at first use (results are cached). Native AOT apps must root the
-/// closed converter type through <see cref="JsonConverterAttribute"/> or a source-generated context.
+/// This converter uses reflection at first use (results are cached). It is <b>not Native AOT
+/// compatible</b>: declaration order is recovered from <c>MetadataToken</c> and inner primitives are
+/// unwrapped through <see cref="IScalarValue{TSelf, TPrimitive}"/> interface lookup, neither of which
+/// survives an AOT image. Rather than bind fields in a silently wrong order, the converter throws
+/// <see cref="NotSupportedException"/> on first use when dynamic code is unavailable. Hand-write a
+/// converter for composite value objects that must round-trip under Native AOT.
 /// </para>
 /// </remarks>
 public sealed class CompositeValueObjectJsonConverter<
@@ -50,7 +83,12 @@ public sealed class CompositeValueObjectJsonConverter<
 T> : JsonConverter<T>
     where T : ValueObject
 {
-    private static readonly CompositeMetadata Metadata = CompositeMetadata.Build(typeof(T));
+    private static readonly Lazy<CompositeMetadata> LazyMetadata =
+        new(() => CompositeMetadata.Build(typeof(T)));
+
+    // Deliberately a property, not a static field initializer: a static field would surface every
+    // configuration error wrapped in TypeInitializationException, hiding the actionable message.
+    private static CompositeMetadata Metadata => LazyMetadata.Value;
 
     /// <inheritdoc />
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -315,6 +353,10 @@ T> : JsonConverter<T>
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.PublicProperties)]
             Type type)
         {
+            // Read the trimmer-substituted constant directly so ILC can fold this branch.
+            if (!RuntimeFeature.IsDynamicCodeSupported || CompositeValueObjectAotSimulation.IsForced)
+                throw new NotSupportedException(BuildUnsupportedMessage(type));
+
             var discoveredProperties = type
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                 .Where(p =>
@@ -367,6 +409,13 @@ T> : JsonConverter<T>
 
             return propertyType;
         }
+
+        private static string BuildUnsupportedMessage(Type type) =>
+            $"CompositeValueObjectJsonConverter<{type.Name}> requires runtime code generation and cannot run under Native AOT. " +
+            "Property discovery relies on reflection metadata (declaration order via MetadataToken, and IScalarValue<,> " +
+            "interface lookup to unwrap inner primitives) that is unavailable or trimmed in an AOT image, so the converter " +
+            $"cannot be built correctly. Hand-write a JsonConverter<{type.Name}> and apply it with " +
+            $"[JsonConverter(typeof(My{type.Name}Converter))] instead.";
 
         private static List<PropertyInfo> OrderProperties(Type type, List<PropertyInfo> properties)
         {
