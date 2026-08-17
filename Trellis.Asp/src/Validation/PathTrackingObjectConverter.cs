@@ -1,8 +1,8 @@
 ﻿namespace Trellis.Asp.Validation;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 /// <summary>
 /// Wraps a non-collection object property whose graph transitively contains a scalar value object,
@@ -11,11 +11,18 @@ using System.Text.Json.Serialization;
 /// </summary>
 /// <typeparam name="T">The property (object) type being wrapped.</typeparam>
 /// <remarks>
-/// Installed by the reflection-mode type-info modifier. It is never constructed under Native AOT, where
-/// runtime closed-generic converter construction is disabled; AOT keeps leaf-only field names. The inner
-/// object is deserialized through <see cref="JsonSerializer"/> (its own type converter), not a converter
-/// captured at modifier time, so a self-referential DTO graph cannot re-enter metadata resolution while
-/// this wrapper is being constructed.
+/// <para>
+/// Installed by the type-info modifier, which closes this generic either at runtime (reflection mode,
+/// via <c>Type.MakeGenericType</c>) or at compile time (Native AOT, via the source-generated
+/// <see cref="ScalarValuePathTracking"/> registrations). The converter body itself is AOT-safe.
+/// </para>
+/// <para>
+/// The inner object is deserialized through its own <see cref="JsonTypeInfo{T}"/> resolved from
+/// <see cref="JsonSerializerOptions"/> at read time — not a converter captured at modifier time — so a
+/// self-referential DTO graph cannot re-enter metadata resolution while this wrapper is being
+/// constructed. Resolving the type info (rather than calling the <c>Deserialize&lt;T&gt;(options)</c>
+/// overload) is also what keeps this converter free of <c>RequiresDynamicCode</c>.
+/// </para>
 /// </remarks>
 internal sealed class PathTrackingObjectConverter<T> : JsonConverter<T?>
 {
@@ -31,23 +38,18 @@ internal sealed class PathTrackingObjectConverter<T> : JsonConverter<T?>
     public PathTrackingObjectConverter(string propertyName) => _propertyName = propertyName;
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         using (ValidationErrorsContext.PushPathSegment(_propertyName))
         {
-            return JsonSerializer.Deserialize<T>(ref reader, options);
+            return JsonSerializer.Deserialize(ref reader, TypeInfo(options));
         }
     }
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
     public override void Write(Utf8JsonWriter writer, T? value, JsonSerializerOptions options) =>
-        JsonSerializer.Serialize(writer, value, options);
+        JsonSerializer.Serialize(writer, value!, TypeInfo(options));
+
+    private static JsonTypeInfo<T> TypeInfo(JsonSerializerOptions options) =>
+        (JsonTypeInfo<T>)options.GetTypeInfo(typeof(T));
 }
