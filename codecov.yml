@@ -12,6 +12,14 @@ coverage:
 # Exclude non-framework code from coverage reporting.
 # Examples/ and samples/ are demonstration apps, not library code shipped to consumers.
 # Test projects and generated files should never count toward framework coverage.
+#
+# The two Cosmos DB files below are the only source files in the framework that cannot be executed
+# without a live service. They are covered — the full IIdempotencyStore conformance suite runs
+# against a real Cosmos DB emulator — but those tests are marked [Trait("Category", "Integration")]
+# and excluded from CI, matching the SQL Server-backed tests, so the coverage run cannot see them.
+# The exemption is deliberately per-file rather than per-package: the decision ordering, document
+# model, and service registration in the same package are all reachable offline and remain gated.
+# Revisit if the Cosmos DB emulator is ever run as a CI service container.
 ignore:
   - "Examples/"
   - "samples/"
@@ -21,6 +29,8 @@ ignore:
   - "**/*.designer.cs"
   - "**/obj/"
   - "**/bin/"
+  - "Trellis.Asp.Idempotency.Cosmos/src/CosmosIdempotencyStore.cs"
+  - "Trellis.Asp.Idempotency.Cosmos/src/CosmosIdempotencyContainer.cs"
 
 comment:
   layout: "reach, diff, flags, files"

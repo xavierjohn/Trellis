@@ -179,8 +179,13 @@ dotnet test Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.
 
 | Run | Tests |
 |---|---|
-| Default / CI | 20 — decision ordering, key encoding, registration; no emulator needed |
+| Default / CI | 36 — decision ordering, document model, key encoding, service registration; no emulator needed |
 | `Category=Integration` | 19 — the 17 conformance rules plus the two `ttl` tests, against real Cosmos DB |
+
+Because CI cannot see the integration run, `CosmosIdempotencyStore.cs` and
+`CosmosIdempotencyContainer.cs` are exempted in `codecov.yml`. The exemption is per-file, not
+per-package: everything reachable without a live service — decision ordering, the document model,
+and service registration — stays gated by the coverage target.
 
 ## See also
 
