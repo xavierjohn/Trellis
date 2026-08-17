@@ -45,6 +45,7 @@ For any non-trivial Trellis work, load these **before** writing the first line o
 | FluentValidation integration | `docs/docfx_project/api_reference/trellis-api-fluentvalidation.md` |
 | HttpClient extensions | `docs/docfx_project/api_reference/trellis-api-http.md` |
 | HTTP transport abstractions (`WriteOutcome`, `HttpError`, ETag/precondition value types) | `docs/docfx_project/api_reference/trellis-api-http-abstractions.md` |
+| Azure Service Bus transport for integration events | `docs/docfx_project/api_reference/trellis-api-messaging-azureservicebus.md` |
 | Mediator pipeline behaviors | `docs/docfx_project/api_reference/trellis-api-mediator.md` |
 | FluentValidation in the Mediator pipeline | `docs/docfx_project/api_reference/trellis-api-mediator-fluentvalidation.md` |
 | State machine integration | `docs/docfx_project/api_reference/trellis-api-statemachine.md` |
@@ -74,7 +75,7 @@ If you cannot answer any of these, stop and load the missing reference before co
 When adding a new `services.AddTrellisXxx()` or `services.AddXxxDispatch()` style extension, first decide whether it needs a builder slot at all:
 
 - **Composition-root features** — anything an application author turns on (pipeline behaviors, dispatchers, actor providers, outbox/inbox) — **must** get a `TrellisServiceBuilder.UseXxx(...)` slot.
-- **Leaf, store, and adapter-author extension points** get **no** slot. These are called by another `AddXxx` that *is* surfaced, or by an adapter author wiring a non-shipped provider. Existing examples: `AddInMemoryIdempotencyStore`, `AddCosmosIdempotencyStore`, `AddTrellisRouteConstraint`/`AddTrellisRouteConstraints`, and `AddTransactionalCommandBehavior` (provider-neutral; invoked by `AddTrellisUnitOfWork<TContext>()`, which is surfaced as `UseEntityFrameworkUnitOfWork<TContext>()`).
+- **Leaf, store, and adapter-author extension points** get **no** slot. These are called by another `AddXxx` that *is* surfaced, or by an adapter author wiring a non-shipped provider. Existing examples: `AddInMemoryIdempotencyStore`, `AddTrellisRouteConstraint`/`AddTrellisRouteConstraints`, `AddTransactionalCommandBehavior` (provider-neutral; invoked by `AddTrellisUnitOfWork<TContext>()`, which is surfaced as `UseEntityFrameworkUnitOfWork<TContext>()`), and the **vendor-SDK provider packages**: `AddCosmosIdempotencyStore` (`Trellis.Asp.Idempotency.Cosmos`) and `AddAzureServiceBusIntegrationEventPublisher` / `AddAzureServiceBusIntegrationEventConsumer` (`Trellis.Messaging.AzureServiceBus`). Surfacing a vendor package would force every `Trellis.ServiceDefaults` consumer to take a transitive dependency on a cloud SDK in order to use features unrelated to that vendor; `Trellis.ServiceDefaults` deliberately references no vendor SDK.
 
 If the new helper falls in the first category, the work is **not complete** until:
 
@@ -136,6 +137,7 @@ Tests are organized by source area:
 | FluentValidation (standalone) | `Trellis.FluentValidation/src/` | `Trellis.FluentValidation/tests/` |
 | FluentValidation (Mediator) | `Trellis.Mediator.FluentValidation/src/` | `Trellis.Mediator.FluentValidation/tests/` |
 | HTTP abstractions | `Trellis.Http.Abstractions/src/` | `Trellis.Http.Abstractions/tests/` |
+| Azure Service Bus transport | `Trellis.Messaging.AzureServiceBus/src/` | `Trellis.Messaging.AzureServiceBus/tests/` |
 | Persistence abstractions | `Trellis.Persistence.Abstractions/src/` | — |
 | API versioning | `Trellis.Asp.ApiVersioning/src/` | `Trellis.Asp.ApiVersioning/tests/` |
 | Service defaults / composition root | `Trellis.ServiceDefaults/src/` | `Trellis.ServiceDefaults/tests/` |

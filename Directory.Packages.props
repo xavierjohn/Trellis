@@ -6,6 +6,7 @@
   </PropertyGroup>
   <!-- Runtime -->
   <ItemGroup>
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="DotNet.ReproducibleBuilds" Version="2.0.5" />
     <PackageVersion Include="FluentValidation" Version="12.1.1" />

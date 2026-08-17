@@ -74,6 +74,8 @@
     href: integration-outbox.md
   - name: Transactional Inbox
     href: integration-inbox.md
+  - name: Azure Service Bus Transport
+    href: integration-azure-service-bus.md
   - name: Mediator Pipeline
     href: integration-mediator.md
   - name: Service Defaults (Composition Root)
