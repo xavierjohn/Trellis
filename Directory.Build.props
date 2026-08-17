@@ -33,6 +33,26 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!--
+      Stop Nerdbank.GitVersioning from exporting cloud build variables from MSBuild.
+
+      Its SetCloudBuildVersionVars target runs once per project and appends to the file named by
+      $GITHUB_ENV. Because .NET resolves FileMode.Append on Linux to a seek-to-end at open time
+      rather than the O_APPEND flag, parallel MSBuild nodes write at the same stale offset and tear
+      each other's lines, which the runner rejects with "Unable to process file command 'env'".
+
+      The workflows that need these variables already run `nbgv cloud` (or dotnet/nbgv) as a
+      dedicated single-threaded step, so the per-project export is redundant work that only adds
+      the race. Nothing in this repo reads GitAssemblyInformationalVersion or GitBuildVersion as an
+      MSBuild property, and version stamping is unaffected: it comes from GetBuildVersion, not from
+      this target.
+
+      Upstream added a file lock in dotnet/Nerdbank.GitVersioning@329154d7, but as of 3.10.91 no
+      stable release carries it. Keep this set regardless of version — the export stays redundant
+      once the fix ships, and the lock only serializes writes we do not need to make.
+    -->
+    <NBGV_SetCloudBuildVersionVars>false</NBGV_SetCloudBuildVersionVars>
   </PropertyGroup>
 
   <PropertyGroup Label="Coverage">
