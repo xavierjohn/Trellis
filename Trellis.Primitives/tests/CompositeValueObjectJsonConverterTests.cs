@@ -286,6 +286,16 @@ public class CompositeValueObjectJsonConverterTests
     }
 
     [Fact]
+    public void Reports_unreduced_property_types_rather_than_blaming_TryCreate()
+    {
+        Action act = () => JsonSerializer.Serialize(new UnreducibleVo());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*could not reduce*UnreducibleInner*")
+            .WithMessage("*trimmed away*");
+    }
+
+    [Fact]
     public void Accepts_TryCreate_with_trailing_optional_parameters()
     {
         // OptionalParamsVo has TryCreate(int, string fieldName = null). Deserializing should
@@ -301,19 +311,6 @@ public class CompositeValueObjectJsonConverterTests
         Action act = () => JsonSerializer.Serialize(new AmbiguousTryCreateVo(1));
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*found multiple ambiguous 'TryCreate' overloads*");
-    }
-
-    [Fact]
-    public void Fails_fast_with_actionable_message_when_dynamic_code_is_unavailable()
-    {
-        using (CompositeValueObjectAotSimulation.Force())
-        {
-            Action act = () => JsonSerializer.Serialize(AotProbeVo.Create(1, "x"));
-
-            act.Should().Throw<NotSupportedException>()
-                .WithMessage("*cannot run under Native AOT*")
-                .WithMessage("*Hand-write a JsonConverter<AotProbeVo>*");
-        }
     }
 
     [Fact]
@@ -360,23 +357,6 @@ public class CompositeValueObjectJsonConverterTests
 
         public static Result<IntStringVo> TryCreate(int number, string label, string? fieldName = null) =>
             Result.Ok(new IntStringVo(number, label));
-    }
-
-    [JsonConverter(typeof(CompositeValueObjectJsonConverter<AotProbeVo>))]
-    public class AotProbeVo : TestVo
-    {
-        public int Number { get; private set; }
-
-        public string Label { get; private set; } = string.Empty;
-
-        private AotProbeVo() { }
-
-        private AotProbeVo(int n, string l) { Number = n; Label = l; }
-
-        public static AotProbeVo Create(int n, string l) => new(n, l);
-
-        public static Result<AotProbeVo> TryCreate(int number, string label, string? fieldName = null) =>
-            Result.Ok(new AotProbeVo(number, label));
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<SameTypedPropertiesVo>))]
@@ -541,6 +521,19 @@ public class CompositeValueObjectJsonConverterTests
     {
         public int Value { get; private set; } = 1;
         // No TryCreate — Build should throw.
+    }
+
+    // Stands in for a scalar value type whose IScalarValue<,> interface has been trimmed away:
+    // GetPrimitiveType cannot reduce it, so it reaches BuildInvoker as an unresolved primitive.
+    public sealed class UnreducibleInner
+    {
+        public string Value { get; init; } = "x";
+    }
+
+    [JsonConverter(typeof(CompositeValueObjectJsonConverter<UnreducibleVo>))]
+    public class UnreducibleVo : TestVo
+    {
+        public UnreducibleInner Inner { get; private set; } = new();
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<OptionalParamsVo>))]

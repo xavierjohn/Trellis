@@ -51,6 +51,31 @@ public class PathTrackingRegistryGeneratorTests
     }
 
     [Fact]
+    public void Array_root_is_walked()
+    {
+        var source = $$"""
+            {{ValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Collections.Generic;
+                using System.Text.Json.Serialization;
+
+                public sealed record MemberDto(Email Email);
+
+                public sealed record TeamCommand(List<MemberDto> Members);
+
+                [JsonSerializable(typeof(TeamCommand[]))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterCollection<global::System.Collections.Generic.List<global::TestNamespace.MemberDto>, global::TestNamespace.MemberDto>()");
+    }
+
+    [Fact]
     public void Inherited_collection_property_is_registered()
     {
         var source = $$"""

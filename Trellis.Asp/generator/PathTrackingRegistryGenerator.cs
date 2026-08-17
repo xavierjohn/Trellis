@@ -1,4 +1,4 @@
-namespace Trellis.AspSourceGenerator;
+﻿namespace Trellis.AspSourceGenerator;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -48,23 +48,25 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(combined, static (spc, source) => Execute(source.Left, source.Right, spc));
     }
 
-    private static ImmutableArray<INamedTypeSymbol> GetSerializableRoots(GeneratorAttributeSyntaxContext context)
+    // ITypeSymbol rather than INamedTypeSymbol: [JsonSerializable(typeof(Foo[]))] yields an
+    // IArrayTypeSymbol, and Walk already unwraps arrays to their element type.
+    private static ImmutableArray<ITypeSymbol> GetSerializableRoots(GeneratorAttributeSyntaxContext context)
     {
-        var builder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+        var builder = ImmutableArray.CreateBuilder<ITypeSymbol>();
 
         foreach (var attribute in context.Attributes)
         {
             if (attribute.ConstructorArguments.Length == 0)
                 continue;
 
-            if (attribute.ConstructorArguments[0].Value is INamedTypeSymbol type)
+            if (attribute.ConstructorArguments[0].Value is ITypeSymbol type)
                 builder.Add(type);
         }
 
         return builder.ToImmutable();
     }
 
-    private static void Execute(Compilation compilation, ImmutableArray<INamedTypeSymbol> roots, SourceProductionContext context)
+    private static void Execute(Compilation compilation, ImmutableArray<ITypeSymbol> roots, SourceProductionContext context)
     {
         if (roots.IsDefaultOrEmpty)
             return;
