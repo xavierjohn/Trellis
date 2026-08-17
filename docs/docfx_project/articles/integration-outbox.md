@@ -166,6 +166,28 @@ builder.Services.AddTrellis(trellis => trellis
 
 The default `IIntegrationEventPublisher` fans out to in-process `IIntegrationEventHandler<T>` registrations — ideal for a modular monolith and for tests. To deliver to other services, replace that one registration with a message-broker adapter; aggregates, translators, and the outbox are unchanged. Delivery is at-least-once and a retried domain event re-runs its translator, so a consumer may see the same integration event more than once (with a different `OutboxMessage.Id` each time) — **dedupe on business identity, not on the message id.**
 
+### Writing a broker adapter
+
+Two things separate an adapter that works from one that quietly loses the inbox's guarantee.
+
+**Override the message-carrying overload.** The relay calls `PublishAsync(OutboundIntegrationMessage, CancellationToken)`, whose `MessageId` is the outbox row's own id. Stamp it on the wire (`ServiceBusMessage.MessageId`, a Kafka header, and so on) so the consumer's `(ConsumerId, MessageId)` inbox dedup can collapse redeliveries of that row. Minting a fresh id per publish attempt makes every redelivery look like a new message and defeats the inbox. The overload is a default interface method that forwards to the event-only one, so an adapter that forgets to override it compiles and appears to work — this is the failure worth reviewing for.
+
+**Identify the event by a logical name, not by its CLR type.** The outbox stores `Type.AssemblyQualifiedName`, which is correct for its own in-process relaying and unusable across services: the consumer's assemblies differ, and the string embeds an assembly version. Annotate contracts and resolve them through `IntegrationEventNameMap`:
+
+```csharp
+[IntegrationEventName("orders.order-placed.v1")]
+public sealed record OrderPlacedIntegrationEvent(Guid OrderId, DateTimeOffset OccurredAt) : IIntegrationEvent;
+
+// Producer and consumer each build the map over their own contract assembly.
+var names = IntegrationEventNameMap.FromAssemblies(typeof(OrderPlacedIntegrationEvent).Assembly);
+```
+
+Include a version segment in the name. Once a message carrying it sits on a queue or in another team's code, changing the name is a breaking change; a new version can be consumed side-by-side instead.
+
+On the receiving end, build an `IntegrationEnvelope` from the wire id and the resolved type and hand it to `IInboxDispatcher`. Acknowledge the broker message on **both** `Processed` and `SkippedDuplicate` — the dispatcher contract says both mean the message is durably accounted for.
+
+Bear in mind what the message id can and cannot do: it collapses redeliveries of a *single* outbox row, but a retried domain row re-runs its translator and stages a genuinely new row with its own id. That second duplicate still needs business-identity deduplication.
+
 ## Persist-on-failure (`FailAfterCommit`) events
 
 `TransactionalCommandBehavior` commits a `Result.FailAfterCommit` outcome (persist-on-failure), but `DomainEventDispatchBehavior` does **not** dispatch domain events for any failed result — by design those events are discarded, not a durable buffer.

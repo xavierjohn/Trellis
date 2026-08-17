@@ -32,6 +32,39 @@ public class MediatorIntegrationEventPublisherTests
     }
 
     [Fact]
+    public async Task PublishAsync_OutboundMessageOverload_FansOutToInProcessHandlers()
+    {
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        var handler = new RecordingHandler();
+        services.AddSingleton<IIntegrationEventHandler<TestIntegrationEvent>>(handler);
+
+        var provider = services.BuildServiceProvider();
+        var publisher = new MediatorIntegrationEventPublisher(
+            provider, NullLogger<MediatorIntegrationEventPublisher>.Instance);
+
+        var evt = new TestIntegrationEvent("payload", DateTimeOffset.UtcNow);
+        await ((IIntegrationEventPublisher)publisher).PublishAsync(
+            new OutboundIntegrationMessage(Guid.CreateVersion7(), evt), CancellationToken.None);
+
+        handler.Received.Should().ContainSingle().Which.Should().BeSameAs(evt);
+    }
+
+    [Fact]
+    public async Task PublishAsync_OutboundMessageOverload_FallsBackForImplementationsThatOnlyOverrideTheEventOverload()
+    {
+        // The default interface method is what keeps pre-existing publishers - which cannot know about
+        // OutboundIntegrationMessage - working after the relay switched to the message-carrying overload.
+        var legacy = new EventOnlyPublisher();
+        var evt = new TestIntegrationEvent("payload", DateTimeOffset.UtcNow);
+
+        await ((IIntegrationEventPublisher)legacy).PublishAsync(
+            new OutboundIntegrationMessage(Guid.CreateVersion7(), evt), CancellationToken.None);
+
+        legacy.Received.Should().ContainSingle().Which.Should().BeSameAs(evt);
+    }
+
+    [Fact]
     public async Task PublishAsync_NoHandlersRegistered_IsNoOp()
     {
         var services = new ServiceCollection();
@@ -253,6 +286,17 @@ public class MediatorIntegrationEventPublisherTests
         public ValueTask HandleAsync(TestIntegrationEvent integrationEvent, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class EventOnlyPublisher : IIntegrationEventPublisher
+    {
+        public List<IIntegrationEvent> Received { get; } = [];
+
+        public ValueTask PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+        {
+            Received.Add(integrationEvent);
             return ValueTask.CompletedTask;
         }
     }

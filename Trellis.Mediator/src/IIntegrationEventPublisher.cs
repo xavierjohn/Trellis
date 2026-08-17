@@ -28,4 +28,23 @@ public interface IIntegrationEventPublisher
     /// <param name="cancellationToken">A token to observe while waiting on the consumers.</param>
     /// <returns>A <see cref="ValueTask"/> that completes when all consumers have run (or thrown).</returns>
     ValueTask PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Publishes an integration event together with the stable message identity a transport must carry
+    /// onto the wire. This is the overload the outbox relay calls.
+    /// </summary>
+    /// <remarks>
+    /// The default implementation discards <see cref="OutboundIntegrationMessage.MessageId"/> and forwards
+    /// to <see cref="PublishAsync(IIntegrationEvent, CancellationToken)"/>, which is correct for in-process
+    /// fan-out: handlers run in the producer's own process, so there is no wire and nothing to deduplicate.
+    /// A broker adapter overrides this to map the id onto its transport (for example
+    /// <c>ServiceBusMessage.MessageId</c>) so consumer-side <c>(ConsumerId, MessageId)</c> deduplication
+    /// survives the relay's at-least-once redelivery. Existing implementations keep compiling and running
+    /// unchanged.
+    /// </remarks>
+    /// <param name="message">The message to publish, carrying the event and its stable id.</param>
+    /// <param name="cancellationToken">A token to observe while waiting on the consumers.</param>
+    /// <returns>A <see cref="ValueTask"/> that completes when all consumers have run (or thrown).</returns>
+    ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken) =>
+        PublishAsync(message.Event, cancellationToken);
 }

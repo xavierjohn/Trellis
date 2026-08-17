@@ -63,11 +63,22 @@ The flow:
 
 1. A **translator** — an ordinary `IDomainEventHandler<TDomainEvent>` — injects `IIntegrationEventCollector` and `Add(...)`s integration events while the relay re-dispatches the domain event.
 2. After publishing a `Domain` row, the relay drains the per-message scope's collector and stages each produced integration event as a new `OutboxMessageKind.Integration` row — in the **same** `SaveChanges` that marks the domain row processed, so an integration event is enrolled only once its source domain event is durably dispatched.
-3. A later drain publishes each `Integration` row through `IIntegrationEventPublisher` (default in-process fan-out to `IIntegrationEventHandler<T>`; replace the registration with a message-broker adapter to deliver to other services).
+3. A later drain publishes each `Integration` row through `IIntegrationEventPublisher` — specifically the `PublishAsync(OutboundIntegrationMessage, CancellationToken)` overload, carrying that row's own `OutboxMessage.Id` (default in-process fan-out to `IIntegrationEventHandler<T>`; replace the registration with a message-broker adapter to deliver to other services).
 
 Register the consumer side with `services.AddIntegrationEventDispatch(...)` / `AddIntegrationEventHandler<TEvent, THandler>()`, or the `TrellisServiceBuilder.UseIntegrationEvents(...)` slot. The collector is optional: outboxes that capture only domain events never register it and are unaffected.
 
 Delivery is at-least-once and a retried domain event re-runs its translator, so a consumer may observe the same integration event more than once (with a different `OutboxMessage.Id` each time) — **dedupe on business identity, not the message id.**
+
+### Two different duplicates — only one is the message id's job
+
+These are easy to conflate, and they need different defences:
+
+| Duplicate | Cause | `OutboxMessage.Id` | Defence |
+| --- | --- | --- | --- |
+| **Redelivery of one `Integration` row** | The relay crashed between publishing and its bookkeeping `SaveChanges`, or the batch outlived its lease | **Same** on every attempt | The consumer's inbox, keyed `(ConsumerId, MessageId)` — provided the transport carried `OutboundIntegrationMessage.MessageId` verbatim |
+| **A re-run translator staging a fresh row** | A `Domain` row was retried, so the translator produced the integration event again | **Different** each time | Business identity — the inbox cannot help, because these genuinely are two messages |
+
+The relay hands `OutboundIntegrationMessage.MessageId` to the publisher precisely so a broker adapter can stamp it on the wire (for example `ServiceBusMessage.MessageId`) and collapse the first row of the table. An adapter that minted its own id per publish attempt would turn every redelivery into a distinct message and silently defeat the consumer's inbox. It does **not** collapse the second row, which is why the "dedupe on business identity" guidance above still stands.
 
 ## Wiring: three required calls
 
