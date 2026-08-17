@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Messaging.AzureServiceBus;
 
+using System.Runtime.CompilerServices;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,6 +14,12 @@ using Trellis.Mediator;
 /// </summary>
 public static class AzureServiceBusServiceCollectionExtensions
 {
+    /// <summary>
+    /// Per-collection accumulated consumer configuration, used only to validate at registration time.
+    /// Keyed weakly so it does not keep a service collection alive or leak between tests.
+    /// </summary>
+    private static readonly ConditionalWeakTable<IServiceCollection, AzureServiceBusConsumerOptions> s_consumerProbes = [];
+
     /// <summary>
     /// Publishes integration events to Azure Service Bus instead of to in-process handlers.
     /// </summary>
@@ -70,9 +77,11 @@ public static class AzureServiceBusServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(nameMap);
         ArgumentNullException.ThrowIfNull(configure);
 
-        // Validate eagerly against a throwaway instance so a missing subscription is a registration-time
-        // error, not a service that starts cleanly and receives nothing.
-        var probe = new AzureServiceBusConsumerOptions();
+        // Validate against a probe that accumulates every call's configuration, not a fresh one per call.
+        // Subscriptions add up across calls onto a single options instance at runtime, so a per-call probe
+        // would pass two registrations that are each fine alone and together start two processors competing
+        // on one subscription.
+        var probe = s_consumerProbes.GetOrCreateValue(services);
         configure(probe);
         probe.Validate();
 

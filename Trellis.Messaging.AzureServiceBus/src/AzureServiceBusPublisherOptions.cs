@@ -26,7 +26,13 @@ public sealed class AzureServiceBusPublisherOptions
     /// <c>sys.Label</c> (the message's <c>Subject</c>, which always carries the wire name) so a subscriber
     /// does not receive contracts it cannot deserialize.
     /// </remarks>
-    public Func<string, string> TopicNameResolver { get; set; } = static wireName => wireName;
+    public Func<string, string> TopicNameResolver
+    {
+        get => _topicNameResolver;
+        set => _topicNameResolver = value ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    private Func<string, string> _topicNameResolver = static wireName => wireName;
 
     /// <summary>
     /// Controls how event bodies are serialized to JSON. Defaults to <see cref="JsonSerializerOptions.Web"/>
@@ -37,5 +43,11 @@ public sealed class AzureServiceBusPublisherOptions
     /// message ships, or accept that in-flight messages written with the previous settings must still
     /// deserialize.
     /// </remarks>
-    public JsonSerializerOptions JsonSerializerOptions { get; set; } = JsonSerializerOptions.Web;
+    public JsonSerializerOptions JsonSerializerOptions
+    {
+        get => _jsonSerializerOptions;
+        set => _jsonSerializerOptions = value ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    private JsonSerializerOptions _jsonSerializerOptions = JsonSerializerOptions.Web;
 }

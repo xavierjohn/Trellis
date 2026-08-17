@@ -60,17 +60,34 @@ public sealed class AzureServiceBusConsumerOptions
     /// Controls how event bodies are deserialized. Must agree with the producer's settings; defaults to
     /// <see cref="JsonSerializerOptions.Web"/>, matching <see cref="AzureServiceBusPublisherOptions"/>.
     /// </summary>
-    public JsonSerializerOptions JsonSerializerOptions { get; set; } = JsonSerializerOptions.Web;
+    public JsonSerializerOptions JsonSerializerOptions
+    {
+        get => _jsonSerializerOptions;
+        set => _jsonSerializerOptions = value ?? throw new ArgumentNullException(nameof(value));
+    }
+
+    private JsonSerializerOptions _jsonSerializerOptions = JsonSerializerOptions.Web;
 
     /// <summary>
     /// Adds a subscription to receive from.
     /// </summary>
+    /// <remarks>
+    /// Rejects a duplicate here rather than only in <see cref="Validate"/>, because configuration accumulates
+    /// across every <c>AddAzureServiceBusIntegrationEventConsumer</c> call onto one options instance. Two
+    /// calls each valid on their own can still add the same subscription twice, and the result is two
+    /// processors on one subscription competing for the same messages.
+    /// </remarks>
     /// <param name="topicName">The topic name.</param>
     /// <param name="subscriptionName">The subscription name.</param>
     /// <returns>The same options instance, for chaining.</returns>
     public AzureServiceBusConsumerOptions Subscribe(string topicName, string subscriptionName)
     {
-        Subscriptions.Add(new ServiceBusSubscription(topicName, subscriptionName));
+        var subscription = new ServiceBusSubscription(topicName, subscriptionName);
+
+        if (Subscriptions.Contains(subscription))
+            throw new InvalidOperationException(DuplicateMessage(topicName, subscriptionName));
+
+        Subscriptions.Add(subscription);
         return this;
     }
 
@@ -96,7 +113,10 @@ public sealed class AzureServiceBusConsumerOptions
 
         if (duplicate is not null)
             throw new InvalidOperationException(
-                $"Subscription '{duplicate.Key.SubscriptionName}' on topic '{duplicate.Key.TopicName}' is registered more than once; " +
-                "each registration starts its own processor, so the duplicate only competes with itself for the same messages.");
+                DuplicateMessage(duplicate.Key.TopicName, duplicate.Key.SubscriptionName));
     }
+
+    private static string DuplicateMessage(string topicName, string subscriptionName) =>
+        $"Subscription '{subscriptionName}' on topic '{topicName}' is registered more than once; " +
+        "each registration starts its own processor, so the duplicate only competes with itself for the same messages.";
 }

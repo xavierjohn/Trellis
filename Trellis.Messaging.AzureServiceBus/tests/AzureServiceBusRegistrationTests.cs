@@ -136,6 +136,70 @@ public class AzureServiceBusRegistrationTests
             .WithMessage("*IntegrationEventName*");
     }
 
+    [Fact]
+    public void AddConsumer_CalledTwiceWithTheSameSubscription_ThrowsRatherThanRunningTwoCompetingProcessors()
+    {
+        var services = new ServiceCollection();
+        services.AddAzureServiceBusIntegrationEventConsumer(Map, static o => o.Subscribe("topic-a", "s"));
+
+        // Each call validates its own configuration and passes; only the accumulated instance is wrong.
+        var act = () => services.AddAzureServiceBusIntegrationEventConsumer(
+            Map, static o => o.Subscribe("topic-a", "s"));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*more than once*");
+    }
+
+    [Fact]
+    public void PublisherOptions_RejectNullRatherThanFailingWithANullReferenceOnTheFirstPublish()
+    {
+        var options = new AzureServiceBusPublisherOptions();
+
+        var nullResolver = () => options.TopicNameResolver = null!;
+        var nullJson = () => options.JsonSerializerOptions = null!;
+
+        nullResolver.Should().Throw<ArgumentNullException>();
+        nullJson.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void ConsumerOptions_RejectNullJsonSerializerOptions()
+    {
+        var options = new AzureServiceBusConsumerOptions();
+
+        var act = () => options.JsonSerializerOptions = null!;
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void PublisherOptions_DefaultToTopicPerContract()
+    {
+        var options = new AzureServiceBusPublisherOptions();
+
+        // The documented default layout: each contract owns a topic named after its wire name.
+        options.TopicNameResolver(OrderPlaced.WireName).Should().Be(OrderPlaced.WireName);
+        options.MessageSource.Should().BeNull();
+    }
+
+    [Fact]
+    public void Consumer_RejectsDuplicateSubscriptionsReachingItByAnyRoute()
+    {
+        // Subscriptions is a mutable list, so Subscribe's guard is not the only way in. The consumer
+        // validates what it was actually handed, because it is the thing that starts a processor per entry.
+        var options = new AzureServiceBusConsumerOptions();
+        options.Subscriptions.Add(new ServiceBusSubscription("orders", "billing"));
+        options.Subscriptions.Add(new ServiceBusSubscription("orders", "billing"));
+
+        var act = () => new ServiceBusInboxConsumer(
+            new ServiceBusClient(OfflineConnectionString),
+            new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            Map,
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<ServiceBusInboxConsumer>.Instance);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*more than once*");
+    }
+
     private sealed class NoOpPublisher : IIntegrationEventPublisher
     {
         public ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken) =>

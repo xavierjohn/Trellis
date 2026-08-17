@@ -47,6 +47,7 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
     private readonly IntegrationEventNameMap _nameMap;
     private readonly AzureServiceBusConsumerOptions _options;
     private readonly ILogger<ServiceBusInboxConsumer> _logger;
+    private readonly InboxMessageHandler _handler;
     private readonly List<ServiceBusProcessor> _processors = [];
 
     /// <summary>
@@ -75,6 +76,12 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
         _nameMap = nameMap;
         _options = options.Value;
         _logger = logger;
+
+        // The registration helper validates each caller's configuration in isolation; this validates what
+        // they actually add up to, which is the only instance the processors are built from.
+        _options.Validate();
+
+        _handler = new InboxMessageHandler(scopeFactory, nameMap, _options.JsonSerializerOptions, logger);
     }
 
     /// <inheritdoc />
@@ -120,29 +127,9 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ProcessMessageAsync(ProcessMessageEventArgs args)
-    {
-        var envelopeResult = ServiceBusMessageFormatter.ToEnvelope(
-            args.Message, _nameMap, _options.JsonSerializerOptions);
-
-        if (!envelopeResult.TryGetValue(out var envelope, out var error))
-        {
-            ServiceBusTransportLog.DeadLettered(_logger, args.Message.MessageId, error.Code, error.Detail);
-
-            await args.DeadLetterMessageAsync(args.Message, error.Code, error.Detail, args.CancellationToken)
-                .ConfigureAwait(false);
-            return;
-        }
-
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var dispatcher = scope.ServiceProvider.GetRequiredService<IInboxDispatcher>();
-
-        var outcome = await dispatcher.DispatchAsync(envelope, args.CancellationToken).ConfigureAwait(false);
-
-        await args.CompleteMessageAsync(args.Message, args.CancellationToken).ConfigureAwait(false);
-
-        ServiceBusTransportLog.Settled(_logger, envelope.MessageId, args.Message.Subject, outcome);
-    }
+    private async Task ProcessMessageAsync(ProcessMessageEventArgs args) =>
+        await _handler.HandleAsync(args.Message, new ProcessMessageEventArgsSettler(args), args.CancellationToken)
+            .ConfigureAwait(false);
 
     private Task ProcessErrorAsync(ProcessErrorEventArgs args)
     {

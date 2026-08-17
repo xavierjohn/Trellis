@@ -99,6 +99,10 @@ public sealed class AzureServiceBusConsumerOptions
 
 Validation runs at registration, not on the first message: no subscriptions, `MaxConcurrentCalls < 1`, a negative `PrefetchCount`, or the same `(topic, subscription)` registered twice each throw `InvalidOperationException` from the `AddAzureServiceBusIntegrationEventConsumer` call.
 
+The duplicate check spans calls. Configuration accumulates onto one options instance, so two registrations that are each valid alone can still add the same subscription twice — which would start two processors competing on one subscription. Registration validates the accumulated configuration, and the consumer re-validates what it was actually handed, since `Subscriptions` is a mutable list that can be appended to directly.
+
+`TopicNameResolver` and both `JsonSerializerOptions` properties reject `null` on assignment rather than failing with a `NullReferenceException` on the first message.
+
 ## Registration
 
 ```csharp
