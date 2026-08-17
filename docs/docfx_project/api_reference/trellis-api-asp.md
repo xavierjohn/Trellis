@@ -490,6 +490,13 @@ public interface IIdempotencyStore
 | `ValueTask CompleteAsync(string scope, string key, string reservationId, IdempotencyResponseSnapshot snapshot, CancellationToken ct)` | `ValueTask` | Records the response snapshot under the reservation. Conditional on the reservation token (CAS) so a slow original handler whose reservation has been atomically taken over by a same-key retry cannot finalise the entry under the now-invalid token. |
 | `ValueTask AbandonAsync(string scope, string key, string reservationId, CancellationToken ct)` | `ValueTask` | Releases a reservation without a snapshot so the next retry can re-reserve. Called on any failure path (exception, response-too-large, `SendFileAsync`, abort, **5xx response status**, **response trailers**). |
 
+> **Writing your own store?** Inherit `IdempotencyStoreConformance` from the
+> `Trellis.Testing.Idempotency` package to run the full contract — atomic reserve, replay,
+> fingerprint mismatch, reservation takeover, TTL expiry, and abandon-after-complete — against your
+> implementation. Every rule here fails *silently* when violated, so the suite is the practical way
+> to know a Redis, Cosmos DB, or EF Core store is correct. See
+> [`trellis-api-testing-idempotency.md`](trellis-api-testing-idempotency.md#quick-start).
+
 ### `InMemoryIdempotencyStore`
 
 **Declaration**
@@ -498,7 +505,7 @@ public interface IIdempotencyStore
 public sealed class InMemoryIdempotencyStore : IIdempotencyStore
 ```
 
-Single-process `ConcurrentDictionary`-backed store. Register with `services.AddInMemoryIdempotencyStore()` for dev / single-instance hosts and tests. **Not safe across multiple instances or process restarts** — production hosts that retry across replicas need an EF-backed store that implements the same CAS contract.
+Single-process `ConcurrentDictionary`-backed store. Register with `services.AddInMemoryIdempotencyStore()` for dev / single-instance hosts and tests. **Not safe across multiple instances or process restarts** — production hosts that retry across replicas need a durable store implementing the same CAS contract. `Trellis.Asp.Idempotency.Cosmos` ships one; see [`trellis-api-asp-idempotency-cosmos.md`](trellis-api-asp-idempotency-cosmos.md#quick-start).
 
 ### `IIdempotencyScopeResolver`
 

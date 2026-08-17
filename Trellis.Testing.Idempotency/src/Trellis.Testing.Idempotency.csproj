@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Trellis.Testing.Idempotency</AssemblyName>
+    <RootNamespace>Trellis.Testing.Idempotency</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!--
+      The suite is only ever loaded by a test host, never AOT-published, and the xUnit and
+      FluentAssertions surface it builds on is not annotated for trimming. Leaving the repo-wide
+      analyzers on would fail the build on warnings that cannot be actioned here.
+    -->
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+
+    <!-- Conformance test names read as sentences; the repo's test projects suppress this too. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+
+    <PackageId>Trellis.Testing.Idempotency</PackageId>
+    <Description>Executable conformance suite for Trellis IIdempotencyStore implementations - inherit one class to prove a Redis, Cosmos DB, EF Core, or bespoke store satisfies the reserve, replay, takeover, and abandon contract</Description>
+    <PackageTags>trellis;testing;idempotency;conformance;contract-tests;aspnetcore;redis;cosmosdb;http</PackageTags>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <TrellisApiRefName>testing-idempotency</TrellisApiRefName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.extensibility.core" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

@@ -74,7 +74,7 @@ If you cannot answer any of these, stop and load the missing reference before co
 When adding a new `services.AddTrellisXxx()` or `services.AddXxxDispatch()` style extension, first decide whether it needs a builder slot at all:
 
 - **Composition-root features** — anything an application author turns on (pipeline behaviors, dispatchers, actor providers, outbox/inbox) — **must** get a `TrellisServiceBuilder.UseXxx(...)` slot.
-- **Leaf, store, and adapter-author extension points** get **no** slot. These are called by another `AddXxx` that *is* surfaced, or by an adapter author wiring a non-shipped provider. Existing examples: `AddInMemoryIdempotencyStore`, `AddTrellisRouteConstraint`/`AddTrellisRouteConstraints`, and `AddTransactionalCommandBehavior` (provider-neutral; invoked by `AddTrellisUnitOfWork<TContext>()`, which is surfaced as `UseEntityFrameworkUnitOfWork<TContext>()`).
+- **Leaf, store, and adapter-author extension points** get **no** slot. These are called by another `AddXxx` that *is* surfaced, or by an adapter author wiring a non-shipped provider. Existing examples: `AddInMemoryIdempotencyStore`, `AddCosmosIdempotencyStore`, `AddTrellisRouteConstraint`/`AddTrellisRouteConstraints`, and `AddTransactionalCommandBehavior` (provider-neutral; invoked by `AddTrellisUnitOfWork<TContext>()`, which is surfaced as `UseEntityFrameworkUnitOfWork<TContext>()`).
 
 If the new helper falls in the first category, the work is **not complete** until:
 

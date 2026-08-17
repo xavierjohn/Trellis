@@ -1,8 +1,8 @@
 ﻿---
 title: Integration Testing
 package: Trellis.Testing
-topics: [testing, assertions, result, maybe, fakerepository, webfactory, actor-headers]
-related_api_reference: [trellis-api-testing-reference.md, trellis-api-testing-aspnetcore.md, trellis-api-testing-worker.md, trellis-api-core.md]
+topics: [testing, assertions, result, maybe, fakerepository, webfactory, actor-headers, idempotency-conformance]
+related_api_reference: [trellis-api-testing-reference.md, trellis-api-testing-aspnetcore.md, trellis-api-testing-worker.md, trellis-api-testing-idempotency.md, trellis-api-core.md]
 last_verified: 2026-05-01
 audience: [developer]
 ---
@@ -28,6 +28,7 @@ audience: [developer]
 | Replay a `.http` file against the test host | `HttpFileParser.ParseFile` + `HttpFileRunner.RunAsync` + `HttpFileAssertions.AssertExpectationsMet` | [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md#http-file-replay-helpers) |
 | Acquire a real Entra token in gated E2E tests | `MsalTestTokenProvider` + `factory.CreateClientWithEntraTokenAsync(...)` | [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md#msal--entra-e2e-token-helpers) |
 | Test a `BackgroundService` with deterministic time + event capture | `WorkerHarness<TWorker>.CreateAsync(...)` + `Time.Advance(...)` + `WaitForEventAsync<TEvent>(...)` | [Background workers](#background-workers) |
+| Verify a custom `IIdempotencyStore` against the contract | Derive from `IdempotencyStoreConformance` (`Trellis.Testing.Idempotency`) | [Idempotency store conformance](#idempotency-store-conformance) |
 
 ## Use this guide when
 
@@ -56,8 +57,9 @@ audience: [developer]
 | `MsalTestTokenProvider` (+ `MsalTestOptions`, `TestUserCredentials`) | `Trellis.Testing.AspNetCore` | MSAL ROPC token acquisition for gated E2E tests against a dedicated test tenant. |
 | `HttpFileParser` / `HttpFileRunner` / `HttpFileAssertions` | `Trellis.Testing.AspNetCore.Http` | Parse, run, and assert `.http` files against a `WebApplicationFactory` client. |
 | `WorkerHarness<TWorker>` (+ `WorkerHarnessOptions`, `IWorkerTickSignal`, `WorkerHarnessTimeoutException`) | `Trellis.Testing.Worker` | Integration-test harness for `BackgroundService` workers: `FakeTimeProvider`, `TestActorProvider`, domain-event capture, race-proof `WaitForEventAsync` / `WaitForTickAsync`. |
+| `IdempotencyStoreConformance` | `Trellis.Testing.Idempotency` | Inheritable suite of 17 `[Fact]` rules pinning the `IIdempotencyStore` contract for any implementation. |
 
-Full signatures: [trellis-api-testing-reference.md](../api_reference/trellis-api-testing-reference.md), [trellis-api-testing-aspnetcore.md](../api_reference/trellis-api-testing-aspnetcore.md), [trellis-api-testing-worker.md](../api_reference/trellis-api-testing-worker.md).
+Full signatures: [trellis-api-testing-reference.md](../api_reference/trellis-api-testing-reference.md), [trellis-api-testing-aspnetcore.md](../api_reference/trellis-api-testing-aspnetcore.md), [trellis-api-testing-worker.md](../api_reference/trellis-api-testing-worker.md), [trellis-api-testing-idempotency.md](../api_reference/trellis-api-testing-idempotency.md#quick-start).
 
 ## Installation
 
@@ -65,9 +67,40 @@ Full signatures: [trellis-api-testing-reference.md](../api_reference/trellis-api
 dotnet add package Trellis.Testing
 dotnet add package Trellis.Testing.AspNetCore
 dotnet add package Trellis.Testing.Worker
+dotnet add package Trellis.Testing.Idempotency   # only when implementing IIdempotencyStore
 ```
 
 `Trellis.Testing.AspNetCore` and `Trellis.Testing.Worker` already reference `Trellis.Testing` transitively. Install `Trellis.Testing.AspNetCore` when the project owns ASP.NET Core integration tests, and `Trellis.Testing.Worker` when it has integration tests for `BackgroundService` workers.
+
+`Trellis.Testing.Idempotency` is separate from the others because it references xUnit directly — the conformance rules *are* `[Fact]` methods you inherit. The other testing packages stay runner-agnostic, so this one is installed only by projects that implement an `IIdempotencyStore`.
+
+## Idempotency store conformance
+
+`IIdempotencyStore` (see [ASP.NET Core integration](integration-aspnet.md#idempotency-key-middleware)) has a small surface but a subtle contract: reservations must be atomic under concurrency, fingerprint mismatches must be rejected, timed-out reservations must be takeable, and an abandon after a completion must **not** delete the recorded response. A store that gets any of these wrong fails in production as a double charge or a lost receipt — exactly the failures idempotency exists to prevent.
+
+Rather than re-derive those rules, derive from `IdempotencyStoreConformance` and inherit all 17 as tests:
+
+```csharp
+using Trellis.Testing.Idempotency;
+
+public sealed class RedisIdempotencyStoreConformanceTests : IdempotencyStoreConformance
+{
+    private readonly FakeTimeProvider _time = new();
+
+    protected override ValueTask<IIdempotencyStore> CreateStoreAsync(IdempotencyOptions options) =>
+        new(new RedisIdempotencyStore(Connection, options, _time));
+
+    // Enforce expiry against an injected clock and the suite runs in milliseconds
+    // instead of waiting out the real reservation timeout and TTL.
+    protected override Task AdvanceAsync(TimeSpan duration)
+    {
+        _time.Advance(duration);
+        return Task.CompletedTask;
+    }
+}
+```
+
+Each rule runs in its own instance against a per-instance `Scope`, so the suite is safe against a *shared* remote store. `Trellis.Asp.Idempotency.Cosmos` is verified this way against a real Cosmos DB emulator.
 
 ## Quick start
 

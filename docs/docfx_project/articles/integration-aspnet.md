@@ -1,8 +1,8 @@
 ﻿---
 title: ASP.NET Core Integration
 package: Trellis.Asp
-topics: [asp, minimal-api, controllers, http-result, problem-details, etag, prefer, pagination]
-related_api_reference: [trellis-api-asp.md, trellis-api-core.md]
+topics: [asp, minimal-api, controllers, http-result, problem-details, etag, prefer, pagination, idempotency]
+related_api_reference: [trellis-api-asp.md, trellis-api-core.md, trellis-api-asp-idempotency-cosmos.md]
 last_verified: 2026-05-01
 audience: [developer]
 ---
@@ -25,6 +25,8 @@ audience: [developer]
 | Emit `201 Created` with a `Location` header | `opts.CreatedAtRoute(name, values)` (AOT-safe) / `Created(...)` / `CreatedAtAction(...)` | [Created responses](#created-responses) |
 | Return paginated JSON + RFC 8288 `Link` header | `Result<Page<T>>.ToHttpResponse(nextUrlBuilder, body)` | [Pagination](#pagination) |
 | Make `POST` / `PATCH` retry-safe with the IETF `Idempotency-Key` header | `AddTrellisIdempotency` + `AddInMemoryIdempotencyStore` + `UseTrellisIdempotency`; mark endpoints `[Idempotent]` | [Idempotency-Key middleware](#idempotency-key-middleware) |
+| Make idempotency survive restarts and span replicas | `AddCosmosIdempotencyStore(...)` (`Trellis.Asp.Idempotency.Cosmos`) | [Choosing a store](#idempotency-key-middleware) |
+| Verify a custom `IIdempotencyStore` against the contract | Derive from `IdempotencyStoreConformance` (`Trellis.Testing.Idempotency`) | [Choosing a store](#idempotency-key-middleware) |
 | Validate scalar value objects (route, query, JSON body) | `AddScalarValueValidation` + `UseScalarValueValidation` + `WithScalarValueValidation` | [Scalar value validation](#scalar-value-validation) |
 | Bind value objects in route segments | `AddTrellisRouteConstraint<T>("Name")` then `"/x/{id:Name}"` | [Route constraints](#route-constraints) |
 | Hydrate the current `Actor` from JWT claims | `AddClaimsActorProvider` / `AddEntraActorProvider` / `AddDevelopmentActorProvider` / `AddNestedJsonPathClaimsActorProvider` | [Actor providers](#actor-providers) |
@@ -508,7 +510,7 @@ using Trellis.Asp.Idempotency;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddTrellis(t => t.UseAsp());
 builder.Services.AddTrellisIdempotency();        // options: AddTrellisIdempotency(o => { o.Ttl = TimeSpan.FromHours(1); })
-builder.Services.AddInMemoryIdempotencyStore();  // production hosts supply their own IIdempotencyStore
+builder.Services.AddInMemoryIdempotencyStore();  // dev / single instance; see below for production stores
 
 var app = builder.Build();
 app.UseTrellisIdempotency();                     // before MapControllers / endpoint mapping
@@ -537,12 +539,25 @@ For MVC controllers add `[Idempotent]` to the action method instead of `.WithMet
 | Response capture | `Set-Cookie`, `Date`, `Server`, and hop-by-hop headers (`Connection`, `Keep-Alive`, `Transfer-Encoding`, `Upgrade`, `Proxy-Authenticate`, `Proxy-Authorization`, `TE`, `Trailer`) are stripped from the snapshot. Cookies stay out by default so a replay does not re-issue rotated session tokens; opt back in via `IncludeSetCookieInSnapshot = true`. |
 | Failure paths | 5xx responses, response trailers, `SendFileAsync`, oversized request / response bodies (>1 MiB by default), and unhandled exceptions abandon the reservation so the next retry re-executes. |
 
-**`IIdempotencyStore`** is the persistence seam. `AddInMemoryIdempotencyStore()` is fine for single-instance dev hosts and tests; it sweeps completed-and-expired snapshots opportunistically so memory stays bounded by `Ttl`. Production hosts that retry across multiple replicas must supply their own implementation backed by shared storage (EF Core, Redis, Cosmos DB, …) honouring the same CAS contract.
+**`IIdempotencyStore`** is the persistence seam.
+
+| Store | Package | Use when |
+|---|---|---|
+| `AddInMemoryIdempotencyStore()` | `Trellis.Asp` | Single-instance dev hosts and tests. Sweeps completed-and-expired snapshots opportunistically so memory stays bounded by `Ttl`. **Not safe across instances or process restarts.** |
+| `AddCosmosIdempotencyStore(...)` | `Trellis.Asp.Idempotency.Cosmos` | Production hosts that retry across replicas. Reservations are atomic (`CreateItem` → `409`), completion and abandonment are ETag-conditional, and per-item TTL reclaims storage. |
+| Your own | — | Any other backing store. Derive a test class from `IdempotencyStoreConformance` in `Trellis.Testing.Idempotency` to check it against all 17 contract rules. |
+
+Choosing a store is a one-line decision alongside `AddTrellisIdempotency()`; it does not participate in pipeline ordering, so there is no `TrellisServiceBuilder.UseXxx()` slot for it.
+
+> [!NOTE]
+> Not every cache can back a conforming store. The contract needs an **atomic** set-if-not-exists, which `IDistributedCache` does not expose. A Redis-backed store must use `SET NX` (or a script) directly, and must not run under an eviction policy such as `allkeys-lru` — evicting a live reservation silently allows a double charge.
 
 > [!IMPORTANT]
 > `UseTrellisIdempotency()` must run **after `UseRouting()`** so the middleware can see the endpoint's `[Idempotent]` metadata and buffer the request body before the handler consumes it, and **after `UseAuthentication()` / `UseAuthorization()`** so the default `DefaultIdempotencyScopeResolver` partitions the store by the authenticated `Actor`. Mounting before authentication causes every authenticated request to fall back to the shared `anonymous` scope, which lets different users collide on the same key. In a Minimal API host where `UseRouting` is not called explicitly, the runtime inserts routing implicitly; placing `UseTrellisIdempotency()` after `UseAuthentication()` / `UseAuthorization()` and immediately before `MapControllers()` / `MapGet(...)` is equivalent.
 
 Full surface (options, store, scope resolver, attribute, parser, fingerprint helpers): [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md#namespace-trellisaspidempotency).
+Cosmos DB store: [`trellis-api-asp-idempotency-cosmos.md`](../api_reference/trellis-api-asp-idempotency-cosmos.md#quick-start).
+Conformance suite for a custom store: [`trellis-api-testing-idempotency.md`](../api_reference/trellis-api-testing-idempotency.md#quick-start).
 
 ## Scalar value validation
 

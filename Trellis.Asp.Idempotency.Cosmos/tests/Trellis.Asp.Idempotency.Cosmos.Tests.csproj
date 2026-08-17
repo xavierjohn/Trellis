@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\src\Trellis.Asp.Idempotency.Cosmos.csproj" />
+    <ProjectReference Include="..\..\Trellis.Testing.Idempotency\src\Trellis.Testing.Idempotency.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+</Project>
