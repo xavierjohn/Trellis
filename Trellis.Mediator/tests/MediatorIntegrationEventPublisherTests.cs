@@ -32,6 +32,25 @@ public class MediatorIntegrationEventPublisherTests
     }
 
     [Fact]
+    public async Task PublishAsync_FansOutToInProcessHandlersIgnoringTheMessageId()
+    {
+        var services = new ServiceCollection();
+        AddNullLogging(services);
+        var handler = new RecordingHandler();
+        services.AddSingleton<IIntegrationEventHandler<TestIntegrationEvent>>(handler);
+
+        var provider = services.BuildServiceProvider();
+        var publisher = new MediatorIntegrationEventPublisher(
+            provider, NullLogger<MediatorIntegrationEventPublisher>.Instance);
+
+        var evt = new TestIntegrationEvent("payload", DateTimeOffset.UtcNow);
+        await publisher.PublishAsync(
+            new OutboundIntegrationMessage(Guid.CreateVersion7(), evt), CancellationToken.None);
+
+        handler.Received.Should().ContainSingle().Which.Should().BeSameAs(evt);
+    }
+
+    [Fact]
     public async Task PublishAsync_NoHandlersRegistered_IsNoOp()
     {
         var services = new ServiceCollection();
@@ -68,7 +87,7 @@ public class MediatorIntegrationEventPublisherTests
     }
 
     [Fact]
-    public async Task PublishAsync_NullEvent_Throws()
+    public async Task PublishAsync_NullMessage_Throws()
     {
         var services = new ServiceCollection();
         AddNullLogging(services);
@@ -272,4 +291,14 @@ public class MediatorIntegrationEventPublisherTests
             Func<TState, Exception?, string> formatter)
             => Records.Add((logLevel, formatter(state, exception)));
     }
+}
+
+// These tests exercise fan-out behaviour - handler resolution, exception swallowing, cancellation - for
+// which the wire identity is irrelevant. The helper supplies a throwaway id so each test reads as the
+// behaviour it is actually pinning.
+internal static class IntegrationPublisherTestExtensions
+{
+    public static ValueTask PublishAsync(
+        this IIntegrationEventPublisher publisher, IIntegrationEvent integrationEvent, CancellationToken cancellationToken) =>
+        publisher.PublishAsync(new OutboundIntegrationMessage(Guid.CreateVersion7(), integrationEvent), cancellationToken);
 }

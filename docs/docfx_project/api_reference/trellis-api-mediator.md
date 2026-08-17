@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
-types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
+types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -558,7 +558,46 @@ Implementations are expected to be best-effort: non-cancellation handler excepti
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)` | `ValueTask` | Publishes the specified integration event to all matching consumers. Resolution uses `integrationEvent.GetType()`. Default implementation (`MediatorIntegrationEventPublisher`) is `internal` and registered by `AddIntegrationEventDispatch()`. |
+| `ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)` | `ValueTask` | Publishes an event together with the stable message identity a transport must stamp on the wire. Handler resolution uses `message.Event.GetType()`. Default implementation (`MediatorIntegrationEventPublisher`) is `internal` and registered by `AddIntegrationEventDispatch()`; it ignores the id, since in-process fan-out has no wire and nothing to deduplicate. |
+
+> **The message identity is part of the contract, not an optional extra.** This is the interface's only method, so a transport cannot publish without the id. Outbox delivery is at-least-once, so the same row can be published more than once; carrying `OutboundIntegrationMessage.MessageId` verbatim onto the wire is what makes redeliveries look like one message to the consumer's `(ConsumerId, MessageId)` inbox dedup. An adapter that minted its own id per publish attempt would silently defeat the inbox — making that unrepresentable is why the bare-event overload was removed rather than kept alongside.
+
+### OutboundIntegrationMessage
+**Declaration**
+
+```csharp
+public sealed record OutboundIntegrationMessage(Guid MessageId, IIntegrationEvent Event)
+```
+
+The publish-side counterpart of [`IntegrationEnvelope`](trellis-api-efcore-inbox.md#integrationenvelope): the event to publish plus the stable `MessageId` (the producer's outbox row id, a UUIDv7) a transport must carry verbatim.
+
+The lineage members that `IntegrationEnvelope` carries (`MessageSource`, `CausationId`, `CorrelationId`) are deliberately absent: nothing in the current relay can populate them without new persisted outbox columns, and an always-null member on a publish contract is worse than no member at all.
+
+Both members are validated on construction — and on `with` copies, since the invariants live on the properties. `Event` must not be `null` (`ArgumentNullException`), and `MessageId` must not be `Guid.Empty` (`ArgumentException`). An empty id is rejected rather than tolerated because it is not a missing value the transport can work around: every message stamped with it collapses to the same `(ConsumerId, MessageId)` inbox key, so the *second* message from that producer would be discarded as a duplicate of the first. Failing at construction turns that into an immediate, local error instead of silent consumer-side message loss.
+
+### IntegrationEventNameMap
+**Declaration**
+
+```csharp
+public sealed class IntegrationEventNameMap
+```
+
+An immutable, validated two-way map between an integration event's stable wire name (declared with [`IntegrationEventNameAttribute`](trellis-api-core.md#integrationeventnameattribute)) and its local CLR type.
+
+Cross-service messaging cannot identify an event by `Type.AssemblyQualifiedName` — which is what the outbox stores for its own in-process relaying. The consumer's assemblies differ from the producer's, and the string embeds an assembly version, so it can stop resolving after a routine version bump. A logical name is owned by the contract instead of by the CLR layout, so each side maps it to whatever local type it likes. Broker transports serialize through this map.
+
+**Members**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `IntegrationEventNameMap(IEnumerable<KeyValuePair<string, Type>> contracts)` | — | Builds a map from explicit pairs. Trimming- and NativeAOT-safe; prefer it in trimmed apps. |
+| `static IntegrationEventNameMap FromAssemblies(params Assembly[] assemblies)` | `IntegrationEventNameMap` | Scans for concrete `IIntegrationEvent` types carrying the attribute. Types without it are skipped, so a contract assembly may hold deliberately in-process-only events. Annotated `[RequiresUnreferencedCode]`. |
+| `static IntegrationEventNameMap Empty` | `IntegrationEventNameMap` | A map in which every lookup returns `None`. |
+| `Maybe<string> NameFor(Type type)` | `Maybe<string>` | The wire name for a local type, or `None`. |
+| `Maybe<Type> TypeFor(string name)` | `Maybe<Type>` | The local type for a wire name, or `None`. |
+| `IReadOnlyCollection<string> Names` | `IReadOnlyCollection<string>` | The registered wire names. |
+
+Construction throws `ArgumentException` when a name is blank, a type is not a concrete `IIntegrationEvent`, a type has unbound generic parameters, two types claim one name, or one type claims two names — each is an unrecoverable contract bug, so it surfaces at startup. Lookups return `Maybe<T>` instead, because an **unknown name is a normal operational condition**: a producer may emit contracts this consumer does not subscribe to, and the transport should dead-letter or ignore them by policy. Names compare with the **ordinal** comparer, so casing is significant.
 
 ### IIntegrationEventCollector
 **Declaration**
@@ -820,6 +859,8 @@ public interface IIntegrationEventHandler<in TEvent> where TEvent : IIntegration
 public interface IIntegrationEventPublisher
 public interface IIntegrationEventCollector
 ```
+
+Supporting types: `OutboundIntegrationMessage` (publish-side envelope carrying the wire identity) and `IntegrationEventNameMap` (wire name ↔ CLR type contract for broker transports).
 
 ## Behavioral notes
 

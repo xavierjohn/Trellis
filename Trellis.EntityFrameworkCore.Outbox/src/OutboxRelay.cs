@@ -148,7 +148,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
                 if (message.Kind == OutboxMessageKind.Integration)
                 {
                     var integrationEvent = Deserialize<IIntegrationEvent>(message);
-                    await PublishIntegrationAsync(integrationEvent, cancellationToken).ConfigureAwait(false);
+                    await PublishIntegrationAsync(message.Id, integrationEvent, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -285,12 +285,17 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         return collector?.DrainPending() ?? [];
     }
 
-    private async Task PublishIntegrationAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    // The row's own id travels with the event so a broker adapter can stamp it on the wire. Delivery is
+    // at-least-once, so the same row can be published more than once; carrying a per-attempt id instead
+    // would make each copy look like a distinct message and defeat the consumer's inbox dedup.
+    private async Task PublishIntegrationAsync(
+        Guid messageId, IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
     {
         var publishScope = _scopeFactory.CreateAsyncScope();
         await using var publishScopeLifetime = publishScope.ConfigureAwait(false);
         var publisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
-        await publisher.PublishAsync(integrationEvent, cancellationToken).ConfigureAwait(false);
+        await publisher.PublishAsync(new OutboundIntegrationMessage(messageId, integrationEvent), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static OutboxMessage CreateIntegrationRow(IIntegrationEvent integrationEvent)

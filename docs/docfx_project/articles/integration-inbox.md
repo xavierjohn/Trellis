@@ -143,6 +143,8 @@ A useful rule of thumb: **do transactional work in the inbox handler; push non-t
 
 Dedup is only as good as the id. The `MessageId` must be **stable across redeliveries** — the same logical message must carry the same id every time it is delivered. The natural choice is the producer's outbox id: `OutboxMessage.Id` is a UUIDv7 minted once when the event is captured, and a well-behaved transport carries it verbatim in the message metadata. Read it back in your adapter and use it as the envelope `MessageId`.
 
+On the produce side that id is handed to the publisher as `OutboundIntegrationMessage.MessageId`, so a sending adapter has it available without reaching back into the outbox — see [Writing a broker adapter](integration-outbox.md#writing-a-broker-adapter).
+
 Do **not** use a per-delivery id the transport mints fresh on each attempt (some brokers assign a new sequence number per delivery) — every redelivery would look new and defeat the inbox. The envelope's other fields — `MessageSource`, `CausationId`, `CorrelationId` — are lineage and observability only; they are recorded for audit but never affect dedup.
 
 ## One message, many consumers

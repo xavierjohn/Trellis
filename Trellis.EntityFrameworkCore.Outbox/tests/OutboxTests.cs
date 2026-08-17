@@ -14,6 +14,115 @@ using Microsoft.Extensions.Time.Testing;
 public sealed class OutboxTests
 {
     [Fact]
+    public async Task Relay_hands_the_outbox_row_id_to_the_integration_publisher()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var recorder = new RecordingIntegrationEventPublisher();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(recorder);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
+        services.AddIntegrationEventDispatch();
+        // A broker adapter stands in for the default in-process publisher: it is the transport's view.
+        services.AddScoped<IIntegrationEventPublisher>(sp => sp.GetRequiredService<RecordingIntegrationEventPublisher>());
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "carry-my-id", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        await relay.DrainAsync(ct); // stages the integration row
+        await relay.DrainAsync(ct); // publishes it
+
+        Guid stagedRowId;
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var integration = await context.Set<OutboxMessage>().AsNoTracking()
+                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
+            stagedRowId = integration.Id;
+        }
+
+        // The id the consumer will dedupe on must be the outbox row's own id, not one minted per publish
+        // attempt — otherwise the relay's at-least-once redelivery produces two distinct MessageIds and
+        // the consumer's (ConsumerId, MessageId) dedup misses.
+        recorder.Published.Should().ContainSingle()
+            .Which.MessageId.Should().Be(stagedRowId);
+    }
+
+    [Fact]
+    public async Task Relay_republishes_a_retried_row_under_the_same_message_id()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        // Fails the first publish so the row stays pending and is drained again, mimicking the crash
+        // between publish and the relay's bookkeeping save that makes delivery at-least-once.
+        var recorder = new RecordingIntegrationEventPublisher { FailFirstPublish = true };
+        var time = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(recorder);
+        services.AddSingleton<TimeProvider>(time);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
+        services.AddIntegrationEventDispatch();
+        services.AddScoped<IIntegrationEventPublisher>(sp => sp.GetRequiredService<RecordingIntegrationEventPublisher>());
+        services.AddTrellisOutbox<OutboxTestDbContext>(o =>
+        {
+            o.RetryBackoff = TimeSpan.FromSeconds(30);
+            o.RetryBackoffJitter = 0;
+        });
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "retry-me", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        await relay.DrainAsync(ct); // stages the integration row
+        await relay.DrainAsync(ct); // first publish attempt throws
+        time.Advance(TimeSpan.FromSeconds(31));
+        await relay.DrainAsync(ct); // retry
+
+        recorder.Published.Should().HaveCount(2);
+        recorder.Published[0].MessageId.Should().Be(
+            recorder.Published[1].MessageId,
+            "a redelivered row must look like the same message to the consumer's inbox");
+    }
+
+    [Fact]
     public async Task SaveChanges_captures_events_to_outbox_in_same_transaction_and_clears_aggregate()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -845,6 +954,28 @@ internal sealed class IntegrationCapturingHandler(List<ThingCreatedIntegrationEv
     public ValueTask HandleAsync(ThingCreatedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
     {
         captured.Add(integrationEvent);
+        return ValueTask.CompletedTask;
+    }
+}
+
+// Stands in for a broker adapter: the publish contract hands it the wire identity it must stamp.
+internal sealed class RecordingIntegrationEventPublisher : IIntegrationEventPublisher
+{
+    private bool _failed;
+
+    public List<OutboundIntegrationMessage> Published { get; } = [];
+
+    public bool FailFirstPublish { get; init; }
+
+    public ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)
+    {
+        Published.Add(message);
+        if (FailFirstPublish && !_failed)
+        {
+            _failed = true;
+            throw new InvalidOperationException("transport unavailable");
+        }
+
         return ValueTask.CompletedTask;
     }
 }

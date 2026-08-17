@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — cross-service messaging contracts on the outbox publish seam
+
+Groundwork that makes a message-broker adapter possible to write correctly. Both ends of reliable messaging
+already ship — a transactional outbox that stages events durably, and an inbox that deduplicates them — but the
+publish seam between them could not express what a transport needs.
+
+**BREAKING: `IIntegrationEventPublisher.PublishAsync` now takes an `OutboundIntegrationMessage`.** The
+bare-event overload `PublishAsync(IIntegrationEvent, CancellationToken)` is **removed**; the interface has a
+single method carrying both the event and the outbox row's `MessageId`. Custom publishers change their
+signature to accept the message and read `message.Event`; in-process implementations can ignore the id.
+
+This is a correctness fix, not a convenience. Relay delivery is at-least-once, so the same row can be published
+more than once, while `IntegrationEnvelope.MessageId` is specified as "the producer's outbox message id carried
+verbatim by the transport". The previous signature passed only the event, so an adapter had no choice but to
+mint a fresh id per attempt — putting a *different* `MessageId` on each copy, missing the consumer's
+`(ConsumerId, MessageId)` dedup, and running handlers twice. The inbox would have looked correct while
+guaranteeing nothing.
+
+The bare-event overload was **removed rather than kept alongside** the new one. Keeping both (via a default
+interface method) would have preserved source and binary compatibility, but it also meant an adapter that
+simply did not implement the message overload would compile, run, and silently degrade the inbox — the failure
+would surface as duplicate side effects in production, not as a build error. A single method makes publishing
+without the identity unrepresentable.
+
+**`IntegrationEventNameAttribute` + `IntegrationEventNameMap` give events a wire identity.** The outbox stores
+`Type.AssemblyQualifiedName`, which is correct for in-process relaying and unusable across services: the consumer's
+assemblies differ, and the string embeds an assembly version, so it can stop resolving after a routine version bump.
+A logical name (`[IntegrationEventName("orders.order-placed.v1")]`) is owned by the contract instead, and the map
+resolves it in both directions. The outbox's own storage format is unchanged — this is a wire concern only.
+
+The map validates at construction (blank names, non-concrete types, unbound generic parameters, one name claiming
+two types, one type claiming two names) because each is an unrecoverable contract bug that should surface at
+startup. Lookups return `Maybe<T>` instead, because an *unknown* name is a normal operational condition: a producer
+may emit contracts this consumer does not subscribe to, and the transport should dead-letter or ignore them by
+policy rather than crash.
+
+Neither duplicate-collapsing claim is overstated in the docs: carrying the id collapses redeliveries of a single
+outbox row, but a retried domain row re-runs its translator and stages a genuinely new row with its own id. That
+second case still needs business-identity deduplication, and
+[`trellis-api-efcore-outbox.md`](docs/docfx_project/api_reference/trellis-api-efcore-outbox.md) now tabulates the
+difference.
+
 ### Added — `Trellis.Asp.Idempotency.Cosmos`, a production-grade idempotency store
 
 The first durable `IIdempotencyStore` Trellis ships. `InMemoryIdempotencyStore` is documented as unsafe across
