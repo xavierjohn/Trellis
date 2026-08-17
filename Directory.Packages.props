@@ -63,7 +63,16 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.4" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.8.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.62.1" />
+    <!-- The Cosmos DB SDK uses Newtonsoft.Json internally but deliberately omits it from its
+         dependencies so consumers pin the version. Its build target fails without an explicit
+         reference. -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <!-- Attributes and extensibility surface only, for libraries that ship tests to consumers
+         rather than run them (Trellis.Testing.Idempotency). The full xunit.v3 package requires
+         OutputType=Exe and so cannot be referenced by a packable library. -->
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.0.6" />
     <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="1.9.1" />
   </ItemGroup>

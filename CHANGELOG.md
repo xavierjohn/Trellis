@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `Trellis.Asp.Idempotency.Cosmos`, a production-grade idempotency store
+
+The first durable `IIdempotencyStore` Trellis ships. `InMemoryIdempotencyStore` is documented as unsafe across
+instances and process restarts, so until now every multi-replica deployment had to write its own.
+
+Cosmos DB maps onto the contract unusually well: `CreateItem` returns `409 Conflict` on a duplicate id within a
+partition — decided on the primary replica — which is exactly the atomic reserve the contract needs; native ETags
+give conditional complete and abandon without scripting; and per-item `ttl` reclaims storage with no sweeper
+process. Unlike a Redis cache under `allkeys-lru`, it never silently evicts a live reservation.
+
+Two design points are worth calling out because they are the ones that make it correct rather than merely working:
+
+- **Session consistency is sufficient.** The read following a `409` may be served by a replica that has not yet
+  seen another instance's write. That cannot cause a double execution, because the store never grants a
+  reservation on the strength of a read — only an atomic create or an ETag-conditional replace grants one. A stale
+  read produces `412`/`404` on the follow-up write and the operation retries. The worst observable effect is a
+  spurious `AlreadyInFlight`.
+- **Expiry is enforced in-process.** Cosmos DB deletes expired items on a best-effort background sweep, so an item
+  can outlive its `ttl` and still be returned by a read. The store re-checks its own `reservedAt`/`completedAt`
+  timestamps and treats a TTL-expired snapshot as absent; per-item `ttl` is only a storage backstop. Because
+  deletion may only ever fall on a document the store's own rules have already made unreachable, a *reserved*
+  document never expires — it must keep rejecting a same-key request carrying a different body — while a completed
+  one expires shortly after its TTL.
+
+The store uses the Cosmos DB *stream* APIs rather than the typed overloads, because a `409` is the normal outcome
+of every replay and the typed overloads raise `CosmosException` for it — exception throwing on the hot path.
+
+Registered with `services.AddCosmosIdempotencyStore(...)`, and provisioned with
+`CosmosIdempotencyContainer.CreateIfNotExistsAsync(...)`, which sets the `/scope` partition key and enables TTL
+(per-item `ttl` is ignored on a container without it). As a store registration it deliberately has **no**
+`TrellisServiceBuilder.UseXxx()` slot, matching `AddInMemoryIdempotencyStore()`.
+
+Verified by the new conformance suite against a real Cosmos DB emulator — all 17 rules, plus emulator-free tests
+for the decision ordering and key encoding. Tests requiring the emulator are marked
+`[Trait("Category", "Integration")]` and excluded from CI, matching the existing SQL Server-backed tests.
+Idempotency keys are Base64Url-encoded into item ids because
+client-supplied keys may contain `/`, `\`, `?`, or `#`, which Cosmos DB forbids in an id.
+
+### Added — `Trellis.Testing.Idempotency`, a conformance suite for `IIdempotencyStore`
+
+`Trellis.Asp` ships exactly one `IIdempotencyStore` — `InMemoryIdempotencyStore`, whose own documentation
+states it is "not safe across multiple instances or process restarts". Every multi-replica deployment therefore
+writes its own store over Redis, Cosmos DB, or a relational database. The contract those stores must satisfy is
+subtle and, critically, **every violation fails silently**: a store that reserves non-atomically lets two racing
+callers both execute the handler, and an `AbandonAsync` that deletes unconditionally destroys a response
+`CompleteAsync` already persisted. Nothing throws; the symptom is a customer charged twice, discovered weeks later.
+
+The new package turns the contract into an executable specification. A store author writes one class:
+
+```csharp
+public sealed class RedisIdempotencyStoreConformanceTests : IdempotencyStoreConformance
+{
+    protected override TimeSpan ReservationTimeout => TimeSpan.FromSeconds(2);
+    protected override TimeSpan Ttl => TimeSpan.FromSeconds(4);
+
+    protected override ValueTask<IIdempotencyStore> CreateStoreAsync(IdempotencyOptions options) =>
+        new(new RedisIdempotencyStore(_multiplexer, options));
+}
+```
+
+and inherits 17 rules covering reserve, replay, fingerprint mismatch, scope isolation, reservation takeover, TTL
+expiry, abandon semantics, and atomicity under concurrent load. Time is handled through an `AdvanceAsync` hook, so
+a `TimeProvider`-based store advances a fake clock and runs instantly while a store whose expiry a remote server
+enforces shortens its timeouts and delays for real. Each test instance gets a unique `Scope`, so suites run in
+parallel against shared Redis or Cosmos DB infrastructure.
+
+`InMemoryIdempotencyStore` now runs the published suite, keeping the shipped reference implementation honest
+against the same contract third parties are held to. The suite is itself covered by meta-tests that run individual
+rules against deliberately broken stores and assert each rule fails, so it cannot silently degrade into a suite
+that passes for everything.
+
+One trap the package removes: `IdempotencyResponseSnapshot` is a record whose `Headers` and `Body` compare by
+**reference**, so asserting snapshot equality passes only for a store that returns the very instance it was
+handed. Every serialising store would fail such an assertion for no good reason. The suite exposes `ShouldMatch`,
+which compares field by field.
+
 ### Added — builder slot for indirect (via) resource authorization
 
 `TrellisServiceBuilder` gains `UseRelatedResourceAuthorization<TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse>(extractOwnerId)`

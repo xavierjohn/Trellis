@@ -79,6 +79,10 @@
     <Project Path="Trellis.Asp.ApiVersioning/src/Trellis.Asp.ApiVersioning.csproj" />
     <Project Path="Trellis.Asp.ApiVersioning/tests/Trellis.Asp.ApiVersioning.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Asp.Idempotency.Cosmos/">
+    <Project Path="Trellis.Asp.Idempotency.Cosmos/src/Trellis.Asp.Idempotency.Cosmos.csproj" />
+    <Project Path="Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.Authorization/">
     <Project Path="Trellis.Authorization/src/Trellis.Authorization.csproj" />
     <Project Path="Trellis.Authorization/tests/Trellis.Authorization.Tests.csproj" />
@@ -158,6 +162,10 @@
   <Folder Name="/Trellis.Testing.AspNetCore/">
     <Project Path="Trellis.Testing.AspNetCore/src/Trellis.Testing.AspNetCore.csproj" />
     <Project Path="Trellis.Testing.AspNetCore/tests/Trellis.Testing.AspNetCore.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Trellis.Testing.Idempotency/">
+    <Project Path="Trellis.Testing.Idempotency/src/Trellis.Testing.Idempotency.csproj" />
+    <Project Path="Trellis.Testing.Idempotency/tests/Trellis.Testing.Idempotency.Tests.csproj" />
   </Folder>
   <Folder Name="/Trellis.Testing.Worker/">
     <Project Path="Trellis.Testing.Worker/src/Trellis.Testing.Worker.csproj" />

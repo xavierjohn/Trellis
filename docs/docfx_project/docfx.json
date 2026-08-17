@@ -15,6 +15,8 @@
             "Trellis.ServiceDefaults/src/Trellis.ServiceDefaults.csproj",
             "Trellis.Testing/src/Trellis.Testing.csproj",
             "Trellis.Testing.AspNetCore/src/Trellis.Testing.AspNetCore.csproj",
+            "Trellis.Asp.Idempotency.Cosmos/src/Trellis.Asp.Idempotency.Cosmos.csproj",
+            "Trellis.Testing.Idempotency/src/Trellis.Testing.Idempotency.csproj",
             "Trellis.Testing.Worker/src/Trellis.Testing.Worker.csproj",
             "Trellis.StateMachine/src/Trellis.StateMachine.csproj",
             "Trellis.Authorization/src/Trellis.Authorization.csproj",
