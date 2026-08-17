@@ -32,7 +32,7 @@ public class MediatorIntegrationEventPublisherTests
     }
 
     [Fact]
-    public async Task PublishAsync_OutboundMessageOverload_FansOutToInProcessHandlers()
+    public async Task PublishAsync_FansOutToInProcessHandlersIgnoringTheMessageId()
     {
         var services = new ServiceCollection();
         AddNullLogging(services);
@@ -44,24 +44,10 @@ public class MediatorIntegrationEventPublisherTests
             provider, NullLogger<MediatorIntegrationEventPublisher>.Instance);
 
         var evt = new TestIntegrationEvent("payload", DateTimeOffset.UtcNow);
-        await ((IIntegrationEventPublisher)publisher).PublishAsync(
+        await publisher.PublishAsync(
             new OutboundIntegrationMessage(Guid.CreateVersion7(), evt), CancellationToken.None);
 
         handler.Received.Should().ContainSingle().Which.Should().BeSameAs(evt);
-    }
-
-    [Fact]
-    public async Task PublishAsync_OutboundMessageOverload_FallsBackForImplementationsThatOnlyOverrideTheEventOverload()
-    {
-        // The default interface method is what keeps pre-existing publishers - which cannot know about
-        // OutboundIntegrationMessage - working after the relay switched to the message-carrying overload.
-        var legacy = new EventOnlyPublisher();
-        var evt = new TestIntegrationEvent("payload", DateTimeOffset.UtcNow);
-
-        await ((IIntegrationEventPublisher)legacy).PublishAsync(
-            new OutboundIntegrationMessage(Guid.CreateVersion7(), evt), CancellationToken.None);
-
-        legacy.Received.Should().ContainSingle().Which.Should().BeSameAs(evt);
     }
 
     [Fact]
@@ -101,7 +87,7 @@ public class MediatorIntegrationEventPublisherTests
     }
 
     [Fact]
-    public async Task PublishAsync_NullEvent_Throws()
+    public async Task PublishAsync_NullMessage_Throws()
     {
         var services = new ServiceCollection();
         AddNullLogging(services);
@@ -290,17 +276,6 @@ public class MediatorIntegrationEventPublisherTests
         }
     }
 
-    private sealed class EventOnlyPublisher : IIntegrationEventPublisher
-    {
-        public List<IIntegrationEvent> Received { get; } = [];
-
-        public ValueTask PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
-        {
-            Received.Add(integrationEvent);
-            return ValueTask.CompletedTask;
-        }
-    }
-
     private sealed class CaptureLogger : ILogger<MediatorIntegrationEventPublisher>
     {
         public List<(LogLevel Level, string Message)> Records { get; } = [];
@@ -316,4 +291,14 @@ public class MediatorIntegrationEventPublisherTests
             Func<TState, Exception?, string> formatter)
             => Records.Add((logLevel, formatter(state, exception)));
     }
+}
+
+// These tests exercise fan-out behaviour - handler resolution, exception swallowing, cancellation - for
+// which the wire identity is irrelevant. The helper supplies a throwaway id so each test reads as the
+// behaviour it is actually pinning.
+internal static class IntegrationPublisherTestExtensions
+{
+    public static ValueTask PublishAsync(
+        this IIntegrationEventPublisher publisher, IIntegrationEvent integrationEvent, CancellationToken cancellationToken) =>
+        publisher.PublishAsync(new OutboundIntegrationMessage(Guid.CreateVersion7(), integrationEvent), cancellationToken);
 }

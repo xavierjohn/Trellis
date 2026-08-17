@@ -558,10 +558,9 @@ Implementations are expected to be best-effort: non-cancellation handler excepti
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)` | `ValueTask` | Publishes the specified integration event to all matching consumers. Resolution uses `integrationEvent.GetType()`. Default implementation (`MediatorIntegrationEventPublisher`) is `internal` and registered by `AddIntegrationEventDispatch()`. |
-| `ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)` | `ValueTask` | Publishes an event together with the stable message identity a transport must stamp on the wire. **This is the overload the outbox relay calls.** A default interface method forwards to the event-only overload, so existing implementations keep compiling and behaving identically; broker adapters override it. |
+| `ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)` | `ValueTask` | Publishes an event together with the stable message identity a transport must stamp on the wire. Handler resolution uses `message.Event.GetType()`. Default implementation (`MediatorIntegrationEventPublisher`) is `internal` and registered by `AddIntegrationEventDispatch()`; it ignores the id, since in-process fan-out has no wire and nothing to deduplicate. |
 
-> **Broker adapters must override the `OutboundIntegrationMessage` overload.** Outbox delivery is at-least-once, so the same row can be published more than once. `OutboundIntegrationMessage.MessageId` is the row's own id, and carrying it verbatim onto the wire is what makes redeliveries look like one message to the consumer's `(ConsumerId, MessageId)` inbox dedup. An adapter that minted its own id per publish attempt would silently defeat the inbox.
+> **The message identity is part of the contract, not an optional extra.** This is the interface's only method, so a transport cannot publish without the id. Outbox delivery is at-least-once, so the same row can be published more than once; carrying `OutboundIntegrationMessage.MessageId` verbatim onto the wire is what makes redeliveries look like one message to the consumer's `(ConsumerId, MessageId)` inbox dedup. An adapter that minted its own id per publish attempt would silently defeat the inbox — making that unrepresentable is why the bare-event overload was removed rather than kept alongside.
 
 ### OutboundIntegrationMessage
 **Declaration**
@@ -573,6 +572,8 @@ public sealed record OutboundIntegrationMessage(Guid MessageId, IIntegrationEven
 The publish-side counterpart of [`IntegrationEnvelope`](trellis-api-efcore-inbox.md#integrationenvelope): the event to publish plus the stable `MessageId` (the producer's outbox row id, a UUIDv7) a transport must carry verbatim.
 
 The lineage members that `IntegrationEnvelope` carries (`MessageSource`, `CausationId`, `CorrelationId`) are deliberately absent: nothing in the current relay can populate them without new persisted outbox columns, and an always-null member on a publish contract is worse than no member at all.
+
+Both members are validated on construction — and on `with` copies, since the invariants live on the properties. `Event` must not be `null` (`ArgumentNullException`), and `MessageId` must not be `Guid.Empty` (`ArgumentException`). An empty id is rejected rather than tolerated because it is not a missing value the transport can work around: every message stamped with it collapses to the same `(ConsumerId, MessageId)` inbox key, so the *second* message from that producer would be discarded as a duplicate of the first. Failing at construction turns that into an immediate, local error instead of silent consumer-side message loss.
 
 ### IntegrationEventNameMap
 **Declaration**

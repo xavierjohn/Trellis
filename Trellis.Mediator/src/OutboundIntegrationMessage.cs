@@ -29,7 +29,38 @@ namespace Trellis.Mediator;
 /// </remarks>
 /// <param name="MessageId">
 /// The stable, unique message identity — the producer's outbox row id (a UUIDv7). Every redelivery of the
-/// same row carries this same value.
+/// same row carries this same value. Must not be <see cref="Guid.Empty"/>: an empty id is not a missing
+/// value a transport can work around, because every message stamped with it collapses to the same
+/// <c>(ConsumerId, MessageId)</c> inbox key and the consumer would discard all but the first as duplicates.
 /// </param>
 /// <param name="Event">The integration event to publish.</param>
-public sealed record OutboundIntegrationMessage(Guid MessageId, IIntegrationEvent Event);
+public sealed record OutboundIntegrationMessage(Guid MessageId, IIntegrationEvent Event)
+{
+    private readonly Guid _messageId = MessageId != Guid.Empty
+        ? MessageId
+        : throw new ArgumentException("Message identity must not be empty.", nameof(MessageId));
+
+    private readonly IIntegrationEvent _event = Event ?? throw new ArgumentNullException(nameof(Event));
+
+    /// <summary>
+    /// Gets the stable, unique message identity — the producer's outbox row id (a UUIDv7).
+    /// </summary>
+    /// <exception cref="ArgumentException">The value is <see cref="Guid.Empty"/>.</exception>
+    public Guid MessageId
+    {
+        get => _messageId;
+        init => _messageId = value != Guid.Empty
+            ? value
+            : throw new ArgumentException("Message identity must not be empty.", nameof(value));
+    }
+
+    /// <summary>
+    /// Gets the integration event to publish.
+    /// </summary>
+    /// <exception cref="ArgumentNullException">The value is <see langword="null"/>.</exception>
+    public IIntegrationEvent Event
+    {
+        get => _event;
+        init => _event = value ?? throw new ArgumentNullException(nameof(value));
+    }
+}

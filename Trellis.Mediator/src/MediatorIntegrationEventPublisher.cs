@@ -42,10 +42,13 @@ internal sealed partial class MediatorIntegrationEventPublisher : IIntegrationEv
     [UnconditionalSuppressMessage(
         "AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling",
         Justification = "Reflection over IIntegrationEventHandler<TEvent> for the runtime event type. The handler types are reached via DI-based registration (AddIntegrationEventHandler<TEvent, THandler>) which preserves them through trimming; consumers needing strict NativeAOT guarantees can supply a custom IIntegrationEventPublisher implementation.")]
-    public async ValueTask PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    public async ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(integrationEvent);
+        ArgumentNullException.ThrowIfNull(message);
 
+        // The id identifies the message on a wire. This publisher is the in-process path - there is no wire
+        // and nothing to deduplicate - so only the event matters here.
+        var integrationEvent = message.Event;
         var eventType = integrationEvent.GetType();
         var invoker = s_invokerCache.GetOrAdd(eventType, CreateInvoker);
 

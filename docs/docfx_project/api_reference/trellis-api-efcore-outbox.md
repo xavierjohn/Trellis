@@ -63,7 +63,7 @@ The flow:
 
 1. A **translator** — an ordinary `IDomainEventHandler<TDomainEvent>` — injects `IIntegrationEventCollector` and `Add(...)`s integration events while the relay re-dispatches the domain event.
 2. After publishing a `Domain` row, the relay drains the per-message scope's collector and stages each produced integration event as a new `OutboxMessageKind.Integration` row — in the **same** `SaveChanges` that marks the domain row processed, so an integration event is enrolled only once its source domain event is durably dispatched.
-3. A later drain publishes each `Integration` row through `IIntegrationEventPublisher` — specifically the `PublishAsync(OutboundIntegrationMessage, CancellationToken)` overload, carrying that row's own `OutboxMessage.Id` (default in-process fan-out to `IIntegrationEventHandler<T>`; replace the registration with a message-broker adapter to deliver to other services).
+3. A later drain publishes each `Integration` row through `IIntegrationEventPublisher` — its sole method `PublishAsync(OutboundIntegrationMessage, CancellationToken)`, carrying that row's own `OutboxMessage.Id` (default in-process fan-out to `IIntegrationEventHandler<T>`; replace the registration with a message-broker adapter to deliver to other services).
 
 Register the consumer side with `services.AddIntegrationEventDispatch(...)` / `AddIntegrationEventHandler<TEvent, THandler>()`, or the `TrellisServiceBuilder.UseIntegrationEvents(...)` slot. The collector is optional: outboxes that capture only domain events never register it and are unaffected.
 

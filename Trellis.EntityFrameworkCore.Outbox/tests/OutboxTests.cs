@@ -958,8 +958,7 @@ internal sealed class IntegrationCapturingHandler(List<ThingCreatedIntegrationEv
     }
 }
 
-// Stands in for a broker adapter: it overrides the message-carrying overload, which is the only one that
-// exposes the wire identity a transport needs.
+// Stands in for a broker adapter: the publish contract hands it the wire identity it must stamp.
 internal sealed class RecordingIntegrationEventPublisher : IIntegrationEventPublisher
 {
     private bool _failed;
@@ -967,9 +966,6 @@ internal sealed class RecordingIntegrationEventPublisher : IIntegrationEventPubl
     public List<OutboundIntegrationMessage> Published { get; } = [];
 
     public bool FailFirstPublish { get; init; }
-
-    public ValueTask PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken) =>
-        throw new InvalidOperationException("The relay must call the OutboundIntegrationMessage overload.");
 
     public ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)
     {

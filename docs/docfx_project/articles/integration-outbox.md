@@ -170,7 +170,7 @@ The default `IIntegrationEventPublisher` fans out to in-process `IIntegrationEve
 
 Two things separate an adapter that works from one that quietly loses the inbox's guarantee.
 
-**Override the message-carrying overload.** The relay calls `PublishAsync(OutboundIntegrationMessage, CancellationToken)`, whose `MessageId` is the outbox row's own id. Stamp it on the wire (`ServiceBusMessage.MessageId`, a Kafka header, and so on) so the consumer's `(ConsumerId, MessageId)` inbox dedup can collapse redeliveries of that row. Minting a fresh id per publish attempt makes every redelivery look like a new message and defeats the inbox. The overload is a default interface method that forwards to the event-only one, so an adapter that forgets to override it compiles and appears to work — this is the failure worth reviewing for.
+**Publish through the message, not the event.** `IIntegrationEventPublisher` has exactly one method, `PublishAsync(OutboundIntegrationMessage, CancellationToken)`, whose `MessageId` is the outbox row's own id. Stamp it on the wire (`ServiceBusMessage.MessageId`, a Kafka header, and so on) so the consumer's `(ConsumerId, MessageId)` inbox dedup can collapse redeliveries of that row. Minting a fresh id per publish attempt makes every redelivery look like a new message and defeats the inbox. The bare-event overload was deliberately removed so an adapter cannot publish without the id by accident.
 
 **Identify the event by a logical name, not by its CLR type.** The outbox stores `Type.AssemblyQualifiedName`, which is correct for its own in-process relaying and unusable across services: the consumer's assemblies differ, and the string embeds an assembly version. Annotate contracts and resolve them through `IntegrationEventNameMap`:
 
