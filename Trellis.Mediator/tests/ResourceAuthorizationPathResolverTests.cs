@@ -310,7 +310,7 @@ public class ResourceAuthorizationPathResolverTests
     }
 
     public sealed record SingleHopCommand(string LeafId)
-        {}
+    { }
 
     // --- Cricket fan-out ---
 
@@ -327,7 +327,7 @@ public class ResourceAuthorizationPathResolverTests
     }
 
     public sealed record CricketCommand(string MatchId)
-        {}
+    { }
 
     // --- Multi-hop chain ---
 
@@ -349,7 +349,7 @@ public class ResourceAuthorizationPathResolverTests
     }
 
     public sealed record ChainCommand(string Id)
-        {}
+    { }
 
     // --- Diamond (ambiguous paths) ---
 
@@ -384,7 +384,7 @@ public class ResourceAuthorizationPathResolverTests
     // (Removed redundant note: DiamondA now has both outbound edges declared above.)
 
     public sealed record DiamondCommand(string Id)
-        {}
+    { }
 
     // --- Plural-in-middle ---
 
@@ -406,7 +406,7 @@ public class ResourceAuthorizationPathResolverTests
     }
 
     public sealed record PluralMidCommand(string Id)
-        {}
+    { }
 
     // --- Cycle tolerance ---
 
@@ -439,7 +439,7 @@ public class ResourceAuthorizationPathResolverTests
     }
 
     public sealed record CycleCommand(string Id)
-        {}
+    { }
 
     #endregion
 }

@@ -93,7 +93,7 @@ public class GetValueOrThrowTests
     public void GetValueOrThrow_Failure_with_Detail_renders_Detail_in_default_message()
     {
         var sut = Result.Fail<int>(new Error.NotFound(ResourceRef.For("User", "42"))
-            { Detail = "User 42 has been purged." });
+        { Detail = "User 42 has been purged." });
 
         var act = () => sut.GetValueOrThrow();
 

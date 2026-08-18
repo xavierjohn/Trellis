@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Worker;
+﻿namespace Trellis.Testing.Worker;
 
 using System.Threading;
 using System.Threading.Tasks;

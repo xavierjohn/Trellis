@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Declares the stable, on-the-wire name of an <see cref="IIntegrationEvent"/> so producers and consumers

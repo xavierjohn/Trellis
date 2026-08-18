@@ -1,4 +1,4 @@
-using Trellis.Mediator;
+﻿using Trellis.Mediator;
 using Trellis.Testing;
 namespace Trellis.EntityFrameworkCore.Tests;
 

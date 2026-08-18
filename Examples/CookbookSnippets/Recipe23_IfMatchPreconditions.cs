@@ -6,11 +6,11 @@ namespace CookbookSnippets.Recipe23;
 
 using System;
 using System.Threading;
+using global::Mediator;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
-using global::Mediator;
 using Trellis;
 using Trellis.Asp;
 using Trellis.EntityFrameworkCore;

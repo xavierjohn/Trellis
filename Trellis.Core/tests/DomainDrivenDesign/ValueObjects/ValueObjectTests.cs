@@ -622,14 +622,14 @@ internal sealed class WideValueObject : ValueObject
 
     public WideValueObject(int count, int differentAtIndex = -1)
     {
-        this.parts = new string[count];
+        parts = new string[count];
         for (var i = 0; i < count; i++)
-            this.parts[i] = i == differentAtIndex ? "zzz" : $"part-{i:D2}";
+            parts[i] = i == differentAtIndex ? "zzz" : $"part-{i:D2}";
     }
 
     protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        foreach (var part in this.parts)
+        foreach (var part in parts)
             components.Add(part);
     }
 }
@@ -727,11 +727,11 @@ internal sealed class CountingComponentsValueObject(string a, string b) : ValueO
 {
     private int enumerationCount;
 
-    public int EnumerationCount => this.enumerationCount;
+    public int EnumerationCount => enumerationCount;
 
     protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        Interlocked.Increment(ref this.enumerationCount);
+        Interlocked.Increment(ref enumerationCount);
         components.Add(a);
         components.Add(b);
     }

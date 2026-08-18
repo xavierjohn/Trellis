@@ -1,4 +1,4 @@
-namespace Benchmark;
+﻿namespace Benchmark;
 
 using System.Diagnostics;
 using BenchmarkDotNet.Attributes;

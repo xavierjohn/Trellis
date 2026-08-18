@@ -44,14 +44,14 @@ public sealed class MaybePrimitiveJsonConverter<T> : JsonConverter<Maybe<T>>
         }
 
         if (typeof(T) == typeof(decimal)) return Maybe.From((T)(object)reader.GetDecimal());
-        if (typeof(T) == typeof(int))     return Maybe.From((T)(object)reader.GetInt32());
-        if (typeof(T) == typeof(long))    return Maybe.From((T)(object)reader.GetInt64());
-        if (typeof(T) == typeof(short))   return Maybe.From((T)(object)reader.GetInt16());
-        if (typeof(T) == typeof(byte))    return Maybe.From((T)(object)reader.GetByte());
-        if (typeof(T) == typeof(double))  return Maybe.From((T)(object)reader.GetDouble());
-        if (typeof(T) == typeof(float))   return Maybe.From((T)(object)reader.GetSingle());
-        if (typeof(T) == typeof(bool))    return Maybe.From((T)(object)reader.GetBoolean());
-        if (typeof(T) == typeof(Guid))    return Maybe.From((T)(object)reader.GetGuid());
+        if (typeof(T) == typeof(int)) return Maybe.From((T)(object)reader.GetInt32());
+        if (typeof(T) == typeof(long)) return Maybe.From((T)(object)reader.GetInt64());
+        if (typeof(T) == typeof(short)) return Maybe.From((T)(object)reader.GetInt16());
+        if (typeof(T) == typeof(byte)) return Maybe.From((T)(object)reader.GetByte());
+        if (typeof(T) == typeof(double)) return Maybe.From((T)(object)reader.GetDouble());
+        if (typeof(T) == typeof(float)) return Maybe.From((T)(object)reader.GetSingle());
+        if (typeof(T) == typeof(bool)) return Maybe.From((T)(object)reader.GetBoolean());
+        if (typeof(T) == typeof(Guid)) return Maybe.From((T)(object)reader.GetGuid());
         if (typeof(T) == typeof(DateTime)) return Maybe.From((T)(object)reader.GetDateTime());
         if (typeof(T) == typeof(DateTimeOffset)) return Maybe.From((T)(object)reader.GetDateTimeOffset());
 

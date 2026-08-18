@@ -1,4 +1,4 @@
-namespace Trellis.Mediator.Tests;
+﻿namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,4 +87,3 @@ public class DomainEventDispatchIntegrationTests
         }
     }
 }
-

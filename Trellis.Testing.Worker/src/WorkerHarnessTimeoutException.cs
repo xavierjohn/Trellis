@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Worker;
+﻿namespace Trellis.Testing.Worker;
 
 using System;
 
@@ -34,4 +34,3 @@ public sealed class WorkerHarnessTimeoutException : TimeoutException
     {
     }
 }
-

@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Worker;
+﻿namespace Trellis.Testing.Worker;
 
 using System;
 using System.Collections.Generic;

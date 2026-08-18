@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Worker.Tests.Helpers;
+﻿namespace Trellis.Testing.Worker.Tests.Helpers;
 
 /// <summary>
 /// Domain events emitted by <see cref="TestWorker"/> on each successful tick. The worker

@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Worker;
+﻿namespace Trellis.Testing.Worker;
 
 /// <summary>
 /// Cooperative signal that a worker tick has completed. The harness registers a singleton

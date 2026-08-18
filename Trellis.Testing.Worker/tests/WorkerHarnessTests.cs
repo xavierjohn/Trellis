@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Worker.Tests;
+﻿namespace Trellis.Testing.Worker.Tests;
 
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
