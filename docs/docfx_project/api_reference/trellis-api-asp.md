@@ -419,7 +419,7 @@ The main DI surface for `Trellis.Asp` (in folder `Extensions/`).
 public static class ResourceCollectionNameServiceCollectionExtensions
 ```
 
-Registers `ResourceCollectionNameOverride` entries and the consuming `ResourceCollectionNameRegistry`. The lookup key is `ResourceRef.FormatTypeName` of the resource type, which for ordinary resource types is the same name `ResourceRef.For<TResource>(...)` emits — an override matches only when the two agree. They diverge in one case: `For<TResource>` peels a `Maybe<T>` wrapper before formatting, while `FormatTypeName` deliberately does not, so registering an override for `Maybe<Order>` would key on `Maybe` and never match a `ResourceRef.For<Maybe<Order>>()` that emits `Order`. Register the unwrapped type.
+Registers `ResourceCollectionNameOverride` entries and the consuming `ResourceCollectionNameRegistry`. The generic overload derives its lookup key from `ResourceRef.For<TResource>(...)`, so registration and lookup are guaranteed to agree — including for `Maybe<T>`, which is peeled on both sides (`Maybe<Order>` and `Order` register the same entry, and nested `Maybe<Maybe<Order>>` resolves to `Order`). The string overload keys on the value you pass, for resources named through `ResourceRef.For(string, object?)`. The assembly-scanning overloads key on `ResourceRef.FormatTypeName` of the annotated type.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

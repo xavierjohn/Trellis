@@ -14,10 +14,11 @@ using Trellis;
 public static class ResourceCollectionNameServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers a single resource-type-to-collection-name override. The <typeparamref name="TResource"/>
-    /// CLR name (with generic backtick suffix stripped via <see cref="ResourceRef.FormatTypeName"/>)
-    /// is used as the lookup key — match the name that <see cref="ResourceRef.For{TResource}(object?)"/>
-    /// emits. Safe under trimming/AOT — does not perform assembly scanning.
+    /// Registers a single resource-type-to-collection-name override. The lookup key is the resource
+    /// name <see cref="ResourceRef.For{TResource}(object?)"/> emits for <typeparamref name="TResource"/>,
+    /// which is the simple CLR name with any generic backtick suffix stripped and any
+    /// <see cref="Maybe{T}"/> wrapper peeled — so registering <c>Maybe&lt;Order&gt;</c> and
+    /// <c>Order</c> produce the same entry. Safe under trimming/AOT — does not perform assembly scanning.
     /// </summary>
     /// <typeparam name="TResource">The CLR resource type whose <see cref="ResourceRef.Type"/> name should map to <paramref name="collectionName"/>.</typeparam>
     /// <param name="services">The service collection.</param>
@@ -28,7 +29,12 @@ public static class ResourceCollectionNameServiceCollectionExtensions
         string collectionName)
     {
         ArgumentNullException.ThrowIfNull(services);
-        return services.AddResourceCollectionName(ResourceRef.FormatTypeName(typeof(TResource)), collectionName);
+
+        // Deriving the key from For<TResource> rather than FormatTypeName(typeof(TResource)) keeps
+        // registration and lookup on one code path. FormatTypeName deliberately does not peel Maybe,
+        // so using it here keyed Maybe<Order> as "Maybe" while lookups arrived as "Order" -- an
+        // override that never matched and never reported why.
+        return services.AddResourceCollectionName(ResourceRef.For<TResource>().Type, collectionName);
     }
 
     /// <summary>
