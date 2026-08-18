@@ -102,3 +102,20 @@ Broken anchors are rejected by TRLDOC003. If a broken anchor is deliberate, appe
 ```
 
 Filler table rows such as `| — | — | No public properties.` are never allowlisted; remove the row or document real public surface instead.
+
+## TRLDOC009 — line endings must be uniformly CRLF
+
+Every reference file must use CRLF throughout: no carriage return without a following line feed, and no line feed without a preceding carriage return.
+
+This rule exists because of a defect that reached review. A tool patched one table row of a CRLF file with LF-terminated replacement text, leaving a lone CR before the row's opening pipe. Nothing looked wrong in an editor, the row still rendered in most viewers, and every other gate passed — a reviewer caught it by reading the raw diff. The failure mode is worse than cosmetic: a stray control character at the start of a Markdown table row can break the row out of its table, silently dropping documented API surface from the rendered page while the completeness gate still counts it as documented.
+
+The inverse case is gated for the same reason the repository standardises on UTF-8 with BOM: a file that acquires bare LFs diffs as rewritten in its entirety, which buries the real change.
+
+Generated, untracked reports listed in the unshipped-doc allowlist (currently `completeness-report.md`) are exempt — their bytes are the generating tool's business.
+
+There is no allowlist marker for this rule. Rewrite the file with consistent line endings instead; in PowerShell, preserve the BOM while doing so:
+
+```powershell
+$utf8Bom = New-Object System.Text.UTF8Encoding $true
+[System.IO.File]::WriteAllText($path, $content, $utf8Bom)
+```
