@@ -125,11 +125,13 @@ public class ClaimsActorOptions
 
     /// <summary>
     /// When <see langword="true"/> (the default), <see cref="ClaimsActorProvider"/> emits
-    /// startup-diagnostics log entries the first time the configured
-    /// <see cref="PermissionsClaim"/> resolves to zero entries on an authenticated identity
-    /// that carries other claims, or to a single value that parses as a JSON object or array.
-    /// Both diagnostics are throttled to fire at most once per application lifetime — they
-    /// surface the silent-403 footgun without producing log spam.
+    /// startup-diagnostics log entries the first time a configured claim fails to resolve into
+    /// the shape the provider expects: the configured <see cref="PermissionsClaim"/> resolving
+    /// to zero entries on an authenticated identity that carries other claims, or to a single
+    /// value that parses as a JSON object or array; and the configured
+    /// <see cref="ActorIdClaim"/> resolving to nothing on an authenticated identity. Every
+    /// diagnostic is throttled to fire at most once per application lifetime — they surface the
+    /// silent-403 and silent-401 footguns without producing log spam.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -140,6 +142,12 @@ public class ClaimsActorOptions
     /// known-name fallback table does not cover the consumer's IdP, and the provider returns
     /// an empty permissions set — every <c>IAuthorize</c> command then short-circuits to
     /// 403 with no signal pointing at the claim mapping.
+    /// </para>
+    /// <para>
+    /// The silent-401 variant is the same failure one step earlier: an unresolvable
+    /// <see cref="ActorIdClaim"/> (typically a <c>JwtBearerOptions.MapInboundClaims</c>
+    /// short↔long mismatch the fallback table does not cover) yields no actor at all, so a
+    /// successfully authenticated caller is rejected with a bare 401.
     /// </para>
     /// <para>
     /// Set to <see langword="false"/> only when the diagnostics duplicate an existing health-check
@@ -318,13 +326,20 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
     private static int s_jsonShapedClaimErrorFired;
 
     /// <summary>
+    /// Throttle flag for the unresolvable-actor-id diagnostic; flips from 0 to 1 the first time
+    /// the diagnostic fires for any instance.
+    /// </summary>
+    private static int s_unresolvedActorIdWarningFired;
+
+    /// <summary>
     /// Test-only hook for resetting the static throttles. Internal so the test project can
-    /// exercise both diagnostic paths without relying on assembly-reload tricks.
+    /// exercise every diagnostic path without relying on assembly-reload tricks.
     /// </summary>
     internal static void ResetDiagnosticThrottlesForTests()
     {
         s_emptyPermissionsWarningFired = 0;
         s_jsonShapedClaimErrorFired = 0;
+        s_unresolvedActorIdWarningFired = 0;
     }
 
     private readonly ILogger<ClaimsActorProvider>? _logger;
@@ -398,7 +413,10 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
         // default, which silently remaps RFC 7519 short names onto WS-* long-form URNs.
         var actorId = ResolveClaimWithFallback(identity, Options.ActorIdClaim);
         if (string.IsNullOrWhiteSpace(actorId))
+        {
+            MaybeEmitUnresolvedActorIdDiagnostic(identity);
             return Task.FromResult(Maybe<Actor>.None);
+        }
 
         var permissions = ResolveAllClaimsWithFallback(identity, Options.PermissionsClaim)
             .Select(c => c.Value)
@@ -408,6 +426,40 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
 
         var actor = Actor.Create(actorId, permissions);
         return Task.FromResult(Maybe.From(actor));
+    }
+
+    /// <summary>
+    /// Logger used for the one-off claim-shape diagnostics. Derived providers that construct the
+    /// base with a <see langword="null"/> logger (because they own a differently typed one)
+    /// override this so diagnostics raised on base-delegated resolution paths still reach a logger.
+    /// </summary>
+    protected virtual ILogger? DiagnosticLogger => _logger;
+
+    /// <summary>
+    /// Emits a one-time warning when an authenticated identity is present but the configured
+    /// <see cref="ClaimsActorOptions.ActorIdClaim"/> resolved to nothing. Without it the caller
+    /// sees a bare 401 with no server-side signal that the token shape — not the credential —
+    /// is the problem. Honours <see cref="ClaimsActorOptions.ValidateClaimShapeOnFirstUse"/>.
+    /// </summary>
+    /// <param name="identity">The authenticated identity whose claims failed to yield an actor id.</param>
+    protected void MaybeEmitUnresolvedActorIdDiagnostic(ClaimsIdentity identity)
+    {
+        var logger = DiagnosticLogger;
+        if (!Options.ValidateClaimShapeOnFirstUse || logger is null)
+            return;
+
+        // An identity with no claims at all is an empty/anonymous-shaped principal, not a
+        // claim-mapping mistake; warning on it would fire for ordinary unauthenticated traffic.
+        if (!identity.Claims.Any())
+            return;
+
+        if (Interlocked.CompareExchange(ref s_unresolvedActorIdWarningFired, 1, 0) != 0)
+            return;
+
+        LogUnresolvedActorIdOnAuthenticatedIdentity(
+            logger,
+            Options.ActorIdClaim,
+            identity.Claims.Select(c => c.Type).Distinct().Take(10).ToArray());
     }
 
     /// <summary>
@@ -422,13 +474,15 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
     /// <c>protected</c> so derived providers (notably <see cref="NestedJsonPathClaimsActorProvider"/>)
     /// can invoke the same diagnostic after their override resolves permissions through a
     /// different path; without this hook the empty-permissions warning would not fire when the
-    /// derived provider's path-traversal produced an empty set. The <paramref name="overrideLogger"/>
-    /// parameter lets a derived provider pass its own logger when the base's logger slot was
-    /// left null (the typical case when the derived constructor wires its own typed logger).
+    /// derived provider's path-traversal produced an empty set. The entry is written to
+    /// <see cref="DiagnosticLogger"/>, which a derived provider overrides when it owns a logger
+    /// of its own category.
     /// </remarks>
-    protected void MaybeEmitClaimShapeDiagnostics(ClaimsIdentity identity, FrozenSet<string> permissions, ILogger? overrideLogger = null)
+    /// <param name="identity">The authenticated identity whose claims were resolved.</param>
+    /// <param name="permissions">The permission set the provider resolved for that identity.</param>
+    protected void MaybeEmitClaimShapeDiagnostics(ClaimsIdentity identity, FrozenSet<string> permissions)
     {
-        var logger = overrideLogger ?? _logger;
+        var logger = DiagnosticLogger;
         if (!Options.ValidateClaimShapeOnFirstUse || logger is null)
             return;
 
@@ -619,6 +673,26 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
         if (logger is not null)
             _logClaimNameFallback(logger, configured, resolved, null);
     }
+
+    private static readonly Action<ILogger, string, string[], Exception?> _logUnresolvedActorIdOnAuthenticatedIdentity =
+        LoggerMessage.Define<string, string[]>(
+            LogLevel.Warning,
+            new EventId(5, nameof(ClaimsActorProvider)),
+            "ClaimsActorProvider could not resolve an actor id on an authenticated identity. " +
+            "Configured ActorIdClaim '{ConfiguredClaim}' (and its known-name fallback) matched " +
+            "no claims on a token that does carry other claims ({PresentClaimTypes}); every " +
+            "request will short-circuit to HTTP 401 until the mapping is corrected, even though " +
+            "the credential itself authenticated successfully. Common causes: (1) JwtBearerOptions" +
+            ".MapInboundClaims (default true) remapped the RFC 7519 short name onto its WS-* " +
+            "long-form URN, or vice versa; (2) the ActorIdClaim name is wrong for this identity " +
+            "provider — inspect the listed claim types and align the option. This diagnostic " +
+            "fires at most once per application lifetime.");
+
+    private static void LogUnresolvedActorIdOnAuthenticatedIdentity(
+        ILogger logger,
+        string configuredClaim,
+        string[] presentClaimTypes) =>
+        _logUnresolvedActorIdOnAuthenticatedIdentity(logger, configuredClaim, presentClaimTypes, null);
 
     private static readonly Action<ILogger, string, string[], Exception?> _logEmptyPermissionsOnAuthenticatedIdentity =
         LoggerMessage.Define<string, string[]>(

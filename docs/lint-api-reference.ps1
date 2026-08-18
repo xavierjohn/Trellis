@@ -245,6 +245,24 @@ $failed = $false
 $markdownFiles = Get-ChildItem -LiteralPath $apiReferenceDir -Filter '*.md' -File | Sort-Object FullName
 $headingIndexByPath = New-HeadingIndex -MarkdownFiles $markdownFiles
 
+# TRLDOC009 - no carriage return may appear without a following line feed. This deliberately
+# says nothing about CRLF vs LF: .gitattributes marks the repository '* text=auto', so the blob
+# stores LF and the working tree gets whatever the platform checks out - a bare LF is correct
+# on a Linux runner and wrong to flag. A lone CR is the platform-independent defect: git's
+# newline normalisation does not touch it, so it survives in the blob and corrupts the same
+# line on every checkout. It is produced by tools that patch a CRLF working file with
+# LF-terminated replacement text, which makes the damage invisible in an editor and visible
+# only in the raw bytes.
+foreach ($file in $markdownFiles) {
+    $rawText = [System.IO.File]::ReadAllText($file.FullName)
+
+    foreach ($match in [regex]::Matches($rawText, "`r(?!`n)")) {
+        $lineNumber = ($rawText.Substring(0, $match.Index) -split "`n").Count
+        Write-Host "$($file.FullName)($lineNumber,1): error TRLDOC009: Stray carriage return not followed by a line feed. Rewrite the file with consistent line endings."
+        $failed = $true
+    }
+}
+
 foreach ($file in $markdownFiles) {
     $lines = @(Get-Content -LiteralPath $file.FullName)
     $inFence = $false

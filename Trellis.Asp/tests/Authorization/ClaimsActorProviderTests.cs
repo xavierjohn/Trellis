@@ -832,4 +832,85 @@ public class ClaimsActorProviderTests
     }
 
     #endregion
+
+    #region Silent-401 diagnostics (unresolvable actor id)
+
+    [Fact]
+    public async Task GetCurrentActorAsync_UnresolvableActorIdOnAuthenticatedIdentity_LogsWarningOnce()
+    {
+        ClaimsActorProvider.ResetDiagnosticThrottlesForTests();
+        var entries = new List<(LogLevel Level, EventId EventId, string Message)>();
+        var logger = new FakeLogger(entries);
+
+        // Authenticated identity that carries claims, but none the configured ActorIdClaim
+        // ("sub" default) or its known-name counterpart can resolve. The request 401s; without
+        // a diagnostic nothing points at the claim mapping as the cause.
+        var user = AuthenticatedUser(
+            new Claim("user_id", "user-1"),
+            new Claim("email", "a@b.test"));
+
+        var provider = CreateProvider(user, logger: logger);
+
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.HasValue.Should().BeFalse("the configured ActorIdClaim resolved nothing");
+        var entry = entries.Should().ContainSingle(e => e.EventId.Id == 5).Which;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Message.Should().Contain("sub", "the diagnostic must name the configured claim");
+        entry.Message.Should().Contain("user_id", "the diagnostic must list the claims actually present");
+
+        // Throttled: a second unresolvable request must not emit a second warning.
+        await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+        entries.Count(e => e.EventId.Id == 5).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_UnresolvableActorId_SuppressesDiagnosticWhenValidationDisabled()
+    {
+        ClaimsActorProvider.ResetDiagnosticThrottlesForTests();
+        var entries = new List<(LogLevel Level, EventId EventId, string Message)>();
+        var logger = new FakeLogger(entries);
+        var options = new ClaimsActorOptions { ValidateClaimShapeOnFirstUse = false };
+
+        var user = AuthenticatedUser(new Claim("user_id", "user-1"));
+
+        var provider = CreateProvider(user, options, logger);
+
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).HasValue.Should().BeFalse();
+        entries.Should().NotContain(e => e.EventId.Id == 5);
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_NoAuthenticatedIdentity_DoesNotLogUnresolvableActorId()
+    {
+        ClaimsActorProvider.ResetDiagnosticThrottlesForTests();
+        var entries = new List<(LogLevel Level, EventId EventId, string Message)>();
+        var logger = new FakeLogger(entries);
+
+        // An anonymous request is ordinary 401 traffic, not a claim-mapping misconfiguration.
+        // Diagnosing it would fire on every unauthenticated caller and bury the real signal.
+        var provider = CreateProvider(new ClaimsPrincipal(new ClaimsIdentity()), logger: logger);
+
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).HasValue.Should().BeFalse();
+        entries.Should().NotContain(e => e.EventId.Id == 5);
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_ActorIdResolvedViaKnownNameFallback_DoesNotLogUnresolvableActorId()
+    {
+        ClaimsActorProvider.ResetDiagnosticThrottlesForTests();
+        var entries = new List<(LogLevel Level, EventId EventId, string Message)>();
+        var logger = new FakeLogger(entries);
+
+        // Configured "sub" but the token carries the MapInboundClaims-remapped long form.
+        // The fallback resolves it, so this is not a misconfiguration and must stay quiet.
+        var user = AuthenticatedUser(new Claim(ClaimTypes.NameIdentifier, "user-1"));
+
+        var provider = CreateProvider(user, logger: logger);
+
+        (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).HasValue.Should().BeTrue();
+        entries.Should().NotContain(e => e.EventId.Id == 5);
+    }
+
+    #endregion
 }

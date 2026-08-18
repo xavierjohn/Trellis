@@ -376,6 +376,68 @@ public class NestedJsonPathClaimsActorProviderTests
             "the nested fallback must use ResolveClaimWithFallback (short↔long aware), not literal FindFirst");
     }
 
+    [Fact]
+    public async Task GetCurrentActorAsync_ActorIdPathAndFlatFallbackBothMiss_LogsUnresolvedActorIdWarning()
+    {
+        ClaimsActorProvider.ResetDiagnosticThrottlesForTests();
+        var entries = new List<(LogLevel Level, EventId EventId, string Message)>();
+        var logger = new FakeLogger(entries);
+
+        // Both resolution routes miss: the container carries no user_id, and the identity has no
+        // claim the configured ActorIdClaim (or its known-name counterpart) can resolve. The
+        // request 401s, so the diagnostic must fire through the derived provider's own logger.
+        var user = AuthenticatedUser(
+            new Claim("user_id", "user-1"),
+            new Claim("app_metadata", """{"other":"value"}"""));
+
+        var provider = CreateProvider(
+            user,
+            new NestedJsonPathClaimsActorOptions
+            {
+                ActorIdClaim = "sub",
+                ContainerClaim = "app_metadata",
+                ActorIdPath = "user_id",
+                PermissionsPath = "roles",
+            },
+            logger);
+
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.HasValue.Should().BeFalse();
+        entries.Should().ContainSingle(e => e.EventId.Id == 5)
+            .Which.Level.Should().Be(LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task GetCurrentActorAsync_ContainerClaimAbsentAndActorIdUnresolvable_LogsUnresolvedActorIdWarning()
+    {
+        ClaimsActorProvider.ResetDiagnosticThrottlesForTests();
+        var entries = new List<(LogLevel Level, EventId EventId, string Message)>();
+        var logger = new FakeLogger(entries);
+
+        // No container claim → the whole resolution delegates to base.GetCurrentActorAsync, which
+        // was constructed with a null logger. The diagnostic must still reach this provider's
+        // logger, otherwise the most common nested-provider 401 stays silent.
+        var user = AuthenticatedUser(new Claim("user_id", "user-1"));
+
+        var provider = CreateProvider(
+            user,
+            new NestedJsonPathClaimsActorOptions
+            {
+                ActorIdClaim = "sub",
+                ContainerClaim = "app_metadata",
+                ActorIdPath = "user_id",
+                PermissionsPath = "roles",
+            },
+            logger);
+
+        var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
+
+        actor.HasValue.Should().BeFalse();
+        entries.Should().ContainSingle(e => e.EventId.Id == 5)
+            .Which.Level.Should().Be(LogLevel.Warning);
+    }
+
     /// <summary>
     /// Minimal fake logger that captures log entries for assertion.
     /// </summary>
