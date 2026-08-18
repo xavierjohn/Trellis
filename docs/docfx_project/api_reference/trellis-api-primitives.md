@@ -327,7 +327,8 @@ public class Money : ValueObject
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null)` | `Result<Money>` | Rejects negative amounts. Currency validation is delegated to [`CurrencyCode.TryCreate`](#currencycode) and is syntactic only — three ASCII letters (case-insensitive input; normalized to uppercase). Codes outside the ISO 4217 active list (`XXX`, `XTS`, `ZZZ`, etc.) are accepted because they satisfy the format. Layer an application-level allow-list when active-code enforcement is required. |
+| `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null)` | `Result<Money>` | Rejects negative amounts. `fieldName` names the money value as a whole; component failures are reported at nested pointers beneath it (`/price/amount`, `/price/currency`), defaulting to `/amount` and `/currency`. Currency validation is delegated to [`CurrencyCode.TryCreate`](#currencycode) and is syntactic only — three ASCII letters (case-insensitive input; normalized to uppercase). Codes outside the ISO 4217 active list (`XXX`, `XTS`, `ZZZ`, etc.) are accepted because they satisfy the format. Layer an application-level allow-list when active-code enforcement is required. |
+| `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? amountFieldName, string? currencyFieldName)` | `Result<Money>` | Flat-payload overload: names each component independently instead of nesting, for documents that carry amount and currency as siblings. Each argument accepts a simple property name or a full JSON Pointer, and falls back to `amount` / `currency` when null or empty. The last two parameters intentionally have no default values, which keeps this overload out of the set `CompositeValueObjectJsonConverter<Money>` resolves. |
 | `public static Money Create(decimal amount, string currencyCode)` | `Money` | Throwing factory. |
 | `public Result<Money> Add(Money other)` | `Result<Money>` | Requires matching currencies. Throws `ArgumentNullException` when `other` is null. Returns `Error.InvalidInput` on currency mismatch or addition overflow. |
 | `public Result<Money> Subtract(Money other)` | `Result<Money>` | Requires matching currencies and non-negative result. Throws `ArgumentNullException` when `other` is null. |
@@ -470,12 +471,14 @@ Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, th
 | `IpAddress` | `ipAddress` | `TryCreate` |
 | `LanguageCode` | `languageCode` | `TryCreate` |
 | `MonetaryAmount` | **`amount`** — not `monetaryAmount` | `TryCreate` |
-| `Money` | `amount` for the amount, `currencyCode` for the currency component | `TryCreate` |
+| `Money` | `amount` for the amount, `currency` for the currency component | `TryCreate` |
 | `Percentage` | `percentage` | `TryCreate` |
 | `Percentage` | `fraction` | `FromFraction` |
 | `PhoneNumber` | `phoneNumber` | `TryCreate` |
 | `Slug` | `slug` | `TryCreate` |
 | `Url` | `url` | `TryCreate` |
+
+`EmailAddress` and `MonetaryAmount` keep the shorter defaults deliberately: `email` and `amount` are the names those values almost always carry in a payload, so the default is right more often than a type-derived `emailAddress` or `monetaryAmount` would be. Override with `fieldName` in the minority of cases where it isn't.
 
 Pass `fieldName` explicitly whenever the value object is bound to a differently-named request property, so the error key matches the client's payload shape rather than the primitive's own name:
 
@@ -484,7 +487,24 @@ Pass `fieldName` explicitly whenever the value object is bound to a differently-
 var email = EmailAddress.TryCreate(request.BillingEmail, nameof(request.BillingEmail));
 ```
 
-> **`Money` takes a single `fieldName` for two components.** `Money.TryCreate(amount, currencyCode, fieldName)` applies the supplied name to *both* the amount and the currency failure, so an explicit `fieldName` makes the two indistinguishable by key. Only the defaults (`amount` / `currencyCode`) tell them apart — validate the components separately if the client needs to know which one failed.
+> **`Money` reports each component at its own JSON Pointer.** `Money` is the one structured primitive with two independently-validatable components, so `fieldName` names the *money value*, not a single error key, and component failures are reported beneath it — matching the serialized shape `{ "amount": …, "currency": … }`:
+>
+> ```csharp
+> Money.TryCreate(-1m, "USD", "price");      // → /price/amount
+> Money.TryCreate(10m, "INVALID", "price");  // → /price/currency
+> Money.TryCreate(-1m, "USD");               // → /amount
+> ```
+>
+> A `fieldName` that is already a JSON Pointer is composed onto rather than escaped, so `"/items/0/price"` yields `/items/0/price/amount`.
+>
+> When the amount and currency arrive as *siblings* of a flat payload — `{ "price": 10, "currency": "XX" }` — nesting would point at a location the document does not have. Use the four-argument overload to name each component independently:
+>
+> ```csharp
+> // → /price and /currency respectively
+> Money.TryCreate(request.Price, request.Currency, nameof(request.Price), nameof(request.Currency));
+> ```
+>
+> The four-argument overload deliberately has **no default values** on its last two parameters; that is what keeps it out of the overload set `CompositeValueObjectJsonConverter<Money>` resolves, which requires an unambiguous `TryCreate` whose trailing parameters are all optional.
 
 ## Code examples
 

@@ -39,9 +39,23 @@ public class Money : ValueObject
 
     /// <summary>
     /// Creates a Money instance with the specified amount and currency code.
-    /// If <paramref name="fieldName"/> is not provided, amount validation errors use "amount" and currency validation errors use "currencyCode" as the field name.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <paramref name="fieldName"/> names the <see cref="Money"/> value as a whole, and validation
+    /// errors are reported against a nested JSON Pointer under it — one segment per component, matching
+    /// the serialized shape <c>{ "amount": …, "currency": … }</c>. Passing <c>"price"</c> therefore
+    /// yields <c>/price/amount</c> for amount failures and <c>/price/currency</c> for currency failures,
+    /// so a client can bind each error to the field that produced it. When
+    /// <paramref name="fieldName"/> is omitted the pointers are <c>/amount</c> and <c>/currency</c>.
+    /// A <paramref name="fieldName"/> that is already a JSON Pointer (starts with <c>'/'</c>) is
+    /// composed onto rather than escaped, so <c>"/items/0/price"</c> yields <c>/items/0/price/amount</c>.
+    /// </para>
+    /// <para>
+    /// Use <see cref="TryCreate(decimal, string, string?, string?)"/> instead when the amount and
+    /// currency arrive as sibling fields of a flat payload rather than as a nested object.
+    /// </para>
+    /// <para>
     /// Currency validation is delegated to <see cref="CurrencyCode.TryCreate"/> and is
     /// syntactic only (three ASCII letters per ISO 4217 format; input is case-insensitive,
     /// stored uppercase via <c>ToUpperInvariant</c>). The ISO 4217 active-code list is not
@@ -49,22 +63,56 @@ public class Money : ValueObject
     /// will be accepted. Applications that need to restrict to a specific set of currencies
     /// (e.g., those a payment processor supports, or excluding ISO reserved/test codes)
     /// should layer an allow-list at the application boundary before calling
-    /// <see cref="TryCreate"/>.
+    /// <see cref="TryCreate(decimal, string, string?)"/>.
+    /// </para>
     /// </remarks>
     /// <param name="amount">The monetary amount.</param>
     /// <param name="currencyCode">ISO 4217 currency code (e.g., "USD", "EUR"); case-insensitive.</param>
-    /// <param name="fieldName">Optional field name for validation error messages. If not provided, defaults to "amount" for amount validation and "currencyCode" for currency validation.</param>
+    /// <param name="fieldName">Optional name of the money field itself; component errors are reported beneath it.</param>
     /// <returns>Result containing the Money instance or validation errors.</returns>
-    public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null)
+    public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null) =>
+        TryCreateCore(
+            amount,
+            currencyCode,
+            ComponentPointer(fieldName, AmountFieldName),
+            ComponentPointer(fieldName, CurrencyFieldName));
+
+    /// <summary>
+    /// Creates a Money instance whose amount and currency are validated against independently
+    /// named fields, for payloads that carry the two as siblings rather than as a nested object.
+    /// </summary>
+    /// <remarks>
+    /// Use this overload when the incoming document looks like <c>{ "price": 10, "currency": "XX" }</c>.
+    /// The nested-pointer composition performed by <see cref="TryCreate(decimal, string, string?)"/>
+    /// would report such a failure at <c>/price/currency</c> — a location that does not exist in the
+    /// payload. Each argument accepts a simple property name or a full JSON Pointer.
+    /// </remarks>
+    /// <param name="amount">The monetary amount.</param>
+    /// <param name="currencyCode">ISO 4217 currency code (e.g., "USD", "EUR"); case-insensitive.</param>
+    /// <param name="amountFieldName">Field carrying the amount; defaults to <c>amount</c> when null or empty.</param>
+    /// <param name="currencyFieldName">Field carrying the currency; defaults to <c>currency</c> when null or empty.</param>
+    /// <returns>Result containing the Money instance or validation errors.</returns>
+    public static Result<Money> TryCreate(decimal amount, string currencyCode, string? amountFieldName, string? currencyFieldName) =>
+        TryCreateCore(
+            amount,
+            currencyCode,
+            InputPointer.ForProperty(amountFieldName.NormalizeFieldName(AmountFieldName)),
+            InputPointer.ForProperty(currencyFieldName.NormalizeFieldName(CurrencyFieldName)));
+
+    private const string AmountFieldName = "amount";
+    private const string CurrencyFieldName = "currency";
+
+    private static InputPointer ComponentPointer(string? fieldName, string component) =>
+        new(InputPointer.ForProperty(fieldName.NormalizeFieldName(string.Empty)).Path + '/' + component);
+
+    private static Result<Money> TryCreateCore(decimal amount, string currencyCode, InputPointer amountField, InputPointer currencyField)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Money) + '.' + nameof(TryCreate));
 
-        var field = fieldName.NormalizeFieldName("amount");
-
         if (amount < 0)
-            return Result.Fail<Money>(Error.InvalidInput.ForField(field, "validation.error", "Amount cannot be negative."));
+            return Result.Fail<Money>(Error.InvalidInput.ForField(amountField, "validation.error", "Amount cannot be negative."));
 
-        return CurrencyCode.TryCreate(currencyCode, fieldName.NormalizeFieldName("currencyCode"))
+        return CurrencyCode.TryCreate(currencyCode, currencyField.Path)
             .Map(currency => new Money(Math.Round(amount, GetDecimalPlaces(currency), MidpointRounding.AwayFromZero), currency));
     }
 
@@ -78,7 +126,7 @@ public class Money : ValueObject
     /// <exception cref="InvalidOperationException">Thrown when amount is negative or currency is invalid.</exception>
     /// <remarks>
     /// Use this method when you know the values are valid (e.g., in tests or with constants).
-    /// For user input, use <see cref="TryCreate"/> instead.
+    /// For user input, use <see cref="TryCreate(decimal, string, string?)"/> instead.
     /// </remarks>
     public static Money Create(decimal amount, string currencyCode) =>
         TryCreate(amount, currencyCode).Match(
