@@ -1,3 +1,11 @@
+﻿---
+package: Trellis.Testing.Idempotency
+namespaces: [Trellis.Testing.Idempotency]
+types: [IdempotencyStoreConformance]
+version: v3
+last_verified: 2026-08-16
+audience: [llm]
+---
 # Trellis.Testing.Idempotency API Reference
 
 Executable conformance suite for `IIdempotencyStore` implementations.
@@ -5,6 +13,22 @@ Executable conformance suite for `IIdempotencyStore` implementations.
 - **Package:** `Trellis.Testing.Idempotency`
 - **Namespace:** `Trellis.Testing.Idempotency`
 - **Depends on:** `Trellis.Asp` (for the contract types), `xunit.v3`, `FluentAssertions`
+
+## Use this file when
+
+- You are writing an `IIdempotencyStore` over Redis, Cosmos DB, a relational database, or anything bespoke, and need to prove it satisfies the contract.
+- You are reviewing an existing store and want the exact rules it must obey — atomicity of reserve, expiry ownership, conditional complete/abandon.
+- A production incident suggests duplicate execution or a lost response, and you need a reproducible test rather than a theory.
+
+## Patterns Index
+
+| Goal | Use this | See |
+|---|---|---|
+| Add conformance coverage to your store | Derive a test class from `IdempotencyStoreConformance` | [Quick start](#quick-start), [`IdempotencyStoreConformance`](#idempotencystoreconformance) |
+| Supply your store to the suite | The single required member | [Required member](#required-member) |
+| Adapt the suite to a backend with different timing or cleanup needs | Optional overrides and the protected helpers | [Optional overrides](#optional-overrides), [Helpers available to derived classes](#helpers-available-to-derived-classes) |
+| Learn the contract itself before implementing | The reserve / expiry / complete / abandon / concurrency rules | [The rules pinned by the suite](#the-rules-pinned-by-the-suite) |
+| Check your design against the failures that fail silently | Non-atomic reserve, server-side expiry, eviction, unconditional abandon, snapshot cost | [Implementation traps the suite catches](#implementation-traps-the-suite-catches) |
 
 ## Why this package exists
 

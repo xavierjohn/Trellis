@@ -45,11 +45,20 @@ This collapses redeliveries of a *single* outbox row. It does not collapse the o
 | `Subject` | The event's stable wire name | From `[IntegrationEventName]`; resolved through `IntegrationEventNameMap`. |
 | `Body` | The event as UTF-8 JSON | Serialized against the event's **runtime** type. |
 | `ContentType` | `ServiceBusMessageFormat.JsonContentType` (`application/json`) | |
-| `trellis-message-source` (application property) | `IntegrationEnvelope.MessageSource` | Optional; observability only. Omitted when unset or blank. |
+| `trellis-message-source` (application property, `ServiceBusMessageFormat.MessageSourceProperty`) | `IntegrationEnvelope.MessageSource` | Optional; observability only. Omitted when unset or blank. |
 
 Standard Service Bus members are preferred over custom application properties wherever one exists: `MessageId` and `Subject` are indexed by the broker, surfaced in the portal and Service Bus Explorer, and usable in subscription filters, so a message stays diagnosable and routable by tools that know nothing about Trellis.
 
 `IntegrationEnvelope`'s lineage members `CausationId` and `CorrelationId` are **not** on the wire, because nothing on the publish side can populate them: `OutboundIntegrationMessage` deliberately omits them until the outbox persists them.
+
+## Lifecycle and shutdown
+
+| Member | Type | Behaviour |
+|---|---|---|
+| `ServiceBusIntegrationEventPublisher.DisposeAsync()` | `ValueTask` | Closes every cached `ServiceBusSender`. The publisher caches one sender per topic and is the sole owner of every sender it creates, which is what makes a complete close possible. A sender added after the final emptiness check is left to the container disposing the `ServiceBusClient`, which closes everything it created. |
+| `ServiceBusInboxConsumer.StopAsync(CancellationToken)` | `Task` | Stops and disposes each `ServiceBusProcessor` before delegating to `BackgroundService.StopAsync`, so in-flight message handlers are allowed to settle rather than being torn down mid-dispatch. |
+
+Both are invoked by the host during graceful shutdown; you do not normally call them yourself.
 
 ## Topology
 

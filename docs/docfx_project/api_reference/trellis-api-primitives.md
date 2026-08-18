@@ -3,7 +3,7 @@ package: Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [Age, CountryCode, CurrencyCode, EmailAddress, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis API Primitives
@@ -300,8 +300,17 @@ order the properties are declared.
 | `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes one JSON property per public instance property in declaration order, using the underlying primitive value for `IScalarValue<,>` properties. |
 
 Apply via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object type.
-Reflection is performed once per generic instantiation and cached. **Not Native AOT compatible** — for AOT
-scenarios, hand-write a `JsonConverter<T>`.
+Reflection is performed once per generic instantiation and cached (lazily, so a configuration error surfaces
+its own actionable message rather than being buried inside a `TypeInitializationException`).
+
+**Native AOT / trimming.** The converter is AOT-usable, subject to two rooting requirements:
+
+| Requirement | Why |
+| --- | --- |
+| The **closed** converter type must be rooted — via the `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` attribute on the value object, or a source-generated `JsonSerializerContext`. | The generic instantiation must exist at compile time; nothing else references it. |
+| Each scalar value-object property must keep its `IScalarValue<TSelf, TPrimitive>` interface. | That interface is what reduces the property to a JSON primitive. The type parameter carries `[DynamicallyAccessedMembers(PublicMethods \| PublicProperties)]`, but the interface itself can still be trimmed if nothing else references it. |
+
+If trimming does remove the interface, the converter throws at first use naming the unreduced property types, rather than silently emitting a different JSON shape — so the failure is loud, but it is a *runtime* failure, which is why an AOT publish probe covering the composite path is worth having.
 
 > **Pattern reference.** For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO (`ShippingAddress`-style), see [Cookbook Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership). Without this `[JsonConverter]` attribute on a request DTO's composite `[OwnedEntity]` property, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer.
 
@@ -446,6 +455,36 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 | `PhoneNumber` | `Trellis.Primitives` | Scalar | JSON string | Normalized E.164 string. `GetCountryCode()` returns `Maybe<string>.None` when the prefix is not an assigned ITU-T calling code. |
 | `Slug` | `Trellis.Primitives` | Scalar | JSON string | Lowercase letters, digits, single hyphens. |
 | `Url` | `Trellis.Primitives` | Scalar | JSON string | Absolute HTTP/HTTPS URI. |
+
+## Default validation field names
+
+Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, the failure `Error.InvalidInput.ForField(...)` uses the default below — which becomes the key in the `errors` dictionary of a 400 `ProblemDetails` response, and therefore the string a test asserts on. **Two defaults do not match the type name**, and are the usual source of a failing assertion:
+
+| Type | Default field name | Factory |
+| --- | --- | --- |
+| `Age` | `age` | `TryCreate` |
+| `CountryCode` | `countryCode` | `TryCreate` |
+| `CurrencyCode` | `currencyCode` | `TryCreate` |
+| `EmailAddress` | **`email`** — not `emailAddress` | `TryCreate` |
+| `Hostname` | `hostname` | `TryCreate` |
+| `IpAddress` | `ipAddress` | `TryCreate` |
+| `LanguageCode` | `languageCode` | `TryCreate` |
+| `MonetaryAmount` | **`amount`** — not `monetaryAmount` | `TryCreate` |
+| `Money` | `amount` for the amount, `currencyCode` for the currency component | `TryCreate` |
+| `Percentage` | `percentage` | `TryCreate` |
+| `Percentage` | `fraction` | `FromFraction` |
+| `PhoneNumber` | `phoneNumber` | `TryCreate` |
+| `Slug` | `slug` | `TryCreate` |
+| `Url` | `url` | `TryCreate` |
+
+Pass `fieldName` explicitly whenever the value object is bound to a differently-named request property, so the error key matches the client's payload shape rather than the primitive's own name:
+
+```csharp
+// Request property is "billingEmail", so the 400 must key the error on "billingEmail".
+var email = EmailAddress.TryCreate(request.BillingEmail, nameof(request.BillingEmail));
+```
+
+> **`Money` takes a single `fieldName` for two components.** `Money.TryCreate(amount, currencyCode, fieldName)` applies the supplied name to *both* the amount and the currency failure, so an explicit `fieldName` makes the two indistinguishable by key. Only the defaults (`amount` / `currencyCode`) tell them apart — validate the components separately if the client needs to know which one failed.
 
 ## Code examples
 

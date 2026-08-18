@@ -51,6 +51,36 @@ jobs:
     - name: Build
       run: dotnet build --no-restore -c Release
 
+    - name: API reference audits (TRLDOC005, TRLDOC008)
+      # Reflects over the just-built assemblies to check the doc<->API relationship in both
+      # directions, and fails on either.
+      #   TRLDOC005 — every API-shaped name in the reference docs resolves to a real symbol.
+      #     Catches a confidently-documented type that was renamed or never existed; the
+      #     completeness direction cannot see those, because such a symbol has no counterpart
+      #     in the assemblies to start from.
+      #   TRLDOC008 — every public type and member is named in its package's reference doc.
+      #     Catches new API shipping undocumented. These totals were printed but unenforced for
+      #     a long time, which let 8 types and 33 members accumulate in a green build; the
+      #     process exit code now covers both audits, not just TRLDOC005.
+      run: |
+        dotnet run -c Release --project docs/docfx_project/api_reference/audit-completeness/audit-completeness.csproj
+      env:
+        TRELLIS_FW_ROOT: ${{ github.workspace }}
+
+    - name: Discard generated completeness report
+      # The auditor writes completeness-report.md into the directory DocFX later builds; drop it
+      # so the published docs and packed payload stay byte-identical to a local build.
+      if: always()
+      run: rm -f docs/docfx_project/api_reference/completeness-report.md
+
+    - name: API reference payload probe
+      # Packs a real package, restores it into scratch consumers outside this repository and
+      # asserts which .github directory the docs land in. TRLDOC004 proves a doc is PACKED; only
+      # this proves it is DELIVERED, exercising the .git-bounded directory walk that no unit test
+      # can reach.
+      shell: pwsh
+      run: ./build/test-apireference-payload.ps1 -Configuration Release
+
     - name: Test with Coverage
       # --coverage: Native MTP coverage (requires Microsoft.Testing.Extensions.CodeCoverage)
       # --report-trx: Native MTP TRX generation (requires Microsoft.Testing.Extensions.TrxReport)

@@ -1,10 +1,10 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
-last_verified: 2026-06-17
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis Anti-Pattern → Fix Gallery
@@ -18,6 +18,37 @@ This file is the canonical reference for analyzer-triggered anti-patterns. It us
 3. The cookbook's Patterns Index can route by symptom into this file when the symptom is "I am getting `TRLSxxx`."
 
 The analyzer rules themselves are documented in `trellis-api-analyzers.md` (severity, when they fire, suppression guidance). This file is the *applied* form — the snippets you adapt.
+
+## Use this file when
+
+- The compiler or IDE reports a `TRLSxxx` diagnostic and you need the fix shape, not the rule's specification.
+- You are writing or reviewing a `Result`/`Maybe` pipeline, an EF Core mapping for a value object, or a composite value object crossing the JSON boundary — the three areas that generate almost all Trellis diagnostics.
+- A reviewer flagged a shape as unidiomatic and you want the canonical form the analyzers were written to enforce.
+
+Jump straight to the section named by your diagnostic ID. If you have a symptom rather than an ID, route through the table below.
+
+## Patterns Index
+
+| Symptom | Diagnostic | Fix |
+|---|---|---|
+| A call returning `Result`/`Result<T>` is invoked as a statement and its outcome silently vanishes | TRLS001 | [Result return value not handled](#trls001--result-return-value-not-handled) |
+| Reading `.Value` on a `Maybe<T>` that may be empty | TRLS003 | [Unsafe `Maybe.Value`](#trls003--unsafe-maybevalue) |
+| Reading `.Value` on a `Maybe<T>` inside a LINQ projection | TRLS013 | [Unsafe `Maybe<T>.Value` in LINQ projection](#trls013--unsafe-maybetvalue-in-linq-projection) |
+| Throwing to signal a business failure inside a Result chain | TRLS010 | [Throwing in a Result chain](#trls010--throwing-in-a-result-chain) |
+| Deconstructing a `Result<T>` without checking success first | TRLS018 | [Unsafe `Result<T>` deconstruction](#trls018--unsafe-resultt-deconstruction) |
+| Using `default(Result)` or `default(Maybe<T>)` as if it were success | TRLS019 | [`default(Result)` / `default(Maybe<T>)`](#trls019--defaultresult--defaultmaybet) |
+| A `Combine` chain has grown past the largest supported tuple | TRLS014 | [Combine chain exceeds maximum supported tuple size](#trls014--combine-chain-exceeds-maximum-supported-tuple-size) |
+| Indexing or otherwise configuring a `Maybe<T>` property in EF Core | TRLS016 | [`HasIndex` on a `Maybe<T>` property](#trls016--hasindex-on-a-maybet-property) |
+| Hand-writing EF configuration that Trellis conventions already apply | TRLS021 | [EF configuration duplicates Trellis conventions](#trls021--ef-configuration-duplicates-trellis-conventions) |
+| Calling `SaveChangesAsync` instead of the Result-returning form | TRLS015 | [Use `SaveChangesResultAsync`](#trls015--use-savechangesresultasync-instead-of-savechangesasync) |
+| Comparing a `Maybe<T>` with `Equals` inside an EF query | TRLS054 | [`Maybe<T>.Equals` in an `IQueryable` expression](#trls054--maybetequals-in-an-iqueryable-expression) |
+| A `HasValueWhere` predicate is not inlined into the query | TRLS055 | [Non-inline `HasValueWhere`](#trls055--non-inline-hasvaluewhere-in-an-iqueryable-expression) |
+| A composite value object on a DTO cannot round-trip through deserialization | TRLS020 | [Composite value object DTO property is not safely deserializable](#trls020--composite-value-object-dto-property-is-not-safely-deserializable) |
+| A `Maybe<T>` or `[OwnedEntity]` type will not compile against its generated half | TRLS035, TRLS036, TRLS037, TRLS038 | [`Maybe<T>` must be `partial`](#trls035--maybet-property-should-be-partial), [`[OwnedEntity]` must be `partial`](#trls036--ownedentity-type-must-be-partial), [parameterless constructor](#trls037--ownedentity-type-already-declares-a-parameterless-constructor), [must inherit `ValueObject`](#trls038--ownedentity-type-must-inherit-from-valueobject) |
+| A value object breaks under Native AOT or trimming when serialized | TRLS039, TRLS059 | [Unsupported scalar primitive](#trls039--unsupported-scalar-value-primitive-for-aot-safe-json-converter), [context without `[JsonSerializable]`](#trls059--generatescalarvalueconverters-context-without-jsonserializable) |
+| Redeclaring `Id`, equality, or `TryCreate` that a base type already supplies | TRLS056 | [Required value object redeclares a generated member](#trls056--required-value-object-redeclares-a-generated-member) |
+| Post-commit failures disappear when combined with `Combine`/`Sequence` | *(no analyzer)* | [`Result.FailAfterCommit` with aggregating operators](#no-analyzer--resultfailaftercommit-composed-with-aggregating-operators) |
+| A domain event handler raises further domain events and they are lost or dispatched twice | *(no analyzer)* | [Domain event handler raises more domain events](#no-analyzer--domain-event-handler-raises-more-domain-events-during-dispatch) |
 
 ## TRLS001 — Result return value not handled
 
@@ -54,6 +85,20 @@ if (customer.Email.HasValue) { var v = customer.Email.Value; }
 // FIX 2 — convert to Result
 Result<EmailAddress> r = customer.Email.ToResult(new Error.NotFound(ResourceRef.For("Email", customer.Id)));
 ```
+
+**Guard shapes the analyzer already accepts.** TRLS003 does not require the nested `if` above — do not restructure working code to satisfy it. Any of these suppress the diagnostic:
+
+| Shape | Example |
+| --- | --- |
+| `HasValue` / `HasNoValue` condition | `if (m.HasValue) { … m.Value … }` |
+| Early-return guard | `if (m.HasNoValue) return …; … m.Value` |
+| Property pattern (incl. negated and ternary forms) | `if (m is { HasValue: true }) … m.Value` |
+| Short-circuiting `&&` | `if (m.HasValue && m.Value.IsActive) …` |
+| Prior assignment that cannot be `None` | `var x = Maybe<int>.From(n); … x.Value` — only when `T` is a non-nullable value type, where `From` can never yield `None` |
+| `TryGetValue` block | `if (m.TryGetValue(out var v)) …` |
+| Lambda body of a Trellis `Maybe` operator | the value-side lambda of `Bind` / `Map` / `Tap` / `Ensure` (and `*Async` forms), or the `onSome` argument of `Match` / `Switch` — it only runs when a value exists |
+
+Prefer the early-return guard in ROP code: it keeps the happy path unindented and matches the surrounding `Result` style. FIX 2 remains the better answer whenever the absence is a *domain* outcome the caller must handle rather than a local precondition.
 
 ## TRLS010 — Throwing in a Result chain
 
@@ -235,7 +280,14 @@ return await db.SaveChangesResultAsync(ct);       // Result<int> carries the aff
 
 ## TRLS020 — Composite value object DTO property is not safely deserializable
 
-Composite value objects exposed through request/response DTOs need a supported JSON transport so binding round-trips through `TryCreate`. A bare composite DTO property must use `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type. A `Maybe<TComposite>` DTO property is not analyzer-clean even when the inner composite type has that converter; use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam instead. The analyzer only inspects DTOs that are actually bound from the wire: a controller `[FromBody]` parameter or response type, or a minimal API endpoint handler parameter. A Mediator command is flagged only when it is itself the bound request body at one of those seams; a command constructed server-side (mapped from a separate request DTO and never deserialized from JSON) is not flagged, because System.Text.Json never touches it. The DTO type alone is not enough to trip the rule.
+Composite value objects exposed through request/response DTOs need a supported JSON transport so binding round-trips through `TryCreate`.
+
+| DTO property shape | Required transport |
+|---|---|
+| Bare `TComposite` | `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type |
+| `Maybe<TComposite>` | Not analyzer-clean even when the inner composite type has that converter. Use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam |
+
+**Where the rule looks.** Only at DTOs actually bound from the wire: a controller `[FromBody]` parameter or response type, or a minimal API endpoint handler parameter. A Mediator command is flagged only when it is itself the bound request body at one of those seams; a command constructed server-side (mapped from a separate request DTO and never deserialized from JSON) is not flagged, because System.Text.Json never touches it. The DTO type alone is not enough to trip the rule.
 
 ```csharp
 // WRONG — bare composite [OwnedEntity] value object exposed as a [FromBody] DTO property without the converter

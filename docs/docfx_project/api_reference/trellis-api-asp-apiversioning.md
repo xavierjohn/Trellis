@@ -225,7 +225,13 @@ return result.ToHttpResponse(
     body: o => OrderListItemResponse.From(o));
 ```
 
-Use only when the next-page URL must target a fixed version (cross-version migration of a deprecated paginated endpoint pointing clients at its successor). The pin is silently skipped on `[ApiVersionNeutral]` targets and on targets with no `ApiVersionMetadata` (unversioned hosts where `AddApiVersioning(...)` was never called). On URL-segment-versioned targets (`v{version:apiVersion}` in the template) the pin throws `InvalidOperationException` instead — silently honouring it would let `LinkGenerator` fill the segment from ambient route data and produce a URL with the wrong version; switch to the per-request implicit overload, which resolves the segment from ambient route data and validates cross-route target-version support. The pin also throws when the target endpoint declares `[ApiVersion]` metadata but not the pinned version (e.g. pinning v2 against a v1-only target) — the helper refuses to emit a URL the target would reject when followed, and the message points callers either at a declared version or at the per-request overload.
+Use only when the next-page URL must target a fixed version (cross-version migration of a deprecated paginated endpoint pointing clients at its successor). Behaviour depends on the target endpoint:
+
+| Target endpoint | Pin behaviour | Why |
+|---|---|---|
+| `[ApiVersionNeutral]`, or no `ApiVersionMetadata` (unversioned host where `AddApiVersioning(...)` was never called) | Silently skipped | There is no version to pin |
+| URL-segment-versioned (`v{version:apiVersion}` in the template) | Throws `InvalidOperationException` | Silently honouring it would let `LinkGenerator` fill the segment from ambient route data and emit a URL with the wrong version. Switch to the per-request implicit overload, which resolves the segment from ambient route data and validates cross-route target-version support |
+| Declares `[ApiVersion]` metadata but not the pinned version (e.g. pinning v2 against a v1-only target) | Throws `InvalidOperationException` | The helper refuses to emit a URL the target would reject when followed. The message points callers either at a declared version or at the per-request overload |
 
 ### Configuration
 

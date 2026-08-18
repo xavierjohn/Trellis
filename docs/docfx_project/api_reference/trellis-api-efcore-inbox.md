@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore.Inbox
 namespaces: [Trellis.EntityFrameworkCore]
 types: [InboxMessage, InboxOptions, IntegrationEnvelope, InboxDispatchOutcome, IInboxStore, IInboxDispatcher, InboxServiceCollectionExtensions, InboxModelBuilderExtensions, IConsumerCheckpointStore, ConsumerCheckpoint, ConsumerCheckpointConfiguration, CheckpointServiceCollectionExtensions, CheckpointModelBuilderExtensions]
 version: v1
-last_verified: 2026-06-21
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis.EntityFrameworkCore.Inbox
@@ -216,6 +216,18 @@ await checkpoints.SetAsync(consumerId, window.HighWaterMark, ct);     // advance
 - **Durable + isolated.** `EfConsumerCheckpointStore<TContext>` reads and upserts on its own fresh DI scope and `SaveChanges`, so an advance is persisted on return and never entangles the caller's unit of work. One logical advancer per `ConsumerId` is assumed (the usual pull-consumer shape); the cursor is not a coordination primitive.
 - `GetAsync` / `SetAsync` throw `ArgumentException` for a blank `consumerId`; `SetAsync` also for a blank `position`.
 
+### ConsumerCheckpoint
+
+The persisted row behind the store, mapped by `AddTrellisConsumerCheckpoints()`.
+
+| Property | Type | Notes |
+|---|---|---|
+| `ConsumerId` | `string` | The stable subscriber identifier; the primary key. |
+| `Position` | `string` | The opaque resume cursor, in the consumer's own encoding. |
+| `UpdatedAt` | `DateTimeOffset` | When the checkpoint was last advanced. Diagnostic — useful for spotting a stalled consumer; nothing in the inbox reads it to make decisions. |
+
+It is **performance state, not a domain aggregate**: losing or resetting a checkpoint only forces a wider rescan, because the inbox anti-join still guarantees effectively-once processing. It can never cause incorrect processing.
+
 ## IntegrationEnvelope
 
 The consume-side envelope handed to the dispatcher.
@@ -264,7 +276,11 @@ Configuration for the inbox.
 
 | Property | Type | Default | Notes |
 |---|---|---|---|
-| `ConsumerId` | `string` | `""` (must be set) | **Required.** A stable identifier for this subscriber / consumer-group; part of the dedup key, so two services consuming the same message each get one effective processing. Keep it stable across deploys — renaming it resets dedup history. `Validate()` throws `InvalidOperationException` if it is blank. |
+| `ConsumerId` | `string` | `""` (must be set) | **Required.** A stable identifier for this subscriber / consumer-group; part of the dedup key, so two services consuming the same message each get one effective processing. Keep it stable across deploys — renaming it resets dedup history. `Validate()` throws `InvalidOperationException` if it is blank, or if it exceeds `MaxConsumerIdLength`. |
+
+| Constant | Value | Notes |
+|---|---|---|
+| `MaxConsumerIdLength` | `256` | The mapped key-column width. `ConsumerId` is stored in a fixed-width key column, so a longer value is rejected at registration rather than truncated at insert. |
 
 ## Processing semantics
 

@@ -14,12 +14,22 @@
   </ItemGroup>
 
   <!--
-    Cross-cutting cookbook ships once, in Trellis.Core (Core is referenced by
-    every Trellis service so this guarantees the cookbook always lands in .github/).
-    Opt in per package by setting <TrellisShipsCookbook>true</TrellisShipsCookbook>.
+    Cross-cutting references ship once, in Trellis.Core (Core is referenced by
+    every Trellis service so this guarantees they always land in .github/).
+    These are package-agnostic: the cookbook spans every package, while the
+    anti-pattern gallery and the value-object taxonomy describe rules that hold
+    regardless of which packages are installed, so no single feature package
+    owns them and TrellisApiRefName cannot ship them.
+    Opt in per package by setting <TrellisShipsCrossCuttingDocs>true</TrellisShipsCrossCuttingDocs>.
   -->
-  <ItemGroup Condition="'$(TrellisShipsCookbook)' == 'true'">
+  <ItemGroup Condition="'$(TrellisShipsCrossCuttingDocs)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-start-here.md"
+          Pack="true" PackagePath="trellis\" />
     <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-cookbook.md"
+          Pack="true" PackagePath="trellis\" />
+    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-anti-patterns.md"
+          Pack="true" PackagePath="trellis\" />
+    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-value-object-taxonomy.md"
           Pack="true" PackagePath="trellis\" />
   </ItemGroup>
 

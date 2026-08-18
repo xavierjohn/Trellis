@@ -9,7 +9,7 @@
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>core</TrellisApiRefName>
-    <TrellisShipsCookbook>true</TrellisShipsCookbook>
+    <TrellisShipsCrossCuttingDocs>true</TrellisShipsCrossCuttingDocs>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />

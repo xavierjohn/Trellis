@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Http.Abstractions
 namespaces: [Trellis]
-types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "WriteOutcome<T>", WriteOutcome, AggregateETagExtensions]
+types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "RepresentationMetadata.Builder", "WriteOutcome<T>", WriteOutcome, AggregateETagExtensions]
 version: v3
 last_verified: 2026-06-19
 audience: [llm]
@@ -61,6 +61,32 @@ Construct it only in HTTP-aware boundaries and wrap it in `new Error.TransportFa
 | `RetryAfterValue` | `sealed class` | `Retry-After` as either delay seconds or an absolute date via `FromSeconds`, `FromDate`, and `ToHeaderValue()`. |
 | `PreconditionKind` | `enum { IfMatch, IfNoneMatch, IfModifiedSince, IfUnmodifiedSince }` | Typed vocabulary for conditional headers. |
 
+### `EntityTagValue` members
+
+| Member | Type | Notes |
+| --- | --- | --- |
+| `OpaqueTag` | `string` | The raw tag with no quotes and no `W/` prefix. Compare against `IAggregate.ETag` with `StringComparison.Ordinal`. |
+| `IsWeak` | `bool` | `true` for `W/"..."`. Weak tags do **not** satisfy `If-Match`, which requires strong comparison (RFC 9110 §13.1.1). |
+| `IsWildcard` | `bool` | `true` only for the RFC 9110 `*` token, as opposed to a literal ETag whose opaque tag happens to be `*`. A wildcard satisfies `If-Match` unconditionally. |
+| `Strong(string)` / `Weak(string)` / `Wildcard` | factories | Construction. `Strong`/`Weak` validate the opaque-tag character set and throw on invalid input. |
+| `TryParse(string)` | parser | Parses a header value, including the `W/` prefix. |
+| `StrongEquals` / `WeakEquals` | comparison | RFC 9110 §8.8.3.2 comparison functions. |
+| `ToHeaderValue()` | `string` | Formats for the wire, re-adding quotes and any `W/` prefix. |
+
+### `RetryAfterValue` members
+
+`Retry-After` is a union of two shapes, so **test the discriminant before reading the payload** — the accessors throw `InvalidOperationException` for the wrong case.
+
+| Member | Type | Notes |
+| --- | --- | --- |
+| `IsDelaySeconds` | `bool` | `true` when the value is a delay. |
+| `IsDate` | `bool` | `true` when the value is an absolute HTTP-date. |
+| `DelaySeconds` | `int` | Throws `InvalidOperationException` when `IsDate`. |
+| `Date` | `DateTimeOffset` | Throws `InvalidOperationException` when `IsDelaySeconds`. |
+| `FromSeconds(int)` | factory | Throws `ArgumentOutOfRangeException` when negative. |
+| `FromDate(DateTimeOffset)` | factory | Absolute-date form. |
+| `ToHeaderValue()` | `string` | Decimal seconds, or an IMF-fixdate (`"R"`) for the date form. |
+
 ## Representation metadata and write outcomes
 
 | Type | Purpose |
@@ -69,13 +95,62 @@ Construct it only in HTTP-aware boundaries and wrap it in `new Error.TransportFa
 | `WriteOutcome<T>` | Closed union for HTTP-shaped write results: `Created`, `Updated`, `UpdatedNoContent`, `Accepted`, and `AcceptedNoContent`. The `Accepted*` cases can still carry `RetryAfterValue`. Construct via the nested records (`new WriteOutcome<T>.Updated(...)`) or — to recover the base type without a cast — the static `WriteOutcome` factory helpers below. |
 | `WriteOutcome` (static) | Factory helpers — `Created<T>`, `Updated<T>`, `UpdatedNoContent<T>`, `Accepted<T>`, `AcceptedNoContent<T>` — that build each case but **return the base `WriteOutcome<T>`**. This lets results flow through generic pipelines such as `Result.Map(...)` / `ToHttpResponse(...)` (which bind on `Result<WriteOutcome<T>>`) **without an explicit `(WriteOutcome<T>)` cast**: `new WriteOutcome<T>.Updated(...)` has the nested case type, and `Result<T>` invariance then blocks the implicit upcast. Mirrors the non-generic `Result` / generic `Result<T>` pairing. `T` is inferred from the value for `Created`/`Updated`/`Accepted`; specify it explicitly for the no-content cases. |
 
+### `RepresentationMetadata` members
+
+| Member | Type | Notes |
+| --- | --- | --- |
+| `ETag` | `EntityTagValue?` | Validator for the selected representation. Passing a wildcard throws `ArgumentException` — a wildcard is a request-side token and is never a valid response validator. |
+| `LastModified` | `DateTimeOffset?` | Emitted as `Last-Modified`. |
+| `Vary` | `IReadOnlyList<string>?` | Request fields that influenced representation selection. |
+| `ContentLanguage` | `IReadOnlyList<string>?` | Emitted as `Content-Language`. |
+| `ContentLocation` | `string?` | Emitted as `Content-Location`. |
+| `Create()` | `RepresentationMetadata.Builder` | Starts the fluent builder. |
+| `WithETag(EntityTagValue)` / `WithStrongETag(string)` | factories | Shortcuts when the ETag is the only metadata. |
+
+### `RepresentationMetadata.Builder`
+
+Fluent builder returned by `RepresentationMetadata.Create()`; every setter returns the builder, and `Build()` produces the immutable instance.
+
+| Method | Notes |
+| --- | --- |
+| `SetETag(EntityTagValue)` | Sets the validator directly. |
+| `SetStrongETag(string)` / `SetWeakETag(string)` | Sets the validator from an opaque tag. |
+| `SetLastModified(DateTimeOffset)` | Sets `Last-Modified`. |
+| `AddVary(params string[])` | Appends `Vary` field names, deduplicating case-insensitively. |
+| `AddContentLanguage(params string[])` | Appends language tags, deduplicating case-insensitively. |
+| `SetContentLocation(string)` | Sets `Content-Location`. |
+| `Build()` | Produces the `RepresentationMetadata`. Empty `Vary` / `ContentLanguage` collections are normalised to `null`. |
+
+### `WriteOutcome<T>` case payloads
+
+| Case | Parameters | Transports as |
+| --- | --- | --- |
+| `Created` | `T Value`, `string Location`, `RepresentationMetadata? Metadata = null` | `201 Created` |
+| `Updated` | `T Value`, `RepresentationMetadata? Metadata = null` | `200 OK` |
+| `UpdatedNoContent` | `RepresentationMetadata? Metadata = null` | `204 No Content` |
+| `Accepted` | `T StatusBody`, `string? MonitorUri = null`, `RetryAfterValue? RetryAfter = null` | `202 Accepted` |
+| `AcceptedNoContent` | `string? MonitorUri = null`, `RetryAfterValue? RetryAfter = null` | `202 Accepted` |
+
+`StatusBody` describes the in-flight operation; `MonitorUri` is the address a client polls for progress; `RetryAfter` hints when to poll next.
+
 ## `AggregateETagExtensions`
 
 `AggregateETagExtensions` now lives in this package alongside the ETag types it depends on.
-The public signatures stay the same (`OptionalETag*` / `RequireETag*` over `Result<T>` / `Task<Result<T>>` / `ValueTask<Result<T>>`), but failures now flow as transport faults:
+Failures flow as transport faults:
 
 - missing `If-Match` on `RequireETag*` → `Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))`
 - empty / weak-only / non-matching ETag sets → `Error.TransportFault(new HttpError.PreconditionFailed(ResourceRef.For<T>(), PreconditionKind.IfMatch))`
+
+All overloads are constrained to `T : IAggregate` and take `EntityTagValue[]?` — normally the parsed `If-Match` header.
+
+| Method | Receiver | Behaviour when the header is absent (`null`) |
+| --- | --- | --- |
+| `OptionalETag<T>` | `Result<T>` | Proceeds unconditionally. |
+| `OptionalETagAsync<T>` | `Task<Result<T>>`, `ValueTask<Result<T>>` | As above; async overloads of `OptionalETag`. |
+| `RequireETag<T>` | `Result<T>` | Fails with `HttpError.PreconditionRequired` (HTTP 428). |
+| `RequireETagAsync<T>` | `Task<Result<T>>`, `ValueTask<Result<T>>` | As above; async overloads of `RequireETag`. |
+
+Choosing between them is a service-owner decision: use `RequireETag*` on endpoints where a lost update is unacceptable, `OptionalETag*` where conditional requests are a client optimisation. Matching is strong comparison, so a wildcard `*` always passes and weak tags never do.
 
 ## Domain ↔ transport boundary
 

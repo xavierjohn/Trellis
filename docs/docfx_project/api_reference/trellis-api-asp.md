@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
-types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency]
+types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -31,7 +31,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#task---recipe-lookup
 | Return an MVC typed action result | Convert first, then adapt: `return result.ToHttpResponse(...).AsActionResult<T>()` or `return await result.ToHttpResponseAsync(...).AsActionResultAsync<T>()` | [`ActionResultAdapterExtensions`](#actionresultadapterextensions) |
 | Configure 201 Created | `.ToHttpResponse(o => o.Created(...))`, `.CreatedAtRoute(...)`, or `.CreatedAtAction(...)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
 | Generate versioned `Location` headers | **Required when query-string API versioning is enabled.** Include the API version in builder route values (`CreatedAtRoute`, `CreatedAtAction`, `WithLocation`) or chain `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning`. Omitting it produces `Location` headers that 404 on dereference. | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
-| Map failure codes globally | Configure `TrellisAspOptions.ErrorStatusCodeMap` through `AddTrellisAsp(...)` | [`TrellisAspOptions`](#trellisaspoptions) |
+| Map failure codes globally | Call `TrellisAspOptions.MapError<TError>(statusCode)` through `AddTrellisAsp(...)` | [`TrellisAspOptions`](#trellisaspoptions) |
 | Override failure mapping for one endpoint | `.WithErrorMapping(...)` / `.WithErrorMapping<TError>(statusCode)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
 | Document endpoint failure codes | Add ASP.NET response metadata for every spec-listed failure status (`422`, `409`, `403`, `404`, etc.) in addition to happy-path metadata. | [Code examples](#code-examples) |
 | Add ETag / conditional GET | `.WithETag(...)`, `.WithLastModified(...)`, `.EvaluatePreconditions()` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`ETagHelper`](#etaghelper) |
@@ -410,12 +410,36 @@ The main DI surface for `Trellis.Asp` (in folder `Extensions/`).
 | `public static IServiceCollection AddTrellisAspWithScalarValidation(this IServiceCollection services)` | `IServiceCollection` | Convenience composition of `AddTrellisAsp()` and `AddScalarValueValidation()` for greenfield projects that want error mapping plus scalar-value model binding / JSON converters in a single call. |
 | `public static IServiceCollection AddTrellisAspWithScalarValidation(this IServiceCollection services, Action<TrellisAspOptions> configure)` | `IServiceCollection` | Convenience composition of `AddTrellisAsp(configure)` and `AddScalarValueValidation()`. |
 | `public static IServiceCollection AddTrellisProblemDetails(this IServiceCollection services)` | `IServiceCollection` | Registers Trellis Problem Details defaults and returns the service collection; See *Behavioral notes: AddTrellisProblemDetails* below. |
-| `public static IServiceCollection AddResourceCollectionName<T>(this IServiceCollection services, string collectionName)` | `IServiceCollection` | Maps the simple type name of `T` (as produced by `ResourceRef.For<T>()`) to a URL collection segment used when synthesising `ProblemDetails.Instance` from a `ResourceRef`. AOT- and trim-friendly. Registers `ResourceCollectionNameRegistry` via `TryAddSingleton` so callers can use this extension without first calling `AddTrellisAsp`. |
+
+### `ResourceCollectionNameServiceCollectionExtensions`
+
+**Declaration**
+
+```csharp
+public static class ResourceCollectionNameServiceCollectionExtensions
+```
+
+Registers `ResourceCollectionNameOverride` entries and the consuming `ResourceCollectionNameRegistry`. The lookup key is `ResourceRef.FormatTypeName` of the resource type, which for ordinary resource types is the same name `ResourceRef.For<TResource>(...)` emits — an override matches only when the two agree. They diverge in one case: `For<TResource>` peels a `Maybe<T>` wrapper before formatting, while `FormatTypeName` deliberately does not, so registering an override for `Maybe<Order>` would key on `Maybe` and never match a `ResourceRef.For<Maybe<Order>>()` that emits `Order`. Register the unwrapped type.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IServiceCollection AddResourceCollectionName<T>(this IServiceCollection services, string collectionName)` | `IServiceCollection` | Maps the simple type name of `T` (as produced by `ResourceRef.For<T>()`) to a URL collection segment used when synthesising `ProblemDetails.Instance` from a `ResourceRef`. AOT- and trim-friendly: performs no assembly scanning. Registers `ResourceCollectionNameRegistry` via `TryAddSingleton` so callers can use this extension without first calling `AddTrellisAsp`. |
 | `public static IServiceCollection AddResourceCollectionName(this IServiceCollection services, string resourceType, string collectionName)` | `IServiceCollection` | Same as the typed overload but takes the `ResourceRef.Type` string directly — for cases where the consumer wants to bind a type name that does not exist as a CLR type, or to keep registration centralised. Validates the `collectionName` is a safe single URL path segment. |
-| `public static IServiceCollection AddResourceCollectionNames(this IServiceCollection services, Assembly assembly)` | `IServiceCollection` | Scans the supplied assembly for types decorated with `[ResourceCollectionName]` and registers one `ResourceCollectionNameOverride` per type. Marked `[RequiresUnreferencedCode]` because it uses reflection over the assembly's types; AOT/trim-published apps should prefer the explicit `AddResourceCollectionName<T>(...)` overload. Conflicting registrations (same type name → different collection names) throw at registry activation; identical registrations coalesce silently. |
+| `public static IServiceCollection AddResourceCollectionNames(this IServiceCollection services, Assembly assembly)` | `IServiceCollection` | Scans the supplied assembly for types decorated with `[ResourceCollectionName]` and registers one `ResourceCollectionNameOverride` per type. Marked `[RequiresUnreferencedCode]` because it uses reflection over the assembly's types; AOT/trim-published apps should prefer the explicit `AddResourceCollectionName<T>(...)` overload. Conflicting registrations (same type name → different collection names) throw at registry activation, **not** at registration, so a misconfiguration surfaces at startup rather than at the call site; identical registrations coalesce silently. |
 | `public static IServiceCollection AddResourceCollectionNames(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Convenience overload that scans each supplied assembly in order via the single-`Assembly` overload. Identical overrides across assemblies coalesce silently when the registry is activated; conflicting overrides throw. |
-| `public static IServiceCollection AddTrellisIdempotency(this IServiceCollection services, Action<IdempotencyOptions>? configure = null)` | `IServiceCollection` | Registers `IdempotencyOptions` (with the optional `configure` callback and startup validation), the default `IIdempotencyScopeResolver` (per-actor, falling back to anonymous), and an internal marker that `UseTrellisIdempotency()` uses to detect the wiring at startup. **Does not register a store** — composition is explicit; call `AddInMemoryIdempotencyStore()` for dev / tests, or register an EF-backed store for multi-instance production hosts. Composition-root consumers can opt in via the `options.UseIdempotency(...)` slot on [`TrellisServiceBuilder`](trellis-api-servicedefaults.md#trellisservicebuilder). |
-| `public static IServiceCollection AddInMemoryIdempotencyStore(this IServiceCollection services)` | `IServiceCollection` | Registers `InMemoryIdempotencyStore` as the singleton `IIdempotencyStore`. Single-process only; multi-instance hosts need a shared store. |
+
+### `IdempotencyServiceCollectionExtensions`
+
+**Declaration**
+
+```csharp
+public static class IdempotencyServiceCollectionExtensions
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IServiceCollection AddTrellisIdempotency(this IServiceCollection services, Action<IdempotencyOptions>? configure = null)` | `IServiceCollection` | Registers `IdempotencyOptions` (with the optional `configure` callback and startup validation), the default `IIdempotencyScopeResolver` (per-actor, falling back to anonymous when no actor provider is registered), and an internal marker that `UseTrellisIdempotency()` uses to detect the wiring at startup. **Does not register a store** — composition is explicit; call `AddInMemoryIdempotencyStore()` for dev / tests, or register a shared store for multi-instance production hosts. Composition-root consumers can opt in via the `options.UseIdempotency(...)` slot on [`TrellisServiceBuilder`](trellis-api-servicedefaults.md#trellisservicebuilder). |
+| `public static IServiceCollection AddInMemoryIdempotencyStore(this IServiceCollection services)` | `IServiceCollection` | Registers `InMemoryIdempotencyStore` as the singleton `IIdempotencyStore`. Single-process only — **not safe for multi-replica services**, where the same `Idempotency-Key` may land on a different replica. This is a leaf store registration and deliberately has no `TrellisServiceBuilder` slot. |
 
 ### Behavioral notes: AddTrellisProblemDetails
 
@@ -434,7 +458,18 @@ The middleware pipeline surface for `Trellis.Asp` (in folder `Extensions/`).
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IApplicationBuilder UseTrellisProblemDetails(this IApplicationBuilder app)` | `IApplicationBuilder` | Wires the canonical ProblemDetails request pipeline: `UseExceptionHandler()` then `UseStatusCodePages()`. Must be registered **early** in the pipeline — `UseStatusCodePages` only rewrites status-code responses produced by middleware registered after it (routing, authorization, endpoint execution). Pair with `services.AddTrellisProblemDetails()` so the rewritten responses pick up Trellis defaults (trace id, friendly 500 detail, 405 `allow` array). |
-| `public static IApplicationBuilder UseTrellisIdempotency(this IApplicationBuilder app)` | `IApplicationBuilder` | Mounts `IdempotencyMiddleware` in the request pipeline. The middleware is a no-op on endpoints that do not carry `IdempotentAttribute` and on methods outside `IdempotencyOptions.Methods` (default `POST` and `PATCH`). Throws `InvalidOperationException` at startup if `services.AddTrellisIdempotency(...)` was not called. The `IIdempotencyStore` registration is validated at startup when the container exposes `IServiceProviderIsService` (the default Microsoft.Extensions.DependencyInjection container does); otherwise the missing-store failure surfaces as a per-request resolution error on the first opted-in request. Mount after `UseRouting()` so opted-in endpoints' metadata is resolvable, and after `UseAuthentication()` / `UseAuthorization()` so the default `DefaultIdempotencyScopeResolver` sees the authenticated `Actor` and partitions the store by it; mounting before authentication causes every authenticated request to fall back to the shared `anonymous` scope, which can let different users collide on the same key. |
+
+### `IdempotencyApplicationBuilderExtensions`
+
+**Declaration**
+
+```csharp
+public static class IdempotencyApplicationBuilderExtensions
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IApplicationBuilder UseTrellisIdempotency(this IApplicationBuilder app)` | `IApplicationBuilder` | Mounts `IdempotencyMiddleware` in the request pipeline. The middleware is a no-op on endpoints that do not carry `IdempotentAttribute` and on methods outside `IdempotencyOptions.Methods` (default `POST` and `PATCH`). Throws `InvalidOperationException` at startup if `services.AddTrellisIdempotency(...)` was not called. The `IIdempotencyStore` registration is validated at startup when the container exposes `IServiceProviderIsService` (the default Microsoft.Extensions.DependencyInjection container does) — verified *without resolving* the service, so a scoped store (an EF-backed store depending on a scoped `DbContext`, for example) is validated at startup without being captured by the root provider. On containers that do not implement `IServiceProviderIsService`, a missing store surfaces as a per-request resolution error on the first opted-in request. Mount after `UseRouting()` so opted-in endpoints' metadata is resolvable, and after `UseAuthentication()` / `UseAuthorization()` so the default scope resolver sees the authenticated `Actor` and partitions the store by it; mounting before authentication causes every authenticated request to fall back to the shared `anonymous` scope, which can let different users collide on the same key. |
 
 ### Namespace `Trellis.Asp.Idempotency`
 
@@ -520,6 +555,25 @@ public interface IIdempotencyScopeResolver
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `ValueTask<string> ResolveAsync(HttpContext context, CancellationToken ct)` | `ValueTask<string>` | Returns an isolation scope (tenant id, actor id, anonymous). Two requests carrying the same key under different scopes never collide. Default registration is `DefaultIdempotencyScopeResolver`, which resolves `IActorProvider` from request services and uses the current actor's id (falling back to anonymous when no provider is registered or no actor is resolved). `ActorIdempotencyScopeResolver` is also shipped for hosts that want a hard dependency on `IActorProvider`. Replace with a custom implementation for multi-tenant hosts. |
+
+`AnonymousIdempotencyScopeResolver` is the third shipped implementation: it always returns the shared constant `AnonymousIdempotencyScopeResolver.AnonymousScope`, which is also the value the actor-based resolvers fall back to when no actor can be resolved. Because that scope is shared across all unauthenticated callers, two different clients that pick the same `Idempotency-Key` will collide under it — use it only for genuinely public endpoints, and mount `UseTrellisIdempotency()` after authentication so authenticated requests do not silently land here.
+
+### `CapturingResponseBodyFeature`
+
+Internal implementation detail of `IdempotencyMiddleware`, documented only so its failure modes are legible when a replay unexpectedly does not happen. Consumers never construct or reference this type.
+
+It replaces `IHttpResponseBodyFeature` for the duration of an opted-in request, tee-ing writes to both the original client stream and an in-memory buffer so the middleware can persist an `IdempotencyResponseSnapshot`. **Capture is best-effort and never degrades the live response** — every abort path below leaves the bytes already sent to the client untouched, and simply causes the middleware to record no snapshot, so a subsequent retry re-executes the handler instead of replaying.
+
+| Member | Description |
+| --- | --- |
+| `StartAsync` | Delegates to the wrapped feature to begin the response. |
+| `GetCapturedBytes()` | Returns the buffered body, or `null` when capture was aborted — the signal the middleware uses to skip snapshot persistence. |
+| `AbortCapture()` | Marks capture abandoned. Called by the internal tee stream when a write would push the buffer past `IdempotencyOptions.MaxResponseBodyBytes`; the write itself still reaches the client. |
+| `CaptureAborted` | `true` once capture has been abandoned for any reason. |
+| `DisableBuffering()` | Forwards ASP.NET Core's buffering-disable signal to the wrapped feature. |
+| `FlushCachedWriterAsync` | Flushes the pooled `PipeWriter`/writer over the tee stream, if one was ever requested, so the captured bytes are complete before `GetCapturedBytes()` is read. Safe to call when no writer was requested. |
+
+`SendFileAsync` also aborts capture: a file send bypasses the buffered write path, so no faithful snapshot can be taken. Endpoints that stream files therefore never replay, by design.
 
 ### Namespace `Trellis.Asp.Authorization`
 
@@ -627,6 +681,7 @@ public class ClaimsActorOptions
 | --- | --- | --- |
 | `ActorIdClaim` | `string` | Claim type used for `Actor.Id`. Default: `"sub"` (RFC 7519 / OIDC subject claim). Matched against `Claim.Type` literally first; if the configured name is not found, falls back to its counterpart in a curated short↔long mapping table maintained by the provider. Covers the OAuth2 / OIDC / Microsoft identity-platform claims that consumers realistically configure as an actor id: `"sub"`/`"nameid"` ↔ `ClaimTypes.NameIdentifier`, `"oid"` ↔ `http://schemas.microsoft.com/identity/claims/objectidentifier`, `"upn"` ↔ `ClaimTypes.Upn`, `"email"` ↔ `ClaimTypes.Email`, `"role"`/`"roles"` ↔ `ClaimTypes.Role`, `"name"`/`"unique_name"` ↔ `ClaimTypes.Name`, `"tid"` ↔ `http://schemas.microsoft.com/identity/claims/tenantid`, `"idp"`/`"acr"`/`"amr"` ↔ their Microsoft long forms. The bidirectional fallback makes typical configurations just-work against both `JwtBearerOptions.MapInboundClaims = true` (ASP.NET default) and `false`. Emits a debug-level log entry when the fallback fires. No dotted/JSON-path traversal. The curated table is a subset of `JwtSecurityTokenHandler.DefaultInboundClaimTypeMap`; the space-delimited OAuth scope claim `"scp"`, AD FS 1.x legacy aliases, and device / certificate / request-transport / password-policy claims are intentionally not covered (see the `PermissionsClaim` row for the `scp` rationale). |
 | `PermissionsClaim` | `string` | Claim type used for permissions. Default: `"permissions"`. Multi-valued JWT claims arrive as repeated `Claim` instances and are aggregated via `FindAll`. Matched against `Claim.Type` literally first; the resolver also queries every counterpart in the provider's curated short↔long mapping table (notably `"role"`/`"roles"` ↔ `ClaimTypes.Role`) and merges all matches into a single deduplicated set. This makes `PermissionsClaim = "roles"` and `PermissionsClaim = ClaimTypes.Role` both just-work against `JwtBearerOptions.MapInboundClaims = true` (ASP.NET default) and `false`. The default `"permissions"` is not in the mapping table, so it resolves by literal match only (regression-safe). The fallback emits a debug-level log entry when the configured claim resolves nothing but a counterpart does. The OAuth scope claim `"scp"` is intentionally NOT covered by the fallback: its value is space-delimited (RFC 6749 §3.3, e.g. `"orders.read orders.write"`) and `ClaimsActorProvider` snapshots claim values verbatim into the permission set, so wiring the fallback would still leave `Actor.HasPermission("orders.read")` returning `false`. OAuth scope-as-permission requires a custom subclass that splits the value. See the `ActorIdClaim` row above for the full covered subset. |
+| `ValidateClaimShapeOnFirstUse` | `bool` | Default `true`. Enables one-off diagnostics for the two silent-403 footguns around **`PermissionsClaim`**: (1) the configured claim resolved to zero permissions on an authenticated identity that carries other claims, and (2) it resolved to a single value that parses as a JSON object or array (the shape `JwtSecurityTokenHandler` produces for nested claims — Auth0 `app_metadata`, Azure B2C `extension_*`, some Okta tokens). Each warning fires at most once per application lifetime, and only when a logger is available. These exist because the failure is otherwise invisible: the configured claim name matches nothing, the short↔long fallback table does not cover the IdP, and the actor is built with an empty permission set — so every `IAuthorize` command 403s with nothing pointing at the claim mapping. Note this does **not** diagnose a misconfigured `ActorIdClaim`: an unresolvable actor id returns `Maybe<Actor>.None` (mapped to 401) before diagnostics run, which is already a loud failure. Set to `false` only when these diagnostics duplicate an existing health-check or claim-validation pipeline. |
 
 ### `NestedJsonPathClaimsActorOptions`
 
@@ -720,9 +775,23 @@ For apps behind Azure App Service / Container Apps built-in authentication ("Eas
 | `public EasyAuthAuthenticationHandler(IOptionsMonitor<EasyAuthAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder)` | — | Standard `AuthenticationHandler` constructor. |
 | `protected override Task<AuthenticateResult> HandleAuthenticateAsync()` | `Task<AuthenticateResult>` | Decodes the principal header (or `-ID` / `-NAME` fallback) into an authenticated `ClaimsPrincipal`. `NoResult` when no Easy Auth header is present; `Fail` on invalid base64/JSON or a payload without a usable `claims` array. |
 | `public sealed class EasyAuthClaimsActorProvider : ClaimsActorProvider` | — | Inherits actor resolution from `ClaimsActorProvider`; overrides `VaryByHeaders` to return `EasyAuthDefaults.PrincipalHeaders`. |
-| `public static AuthenticationBuilder AddEasyAuth(this AuthenticationBuilder builder, ...)` | `AuthenticationBuilder` | Registers the `EasyAuthAuthenticationHandler` scheme (default name `EasyAuthDefaults.AuthenticationScheme = "EasyAuth"`). Overloads: `()`, `(Action<EasyAuthAuthenticationOptions>)`, and `(string authenticationScheme, Action<EasyAuthAuthenticationOptions>)`. |
+| `public static AuthenticationBuilder AddEasyAuth(this AuthenticationBuilder builder, ...)` | `AuthenticationBuilder` | Defined on `EasyAuthAuthenticationExtensions`. Registers the `EasyAuthAuthenticationHandler` scheme (default name `EasyAuthDefaults.AuthenticationScheme = "EasyAuth"`). Overloads: `()`, `(Action<EasyAuthAuthenticationOptions>)`, and `(string authenticationScheme, Action<EasyAuthAuthenticationOptions>)`. |
 
 `EasyAuthAuthenticationOptions` carries only the standard `AuthenticationSchemeOptions` surface (events, forwarding); the Easy Auth principal header names are fixed by the Azure platform contract (`EasyAuthDefaults`), so the handler and `EasyAuthClaimsActorProvider.VaryByHeaders` always agree.
+
+#### `EasyAuthDefaults`
+
+Constants for the platform contract. Do not hard-code these header names — the platform strips client-supplied copies of exactly these headers at the boundary, so the names are the security contract.
+
+| Constant | Value |
+| --- | --- |
+| `AuthenticationScheme` | `"EasyAuth"` — the default scheme name registered by `AddEasyAuth`. |
+| `PrincipalHeaderName` | `"X-MS-CLIENT-PRINCIPAL"` — the base64-encoded JSON client principal. |
+| `PrincipalIdHeaderName` | `"X-MS-CLIENT-PRINCIPAL-ID"` |
+| `PrincipalNameHeaderName` | `"X-MS-CLIENT-PRINCIPAL-NAME"` |
+| `PrincipalIdpHeaderName` | `"X-MS-CLIENT-PRINCIPAL-IDP"` — the identity provider name. |
+| `PrincipalHeaders` | The set above, returned by `EasyAuthClaimsActorProvider.VaryByHeaders`. |
+
 
 ```csharp
 builder.Services.AddAuthentication(EasyAuthDefaults.AuthenticationScheme).AddEasyAuth();

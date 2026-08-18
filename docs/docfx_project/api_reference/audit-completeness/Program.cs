@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,9 +7,15 @@ using System.Text;
 using System.Xml.Linq;
 using System.Globalization;
 
-string fwRoot = Environment.GetEnvironmentVariable("TRELLIS_FW_ROOT")
-    ?? FindRepositoryRoot(Environment.CurrentDirectory)
-    ?? @"C:\GitHub\Trellis\TrellisFramework";
+string? fwRoot = Environment.GetEnvironmentVariable("TRELLIS_FW_ROOT")
+    ?? FindRepositoryRoot(Environment.CurrentDirectory);
+
+if (fwRoot is null)
+{
+    Console.Error.WriteLine("Could not locate the repository root (no Trellis.slnx found walking up from the current directory). Set TRELLIS_FW_ROOT to the framework root.");
+    return 1;
+}
+
 string docsDir = Path.Combine(fwRoot, "docs", "docfx_project", "api_reference");
 
 var packages = DiscoverPackages(fwRoot, docsDir).ToArray();
@@ -17,7 +23,7 @@ var packages = DiscoverPackages(fwRoot, docsDir).ToArray();
 if (packages.Length == 0)
 {
     Console.WriteLine($"No package projects with TrellisApiRefName found under {fwRoot}");
-    return;
+    return 1;
 }
 
 string? FindDll(PackageInfo package) {
@@ -41,14 +47,37 @@ foreach (var package in packages) {
     var dir = Path.GetDirectoryName(d)!;
     foreach (var f in Directory.GetFiles(dir, "*.dll")) refPaths.Add(f);
 }
-var aspnet = @"C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App";
-if (Directory.Exists(aspnet)) {
-    var ver = Directory.GetDirectories(aspnet).OrderByDescending(d => d).FirstOrDefault();
+// The ASP.NET shared framework sits beside Microsoft.NETCore.App, so derive it from the runtime
+// directory rather than hardcoding a Windows install path — this tool has to run on CI Linux too.
+var sharedRoot = Path.GetDirectoryName(Path.GetDirectoryName(runtimeDir));
+var aspnet = sharedRoot is null ? null : Path.Combine(sharedRoot, "Microsoft.AspNetCore.App");
+if (aspnet is not null && Directory.Exists(aspnet)) {
+    var ver = Directory.GetDirectories(aspnet)
+        .OrderByDescending(d => Version.TryParse(Path.GetFileName(d).Split('-')[0], out var v) ? v : new Version(0, 0))
+        .FirstOrDefault();
     if (ver != null) foreach (var f in Directory.GetFiles(ver, "*.dll")) refPaths.Add(f);
 }
 
 var resolver = new PathAssemblyResolver(refPaths);
 using var mlc = new MetadataLoadContext(resolver);
+
+// Symbols the docs legitimately name but that never reach a package bin folder: analyzer and
+// source-generator assemblies (shipped as tooling, not lib) and third-party APIs such as EF Core
+// (this repo does not copy NuGet assets into bin). Without both, a docs->API audit reports
+// hundreds of false unknowns.
+var auditRefPaths = new HashSet<string>(refPaths, StringComparer.OrdinalIgnoreCase);
+
+foreach (var dll in Directory.EnumerateFiles(fwRoot, "Trellis*.dll", SearchOption.AllDirectories))
+{
+    if (dll.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+        auditRefPaths.Add(dll);
+}
+
+foreach (var dll in ResolveCentrallyManagedPackageAssemblies(fwRoot))
+    auditRefPaths.Add(dll);
+
+var auditResolver = new PathAssemblyResolver(auditRefPaths);
+using var auditMlc = new MetadataLoadContext(auditResolver);
 
 string[] skipMembers = { "Equals","GetHashCode","ToString","GetType","MemberwiseClone","Finalize","Deconstruct","<Clone>$",
     // Roslyn analyzer/codefix base-class overrides — known contract, doc once at the package level.
@@ -128,6 +157,65 @@ var outPath = Path.Combine(docsDir, "completeness-report.md");
 File.WriteAllText(outPath, "# API Reference Completeness Report\n" + sb.ToString());
 Console.WriteLine();
 Console.WriteLine($"Report written: {outPath}");
+
+var symbolAuditExit = DocSymbolAudit.Run(docsDir, auditRefPaths, auditMlc);
+
+var gapPackages = summary.Where(s => s.Item3 > 0 || s.Item5 > 0).ToList();
+if (gapPackages.Count == 0)
+{
+    Console.WriteLine();
+    Console.WriteLine("Completeness gate: every public type and member is named in its package's API reference.");
+    return symbolAuditExit;
+}
+
+Console.WriteLine();
+Console.WriteLine("=== TRLDOC008: undocumented public API ===");
+foreach (var (p, _, ut, _, um) in gapPackages)
+    Console.WriteLine($"error TRLDOC008: {p} has {ut} undocumented type(s) and {um} undocumented member signature(s).");
+Console.WriteLine();
+Console.WriteLine($"Every public type and member must be named in its package's API reference, because the reference is the only");
+Console.WriteLine($"source an LLM consults before generating Trellis code -- an unnamed symbol is one it cannot use and may reinvent.");
+Console.WriteLine($"See '{outPath}' for the per-symbol list, and docs/lint-api-reference.md (TRLDOC008) for how to resolve.");
+return 1;
+
+static IEnumerable<string> ResolveCentrallyManagedPackageAssemblies(string fwRoot)
+{
+    var propsPath = Path.Combine(fwRoot, "Directory.Packages.props");
+    if (!File.Exists(propsPath))
+        yield break;
+
+    var nugetRoot = Environment.GetEnvironmentVariable("NUGET_PACKAGES")
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+
+    if (!Directory.Exists(nugetRoot))
+        yield break;
+
+    // Most-preferred target framework first; the first one present in the package wins.
+    string[] preferredTfms = ["net10.0", "net9.0", "net8.0", "netstandard2.1", "netstandard2.0"];
+
+    foreach (var element in XDocument.Load(propsPath).Descendants().Where(e => e.Name.LocalName == "PackageVersion"))
+    {
+        var id = element.Attribute("Include")?.Value;
+        var version = element.Attribute("Version")?.Value;
+
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(version))
+            continue;
+
+        var libRoot = Path.Combine(nugetRoot, id.ToLowerInvariant(), version.ToLowerInvariant(), "lib");
+        if (!Directory.Exists(libRoot))
+            continue;
+
+        var tfmDir = preferredTfms
+            .Select(tfm => Path.Combine(libRoot, tfm))
+            .FirstOrDefault(Directory.Exists);
+
+        if (tfmDir is null)
+            continue;
+
+        foreach (var dll in Directory.EnumerateFiles(tfmDir, "*.dll"))
+            yield return dll;
+    }
+}
 
 static string? FindRepositoryRoot(string startDirectory)
 {
