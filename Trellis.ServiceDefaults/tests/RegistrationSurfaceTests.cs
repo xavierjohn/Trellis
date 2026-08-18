@@ -94,16 +94,25 @@ public class RegistrationSurfaceTests
         ["Trellis.Asp::AddScalarValueValidationForMinimalApi"] = new(null, "Minimal API wiring is deliberately outside the UseScalarValueValidation slot, which documents that hosts add the middleware and per-endpoint filter themselves."),
     };
 
-    private static readonly Assembly[] ComposedAssemblies =
-    [
-        typeof(TrellisServiceBuilder).Assembly,
-        typeof(Trellis.Asp.TrellisAspOptions).Assembly,
-        typeof(Trellis.Mediator.ResourceAuthorizationOptions).Assembly,
-        typeof(Trellis.Mediator.FluentValidation.FluentValidationServiceCollectionExtensions).Assembly,
-        typeof(Trellis.EntityFrameworkCore.UnitOfWorkServiceCollectionExtensions).Assembly,
-        typeof(Trellis.EntityFrameworkCore.OutboxServiceCollectionExtensions).Assembly,
-        typeof(Trellis.EntityFrameworkCore.InboxServiceCollectionExtensions).Assembly,
-    ];
+    /// <summary>
+    /// Every Trellis assembly <c>Trellis.ServiceDefaults</c> directly references, plus itself.
+    /// Derived rather than hard-coded: a hand-maintained list would silently stop enforcing
+    /// classification the day the builder starts composing a new package — the exact drift this
+    /// class exists to prevent.
+    /// </summary>
+    private static readonly Assembly[] ComposedAssemblies = DiscoverComposedAssemblies();
+
+    private static Assembly[] DiscoverComposedAssemblies()
+    {
+        var serviceDefaults = typeof(TrellisServiceBuilder).Assembly;
+
+        return serviceDefaults.GetReferencedAssemblies()
+            .Where(name => name.Name?.StartsWith("Trellis.", StringComparison.Ordinal) == true)
+            .Select(Assembly.Load)
+            .Append(serviceDefaults)
+            .Distinct()
+            .ToArray();
+    }
 
     [Fact]
     public void Every_registration_helper_is_classified_as_slotted_or_deliberately_unslotted()
@@ -151,12 +160,11 @@ public class RegistrationSurfaceTests
     [Fact]
     public void Every_composition_root_feature_is_actually_called_by_the_builder()
     {
-        var called = ReferencedMemberNames(typeof(TrellisServiceBuilder).Assembly);
+        var called = ReferencedMembers(typeof(TrellisServiceBuilder).Assembly);
 
         var unwired = Expected
-            .Where(e => e.Value.Slot is not null)
+            .Where(e => e.Value.Slot is not null && !called.Contains(e.Key))
             .Select(e => e.Key)
-            .Where(key => !called.Contains(key[(key.IndexOf("::", StringComparison.Ordinal) + 2)..]))
             .ToList();
 
         unwired.Should().BeEmpty(
@@ -167,10 +175,9 @@ public class RegistrationSurfaceTests
     }
 
     [Fact]
-    public void Registration_helper_names_are_unique_within_each_assembly()
+    public void Registration_helper_names_do_not_collide_across_static_classes()
     {
         var collisions = ComposedAssemblies
-            .Distinct()
             .SelectMany(RegistrationHelpers)
             .GroupBy(m => $"{m.DeclaringType!.Assembly.GetName().Name}::{m.Name}", StringComparer.Ordinal)
             .Where(g => g.Select(m => m.DeclaringType!.FullName).Distinct(StringComparer.Ordinal).Count() > 1)
@@ -179,30 +186,45 @@ public class RegistrationSurfaceTests
 
         collisions.Should().BeEmpty(
             "the classification table is keyed on assembly plus method name, so two same-named helpers "
-            + "on different static classes in one assembly would collapse into a single entry and let "
-            + "one of them escape the gate. Colliding keys: {0}",
+            + "on *different* static classes in one assembly would collapse into a single entry and let "
+            + "one of them escape the gate. Overloads on the same class are fine and expected. "
+            + "Colliding keys: {0}",
             string.Join(", ", collisions));
     }
 
     /// <summary>
-    /// Reads the names in the assembly's <c>MemberRef</c> table, which is every member it references
-    /// across an assembly boundary. Cheaper and far more robust than decoding IL, and sufficient here:
-    /// the question is whether <c>Trellis.ServiceDefaults</c> calls the helper at all.
+    /// Reads the assembly's <c>MemberRef</c> table — every member it references across an assembly
+    /// boundary — as <c>DeclaringAssembly::MemberName</c> keys matching <see cref="Expected"/>.
+    /// Cheaper and far more robust than decoding IL, and sufficient here: the question is whether
+    /// <c>Trellis.ServiceDefaults</c> calls the helper at all. Keying on the declaring assembly as
+    /// well as the name keeps an unrelated same-named member from vouching for a helper.
     /// </summary>
-    private static HashSet<string> ReferencedMemberNames(Assembly assembly)
+    private static HashSet<string> ReferencedMembers(Assembly assembly)
     {
         using var stream = File.OpenRead(assembly.Location);
         using var peReader = new PEReader(stream);
         var reader = peReader.GetMetadataReader();
+        var referenced = new HashSet<string>(StringComparer.Ordinal);
 
-        return reader.MemberReferences
-            .Select(handle => reader.GetString(reader.GetMemberReference(handle).Name))
-            .ToHashSet(StringComparer.Ordinal);
+        foreach (var handle in reader.MemberReferences)
+        {
+            var member = reader.GetMemberReference(handle);
+            if (member.Parent.Kind is not HandleKind.TypeReference)
+                continue;
+
+            var declaringType = reader.GetTypeReference((TypeReferenceHandle)member.Parent);
+            if (declaringType.ResolutionScope.Kind is not HandleKind.AssemblyReference)
+                continue;
+
+            var declaringAssembly = reader.GetAssemblyReference((AssemblyReferenceHandle)declaringType.ResolutionScope);
+            referenced.Add($"{reader.GetString(declaringAssembly.Name)}::{reader.GetString(member.Name)}");
+        }
+
+        return referenced;
     }
 
     private static IEnumerable<string> DiscoverRegistrationHelpers() =>
         ComposedAssemblies
-            .Distinct()
             .SelectMany(RegistrationHelpers)
             .Select(m => $"{m.DeclaringType!.Assembly.GetName().Name}::{m.Name}")
             .Distinct(StringComparer.Ordinal);
