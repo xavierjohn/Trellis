@@ -43,6 +43,9 @@ using Trellis;
 /// <para>
 /// This converter uses reflection at first use (results are cached). Native AOT apps must root the
 /// closed converter type through <see cref="JsonConverterAttribute"/> or a source-generated context.
+/// Each scalar value object property must also keep its <see cref="IScalarValue{TSelf, TPrimitive}"/>
+/// interface: it is what reduces the property to a JSON primitive, and if trimming removes it the
+/// converter fails loudly at first use rather than emitting a different shape.
 /// </para>
 /// </remarks>
 public sealed class CompositeValueObjectJsonConverter<
@@ -50,7 +53,13 @@ public sealed class CompositeValueObjectJsonConverter<
 T> : JsonConverter<T>
     where T : ValueObject
 {
-    private static readonly CompositeMetadata Metadata = CompositeMetadata.Build(typeof(T));
+    // Lazy rather than a static field initializer: a field initializer wraps every configuration
+    // error in TypeInitializationException and buries the actionable message in InnerException.
+    // Lazy surfaces the real exception directly and still caches it.
+    private static readonly Lazy<CompositeMetadata> LazyMetadata =
+        new(() => CompositeMetadata.Build(typeof(T)));
+
+    private static CompositeMetadata Metadata => LazyMetadata.Value;
 
     /// <inheritdoc />
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -515,6 +524,25 @@ T> : JsonConverter<T>
 
             if (match is null)
             {
+                var unresolved = primitiveTypes.Where(t => !IsSupportedPrimitive(t)).ToArray();
+
+                // No TryCreate matched AND some property never reduced to a JSON primitive. Report the
+                // unreduced types rather than the generic missing-overload message, which would send the
+                // reader after a TryCreate that is often already correct. Both causes are named because
+                // this cannot tell them apart: the type may genuinely not be a scalar value object, or it
+                // may be one whose IScalarValue<,> interface was trimmed away.
+                if (unresolved.Length > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"CompositeValueObjectJsonConverter<{type.Name}> could not reduce " +
+                        $"[{string.Join(", ", unresolved.Select(t => t.Name))}] to a JSON primitive, and no 'TryCreate' " +
+                        $"overload matched [{string.Join(", ", primitiveTypes.Select(t => t.Name))}]. " +
+                        $"Either the type is not a supported primitive and not an IScalarValue<,> scalar value object, " +
+                        $"or it is one whose IScalarValue<,> interface was trimmed away (common in a Native AOT or " +
+                        $"trimmed build when nothing else roots it). Root the scalar value type, or hand-write a " +
+                        $"JsonConverter<{type.Name}> and apply it with [JsonConverter(typeof(My{type.Name}Converter))].");
+                }
+
                 throw new InvalidOperationException(
                     $"CompositeValueObjectJsonConverter<{type.Name}> requires a public static 'TryCreate' returning 'Result<{type.Name}>' " +
                     $"with parameters [{string.Join(", ", primitiveTypes.Select(t => t.Name))}] (followed by optional parameters only).");

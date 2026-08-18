@@ -281,10 +281,18 @@ public class CompositeValueObjectJsonConverterTests
     public void Throws_when_no_matching_TryCreate_exists()
     {
         Action act = () => JsonSerializer.Serialize(new MissingTryCreateVo());
-        // Static field init wraps the InvalidOperationException in TypeInitializationException.
-        act.Should().Throw<TypeInitializationException>()
-            .WithInnerException<InvalidOperationException>()
+        act.Should().Throw<InvalidOperationException>()
             .WithMessage("*requires a public static 'TryCreate'*");
+    }
+
+    [Fact]
+    public void Reports_unreduced_property_types_rather_than_blaming_TryCreate()
+    {
+        Action act = () => JsonSerializer.Serialize(new UnreducibleVo());
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*could not reduce*UnreducibleInner*")
+            .WithMessage("*trimmed away*");
     }
 
     [Fact]
@@ -301,8 +309,7 @@ public class CompositeValueObjectJsonConverterTests
     public void Throws_when_TryCreate_overloads_are_ambiguous()
     {
         Action act = () => JsonSerializer.Serialize(new AmbiguousTryCreateVo(1));
-        act.Should().Throw<TypeInitializationException>()
-            .WithInnerException<InvalidOperationException>()
+        act.Should().Throw<InvalidOperationException>()
             .WithMessage("*found multiple ambiguous 'TryCreate' overloads*");
     }
 
@@ -514,6 +521,19 @@ public class CompositeValueObjectJsonConverterTests
     {
         public int Value { get; private set; } = 1;
         // No TryCreate — Build should throw.
+    }
+
+    // Stands in for a scalar value type whose IScalarValue<,> interface has been trimmed away:
+    // GetPrimitiveType cannot reduce it, so it reaches BuildInvoker as an unresolved primitive.
+    public sealed class UnreducibleInner
+    {
+        public string Value { get; init; } = "x";
+    }
+
+    [JsonConverter(typeof(CompositeValueObjectJsonConverter<UnreducibleVo>))]
+    public class UnreducibleVo : TestVo
+    {
+        public UnreducibleInner Inner { get; private set; } = new();
     }
 
     [JsonConverter(typeof(CompositeValueObjectJsonConverter<OptionalParamsVo>))]

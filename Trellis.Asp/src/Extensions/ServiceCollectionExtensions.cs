@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -283,18 +284,63 @@ public static class ServiceCollectionExtensions
         return Activator.CreateInstance(wrapperType, innerConverter, propertyName) as JsonConverter;
     }
 
+    // Test seam: simulates Native AOT by disabling the reflection fallback, so tests can prove the
+    // source-generated registry alone produces index-precise paths (issue #664). AsyncLocal keeps it
+    // isolated per test flow, which matters because the test suite runs classes in parallel. Never set
+    // in production; under AOT the branch that reads it is folded away entirely.
+    private static readonly AsyncLocal<bool> s_suppressReflectionPathTrackingFallback = new();
+
+    /// <summary>
+    /// Disables the reflection-mode path-tracking fallback for the current async flow so tests can
+    /// exercise the Native AOT resolution path. Returns a scope that restores the previous value.
+    /// </summary>
+    internal static IDisposable SuppressReflectionPathTrackingFallbackForTests()
+    {
+        var previous = s_suppressReflectionPathTrackingFallback.Value;
+        s_suppressReflectionPathTrackingFallback.Value = true;
+        return new RestoreFallback(previous);
+    }
+
+    private sealed class RestoreFallback : IDisposable
+    {
+        private readonly bool _previous;
+
+        public RestoreFallback(bool previous) => _previous = previous;
+
+        public void Dispose() => s_suppressReflectionPathTrackingFallback.Value = _previous;
+    }
+
     // Wraps a container property (collection or nested object) whose graph transitively contains a
-    // scalar value object so its path segment(s) are pushed during deserialization. Returns null under
-    // Native AOT (no runtime generic construction) and for containers with no value object inside.
+    // scalar value object so its path segment(s) are pushed during deserialization.
+    //
+    // Resolution order matters. The source-generated registry is consulted FIRST because its closed
+    // generics are built at compile time, so it is the only path available under Native AOT and it also
+    // saves the runtime DTO graph walk in reflection mode. Only when nothing is registered do we fall
+    // back to constructing the closed generic at runtime.
+    //
+    // The RuntimeFeature.IsDynamicCodeSupported check below must stay a direct read of the
+    // trimmer-substituted constant: that is what lets ILC fold the whole reflection tail away under AOT
+    // (and with it the IL2055/IL3050 warnings). The test seam is deliberately placed AFTER it so it
+    // cannot defeat that folding.
     [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification = "Guarded by RuntimeFeature.IsDynamicCodeSupported; Native AOT returns null before constructing a closed generic wrapper.")]
+        Justification = "Guarded by RuntimeFeature.IsDynamicCodeSupported; Native AOT returns before constructing a closed generic wrapper.")]
     [UnconditionalSuppressMessage("Trimming", "IL2055",
         Justification = "Reflection-enabled fallback only; constructed for property/element types already present in JSON serialization metadata.")]
     [UnconditionalSuppressMessage("Trimming", "IL2072",
         Justification = "Property and element types come from JSON serialization metadata which preserves type information.")]
     private static JsonConverter? CreatePathTrackingContainerConverter(JsonPropertyInfo property)
     {
+        if (ScalarValuePathTracking.HasRegistrations)
+        {
+            var registered = ScalarValuePathTracking.TryCreate(property.PropertyType, property.Name);
+            if (registered is not null)
+                return registered;
+        }
+
         if (!RuntimeFeature.IsDynamicCodeSupported)
+            return null;
+
+        if (s_suppressReflectionPathTrackingFallback.Value)
             return null;
 
         var propertyType = property.PropertyType;

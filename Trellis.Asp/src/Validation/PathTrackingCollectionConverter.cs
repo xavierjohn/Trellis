@@ -1,10 +1,10 @@
 ﻿namespace Trellis.Asp.Validation;
 
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 /// <summary>
 /// Reads a JSON array element-by-element, pushing the collection property name and each element index
@@ -15,8 +15,10 @@ using System.Text.Json.Serialization;
 /// <typeparam name="TElement">The element type.</typeparam>
 /// <remarks>
 /// System.Text.Json's built-in collection converters give no per-element hook, so the modifier installs
-/// this wrapper for collection properties whose element graph transitively contains a value object. It is
-/// never constructed under Native AOT (runtime closed-generic construction is disabled there).
+/// this wrapper for collection properties whose element graph transitively contains a value object. The
+/// modifier closes this generic either at runtime (reflection mode) or at compile time (Native AOT, via
+/// the source-generated <see cref="ScalarValuePathTracking"/> registrations); the converter body itself
+/// is AOT-safe because elements are read through a resolved <see cref="JsonTypeInfo{T}"/>.
 /// </remarks>
 internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : JsonConverter<TCollection?>
 {
@@ -32,10 +34,6 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
     public PathTrackingCollectionConverter(string propertyName) => _propertyName = propertyName;
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
     public override TCollection? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
@@ -44,6 +42,7 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
         if (reader.TokenType != JsonTokenType.StartArray)
             throw new JsonException($"Expected the start of an array for '{_propertyName}'.");
 
+        var elementTypeInfo = (JsonTypeInfo<TElement?>)options.GetTypeInfo(typeof(TElement));
         var items = new List<TElement?>();
         using (ValidationErrorsContext.PushPathSegment(_propertyName))
         {
@@ -53,7 +52,7 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
             {
                 using (ValidationErrorsContext.PushPathSegment(index.ToString(CultureInfo.InvariantCulture)))
                 {
-                    items.Add(JsonSerializer.Deserialize<TElement>(ref reader, options));
+                    items.Add(JsonSerializer.Deserialize(ref reader, elementTypeInfo));
                 }
 
                 index++;
@@ -65,12 +64,8 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
     }
 
     /// <inheritdoc />
-    [UnconditionalSuppressMessage("Trimming", "IL2026",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification = "Reflection-mode-only converter; the modifier never installs it under Native AOT.")]
     public override void Write(Utf8JsonWriter writer, TCollection? value, JsonSerializerOptions options) =>
-        JsonSerializer.Serialize(writer, value, options);
+        JsonSerializer.Serialize(writer, value!, (JsonTypeInfo<TCollection>)options.GetTypeInfo(typeof(TCollection)));
 
     private static TCollection Materialize(List<TElement?> items)
     {

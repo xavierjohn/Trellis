@@ -187,7 +187,9 @@ Default mappings: `Error.InvalidInput=422`, `Error.InvariantViolation=422`, `Err
 
 The `Error.InvalidInput` mapping also governs **binder- and JSON-body value-validation failures** (`ScalarValueValidationMiddleware`, `ScalarValueValidationFilter`, and `ScalarValueValidationEndpointFilter`), so a single `MapError<Error.InvalidInput>(status)` applies uniformly to scalar/value-object validation at the route/query binder, the JSON request body, and domain handlers (default `422`). Syntactically malformed JSON is exempt — it stays `400` per RFC 9110 §15.5.1.
 
-JSON-body value-object validation reports an **index-precise field key** for a value object nested inside a collection or another object — e.g. `members[0].email` (RFC 6901 pointer `/members/0/email`) rather than the bare leaf `email` — at parity with the FluentValidation integration. This applies to the reflection-mode pipeline (`List<T>`, arrays, and nested objects whose graph transitively contains a value object); Native-AOT source-generated converters currently report the leaf field name only.
+JSON-body value-object validation reports an **index-precise field key** for a value object nested inside a collection or another object — e.g. `members[0].email` (RFC 6901 pointer `/members/0/email`) rather than the bare leaf `email` — at parity with the FluentValidation integration. This applies to both the reflection-mode pipeline and Native AOT (`List<T>`, arrays, and nested objects whose graph transitively contains a value object).
+
+Under Native AOT the runtime cannot construct the closed generic path-tracking converters itself (`Type.MakeGenericType` is unavailable), so the closed generics are produced at **compile time** instead. `PathTrackingRegistryGenerator` walks the DTO graph reachable from every `[JsonSerializable]` root on your `JsonSerializerContext`, applying the same container rules the reflection-mode modifier applies, and emits a `[ModuleInitializer]` that populates `ScalarValuePathTracking`. The runtime modifier then resolves the converter with a dictionary lookup rather than reflection. No opt-in attribute or configuration is required: the generator ships inside the `Trellis.Asp` package itself (under `analyzers/dotnet/cs`), so a package reference is sufficient.
 
 ### Domain → HTTP boundary mapping
 
@@ -987,7 +989,7 @@ public sealed class ValidatingJsonConverterFactory : JsonConverterFactory
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public override bool CanConvert(Type typeToConvert)` | `bool` | `true` when `typeToConvert` is a scalar value type. |
-| `public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)` | `JsonConverter?` | Builds a `ValidatingJsonConverter<TValue, TPrimitive>` for supported scalar value types. Annotated `[RequiresDynamicCode]` — `JsonConverterFactory` is not Native AOT compatible. |
+| `public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)` | `JsonConverter?` | Builds a `ValidatingJsonConverter<TValue, TPrimitive>` for supported scalar value types. Suppresses IL3050 — `JsonConverterFactory` dynamic converter creation is not Native AOT compatible, and Trellis only registers this factory when `JsonSerializer.IsReflectionEnabledByDefault` is `true`, so the path is unreachable under AOT. |
 
 ### `MaybeScalarValueJsonConverter<TValue, TPrimitive>`
 
@@ -1093,6 +1095,20 @@ public sealed class ScalarValueValidationMiddleware
 | `public ScalarValueValidationMiddleware(RequestDelegate next)` | — | Wraps each request in `ValidationErrorsContext.BeginScope()`. |
 | `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope, invokes the next middleware, and converts scalar-value `BadHttpRequestException` binding failures into validation problem responses using endpoint parameter metadata plus route/query raw values. |
 
+### `ScalarValuePathTracking`
+
+**Declaration**
+
+```csharp
+public static class ScalarValuePathTracking
+```
+
+Registry of compile-time-closed path-tracking converter factories. Populated by a `[ModuleInitializer]` emitted by `PathTrackingRegistryGenerator`; consulted by the type-info modifier before the reflection fallback, which is how index-precise field paths work under Native AOT. Application code does not normally call these members directly — they exist so generated code (or a hand-written registration for a DTO the generator cannot see) can supply the closed generics the runtime cannot construct.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static void RegisterObject<T>()` | `void` | Registers a factory producing `PathTrackingObjectConverter<T>` for a nested user object whose graph transitively contains a scalar value object. Idempotent. |
+| `public static void RegisterCollection<TCollection, TElement>()` | `void` | Registers a factory producing `PathTrackingCollectionConverter<TCollection, TElement>` for a collection property, so element indexes appear in the reported path. Idempotent. |
 ### `ValidationErrorsContext`
 
 **Declaration**
