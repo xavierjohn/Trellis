@@ -245,35 +245,20 @@ $failed = $false
 $markdownFiles = Get-ChildItem -LiteralPath $apiReferenceDir -Filter '*.md' -File | Sort-Object FullName
 $headingIndexByPath = New-HeadingIndex -MarkdownFiles $markdownFiles
 
-# Generated or repo-internal reports live alongside the references but are deliberately not
-# shipped to consumers and are not tracked in git, so they are exempt from the payload
-# requirement (TRLDOC004) and from the line-ending requirement (TRLDOC009) — their bytes are
-# the generating tool's business, not the doc set's.
-$unshippedDocAllowlist = [System.Collections.Generic.HashSet[string]]::new(
-    [string[]] @('completeness-report.md'),
-    [System.StringComparer]::OrdinalIgnoreCase)
-
-# TRLDOC009 - line endings must be uniformly CRLF. A lone CR renders as a stray character
-# at the start of the following line (silently corrupting a table row, for instance), and a
-# lone LF makes the whole file diff as rewritten. Both are produced by tools that patch a
-# CRLF file with LF-terminated replacement text, so the damage is invisible in a normal
-# editor and only shows up in review.
+# TRLDOC009 - no carriage return may appear without a following line feed. This deliberately
+# says nothing about CRLF vs LF: .gitattributes marks the repository '* text=auto', so the blob
+# stores LF and the working tree gets whatever the platform checks out - a bare LF is correct
+# on a Linux runner and wrong to flag. A lone CR is the platform-independent defect: git's
+# newline normalisation does not touch it, so it survives in the blob and corrupts the same
+# line on every checkout. It is produced by tools that patch a CRLF working file with
+# LF-terminated replacement text, which makes the damage invisible in an editor and visible
+# only in the raw bytes.
 foreach ($file in $markdownFiles) {
-    if ($unshippedDocAllowlist.Contains($file.Name)) {
-        continue
-    }
-
     $rawText = [System.IO.File]::ReadAllText($file.FullName)
 
     foreach ($match in [regex]::Matches($rawText, "`r(?!`n)")) {
         $lineNumber = ($rawText.Substring(0, $match.Index) -split "`n").Count
-        Write-Host "$($file.FullName)($lineNumber,1): error TRLDOC009: Stray carriage return not followed by a line feed. Repository files use CRLF; rewrite the file with consistent line endings."
-        $failed = $true
-    }
-
-    foreach ($match in [regex]::Matches($rawText, "(?<!`r)`n")) {
-        $lineNumber = ($rawText.Substring(0, $match.Index) -split "`n").Count
-        Write-Host "$($file.FullName)($lineNumber,1): error TRLDOC009: Bare line feed without a preceding carriage return. Repository files use CRLF; rewrite the file with consistent line endings."
+        Write-Host "$($file.FullName)($lineNumber,1): error TRLDOC009: Stray carriage return not followed by a line feed. Rewrite the file with consistent line endings."
         $failed = $true
     }
 }
@@ -400,6 +385,12 @@ if (Test-Path -LiteralPath $directoryBuildTargetsPath) {
         [void] $packagedDocNames.Add($packedMatch.Groups['file'].Value)
     }
 }
+
+# Generated or repo-internal reports live alongside the references but are deliberately
+# not shipped to consumers, so they are exempt from the payload requirement.
+$unshippedDocAllowlist = [System.Collections.Generic.HashSet[string]]::new(
+    [string[]] @('completeness-report.md'),
+    [System.StringComparer]::OrdinalIgnoreCase)
 
 foreach ($file in $markdownFiles) {
     if ($packagedDocNames.Contains($file.Name) -or $unshippedDocAllowlist.Contains($file.Name)) {
