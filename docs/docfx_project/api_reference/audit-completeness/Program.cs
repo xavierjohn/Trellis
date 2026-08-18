@@ -67,9 +67,27 @@ using var mlc = new MetadataLoadContext(resolver);
 // hundreds of false unknowns.
 var auditRefPaths = new HashSet<string>(refPaths, StringComparer.OrdinalIgnoreCase);
 
+// Only assemblies produced by a project that still exists may vouch for a name. A bare sweep of
+// every Trellis*.dll under the repo also picks up output from deleted projects -- bin/ is
+// gitignored, so removing a project leaves its assembly on disk indefinitely. Those stale
+// assemblies are precisely full of removed APIs, so they silently satisfy the one check that
+// exists to catch removed APIs, and only on developer machines: CI builds from a clean checkout
+// and fails on names a local run resolved. Whitelisting by current project name keeps local and
+// CI verdicts identical.
+var currentAssemblyNames = new HashSet<string>(
+    Directory
+        .EnumerateFiles(fwRoot, "*.csproj", SearchOption.AllDirectories)
+        .Select(Path.GetFileNameWithoutExtension)
+        .Where(name => !string.IsNullOrEmpty(name))
+        .Cast<string>(),
+    StringComparer.OrdinalIgnoreCase);
+
 foreach (var dll in Directory.EnumerateFiles(fwRoot, "Trellis*.dll", SearchOption.AllDirectories))
 {
-    if (dll.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+    if (!dll.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+        continue;
+
+    if (currentAssemblyNames.Contains(Path.GetFileNameWithoutExtension(dll)))
         auditRefPaths.Add(dll);
 }
 

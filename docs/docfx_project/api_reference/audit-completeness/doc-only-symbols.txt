@@ -108,3 +108,14 @@ AwayTeamId
 PostCode
 # Package-file extension in `Trellis.Core.nupkg` style references.
 nupkg
+
+# --- Removed v1 APIs cited by the "Breaking changes from v1" migration tables ---
+# These names exist only to tell a v1 reader what to replace. They must NOT resolve:
+# if one starts resolving again, the type has been reintroduced and the table is wrong.
+NotFoundError
+MatchErrorExtensions
+FlattenValidationErrorsExtensions
+SuccessIf
+FailureIf
+SuccessIfAsync
+FailureIfAsync

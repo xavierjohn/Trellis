@@ -55,9 +55,11 @@ public sealed class Scorecard : ValueObject
         => components.Add(Runs);
 }
 
-public sealed class Team : Aggregate<OrderId>
+public sealed partial class TeamId : RequiredGuid<TeamId>;
+
+public sealed class Team : Aggregate<TeamId>
 {
-    public Team(OrderId id, ActorId createdByActorId) : base(id) => CreatedByActorId = createdByActorId;
+    public Team(TeamId id, ActorId createdByActorId) : base(id) => CreatedByActorId = createdByActorId;
 
     public ActorId CreatedByActorId { get; }
 }

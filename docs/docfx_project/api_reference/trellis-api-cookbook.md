@@ -3128,12 +3128,25 @@ public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
             OrderStatus.TryCreate(row.Status).GetValueOrThrow($"Corrupt Order.Status in row {row.Id}"),
             lines);
 
-        // Restore the infrastructure metadata loaded from the row. A store-native quoted token (e.g. a
-        // Cosmos _etag) must be normalized to its unquoted opaque form before stamping.
+        // Restore the infrastructure metadata loaded from the row. Store-native tokens are commonly
+        // quoted (a Cosmos _etag arrives as "abc" or W/"abc"), but StampReconstitutedState requires
+        // the unquoted RFC 9110 opaque form and throws on '"'. Stores that already hand back an
+        // unquoted token (a SQL rowversion, say) pass straight through.
         ((IReconstitutionStampable)order)
-            .StampReconstitutedState(row.CreatedAt, row.LastModified, row.ETag);
+            .StampReconstitutedState(row.CreatedAt, row.LastModified, NormalizeStoredETag(row.ETag, row.Id));
 
         return Result.Ok(order);
+    }
+
+    private static string NormalizeStoredETag(string stored, Guid rowId)
+    {
+        if (!stored.StartsWith('"') && !stored.StartsWith("W/\"", StringComparison.Ordinal))
+            return stored;
+
+        if (!EntityTagValue.TryParse(stored).TryGetValue(out var parsed))
+            throw new InvalidOperationException($"Corrupt Order.ETag in row {rowId}: {stored}");
+
+        return parsed.OpaqueTag;
     }
 }
 ```
