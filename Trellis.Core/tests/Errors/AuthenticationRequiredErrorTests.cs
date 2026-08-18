@@ -76,7 +76,7 @@ public class AuthenticationRequiredErrorTests
     public void Detail_init_property_inherited_from_base()
     {
         var error = new Error.AuthenticationRequired(Scheme: "Bearer", ReasonCode: "Authentication.InvalidCredentials")
-            { Detail = "The supplied credentials were not recognised." };
+        { Detail = "The supplied credentials were not recognised." };
 
         error.Detail.Should().Be("The supplied credentials were not recognised.");
     }
@@ -85,7 +85,7 @@ public class AuthenticationRequiredErrorTests
     public void GetDisplayMessage_prefers_Detail_when_set()
     {
         var error = new Error.AuthenticationRequired(ReasonCode: "Authentication.InvalidCredentials")
-            { Detail = "human-readable detail" };
+        { Detail = "human-readable detail" };
 
         error.GetDisplayMessage().Should().Be("human-readable detail");
     }

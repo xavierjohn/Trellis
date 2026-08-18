@@ -110,6 +110,14 @@ jobs:
       shell: pwsh
       run: ./docs/docfx_project/api_reference/audit-stale-docs.ps1
 
+    - name: Report documentation freshness (advisory)
+      # Advisory on purpose. Failing every source-touching PR would turn last_verified into a
+      # rubber-stamped field, bumped to silence CI rather than because anyone re-read the doc,
+      # which destroys the signal the date exists to carry. The run writes a table to the job
+      # summary so the drift stays visible; use -FailOnStale for a periodic re-verification sweep.
+      shell: pwsh
+      run: ./docs/audit-doc-freshness.ps1
+
     - name: Build docs (warnings as errors)
       shell: bash
       run: |

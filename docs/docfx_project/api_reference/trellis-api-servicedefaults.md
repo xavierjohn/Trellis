@@ -3,7 +3,7 @@ package: Trellis.ServiceDefaults
 namespaces: [Trellis.ServiceDefaults]
 types: [TrellisServiceCollectionExtensions, TrellisServiceBuilder]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis.ServiceDefaults API Reference

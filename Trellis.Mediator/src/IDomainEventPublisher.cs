@@ -1,4 +1,4 @@
-namespace Trellis.Mediator;
+﻿namespace Trellis.Mediator;
 
 /// <summary>
 /// Publishes a single <see cref="IDomainEvent"/> by resolving and invoking all

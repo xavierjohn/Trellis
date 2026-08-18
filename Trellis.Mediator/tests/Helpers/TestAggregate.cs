@@ -1,4 +1,4 @@
-namespace Trellis.Mediator.Tests.Helpers;
+﻿namespace Trellis.Mediator.Tests.Helpers;
 
 using global::Mediator;
 

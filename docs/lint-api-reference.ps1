@@ -345,6 +345,134 @@ foreach ($file in $markdownFiles) {
     }
 }
 
+$packagedDocNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+foreach ($projectFile in Get-ChildItem -Path $RepositoryRoot -Filter '*.csproj' -Recurse -File |
+        Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }) {
+    $projectText = Get-Content -LiteralPath $projectFile.FullName -Raw
+
+    foreach ($refNameMatch in [regex]::Matches($projectText, '<TrellisApiRefName>\s*(?<name>[^<\s]+)\s*</TrellisApiRefName>')) {
+        [void] $packagedDocNames.Add("trellis-api-$($refNameMatch.Groups['name'].Value).md")
+    }
+}
+
+# Cross-cutting references are not owned by any single package, so they are packed by
+# literal path in Directory.Build.targets rather than via TrellisApiRefName.
+$directoryBuildTargetsPath = Join-Path $RepositoryRoot 'Directory.Build.targets'
+
+if (Test-Path -LiteralPath $directoryBuildTargetsPath) {
+    $targetsText = Get-Content -LiteralPath $directoryBuildTargetsPath -Raw
+
+    foreach ($packedMatch in [regex]::Matches($targetsText, 'api_reference[\\/](?<file>[A-Za-z0-9._-]+\.md)')) {
+        [void] $packagedDocNames.Add($packedMatch.Groups['file'].Value)
+    }
+}
+
+# Generated or repo-internal reports live alongside the references but are deliberately
+# not shipped to consumers, so they are exempt from the payload requirement.
+$unshippedDocAllowlist = [System.Collections.Generic.HashSet[string]]::new(
+    [string[]] @('completeness-report.md'),
+    [System.StringComparer]::OrdinalIgnoreCase)
+
+foreach ($file in $markdownFiles) {
+    if ($packagedDocNames.Contains($file.Name) -or $unshippedDocAllowlist.Contains($file.Name)) {
+        continue
+    }
+
+    Write-Host "$($file.FullName)(1,1): error TRLDOC004: '$($file.Name)' is not shipped in any NuGet package's trellis/ payload, so consumers never receive it. Add a <TrellisApiRefName> to the owning package, or pack it as a cross-cutting reference in Directory.Build.targets."
+    $failed = $true
+}
+
+# TRLDOC006 - every cookbook recipe must be pinned by a compiled snippet in
+# Examples/CookbookSnippets. Recipes are the most-copied code in the doc set, so an
+# unpinned recipe is the shape most likely to rot into code that does not compile.
+$cookbookPath = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/trellis-api-cookbook.md'
+$snippetDirectory = Join-Path $RepositoryRoot 'Examples/CookbookSnippets'
+
+if (-not (Test-Path -LiteralPath $cookbookPath)) {
+    Write-Host "$cookbookPath(1,1): error TRLDOC006: The cookbook is missing, so recipe snippet coverage cannot be verified. Restore the file or update the path in this script."
+    $failed = $true
+}
+elseif (-not (Test-Path -LiteralPath $snippetDirectory)) {
+    Write-Host "$snippetDirectory(1,1): error TRLDOC006: The cookbook snippet project is missing, so no recipe is compiler-verified. Restore Examples/CookbookSnippets or update the path in this script."
+    $failed = $true
+}
+else {
+    $snippetNumbers = [System.Collections.Generic.HashSet[int]]::new()
+
+    foreach ($snippetFile in Get-ChildItem -LiteralPath $snippetDirectory -Filter 'Recipe*.cs' -File) {
+        $snippetMatch = [regex]::Match($snippetFile.Name, '^Recipe(?<number>\d+)_')
+
+        if ($snippetMatch.Success) {
+            [void] $snippetNumbers.Add([int] $snippetMatch.Groups['number'].Value)
+        }
+    }
+
+    $cookbookLines = Get-Content -LiteralPath $cookbookPath
+
+    # TRLDOC007 - every live recipe must be reachable from the Patterns Index. Agents are
+    # instructed to hold only the index resident and load recipe bodies on demand, so a
+    # recipe the index never links to is a recipe no agent will ever find.
+    $patternsIndexStart = -1
+    $patternsIndexEnd = $cookbookLines.Count
+
+    for ($scan = 0; $scan -lt $cookbookLines.Count; $scan++) {
+        if ($patternsIndexStart -lt 0) {
+            if ($cookbookLines[$scan] -match '^##\s+Patterns Index\s*$') {
+                $patternsIndexStart = $scan
+            }
+
+            continue
+        }
+
+        if ($cookbookLines[$scan] -match '^##\s') {
+            $patternsIndexEnd = $scan
+            break
+        }
+    }
+
+    $indexedRecipes = [System.Collections.Generic.HashSet[int]]::new()
+
+    if ($patternsIndexStart -lt 0) {
+        Write-Host "$cookbookPath(1,1): error TRLDOC007: The cookbook has no '## Patterns Index' section, so recipe reachability cannot be verified. Restore the section or update the heading in this script."
+        $failed = $true
+    }
+    else {
+        $patternsIndexText = ($cookbookLines[$patternsIndexStart..($patternsIndexEnd - 1)] -join "`n")
+
+        foreach ($anchorMatch in [regex]::Matches($patternsIndexText, '#recipe-(?<number>\d+)')) {
+            [void] $indexedRecipes.Add([int] $anchorMatch.Groups['number'].Value)
+        }
+    }
+
+    for ($index = 0; $index -lt $cookbookLines.Count; $index++) {
+        $headingMatch = [regex]::Match($cookbookLines[$index], '^##\s+Recipe\s+(?<number>\d+)\s+(?<rest>.*)$')
+
+        if (-not $headingMatch.Success) {
+            continue
+        }
+
+        # Retired recipes keep their heading so existing anchors and cross-references
+        # stay valid, but they intentionally carry no code to pin. Match only the exact
+        # marker, so a live recipe whose title merely mentions the word is still gated.
+        if ($headingMatch.Groups['rest'].Value -match '\*\(retired\)\*') {
+            continue
+        }
+
+        $recipeNumber = [int] $headingMatch.Groups['number'].Value
+
+        if (-not $snippetNumbers.Contains($recipeNumber)) {
+            Write-Host "$cookbookPath($($index + 1),1): error TRLDOC006: Recipe $recipeNumber has no compiled snippet. Add Examples/CookbookSnippets/Recipe$('{0:D2}' -f $recipeNumber)_<Name>.cs so the recipe's code is compiler-verified."
+            $failed = $true
+        }
+
+        if ($patternsIndexStart -ge 0 -and -not $indexedRecipes.Contains($recipeNumber)) {
+            Write-Host "$cookbookPath($($index + 1),1): error TRLDOC007: Recipe $recipeNumber is not reachable from the Patterns Index. Add a task-phrased row linking to #recipe-$recipeNumber-... so agents that load only the index can discover it."
+            $failed = $true
+        }
+    }
+}
+
 if ($failed) {
     exit 1
 }

@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore.Outbox
 namespaces: [Trellis.EntityFrameworkCore]
 types: [OutboxMessage, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions]
 version: v1
-last_verified: 2026-06-09
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis.EntityFrameworkCore.Outbox

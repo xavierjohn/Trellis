@@ -304,7 +304,7 @@ public sealed class AddTrellisAspMvcIntegrationTests
         errors.TryGetProperty("request", out _).Should().BeFalse();
     }
 
-#endregion
+    #endregion
 }
 
 #region Composite VO test fixture (regression guard for phantom parameter-name entry)

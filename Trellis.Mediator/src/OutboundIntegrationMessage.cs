@@ -1,4 +1,4 @@
-namespace Trellis.Mediator;
+﻿namespace Trellis.Mediator;
 
 /// <summary>
 /// The publish-side counterpart of <see cref="IntegrationEnvelope"/>: the integration event to publish

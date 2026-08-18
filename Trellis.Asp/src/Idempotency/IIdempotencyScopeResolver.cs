@@ -25,4 +25,3 @@ public interface IIdempotencyScopeResolver
     /// </summary>
     ValueTask<string> ResolveAsync(HttpContext context, CancellationToken cancellationToken);
 }
-

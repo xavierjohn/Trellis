@@ -114,4 +114,3 @@ public sealed class MvcWireShapeConsistencyTests
                     new FieldViolation(new InputPointer(NestedPointer), "format") { Detail = ErrorMessage })));
     }
 }
-

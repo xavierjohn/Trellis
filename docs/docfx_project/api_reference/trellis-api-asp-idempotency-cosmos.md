@@ -1,3 +1,11 @@
+﻿---
+package: Trellis.Asp.Idempotency.Cosmos
+namespaces: [Trellis.Asp.Idempotency.Cosmos]
+types: [CosmosIdempotencyContainer, CosmosIdempotencyServiceCollectionExtensions, CosmosIdempotencyStore]
+version: v3
+last_verified: 2026-08-16
+audience: [llm]
+---
 # Trellis.Asp.Idempotency.Cosmos API Reference
 
 Cosmos DB-backed `IIdempotencyStore` for the `Trellis.Asp` idempotency middleware.
@@ -5,6 +13,25 @@ Cosmos DB-backed `IIdempotencyStore` for the `Trellis.Asp` idempotency middlewar
 - **Package:** `Trellis.Asp.Idempotency.Cosmos`
 - **Namespace:** `Trellis.Asp.Idempotency.Cosmos`
 - **Depends on:** `Trellis.Asp`, `Microsoft.Azure.Cosmos`, `Newtonsoft.Json`
+
+## Use this file when
+
+- You are running the `Trellis.Asp` idempotency middleware on more than one replica, so `InMemoryIdempotencyStore` is no longer safe.
+- You are wiring, configuring, or provisioning the Cosmos-backed store (container, partition key, TTL, throughput).
+- You are diagnosing duplicate execution, stuck reservations, or unexpected RU cost on an idempotent endpoint.
+
+If you are *implementing* a store over some other backend rather than using this one, read [`trellis-api-testing-idempotency.md`](trellis-api-testing-idempotency.md#the-rules-pinned-by-the-suite) instead — it pins the contract.
+
+## Patterns Index
+
+| Goal | Use this | See |
+|---|---|---|
+| Replace the in-memory store on a multi-replica service | `services.AddCosmosIdempotencyStore(...)` | [Quick start](#quick-start), [Registration](#registration) |
+| Understand why Cosmos satisfies the contract | `CreateItem` 409 for atomic reserve, ETag for conditional complete, per-item `ttl` for expiry | [Why Cosmos DB](#why-cosmos-db), [How it stays correct](#how-it-stays-correct) |
+| Provision or point at the container | `CosmosIdempotencyContainer` | [`CosmosIdempotencyContainer`](#cosmosidempotencycontainer) |
+| See exactly what is persisted per key | The stored document shape and its `ttl` field | [Stored document](#stored-document) |
+| Size throughput, set TTL, or reason about RU cost | Operational guidance | [Operational notes](#operational-notes) |
+| Prove your deployment actually honours the contract | Run the conformance suite against the live container | [Verification](#verification) |
 
 ## Why Cosmos DB
 
@@ -46,7 +73,8 @@ app.UseTrellisIdempotency();
 
 ### How it stays correct
 
-**Reserve is one atomic operation.** A reservation is claimed with `CreateItem`, keyed by
+**Reserve is one atomic operation.** `TryReserveAsync(scope, key, fingerprint, ct)` returns an
+`IdempotencyReservationOutcome`. A reservation is claimed with `CreateItem`, keyed by
 `id = Base64Url(key)` within partition `scope`. Cosmos DB resolves duplicates on the partition's
 primary replica, so exactly one concurrent caller wins. The store *never* grants a reservation on
 the strength of a read.

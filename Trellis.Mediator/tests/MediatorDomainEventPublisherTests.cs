@@ -1,4 +1,4 @@
-namespace Trellis.Mediator.Tests;
+﻿namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -202,4 +202,3 @@ public class MediatorDomainEventPublisherTests
             => Records.Add((logLevel, formatter(state, exception)));
     }
 }
-

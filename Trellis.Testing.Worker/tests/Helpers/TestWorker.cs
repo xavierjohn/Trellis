@@ -1,4 +1,4 @@
-namespace Trellis.Testing.Worker.Tests.Helpers;
+﻿namespace Trellis.Testing.Worker.Tests.Helpers;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

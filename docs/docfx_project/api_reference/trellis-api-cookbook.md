@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-06-17
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis Cross-Package Cookbook
@@ -28,6 +28,13 @@ audience: [llm]
   - [trellis-api-analyzers.md](trellis-api-analyzers.md#use-this-file-when) — `TRLS001`-`TRLS039`, `TrellisDiagnosticIds`
 
 ## How to read these recipes
+
+**Hold this routing head resident; read recipe bodies on demand.** Everything above the first
+`## Recipe` heading is ~4K tokens and routes every task. The 36 recipe bodies below are another
+~57K, and a typical task needs one to three of them — so open a body when the [task lookup
+table](#task---recipe-lookup) sends you to one, rather than loading all of them up front. Every
+live recipe is reachable from that table (enforced by the repository's TRLDOC007 lint gate), so if
+a task is not listed there, no recipe covers it. Never write code from a recipe's title alone.
 
 Every recipe follows the same shape:
 
@@ -87,6 +94,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Multi-aggregate orchestration: side effect per element of a related-aggregate set | [Recipe 22](#recipe-22--multi-aggregate-orchestration-fail-loud-on-missing-related-aggregates) |
 | Apply an operation to every element of a related-aggregate set where per-element validation can fail (reserve stock per line item, etc.) — avoid partial mutation | [Recipe 25](#recipe-25--two-pass-validate-then-mutate-over-a-collection-of-related-aggregates) |
 | Concurrency control on mutating endpoints — when to require `If-Match` | [Recipe 23](#recipe-23--concurrency-control-on-aggregate-mutating-endpoints-when-to-require-if-match) |
+| Save bandwidth on reads — return `304 Not Modified` when the client's `If-None-Match` still matches | [Recipe 6](#recipe-6--conditional-get-with-entitytagvalue) |
 | Add a paginated list query | [Recipe 3](#recipe-3--query-handler-returning-paget-paginated-list-with-cursor) |
 | Add Minimal API or MVC endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult) |
 | Map primitive DTO fields to value objects | [Recipe 18](#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
@@ -99,6 +107,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Choose between fail-fast and accumulating-error collection ops | [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) |
 | Return synchronous `Result` chains from `Task`/`ValueTask` APIs | [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), then `AsTask()` / `AsValueTask()` in [trellis-api-core.md](trellis-api-core.md#task-adapter-family--resulttaskadapterextensions) |
 | Create HTTP-oriented resource errors | Use `ResourceRef.For<TResource>(id)` from [trellis-api-core.md](trellis-api-core.md#supporting-types) |
+| Point `ProblemDetails.Instance` at the resource that failed, instead of leaving it null or hand-formatting a URI | [Recipe 28](#recipe-28--synthesise-problemdetailsinstance-from-a-resourceref) |
 | Add a state transition | [Recipe 9](#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
 | Write handler/domain tests | [Recipe 10](#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) |
 | Write integration tests for a `BackgroundService` worker | [Recipe 26](#recipe-26--test-a-backgroundservice-with-workerharnesstworker) |
@@ -1328,7 +1337,7 @@ o => o.Status == OrderStatus.Submitted
 
 is now both readable AND analyzer-clean inside any expression tree (specifications, FluentValidation, EF). The residual EF-Core/`FakeRepository` parity guidance — `AddTrellisInterceptors()`, `ApplyTrellisConventions`, and "share the same `Specification<T>` between EF and `FakeRepository` — never duplicate the predicate" — has moved into [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects). Ad-hoc query operators (`WhereLessThan`, `WhereHasValue`, etc.) live in [trellis-api-efcore.md](trellis-api-efcore.md#maybequeryableextensions).
 
-The recipe number is preserved as a stub so existing bookmark and search-index entries remain stable; future content should renumber from Recipe 24 rather than reusing 15.
+The recipe number is preserved as a stub so existing bookmark and search-index entries remain stable; future content should renumber from Recipe 39 rather than reusing 15.
 
 ---
 
@@ -1688,7 +1697,7 @@ public sealed class CheckoutHandler(
 
 **When NOT to use it.**
 
-1. **Two or more repositories sharing the same scoped `DbContext`.** The most common case in a typical Trellis service. The repos look independent at the C# level, but they all resolve `IRepositoryBase<T, TId>` from the same scoped `TContext`. Parallelising them races the underlying connection and throws `InvalidOperationException`. **Keep them sequential with `BindZipAsync`** (it awaits the first, runs the second only on success, and zips both into a tuple — short-circuiting on failure) — the savings vs the sum-of-fetches are negligible against a local DB anyway, and the integrity loss is real.
+1. **Two or more repositories sharing the same scoped `DbContext`.** The most common case in a typical Trellis service. The repos look independent at the C# level, but they all derive from `RepositoryBase<TAggregate, TId>` over the same scoped `TContext`. Parallelising them races the underlying connection and throws `InvalidOperationException`. **Keep them sequential with `BindZipAsync`** (it awaits the first, runs the second only on success, and zips both into a tuple — short-circuiting on failure) — the savings vs the sum-of-fetches are negligible against a local DB anyway, and the integrity loss is real.
 2. **The second factory's body references a value produced by the first.** Not independent — keep the sequential `BindAsync` chain. The rule is mechanical: if the second load requires data the first one produced (an id, a filter, a cursor), the two are sequential by definition.
 3. **Side-effecting writes.** `Result.ParallelAsync` is for reads. Parallel `repository.Add(...)` calls against a shared context have the same race as parallel reads, plus tracker contention; parallel writes against per-scope contexts need transaction coordination outside this helper.
 
@@ -2430,7 +2439,7 @@ public class HealthProbeWorkerTests
             opts.SeedAsync(async (sp, ct) =>
             {
                 var repo = sp.GetRequiredService<IHealthProbeRepository>();
-                await repo.AddAsync(new HealthProbe(ProbeId.New(), "/api/orders"), ct);
+                await repo.AddAsync(new HealthProbe(ProbeId.NewUniqueV7(), "/api/orders"), ct);
             });
         });
 
@@ -3119,12 +3128,25 @@ public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
             OrderStatus.TryCreate(row.Status).GetValueOrThrow($"Corrupt Order.Status in row {row.Id}"),
             lines);
 
-        // Restore the infrastructure metadata loaded from the row. A store-native quoted token (e.g. a
-        // Cosmos _etag) must be normalized to its unquoted opaque form before stamping.
+        // Restore the infrastructure metadata loaded from the row. Store-native tokens are commonly
+        // quoted (a Cosmos _etag arrives as "abc" or W/"abc"), but StampReconstitutedState requires
+        // the unquoted RFC 9110 opaque form and throws on '"'. Stores that already hand back an
+        // unquoted token (a SQL rowversion, say) pass straight through.
         ((IReconstitutionStampable)order)
-            .StampReconstitutedState(row.CreatedAt, row.LastModified, row.ETag);
+            .StampReconstitutedState(row.CreatedAt, row.LastModified, NormalizeStoredETag(row.ETag, row.Id));
 
         return Result.Ok(order);
+    }
+
+    private static string NormalizeStoredETag(string stored, Guid rowId)
+    {
+        if (!stored.StartsWith('"') && !stored.StartsWith("W/\"", StringComparison.Ordinal))
+            return stored;
+
+        if (!EntityTagValue.TryParse(stored).TryGetValue(out var parsed))
+            throw new InvalidOperationException($"Corrupt Order.ETag in row {rowId}: {stored}");
+
+        return parsed.OpaqueTag;
     }
 }
 ```

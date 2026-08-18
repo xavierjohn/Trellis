@@ -1,0 +1,121 @@
+﻿# Symbols that appear in the API reference docs as backticked identifiers but that do not — and
+# should not — exist in any Trellis assembly. Every entry here is a deliberate decision; TRLDOC005
+# fails the build for anything not listed, which is what catches a confidently-documented API that
+# was renamed or never existed.
+#
+# Lines starting with '#' are comments. The auditor reports entries that no doc references any
+# more, so prune this file when it tells you to.
+
+# --- Documented negative space: names that exist ONLY to tell the reader they are NOT Trellis API.
+# Removing these entries would be wrong; the docs are correct precisely because the symbol is absent.
+WithRange
+WithAcceptRanges
+AddSharedResourceLoaderById
+FireResultAsync
+
+# --- Moved to the xavierjohn/Trellis.Microservices repo in the v3 cleanup. Documented here for
+# migration guidance, so the names must remain even though no assembly in this repo defines them.
+TrellisInternalJwtActorProvider
+TrellisInternalJwtActorOptions
+AddTrellisInternalJwtActorProvider
+UseTrellisInternalJwtActor
+
+# --- Former names retained in rename/migration tables.
+ReadResultFromJsonAsync
+ReadResultMaybeFromJsonAsync
+
+# --- Emitted by source generators onto CONSUMER types, so they never appear in a Trellis assembly.
+TryFromName
+TryFromValue
+
+# --- Caller-authored example types and members used throughout the recipes.
+PlaceOrderCommand
+PlaceOrderHandler
+SubmitOrderCommand
+OrderSubmitted
+OrderHeader
+LineItem
+IOrderRepository
+IRepository
+CreateCustomerRequest
+CustomerProfileDto
+CustomerEmail
+TenantScopedCommand
+MatchOwnershipGuard
+MyWorker
+WrongHandler
+Recipe1InheritedSurface
+CanReserve
+ApprovedAt
+DomainConflict
+TryCreateWithValidation
+HandleNotFound
+HandleFailureAsync
+EnsureSuccess
+EnsureSuccessAsync
+Some
+
+# --- Example EF Core owned-entity column names (Owner_Property shape).
+BillingAddress_Street
+ShippingAddress_Street
+ShippingAddress_City
+ShippingAddress_State
+ShippingAddress_PostalCode
+ShippingAddress_Country
+Destination_DeliveryFee
+Destination_DeliveryFeeCurrency
+
+# --- Database table/schema identifiers, documented as strings rather than types.
+TrellisOutboxMessages
+TrellisInboxMessages
+TrellisConsumerCheckpoints
+
+# --- Third-party API named for context. Their packages are not part of this repo's dependency
+# closure, so the audit cannot resolve them.
+DiagnosticDescriptor
+IDefaultValueOperation
+MaybeCompositeValueObjectJsonConverterFactory
+ExistenceHidden
+JwtSecurityTokenHandler
+ConfigureTestServices
+AddAspNetCoreInstrumentation
+AddMediator
+HttpJsonOptions
+MvcJsonOptions
+Npgsql
+MySql
+MySqlConnector
+StackExchange
+
+# --- Tooling/build vocabulary, not C# symbols.
+PackageReference
+GlobalUsings
+
+# --- Dotted-segment names surfaced by the multi-segment TRLDOC005 check ---
+# External / sibling-repo namespaces referenced by name in prose.
+Microservices
+Yarp
+Redis
+MySqlClient
+TestHost
+TestServer
+# BCL members whose declaring assembly is not in the loaded set.
+DefaultInboundClaimTypeMap
+# Illustrative domain members owned by the examples, not by Trellis.
+LastModifiedByActorId
+HomeTeamId
+AwayTeamId
+PostCode
+# Package-file extension in `Trellis.Core.nupkg` style references.
+nupkg
+
+# --- Removed v1 APIs cited by the "Breaking changes from v1" migration tables ---
+# These names exist only to tell a v1 reader what to replace. They must NOT resolve:
+# if one starts resolving again, the type has been reintroduced and the table is wrong.
+NotFoundError
+MatchErrorExtensions
+FlattenValidationErrorsExtensions
+SuccessIf
+FailureIf
+SuccessIfAsync
+FailureIfAsync

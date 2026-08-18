@@ -3,7 +3,7 @@ package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
 types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis.Mediator — API Reference
@@ -769,6 +769,22 @@ DI registration helper for the tracked dispatch behavior.
 
 ## Extension methods
 
+### Trellis.Mediator.TransactionalCommandBehaviorServiceCollectionExtensions
+
+```csharp
+public static IServiceCollection AddTransactionalCommandBehavior(this IServiceCollection services)
+```
+
+Installs the open-generic `TransactionalCommandBehavior<,>` (slot 8 of the [canonical pipeline order](#canonical-pipeline-order)) independently of any persistence adapter. It is provider-neutral: any adapter that registers an `IUnitOfWork` can call it, and the shipped EF Core adapter does so from `AddTrellisUnitOfWork<TContext>()`. Because it is a leaf/adapter-author extension point rather than a composition-root feature, it deliberately has **no** `TrellisServiceBuilder.UseXxx()` slot — application authors reach it through `UseEntityFrameworkUnitOfWork<TContext>()`.
+
+| Situation | Result |
+|---|---|
+| The open-generic `TransactionalCommandBehavior<,>` is already registered | No-op — the method is idempotent |
+| Other `IPipelineBehavior<,>` registrations exist | Inserted after the last one, so it runs innermost (closest to the handler); appended at the end when none exist |
+| A **closed**-generic `TransactionalCommandBehavior<TMessage,TResponse>` is already registered | Throws `InvalidOperationException` — the open generic would resolve alongside it and commit twice per command |
+
+Conflict detection inspects `ServiceDescriptor.ImplementationType` and `ImplementationInstance`. A closed behavior registered through `ImplementationFactory` **cannot** be detected without invoking the factory and is therefore not caught — if you register behaviors by factory, skip this method and own the wiring yourself.
+
 ### Trellis.Mediator.ServiceCollectionExtensions
 
 ```csharp
@@ -858,9 +874,27 @@ public interface IDomainEventPublisher
 public interface IIntegrationEventHandler<in TEvent> where TEvent : IIntegrationEvent
 public interface IIntegrationEventPublisher
 public interface IIntegrationEventCollector
+public interface IInboxDispatcher
 ```
 
 Supporting types: `OutboundIntegrationMessage` (publish-side envelope carrying the wire identity) and `IntegrationEventNameMap` (wire name ↔ CLR type contract for broker transports).
+
+### `IInboxDispatcher` and `InboxDispatchOutcome`
+
+The consume-side entry point. The contract lives here so transport adapters depend only on `Trellis.Mediator`; the shipped EF Core implementation and its wiring are documented in [trellis-api-efcore-inbox.md](trellis-api-efcore-inbox.md#iinboxdispatcher).
+
+```csharp
+Task<InboxDispatchOutcome> DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default)
+```
+
+A transport adapter — a broker consumer or the in-process path — builds an `IntegrationEnvelope` and calls `DispatchAsync`. The dispatcher deduplicates on `(ConsumerId, MessageId)` so the integration-event handlers' side effects commit **effectively once**, atomically with the dedup record.
+
+| `InboxDispatchOutcome` | Meaning |
+|---|---|
+| `Processed` | The message was new: handlers ran and committed atomically with the dedup record. |
+| `SkippedDuplicate` | The pair was already processed and this call committed nothing — usually a redelivery caught before any handler runs; if a concurrent dispatch won the race, handlers ran but rolled back on the duplicate-key save. |
+
+Both outcomes mean the message is durably accounted for, so **a pull consumer may advance its checkpoint on either**. The distinction exists for metrics, logging, and overlap/anti-join bookkeeping.
 
 ## Behavioral notes
 

@@ -37,13 +37,13 @@ public ref struct EqualityComponents
 
     internal EqualityComponents(Span<IComparable?> initialBuffer)
     {
-        this.buffer = initialBuffer;
-        this.rented = null;
-        this.count = 0;
+        buffer = initialBuffer;
+        rented = null;
+        count = 0;
     }
 
     /// <summary>The number of components added so far.</summary>
-    public readonly int Count => this.count;
+    public readonly int Count => count;
 
     /// <summary>
     /// Adds a component to the equality definition. <see langword="null"/> is a valid component and
@@ -52,10 +52,10 @@ public ref struct EqualityComponents
     /// <param name="component">The component value.</param>
     public void Add(IComparable? component)
     {
-        if (this.count == this.buffer.Length)
+        if (count == buffer.Length)
             Grow();
 
-        this.buffer[this.count++] = component;
+        buffer[count++] = component;
     }
 
     /// <summary>
@@ -68,26 +68,26 @@ public ref struct EqualityComponents
         where T : notnull, IComparable
         => Add(maybe.HasValue ? maybe.Value : null);
 
-    internal readonly ReadOnlySpan<IComparable?> AsSpan() => this.buffer[..this.count];
+    internal readonly ReadOnlySpan<IComparable?> AsSpan() => buffer[..count];
 
     internal void Return()
     {
-        if (this.rented is null)
+        if (rented is null)
             return;
 
         // Components are references the pool would otherwise keep alive until the next rent.
-        ArrayPool<IComparable?>.Shared.Return(this.rented, clearArray: true);
-        this.rented = null;
+        ArrayPool<IComparable?>.Shared.Return(rented, clearArray: true);
+        rented = null;
     }
 
     private void Grow()
     {
-        var replacement = ArrayPool<IComparable?>.Shared.Rent(this.buffer.Length * 2);
-        this.buffer[..this.count].CopyTo(replacement);
+        var replacement = ArrayPool<IComparable?>.Shared.Rent(buffer.Length * 2);
+        buffer[..count].CopyTo(replacement);
 
-        var previous = this.rented;
-        this.rented = replacement;
-        this.buffer = replacement;
+        var previous = rented;
+        rented = replacement;
+        buffer = replacement;
 
         if (previous is not null)
             ArrayPool<IComparable?>.Shared.Return(previous, clearArray: true);

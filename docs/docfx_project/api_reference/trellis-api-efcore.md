@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
 types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, IUnitOfWork, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
-last_verified: 2026-05-31
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis.EntityFrameworkCore
@@ -258,8 +258,12 @@ return maybe
 ### `IUnitOfWork`
 
 ```csharp
+namespace Trellis; // Trellis.Persistence.Abstractions
+
 public interface IUnitOfWork
 ```
+
+> **Defined in `Trellis.Persistence.Abstractions`, not this package** — it is provider-neutral so non-EF stores can implement the same commit boundary. `Trellis.EntityFrameworkCore` references that package, so consumers get the interface transitively and need no extra `PackageReference`. The canonical contract lives in [`trellis-api-persistence-abstractions.md`](trellis-api-persistence-abstractions.md#iunitofwork); it is restated here because EF Core is where most consumers meet it.
 
 Abstraction over the commit boundary for staged changes. Repositories stage changes; calling `CommitAsync` persists them. In the standard Trellis pipeline, commit is handled automatically by `TransactionalCommandBehavior`. Inject `IUnitOfWork` directly only in non-pipeline scenarios (background jobs, integration tests).
 
@@ -289,11 +293,15 @@ Also implements [`ITrackedAggregateSource`](trellis-api-core.md#itrackedaggregat
 ### `TransactionalCommandBehavior<TMessage, TResponse>`
 
 ```csharp
+namespace Trellis.Mediator; // Trellis.Mediator
+
 public sealed class TransactionalCommandBehavior<TMessage, TResponse>
     : IPipelineBehavior<TMessage, TResponse>
     where TMessage : ICommand<TResponse>
     where TResponse : IResult, IFailureFactory<TResponse>
 ```
+
+> **Defined in `Trellis.Mediator`, not this package.** It depends only on `IUnitOfWork`, so it works over any store, not just EF Core; `AddTransactionalCommandBehavior()` in `Trellis.Mediator` is the provider-neutral registration, and `AddTrellisUnitOfWork<TContext>()` below is the EF-specific helper that calls it. `Trellis.EntityFrameworkCore` references `Trellis.Mediator`, so no extra `PackageReference` is needed. See [`trellis-api-mediator.md`](trellis-api-mediator.md#trellismediatortransactionalcommandbehaviorservicecollectionextensions) for the registration surface.
 
 Pipeline behavior that auto-commits staged changes after a successful command handler. Only applies to `ICommand<TResponse>` messages — queries are skipped at the type-constraint level and incur no overhead. If the handler returns a failure, no commit occurs and staged changes are discarded with the `DbContext`. EF Core wraps each `SaveChanges` call in an implicit transaction, so all staged changes within a single handler commit atomically.
 
@@ -319,7 +327,15 @@ public static class UnitOfWorkServiceCollectionExtensions
 
 ### Behavioral notes: `AddTrellisUnitOfWork<TContext>`
 
-`AddTrellisUnitOfWork<TContext>()` inserts `TransactionalCommandBehavior<,>` after the last existing `IPipelineBehavior<,>` registration, making it innermost in the mediator pipeline. It is idempotent for an existing open-generic `TransactionalCommandBehavior<,>`: a second call is a no-op. `AddTrellisBehaviors()` and domain-event dispatch helpers relocate pre-existing transaction descriptors, so calling the unit-of-work helper before or after them preserves the same canonical order and keeps commit failures visible to outer behaviors such as logging and tracing. It **throws `InvalidOperationException`** when a closed-generic `IPipelineBehavior<TMessage,TResponse> → TransactionalCommandBehavior<TMessage,TResponse>` is already registered, with or without an open-generic registration, because installing the open generic alongside would resolve both descriptors for matching commands and produce two commits per command. The exception message names the supported resolutions: remove the closed registration and let the helper install the open generic, or call `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` to keep the explicit closed registrations and skip open-generic installation.
+`AddTrellisUnitOfWork<TContext>()` inserts `TransactionalCommandBehavior<,>` after the last existing `IPipelineBehavior<,>` registration, making it innermost in the mediator pipeline.
+
+| Situation | Result |
+|---|---|
+| An open-generic `TransactionalCommandBehavior<,>` is already registered | No-op — the helper is idempotent |
+| Called before or after `AddTrellisBehaviors()` or the domain-event dispatch helpers | Same canonical order either way: those helpers relocate pre-existing transaction descriptors, keeping commit failures visible to outer behaviors such as logging and tracing |
+| A **closed**-generic `IPipelineBehavior<TMessage,TResponse> → TransactionalCommandBehavior<TMessage,TResponse>` is already registered (with or without an open-generic registration) | Throws `InvalidOperationException` — installing the open generic alongside would resolve both descriptors for matching commands and commit twice per command |
+
+The exception message names the two supported resolutions: remove the closed registration and let the helper install the open generic, or call `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` to keep the explicit closed registrations and skip open-generic installation.
 
 ### `EntityTimestampInterceptor`
 

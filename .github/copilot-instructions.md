@@ -10,23 +10,45 @@ These instructions are for repository workflow and contribution conventions only
 
 Before writing or changing code that uses Trellis APIs, read the relevant files in `docs/docfx_project/api_reference/`.
 
-Start with `docs/docfx_project/api_reference/trellis-api-cookbook.md`. Use its task lookup table to find the right recipe, then read the package reference files for exact signatures, overloads, namespaces, and examples. Do not infer Trellis API behavior from these Copilot instructions.
+### The one file to hold in memory
+
+**`docs/docfx_project/api_reference/trellis-api-cookbook.md` is the start file. Read its routing head first — everything from the top of the file through the end of `## Patterns Index`, which stops at the first `## Recipe` heading — and keep that resident for the whole session.**
+
+The full reference set is ~301K tokens — it does not fit in context and is not meant to. The cookbook is the router: its task-lookup table maps a task to the right recipe, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. That routing head is only ~4K tokens. The 36 recipe bodies below it are the other ~57K, and a typical task reads one to three of them (~1.25K tokens each).
+
+**So hold the routing head, and read recipe bodies on demand.** Holding all 36 bodies costs ~57K tokens permanently to keep ~54K of them that you will not open — more than a quarter of a 200K context spent on content the task never needed. Read a body the moment the index routes you to one; do not work from a recipe's title.
+
+This trade is safe only because the index is a complete map, which **TRLDOC007** enforces: every live recipe is reachable from `## Patterns Index`, and rows are phrased as the reader's task or failure mode rather than the recipe's title. If you find yourself guessing whether a recipe exists, re-read the index rows — do not assume its absence.
+
+Then pull in only the 1–3 area-specific references the cookbook points you at. Do not infer Trellis API behavior from these Copilot instructions.
+
+If context is too tight to hold the routing head plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
+
+`trellis-start-here.md` is **not** a second entry point, and in this repository you can ignore it. It is a ~1 KB router written for *consumers*: the packages copy the reference docs into a consuming repository's `.github/`, where nothing explains what those files are, so that router tells a consumer's agent the same thing this section tells you — read the cookbook first, keep it loaded, don't delegate it. Edit it only when this guidance changes, and keep the two in agreement. There is exactly one start file, the cookbook; `trellis-start-here.md` just points at it for readers who never see this file.
+
+### Do not delegate reference reading to a sub-agent
+
+**Read the cookbook and the package references directly, in your own context. Never send a sub-agent to read them for you.**
+
+A sub-agent returns a summary; the reference content itself never enters your context, so you end up writing code from the sub-agent's paraphrase instead of from the exact signatures. That is precisely the failure mode the references exist to prevent, and it reintroduces invented APIs and wrong overloads.
+
+Sub-agents are still appropriate for work whose *output* is a verdict rather than knowledge you must then write code against — auditing docs for accuracy, running builds and tests, searching for a specific file. The rule is narrow: if the answer determines the code you are about to write, read it yourself.
 
 ### Recommended context size
 
-The reference set is the 23 `*.md` files under `docs/docfx_project/api_reference/` — 22 `trellis-api-*.md` files plus `trellis-value-object-taxonomy.md` — totalling ~1,115 KB (~285K tokens); the cookbook alone is ~238 KB (~61K tokens). These figures grow as the docs do — treat them as approximate. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
+The reference set is the 27 `*.md` files under `docs/docfx_project/api_reference/` — 25 `trellis-api-*.md` files plus `trellis-value-object-taxonomy.md` and the tiny `trellis-start-here.md` router — totalling ~1,184 KB (~303K tokens); the cookbook alone is ~239 KB (~61K tokens), of which only its ~4K-token routing head is held resident. (`completeness-report.md` sits in the same directory but is a generated audit artifact, not a reference — the lint script therefore scans 28 files.) These figures grow as the docs do — treat them as approximate. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
 
 | Tier | Context | When this is enough |
 |---|---|---|
-| **Minimum** | 200K | Narrow, single-file tasks. Forces a strict "load only the area-specific reference per task" discipline; cross-cutting work is error-prone at this tier. |
-| **Recommended** | 400–500K | Most consumer projects. Lets the cookbook + 5–6 area-specific references stay resident through a PR-sized session. |
-| **Comfortable** | 1M | Framework-internal work and greenfield projects with multiple integration points. Lets all 23 references stay resident from turn 1 without eviction. |
+| **Minimum** | 200K | Narrow, single-file tasks. Holds the cookbook routing head, a handful of recipe bodies and one area reference; cross-cutting work is error-prone at this tier. |
+| **Recommended** | 400–500K | Most consumer projects. Lets the routing head + 5–6 area-specific references stay resident through a PR-sized session. |
+| **Comfortable** | 1M | Framework-internal work and greenfield projects with multiple integration points. Lets all 27 references stay resident from turn 1 without eviction. |
 
 ### Mandatory loads at session start
 
-For any non-trivial Trellis work, load these **before** writing the first line of code or running the first sub-agent:
+For any non-trivial Trellis work, load these **yourself** (see the sub-agent rule above) **before** writing the first line of code:
 
-1. `trellis-api-cookbook.md` — always. Its task lookup table is the entry point.
+1. The `trellis-api-cookbook.md` routing head — always. Everything above the first `## Recipe` heading is the entry point, and it stays resident; recipe bodies are read on demand as the index routes you to them.
 2. `trellis-api-servicedefaults.md` — always. Composition-root features have a matching `TrellisServiceBuilder.UseXxx()` slot for their `services.AddXxx()` extension; leaf/store/adapter-author registrations deliberately have **no** slot. See "Adding a new public registration API" below for the rule and the current exception list. Designing or modifying a registration helper without reading this file either silently misses a builder slot that should exist, or wrongly adds one where none belongs.
 3. The area-specific reference for the package being modified (from the table below).
 4. The reference for **every package whose pipeline this work composes with**. Specifically: anything touching the Mediator pipeline must also load `trellis-api-efcore.md` (transactional behavior) and `trellis-api-authorization.md` (resource-authorization behavior); anything touching ASP must also load `trellis-api-mediator.md`.
@@ -161,6 +183,13 @@ For T4-generated tuple overloads, test the 2-tuple case comprehensively and vali
 ## Documentation standards
 
 When adding or changing public API surface, update the relevant API reference file in `docs/docfx_project/api_reference/`. Update package `README.md`, `NUGET_README.md`, DocFX articles, and `docs/docfx_project/docfx.json` metadata when those artifacts are directly affected.
+
+This is enforced, not advisory. **TRLDOC008** fails the build when any public type or member's name does not appear in its owning package's reference file, and **TRLDOC005** fails it when a doc names a symbol that does not exist. Adding a public member without documenting it will go red in CI. Two things about TRLDOC008 catch people out:
+
+- Matching is **per package**. Documenting a type in a different package's file does not satisfy it, because the owning package's file is the one an agent is routed to.
+- Matching is on the **simple name as a substring**. Describing a member conceptually ("the last-modified timestamp") does not count; the doc must contain `LastModified`. A name a reader cannot type is a name they cannot use — and an LLM that cannot find a member in the reference tends to invent a plausible signature rather than conclude it is absent.
+
+When the hit is a static extension class, prefer giving it its own `###` section over name-dropping it in prose: the usual cause is that its methods were documented under a neighbouring class's heading, which is an accuracy defect in its own right.
 
 Keep framework usage guidance in the API reference and cookbook files, not in this Copilot instruction file.
 

@@ -38,11 +38,13 @@
     <ProjectReference Include="..\..\Trellis.Http\src\Trellis.Http.csproj" />
     <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\Trellis.EntityFrameworkCore.Outbox\src\Trellis.EntityFrameworkCore.Outbox.csproj" />
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\generator\Trellis.EntityFrameworkCore.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Trellis.ServiceDefaults\src\Trellis.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Trellis.StateMachine\src\Trellis.StateMachine.csproj" />
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+    <ProjectReference Include="..\..\Trellis.Testing.Worker\src\Trellis.Testing.Worker.csproj" />
   </ItemGroup>
 
 </Project>

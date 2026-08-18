@@ -3,7 +3,7 @@ package: Trellis.Core, Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredLong<TSelf>, RequiredDecimal<TSelf>, RequiredBool<TSelf>, RequiredDateTime<TSelf>, RequiredDateTimeOffset<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
 version: v3
-last_verified: 2026-06-16
+last_verified: 2026-08-18
 audience: [llm]
 ---
 # Trellis Value Object Taxonomy

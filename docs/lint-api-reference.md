@@ -15,6 +15,57 @@ The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, 
 - **TRLDOC001**: Bare cross-doc links such as `](trellis-api-core.md)` must point at a specific anchor, for example `](trellis-api-core.md#some-section)`. Lines inside fenced code blocks are skipped.
 - **TRLDOC002**: Filler table rows such as `| — | — | No public properties.` are not allowed. Lines inside fenced code blocks are skipped.
 - **TRLDOC003**: Anchored same-file links such as `](#some-section)` and sibling API-reference Markdown links such as `](trellis-api-core.md#some-section)` or `](completeness-report.md#some-section)` must resolve to an existing heading in the target file. Links may include query strings before anchors, such as `](completeness-report.md?v=2#some-section)`. The gate skips absolute URI links and cross-surface relative paths such as `](../articles/example.md#some-section)`.
+- **TRLDOC004**: Every `api_reference/*.md` file must ship in some NuGet package's `trellis/` payload, because that payload is what lands in a consumer's `.github/` directory. A doc that no package ships is invisible to consumers no matter how good it is. Satisfy it either by setting `<TrellisApiRefName>` on the owning package (which packs `trellis-api-<name>.md`) or, for a cross-cutting reference that no single package owns, by adding it to the `TrellisShipsCrossCuttingDocs` item group in `Directory.Build.targets`.
+
+TRLDOC004 proves a doc is *packed*. Proving it is *delivered* needs `build/test-apireference-payload.ps1`, which packs a real package, restores it into scratch consumers outside the repository and asserts which `.github` directory the files land in — covering the nearest-`.github` preference, the `.git` boundary that stops the walk escaping into an unrelated parent checkout, the `TrellisApiReferenceRoot` override and the `TrellisDisableApiReferenceSync` opt-out. Run it with `pwsh ./build/test-apireference-payload.ps1`; it runs in the Build workflow.
+
+- **TRLDOC006**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must have a matching `Examples/CookbookSnippets/Recipe<NN>_*.cs` file. Headings marked `*(retired)*` are skipped, because they exist only to keep old anchors and cross-references resolving and carry no code to pin.
+
+TRLDOC006 exists because recipes are the most-copied code in the doc set: a reader lifts a recipe verbatim into their service, so a recipe that no longer compiles is worse than no recipe. The gate itself only proves the snippet *file* exists; the compile check comes from `Examples/CookbookSnippets/CookbookSnippets.csproj` being a member of `Trellis.slnx`, so CI's `dotnet build` compiles every snippet under the repository's full analyzer settings. The two halves are load-bearing together — removing the project from the solution would leave TRLDOC006 asserting nothing but a filename.
+
+Snippets pin the recipe, they do not execute it: the project has no test runner, so `[Fact]` methods in snippets (Recipes 10 and 26) are compile-checked only. Where a recipe legitimately cannot compile in this project, keep the real code in a comment and say why — Recipe 26's `AddMediator(...)` is elided because it is emitted by `Mediator.SourceGenerator`, which the project deliberately does not reference (several recipes show commands with no paired handler, and the generator fails those with `MSG0005`).
+
+- **TRLDOC007**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must be linked from the `## Patterns Index` section. Retired headings are skipped on the same grounds as TRLDOC006. If the `## Patterns Index` heading itself is missing, the rule fails once and suppresses the per-recipe errors, so a renamed section reports the real cause instead of 35 spurious ones.
+
+TRLDOC007 is what makes on-demand recipe loading safe. The cookbook is the largest file in the doc set (~61K tokens), so agents are instructed to hold only its routing head resident and pull recipe bodies as tasks demand them. That trade is sound *only* while the index is a complete map: a recipe the index never links to is one an agent will never discover, because it never reads the body that would have revealed it. Before this gate existed, two recipes (6 and 28) were already unreachable. Keep index rows phrased as the reader's **task or failure mode**, not the recipe's title — routing happens on the row text alone.
+
+## TRLDOC005 — documented symbols must exist
+
+TRLDOC005 and TRLDOC008 are **not** part of this script. Both are emitted by the `audit-completeness` tool, because they need to reflect over built assemblies rather than read Markdown, and they therefore run in the Build workflow after `dotnet build` rather than in the docs workflow. They check the doc↔API relationship in opposite directions, and both must hold: TRLDOC005 that every documented name is real, TRLDOC008 that every real name is documented.
+
+It is the reverse of the completeness audit. Completeness asks "is every public API documented?" and so can only start from symbols that exist; it is structurally blind to a confidently-documented type that was renamed or never existed. TRLDOC005 asks the opposite question — "does every API-shaped name in the docs resolve to a real symbol?" — which is the check that catches, for example, a doc telling readers to derive from a long-deleted `IRepositoryBase`.
+
+The rule scans backticked PascalCase identifiers and ignores things that are not API surface by construction: diagnostic IDs (`TRLS001`, `TRLSGEN102`), generic type parameters (`TSelf`, `TAggregate`), all-caps words (`WHERE`, `DELETE`), and `Xxx` placeholders. Anything left over must either resolve against a loaded assembly or be listed in `audit-completeness/doc-only-symbols.txt`.
+
+**Every dotted segment is checked, not just the head.** A reference like `` `TrellisAspOptions.ErrorStatusCodeMap` `` must resolve on *both* names. Checking only the type would let a real type vouch for a member that no longer exists — and the member name is the part a reader actually types. The known-symbol set contains member names alongside type and namespace names, so a segment resolves if anything in the loaded assemblies declares it. That is deliberately loose: the gate answers "does this name exist anywhere?", not "does this member exist *on that type*". It catches deleted and misspelled members, not members attributed to the wrong owner.
+
+One capture limitation worth knowing: the pattern requires the backticked span to end at the identifier, so `` `Options.MapError` `` is checked but `` `Options.MapError<TError>(statusCode)` `` is not matched at all — the trailing call parentheses end the span. Prefer the bare form in tables and prose when you want the name gated.
+
+Add an entry to that allowlist when the name is genuinely doc-only — a caller-authored example type, a symbol that moved to another repository, an old name kept in a rename table, a generator-emitted member that only exists on consumer types, or **documented negative space** (a name the docs mention precisely to say Trellis does *not* provide it). Every entry needs to be a deliberate decision, so keep the category comments in that file accurate. The tool reports allowlist entries that no doc references any more so the list does not silently rot.
+
+To run it locally:
+
+```powershell
+dotnet build Trellis.slnx -c Release
+dotnet run -c Release --project docs/docfx_project/api_reference/audit-completeness/audit-completeness.csproj
+```
+
+It resolves symbols from the built Trellis assemblies (including internal types, since the docs legitimately explain internal machinery such as EF conventions and interceptors) plus the centrally managed NuGet dependencies listed in `Directory.Packages.props`.
+
+## TRLDOC008 — every public API must be documented
+
+TRLDOC008 is the other half of the same tool, and the direct counterpart to TRLDOC005: it walks each package's public types and members and fails the build when a symbol's simple name never appears in that package's API reference file.
+
+This gate exists because the completeness numbers were printed for a long time without being enforced, and the process exit code came from TRLDOC005 alone. The result was a backlog of 8 undocumented types and 33 undocumented members accumulating across seven packages in a permanently green build — nobody was ignoring a warning, they simply never saw one. A report that nothing reads is not a control.
+
+The bar is deliberately low: the symbol's name must appear *somewhere* in the owning package's doc. That is not a claim the symbol is well explained, only that an agent reading the reference can discover it exists and spell it correctly. The failure this prevents is specific — an LLM that cannot find a member in the reference does not conclude the member is absent, it invents a plausible signature.
+
+Two consequences of the matching rule are worth knowing before chasing a report:
+
+- Matching is per-package. A type documented in a *different* package's file still counts as a gap, because that is the file an agent will be pointed at. `IInboxDispatcher` was flagged for exactly this reason — documented in the inbox reference while living in the `Trellis.Mediator` assembly.
+- Matching is substring-based on the simple name. Describing a member conceptually ("the last-modified timestamp", "the delay in seconds") does not satisfy it; the doc has to name `LastModified` and `DelaySeconds`. This is the intended behaviour, since a name a reader cannot type is a name they cannot use.
+
+Static extension classes are a common source of hits, and the honest fix is usually not to name-drop the class but to give it its own `###` section. When `AddTrellisIdempotency` was documented under a generic `ServiceCollectionExtensions` heading rather than its real `IdempotencyServiceCollectionExtensions` owner, the gate was reporting a genuine accuracy defect, not a bookkeeping one.
 
 ## Anchor slug rule
 
