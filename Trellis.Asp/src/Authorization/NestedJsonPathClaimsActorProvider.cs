@@ -230,7 +230,7 @@ public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
                 var fallbackActorId = ResolveClaimWithFallback(identity, Options.ActorIdClaim);
                 if (string.IsNullOrWhiteSpace(fallbackActorId))
                 {
-                    MaybeEmitUnresolvedActorIdDiagnostic(identity, _logger);
+                    MaybeEmitUnresolvedActorIdDiagnostic(identity);
                     return Task.FromResult(Maybe<Actor>.None);
                 }
 
@@ -257,7 +257,7 @@ public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
             // Without this call, the override would silently 403 on malformed terminal shapes.
             // Pass our own logger because the base's _logger slot was deliberately left null
             // in our constructor (we own the diagnostic-logger relationship for this provider).
-            MaybeEmitClaimShapeDiagnostics(identity, permissions, _logger);
+            MaybeEmitClaimShapeDiagnostics(identity, permissions);
 
             return Task.FromResult(Maybe.From(Actor.Create(actorId, permissions)));
         }

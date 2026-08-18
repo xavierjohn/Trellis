@@ -442,10 +442,9 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
     /// is the problem. Honours <see cref="ClaimsActorOptions.ValidateClaimShapeOnFirstUse"/>.
     /// </summary>
     /// <param name="identity">The authenticated identity whose claims failed to yield an actor id.</param>
-    /// <param name="overrideLogger">Logger to use instead of this instance's logger; derived providers pass their own.</param>
-    protected void MaybeEmitUnresolvedActorIdDiagnostic(ClaimsIdentity identity, ILogger? overrideLogger = null)
+    protected void MaybeEmitUnresolvedActorIdDiagnostic(ClaimsIdentity identity)
     {
-        var logger = overrideLogger ?? DiagnosticLogger;
+        var logger = DiagnosticLogger;
         if (!Options.ValidateClaimShapeOnFirstUse || logger is null)
             return;
 
@@ -475,13 +474,15 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
     /// <c>protected</c> so derived providers (notably <see cref="NestedJsonPathClaimsActorProvider"/>)
     /// can invoke the same diagnostic after their override resolves permissions through a
     /// different path; without this hook the empty-permissions warning would not fire when the
-    /// derived provider's path-traversal produced an empty set. The <paramref name="overrideLogger"/>
-    /// parameter lets a derived provider pass its own logger when the base's logger slot was
-    /// left null (the typical case when the derived constructor wires its own typed logger).
+    /// derived provider's path-traversal produced an empty set. The entry is written to
+    /// <see cref="DiagnosticLogger"/>, which a derived provider overrides when it owns a logger
+    /// of its own category.
     /// </remarks>
-    protected void MaybeEmitClaimShapeDiagnostics(ClaimsIdentity identity, FrozenSet<string> permissions, ILogger? overrideLogger = null)
+    /// <param name="identity">The authenticated identity whose claims were resolved.</param>
+    /// <param name="permissions">The permission set the provider resolved for that identity.</param>
+    protected void MaybeEmitClaimShapeDiagnostics(ClaimsIdentity identity, FrozenSet<string> permissions)
     {
-        var logger = overrideLogger ?? DiagnosticLogger;
+        var logger = DiagnosticLogger;
         if (!Options.ValidateClaimShapeOnFirstUse || logger is null)
             return;
 
