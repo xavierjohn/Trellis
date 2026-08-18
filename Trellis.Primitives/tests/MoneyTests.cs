@@ -57,7 +57,7 @@ public class MoneyTests
         // Assert
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Field.Path.Should().Be("/unitPrice");
+        validation.Fields[0].Field.Path.Should().Be("/unitPrice/currency");
     }
 
     [Fact]
@@ -655,6 +655,72 @@ public class MoneyTests
         var act = () => Money.TryCreate(-1m, "USD", fieldName: "");
 
         act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void TryCreate_without_fieldName_points_amount_failure_at_amount()
+    {
+        var result = Money.TryCreate(-1m, "USD");
+
+        PathOf(result).Should().Be("/amount");
+    }
+
+    [Fact]
+    public void TryCreate_without_fieldName_points_currency_failure_at_currency()
+    {
+        var result = Money.TryCreate(1m, "INVALID");
+
+        PathOf(result).Should().Be("/currency");
+    }
+
+    [Fact]
+    public void TryCreate_with_empty_string_fieldName_falls_back_to_component_defaults()
+    {
+        PathOf(Money.TryCreate(-1m, "USD", fieldName: "")).Should().Be("/amount");
+        PathOf(Money.TryCreate(1m, "INVALID", fieldName: "")).Should().Be("/currency");
+    }
+
+    [Fact]
+    public void TryCreate_with_fieldName_distinguishes_the_two_components()
+    {
+        var amountFailure = PathOf(Money.TryCreate(-1m, "USD", "price"));
+        var currencyFailure = PathOf(Money.TryCreate(1m, "INVALID", "price"));
+
+        amountFailure.Should().Be("/price/amount");
+        currencyFailure.Should().Be("/price/currency");
+        amountFailure.Should().NotBe(currencyFailure);
+    }
+
+    [Fact]
+    public void TryCreate_with_fieldName_camel_cases_the_parent_segment() =>
+        PathOf(Money.TryCreate(-1m, "USD", "UnitPrice")).Should().Be("/unitPrice/amount");
+
+    [Fact]
+    public void TryCreate_with_json_pointer_fieldName_composes_rather_than_escaping() =>
+        PathOf(Money.TryCreate(-1m, "USD", "/items/0/price")).Should().Be("/items/0/price/amount");
+
+    [Fact]
+    public void TryCreate_with_fieldName_containing_pointer_characters_escapes_the_parent_segment() =>
+        PathOf(Money.TryCreate(-1m, "USD", "a/b")).Should().Be("/a~1b/amount");
+
+    [Fact]
+    public void TryCreate_with_per_component_field_names_targets_flat_payload_fields()
+    {
+        PathOf(Money.TryCreate(-1m, "USD", "price", "currency")).Should().Be("/price");
+        PathOf(Money.TryCreate(1m, "INVALID", "price", "isoCurrency")).Should().Be("/isoCurrency");
+    }
+
+    [Fact]
+    public void TryCreate_with_null_per_component_field_names_falls_back_to_component_defaults()
+    {
+        PathOf(Money.TryCreate(-1m, "USD", null, null)).Should().Be("/amount");
+        PathOf(Money.TryCreate(1m, "INVALID", null, null)).Should().Be("/currency");
+    }
+
+    private static string PathOf(Result<Money> result)
+    {
+        result.IsFailure.Should().BeTrue();
+        return ((Error.InvalidInput)result.UnwrapError()).Fields[0].Field.Path;
     }
 
     #endregion
