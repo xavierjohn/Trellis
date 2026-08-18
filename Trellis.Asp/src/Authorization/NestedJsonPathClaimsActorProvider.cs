@@ -118,6 +118,14 @@ public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
     private new readonly NestedJsonPathClaimsActorOptions Options;
     private readonly ILogger<NestedJsonPathClaimsActorProvider>? _logger;
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// The base is deliberately constructed with a null logger because this provider owns an
+    /// <see cref="ILogger{TCategoryName}"/> of its own category; overriding here keeps diagnostics
+    /// alive on the branches that delegate resolution back to <see cref="ClaimsActorProvider"/>.
+    /// </remarks>
+    protected override ILogger? DiagnosticLogger => _logger;
+
     /// <summary>
     /// Test-only hook for resetting the per-provider throttles.
     /// </summary>
@@ -221,7 +229,11 @@ public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
             {
                 var fallbackActorId = ResolveClaimWithFallback(identity, Options.ActorIdClaim);
                 if (string.IsNullOrWhiteSpace(fallbackActorId))
+                {
+                    MaybeEmitUnresolvedActorIdDiagnostic(identity, _logger);
                     return Task.FromResult(Maybe<Actor>.None);
+                }
+
                 actorId = fallbackActorId;
             }
 
