@@ -88,6 +88,21 @@ jobs:
           /p:PublishAot=true \
           /p:TreatWarningsAsErrors=true
 
+    - name: AOT publish gate (bare non-ASP console)
+      # The Showcase gate above references Trellis.Asp, which roots the scalar-value surface
+      # and so keeps IScalarValue<,> alive through trimming. A console app using only
+      # Trellis.Core + Trellis.Primitives has nothing doing that rooting and trims differently
+      # -- the one configuration proven to behave differently under AOT, and previously
+      # uncovered. Publishes with warnings-as-errors, then runs the native binary: the probe
+      # asserts scalar value objects still round-trip and that the composite converter, which
+      # is allowed to fail here, fails with a message naming the cause and the remedy.
+      run: |
+        dotnet publish Examples/AotConsoleProbe/AotConsoleProbe.csproj \
+          -c Release -r linux-x64 \
+          /p:PublishAot=true \
+          /p:TreatWarningsAsErrors=true
+        Examples/AotConsoleProbe/bin/Release/net10.0/linux-x64/publish/AotConsoleProbe
+
     - name: Showcase runtime smoke tests (AOT MinimalApi + JIT MVC)
       # Proves both Showcase samples actually serve traffic. Catches runtime
       # regressions that build/publish-time analysis cannot see — e.g., anonymous

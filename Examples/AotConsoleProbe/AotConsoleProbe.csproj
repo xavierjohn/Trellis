@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Bare non-ASP Native AOT probe.
+
+    The Showcase proves Trellis publishes cleanly under AOT, but it references Trellis.Asp,
+    which roots the scalar-value surface and therefore keeps IScalarValue<,> alive through
+    trimming. A console app using only Trellis.Core and Trellis.Primitives has nothing
+    performing that rooting, so it trims differently. That is the configuration this probe
+    covers; nothing else in CI exercises it.
+
+    Deliberately does NOT reference Trellis.Asp; doing so would defeat the probe's purpose.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Trellis.AotConsoleProbe</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
+    <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
+    <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
