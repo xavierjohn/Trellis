@@ -260,6 +260,18 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// </summary>
     public readonly bool HasExplicitRange;
 
+    /// <summary>
+    /// Gets whether the user's own declaration already carries a <c>[JsonConverter]</c> attribute.
+    /// </summary>
+    /// <remarks>
+    /// Trellis normally emits <c>[JsonConverter]</c> onto the generated partial, but generator
+    /// output is invisible to other source generators — including System.Text.Json's. A user who
+    /// needs STJ's generator to see the annotation (because the value object is reachable from a
+    /// <c>JsonSerializerContext</c>) must declare it in original source, and Trellis then has to
+    /// step aside to avoid CS0579.
+    /// </remarks>
+    public readonly bool HasUserJsonConverter;
+
     public readonly GeneratedMemberDeclaration[] UserDeclaredMembers;
 
     /// <summary>
@@ -286,6 +298,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <param name="hasNegative">True when the target carries <c>[Negative]</c>.</param>
     /// <param name="hasNonPositive">True when the target carries <c>[NonPositive]</c>.</param>
     /// <param name="hasExplicitRange">True when the target had an explicit <c>[Range]</c> before convenience-attribute synthesis.</param>
+    /// <param name="hasUserJsonConverter">True when the user's own declaration already carries <c>[JsonConverter]</c>.</param>
     /// <param name="userDeclaredMembers">Members declared by the user that may collide with generated members.</param>
     public RequiredPartialClassInfo(
         string nameSpace,
@@ -309,6 +322,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         bool hasNegative = false,
         bool hasNonPositive = false,
         bool hasExplicitRange = false,
+        bool hasUserJsonConverter = false,
         GeneratedMemberDeclaration[]? userDeclaredMembers = null)
     {
         NameSpace = nameSpace;
@@ -332,6 +346,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         HasNegative = hasNegative;
         HasNonPositive = hasNonPositive;
         HasExplicitRange = hasExplicitRange;
+        HasUserJsonConverter = hasUserJsonConverter;
         UserDeclaredMembers = userDeclaredMembers ?? [];
     }
 
@@ -359,6 +374,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             && HasNegative == other.HasNegative
             && HasNonPositive == other.HasNonPositive
             && HasExplicitRange == other.HasExplicitRange
+            && HasUserJsonConverter == other.HasUserJsonConverter
             && TypePath == other.TypePath
             && NestingParents.SequenceEqual(other.NestingParents)
             && UserDeclaredMembers.SequenceEqual(other.UserDeclaredMembers);
@@ -390,6 +406,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             hash = (hash * 31) + HasNegative.GetHashCode();
             hash = (hash * 31) + HasNonPositive.GetHashCode();
             hash = (hash * 31) + HasExplicitRange.GetHashCode();
+            hash = (hash * 31) + HasUserJsonConverter.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             foreach (var member in UserDeclaredMembers)
                 hash = (hash * 31) + member.GetHashCode();

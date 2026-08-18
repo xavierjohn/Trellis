@@ -96,6 +96,7 @@ In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuni
 | `TRLS056` | Error | Required generated member conflicts with user declaration | Emitted by `RequiredPartialClassGenerator` when a `Required*<TSelf>` partial class declares a member that Trellis would generate (`TryCreate`, `Create`, `Parse`, `TryParse`, GUID factories, conversion operator, constructor, or validation hook). The generator skips the conflicting member so the user declaration wins and reports this diagnostic at the user member declaration. Remove the redundant member, or change the base class if custom semantics are required. |
 | `TRLS057` | Error | `[Trim]` on a non-string Required base | Emitted by `RequiredPartialClassGenerator` when `[Trim]` is applied to a Required base other than `RequiredString`. `[Trim]` only affects string trimming; on any other base it is silently ignored, so the generator refuses to emit code. Remove the attribute. |
 | `TRLS058` | Error | `[NotDefault]` on a sentinel-less Required base | Emitted by `RequiredPartialClassGenerator` when `[NotDefault]` is applied to `RequiredBool` or `RequiredEnum`. Those bases have no meaningful default sentinel to reject (every value is valid), so the attribute is a no-op. Remove the attribute. |
+| `TRLS059` | Warning | `JsonSerializerContext` has `[GenerateScalarValueConverters]` but no `[JsonSerializable]` | Emitted by `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) when a context marked `[GenerateScalarValueConverters]` declares no `[JsonSerializable]` of its own. System.Text.Json's source generator only observes attributes present in the original compilation, so it skips such a context entirely and never emits the abstract members `JsonSerializerContext` requires — failing the build with two CS0534 errors that give no hint about the cause. Trellis cannot supply the attribute on your behalf, because source generators cannot observe one another's output. Add at least one `[JsonSerializable(typeof(...))]`. |
 
 ## Constants — `TrellisDiagnosticIds`
 
@@ -151,6 +152,7 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `GeneratedRequiredMemberCollision` | `TRLS056` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `TrimOnNonStringBase` | `TRLS057` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `NotDefaultOnSentinellessBase` | `TRLS058` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `SerializerContextHasNoJsonSerializable` | `TRLS059` | `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) |
 
 ## Descriptors — `DiagnosticDescriptors`
 

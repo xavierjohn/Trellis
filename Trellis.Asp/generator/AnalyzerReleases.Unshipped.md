@@ -6,3 +6,4 @@
 Rule ID  | Category | Severity | Notes
 ---------|----------|----------|------------------------------------------------------------------------
 TRLS039  | Trellis  | Warning  | ScalarValueJsonConverterGenerator: value object wraps a primitive that is not in the AOT-safe set, so no converter is generated and a custom JsonConverter must be supplied.
+TRLS059  | Trellis  | Warning  | ScalarValueJsonConverterGenerator: [GenerateScalarValueConverters] context declares no [JsonSerializable], so System.Text.Json's generator skips it and the build fails with CS0534.

@@ -20,7 +20,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 /// <c>IScalarValue&lt;TSelf, TPrimitive&gt;</c> and generates:
 /// <list type="bullet">
 /// <item>Strongly-typed JSON converters that don't use runtime reflection</item>
-/// <item>A partial class extending any user-defined <c>JsonSerializerContext</c> with <c>[JsonSerializable]</c> attributes</item>
 /// <item>Registration code for automatic converter discovery</item>
 /// </list>
 /// </para>
@@ -35,19 +34,22 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 /// </para>
 /// </remarks>
 /// <example>
-/// To use the generator, reference it from your project and create a partial JsonSerializerContext:
+/// To use the generator, reference it from your project and create a partial JsonSerializerContext.
+/// The context needs at least one <c>[JsonSerializable]</c> of its own, and any value object it can
+/// reach needs a <c>[JsonConverter]</c> written in your source:
 /// <code>
-/// // Mark your context with the [GenerateScalarValueConverters] attribute
+/// // Declared by hand: System.Text.Json's generator only sees attributes in your own source,
+/// // so it would otherwise treat CustomerId as a POCO and emit new CustomerId().
+/// [JsonConverter(typeof(ParsableJsonConverter&lt;CustomerId&gt;))]
+/// public partial class CustomerId : RequiredGuid&lt;CustomerId&gt;
+/// {
+/// }
+///
 /// [GenerateScalarValueConverters]
 /// [JsonSerializable(typeof(MyDto))]
 /// public partial class AppJsonSerializerContext : JsonSerializerContext
 /// {
 /// }
-///
-/// // The generator will automatically add [JsonSerializable] for all value objects:
-/// // [JsonSerializable(typeof(CustomerId))]
-/// // [JsonSerializable(typeof(FirstName))]
-/// // etc.
 /// </code>
 /// </example>
 [Generator(LanguageNames.CSharp)]
@@ -67,6 +69,7 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
     private static class Ids
     {
         public const string UnsupportedScalarValuePrimitiveForAotJson = "TRLS039";
+        public const string SerializerContextHasNoJsonSerializable = "TRLS059";
     }
 
     /// <summary>
@@ -118,6 +121,29 @@ public class ScalarValueJsonConverterGenerator : IIncrementalGenerator
         helpLinkUri: HelpLinkBase);
 
     /// <summary>
+    /// Diagnostic descriptor for TRLS059 — emitted when a <c>[GenerateScalarValueConverters]</c>
+    /// context declares no <c>[JsonSerializable]</c> of its own.
+    /// </summary>
+    /// <remarks>
+    /// System.Text.Json's generator skips a context that has no <c>[JsonSerializable]</c> attribute
+    /// in original source, and therefore never emits the abstract members and constructors the base
+    /// class requires. The build then fails with two CS0534 errors pointing at the user's class,
+    /// which gives no hint about the real cause. Trellis cannot supply the attribute on the user's
+    /// behalf: source generators cannot observe one another's output.
+    /// </remarks>
+    private static readonly DiagnosticDescriptor SerializerContextHasNoJsonSerializableDescriptor = new(
+        id: Ids.SerializerContextHasNoJsonSerializable,
+        title: "JsonSerializerContext has [GenerateScalarValueConverters] but no [JsonSerializable]",
+        messageFormat: "Context '{0}' is marked [GenerateScalarValueConverters] but declares no [JsonSerializable] attribute. System.Text.Json's source generator only sees attributes written in your own source, so it will skip this context entirely and the build will fail with CS0534. Add at least one [JsonSerializable(typeof(...))] for a type you actually serialize.",
+        category: "Trellis",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "[GenerateScalarValueConverters] generates value object converters, but it cannot make System.Text.Json's generator emit the context itself. " +
+                     "Roslyn source generators all analyze the same original compilation and cannot observe each other's output, so a [JsonSerializable] added by Trellis arrives too late to be seen. " +
+                     "The context needs at least one hand-written [JsonSerializable] attribute.",
+        helpLinkUri: HelpLinkBase);
+
+    /// <summary>
     /// Initializes the incremental generator pipeline.
     /// </summary>
     /// <param name="context">The initialization context provided by the compiler.</param>
@@ -131,16 +157,31 @@ namespace Trellis.Asp;
 using System;
 
 /// <summary>
-/// Marks a JsonSerializerContext for automatic generation of [JsonSerializable] attributes
-/// for all IScalarValue types in the assembly.
+/// Marks a JsonSerializerContext for generation of AOT-safe converters for all
+/// IScalarValue types in the assembly.
 /// </summary>
 /// <remarks>
 /// Apply this attribute to a partial JsonSerializerContext class to have the source generator
-/// automatically add [JsonSerializable] attributes for all value object types, enabling
-/// AOT-compatible JSON serialization.
+/// emit reflection-free JsonConverter&lt;T&gt; implementations for every value object, plus a
+/// GeneratedValueObjectConverterFactory that registers them.
+///
+/// Two things this attribute cannot do for you, because Roslyn source generators all analyze
+/// the same original compilation and cannot observe one another's output:
+///
+/// 1. The context still needs at least one [JsonSerializable] of its own. Without it,
+///    System.Text.Json's generator skips the context and the build fails with CS0534.
+///    Trellis reports TRLS059 to explain this.
+/// 2. Any value object reachable from a serialized type still needs a [JsonConverter]
+///    written in your own source. Otherwise System.Text.Json treats it as a POCO and emits
+///    a parameterless constructor call that does not exist, failing with CS1729.
 /// </remarks>
 /// <example>
 /// <code>
+/// [JsonConverter(typeof(ParsableJsonConverter&lt;CustomerId&gt;))]
+/// public partial class CustomerId : RequiredGuid&lt;CustomerId&gt;
+/// {
+/// }
+///
 /// [GenerateScalarValueConverters]
 /// [JsonSerializable(typeof(MyDto))]
 /// public partial class AppJsonSerializerContext : JsonSerializerContext
@@ -415,6 +456,21 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         ImmutableArray<ScalarValueInfo> scalarValues,
         SourceProductionContext context)
     {
+        foreach (var contextClass in contextClasses)
+        {
+            var contextModel = compilation.GetSemanticModel(contextClass.SyntaxTree);
+            if (contextModel.GetDeclaredSymbol(contextClass) is not INamedTypeSymbol symbol)
+                continue;
+
+            if (!HasJsonSerializableAttribute(symbol))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    SerializerContextHasNoJsonSerializableDescriptor,
+                    location: contextClass.Identifier.GetLocation(),
+                    symbol.ToDisplayString()));
+            }
+        }
+
         if (scalarValues.IsDefaultOrEmpty)
             return;
 
@@ -448,16 +504,23 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
 
         // Generate AOT-compatible JSON converters
         GenerateJsonConverters(supportedValueObjects, context);
+    }
 
-        // Generate partial class extensions for each JsonSerializerContext with our attribute
-        foreach (var contextClass in contextClasses)
+    /// <summary>
+    /// Returns <c>true</c> when the context declares at least one <c>[JsonSerializable]</c>
+    /// attribute in the user's own source, which is the precondition for System.Text.Json's
+    /// generator to emit the context at all.
+    /// </summary>
+    private static bool HasJsonSerializableAttribute(INamedTypeSymbol contextSymbol)
+    {
+        foreach (var attribute in contextSymbol.GetAttributes())
         {
-            var semanticModel = compilation.GetSemanticModel(contextClass.SyntaxTree);
-            if (semanticModel.GetDeclaredSymbol(contextClass) is INamedTypeSymbol contextSymbol)
-            {
-                GenerateSerializerContextExtension(contextSymbol, supportedValueObjects, context);
-            }
+            if (attribute.AttributeClass?.Name == "JsonSerializableAttribute"
+                && attribute.AttributeClass.ContainingNamespace?.ToDisplayString() == "System.Text.Json.Serialization")
+                return true;
         }
+
+        return false;
     }
 
     /// <summary>
@@ -806,211 +869,6 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine("        return _converters.TryGetValue(typeToConvert, out var converter) ? converter : null;");
         sb.AppendLine("    }");
         sb.AppendLine("}");
-    }
-
-    /// <summary>
-    /// Generates a partial class extending the user's JsonSerializerContext with [JsonSerializable] attributes.
-    /// </summary>
-    private static void GenerateSerializerContextExtension(
-        INamedTypeSymbol contextSymbol,
-        List<ScalarValueInfo> scalarValueInfo,
-        SourceProductionContext context)
-    {
-        var contextNamespace = contextSymbol.ContainingNamespace.IsGlobalNamespace
-            ? string.Empty
-            : contextSymbol.ContainingNamespace.ToDisplayString();
-        var nestingParents = GetNestingParents(contextSymbol);
-        var hintName = BuildSerializerContextHintName(contextSymbol);
-
-        var sb = new StringBuilder();
-        sb.AppendLine("// <auto-generated/>");
-        sb.AppendLine("#nullable enable");
-        sb.AppendLine();
-        if (!string.IsNullOrEmpty(contextNamespace))
-        {
-            sb.AppendLine($"namespace {contextNamespace};");
-            sb.AppendLine();
-        }
-
-        sb.AppendLine("using System.Text.Json.Serialization;");
-        sb.AppendLine();
-
-        foreach (var parent in nestingParents)
-        {
-            sb.AppendLine(parent);
-            sb.AppendLine("{");
-        }
-
-        // Add [JsonSerializable] attributes for all value object types
-        foreach (var vo in scalarValueInfo)
-        {
-            sb.AppendLine($"[JsonSerializable(typeof({vo.FullTypeName}))]");
-        }
-
-        sb.AppendLine(BuildContainingTypeDeclaration(contextSymbol));
-        sb.AppendLine("{");
-        sb.AppendLine("}");
-
-        foreach (var _ in nestingParents)
-        {
-            sb.AppendLine("}");
-        }
-
-        context.AddSource(hintName, sb.ToString());
-    }
-
-    private static string[] GetNestingParents(INamedTypeSymbol contextSymbol)
-    {
-        var nestingParents = new List<string>();
-        var parent = contextSymbol.ContainingType;
-
-        while (parent is not null)
-        {
-            nestingParents.Insert(0, BuildContainingTypeDeclaration(parent));
-            parent = parent.ContainingType;
-        }
-
-        return nestingParents.ToArray();
-    }
-
-    private static string BuildSerializerContextHintName(INamedTypeSymbol contextSymbol)
-    {
-        var parts = new List<string>();
-        if (!contextSymbol.ContainingNamespace.IsGlobalNamespace)
-            parts.AddRange(contextSymbol.ContainingNamespace.ToDisplayString().Split('.'));
-
-        var typeNames = new Stack<string>();
-        var current = contextSymbol;
-        while (current is not null)
-        {
-            typeNames.Push(current.MetadataName);
-            current = current.ContainingType;
-        }
-
-        parts.AddRange(typeNames);
-        return $"{string.Join("__", parts.Select(SanitizeHintNamePart))}__ValueObjects.g.cs";
-    }
-
-    private static string BuildContainingTypeDeclaration(INamedTypeSymbol typeSymbol)
-    {
-        var parts = new List<string> { AccessibilityToString(typeSymbol.DeclaredAccessibility) };
-
-        if (typeSymbol.IsStatic)
-        {
-            parts.Add("static");
-        }
-        else
-        {
-            if (typeSymbol.IsAbstract && typeSymbol.TypeKind == TypeKind.Class)
-                parts.Add("abstract");
-            if (typeSymbol.IsSealed && typeSymbol.TypeKind == TypeKind.Class)
-                parts.Add("sealed");
-            if (typeSymbol.IsReadOnly && typeSymbol.TypeKind == TypeKind.Struct)
-                parts.Add("readonly");
-        }
-
-        parts.Add("partial");
-        parts.Add(TypeKindKeyword(typeSymbol));
-        parts.Add(FormatTypeName(typeSymbol));
-
-        var declaration = string.Join(" ", parts);
-        var constraints = FormatTypeParameterConstraints(typeSymbol);
-        return string.IsNullOrEmpty(constraints) ? declaration : $"{declaration} {constraints}";
-    }
-
-    private static string AccessibilityToString(Accessibility accessibility) =>
-        accessibility switch
-        {
-            Accessibility.Public => "public",
-            Accessibility.Internal => "internal",
-            Accessibility.Protected => "protected",
-            Accessibility.Private => "private",
-            Accessibility.ProtectedOrInternal => "protected internal",
-            Accessibility.ProtectedAndInternal => "private protected",
-            _ => "internal"
-        };
-
-    private static string TypeKindKeyword(INamedTypeSymbol typeSymbol) =>
-        typeSymbol.IsRecord
-            ? typeSymbol.IsValueType ? "record struct" : "record class"
-            : typeSymbol.TypeKind switch
-            {
-                TypeKind.Struct => "struct",
-                TypeKind.Interface => "interface",
-                _ => "class"
-            };
-
-    private static string FormatTypeName(INamedTypeSymbol typeSymbol) =>
-        typeSymbol.TypeParameters.Length > 0
-            ? $"{EscapeIdentifier(typeSymbol.Name)}<{string.Join(", ", typeSymbol.TypeParameters.Select(FormatTypeParameterName))}>"
-            : EscapeIdentifier(typeSymbol.Name);
-
-    private static string FormatTypeParameterName(ITypeParameterSymbol typeParameter)
-    {
-        var variance = typeParameter.Variance switch
-        {
-            VarianceKind.In => "in ",
-            VarianceKind.Out => "out ",
-            _ => string.Empty
-        };
-
-        return variance + EscapeIdentifier(typeParameter.Name);
-    }
-
-    private static string FormatTypeParameterConstraints(INamedTypeSymbol typeSymbol)
-    {
-        if (typeSymbol.TypeParameters.Length == 0)
-            return string.Empty;
-
-        var clauses = new List<string>();
-        foreach (var typeParameter in typeSymbol.TypeParameters)
-        {
-            var constraints = new List<string>();
-
-            if (typeParameter.HasUnmanagedTypeConstraint)
-                constraints.Add("unmanaged");
-            else if (typeParameter.HasValueTypeConstraint)
-                constraints.Add("struct");
-            else if (typeParameter.HasReferenceTypeConstraint)
-                constraints.Add(typeParameter.ReferenceTypeConstraintNullableAnnotation == NullableAnnotation.Annotated ? "class?" : "class");
-            else if (typeParameter.HasNotNullConstraint)
-                constraints.Add("notnull");
-
-            constraints.AddRange(typeParameter.ConstraintTypes.Select(static constraintType =>
-                constraintType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
-
-            if (typeParameter.HasConstructorConstraint
-                && !typeParameter.HasValueTypeConstraint
-                && !typeParameter.HasUnmanagedTypeConstraint)
-                constraints.Add("new()");
-
-            if (constraints.Count > 0)
-                clauses.Add($"where {EscapeIdentifier(typeParameter.Name)} : {string.Join(", ", constraints)}");
-        }
-
-        return string.Join(" ", clauses);
-    }
-
-    private static string EscapeIdentifier(string name) =>
-        SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None ? "@" + name : name;
-
-    private static string SanitizeHintNamePart(string part)
-    {
-        var builder = new StringBuilder(part.Length);
-
-        foreach (var character in part)
-        {
-            if (character is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or (>= '0' and <= '9'))
-            {
-                builder.Append(character);
-                continue;
-            }
-
-            builder.Append("_u");
-            builder.Append(((int)character).ToString("X4", System.Globalization.CultureInfo.InvariantCulture));
-        }
-
-        return builder.Length == 0 ? "_" : builder.ToString();
     }
 
     private static string CreateGeneratedTypeName(string fullTypeName)

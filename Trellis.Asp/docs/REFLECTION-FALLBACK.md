@@ -22,6 +22,12 @@ The Trellis.Asp library provides **automatic fallback to reflection** when the s
 ```
 
 ```csharp
+// Value objects reachable from the context must carry [JsonConverter] in your own source.
+[JsonConverter(typeof(ParsableJsonConverter<OrderId>))]
+public partial class OrderId : RequiredGuid<OrderId>
+{
+}
+
 [GenerateScalarValueConverters]
 [JsonSerializable(typeof(MyDto))]
 public partial class AppJsonSerializerContext : JsonSerializerContext
@@ -32,8 +38,14 @@ public partial class AppJsonSerializerContext : JsonSerializerContext
 **How it works:**
 - Source generator runs at compile time
 - Generates strongly-typed JSON converters
-- Adds `[JsonSerializable]` attributes automatically
 - Zero reflection, fully AOT-compatible
+
+> **Why the hand-written attributes?** Roslyn source generators all analyze the same original
+> compilation and cannot observe one another's output. Anything Trellis emits is therefore
+> invisible to System.Text.Json's generator, so the `[JsonSerializable]` on the context and the
+> `[JsonConverter]` on each value object have to be written by you. Omitting the first fails the
+> build with CS0534 (Trellis reports TRLS059 to explain it); omitting the second fails with
+> CS1729 inside System.Text.Json's own generated file.
 
 ### 2. Reflection Path (Automatic Fallback) 🔄 **Works Everywhere**
 
@@ -195,8 +207,15 @@ When ready for **production** or **Native AOT**:
                      ReferenceOutputAssembly="false" />
    ```
 
-2. Add attribute to your `JsonSerializerContext`:
+2. Add attributes:
    ```csharp
+   // On each value object the context can reach:
+   [JsonConverter(typeof(ParsableJsonConverter<OrderId>))]
+   public partial class OrderId : RequiredGuid<OrderId>
+   {
+   }
+
+   // On the context — [JsonSerializable] must be present or the build fails with CS0534:
    [GenerateScalarValueConverters]  // ← Add this line
    [JsonSerializable(typeof(MyDto))]
    public partial class AppJsonSerializerContext : JsonSerializerContext
@@ -204,7 +223,7 @@ When ready for **production** or **Native AOT**:
    }
    ```
 
-3. That's it! The source generator takes over automatically.
+3. Register the generated factory in your `JsonSerializerOptions.Converters`.
 
 **Your application code doesn't change at all** - same DTOs, same controllers, same validation logic.
 

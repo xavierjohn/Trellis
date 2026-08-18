@@ -374,6 +374,44 @@ public sealed partial class DurationTicks : RequiredLong<DurationTicks>;
 // and a local suppression documenting that the custom converter owns serialization.
 ```
 
+## TRLS059 — `[GenerateScalarValueConverters]` context without `[JsonSerializable]`
+
+Severity: Warning.
+
+Roslyn source generators all analyze the same original compilation and cannot observe one another's output. Anything Trellis emits is therefore invisible to System.Text.Json's generator, so the attributes STJ needs must be written by hand. Getting this wrong produces compiler errors that point at generated code and never mention the real cause.
+
+```csharp
+// WRONG — the context declares no [JsonSerializable] of its own.
+// STJ's generator skips the context entirely and never emits the abstract members
+// JsonSerializerContext requires, so the build fails with two CS0534 errors. // TRLS059
+[GenerateScalarValueConverters]
+public partial class AppJsonContext : JsonSerializerContext;
+
+// WRONG — OrderId is reachable from a serialized DTO but carries no [JsonConverter]
+// in original source. STJ treats it as a POCO and emits `ObjectCreator = () => new OrderId()`,
+// which does not exist on a Trellis value object, failing with CS1729 inside STJ's own file.
+public partial class OrderId : RequiredGuid<OrderId>;
+
+public sealed class OrderDto
+{
+    public OrderId? Id { get; set; }
+}
+
+[GenerateScalarValueConverters]
+[JsonSerializable(typeof(OrderDto))]
+public partial class AppJsonContext2 : JsonSerializerContext;
+
+// FIX — declare both attributes yourself.
+[JsonConverter(typeof(ParsableJsonConverter<OrderId>))]
+public partial class OrderId : RequiredGuid<OrderId>;
+
+[GenerateScalarValueConverters]
+[JsonSerializable(typeof(OrderDto))]
+public partial class AppJsonContext : JsonSerializerContext;
+```
+
+Declaring `[JsonConverter]` yourself is explicitly supported: `RequiredPartialClassGenerator` detects the attribute on your partial and skips its own, so there is no CS0579 duplicate. Use `ParsableJsonConverter<T>` for scalar `Required*` types and `RequiredEnumJsonConverter<T>` for `RequiredEnum<T>` — the same converters Trellis would have emitted.
+
 ## TRLS056 — Required value object redeclares a generated member
 
 `Required*<TSelf>` partial classes get their factory, parse, conversion, and GUID helper surface from `RequiredPartialClassGenerator`. Do not redeclare those members in the user partial.
