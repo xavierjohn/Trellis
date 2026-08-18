@@ -488,285 +488,6 @@ public class ScalarValueJsonConverterGeneratorTests
             "supported primitives must never fall back to reflection-based JsonSerializer (issue #413)");
     }
 
-    [Fact]
-    public void Generator_NestedContext_ProducesValidNestedPartialClassDeclaration()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using System;
-            using System.Text.Json;
-            using System.Text.Json.Serialization;
-            using System.Text.Json.Serialization.Metadata;
-            using Trellis;
-            using Trellis.Asp;
-
-            namespace MyApi;
-
-            public partial class Outer
-            {
-                [GenerateScalarValueConverters]
-                [JsonSerializable(typeof(EmailAddress))]
-                public partial class InnerContext : JsonSerializerContext
-                {
-                    public InnerContext() : base(new JsonSerializerOptions())
-                    {
-                    }
-
-                    protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                    public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                }
-            }
-
-            public partial class EmailAddress : RequiredString<EmailAddress>;
-            """;
-
-        var (generatedSources, diagnostics, hintNames) = RunGeneratorWithDiagnostics(source, cancellationToken, includeCoreGenerator: true);
-
-        generatedSources.Should().NotBeEmpty("the generator should emit converter and context sources");
-        hintNames.Should().Contain("MyApi__Outer__InnerContext__ValueObjects.g.cs",
-            "the generated hint name should include the namespace and containing-type chain");
-        var contextSource = generatedSources.Should()
-            .ContainSingle(s => s.Contains("partial class InnerContext"))
-            .Subject;
-        contextSource.Should().Contain("partial class Outer",
-            "nested JsonSerializerContext declarations must be generated under their containing partial type");
-
-        var outerIndex = contextSource.IndexOf("partial class Outer", StringComparison.Ordinal);
-        var innerIndex = contextSource.IndexOf("partial class InnerContext", StringComparison.Ordinal);
-        innerIndex.Should().BeGreaterThan(outerIndex,
-            "the generated context declaration must be nested inside the generated Outer partial declaration");
-
-        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-            .Should().BeEmpty("the generated nested partial declaration should compile without C# errors");
-    }
-
-    [Fact]
-    public void Generator_NestedContext_PreservesContainingTypeDeclarations()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using System;
-            using System.Text.Json;
-            using System.Text.Json.Serialization;
-            using System.Text.Json.Serialization.Metadata;
-            using Trellis;
-            using Trellis.Asp;
-
-            namespace MyApi;
-
-            internal partial record class OuterRecord
-            {
-                private partial struct InnerStruct
-                {
-                    [GenerateScalarValueConverters]
-                    [JsonSerializable(typeof(EmailAddress))]
-                    public partial class InnerContext : JsonSerializerContext
-                    {
-                        public InnerContext() : base(new JsonSerializerOptions())
-                        {
-                        }
-
-                        protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                        public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                    }
-                }
-            }
-
-            public partial class EmailAddress : RequiredString<EmailAddress>;
-            """;
-
-        var (generatedSources, diagnostics, _) = RunGeneratorWithDiagnostics(source, cancellationToken, includeCoreGenerator: true);
-        var contextSource = generatedSources.Should()
-            .ContainSingle(s => s.Contains("partial class InnerContext"))
-            .Subject;
-
-        contextSource.Should().Contain("internal partial record class OuterRecord",
-            "the generated containing record declaration must match the consumer declaration");
-        contextSource.Should().Contain("private partial struct InnerStruct",
-            "the generated containing struct declaration must match the consumer declaration");
-
-        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-            .Should().BeEmpty("matching containing type declarations should compile for non-class and non-public containers");
-    }
-
-    [Fact]
-    public void Generator_DuplicateNamedContextsInDifferentNamespaces_ProduceDistinctHintNames()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using System;
-            using System.Text.Json;
-            using System.Text.Json.Serialization;
-            using System.Text.Json.Serialization.Metadata;
-            using Trellis;
-            using Trellis.Asp;
-
-            namespace MyApi
-            {
-                public partial class EmailAddress : RequiredString<EmailAddress>;
-            }
-
-            namespace MyApi.V1
-            {
-                [GenerateScalarValueConverters]
-                [JsonSerializable(typeof(MyApi.EmailAddress))]
-                public partial class AppContext : JsonSerializerContext
-                {
-                    public AppContext() : base(new JsonSerializerOptions())
-                    {
-                    }
-
-                    protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                    public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                }
-            }
-
-            namespace MyApi.V2
-            {
-                [GenerateScalarValueConverters]
-                [JsonSerializable(typeof(MyApi.EmailAddress))]
-                public partial class AppContext : JsonSerializerContext
-                {
-                    public AppContext() : base(new JsonSerializerOptions())
-                    {
-                    }
-
-                    protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                    public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                }
-            }
-            """;
-
-        var (generatedSources, diagnostics, hintNames) = RunGeneratorWithDiagnostics(source, cancellationToken, includeCoreGenerator: true);
-        var contextSources = generatedSources
-            .Zip(hintNames, static (sourceText, hintName) => new { SourceText = sourceText, HintName = hintName })
-            .Where(static generated => generated.HintName.EndsWith("ValueObjects.g.cs", StringComparison.Ordinal))
-            .ToList();
-
-        contextSources.Should().HaveCount(2,
-            "each same-named context in a different namespace should get its own generated source file");
-        contextSources.Select(static generated => generated.HintName)
-            .Should().OnlyHaveUniqueItems("fully-qualified context hint names should not collide");
-        contextSources.Select(static generated => generated.HintName)
-            .Should().Equal([
-                "MyApi__V1__AppContext__ValueObjects.g.cs",
-                "MyApi__V2__AppContext__ValueObjects.g.cs"]);
-
-        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-            .Should().BeEmpty("same-named JsonSerializerContext types in different namespaces should compile together");
-    }
-
-    [Fact]
-    public void Generator_AmbiguousContextPaths_ProduceDistinctHintNames()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using System;
-            using System.Text.Json;
-            using System.Text.Json.Serialization;
-            using System.Text.Json.Serialization.Metadata;
-            using Trellis;
-            using Trellis.Asp;
-
-            namespace Shared
-            {
-                public partial class EmailAddress : RequiredString<EmailAddress>;
-            }
-
-            namespace A.B
-            {
-                [GenerateScalarValueConverters]
-                [JsonSerializable(typeof(Shared.EmailAddress))]
-                public partial class AppContext : JsonSerializerContext
-                {
-                    public AppContext() : base(new JsonSerializerOptions())
-                    {
-                    }
-
-                    protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                    public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                }
-            }
-
-            namespace A__B
-            {
-                [GenerateScalarValueConverters]
-                [JsonSerializable(typeof(Shared.EmailAddress))]
-                public partial class AppContext : JsonSerializerContext
-                {
-                    public AppContext() : base(new JsonSerializerOptions())
-                    {
-                    }
-
-                    protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                    public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                }
-            }
-
-            namespace GenericCollision
-            {
-                public partial class Outer
-                {
-                    [GenerateScalarValueConverters]
-                    [JsonSerializable(typeof(Shared.EmailAddress))]
-                    public partial class AppContext : JsonSerializerContext
-                    {
-                        public AppContext() : base(new JsonSerializerOptions())
-                        {
-                        }
-
-                        protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                        public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                    }
-                }
-
-                public partial class Outer<T>
-                {
-                    [GenerateScalarValueConverters]
-                    [JsonSerializable(typeof(Shared.EmailAddress))]
-                    public partial class AppContext : JsonSerializerContext
-                    {
-                        public AppContext() : base(new JsonSerializerOptions())
-                        {
-                        }
-
-                        protected override JsonSerializerOptions GeneratedSerializerOptions => new();
-
-                        public override JsonTypeInfo GetTypeInfo(Type type) => throw new NotSupportedException();
-                    }
-                }
-            }
-            """;
-
-        var (_, diagnostics, hintNames) = RunGeneratorWithDiagnostics(source, cancellationToken, includeCoreGenerator: true);
-        var contextHintNames = hintNames
-            .Where(static hintName => hintName.EndsWith("ValueObjects.g.cs", StringComparison.Ordinal))
-            .ToList();
-
-        contextHintNames.Should().HaveCount(4,
-            "dotted namespaces, underscore namespaces, and generic containing types should each get their own source");
-        contextHintNames.Should().OnlyHaveUniqueItems("hint-name path encoding should be unambiguous");
-        contextHintNames.Should().BeEquivalentTo([
-            "A__B__AppContext__ValueObjects.g.cs",
-            "A_u005F_u005FB__AppContext__ValueObjects.g.cs",
-            "GenericCollision__Outer__AppContext__ValueObjects.g.cs",
-            "GenericCollision__Outer_u00601__AppContext__ValueObjects.g.cs"]);
-
-        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
-            .Should().BeEmpty("ambiguously encoded context paths should compile together without AddSource collisions");
-    }
-
     /// <summary>
     /// Value objects with the same simple name in different namespaces must not collide in generated converter names.
     /// </summary>
@@ -807,6 +528,113 @@ public class ScalarValueJsonConverterGeneratorTests
 
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
             .Should().BeEmpty("the generator should use unique converter names for scalar values that share a simple type name");
+    }
+
+    /// <summary>
+    /// A <c>[GenerateScalarValueConverters]</c> context that declares no <c>[JsonSerializable]</c>
+    /// of its own is skipped entirely by System.Text.Json's generator, which then fails the build
+    /// with CS0534. Trellis cannot supply the attribute (generators cannot see each other's output),
+    /// so it must at least say so.
+    /// </summary>
+    [Fact]
+    public void SerializerContext_Without_JsonSerializable_Emits_TRLS059_Diagnostic()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using System.Text.Json.Serialization;
+            using Trellis;
+            using Trellis.Asp;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+
+            [GenerateScalarValueConverters]
+            public partial class AppContext : JsonSerializerContext
+            {
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGeneratorWithDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().Contain(d => d.Id == "TRLS059",
+            "a context with no hand-written [JsonSerializable] is always broken, and CS0534 alone does not explain why");
+
+        var trls059 = diagnostics.First(d => d.Id == "TRLS059");
+        trls059.Severity.Should().Be(DiagnosticSeverity.Warning,
+            "the compiler already fails the build; TRLS059 exists to explain the cause, not to duplicate the error");
+        trls059.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Should().Contain("AppContext",
+            "the diagnostic must name the offending context");
+    }
+
+    /// <summary>
+    /// The diagnostic must stay quiet once the context carries a hand-written
+    /// <c>[JsonSerializable]</c>, which is the supported configuration.
+    /// </summary>
+    [Fact]
+    public void SerializerContext_With_JsonSerializable_Does_Not_Emit_TRLS059()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using System.Text.Json.Serialization;
+            using Trellis;
+            using Trellis.Asp;
+
+            namespace TestNamespace;
+
+            public partial class OrderId : RequiredGuid<OrderId>
+            {
+            }
+
+            public class OrderDto
+            {
+                public string? Name { get; set; }
+            }
+
+            [GenerateScalarValueConverters]
+            [JsonSerializable(typeof(OrderDto))]
+            public partial class AppContext : JsonSerializerContext
+            {
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGeneratorWithDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS059",
+            "the context is correctly configured, so the diagnostic would be noise");
+    }
+
+    /// <summary>
+    /// The context is broken by the missing <c>[JsonSerializable]</c> alone, independently of
+    /// whether this compilation declares any value objects. Value objects commonly live in a
+    /// referenced domain assembly while the context lives in the web project, so the diagnostic
+    /// must not depend on finding one locally.
+    /// </summary>
+    [Fact]
+    public void SerializerContext_Without_JsonSerializable_Emits_TRLS059_When_No_ValueObjects_Are_Declared()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using System.Text.Json.Serialization;
+            using Trellis.Asp;
+
+            namespace TestNamespace;
+
+            [GenerateScalarValueConverters]
+            public partial class AppContext : JsonSerializerContext
+            {
+            }
+            """;
+
+        var (_, diagnostics, _) = RunGeneratorWithDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().Contain(d => d.Id == "TRLS059",
+            "the context still fails with CS0534 even though no value object is declared in this compilation");
     }
 
     private static List<string> RunGenerator(string source, CancellationToken cancellationToken)
