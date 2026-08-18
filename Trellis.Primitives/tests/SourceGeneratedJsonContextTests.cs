@@ -25,7 +25,26 @@ public sealed class SgOrder
     public string? Description { get; set; }
 }
 
+/// <summary>
+/// The enum-backed emission site is a second, independent code path in the generator. It
+/// carries the same duplicate-attribute hazard as the scalar site, so it needs its own real
+/// compilation guarding it — a generator unit test cannot catch a cross-generator clash.
+/// </summary>
+[JsonConverter(typeof(RequiredEnumJsonConverter<SgFulfilment>))]
+public partial class SgFulfilment : RequiredEnum<SgFulfilment>
+{
+    public static readonly SgFulfilment Pending = new();
+
+    public static readonly SgFulfilment Shipped = new();
+}
+
+public sealed class SgShipment
+{
+    public SgFulfilment? Fulfilment { get; set; }
+}
+
 [JsonSerializable(typeof(SgOrder))]
+[JsonSerializable(typeof(SgShipment))]
 public partial class SgOrderJsonContext : JsonSerializerContext
 {
 }
@@ -67,5 +86,31 @@ public class SourceGeneratedJsonContextTests
         typeInfo.Should().NotBeNull();
         typeInfo!.Converter.Should().BeOfType<ParsableJsonConverter<SgOrderId>>(
             "STJ must route the value object through the converter named in original source");
+    }
+
+    [Fact]
+    public void EnumValueObject_reachable_from_source_generated_context_round_trips_as_symbolic_name()
+    {
+        var shipment = new SgShipment { Fulfilment = SgFulfilment.Shipped };
+
+        var json = JsonSerializer.Serialize(shipment, SgOrderJsonContext.Default.SgShipment);
+
+        json.Should().Contain("\"Shipped\"",
+            "the enum value object must serialize to its symbolic name, not POCO metadata");
+
+        var restored = JsonSerializer.Deserialize(json, SgOrderJsonContext.Default.SgShipment);
+
+        restored.Should().NotBeNull();
+        restored!.Fulfilment.Should().Be(SgFulfilment.Shipped);
+    }
+
+    [Fact]
+    public void SourceGeneratedContext_resolves_enum_value_object_through_the_declared_converter()
+    {
+        var typeInfo = SgOrderJsonContext.Default.GetTypeInfo(typeof(SgFulfilment));
+
+        typeInfo.Should().NotBeNull();
+        typeInfo!.Converter.Should().BeOfType<RequiredEnumJsonConverter<SgFulfilment>>(
+            "the enum emission site must also step aside for the user-declared converter");
     }
 }
