@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>Convert fluent validation errors to Trellis Validation errors.</Description>
     <PackageTags>trellis;validation;fluentvalidation;railway-oriented;result;error-handling;ddd</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
@@ -8,7 +7,6 @@
     <TrellisApiRefName>fluentvalidation</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="FluentValidation" />

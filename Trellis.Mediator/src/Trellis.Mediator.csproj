@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>Result-aware pipeline behaviors for martinothamar/Mediator. Provides validation, authorization, logging, tracing, and exception handling behaviors that understand Trellis Result types and short-circuit correctly.</Description>
     <PackageTags>trellis;mediator;cqrs;pipeline;result;railway-oriented;validation;authorization;functional-programming</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
@@ -8,7 +7,6 @@
     <TrellisApiRefName>mediator</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />

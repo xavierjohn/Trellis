@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>Mediator pipeline adapter that plugs FluentValidation validators into the Trellis Mediator validation stage. Open-generic IMessageValidator&lt;TMessage&gt; that resolves every IValidator&lt;TMessage&gt; registered in DI and aggregates failures into a single Error.InvalidInput response.</Description>
     <PackageTags>trellis;mediator;validation;fluentvalidation;pipeline;cqrs;railway-oriented;result;ddd</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
@@ -8,7 +7,6 @@
     <TrellisApiRefName>mediator-fluentvalidation</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FluentValidation" />

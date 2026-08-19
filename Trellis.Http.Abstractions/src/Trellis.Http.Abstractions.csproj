@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <TrellisApiRefName>http-abstractions</TrellisApiRefName>
     <Description>Transport-aware error types and conditional-request helpers shared by Trellis.Asp (server) and Trellis.Http (client). Hosts the HttpError closed union, ETag/precondition vocabulary, authentication challenges, retry advice, and representation metadata.</Description>
     <PackageTags>trellis;http;abstractions;errors;etag;rfc-9110;rfc-9457;result;railway-oriented</PackageTags>
@@ -8,7 +7,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />

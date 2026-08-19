@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>Transactional outbox for Trellis. Atomically captures aggregate domain events to an EF Core table in the same transaction as the aggregate change, then relays them to Trellis domain-event handlers — durable, at-least-once, in-process dispatch.</Description>
     <PackageTags>trellis;outbox;efcore;domain-events;ddd;reliability;messaging;railway-oriented</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -15,7 +14,6 @@
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />

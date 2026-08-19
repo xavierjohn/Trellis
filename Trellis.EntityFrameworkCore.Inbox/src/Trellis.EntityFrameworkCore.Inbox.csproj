@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>Transactional inbox for Trellis — the consume-side complement to the outbox. Makes integration-event consumption idempotent: redeliveries of the same message are deduplicated by message id within the consumer's unit of work, so a handler's side effects commit exactly once. EF Core reference store.</Description>
     <PackageTags>trellis;inbox;efcore;integration-events;idempotency;ddd;reliability;messaging</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -12,7 +11,6 @@
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />

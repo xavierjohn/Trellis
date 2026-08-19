@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>
       Infrastructure and ready-to-use implementations for primitive value objects in Domain-Driven Design. Includes base classes (RequiredString, RequiredGuid) with source generation, plus EmailAddress with RFC 5322 validation. Eliminates primitive obsession with strongly-typed domain primitives.
     </Description>
@@ -10,7 +9,6 @@
     <TrellisApiRefName>primitives</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />

@@ -23,7 +23,6 @@
     <PackageId>Trellis.Testing.Idempotency</PackageId>
     <Description>Executable conformance suite for Trellis IIdempotencyStore implementations - inherit one class to prove a Redis, Cosmos DB, EF Core, or bespoke store satisfies the reserve, replay, takeover, and abandon contract</Description>
     <PackageTags>trellis;testing;idempotency;conformance;contract-tests;aspnetcore;redis;cosmosdb;http</PackageTags>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <TrellisApiRefName>testing-idempotency</TrellisApiRefName>
   </PropertyGroup>
 
@@ -37,7 +36,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
