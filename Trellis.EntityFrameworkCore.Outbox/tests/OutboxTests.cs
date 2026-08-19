@@ -447,7 +447,7 @@ public sealed class OutboxTests
     }
 
     [Fact]
-    public async Task Relay_marks_processed_when_a_handler_throws()
+    public async Task Relay_retries_and_does_not_mark_processed_when_a_handler_throws()
     {
         var ct = TestContext.Current.CancellationToken;
         using var connection = new SqliteConnection("DataSource=:memory:");
@@ -482,21 +482,22 @@ public sealed class OutboxTests
 
         var drained = await relay.DrainAsync(ct);
 
-        // Delivery, not handler success: the publisher swallows the handler exception, so the relay
-        // marks the message processed (no retry) rather than recording a failure.
+        // Delivery is not "handed to the publisher" — it is "every handler completed". A throwing handler
+        // leaves the message pending so the durable retry can re-run it, rather than silently dropping the
+        // work with a log line nobody reads.
         drained.Should().Be(1);
         await using (var verify = provider.CreateAsyncScope())
         {
             var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
             var row = await context.Set<OutboxMessage>().SingleAsync(ct);
-            row.ProcessedAt.Should().NotBeNull();
-            row.Attempts.Should().Be(0);
+            row.ProcessedAt.Should().BeNull("the handler failed, so the message is not delivered");
+            row.Attempts.Should().Be(1);
+            row.LastError.Should().Contain("handler boom");
+            row.CompletedHandlers.Should().BeEmpty("the only handler failed");
         }
 
-        // A swallowed handler exception must NOT surface as a relay failure/parked log — that noise
-        // would mislead on-call into chasing a delivery problem that does not exist.
-        logs.Where(e => e.EventId.Name is "OutboxRelay.RelayAttemptFailed" or "OutboxRelay.MessageParked")
-            .Should().BeEmpty();
+        // On-call must see the failure: the whole point of the change is that it is no longer silent.
+        logs.Where(e => e.EventId.Name == "OutboxRelay.RelayAttemptFailed").Should().ContainSingle();
     }
 
     [Fact]

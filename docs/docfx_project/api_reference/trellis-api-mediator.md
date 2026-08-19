@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
-types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
+types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
 last_verified: 2026-08-18
 audience: [llm]
@@ -521,6 +521,36 @@ Publishes a single `IDomainEvent` by resolving and invoking all `IDomainEventHan
 | --- | --- | --- |
 | `ValueTask PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)` | `ValueTask` | Publishes to all matching handlers. Resolution uses `domainEvent.GetType()`. Non-cancellation handler exceptions are logged and swallowed; `OperationCanceledException` propagates when the supplied token is canceled so the caller can abort. Default implementation (`MediatorDomainEventPublisher`) is `internal` and registered by `AddDomainEventDispatch()`. |
 
+Swallowing is correct for this contract's callers: they dispatch **post-commit** and have no retry mechanism, so failing the request would report an error for a write that is already durable. Callers that *do* own a durable retry — principally the outbox relay — use [`IReportingDomainEventPublisher`](#ireportingdomaineventpublisher) instead.
+
+### IReportingDomainEventPublisher
+**Declaration**
+
+```csharp
+public interface IReportingDomainEventPublisher
+```
+
+The non-swallowing counterpart to `IDomainEventPublisher`: it publishes a domain event and **reports** each handler's outcome instead of logging and discarding failures, so a caller with a durable retry mechanism can retry only what actually failed. The transactional outbox relay is the framework's user; application code rarely calls it directly.
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `ValueTask<DomainEventDispatchReport> PublishReportingAsync(IDomainEvent domainEvent, IReadOnlySet<string>? completedHandlers, CancellationToken cancellationToken)` | `ValueTask<DomainEventDispatchReport>` | Publishes to all matching handlers, skipping any named in `completedHandlers` (by `DomainEventDispatchReport.HandlerIdentity`; pass `null` on a first attempt), and reports the outcome. Every handler is attempted — a failure never short-circuits its siblings. `OperationCanceledException` matching the token propagates rather than being reported. |
+
+**`DomainEventDispatchReport`**
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `static string HandlerIdentity(Type handlerType)` | `string` | The stable handler identity used throughout: `"{AssemblySimpleName}:{Type.FullName}"`. `FullName` alone is not collision-resistant — two assemblies can declare distinct handlers with the same namespace-qualified name, and skipping one because the other succeeded would silently drop work. The assembly's *simple* name keeps the identity stable across version bumps, so a rolling deploy does not re-run completed handlers. |
+| `CompletedHandlers` | `IReadOnlyList<string>` | Every handler now complete, by `HandlerIdentity` — both those that succeeded in this dispatch and those skipped as already complete. **Cumulative**, so a caller persisting it can overwrite rather than merge. |
+| `Failures` | `IReadOnlyList<DomainEventHandlerFailure>` | The handlers that threw, in invocation order. `DomainEventHandlerFailure` is a record of `HandlerType` and `Error`. |
+| `ResolutionFailure` | `Exception?` | Set when handler resolution itself failed, meaning *no* handler ran and nothing can be marked complete. |
+| `IsComplete` | `bool` | `true` when resolution succeeded and every resolved handler completed — i.e. no retry is needed. |
+| `FirstError` | `Exception?` | The first error observed, preferring `ResolutionFailure`; `null` when `IsComplete`. |
+
+`AddDomainEventDispatch()` registers both contracts (scoped) forwarding to the same `MediatorDomainEventPublisher` instance. Replacing `IDomainEventPublisher` does **not** replace this one — register both if you substitute your own dispatch implementation and use the outbox.
+
 ### IIntegrationEventHandler
 **Declaration**
 
@@ -704,7 +734,7 @@ DI registration helpers for the dispatch behavior, default publisher, and per-ev
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddDomainEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers `DomainEventDispatchBehavior<,>` (open generic, scoped) and the default `IDomainEventPublisher` (`MediatorDomainEventPublisher`, scoped). Calls `AddTrellisBehaviors()` first so the always-on behaviors are present. Yanks any prior open- or closed-generic `TransactionalCommandBehavior` registration and re-appends it last so dispatch sits outside the transaction and runs after commit. **Idempotent**. AOT-friendly (no scanning). |
+| `public static IServiceCollection AddDomainEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers `DomainEventDispatchBehavior<,>` (open generic, scoped) and the default publisher (`MediatorDomainEventPublisher`, scoped) under **both** `IDomainEventPublisher` and `IReportingDomainEventPublisher`. Calls `AddTrellisBehaviors()` first so the always-on behaviors are present. Yanks any prior open- or closed-generic `TransactionalCommandBehavior` registration and re-appends it last so dispatch sits outside the transaction and runs after commit. **Idempotent**. AOT-friendly (no scanning). |
 | `public static IServiceCollection AddDomainEventHandler<TEvent, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler>(this IServiceCollection services) where TEvent : IDomainEvent where THandler : class, IDomainEventHandler<TEvent>` | `IServiceCollection` | Registers a single `IDomainEventHandler<TEvent>` implementation as scoped, and ensures the dispatch behavior + publisher are wired. Use this for AOT/trim scenarios. **Idempotent**. |
 | `[RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use AddDomainEventHandler<TEvent, THandler> for AOT/trim scenarios.")] [RequiresDynamicCode("Constructs closed generic IDomainEventHandler<TEvent> at runtime.")] public static IServiceCollection AddDomainEventDispatch(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the assemblies for concrete `IDomainEventHandler<TEvent>` implementations and registers each as scoped. A type implementing handlers for multiple event types is registered once per interface. Also wires the dispatch behavior + publisher (idempotent). Throws `ArgumentNullException` when `services` or `assemblies` is null and `ArgumentException` when the array is empty or contains null. |
 
@@ -871,6 +901,7 @@ public interface IValidate
 public interface IMessageValidator<in TMessage> where TMessage : global::Mediator.IMessage
 public interface IDomainEventHandler<in TEvent> where TEvent : IDomainEvent
 public interface IDomainEventPublisher
+public interface IReportingDomainEventPublisher
 public interface IIntegrationEventHandler<in TEvent> where TEvent : IIntegrationEvent
 public interface IIntegrationEventPublisher
 public interface IIntegrationEventCollector

@@ -18,13 +18,19 @@ using Trellis.Mediator;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The guarantee is at-least-once <b>delivery</b>: a message is marked processed once it has been handed
-/// to the publisher. Per the <see cref="IDomainEventHandler{TEvent}"/> contract the publisher logs and
-/// swallows handler exceptions, so a <i>failing handler does not cause the message to retry</i> — only
-/// infrastructure failures (deserialization, the relay's own save) leave a message pending for a later
-/// attempt, up to <see cref="OutboxOptions.MaxAttempts"/>. Retry-until-handlers-succeed would require a
-/// non-swallowing publish path and is a planned follow-up. Handlers must be idempotent, since a crash
-/// between dispatch and the relay's save re-delivers the message.
+/// The guarantee is at-least-once <b>delivery</b>. A domain message is marked processed only once every
+/// registered handler has completed: a handler that throws leaves the message pending, and the retry
+/// re-invokes <i>only</i> the handlers that failed — <see cref="OutboxMessage.CompletedHandlers"/> records
+/// the ones that already succeeded, so an unrelated sibling failure never re-runs their side effects.
+/// Integration events produced by handlers that did succeed are still staged on that failed attempt, so
+/// skipping those handlers on the retry loses nothing. Infrastructure failures (deserialization, the
+/// relay's own save) behave the same way. Retries back off exponentially up to
+/// <see cref="OutboxOptions.MaxAttempts"/>, after which the message is parked (dead-lettered) and
+/// surfaces through <see cref="IOutboxMaintenance"/>.
+/// </para>
+/// <para>
+/// Handlers must still be idempotent: a crash between dispatch and the relay's bookkeeping save loses the
+/// progress record for that attempt and re-delivers to every handler.
 /// </para>
 /// </remarks>
 /// <typeparam name="TContext">The application's <see cref="DbContext"/> that owns the outbox table.</typeparam>
@@ -153,17 +159,32 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
                 else
                 {
                     var domainEvent = Deserialize<IDomainEvent>(message);
-                    var produced = await PublishDomainAndCollectAsync(domainEvent, cancellationToken).ConfigureAwait(false);
-                    if (produced.Count > 0)
+                    var dispatch = await PublishDomainAndCollectAsync(
+                        domainEvent, message.CompletedHandlers, cancellationToken).ConfigureAwait(false);
+                    if (dispatch.Produced.Count > 0)
                     {
                         // Materialize every row for THIS message before staging any of them, so a
                         // serialization failure on a later produced event does not leave earlier rows
                         // staged for a domain message that the catch then records as failed. The local
                         // list is discarded on throw; only a fully-converted set is enrolled.
-                        var rows = new List<OutboxMessage>(produced.Count);
-                        foreach (var integrationEvent in produced)
+                        var rows = new List<OutboxMessage>(dispatch.Produced.Count);
+                        foreach (var integrationEvent in dispatch.Produced)
                             rows.Add(CreateIntegrationRow(integrationEvent));
                         (stagedBySource ??= [])[message] = rows;
+                    }
+
+                    // Record progress only after the produced rows are materialized. Recording it first
+                    // would skip those handlers on the retry while their integration events were never
+                    // staged — losing them outright, which is strictly worse than re-running a handler.
+                    message.RecordHandlerProgress(dispatch.Report.CompletedHandlers);
+
+                    if (!dispatch.Report.IsComplete)
+                    {
+                        // A handler failed. The message stays pending so the durable retry re-runs ONLY
+                        // the failed handlers; the integration events the succeeded handlers produced are
+                        // still staged above, so skipping those handlers loses nothing.
+                        RecordFailure(message, dispatch.Report.FirstError!, ref failures);
+                        continue;
                     }
                 }
 
@@ -171,18 +192,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                var retryDelay = OutboxRetryBackoff.Compute(
-                    message.Id,
-                    message.Attempts + 1,
-                    _options.RetryBackoff,
-                    _options.MaxRetryBackoff,
-                    _options.RetryBackoffJitter);
-                // Schedule the retry from the time of THIS failure, not the drain-start `now`: a slow batch
-                // could otherwise set a retry time already in the past, defeating the backoff and recreating
-                // the tight retry loop. Deterministic under a fake clock that is not advanced mid-drain.
-                var failureNow = _timeProvider.GetUtcNow().UtcDateTime;
-                message.RecordFailure(ex.Message, failureNow + retryDelay);
-                (failures ??= []).Add((message, ex));
+                RecordFailure(message, ex, ref failures);
             }
         }
 
@@ -248,6 +258,22 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         }
     }
 
+    private void RecordFailure(OutboxMessage message, Exception error, ref List<(OutboxMessage Message, Exception Error)>? failures)
+    {
+        var retryDelay = OutboxRetryBackoff.Compute(
+            message.Id,
+            message.Attempts + 1,
+            _options.RetryBackoff,
+            _options.MaxRetryBackoff,
+            _options.RetryBackoffJitter);
+        // Schedule the retry from the time of THIS failure, not the drain-start `now`: a slow batch
+        // could otherwise set a retry time already in the past, defeating the backoff and recreating
+        // the tight retry loop. Deterministic under a fake clock that is not advanced mid-drain.
+        var failureNow = _timeProvider.GetUtcNow().UtcDateTime;
+        message.RecordFailure(error.Message, failureNow + retryDelay);
+        (failures ??= []).Add((message, error));
+    }
+
     private void LogFailures(List<(OutboxMessage Message, Exception Error)>? failures)
     {
         if (failures is null)
@@ -271,18 +297,19 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     // relay's own SaveChanges. This mirrors in-pipeline dispatch, where handlers run after the commit and
     // the unit of work has already closed. After publishing, drain whatever integration events the
     // handlers (translators) produced in this same scope so they can be staged for delivery.
-    private async Task<IReadOnlyList<IIntegrationEvent>> PublishDomainAndCollectAsync(
-        IDomainEvent domainEvent, CancellationToken cancellationToken)
+    private async Task<(DomainEventDispatchReport Report, IReadOnlyList<IIntegrationEvent> Produced)> PublishDomainAndCollectAsync(
+        IDomainEvent domainEvent, IReadOnlyList<string> completedHandlers, CancellationToken cancellationToken)
     {
         var publishScope = _scopeFactory.CreateAsyncScope();
         await using var publishScopeLifetime = publishScope.ConfigureAwait(false);
-        var publisher = publishScope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
-        await publisher.PublishAsync(domainEvent, cancellationToken).ConfigureAwait(false);
+        var publisher = publishScope.ServiceProvider.GetRequiredService<IReportingDomainEventPublisher>();
+        var skip = completedHandlers.Count == 0 ? null : completedHandlers.ToHashSet(StringComparer.Ordinal);
+        var report = await publisher.PublishReportingAsync(domainEvent, skip, cancellationToken).ConfigureAwait(false);
 
         // The collector is optional: consumers that do not translate integration events never register
         // it, and existing domain-only outboxes are unaffected.
         var collector = publishScope.ServiceProvider.GetService<IIntegrationEventCollector>();
-        return collector?.DrainPending() ?? [];
+        return (report, collector?.DrainPending() ?? []);
     }
 
     // The row's own id travels with the event so a broker adapter can stamp it on the wire. Delivery is

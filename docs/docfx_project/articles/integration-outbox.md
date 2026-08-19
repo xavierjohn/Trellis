@@ -81,13 +81,14 @@ The relay (`OutboxRelay<TContext>`) is a hosted `BackgroundService`. Each poll i
 
 ## Delivery semantics
 
-The guarantee is **at-least-once delivery**, not handler success — an important distinction:
+The guarantee is **at-least-once delivery**, and delivery means *every handler completed*:
 
-- A message is marked processed once it has been handed to the publisher. Per the `IDomainEventHandler<TEvent>` contract, the publisher logs and swallows non-cancellation handler exceptions, so a **failing handler does not retry**. This matches the in-pipeline dispatch behavior exactly.
-- Only infrastructure failures — an unresolvable event type, a deserialization error, or the relay's own save failing — leave a message pending. Those retry on later polls with an **exponential backoff**, up to `MaxAttempts`, after which the message is **dead-lettered** (see [Retries, dead-lettering, and replay](#retries-dead-lettering-and-replay)). `LastError` keeps the most recent failure.
-- A crash between dispatch and the relay's bookkeeping save re-delivers the message. **Make your handlers idempotent.** The `OutboxMessage.Id` (a UUIDv7) is a stable per-message key you can use for consumer-side de-duplication.
+- A domain message is marked processed only once **every** registered handler has completed. A handler that throws leaves the message pending, and the retry re-invokes **only the failed handlers** — `OutboxMessage.CompletedHandlers` records the ones that already succeeded, so a successful handler's side effect is never repeated because an unrelated sibling failed. (In-pipeline dispatch still swallows, because it runs post-commit and has nothing to retry with.)
+- Integration events produced by handlers that *did* succeed are staged even on a failed attempt — they must be, since the retry skips those handlers.
+- Infrastructure failures — an unresolvable event type, a deserialization error, or the relay's own save failing — behave the same way. All failures retry on later polls with an **exponential backoff**, up to `MaxAttempts`, after which the message is **dead-lettered** (see [Retries, dead-lettering, and replay](#retries-dead-lettering-and-replay)). `LastError` keeps the most recent failure.
+- A crash between dispatch and the relay's bookkeeping save re-delivers the message to *every* handler. **Make your handlers idempotent.** The `OutboxMessage.Id` (a UUIDv7) is a stable per-message key you can use for consumer-side de-duplication.
 
-Retry-until-handlers-succeed would need a non-swallowing publish path; that is a planned follow-up. Until then, a handler that must not silently drop work should surface failure through its own durable mechanism (its own outbox row, a dead-letter table, etc.).
+> **Upgrading?** This replaces the previous behavior, under which a throwing handler was silently treated as delivered. Messages whose handlers fail now retry and can park — alert on `OutboxRelay.MessageParked` — and the `TrellisOutboxMessages` table gains a `CompletedHandlers` column, so add a migration before deploying.
 
 ## Retries, dead-lettering, and replay
 

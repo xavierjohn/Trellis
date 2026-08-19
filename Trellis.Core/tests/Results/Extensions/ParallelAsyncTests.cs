@@ -241,23 +241,31 @@ public class ParallelAsyncTests : TestBase
     [Fact]
     public async Task ParallelAsync_3Tuple_ExecutesInParallel()
     {
-        // Arrange
-        var stopwatch = Stopwatch.StartNew();
+        // Proves overlap instead of timing it. Each operation blocks until all three have started, so a
+        // sequential implementation can never complete (the first would wait forever) while a parallel one
+        // completes regardless of how loaded the machine is. The previous wall-clock assertion failed on a
+        // busy agent even though the code was correct.
+        var started = 0;
+        var allStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // Act
+        async Task<Result<int>> Operation(int value)
+        {
+            if (Interlocked.Increment(ref started) == 3)
+                allStarted.SetResult();
+
+            // The timeout converts a sequential regression into a clear failure rather than a hung run.
+            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            return Result.Ok(value);
+        }
+
         var result = await Result.ParallelAsync(
-            () => CreateDelayedSuccessTask(1, 50),
-            () => CreateDelayedSuccessTask(2, 50),
-            () => CreateDelayedSuccessTask(3, 50)
+            () => Operation(1),
+            () => Operation(2),
+            () => Operation(3)
         ).WhenAllAsync();
 
-        stopwatch.Stop();
-
-        // Assert
         result.Should().BeSuccess();
-        // If run sequentially, would take 150ms+. In parallel, should be ~50ms
-        // Allow generous margin for CI/slow environments
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(120);
+        started.Should().Be(3, "every operation must have been started before any of them completed");
     }
 
     [Fact]

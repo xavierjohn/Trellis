@@ -26,7 +26,7 @@ using Microsoft.Extensions.Logging;
 /// against a base class or interface of the runtime type are not invoked.
 /// </para>
 /// </remarks>
-internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublisher
+internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublisher, IReportingDomainEventPublisher
 {
     private static readonly ConcurrentDictionary<Type, HandlerInvoker> s_invokerCache = new();
 
@@ -44,17 +44,27 @@ internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublish
     }
 
     /// <inheritdoc />
+    // Best-effort by contract: the report is discarded because this path has no retry mechanism — it runs
+    // post-commit. Failures are already logged by the shared dispatch below.
+    public async ValueTask PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken) =>
+        await PublishReportingAsync(domainEvent, null, cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc />
     [UnconditionalSuppressMessage(
         "Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
         Justification = "Reflection over IDomainEventHandler<TEvent> for the runtime event type. The handler types are reached via DI-based registration (AddDomainEventHandler<TEvent, THandler>) which preserves them through trimming; consumers needing strict NativeAOT guarantees can supply a custom IDomainEventPublisher implementation.")]
     [UnconditionalSuppressMessage(
         "AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling",
         Justification = "Reflection over IDomainEventHandler<TEvent> for the runtime event type. The handler types are reached via DI-based registration (AddDomainEventHandler<TEvent, THandler>) which preserves them through trimming; consumers needing strict NativeAOT guarantees can supply a custom IDomainEventPublisher implementation.")]
-    public async ValueTask PublishAsync(IDomainEvent domainEvent, CancellationToken cancellationToken)
+    public async ValueTask<DomainEventDispatchReport> PublishReportingAsync(
+        IDomainEvent domainEvent,
+        IReadOnlySet<string>? completedHandlers,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
 
         var eventType = domainEvent.GetType();
+        var eventTypeName = eventType.FullName ?? eventType.Name;
         var invoker = s_invokerCache.GetOrAdd(eventType, CreateInvoker);
 
         IEnumerable handlers;
@@ -64,17 +74,31 @@ internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublish
         }
         catch (Exception ex)
         {
-            LogResolveFailure(_logger, ex, eventType.FullName ?? eventType.Name);
-            return;
+            LogResolveFailure(_logger, ex, eventTypeName);
+            return new DomainEventDispatchReport([], [], ex);
         }
 
+        // Cumulative: a handler the caller already completed is carried into the report unchanged, so the
+        // caller can overwrite its persisted set rather than merge.
+        List<string> completed = [];
+        List<DomainEventHandlerFailure>? failures = null;
         var hasHandler = false;
         foreach (var handler in handlers)
         {
             hasHandler = true;
+            var handlerType = handler.GetType();
+            var handlerIdentity = DomainEventDispatchReport.HandlerIdentity(handlerType);
+
+            if (completedHandlers?.Contains(handlerIdentity) == true)
+            {
+                completed.Add(handlerIdentity);
+                continue;
+            }
+
             try
             {
                 await invoker.InvokeAsync(handler, domainEvent, cancellationToken).ConfigureAwait(false);
+                completed.Add(handlerIdentity);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -82,12 +106,21 @@ internal sealed partial class MediatorDomainEventPublisher : IDomainEventPublish
             }
             catch (Exception ex)
             {
-                LogHandlerFailure(_logger, ex, handler.GetType().FullName ?? handler.GetType().Name, eventType.FullName ?? eventType.Name);
+                // Log the plain type name (unchanged from before) for readability; the report carries the
+                // collision-resistant identity, which is what retry bookkeeping matches on.
+                LogHandlerFailure(_logger, ex, handlerType.FullName ?? handlerType.Name, eventTypeName);
+                (failures ??= []).Add(new DomainEventHandlerFailure(handlerIdentity, ex));
             }
         }
 
-        if (!hasHandler && _logger.IsEnabled(LogLevel.Debug))
-            LogNoHandlers(_logger, eventType.FullName ?? eventType.Name);
+        if (!hasHandler)
+        {
+            if (_logger.IsEnabled(LogLevel.Debug))
+                LogNoHandlers(_logger, eventTypeName);
+            return DomainEventDispatchReport.Empty;
+        }
+
+        return new DomainEventDispatchReport(completed, (IReadOnlyList<DomainEventHandlerFailure>?)failures ?? [], null);
     }
 
     [RequiresUnreferencedCode("Constructs closed generic types via reflection.")]
