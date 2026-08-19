@@ -460,6 +460,28 @@ foreach ($packageProject in Get-ChildItem -Path $RepositoryRoot -Filter '*.cspro
     }
 }
 
+# TRLDOC012 - guardrail docs must say that their guardrails are opt-in.
+#
+# Trellis.Core delivers the whole reference set, which is safe for API docs because using an
+# API the consumer does not have is a compile error. It is NOT safe for analyzer docs: an
+# agent reading a TRLS rule in a project without Trellis.Analyzers concludes the mistake will
+# be caught, and writes less defensively than if the doc were absent entirely. Nothing fails,
+# so the error ships. The banner is the only thing standing between delivery and that trap.
+foreach ($guardrailDoc in $docManifest.GuardrailDocs) {
+    $guardrailPath = Join-Path $apiReferenceDir $guardrailDoc
+
+    if (-not (Test-Path -LiteralPath $guardrailPath)) {
+        Write-Host "$guardrailPath(1,1): error TRLDOC012: Listed under GuardrailDocs in docs/api-reference-docs.psd1 but the file does not exist. Correct the list or restore the file."
+        $failed = $true
+        continue
+    }
+
+    if ((Get-Content -LiteralPath $guardrailPath -Raw) -notmatch [regex]::Escape($docManifest.GuardrailBannerMarker)) {
+        Write-Host "$guardrailPath(1,1): error TRLDOC012: Missing the opt-in banner '$($docManifest.GuardrailBannerMarker)'. Trellis.Core ships this file to every consumer, so without the banner an agent will trust TRLS diagnostics in a project that never references Trellis.Analyzers. Add the banner directly beneath the H1."
+        $failed = $true
+    }
+}
+
 # TRLDOC006 - every cookbook recipe must be pinned by a compiled snippet in
 # Examples/CookbookSnippets. Recipes are the most-copied code in the doc set, so an
 # unpinned recipe is the shape most likely to rot into code that does not compile.

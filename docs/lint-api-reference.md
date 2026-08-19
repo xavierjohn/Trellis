@@ -20,6 +20,8 @@ The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, 
 
 TRLDOC004 used to assert that some package *packs* each file. It no longer can, and the change is deliberate: `Trellis.Core` now ships the whole `api_reference` directory as a glob, so delivery is guaranteed by construction and the old check could never fail again. See [API reference delivery](#api-reference-delivery) below.
 
+- **TRLDOC012**: Every doc listed under `GuardrailDocs` in `docs/api-reference-docs.psd1` must carry the opt-in banner. Guardrail docs are the one exception to "delivering a doc for an unreferenced package is harmless": describing an absent *API* produces a compile error, but describing an absent *analyzer* makes an agent write **less** defensively, trusting a `TRLS###` rule that never runs. The banner states that the diagnostics require a `PackageReference` to `Trellis.Analyzers`.
+
 Proving docs are *delivered* needs `build/test-apireference-payload.ps1`, which packs real packages, restores them into scratch consumers outside the repository and asserts which `.github` directory the files land in — covering the nearest-`.github` preference, the `.git` boundary that stops the walk escaping into an unrelated parent checkout, the `TrellisApiReferenceRoot` override, the `TrellisDisableApiReferenceSync` opt-out, and a satellite package contributing its own reference. Run it with `pwsh ./build/test-apireference-payload.ps1`; it runs in the Build workflow.
 
 - **TRLDOC010**: The recipe count quoted in `trellis-start-here.md` ("The *n* recipe bodies beneath it") must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. That file tells agents the Patterns Index is exhaustive and uses the count to justify a token budget, so a stale number quietly undermines both claims.
@@ -61,7 +63,18 @@ A satellite ships two things:
 1. Its reference markdown, packed to `trellis/`.
 2. `build/Trellis.ApiReference.Payload.targets` from this repository, packed at both `build/<PackageId>.targets` and `buildTransitive/<PackageId>.targets`.
 
-That payload file is three lines of item declaration. It deliberately does **not** carry the copy logic — the ~200-line directory walk lives in `Trellis.ApiReference.targets` and ships with `Trellis.Core`, which every satellite already depends on. Duplicating the walk into each repository would leave satellites silently running stale copy logic with nothing to detect the drift. Scenario 5 of `build/test-apireference-payload.ps1` proves the arrangement works end to end by packing a satellite-shaped package that ships no copy logic and asserting its reference still lands.
+That payload file is three lines of item declaration, and whether it is sufficient on its own depends on **dependency topology**:
+
+| The package's transitive closure | Ships | Why |
+|---|---|---|
+| Contains `Trellis.Core` | Payload only | The ~200-line directory walk arrives with `Trellis.Core`. Keeping one copy means a satellite cannot drift onto stale copy logic. |
+| Does **not** contain `Trellis.Core` | Payload **and** `Trellis.ApiReference.targets` | Nothing else in the consumer's build would carry copy logic, so a project referencing only that package would receive nothing. This is the `Trellis.Analyzers` shape. |
+
+Do not infer the first row from the fact that a package is named `Trellis.*`. `Trellis.ServiceLevelIndicators` depends only on `Microsoft.Extensions.*` and `OpenTelemetry`; `Trellis.ResourceNaming.Abstractions` has no package dependencies at all. Both fall in the second row. The rule is decided by the resolved graph, not by the author's intent — so a satellite repository should assert it in its own pack gate rather than leave it to review.
+
+Shipping both files when `Trellis.Core` *is* present is harmless, not an error: the copies are byte-identical, duplicate target names collapse to one definition, and the copy is guarded by `SkipUnchangedFiles`. When in doubt, ship both.
+
+If a package packs payload with no copy logic reachable, `_WarnTrellisApiReferenceCopyLogicMissing` warns in the consumer's build. That is a backstop, not the gate — it fires in the wrong repository to be fixed cheaply. Scenario 5 of `build/test-apireference-payload.ps1` covers the first row end to end, packing a satellite that ships no copy logic and asserting its reference still lands when `Trellis.Core` arrives transitively.
 
 
 

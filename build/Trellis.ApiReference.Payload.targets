@@ -5,15 +5,33 @@
 
     Copy this file into your repository and pack it at both build/<PackageId>.targets
     and buildTransitive/<PackageId>.targets, alongside your reference markdown at
-    trellis/. That is all a satellite package needs: the ~200-line directory walk that
-    decides WHERE the files land lives in Trellis.ApiReference.targets and ships with
-    Trellis.Core, which every satellite already depends on. Keeping the walk in one
-    package means a satellite cannot silently drift onto stale copy logic - the failure
-    that duplicating the full targets file into each repository would invite.
+    trellis/.
+
+    WHETHER THAT IS ENOUGH DEPENDS ON YOUR DEPENDENCY TOPOLOGY, not on the fact that you
+    are a satellite. The ~200-line directory walk that decides WHERE files land lives in
+    Trellis.ApiReference.targets and ships with Trellis.Core:
+
+      * Trellis.Core IS in your package's transitive closure - pack this file alone. The
+        walk arrives with Core, and keeping it in one package means you cannot silently
+        drift onto stale copy logic.
+
+      * Trellis.Core is NOT in your closure - pack Trellis.ApiReference.targets as well,
+        the shape Trellis.Analyzers uses inside the Trellis repository. Packing payload
+        alone would mean a project referencing only your package receives nothing at all,
+        because there would be no copy logic anywhere in its build.
+
+    Do not assume the first case. Trellis.ServiceLevelIndicators and the
+    Trellis.ResourceNaming packages have no Trellis.Core dependency whatsoever, so they
+    fall into the second. Check your own resolved graph rather than the package name.
+
+    Shipping both files when Core is present is harmless rather than an error: the two
+    copies are byte-identical, target names resolve to a single definition, and the copy
+    itself is guarded by SkipUnchangedFiles. If you are unsure, packing both is the safe
+    default and the runtime cost is nil.
 
     MSBuild evaluates every ItemGroup across all imports before running any target, so
-    the item declared here is visible to Trellis.Core's _CopyTrellisApiReference no
-    matter which order NuGet imports the two files in.
+    the item declared here is visible to _CopyTrellisApiReference no matter which order
+    NuGet imports the two files in.
 
     Trellis.Core ships the complete FIRST-PARTY reference set, so do not copy any
     trellis-api-*.md from the Trellis repository into your package - ship only the
@@ -39,6 +57,6 @@
   <Target Name="_WarnTrellisApiReferenceCopyLogicMissing"
           BeforeTargets="Build"
           Condition="'@(TrellisApiReference)' != '' AND '$(TrellisApiReferenceCopyLogicPresent)' != 'true' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
-    <Warning Text="Trellis API reference payload was declared but the copy logic is missing, so no documentation will be delivered to .github/. This targets file relies on Trellis.ApiReference.targets, which ships with Trellis.Core - check that Trellis.Core is referenced and that its build assets are not excluded (ExcludeAssets/PrivateAssets). Set TrellisDisableApiReferenceSync=true to silence this deliberately." />
+    <Warning Text="Trellis API reference payload was declared but the copy logic is missing, so no documentation will be delivered to .github/. The copy logic lives in Trellis.ApiReference.targets, which ships with Trellis.Core. Either reference Trellis.Core with its build assets intact (check ExcludeAssets/PrivateAssets), or - if the package declaring this payload has no Trellis.Core dependency at all - that package must pack Trellis.ApiReference.targets alongside its payload. Set TrellisDisableApiReferenceSync=true to silence this deliberately." />
   </Target>
 </Project>
