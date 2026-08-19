@@ -574,23 +574,75 @@ else {
         }
     }
 
-    # TRLDOC010 - the recipe count quoted in trellis-start-here.md must match reality.
-    # That file tells agents the index is exhaustive ("if a task is not listed there, the
-    # recipe does not exist") and uses the count to justify a token budget, so a stale
+    # TRLDOC010 - the recipe count quoted to agents must match reality.
+    # Both routing heads tell agents the index is exhaustive ("if a task is not listed there,
+    # the recipe does not exist") and use the count to justify a token budget, so a stale
     # number quietly undermines both claims. Retired recipes keep their heading but have
     # no body, so they are excluded here exactly as they are above.
-    $startHerePath = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/trellis-start-here.md'
+    #
+    # Every file that quotes the count must be listed here. Guarding only one of them is how
+    # the cookbook's copy drifted to 36 while the guarded trellis-start-here.md stayed correct.
+    $recipeCountClaims = @(
+        @{ File = 'trellis-start-here.md'; Pattern = 'The (?<count>\d+) recipe bodies beneath it'; Phrase = 'The <n> recipe bodies beneath it' }
+        @{ File = 'trellis-api-cookbook.md'; Pattern = 'The (?<count>\d+) recipe bodies below'; Phrase = 'The <n> recipe bodies below' }
+    )
 
-    if (Test-Path -LiteralPath $startHerePath) {
-        $startHereText = Get-Content -LiteralPath $startHerePath -Raw
-        $countMatch = [regex]::Match($startHereText, 'The (?<count>\d+) recipe bodies beneath it')
+    foreach ($claim in $recipeCountClaims) {
+        $claimPath = Join-Path $RepositoryRoot "docs/docfx_project/api_reference/$($claim.File)"
+
+        if (-not (Test-Path -LiteralPath $claimPath)) {
+            continue
+        }
+
+        $claimText = Get-Content -LiteralPath $claimPath -Raw
+        $countMatch = [regex]::Match($claimText, $claim.Pattern)
 
         if (-not $countMatch.Success) {
-            Write-Host "$startHerePath(1,1): error TRLDOC010: Could not find the 'The <n> recipe bodies beneath it' phrase, so the recipe count cannot be verified. Restore the phrase or update the pattern in this script."
+            Write-Host "$claimPath(1,1): error TRLDOC010: Could not find the '$($claim.Phrase)' phrase, so the recipe count cannot be verified. Restore the phrase or update the pattern in this script."
             $failed = $true
         }
         elseif ([int] $countMatch.Groups['count'].Value -ne $liveRecipeCount) {
-            Write-Host "$startHerePath(1,1): error TRLDOC010: States $($countMatch.Groups['count'].Value) recipe bodies, but the cookbook has $liveRecipeCount live recipes (retired headings excluded). Update the count."
+            Write-Host "$claimPath(1,1): error TRLDOC010: States $($countMatch.Groups['count'].Value) recipe bodies, but the cookbook has $liveRecipeCount live recipes (retired headings excluded). Update the count."
+            $failed = $true
+        }
+    }
+
+    # TRLDOC013 - the analyzer diagnostic range quoted in the cookbook's routing head must
+    # cover every shipped TRLS id. The routing head is the one section agents keep resident,
+    # so an upper bound that lags reality makes an agent conclude a real diagnostic
+    # (TRLS057, say) is not a Trellis one at all. The ids are not contiguous - retired ones
+    # leave gaps - so only the upper bound is checked.
+    #
+    # Ids live in two places: analyzers under Trellis.Analyzers/src and generator diagnostics
+    # under each package's generator/ directory. Scanning only the former misses TRLS059,
+    # which is emitted by Trellis.Asp/generator.
+    $diagnosticIds = @(
+        Get-ChildItem -LiteralPath $RepositoryRoot -Recurse -File -Filter '*.cs' |
+            Where-Object { $_.FullName -match '[\\/](src|generator)[\\/]' -and $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
+            Select-String -Pattern 'TRLS(?<id>\d{3})' -AllMatches |
+            ForEach-Object { $_.Matches } |
+            ForEach-Object { [int] $_.Groups['id'].Value }
+    )
+
+    # An empty scan means the guard cannot establish the highest shipped diagnostic, which is a
+    # failure to verify - not a pass. Skipping silently here is exactly how a source-layout move
+    # or a path-filter mistake would disarm this gate without anyone noticing.
+    if ($diagnosticIds.Count -eq 0) {
+        Write-Host "$cookbookPath(1,1): error TRLDOC013: Found no TRLS diagnostic ids under any src/ or generator/ directory, so the analyzer range quoted in the routing head cannot be verified. Update the scan paths in this script."
+        $failed = $true
+    }
+    else {
+        $highestDiagnosticId = [int] ($diagnosticIds | Measure-Object -Maximum).Maximum
+        $rangeMatch = [regex]::Match(($cookbookLines -join "`n"), 'trellis-api-analyzers\.md[^\n]*?`TRLS001`-`TRLS(?<upper>\d{3})`')
+
+        if (-not $rangeMatch.Success) {
+            Write-Host "$cookbookPath(1,1): error TRLDOC013: Could not find the TRLS001-TRLS<n> range on the trellis-api-analyzers.md routing line, so the diagnostic range cannot be verified. Restore the range or update the pattern in this script."
+            $failed = $true
+        }
+        elseif ([int] $rangeMatch.Groups['upper'].Value -ne $highestDiagnosticId) {
+            $quotedUpper = $rangeMatch.Groups['upper'].Value
+            $actualUpper = '{0:D3}' -f $highestDiagnosticId
+            Write-Host "$cookbookPath(1,1): error TRLDOC013: The routing head quotes TRLS001-TRLS$quotedUpper, but the highest shipped diagnostic is TRLS$actualUpper. Update the upper bound so agents do not dismiss real diagnostics as non-Trellis."
             $failed = $true
         }
     }
