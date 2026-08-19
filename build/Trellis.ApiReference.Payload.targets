@@ -1,0 +1,44 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Payload declaration for a Trellis package published from a DIFFERENT repository
+    (for example Trellis.ServiceLevelIndicators or Trellis.ResourceNaming.Azure).
+
+    Copy this file into your repository and pack it at both build/<PackageId>.targets
+    and buildTransitive/<PackageId>.targets, alongside your reference markdown at
+    trellis/. That is all a satellite package needs: the ~200-line directory walk that
+    decides WHERE the files land lives in Trellis.ApiReference.targets and ships with
+    Trellis.Core, which every satellite already depends on. Keeping the walk in one
+    package means a satellite cannot silently drift onto stale copy logic - the failure
+    that duplicating the full targets file into each repository would invite.
+
+    MSBuild evaluates every ItemGroup across all imports before running any target, so
+    the item declared here is visible to Trellis.Core's _CopyTrellisApiReference no
+    matter which order NuGet imports the two files in.
+
+    Trellis.Core ships the complete FIRST-PARTY reference set, so do not copy any
+    trellis-api-*.md from the Trellis repository into your package - ship only the
+    reference your own package owns. Embedding someone else's reference would freeze it
+    at whatever version you built against, which is precisely the staleness this
+    arrangement exists to prevent.
+  -->
+  <ItemGroup>
+    <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
+  </ItemGroup>
+
+  <!--
+    This file declares payload but carries no copy logic, so it is inert unless Trellis.Core's
+    Trellis.ApiReference.targets is also imported. That import can be suppressed without any
+    error - ExcludeAssets="build" or a PrivateAssets set covering build on the Trellis.Core
+    reference - and the result would be a silent no-op: items declared, nothing consuming them,
+    no documentation delivered, build green. Warn instead, since a satellite author debugging
+    "my reference never lands" has nothing else to go on.
+
+    Warning rather than error: excluding build assets is a legitimate consumer choice, and the
+    opt-out below is the supported way to turn the whole mechanism off deliberately.
+  -->
+  <Target Name="_WarnTrellisApiReferenceCopyLogicMissing"
+          BeforeTargets="Build"
+          Condition="'@(TrellisApiReference)' != '' AND '$(TrellisApiReferenceCopyLogicPresent)' != 'true' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
+    <Warning Text="Trellis API reference payload was declared but the copy logic is missing, so no documentation will be delivered to .github/. This targets file relies on Trellis.ApiReference.targets, which ships with Trellis.Core - check that Trellis.Core is referenced and that its build assets are not excluded (ExcludeAssets/PrivateAssets). Set TrellisDisableApiReferenceSync=true to silence this deliberately." />
+  </Target>
+</Project>

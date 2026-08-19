@@ -94,6 +94,7 @@ GlobalUsings
 # --- Dotted-segment names surfaced by the multi-segment TRLDOC005 check ---
 # External / sibling-repo namespaces referenced by name in prose.
 Microservices
+ServiceLevelIndicators
 Yarp
 Redis
 MySqlClient

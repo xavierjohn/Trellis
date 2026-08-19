@@ -9,7 +9,8 @@
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>core</TrellisApiRefName>
-    <TrellisShipsCrossCuttingDocs>true</TrellisShipsCrossCuttingDocs>
+    <!-- Core delivers the complete first-party reference set; see Directory.Build.targets. -->
+    <TrellisShipsApiReferenceSet>true</TrellisShipsApiReferenceSet>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />

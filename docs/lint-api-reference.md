@@ -15,9 +15,14 @@ The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, 
 - **TRLDOC001**: Bare cross-doc links such as `](trellis-api-core.md)` must point at a specific anchor, for example `](trellis-api-core.md#some-section)`. Lines inside fenced code blocks are skipped.
 - **TRLDOC002**: Filler table rows such as `| — | — | No public properties.` are not allowed. Lines inside fenced code blocks are skipped.
 - **TRLDOC003**: Anchored same-file links such as `](#some-section)` and sibling API-reference Markdown links such as `](trellis-api-core.md#some-section)` or `](completeness-report.md#some-section)` must resolve to an existing heading in the target file. Links may include query strings before anchors, such as `](completeness-report.md?v=2#some-section)`. The gate skips absolute URI links and cross-surface relative paths such as `](../articles/example.md#some-section)`.
-- **TRLDOC004**: Every `api_reference/*.md` file must ship in some NuGet package's `trellis/` payload, because that payload is what lands in a consumer's `.github/` directory. A doc that no package ships is invisible to consumers no matter how good it is. Satisfy it either by setting `<TrellisApiRefName>` on the owning package (which packs `trellis-api-<name>.md`) or, for a cross-cutting reference that no single package owns, by adding it to the `TrellisShipsCrossCuttingDocs` item group in `Directory.Build.targets`.
+- **TRLDOC004**: Every `api_reference/*.md` file must be *owned* — either by a package declaring the matching `<TrellisApiRefName>`, or by being listed under `CrossCuttingDocs` in `docs/api-reference-docs.psd1`. An unowned doc has no source directory to compare against, so `docs/audit-doc-freshness.ps1` cannot tell whether it has gone stale and silently skips it.
+- **TRLDOC011**: Every shipping package (`Trellis.*/src/*.csproj`, unless `<IsPackable>false</IsPackable>`) must declare a `<TrellisApiRefName>`. It is the inverse of TRLDOC004: that rule catches a doc with no package, this one catches a package with no doc. It was convention-only until a Trellis package shipped to production with no reference at all, leaving the consuming agent to invent an API against it.
 
-TRLDOC004 proves a doc is *packed*. Proving it is *delivered* needs `build/test-apireference-payload.ps1`, which packs a real package, restores it into scratch consumers outside the repository and asserts which `.github` directory the files land in — covering the nearest-`.github` preference, the `.git` boundary that stops the walk escaping into an unrelated parent checkout, the `TrellisApiReferenceRoot` override and the `TrellisDisableApiReferenceSync` opt-out. Run it with `pwsh ./build/test-apireference-payload.ps1`; it runs in the Build workflow.
+TRLDOC004 used to assert that some package *packs* each file. It no longer can, and the change is deliberate: `Trellis.Core` now ships the whole `api_reference` directory as a glob, so delivery is guaranteed by construction and the old check could never fail again. See [API reference delivery](#api-reference-delivery) below.
+
+Proving docs are *delivered* needs `build/test-apireference-payload.ps1`, which packs real packages, restores them into scratch consumers outside the repository and asserts which `.github` directory the files land in — covering the nearest-`.github` preference, the `.git` boundary that stops the walk escaping into an unrelated parent checkout, the `TrellisApiReferenceRoot` override, the `TrellisDisableApiReferenceSync` opt-out, and a satellite package contributing its own reference. Run it with `pwsh ./build/test-apireference-payload.ps1`; it runs in the Build workflow.
+
+- **TRLDOC010**: The recipe count quoted in `trellis-start-here.md` ("The *n* recipe bodies beneath it") must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. That file tells agents the Patterns Index is exhaustive and uses the count to justify a token budget, so a stale number quietly undermines both claims.
 
 - **TRLDOC006**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must have a matching `Examples/CookbookSnippets/Recipe<NN>_*.cs` file. Headings marked `*(retired)*` are skipped, because they exist only to keep old anchors and cross-references resolving and carry no code to pin.
 
@@ -28,6 +33,37 @@ Snippets pin the recipe, they do not execute it: the project has no test runner,
 - **TRLDOC007**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must be linked from the `## Patterns Index` section. Retired headings are skipped on the same grounds as TRLDOC006. If the `## Patterns Index` heading itself is missing, the rule fails once and suppresses the per-recipe errors, so a renamed section reports the real cause instead of 35 spurious ones.
 
 TRLDOC007 is what makes on-demand recipe loading safe. The cookbook is the largest file in the doc set (~61K tokens), so agents are instructed to hold only its routing head resident and pull recipe bodies as tasks demand them. That trade is sound *only* while the index is a complete map: a recipe the index never links to is one an agent will never discover, because it never reads the body that would have revealed it. Before this gate existed, two recipes (6 and 28) were already unreachable. Keep index rows phrased as the reader's **task or failure mode**, not the recipe's title — routing happens on the row text alone.
+
+## API reference delivery
+
+Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
+
+| Concern | Mechanism | Consumers |
+|---|---|---|
+| **Ownership** — which package a reference describes | `<TrellisApiRefName>` | `audit-doc-freshness.ps1`, `audit-completeness`, TRLDOC004, TRLDOC011 |
+| **Delivery** — which package ships the file to `.github/` | `<TrellisShipsApiReferenceSet>` on `Trellis.Core` | consumers' LLMs |
+
+`Trellis.Core` ships the **complete first-party set**. Every package in this repository carries one version stamp from `version.json`, so scoping delivery per package bought nothing and cost two real failures:
+
+- A reference for a `PackageReference` that was later dropped was never removed from `.github/`. The sync only ever copied, so the file stayed forever, frozen at whatever version last wrote it. That is worse than a missing doc: an absent reference makes an agent say "I don't know", while a stale one makes it write confident code against an API that no longer exists.
+- An agent could never learn about a module the project had not already installed — backwards for a framework whose value is largely in its optional modules.
+
+Because Core now ships references for packages the consumer may not have, **file presence no longer implies a package reference**. `trellis-start-here.md` says so explicitly and tells agents to confirm the reference in the `.csproj`; do not reintroduce wording that invites the opposite inference.
+
+`Trellis.Analyzers` is the one first-party exception. It has no dependency on `Trellis.Core`, so it cannot rely on Core to deliver anything and ships its own reference and copy logic. The duplicated `trellis-api-analyzers.md` is harmless — both copies come from the same lockstep version, and the copy skips unchanged destinations.
+
+### Packages published from other repositories
+
+`Trellis.ServiceLevelIndicators`, `Trellis.ResourceNaming.Azure` and similar satellites version **independently**, so they must keep shipping their own reference. `Trellis.Core` deliberately does not embed a copy: it cannot know a satellite's current content, and a stale embedded copy would recreate exactly the failure described above.
+
+A satellite ships two things:
+
+1. Its reference markdown, packed to `trellis/`.
+2. `build/Trellis.ApiReference.Payload.targets` from this repository, packed at both `build/<PackageId>.targets` and `buildTransitive/<PackageId>.targets`.
+
+That payload file is three lines of item declaration. It deliberately does **not** carry the copy logic — the ~200-line directory walk lives in `Trellis.ApiReference.targets` and ships with `Trellis.Core`, which every satellite already depends on. Duplicating the walk into each repository would leave satellites silently running stale copy logic with nothing to detect the drift. Scenario 5 of `build/test-apireference-payload.ps1` proves the arrangement works end to end by packing a satellite-shaped package that ships no copy logic and asserting its reference still lands.
+
+
 
 ## TRLDOC005 — documented symbols must exist
 

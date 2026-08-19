@@ -44,13 +44,14 @@ function Assert-Condition {
     }
 }
 
-# The cross-cutting payload every consumer must receive, regardless of which packages it references.
-$expectedCrossCutting = @(
-    'trellis-start-here.md',
-    'trellis-api-cookbook.md',
-    'trellis-api-core.md',
-    'trellis-api-anti-patterns.md',
-    'trellis-value-object-taxonomy.md'
+# Every reference in the repository must reach a consumer that references Trellis.Core alone.
+# Derived rather than hand-listed: a hand-listed set would silently stop covering a doc added
+# later, which is the exact failure - a reference no consumer receives - this probe exists to catch.
+$docManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $repoRoot 'docs/api-reference-docs.psd1')
+$expectedDocs = @(
+    Get-ChildItem -Path (Join-Path $repoRoot 'docs/docfx_project/api_reference') -Filter '*.md' -File |
+        Where-Object { $docManifest.UnshippedDocs -notcontains $_.Name } |
+        ForEach-Object { $_.Name }
 )
 
 function New-ScratchConsumer {
@@ -61,12 +62,18 @@ function New-ScratchConsumer {
     param(
         [string] $Path,
         [string] $PackageVersion,
-        [hashtable] $Properties = @{}
+        [hashtable] $Properties = @{},
+        [hashtable] $AdditionalPackages = @{},
+        [switch] $OmitCore
     )
 
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
 
     $props = ($Properties.GetEnumerator() | ForEach-Object { "    <$($_.Key)>$($_.Value)</$($_.Key)>" }) -join "`n"
+    $coreRef = if ($OmitCore) { '' } else { "    <PackageReference Include=`"Trellis.Core`" Version=`"$PackageVersion`" />" }
+    $extraRefs = ($AdditionalPackages.GetEnumerator() | ForEach-Object {
+        "    <PackageReference Include=`"$($_.Key)`" Version=`"$($_.Value)`" />"
+    }) -join "`n"
 
     @"
 <Project Sdk="Microsoft.NET.Sdk">
@@ -76,13 +83,53 @@ function New-ScratchConsumer {
 $props
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Trellis.Core" Version="$PackageVersion" />
+$coreRef
+$extraRefs
   </ItemGroup>
 </Project>
 "@ | Set-Content -Path (Join-Path $Path 'Consumer.csproj') -Encoding utf8
 
     'public static class Probe { public static int Value => 1; }' |
         Set-Content -Path (Join-Path $Path 'Probe.cs') -Encoding utf8
+}
+
+function New-SatellitePackage {
+    <#
+        Builds a stand-in for a Trellis package published from ANOTHER repository - the shape
+        Trellis.ServiceLevelIndicators and Trellis.ResourceNaming.Azure have. It ships its own
+        reference plus build/Trellis.ApiReference.Payload.targets, and deliberately does NOT
+        ship the copy logic: proving the doc still lands is what shows a satellite can rely on
+        Trellis.Core for that logic instead of duplicating a file that would then drift.
+    #>
+    param([string] $Path, [string] $CoreVersion, [string] $DocName)
+
+    New-Item -ItemType Directory -Path (Join-Path $Path 'trellis') -Force | Out-Null
+
+    "# Satellite reference`n`nProbe payload for $DocName." |
+        Set-Content -Path (Join-Path $Path "trellis/$DocName") -Encoding utf8
+
+    Copy-Item -Path (Join-Path $repoRoot 'build/Trellis.ApiReference.Payload.targets') `
+              -Destination (Join-Path $Path 'Payload.targets')
+
+    @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Trellis.SatelliteProbe</PackageId>
+    <Version>1.0.0-probe</Version>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoWarn>`$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Trellis.Core" Version="$CoreVersion" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="trellis/$DocName" Pack="true" PackagePath="trellis\" />
+    <None Include="Payload.targets" Pack="true" PackagePath="build\Trellis.SatelliteProbe.targets" />
+    <None Include="Payload.targets" Pack="true" PackagePath="buildTransitive\Trellis.SatelliteProbe.targets" />
+  </ItemGroup>
+</Project>
+"@ | Set-Content -Path (Join-Path $Path 'Satellite.csproj') -Encoding utf8
 }
 
 function New-NuGetConfig {
@@ -169,7 +216,7 @@ try {
     $s1Far = Get-DocNames (Join-Path $s1Root '.github')
 
     Write-Host "`nScenario 1 - nearest .github wins"
-    foreach ($doc in $expectedCrossCutting) {
+    foreach ($doc in $expectedDocs) {
         Assert-Condition -Scenario 'nearest' -Because "$doc delivered to the nearest .github" -Condition ($s1Near -contains $doc)
     }
     Assert-Condition -Scenario 'nearest' -Because 'the repo-root .github was left untouched' -Condition ($s1Far.Count -eq 0)
@@ -221,6 +268,43 @@ try {
     Write-Host "`nScenario 4 - TrellisDisableApiReferenceSync"
     Assert-Condition -Scenario 'disabled' -Because 'no docs were copied when sync is disabled' `
         -Condition ((Get-DocNames (Join-Path $s4Root '.github')).Count -eq 0)
+
+    # ------------------------------------------------------- Scenario 5: satellite package payload
+    # A package from another repository contributes its own reference while relying on
+    # Trellis.Core for the copy logic. This is the federation contract: if it breaks, every
+    # out-of-repo Trellis package has to carry its own copy of the directory walk and drift.
+    $satelliteDoc = 'trellis-api-satelliteprobe.md'
+    $satelliteSrc = Join-Path $work 'satellite-src'
+    New-SatellitePackage -Path $satelliteSrc -CoreVersion $version -DocName $satelliteDoc
+    New-NuGetConfig -Path $satelliteSrc
+
+    $satellitePack = dotnet pack (Join-Path $satelliteSrc 'Satellite.csproj') -c $Configuration -o $feed --nologo 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ($satellitePack | Out-String)
+        throw 'Satellite pack failed.'
+    }
+
+    $s5Root = Join-Path $work 's5-satellite'
+    New-Item -ItemType Directory -Path (Join-Path $s5Root '.git') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $s5Root '.github') -Force | Out-Null
+    $s5Project = Join-Path $s5Root 'src/app'
+
+    # Reference ONLY the satellite. Trellis.Core arrives transitively, which is how a real
+    # consumer of a satellite package acquires it - and it is the case that proves the copy
+    # logic flows through buildTransitive rather than needing a direct reference. Referencing
+    # Core directly here would pass even if buildTransitive were broken.
+    New-ScratchConsumer -Path $s5Project -PackageVersion $version -OmitCore `
+        -AdditionalPackages @{ 'Trellis.SatelliteProbe' = '1.0.0-probe' }
+    New-NuGetConfig -Path $s5Root
+    Invoke-ConsumerBuild -ProjectDir $s5Project
+
+    $s5Docs = Get-DocNames (Join-Path $s5Root '.github')
+
+    Write-Host "`nScenario 5 - satellite package contributes its own reference"
+    Assert-Condition -Scenario 'satellite' -Because 'the satellite reference was delivered' `
+        -Condition ($s5Docs -contains $satelliteDoc)
+    Assert-Condition -Scenario 'satellite' -Because 'the first-party set arrived via a transitive Trellis.Core' `
+        -Condition ($s5Docs -contains 'trellis-api-efcore-outbox.md')
 }
 finally {
     $env:NUGET_PACKAGES = $script:originalNuGetPackages

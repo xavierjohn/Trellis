@@ -1,37 +1,49 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <!--
-    Auto-pack API reference markdown and shared .targets for any Trellis package
-    that sets TrellisApiRefName (e.g., <TrellisApiRefName>asp</TrellisApiRefName>).
+    API reference delivery. Two separable concerns, deliberately kept apart:
+
+    OWNERSHIP - <TrellisApiRefName> declares which reference file a package owns
+      (e.g. <TrellisApiRefName>asp</TrellisApiRefName>). The freshness audit, the
+      completeness audit and TRLDOC004 all key off it. It no longer decides delivery.
+
+    DELIVERY - the complete first-party reference set ships from Trellis.Core alone.
+      Every package in this repository carries one version stamp from version.json, so
+      per-package delivery bought nothing and cost two real failures: a reference for a
+      PackageReference that was later dropped stayed in .github/ forever, frozen at
+      whatever version last copied it, and an agent could never learn about a module the
+      project had not already installed - backwards for a framework of optional modules.
+
+    Packages published from OTHER repositories version independently, so they must keep
+    shipping their own reference: Trellis.Core cannot know their current content, and
+    embedding a copy would recreate exactly the staleness described above. They declare
+    their payload with build/Trellis.ApiReference.Payload.targets and rely on the copy
+    logic shipped here, so the ~200-line directory walk lives in one place.
   -->
-  <ItemGroup Condition="'$(TrellisApiRefName)' != ''">
+  <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\*.md"
+          Exclude="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\completeness-report.md"
+          Pack="true" PackagePath="trellis\" />
+  </ItemGroup>
+
+  <!--
+    Trellis.Analyzers is the one first-party package with no dependency on Trellis.Core,
+    so it cannot rely on Core to deliver either the docs or the copy logic. It ships both
+    for itself. The duplicated trellis-api-analyzers.md is harmless: both copies come from
+    the same lockstep version, and the Copy below skips unchanged destinations.
+  -->
+  <ItemGroup Condition="'$(TrellisShipsOwnApiReference)' == 'true' AND '$(TrellisApiRefName)' != ''">
     <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-$(TrellisApiRefName).md"
           Pack="true" PackagePath="trellis\" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true' OR '$(TrellisShipsOwnApiReference)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
           Pack="true" PackagePath="build\$(PackageId).targets" />
     <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
           Pack="true" PackagePath="buildTransitive\$(PackageId).targets" />
   </ItemGroup>
 
-  <!--
-    Cross-cutting references ship once, in Trellis.Core (Core is referenced by
-    every Trellis service so this guarantees they always land in .github/).
-    These are package-agnostic: the cookbook spans every package, while the
-    anti-pattern gallery and the value-object taxonomy describe rules that hold
-    regardless of which packages are installed, so no single feature package
-    owns them and TrellisApiRefName cannot ship them.
-    Opt in per package by setting <TrellisShipsCrossCuttingDocs>true</TrellisShipsCrossCuttingDocs>.
-  -->
-  <ItemGroup Condition="'$(TrellisShipsCrossCuttingDocs)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-start-here.md"
-          Pack="true" PackagePath="trellis\" />
-    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-cookbook.md"
-          Pack="true" PackagePath="trellis\" />
-    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-anti-patterns.md"
-          Pack="true" PackagePath="trellis\" />
-    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-value-object-taxonomy.md"
-          Pack="true" PackagePath="trellis\" />
-  </ItemGroup>
 
   <Target Name="LintApiReference"
           BeforeTargets="Build"
