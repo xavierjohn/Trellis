@@ -1,5 +1,4 @@
-﻿#!/usr/bin/env pwsh
-<#
+﻿<#
 .SYNOPSIS
     Probes the API-reference doc delivery mechanism end to end: pack a real package, restore it
     into a scratch consumer outside this repository, build, and assert what lands in .github/.
