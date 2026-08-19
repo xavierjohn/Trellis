@@ -454,6 +454,19 @@ public static class DbExceptionClassifier
 | `public static string? ExtractConstraintDetail(DbUpdateException ex)` | `string?` | Returns a logging-oriented detail string such as the PostgreSQL constraint name or the provider message. |
 | `public static (string? ConstraintName, string? TableName) ExtractConstraintIdentity(DbUpdateException ex)` | `(string?, string?)` | Returns the constraint name and the qualified table the violated constraint belongs to, parsed from the inner provider exception. Typed extraction first for PostgreSQL (`Npgsql.PostgresException.ConstraintName` / `TableName` / `SchemaName` via reflection so the package stays provider-agnostic; output is `"schema.table"` when both are present), then message-based parsing for SQL Server 2627 / 2601 / FK 547 (both `FOREIGN KEY` and parent-side `REFERENCE` constraint forms), SQLite `UNIQUE constraint failed: <Table>.<Column>` / `PRIMARY KEY` (constraint name is `null` because SQLite does not name the constraint), and MySQL `Duplicate entry '...' for key '<table>.<key>'`. Returns `(null, null)` on any unexpected exception so telemetry extraction never breaks the caller. Used by `SaveChangesResultAsync`, `SaveChangesWithRetryAsync`, and `TryInsertUniqueAsync` to populate `Error.Conflict.ConstraintName` / `ConstraintTableName`. |
 
+> **Provider drift is guarded by tests, not by types.** Matching exceptions by name keeps the
+> package free of driver dependencies, but it fails open: a provider that renames its exception
+> type would silently turn a duplicate-key violation into an unhandled `DbUpdateException`.
+> `DbExceptionClassifierProviderContractTests` references the real drivers (test-only) and pins
+> the type names and the properties read by reflection, so a rename breaks the build instead.
+> PostgreSQL and SQLite are additionally classified end to end against real exception instances.
+>
+> Properties are resolved by walking the type hierarchy most-derived first rather than by name
+> alone, because a driver may shadow a base property with a different type — `MySqlConnector`'s
+> `MySqlException` re-declares `ErrorCode` as an enum over `ExternalException.ErrorCode`, and a
+> plain name lookup raises `AmbiguousMatchException`. These helpers run inside `catch` blocks, so
+> an escaping reflection failure would convert a `409 Conflict` into a `500`.
+
 ### `TrellisPersistenceMappingException`
 
 ```csharp

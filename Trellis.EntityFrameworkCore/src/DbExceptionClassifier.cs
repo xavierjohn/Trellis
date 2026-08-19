@@ -122,7 +122,7 @@ public static class DbExceptionClassifier
         // PostgreSQL: try ConstraintName property
         if (typeName == "PostgresException")
         {
-            var constraintProp = inner.GetType().GetProperty("ConstraintName");
+            var constraintProp = FindProperty(inner.GetType(), "ConstraintName");
             if (constraintProp?.GetValue(inner) is string constraintName && !string.IsNullOrEmpty(constraintName))
                 return $"Constraint: {constraintName}";
         }
@@ -200,7 +200,7 @@ public static class DbExceptionClassifier
     private static bool TryGetSqlServerNumber(Exception ex, out int number)
     {
         number = 0;
-        var prop = ex.GetType().GetProperty("Number");
+        var prop = FindProperty(ex.GetType(), "Number");
         if (prop?.GetValue(ex) is int n)
         {
             number = n;
@@ -213,9 +213,37 @@ public static class DbExceptionClassifier
     private static bool TryGetPostgresSqlState(Exception ex, out string? state)
     {
         state = null;
-        var prop = ex.GetType().GetProperty("SqlState");
+        var prop = FindProperty(ex.GetType(), "SqlState");
         state = prop?.GetValue(ex) as string;
         return state is not null;
+    }
+
+    /// <summary>
+    /// Resolves a public instance property by walking the type hierarchy most-derived first,
+    /// asking each level for its own declarations.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Type.GetProperty(string)"/> throws <see cref="System.Reflection.AmbiguousMatchException"/>
+    /// when a derived type shadows a base property with a different type — which real drivers do:
+    /// <c>MySqlConnector.MySqlException</c> re-declares <c>ErrorCode</c> as an enum over
+    /// <see cref="System.Runtime.InteropServices.ExternalException"/>'s <see cref="int"/>. These
+    /// helpers run inside exception handlers, so an escaping reflection failure would turn a
+    /// classified conflict into an unhandled error.
+    /// </remarks>
+    private static System.Reflection.PropertyInfo? FindProperty(Type type, string name)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            var property = current.GetProperty(
+                name,
+                System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.DeclaredOnly);
+            if (property is not null)
+                return property;
+        }
+
+        return null;
     }
 
     private static bool TryGetMySqlNumber(Exception ex, out int number)
@@ -224,14 +252,14 @@ public static class DbExceptionClassifier
         // MySql.Data.MySqlClient.MySqlException exposes a Number property; MySqlConnector's
         // MySqlException exposes ErrorCode (an enum convertible to int) and Number.
         var type = ex.GetType();
-        var numberProp = type.GetProperty("Number");
+        var numberProp = FindProperty(type, "Number");
         if (numberProp?.GetValue(ex) is int n)
         {
             number = n;
             return true;
         }
 
-        var errorCodeProp = type.GetProperty("ErrorCode");
+        var errorCodeProp = FindProperty(type, "ErrorCode");
         if (errorCodeProp?.GetValue(ex) is { } errorCode)
         {
             try
@@ -251,9 +279,9 @@ public static class DbExceptionClassifier
     private static (string? ConstraintName, string? TableName) ExtractPostgresIdentity(Exception inner)
     {
         var type = inner.GetType();
-        var name = type.GetProperty("ConstraintName")?.GetValue(inner) as string;
-        var table = type.GetProperty("TableName")?.GetValue(inner) as string;
-        var schema = type.GetProperty("SchemaName")?.GetValue(inner) as string;
+        var name = FindProperty(type, "ConstraintName")?.GetValue(inner) as string;
+        var table = FindProperty(type, "TableName")?.GetValue(inner) as string;
+        var schema = FindProperty(type, "SchemaName")?.GetValue(inner) as string;
 
         if (string.IsNullOrEmpty(name))
             name = null;
