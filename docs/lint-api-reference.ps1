@@ -414,7 +414,7 @@ foreach ($file in $markdownFiles) {
         continue
     }
 
-    Write-Host "$($file.FullName)(1,1): error TRLDOC004: '$($file.Name)' is not owned by any package, so the freshness audit has no source to compare it against. Add a <TrellisApiRefName> to the owning package, or list it under CrossCuttingDocs in docs/api-reference-docs.psd1 if it describes the framework as a whole."
+    Write-Host "$($file.FullName)(1,1): error TRLDOC004: '$($file.Name)' is not owned by any package, so the freshness audit has no source to compare it against. Add a <TrellisApiRefName> to the owning package; or, in docs/api-reference-docs.psd1, list it under CrossCuttingDocs if it describes the framework as a whole, or under UnshippedDocs if it is a generated or repo-internal report that never reaches consumers."
     $failed = $true
 }
 
