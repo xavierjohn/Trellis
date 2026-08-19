@@ -201,14 +201,17 @@ services.AddTrellis(options => options
 
 Not every `services.AddXxx()` Trellis ships has a matching `UseXxx()` slot, and the omissions are deliberate.
 
+The complete, authoritative classification lives in `Trellis.ServiceDefaults/tests/RegistrationSurfaceTests.cs`, which reflects over every registration helper reachable from `Trellis.ServiceDefaults` and fails the build if one is unclassified, if a classified helper no longer exists, if a named slot is missing from `TrellisServiceBuilder`, or if a helper classified as slotted is never actually referenced by `Trellis.ServiceDefaults`. The table below is the narrative summary of the cases worth explaining; treat the test as the source of truth if the two ever disagree.
+
 | Registration | Package | Why no slot |
 |---|---|---|
-| `AddInMemoryIdempotencyStore` | `Trellis.Asp.Idempotency` | A leaf store, chosen by the store registration rather than by the composition root. |
-| `AddTrellisRouteConstraint` / `AddTrellisRouteConstraints` | `Trellis.Asp` | Called by `UseAsp()`; surfacing it twice would let the two disagree. |
+| `AddInMemoryIdempotencyStore` | `Trellis.Asp` | The default leaf store. `UseIdempotency()` registers the middleware and options but deliberately no store, so the application picks one explicitly alongside it. |
+| `AddTrellisRouteConstraint` / `AddTrellisRouteConstraints` | `Trellis.Asp` | Registers per-value-object route constraints — application content, not a feature toggle. The application names the types (or the assembly to scan), so there is nothing for a slot to decide. |
 | `AddTransactionalCommandBehavior` | `Trellis.Mediator` | Provider-neutral; invoked by `AddTrellisUnitOfWork<TContext>()`, which *is* surfaced as `UseEntityFrameworkUnitOfWork<TContext>()`. |
+| `AddTrellisUnitOfWorkWithoutBehavior` | `Trellis.EntityFrameworkCore` | An escape hatch for hosts that take over pipeline ordering; a slot would contradict its purpose. |
 | `AddCosmosIdempotencyStore` | `Trellis.Asp.Idempotency.Cosmos` | Vendor SDK. |
 | `AddAzureServiceBusIntegrationEventPublisher` / `AddAzureServiceBusIntegrationEventConsumer` | `Trellis.Messaging.AzureServiceBus` | Vendor SDK. |
 
-The vendor-SDK rule is the important one: `Trellis.ServiceDefaults` references no cloud SDK, and a builder slot is a compile-time reference. Adding one would make every consumer of the meta-package carry the Azure SDK in order to use features that have nothing to do with Azure. Call these registrations directly on `IServiceCollection` alongside `AddTrellis(...)`.
+The vendor-SDK rule is the important one: `Trellis.ServiceDefaults` references no cloud SDK, and a builder slot is a compile-time reference. Adding one would make every consumer of the meta-package carry the Azure SDK in order to use features that have nothing to do with Azure. Call these registrations directly on `IServiceCollection` alongside `AddTrellis(...)`. That same absence from the reference graph is what keeps the vendor packages outside the test's scan, so their "no slot" status needs no allowlist entry.
 
 `AddAzureServiceBusIntegrationEventPublisher` in particular is order-independent by construction: it *replaces* any existing `IIntegrationEventPublisher` registration rather than appending to it, so it can be called before or after `AddTrellis(options => options.UseIntegrationEvents(...))` with the same result.
