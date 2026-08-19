@@ -25,6 +25,18 @@
     ItemGroup condition would see the final property value, not the per-import
     value.
   -->
+  <!--
+    Marker for satellite packages: build/Trellis.ApiReference.Payload.targets declares payload
+    items but carries no copy logic, and relies on this file arriving with Trellis.Core. If Core's
+    build assets are suppressed (ExcludeAssets="build", PrivateAssets covering build, and so on)
+    the items would be declared with nothing to consume them and the docs would silently fail to
+    appear. Payload.targets warns on that, and needs this property to tell it apart from a healthy
+    build.
+  -->
+  <PropertyGroup>
+    <TrellisApiReferenceCopyLogicPresent>true</TrellisApiReferenceCopyLogicPresent>
+  </PropertyGroup>
+
   <ItemGroup>
     <TrellisApiReference Include="$(MSBuildThisFileDirectory)..\trellis\*.md" />
   </ItemGroup>

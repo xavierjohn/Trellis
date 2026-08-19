@@ -4,6 +4,9 @@
   <Description>Roslyn analyzers for Trellis library. Enforces proper Result and Maybe handling patterns at compile time.</Description>
   <PackageTags>trellis;roslyn;analyzers;functional;ddd;result;maybe;railway-oriented-programming</PackageTags>
   <TrellisApiRefName>analyzers</TrellisApiRefName>
+  <!-- The only first-party package that does not depend on Trellis.Core, so it cannot
+       rely on Core to deliver docs; it ships its own. See Directory.Build.targets. -->
+  <TrellisShipsOwnApiReference>true</TrellisShipsOwnApiReference>
 </PropertyGroup>
 
   <PropertyGroup>

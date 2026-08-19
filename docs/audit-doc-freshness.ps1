@@ -34,12 +34,9 @@ Set-StrictMode -Version Latest
 $docsDir = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference'
 
 # Docs that describe the framework as a whole, so any package's source can invalidate them.
-$crossCuttingDocs = @(
-    'trellis-api-cookbook.md',
-    'trellis-api-anti-patterns.md',
-    'trellis-value-object-taxonomy.md',
-    'trellis-start-here.md'
-)
+# Shared with docs/lint-api-reference.ps1 (TRLDOC004) - see that file for why one list.
+$docManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'api-reference-docs.psd1')
+$crossCuttingDocs = $docManifest.CrossCuttingDocs
 
 function Get-LastVerified {
     param([string] $Path)

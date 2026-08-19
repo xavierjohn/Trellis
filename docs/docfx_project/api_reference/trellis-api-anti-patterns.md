@@ -9,6 +9,8 @@ audience: [llm]
 ---
 # Trellis Anti-Pattern → Fix Gallery
 
+> **Requires `Trellis.Analyzers`.** This gallery is organised by `TRLS###` diagnostic, but those diagnostics only fire while the consuming project holds a `PackageReference` to `Trellis.Analyzers`. Referencing `Trellis.Core` alone leaves all of them silent, and this file is delivered by `Trellis.Core` — so its presence in `.github/` does **not** mean the analyzers are active. Check the `.csproj`. The FIX shapes below remain correct either way; what changes is whether anything tells you when you have drifted from them.
+
 > A condensed atlas mapping each common Trellis analyzer trigger to its idiomatic fix. **Read this file alongside `trellis-api-cookbook.md` whenever you are touching a Trellis pipeline.** Each section's WRONG/FIX pair captures the canonical control-flow shape the analyzer expects — preserve that shape and adapt identifiers, types, and error values to your caller. The snippets are pattern examples, not drop-in replacements.
 
 This file is the canonical reference for analyzer-triggered anti-patterns. It used to live as Recipe 11 in `trellis-api-cookbook.md` and was extracted so that:

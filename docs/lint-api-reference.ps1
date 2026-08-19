@@ -363,42 +363,123 @@ foreach ($file in $markdownFiles) {
     }
 }
 
-$packagedDocNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$docManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'api-reference-docs.psd1')
+
+# Project metadata is read through the XML parser rather than by matching raw text, because
+# a regex also matches commented-out markup. That gap ran in the dangerous direction: a
+# commented <IsPackable>false</IsPackable> would make TRLDOC011 skip a package that really
+# does ship, which is exactly how a package reaches production with no reference at all.
+# Reading elements means a commented property is invisible here, just as it is to MSBuild.
+function Get-ProjectPropertyValues {
+    param(
+        [Parameter(Mandatory)] [string] $ProjectPath,
+        [Parameter(Mandatory)] [string] $PropertyName
+    )
+
+    $document = New-Object System.Xml.XmlDocument
+    $document.PreserveWhitespace = $false
+    $document.Load($ProjectPath)
+
+    $nodes = $document.SelectNodes("//*[local-name()='PropertyGroup']/*[local-name()='$PropertyName']")
+
+    return @($nodes | ForEach-Object { $_.InnerText.Trim() })
+}
+
+# TRLDOC004 - every api_reference/*.md must be owned by a package that declares the
+# matching <TrellisApiRefName>, or be listed as cross-cutting.
+#
+# This used to assert that some package PACKS the file. It no longer can: Trellis.Core
+# ships the whole directory as a glob, so delivery is guaranteed by construction and the
+# old check could never fail. What is still worth gating is ownership - an unowned doc has
+# no source directory to compare against, so the freshness audit silently cannot see it.
+$ownedDocNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
 foreach ($projectFile in Get-ChildItem -Path $RepositoryRoot -Filter '*.csproj' -Recurse -File |
         Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }) {
-    $projectText = Get-Content -LiteralPath $projectFile.FullName -Raw
-
-    foreach ($refNameMatch in [regex]::Matches($projectText, '<TrellisApiRefName>\s*(?<name>[^<\s]+)\s*</TrellisApiRefName>')) {
-        [void] $packagedDocNames.Add("trellis-api-$($refNameMatch.Groups['name'].Value).md")
+    foreach ($refName in Get-ProjectPropertyValues -ProjectPath $projectFile.FullName -PropertyName 'TrellisApiRefName') {
+        [void] $ownedDocNames.Add("trellis-api-$refName.md")
     }
 }
 
-# Cross-cutting references are not owned by any single package, so they are packed by
-# literal path in Directory.Build.targets rather than via TrellisApiRefName.
-$directoryBuildTargetsPath = Join-Path $RepositoryRoot 'Directory.Build.targets'
-
-if (Test-Path -LiteralPath $directoryBuildTargetsPath) {
-    $targetsText = Get-Content -LiteralPath $directoryBuildTargetsPath -Raw
-
-    foreach ($packedMatch in [regex]::Matches($targetsText, 'api_reference[\\/](?<file>[A-Za-z0-9._-]+\.md)')) {
-        [void] $packagedDocNames.Add($packedMatch.Groups['file'].Value)
-    }
+foreach ($crossCutting in $docManifest.CrossCuttingDocs) {
+    [void] $ownedDocNames.Add($crossCutting)
 }
 
-# Generated or repo-internal reports live alongside the references but are deliberately
-# not shipped to consumers, so they are exempt from the payload requirement.
-$unshippedDocAllowlist = [System.Collections.Generic.HashSet[string]]::new(
-    [string[]] @('completeness-report.md'),
-    [System.StringComparer]::OrdinalIgnoreCase)
+foreach ($unshipped in $docManifest.UnshippedDocs) {
+    [void] $ownedDocNames.Add($unshipped)
+}
 
 foreach ($file in $markdownFiles) {
-    if ($packagedDocNames.Contains($file.Name) -or $unshippedDocAllowlist.Contains($file.Name)) {
+    if ($ownedDocNames.Contains($file.Name)) {
         continue
     }
 
-    Write-Host "$($file.FullName)(1,1): error TRLDOC004: '$($file.Name)' is not shipped in any NuGet package's trellis/ payload, so consumers never receive it. Add a <TrellisApiRefName> to the owning package, or pack it as a cross-cutting reference in Directory.Build.targets."
+    Write-Host "$($file.FullName)(1,1): error TRLDOC004: '$($file.Name)' is not owned by any package, so the freshness audit has no source to compare it against. Add a <TrellisApiRefName> to the owning package; or, in docs/api-reference-docs.psd1, list it under CrossCuttingDocs if it describes the framework as a whole, or under UnshippedDocs if it is a generated or repo-internal report that never reaches consumers."
     $failed = $true
+}
+
+# TRLDOC011 - every shipping package must declare the reference it owns.
+#
+# The inverse of TRLDOC004: that one catches a doc with no package, this catches a package
+# with no doc. It was convention-only, which is how a Trellis package shipped to production
+# with no LLM guidance at all - the consuming agent had nothing to read and invented an API.
+# Scoped to Trellis.*/src, the repository's one-src-project-per-package layout; tests,
+# generators and Examples are excluded structurally rather than by IsPackable, which test
+# projects inherit from the test SDK rather than setting in the file.
+foreach ($packageProject in Get-ChildItem -Path $RepositoryRoot -Filter '*.csproj' -Recurse -File |
+        Where-Object {
+            $_.FullName -notmatch '[\\/](bin|obj)[\\/]' -and
+            $_.FullName -notmatch '[\\/]Examples[\\/]' -and
+            $_.Directory.Name -eq 'src' -and
+            $_.Directory.Parent.Name -like 'Trellis.*'
+        }) {
+    $isPackable = Get-ProjectPropertyValues -ProjectPath $packageProject.FullName -PropertyName 'IsPackable'
+
+    if ($isPackable -contains 'false') {
+        continue
+    }
+
+    $declaredNames = Get-ProjectPropertyValues -ProjectPath $packageProject.FullName -PropertyName 'TrellisApiRefName'
+
+    if ($declaredNames.Count -eq 0) {
+        Write-Host "$($packageProject.FullName)(1,1): error TRLDOC011: Shipping package declares no <TrellisApiRefName>, so it delivers no API reference and an agent consuming it has nothing to read. Add docs/docfx_project/api_reference/trellis-api-<name>.md and declare <TrellisApiRefName>name</TrellisApiRefName>."
+        $failed = $true
+        continue
+    }
+
+    # Declaring the property is not the same as writing the file. Core packs the reference
+    # directory as a glob, so a name pointing at a file that does not exist packs nothing and
+    # fails nothing - the package would ship with no guidance while appearing compliant.
+    foreach ($declaredName in $declaredNames) {
+        $declaredDoc = "trellis-api-$declaredName.md"
+
+        if (-not (Test-Path -LiteralPath (Join-Path $apiReferenceDir $declaredDoc))) {
+            Write-Host "$($packageProject.FullName)(1,1): error TRLDOC011: Declares <TrellisApiRefName> but '$declaredDoc' does not exist in docs/docfx_project/api_reference, so the package still ships no API reference. Create the file or correct the name."
+            $failed = $true
+        }
+    }
+}
+
+# TRLDOC012 - guardrail docs must say that their guardrails are opt-in.
+#
+# Trellis.Core delivers the whole reference set, which is safe for API docs because using an
+# API the consumer does not have is a compile error. It is NOT safe for analyzer docs: an
+# agent reading a TRLS rule in a project without Trellis.Analyzers concludes the mistake will
+# be caught, and writes less defensively than if the doc were absent entirely. Nothing fails,
+# so the error ships. The banner is the only thing standing between delivery and that trap.
+foreach ($guardrailDoc in $docManifest.GuardrailDocs) {
+    $guardrailPath = Join-Path $apiReferenceDir $guardrailDoc
+
+    if (-not (Test-Path -LiteralPath $guardrailPath)) {
+        Write-Host "$guardrailPath(1,1): error TRLDOC012: Listed under GuardrailDocs in docs/api-reference-docs.psd1 but the file does not exist. Correct the list or restore the file."
+        $failed = $true
+        continue
+    }
+
+    if ((Get-Content -LiteralPath $guardrailPath -Raw) -notmatch [regex]::Escape($docManifest.GuardrailBannerMarker)) {
+        Write-Host "$guardrailPath(1,1): error TRLDOC012: Missing the opt-in banner '$($docManifest.GuardrailBannerMarker)'. Trellis.Core ships this file to every consumer, so without the banner an agent will trust TRLS diagnostics in a project that never references Trellis.Analyzers. Add the banner directly beneath the H1."
+        $failed = $true
+    }
 }
 
 # TRLDOC006 - every cookbook recipe must be pinned by a compiled snippet in
@@ -463,6 +544,8 @@ else {
         }
     }
 
+    $liveRecipeCount = 0
+
     for ($index = 0; $index -lt $cookbookLines.Count; $index++) {
         $headingMatch = [regex]::Match($cookbookLines[$index], '^##\s+Recipe\s+(?<number>\d+)\s+(?<rest>.*)$')
 
@@ -478,6 +561,7 @@ else {
         }
 
         $recipeNumber = [int] $headingMatch.Groups['number'].Value
+        $liveRecipeCount++
 
         if (-not $snippetNumbers.Contains($recipeNumber)) {
             Write-Host "$cookbookPath($($index + 1),1): error TRLDOC006: Recipe $recipeNumber has no compiled snippet. Add Examples/CookbookSnippets/Recipe$('{0:D2}' -f $recipeNumber)_<Name>.cs so the recipe's code is compiler-verified."
@@ -486,6 +570,27 @@ else {
 
         if ($patternsIndexStart -ge 0 -and -not $indexedRecipes.Contains($recipeNumber)) {
             Write-Host "$cookbookPath($($index + 1),1): error TRLDOC007: Recipe $recipeNumber is not reachable from the Patterns Index. Add a task-phrased row linking to #recipe-$recipeNumber-... so agents that load only the index can discover it."
+            $failed = $true
+        }
+    }
+
+    # TRLDOC010 - the recipe count quoted in trellis-start-here.md must match reality.
+    # That file tells agents the index is exhaustive ("if a task is not listed there, the
+    # recipe does not exist") and uses the count to justify a token budget, so a stale
+    # number quietly undermines both claims. Retired recipes keep their heading but have
+    # no body, so they are excluded here exactly as they are above.
+    $startHerePath = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/trellis-start-here.md'
+
+    if (Test-Path -LiteralPath $startHerePath) {
+        $startHereText = Get-Content -LiteralPath $startHerePath -Raw
+        $countMatch = [regex]::Match($startHereText, 'The (?<count>\d+) recipe bodies beneath it')
+
+        if (-not $countMatch.Success) {
+            Write-Host "$startHerePath(1,1): error TRLDOC010: Could not find the 'The <n> recipe bodies beneath it' phrase, so the recipe count cannot be verified. Restore the phrase or update the pattern in this script."
+            $failed = $true
+        }
+        elseif ([int] $countMatch.Groups['count'].Value -ne $liveRecipeCount) {
+            Write-Host "$startHerePath(1,1): error TRLDOC010: States $($countMatch.Groups['count'].Value) recipe bodies, but the cookbook has $liveRecipeCount live recipes (retired headings excluded). Update the count."
             $failed = $true
         }
     }

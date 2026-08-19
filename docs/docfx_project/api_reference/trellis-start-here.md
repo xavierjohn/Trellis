@@ -23,7 +23,7 @@ to skim all of it wastes the budget you need for the task. The cookbook exists t
 its [preflight table](trellis-api-cookbook.md#llm-preflight-load-the-smallest-correct-reference-set)
 names exactly which package references that task needs.
 
-That routing head is only ~4K tokens. The 36 recipe bodies beneath it are another ~57K, and a
+That routing head is only ~4K tokens. The 35 recipe bodies beneath it are another ~57K, and a
 typical task opens one to three of them — so **hold the head, and read recipe bodies on demand**
 rather than paying ~57K tokens up front to keep bodies you will never open. Every live recipe is
 reachable from the index (a repository lint gate enforces this), so trust the index rows: if a task
@@ -57,6 +57,19 @@ compile error to redeclare — the cookbook's Recipe 1 lists that inherited surf
 | [`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md#trls001--result-return-value-not-handled) | Ready-to-apply WRONG/FIX shapes for the analyzer diagnostics (`TRLSxxx`). |
 | [`trellis-value-object-taxonomy.md`](trellis-value-object-taxonomy.md#patterns-index) | Choosing a value-object category: scalar, symbolic, structured, optional. |
 
-Any other `trellis-api-*.md` file in this directory was copied here by the matching Trellis package
-you reference — for example `trellis-api-efcore.md` for `Trellis.EntityFrameworkCore`. The cookbook
-names the right one per task, so route through it rather than opening files speculatively.
+The remaining `trellis-api-*.md` files cover the optional packages — `trellis-api-efcore.md` for
+`Trellis.EntityFrameworkCore`, and so on. The cookbook names the right one per task, so route
+through it rather than opening files speculatively.
+
+**A file being present here does not mean the project you are editing references that package.** The
+complete first-party set ships with `Trellis.Core`, so references for packages you have not installed
+are present by design — that is how you discover a module worth adopting. A `.github/` directory
+shared across a solution also aggregates whatever every project in it references, and a reference for
+a package that was later dropped is not removed. Packages published from other repositories (for
+example `Trellis.ServiceLevelIndicators`) ship their own reference alongside themselves, so those
+appear only once installed.
+
+So before writing code against one of these files, confirm the package is actually referenced by the
+project you are editing — check its `.csproj` or `Directory.Packages.props`. If it is not, the
+reference still tells you what adopting the package would buy; say that, rather than emitting code
+that cannot compile.

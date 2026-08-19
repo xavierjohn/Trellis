@@ -8,6 +8,8 @@ audience: [llm]
 ---
 # Trellis.Analyzers — API Reference
 
+> **Requires `Trellis.Analyzers`.** Every `TRLS###` rule below is enforced only while the consuming project holds a `PackageReference` to `Trellis.Analyzers`. Referencing `Trellis.Core` alone leaves all of them silent. This file is delivered by `Trellis.Core`, so its presence in `.github/` does **not** mean the analyzers are active — check the `.csproj`. Where the reference is absent, treat every rule here as advice you must apply by hand, because nothing will catch you.
+
 - **Package:** `Trellis.Analyzers`
 - **Namespace:** `Trellis.Analyzers`
 - **Purpose:** Roslyn analyzers and code fixes that enforce correct Trellis `Result<T>`, `Maybe<T>`, EF Core, and value-object usage.
