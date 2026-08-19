@@ -91,7 +91,7 @@ public class RegistrationSurfaceTests
 
         // ---- Deliberate exceptions to the shape of the rule. ----
         ["Trellis.Asp::AddTrellisAspWithScalarValidation"] = new(null, "Convenience composite of AddTrellisAsp + AddScalarValueValidation; both halves are already slotted, and a slot here would offer a second way to express one ordering."),
-        ["Trellis.Asp::AddScalarValueValidationForMinimalApi"] = new(null, "Minimal API wiring is deliberately outside the UseScalarValueValidation slot, which documents that hosts add the middleware and per-endpoint filter themselves."),
+        ["Trellis.Asp::AddScalarValueValidationForMinimalApi"] = new(null, "Strict subset of the slotted AddScalarValueValidation, whose ConfigureHttpJsonOptions call already covers the Minimal API pipeline (its MvcOptions/MvcJsonOptions callbacks are inert without AddControllers). A slot would be a second way to express part of one registration, and selecting both would apply the JSON type-info modifier twice."),
     };
 
     /// <summary>
