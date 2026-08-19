@@ -14,7 +14,6 @@
     <PackageId>Trellis.Testing</PackageId>
     <Description>FluentAssertions extensions and test doubles for Trellis - assert Result, Maybe, and Error types with readable fluent syntax</Description>
     <PackageTags>trellis;functional-programming;testing;assertions;fluent-assertions;ddd;railway-oriented-programming;result;maybe;test-utilities</PackageTags>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <TrellisApiRefName>testing-reference</TrellisApiRefName>
   </PropertyGroup>
 
@@ -28,7 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

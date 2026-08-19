@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>
       Railway Oriented Programming is a coding concept that involves using a library's built-in functions to control program execution flow based on success or error track.
       By doing so, functional code can be written that allows for chaining of functions without the need for error checking.
@@ -13,7 +12,6 @@
     <TrellisShipsApiReferenceSet>true</TrellisShipsApiReferenceSet>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Trellis.Primitives.Tests" />

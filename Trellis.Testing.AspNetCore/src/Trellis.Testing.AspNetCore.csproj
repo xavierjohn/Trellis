@@ -14,7 +14,6 @@
     <PackageId>Trellis.Testing.AspNetCore</PackageId>
     <Description>ASP.NET Core integration test utilities for Trellis - WebApplicationFactory helpers, DI service replacement, fake time providers, and MSAL token acquisition</Description>
     <PackageTags>trellis;functional-programming;testing;aspnetcore;integration-testing;webapplicationfactory;ddd;railway-oriented-programming</PackageTags>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <TrellisApiRefName>testing-aspnetcore</TrellisApiRefName>
   </PropertyGroup>
 
@@ -32,7 +31,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

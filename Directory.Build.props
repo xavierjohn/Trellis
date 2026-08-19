@@ -26,7 +26,15 @@
     <RepositoryUrl>https://github.com/xavierjohn/Trellis.git</RepositoryUrl>
     <PackageProjectUrl>https://xavierjohn.github.io/Trellis/</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!--
+      NUGET_README.md, not README.md. Each package carries both: README.md documents the
+      package for someone reading the repository, NUGET_README.md is the trimmed listing
+      copy nuget.org renders. Every package sets this identically, so it belongs here - and
+      declaring the default as README.md while all 23 overrode it meant a new package that
+      forgot to override would fail pack with NU5039, because README.md is never packed.
+    -->
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
   </PropertyGroup>
   
   <PropertyGroup Label="Build">
@@ -78,6 +86,22 @@
     <!-- Detect breaking changes in library APIs -->
     <EnablePackageValidation>true</EnablePackageValidation>
 
+    <!--
+      Compare against the last published release rather than only across frameworks. Without a
+      baseline, EnablePackageValidation checks internal consistency and silently says nothing
+      about compatibility with what consumers already have installed - which is the question
+      worth asking before a push to nuget.org.
+
+      Breaking changes are permitted in this framework; the gate exists to make them
+      deliberate, not to forbid them. When one is intended, record it in the owning package's
+      CompatibilitySuppressions.xml (rebuild with /p:ApiCompatGenerateSuppressionFile=true)
+      so the break is reviewable in the diff instead of invisible.
+
+      Bump this in the same commit that publishes a release. Leaving it behind means comparing
+      against an ever-older surface and re-reporting breaks that were already accepted.
+    -->
+    <PackageValidationBaselineVersion>3.0.0-alpha.455</PackageValidationBaselineVersion>
+
     <!-- Release hygiene (ga-07) -->
     <!-- DotNet.ReproducibleBuilds bundles Microsoft.SourceLink.GitHub and sets
          Deterministic, ContinuousIntegrationBuild (under CI), EmbedUntrackedSources.
@@ -101,6 +125,17 @@
 
   <ItemGroup Condition=" '$(IsTestProject)' == 'false' ">
     <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath="\" />
+
+    <!--
+      Packages live at Trellis.<Name>/src, so the listing README sits one level up. Guarded by
+      Exists rather than by a packability check: Examples and generator projects sit at other
+      depths and simply have no such file, while a real package missing one still fails pack
+      loudly through NU5039 rather than shipping an empty listing page.
+    -->
+    <None Include="$(MSBuildProjectDirectory)\..\NUGET_README.md"
+          Condition=" Exists('$(MSBuildProjectDirectory)\..\NUGET_README.md') "
+          Pack="true"
+          PackagePath="\" />
   </ItemGroup>
 
   <ImportGroup Condition=" '$(IsTestProject)' == 'true' ">

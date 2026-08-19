@@ -14,7 +14,6 @@
     <PackageId>Trellis.Testing.Worker</PackageId>
     <Description>Integration-test harness for BackgroundService workers built on Trellis - prewired IHost, FakeTimeProvider, TestActorProvider, domain-event capture, and tick-completion primitives</Description>
     <PackageTags>trellis;functional-programming;testing;backgroundservice;worker;integration-testing;hosting;domain-events;ddd</PackageTags>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <TrellisApiRefName>testing-worker</TrellisApiRefName>
   </PropertyGroup>
 
@@ -31,7 +30,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

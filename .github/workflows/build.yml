@@ -248,8 +248,12 @@ jobs:
     - name: Build docs
       run: docfx docs/docfx_project/docfx.json
   
+    # Runs on pull requests too, not just pushes to main. Package validation - including the
+    # API-compatibility check against the last published release - executes during pack, so
+    # gating this on the push would mean a breaking change first surfaced after merge, or at
+    # publish time. Only the artifact upload stays push-only.
     - name: Pack
-      if: ${{ success() && !github.base_ref }}
+      if: ${{ success() }}
       run: dotnet pack --no-build --verbosity normal -c Release -o artifacts/
         
     - name: Upload artifacts

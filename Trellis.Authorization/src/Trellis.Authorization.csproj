@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>Lightweight authorization primitives for Trellis. Provides Actor, IActorProvider, IAuthorize, IAuthorizeResource of TResource, IResourceLoader, and ResourceLoaderById types that integrate with the Trellis Result type system. No dependency on any mediator or web framework.</Description>
     <PackageTags>trellis;authorization;actor;permissions;result;railway-oriented;functional-programming</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
@@ -39,7 +38,6 @@
     <Compile Remove="Generated/**/*.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />

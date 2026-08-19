@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup>
-  <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
   <Description>Roslyn analyzers for Trellis library. Enforces proper Result and Maybe handling patterns at compile time.</Description>
   <PackageTags>trellis;roslyn;analyzers;functional;ddd;result;maybe;railway-oriented-programming</PackageTags>
   <TrellisApiRefName>analyzers</TrellisApiRefName>
@@ -38,7 +37,6 @@
   <!-- This ensures the library will be packaged as an analyzer when we use `dotnet pack` -->
   <ItemGroup>
     <None Include="$(TargetPath)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <!--

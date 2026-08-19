@@ -1,13 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <TrellisApiRefName>asp-idempotency-cosmos</TrellisApiRefName>
     <Description>Cosmos DB-backed IIdempotencyStore for Trellis.Asp. Safe across instances and process restarts: reservations are claimed with an atomic CreateItem (409 on duplicate id) and every subsequent mutation is an ETag-conditional replace or delete, so Session consistency cannot cause a double execution. Enforces TTL and reservation-timeout expiry in-process rather than trusting Cosmos DB's best-effort background sweep. Verified by the Trellis.Testing.Idempotency conformance suite.</Description>
     <PackageTags>trellis;idempotency;cosmosdb;azure;asp;http;idempotency-key;distributed;result;railway-oriented</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />

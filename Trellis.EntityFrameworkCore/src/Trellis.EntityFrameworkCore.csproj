@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>EF Core integration for Trellis. Convention-based value converter registration for Trellis primitives, Result-returning SaveChanges wrappers, Maybe/Result query extensions, and provider-agnostic database exception classification.</Description>
     <PackageTags>trellis;efcore;entity-framework-core;value-converters;railway-oriented;result;maybe;ddd;domain-driven-design</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -18,7 +17,6 @@
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Authorization\src\Trellis.Authorization.csproj" />

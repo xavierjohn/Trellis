@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Description>HTTP client extensions for Railway Oriented Programming. Provides fluent extension methods to handle HttpResponseMessage with Result and Maybe monads, including error handling for specific status codes and JSON deserialization.</Description>
     <PackageTags>trellis;http;httpclient;railway-oriented;result;maybe;functional-programming;error-handling;json</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
@@ -8,7 +7,6 @@
     <TrellisApiRefName>http</TrellisApiRefName>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
