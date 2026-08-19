@@ -133,6 +133,46 @@ public class DbExceptionClassifierProviderContractTests
         tableName.Should().Be("public.users");
     }
 
+    [Fact]
+    public void ExtractConstraintDetail_RealPostgresException_ReadsTypedConstraintName()
+    {
+        var ex = new DbUpdateException("save failed", NewPostgresException("23505"));
+
+        DbExceptionClassifier.ExtractConstraintDetail(ex).Should().Be("Constraint: ix_users_email");
+    }
+
+    #endregion
+
+    #region Provider-named exceptions missing the expected property must fall through, not throw
+
+    // The classifier reads error codes reflectively, so a driver that drops or renames a property
+    // must degrade to message matching rather than throw out of the caller's catch block.
+
+    [Fact]
+    public void IsDuplicateKey_SqlExceptionWithoutNumber_FallsBackToMessageMatching()
+    {
+        var ex = new DbUpdateException("save failed", new SqlException("Cannot insert duplicate key row."));
+
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeTrue(
+            "the generic 'duplicate key' fallback still applies when Number is absent");
+    }
+
+    [Fact]
+    public void IsDuplicateKey_SqlExceptionWithoutNumberOrRecognisableMessage_ReturnsFalse()
+    {
+        var ex = new DbUpdateException("save failed", new SqlException("Timeout expired."));
+
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsDuplicateKey_MySqlExceptionWithoutNumberOrErrorCode_ReturnsFalse()
+    {
+        var ex = new DbUpdateException("save failed", new WithoutErrorCode.MySqlException("Timeout expired."));
+
+        DbExceptionClassifier.IsDuplicateKey(ex).Should().BeFalse();
+    }
+
     #endregion
 
     #region Real SQLite violations — provoked through EF Core, then classified
@@ -288,6 +328,48 @@ public class DbExceptionClassifierProviderContractTests
         public int Id { get; set; }
 
         public int UserId { get; set; }
+    }
+
+    /// <summary>
+    /// Named <c>SqlException</c> but with no <c>Number</c> property, standing in for a driver that
+    /// dropped or renamed it. The real <c>Microsoft.Data.SqlClient.SqlException</c> exposes no
+    /// public constructor, so its shape is pinned by contract test instead.
+    /// </summary>
+    private sealed class SqlException : Exception
+    {
+        public SqlException()
+        {
+        }
+
+        public SqlException(string message) : base(message)
+        {
+        }
+
+        public SqlException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Container giving a second CLR type the name <c>MySqlException</c> — this one exposing
+    /// neither <c>Number</c> nor <c>ErrorCode</c>, so both reflective lookups miss.
+    /// </summary>
+    private static class WithoutErrorCode
+    {
+        internal sealed class MySqlException : Exception
+        {
+            public MySqlException()
+            {
+            }
+
+            public MySqlException(string message) : base(message)
+            {
+            }
+
+            public MySqlException(string message, Exception innerException) : base(message, innerException)
+            {
+            }
+        }
     }
 
     private enum MySqlErrorCode
