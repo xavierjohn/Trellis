@@ -25,12 +25,12 @@ audience: [llm]
   - [trellis-api-statemachine.md](trellis-api-statemachine.md#use-this-file-when) — `FireResult`, `LazyStateMachine<,>`
   - [trellis-api-testing-reference.md](trellis-api-testing-reference.md#use-this-file-when) — `Should().Be(...)`, `UnwrapError()`
   - [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#use-this-file-when) — `WebApplicationFactoryExtensions`, `.http` replay helpers
-  - [trellis-api-analyzers.md](trellis-api-analyzers.md#use-this-file-when) — `TRLS001`-`TRLS039`, `TrellisDiagnosticIds`
+  - [trellis-api-analyzers.md](trellis-api-analyzers.md#use-this-file-when) — `TRLS001`-`TRLS059`, `TrellisDiagnosticIds`
 
 ## How to read these recipes
 
 **Hold this routing head resident; read recipe bodies on demand.** Everything above the first
-`## Recipe` heading is ~4K tokens and routes every task. The 36 recipe bodies below are another
+`## Recipe` heading is ~4K tokens and routes every task. The 35 recipe bodies below are another
 ~57K, and a typical task needs one to three of them — so open a body when the [task lookup
 table](#task---recipe-lookup) sends you to one, rather than loading all of them up front. Every
 live recipe is reachable from that table (enforced by the repository's TRLDOC007 lint gate), so if
