@@ -175,6 +175,24 @@ public class MediatorDomainEventPublisherTests
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
     }
 
+    [Fact]
+    public void HandlerIdentity_qualifies_the_type_name_with_its_assembly()
+    {
+        var identity = DomainEventDispatchReport.HandlerIdentity(typeof(ThrowingHandlerA));
+
+        var assemblyName = typeof(ThrowingHandlerA).Assembly.GetName();
+        identity.Should().Be($"{assemblyName.Name}:{typeof(ThrowingHandlerA).FullName}");
+
+        // Type.FullName alone is not collision-resistant: two assemblies may declare handlers with the
+        // same namespace-qualified name, and the outbox skips completed handlers by this identity — a
+        // collision would silently drop the colliding handler's work.
+        identity.Should().NotBe(typeof(ThrowingHandlerA).FullName);
+
+        // The assembly's *simple* name only: including version would make a rolling deploy re-run every
+        // handler that had already completed.
+        identity.Should().NotContain(assemblyName.Version!.ToString());
+    }
+
     private sealed class RecordingBaseHandler : IDomainEventHandler<IDomainEvent>
     {
         public List<IDomainEvent> Received { get; } = [];

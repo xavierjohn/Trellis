@@ -1,6 +1,7 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 /// <summary>
@@ -9,6 +10,16 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 /// </summary>
 public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
+    // Handler type names cannot contain a newline, so a newline-delimited list needs no escaping and stays
+    // greppable in the database — deliberately chosen over JSON, which would add quoting noise to a column
+    // that exists for operator triage as much as for the relay.
+    private const char CompletedHandlerSeparator = '\n';
+
+    private static readonly ValueComparer<IReadOnlyList<string>> s_completedHandlersComparer = new(
+        (left, right) => left!.SequenceEqual(right!, StringComparer.Ordinal),
+        value => value.Aggregate(0, (hash, item) => HashCode.Combine(hash, StringComparer.Ordinal.GetHashCode(item))),
+        value => value.ToArray());
+
     /// <inheritdoc />
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
@@ -31,6 +42,18 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(m => m.EventType).IsRequired();
         builder.Property(m => m.Payload).IsRequired();
         builder.Property(m => m.Attempts).IsRequired();
+
+        // Per-handler retry bookkeeping. Non-nullable with an empty default so adding the column to an
+        // existing outbox table backfills cleanly: pre-existing rows simply have no completed handlers.
+        builder.Property(m => m.CompletedHandlers)
+            .HasConversion(
+                value => string.Join(CompletedHandlerSeparator, value),
+                value => value.Length == 0
+                    ? (IReadOnlyList<string>)Array.Empty<string>()
+                    : value.Split(CompletedHandlerSeparator),
+                s_completedHandlersComparer)
+            .HasDefaultValue(Array.Empty<string>())
+            .IsRequired();
 
         builder.Property(m => m.LockedUntil);
         // LockedBy is an optimistic concurrency token: the relay's bookkeeping UPDATE only lands while this

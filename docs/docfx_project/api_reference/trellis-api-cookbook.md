@@ -3012,7 +3012,7 @@ Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.G
 
 **Semantics to remember.**
 
-- The guarantee is at-least-once **delivery**, not handler success: the publisher swallows handler exceptions (the `IDomainEventHandler<TEvent>` contract), so a failing handler does **not** retry — only infrastructure failures retry, up to `OutboxOptions.MaxAttempts`, after which the message is parked. Make handlers idempotent.
+- The guarantee is at-least-once **delivery**, and delivery means *every handler completed*: a handler that throws leaves the message pending and the retry re-invokes only the failed handlers, up to `OutboxOptions.MaxAttempts`, after which the message is parked. Make handlers idempotent — a crash before the relay's bookkeeping save re-delivers to all of them. (In-pipeline dispatch still swallows handler exceptions: it runs post-commit and has no retry mechanism.)
 - `Maybe<T>` event members are supported — a present value serializes as the underlying value, an absent one as JSON `null`. Members that depend on a caller-registered (non-attribute) `JsonSerializerOptions` converter still need a nullable transport, since the outbox serializer only honors `[JsonConverter]`-attributed types.
 - This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
 

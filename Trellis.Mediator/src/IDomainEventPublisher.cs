@@ -19,6 +19,12 @@
 /// cancellation token is the one exception that propagates so the originating
 /// request can abort cleanly.
 /// </para>
+/// <para>
+/// Swallowing is correct here because this contract's callers dispatch <b>post-commit</b> and have no
+/// retry mechanism. Callers that <i>do</i> own one — principally the transactional outbox relay, which
+/// can re-drain a row with backoff — use <see cref="IReportingDomainEventPublisher"/> instead, which
+/// reports per-handler outcomes so only the failed handlers are retried.
+/// </para>
 /// </remarks>
 public interface IDomainEventPublisher
 {

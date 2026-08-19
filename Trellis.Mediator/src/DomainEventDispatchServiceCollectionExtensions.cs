@@ -43,7 +43,12 @@ public static class DomainEventDispatchServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddScoped<IDomainEventPublisher, MediatorDomainEventPublisher>();
+        services.TryAddScoped<MediatorDomainEventPublisher>();
+        services.TryAddScoped<IDomainEventPublisher>(sp => sp.GetRequiredService<MediatorDomainEventPublisher>());
+        // The non-swallowing counterpart, required by callers that own a durable retry mechanism (the
+        // outbox relay). Registered separately so replacing IDomainEventPublisher does not silently
+        // reintroduce swallowing on the retrying path.
+        services.TryAddScoped<IReportingDomainEventPublisher>(sp => sp.GetRequiredService<MediatorDomainEventPublisher>());
 
         // Temporarily yank already-registered transactional behaviors so subsequent
         // appends (always-on behaviors + dispatch) land before them; re-append them as

@@ -79,7 +79,7 @@ public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector)
 The relay drains `IIntegrationEventCollector` after dispatching each domain event and publishes through `IIntegrationEventPublisher`. The default publisher fans out in-process; replace it with a broker adapter for cross-service delivery. Delivery is at least once, so consumers must be idempotent on business identity.
 
 ## Delivery & Serialization Notes
-- The guarantee is at-least-once **delivery**, not handler success: per the `IDomainEventHandler<TEvent>` contract the publisher logs and swallows handler exceptions, so a failing handler does **not** retry — only infrastructure failures do.
+- The guarantee is at-least-once **delivery**, and delivery means *every handler completed*: a handler that throws leaves the message pending, and the retry re-invokes only the failed handlers (`OutboxMessage.CompletedHandlers` tracks the rest), backing off exponentially until `MaxAttempts` parks it. Handlers must still be idempotent — a crash before the relay's bookkeeping save re-delivers to all of them.
 - Events are serialized with a Trellis-owned `System.Text.Json` options instance. Value objects that carry a `[JsonConverter]` attribute round-trip, and `Maybe<T>` members are supported (present → value, absent → `null`); use a nullable transport for members that rely on a caller-registered converter.
 
 ## Documentation

@@ -19,10 +19,20 @@ public class DomainEventDispatchRegistrationTests
 
         services.AddDomainEventDispatch();
 
-        var publisher = services.SingleOrDefault(d => d.ServiceType == typeof(IDomainEventPublisher));
-        publisher.Should().NotBeNull();
-        publisher!.ImplementationType.Should().Be<MediatorDomainEventPublisher>();
-        publisher.Lifetime.Should().Be(ServiceLifetime.Scoped);
+        foreach (var contract in new[] { typeof(IDomainEventPublisher), typeof(IReportingDomainEventPublisher) })
+        {
+            var descriptor = services.SingleOrDefault(d => d.ServiceType == contract);
+            descriptor.Should().NotBeNull($"{contract.Name} must be registered");
+            descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
+        }
+
+        // Both contracts are forwarded to one concrete implementation, so the outbox relay's
+        // non-swallowing path and the in-pipeline best-effort path can never diverge.
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IDomainEventPublisher>()
+            .Should().BeOfType<MediatorDomainEventPublisher>()
+            .And.BeSameAs(scope.ServiceProvider.GetRequiredService<IReportingDomainEventPublisher>());
 
         var dispatchBehaviors = services
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>)
