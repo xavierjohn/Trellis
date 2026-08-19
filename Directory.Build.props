@@ -124,7 +124,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(IsTestProject)' == 'false' ">
-    <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath="/" />
 
     <!--
       Packages live at Trellis.<Name>/src, so the listing README sits one level up. Guarded by
@@ -135,7 +135,7 @@
     <None Include="$(MSBuildProjectDirectory)\..\NUGET_README.md"
           Condition=" Exists('$(MSBuildProjectDirectory)\..\NUGET_README.md') "
           Pack="true"
-          PackagePath="\" />
+          PackagePath="/" />
   </ItemGroup>
 
   <ImportGroup Condition=" '$(IsTestProject)' == 'true' ">

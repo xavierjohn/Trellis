@@ -16,6 +16,7 @@
       3. Fallback creates .github        - no .github inside the repo means one is created at root.
       4. TrellisApiReferenceRoot         - explicit override wins over the walk.
       5. TrellisDisableApiReferenceSync  - opts out entirely.
+      6. Packed layout                   - docs land at a clean trellis/<name>.md on every platform.
 #>
 [CmdletBinding()]
 param(
@@ -124,9 +125,9 @@ function New-SatellitePackage {
     <PackageReference Include="Trellis.Core" Version="$CoreVersion" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="trellis/$DocName" Pack="true" PackagePath="trellis\" />
-    <None Include="Payload.targets" Pack="true" PackagePath="build\Trellis.SatelliteProbe.targets" />
-    <None Include="Payload.targets" Pack="true" PackagePath="buildTransitive\Trellis.SatelliteProbe.targets" />
+    <None Include="trellis/$DocName" Pack="true" PackagePath="trellis/" />
+    <None Include="Payload.targets" Pack="true" PackagePath="build/Trellis.SatelliteProbe.targets" />
+    <None Include="Payload.targets" Pack="true" PackagePath="buildTransitive/Trellis.SatelliteProbe.targets" />
   </ItemGroup>
 </Project>
 "@ | Set-Content -Path (Join-Path $Path 'Satellite.csproj') -Encoding utf8
@@ -305,6 +306,66 @@ try {
         -Condition ($s5Docs -contains $satelliteDoc)
     Assert-Condition -Scenario 'satellite' -Because 'the first-party set arrived via a transitive Trellis.Core' `
         -Condition ($s5Docs -contains 'trellis-api-efcore-outbox.md')
+
+    # ------------------------------------------------------------- Scenario 6: packed layout
+    # A trailing backslash in PackagePath="trellis\" is a directory marker on Windows, so the doc
+    # lands at trellis/<name>.md. On Linux the backslash is not a separator: it normalizes to
+    # "trellis/" and NuGet appends its own, producing the malformed "trellis//<name>.md". That
+    # still satisfies a trellis/*.md glob and still delivers, which is why every scenario above
+    # stays green either way and the defect reached published packages unnoticed.
+    #
+    # Two assertions, because neither alone is sufficient. The packed-entry check is the real
+    # behaviour but can only go red on Linux, so on a developer's Windows machine it is blind.
+    # The declaration check is platform-independent and is what actually holds the line locally.
+    Write-Host "`nScenario 6 - packed layout is clean on every platform"
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+    try {
+        $packedDocs = @($archive.Entries | ForEach-Object { $_.FullName } | Where-Object { $_ -like '*trellis-api-*.md' })
+    }
+    finally {
+        $archive.Dispose()
+    }
+
+    $malformed = @($packedDocs | Where-Object { $_ -notmatch '^trellis/[^/]+\.md$' })
+    Assert-Condition -Scenario 'layout' -Because 'every packed doc sits at exactly trellis/<name>.md' `
+        -Condition ($packedDocs.Count -gt 0 -and $malformed.Count -eq 0)
+    if ($malformed.Count -gt 0) {
+        Write-Host "        malformed entries: $($malformed -join ', ')" -ForegroundColor Red
+    }
+
+    # Parse the XML rather than scanning text. A line-based regex cannot see the single-quoted
+    # attribute form (PackagePath='trellis\') or the <PackagePath>trellis\</PackagePath> metadata
+    # element, and it would flag the comments in these files that quote the malformed value on
+    # purpose. XDocument handles all three correctly and gives line numbers via IXmlLineInfo.
+    #
+    # Property indirection - PackagePath="$(SomeVar)" where SomeVar holds a backslash - is not
+    # statically visible here; the packed-entry assertion above is what covers that case.
+    $declarations = @(
+        Get-ChildItem -Path $repoRoot -Recurse -File -Include '*.csproj', '*.props', '*.targets' |
+            Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
+            ForEach-Object {
+                $file = $_
+                $document = [System.Xml.Linq.XDocument]::Load($file.FullName, [System.Xml.Linq.LoadOptions]::SetLineInfo)
+                $relative = $file.FullName.Substring($repoRoot.Path.Length + 1)
+
+                $nodes = @()
+                $nodes += @($document.Descendants() | Where-Object { $_.Name.LocalName -eq 'PackagePath' })
+                $nodes += @($document.Descendants().Attributes() | Where-Object { $_.Name.LocalName -eq 'PackagePath' })
+
+                foreach ($node in $nodes) {
+                    if ($node.Value -like '*\*') {
+                        "${relative}:$(([System.Xml.IXmlLineInfo]$node).LineNumber) -> PackagePath=$($node.Value)"
+                    }
+                }
+            }
+    )
+    Assert-Condition -Scenario 'layout' -Because 'no PackagePath contains a backslash' `
+        -Condition ($declarations.Count -eq 0)
+    if ($declarations.Count -gt 0) {
+        Write-Host "        backslash PackagePath at: $($declarations -join ', ')" -ForegroundColor Red
+    }
 }
 finally {
     $env:NUGET_PACKAGES = $script:originalNuGetPackages

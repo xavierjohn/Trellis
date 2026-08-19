@@ -19,11 +19,19 @@
     embedding a copy would recreate exactly the staleness described above. They declare
     their payload with build/Trellis.ApiReference.Payload.targets and rely on the copy
     logic shipped here, so the ~200-line directory walk lives in one place.
+
+    PackagePath uses forward slashes deliberately. On Windows a trailing backslash in
+    PackagePath="trellis\" is recognized as a directory marker and the doc lands at
+    trellis/<name>.md. On Linux the backslash is not a separator: it normalizes to
+    "trellis/" and NuGet then appends its own, so the doc lands at the malformed
+    "trellis//<name>.md". That still satisfies a trellis/*.md glob and still delivers,
+    which is why the defect survived a casual check and reached published packages.
+    Scenario 6 of build/test-apireference-payload.ps1 holds this line.
   -->
   <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\*.md"
           Exclude="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\completeness-report.md"
-          Pack="true" PackagePath="trellis\" />
+          Pack="true" PackagePath="trellis/" />
   </ItemGroup>
 
   <!--
@@ -34,14 +42,14 @@
   -->
   <ItemGroup Condition="'$(TrellisShipsOwnApiReference)' == 'true' AND '$(TrellisApiRefName)' != ''">
     <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-$(TrellisApiRefName).md"
-          Pack="true" PackagePath="trellis\" />
+          Pack="true" PackagePath="trellis/" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true' OR '$(TrellisShipsOwnApiReference)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
-          Pack="true" PackagePath="build\$(PackageId).targets" />
+          Pack="true" PackagePath="build/$(PackageId).targets" />
     <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
-          Pack="true" PackagePath="buildTransitive\$(PackageId).targets" />
+          Pack="true" PackagePath="buildTransitive/$(PackageId).targets" />
   </ItemGroup>
 
 
