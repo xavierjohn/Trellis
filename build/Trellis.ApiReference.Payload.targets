@@ -46,10 +46,13 @@
   <!--
     This file declares payload but carries no copy logic, so it is inert unless Trellis.Core's
     Trellis.ApiReference.targets is also imported. That import can be suppressed without any
-    error - ExcludeAssets="build" or a PrivateAssets set covering build on the Trellis.Core
-    reference - and the result would be a silent no-op: items declared, nothing consuming them,
-    no documentation delivered, build green. Warn instead, since a satellite author debugging
-    "my reference never lands" has nothing else to go on.
+    error - ExcludeAssets="buildTransitive" or "all" on the Trellis.Core reference - and the
+    result would be a silent no-op: items declared, nothing consuming them, no documentation
+    delivered, build green. Note that the copy logic is packed under BOTH build\ and
+    buildTransitive\, so the NuGet default of making `build` private (which surfaces as
+    exclude="Build,Analyzers" on the packed dependency) does NOT suppress it - buildTransitive
+    is a distinct asset group and still flows to transitive consumers. Warn instead, since a
+    satellite author debugging "my reference never lands" has nothing else to go on.
 
     Warning rather than error: excluding build assets is a legitimate consumer choice, and the
     opt-out below is the supported way to turn the whole mechanism off deliberately.
@@ -57,6 +60,6 @@
   <Target Name="_WarnTrellisApiReferenceCopyLogicMissing"
           BeforeTargets="Build"
           Condition="'@(TrellisApiReference)' != '' AND '$(TrellisApiReferenceCopyLogicPresent)' != 'true' AND '$(TrellisDisableApiReferenceSync)' != 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
-    <Warning Text="Trellis API reference payload was declared but the copy logic is missing, so no documentation will be delivered to .github/. The copy logic lives in Trellis.ApiReference.targets, which ships with Trellis.Core. Either reference Trellis.Core with its build assets intact (check ExcludeAssets/PrivateAssets), or - if the package declaring this payload has no Trellis.Core dependency at all - that package must pack Trellis.ApiReference.targets alongside its payload. Set TrellisDisableApiReferenceSync=true to silence this deliberately." />
+    <Warning Text="Trellis API reference payload was declared but the copy logic is missing, so no documentation will be delivered to .github/. The copy logic lives in Trellis.ApiReference.targets, which ships with Trellis.Core. Either reference Trellis.Core with its buildTransitive assets intact (check ExcludeAssets/PrivateAssets for buildTransitive or all), or - if the package declaring this payload has no Trellis.Core dependency at all - that package must pack Trellis.ApiReference.targets alongside its payload. Set TrellisDisableApiReferenceSync=true to silence this deliberately." />
   </Target>
 </Project>
