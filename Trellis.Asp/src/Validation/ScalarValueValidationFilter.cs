@@ -115,6 +115,14 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
 
     private static bool TryHandleStructuredModelStateErrors(ActionExecutingContext context)
     {
+        // The MVC key for an unstructured failure. The recorded ancestor wins over JsonException.Path
+        // whenever a path-tracking wrapper handled the throw, because the wrapper's nested
+        // JsonSerializer call has already displaced that property with a nested-root-relative value.
+        static string UnstructuredParentKey(TrellisJsonValidationException exception) =>
+            JsonValidationPathRebase.RecordedAbsolutePath(exception) is { } absolute
+                ? JsonPointerToMvc.Translate(absolute)
+                : ScalarValueValidationMiddleware.JsonPathToMvcKey(exception.Path);
+
         // Find any ModelState entry whose error carries a TrellisJsonValidationException.
         // Both shapes are handled:
         //   - Structured: UnprocessableContent has at least one FieldViolation -> emit one
@@ -145,7 +153,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                     // First match wins — additional Trellis exceptions in the same request
                     // are treated as duplicates (the converter throws on first failure).
                     trellisEx ??= tjx;
-                    entryParentPath ??= ScalarValueValidationMiddleware.JsonPathToMvcKey(tjx.Path);
+                    entryParentPath ??= UnstructuredParentKey(tjx);
                     trellisEntryKeys.Add(key);
                     break;
                 }
@@ -160,12 +168,22 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             return false;
 
         var freshModelState = new ModelStateDictionary();
-        if (trellisEx.InvalidInput is { Fields.Length: > 0 } structured)
+        Error.InvalidInput? structuredError = null;
+        if (trellisEx.InvalidInput is { Fields.Length: > 0 })
         {
+            // Arms 1 and 2 — see ScalarValueValidationMiddleware for the rule. `entryParentPath`
+            // stays in use for the unstructured branch below, where there is no pointer to rebase.
+            var structured = JsonValidationPathRebase.IsMarked(trellisEx)
+                ? trellisEx.InvalidInput!
+                : JsonValidationPathRebase.RebaseTo(
+                    trellisEx.InvalidInput!,
+                    ScalarValueValidationMiddleware.JsonPathToPointer(trellisEx.Path));
+
+            structuredError = structured;
+
             foreach (var fv in structured.Fields)
             {
-                var leafKey = JsonPointerToMvc.Translate(fv.Field.Path);
-                var combined = ScalarValueValidationMiddleware.CombineMvcKeys(entryParentPath ?? string.Empty, leafKey);
+                var combined = JsonPointerToMvc.Translate(fv.Field.Path);
                 var detail = !string.IsNullOrEmpty(fv.Detail) ? fv.Detail : fv.ReasonCode;
                 freshModelState.AddModelError(combined, detail);
             }
@@ -205,6 +223,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             freshModelState,
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
+        AttachViolations(context, problemDetails, structuredError);
         context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
         return true;
     }
@@ -242,6 +261,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             modelState,
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
+        AttachViolations(context, problemDetails, validationError);
         context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
 
@@ -253,7 +273,39 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             context.ModelState,
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
+        AttachViolations(context, problemDetails, null);
         return new ObjectResult(problemDetails) { StatusCode = statusCode };
+    }
+
+    /// <summary>
+    /// Adds the structured violations to the problem, merging the ones carried by
+    /// <paramref name="error"/> with those the model binders recorded on the side-channel.
+    /// </summary>
+    /// <remarks>
+    /// The <c>errors</c> map and the structured members describe the same failures — the map is
+    /// the lossy MVC-shaped view retained for compatibility. Both are emitted from one source so
+    /// they cannot disagree.
+    /// </remarks>
+    private static void AttachViolations(
+        ActionExecutingContext context,
+        ProblemDetails problemDetails,
+        Error.InvalidInput? error)
+    {
+        var fields = new List<FieldViolation>();
+        if (error is not null)
+            fields.AddRange(error.Fields.Items);
+
+        foreach (var bound in BoundViolationCollector.Get(context.HttpContext))
+        {
+            if (!fields.Contains(bound))
+                fields.Add(bound);
+        }
+
+        if (fields.Count > 0)
+            problemDetails.Extensions["fieldViolations"] = ViolationProjection.ToFieldViolations(EquatableArray.Create([.. fields]));
+
+        if (error is { Rules.Items.Length: > 0 })
+            problemDetails.Extensions["ruleViolations"] = ViolationProjection.ToRuleViolations(error.Rules);
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
@@ -312,14 +364,22 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                 continue;
 
             // Only synthesize a TryCreate-derived error if the binder didn't already record
-            // one for this parameter — avoids duplicate entries on the wire.
-            if (!hasModelStateError)
+            // one for this parameter — avoids duplicate entries on the wire. The collector is
+            // consulted alongside ModelState, because a binder that recorded structurally has
+            // already said everything this re-derivation would say.
+            if (!hasModelStateError && !BoundViolationCollector.HasViolationFor(context.HttpContext, parameter.Name!))
             {
-                var errors = ScalarValueTypeHelper.GetValidationErrors(validationType, rawValue, parameter.Name!);
+                var derived = ScalarValueTypeHelper.GetValidationError(validationType, rawValue, parameter.Name!);
 
-                if (errors is not null)
+                if (derived is not null)
                 {
-                    foreach (var (fieldName, details) in errors)
+                    BoundViolationCollector.AddFrom(
+                        context.HttpContext,
+                        derived,
+                        parameter.Name!,
+                        ResolveLocation(context, parameter));
+
+                    foreach (var (fieldName, details) in ScalarValueTypeHelper.ToModelStateErrors(derived, parameter.Name!))
                         foreach (var detail in details)
                             context.ModelState.AddModelError(fieldName, detail);
                 }
@@ -335,6 +395,15 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                         : $"'{parameter.Name}' is not in a valid format for {typeName}.";
 
                     context.ModelState.AddModelError(parameter.Name!, errorMessage);
+                    BoundViolationCollector.AddFrom(
+                        context.HttpContext,
+                        new Error.InvalidInput(EquatableArray.Create(
+                            new FieldViolation(
+                                InputPointer.ForProperty(parameter.Name!),
+                                ViolationProjection.LegacyUnspecifiedCode,
+                                Detail: errorMessage))),
+                        parameter.Name!,
+                        ResolveLocation(context, parameter));
                 }
             }
 
@@ -372,6 +441,28 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         {
             context.Result = CreateValidationProblemResult(context, statusCode: StatusCodes.Status400BadRequest);
         }
+    }
+
+    /// <summary>
+    /// Resolves the wire location of a parameter, falling back to where the value was actually
+    /// found when the descriptor carries no explicit binding source.
+    /// </summary>
+    /// <remarks>
+    /// Route data is checked before the query string, matching <see cref="GetRawParameterValue"/>,
+    /// so the reported location always names the place the reported value came from.
+    /// </remarks>
+    private static InputLocation ResolveLocation(ActionExecutingContext context, ParameterDescriptor parameter)
+    {
+        var declared = BoundViolationCollector.ToInputLocation(parameter.BindingInfo?.BindingSource);
+        if (declared != InputLocation.Unspecified)
+            return declared;
+
+        if (context.RouteData.Values.ContainsKey(parameter.Name!))
+            return InputLocation.Path;
+
+        return context.HttpContext.Request.Query.ContainsKey(parameter.Name!)
+            ? InputLocation.Query
+            : InputLocation.Unspecified;
     }
 
     private static string? GetRawParameterValue(ActionExecutingContext context, string parameterName)

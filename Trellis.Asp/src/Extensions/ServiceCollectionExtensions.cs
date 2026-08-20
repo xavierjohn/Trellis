@@ -225,7 +225,7 @@ public static class ServiceCollectionExtensions
                     if (ValidationErrorsContext.Current is not null
                         && !HasExistingErrorForField(name))
                     {
-                        ValidationErrorsContext.AddError(name, $"'{name}' is required.");
+                        ValidationErrorsContext.AddBodyError(name, $"'{name}' is required.");
                     }
                 }
             };
@@ -354,6 +354,13 @@ public static class ServiceCollectionExtensions
             return Activator.CreateInstance(collectionWrapper, property.Name) as JsonConverter;
         }
 
+        var dictionaryValueType = GetWrappableDictionaryValueType(propertyType);
+        if (dictionaryValueType is not null)
+        {
+            var dictionaryWrapper = typeof(PathTrackingDictionaryConverter<,>).MakeGenericType(propertyType, dictionaryValueType);
+            return Activator.CreateInstance(dictionaryWrapper, property.Name) as JsonConverter;
+        }
+
         if (!IsUserObjectType(propertyType))
             return null;
 
@@ -379,6 +386,20 @@ public static class ServiceCollectionExtensions
 
         if (ScalarValueTypeHelper.IsScalarValue(type) || ScalarValueTypeHelper.IsMaybeScalarValue(type))
             return true;
+
+        // A composite value object built entirely from primitives contains no IScalarValue, but its
+        // converter still throws composite-relative pointers that only an ancestor-aware wrapper can
+        // re-root. Keying on the converter attribute rather than the ValueObject base alone is what
+        // makes this expressible in the source generator, which sees symbols and not runtime types.
+        if (IsConverterBackedValueObject(type))
+            return true;
+
+        // A string-keyed dictionary is checked before the general enumerable walk: its
+        // IEnumerable<KeyValuePair<string, TValue>> element is a struct, so IsUserObjectType rejects it
+        // and the walk would conclude the value graph contains nothing.
+        var dictionaryValue = GetWrappableDictionaryValueType(type);
+        if (dictionaryValue is not null)
+            return ContainsScalarValueTransitively(dictionaryValue, visited);
 
         var element = GetEnumerableElementType(type);
         if (element is not null)
@@ -421,6 +442,41 @@ public static class ServiceCollectionExtensions
         return type.IsAssignableFrom(listType) ? element : null;
     }
 
+    // The value type to wrap for key tracking — only for a STRING-keyed dictionary, and only when
+    // Dictionary<string, value> is assignable back to the property type (the concrete type itself or
+    // the IDictionary/IReadOnlyDictionary interfaces). A non-string key has no faithful RFC 6901
+    // rendering, so those shapes are left to STJ (leaf-only paths): incomplete, but never wrong.
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "Reflection-mode-only; reached only when RuntimeFeature.IsDynamicCodeSupported via CreatePathTrackingContainerConverter.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2055",
+        Justification = "Reflection-mode-only; Dictionary<string, value> is built only to test assignability to the property type already present in JSON metadata.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "Reflection-mode-only inspection of dictionary property types from JSON metadata.")]
+    private static Type? GetWrappableDictionaryValueType(Type type)
+    {
+        if (type.IsArray || type == typeof(string))
+            return null;
+
+        foreach (var candidate in Enumerable.Concat([type], type.GetInterfaces()))
+        {
+            if (!candidate.IsGenericType)
+                continue;
+
+            var definition = candidate.GetGenericTypeDefinition();
+            if (definition != typeof(IDictionary<,>) && definition != typeof(IReadOnlyDictionary<,>))
+                continue;
+
+            var arguments = candidate.GetGenericArguments();
+            if (arguments[0] != typeof(string))
+                return null;
+
+            var dictionaryType = typeof(Dictionary<,>).MakeGenericType(typeof(string), arguments[1]);
+            return type.IsAssignableFrom(dictionaryType) ? arguments[1] : null;
+        }
+
+        return null;
+    }
+
     [UnconditionalSuppressMessage("Trimming", "IL2070",
         Justification = "Inspects generic IEnumerable<T> interfaces on collection property types from JSON metadata; reflection-mode fallback only.")]
     private static Type? GetEnumerableElementType(Type type)
@@ -448,6 +504,17 @@ public static class ServiceCollectionExtensions
         && type != typeof(string)
         && type != typeof(object)
         && (type.Namespace is null || !type.Namespace.StartsWith("System", StringComparison.Ordinal));
+
+    // A composite value object whose JSON shape is owned by its own converter — the shape that throws
+    // composite-relative pointers. The converter attribute, not the ValueObject base, is the
+    // discriminator: a ValueObject with no converter is serialised as a plain object, so the modifier
+    // walks into its properties normally and wrapping the whole thing would be over-installation.
+    // Scalar values are excluded because the modifier's scalar branch returns before the container path
+    // is ever reached.
+    private static bool IsConverterBackedValueObject([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type) =>
+        typeof(ValueObject).IsAssignableFrom(type)
+        && !ScalarValueTypeHelper.IsScalarValue(type)
+        && type.IsDefined(typeof(System.Text.Json.Serialization.JsonConverterAttribute), inherit: false);
 
     /// <summary>
     /// Adds automatic value object validation for both MVC Controllers and Minimal APIs.

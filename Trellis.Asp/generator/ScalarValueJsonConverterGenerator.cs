@@ -607,7 +607,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine();
         sb.AppendLine("        if (reader.TokenType == JsonTokenType.Null)");
         sb.AppendLine("        {");
-        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddError(fieldName, \"{vo.TypeName} cannot be null.\");");
+        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, \"{vo.TypeName} cannot be null.\");");
         sb.AppendLine("            return null;");
         sb.AppendLine("        }");
         sb.AppendLine();
@@ -624,7 +624,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             sb.AppendLine();
             sb.AppendLine("        if (primitiveValue is null)");
             sb.AppendLine("        {");
-            sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddError(fieldName, \"Cannot deserialize null to {vo.TypeName}\");");
+            sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, \"Cannot deserialize null to {vo.TypeName}\");");
             sb.AppendLine("            return null;");
             sb.AppendLine("        }");
         }
@@ -638,11 +638,11 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine("            {");
         sb.AppendLine("                if (createError is global::Trellis.Error.InvalidInput unprocessable)");
         sb.AppendLine("                {");
-        sb.AppendLine("                    global::Trellis.Asp.ValidationErrorsContext.AddError(unprocessable);");
+        sb.AppendLine("                    global::Trellis.Asp.ValidationErrorsContext.AddBodyError(unprocessable);");
         sb.AppendLine("                }");
         sb.AppendLine("                else");
         sb.AppendLine("                {");
-        sb.AppendLine("                    global::Trellis.Asp.ValidationErrorsContext.AddError(");
+        sb.AppendLine("                    global::Trellis.Asp.ValidationErrorsContext.AddBodyError(");
         sb.AppendLine("                        fieldName,");
         sb.AppendLine("                        string.IsNullOrWhiteSpace(createError.Detail)");
         sb.AppendLine($"                            ? \"{vo.TypeName} is invalid.\"");
@@ -682,7 +682,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine("        }");
         sb.AppendLine("        catch (global::System.Exception ex) when (ex is global::System.FormatException || ex is global::System.InvalidOperationException)");
         sb.AppendLine("        {");
-        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddError(fieldName, $\"'{{fieldName}}' is not a valid {primitiveFriendlyName}.\");");
+        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, $\"'{{fieldName}}' is not a valid {primitiveFriendlyName}.\");");
         sb.AppendLine($"            value = default({GetPrimitiveCsName(primitiveType)});");
         sb.AppendLine("            return false;");
         sb.AppendLine("        }");

@@ -96,16 +96,27 @@ public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFac
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
         var body = await response.Content.ReadAsStringAsync(Ct);
+        using var document = JsonDocument.Parse(body);
+
+        var errorKeys = document.RootElement.GetProperty("errors").EnumerateObject().Select(p => p.Name).ToArray();
 
         // Nested property: FluentValidation reports "Metadata.Reference" → adapter normalizes to
         // RFC 6901 pointer "/metadata/reference" → ASP wire emits MVC convention "metadata.reference".
-        body.Should().Contain("metadata.reference");
+        errorKeys.Should().Contain("metadata.reference");
         // Indexer property: FluentValidation reports "Lines[0].Memo" → adapter normalizes to
         // "/lines/0/memo" → ASP wire emits MVC convention "lines[0].memo".
-        body.Should().Contain("lines[0].memo");
-        // Confirm the JSON Pointer slash form did NOT leak through to the wire.
-        body.Should().NotContain("metadata/reference");
-        body.Should().NotContain("lines/0/memo");
+        errorKeys.Should().Contain("lines[0].memo");
+        // Confirm the JSON Pointer slash form did NOT leak into the MVC-keyed errors map.
+        errorKeys.Should().NotContain(key => key.Contains('/', StringComparison.Ordinal));
+
+        // The pointer form belongs in the structured location, which addresses the request
+        // document rather than an MVC model-binding key.
+        var pointers = document.RootElement.GetProperty("fieldViolations")
+            .EnumerateArray()
+            .Select(v => v.GetProperty("location").GetProperty("pointer").GetString())
+            .ToArray();
+        pointers.Should().Contain("/metadata/reference");
+        pointers.Should().Contain("/lines/0/memo");
     }
 
     [Fact]

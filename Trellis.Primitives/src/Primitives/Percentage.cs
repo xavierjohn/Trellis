@@ -205,7 +205,7 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     public static Percentage Parse(string? s, IFormatProvider? provider) =>
         TryCreate(s, provider).Match(
             onSuccess: value => value,
-            onFailure: error => throw new FormatException(error.GetDisplayMessage()));
+            onFailure: error => throw new TrellisValidationFormatException(error.GetDisplayMessage(), error as Error.InvalidInput));
 
     /// <summary>
     /// Tries to parse a string into a <see cref="Percentage"/>.

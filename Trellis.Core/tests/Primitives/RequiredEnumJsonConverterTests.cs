@@ -39,6 +39,41 @@ public sealed class RequiredEnumJsonConverterTests
     }
 
     [Fact]
+    public void Read_InvalidName_CarriesAStructuredViolationWithTheSanitizedMessage()
+    {
+        var json = JsonSerializer.Serialize("not-a-member");
+
+        var act = () => JsonSerializer.Deserialize<RequiredEnumJsonConverterTestState>(json, _jsonOptions);
+
+        var ex = act.Should().Throw<TrellisJsonValidationException>(
+            "the boundary recognizes a structured validation failure only through this type")
+            .Subject.Single();
+
+        var violation = ex.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+        violation.Field.Path.Should().BeEmpty("a scalar converter does not know where in the document it sits");
+        violation.Detail.Should().Be(ex.Message,
+            "the curated, sanitized message is the detail — propagating the producer's raw detail instead would silently drop the sanitization");
+    }
+
+    [Fact]
+    public void Read_NullToken_CarriesAStructuredViolation()
+    {
+        var act = () => JsonSerializer.Deserialize<RequiredEnumJsonConverterTestState>("null", _jsonOptions);
+
+        var ex = act.Should().Throw<TrellisJsonValidationException>().Subject.Single();
+        ex.InvalidInput!.Fields.Items.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Read_WrongTokenType_CarriesAStructuredViolation()
+    {
+        var act = () => JsonSerializer.Deserialize<RequiredEnumJsonConverterTestState>("42", _jsonOptions);
+
+        var ex = act.Should().Throw<TrellisJsonValidationException>().Subject.Single();
+        ex.InvalidInput!.Fields.Items.Should().ContainSingle();
+    }
+
+    [Fact]
     public void Read_InvalidName_ThrowsJsonExceptionWithTruncatedValue()
     {
         var oversized = new string('a', 1000);

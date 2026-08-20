@@ -24,6 +24,40 @@ public class PathTrackingRegistryGeneratorTests
         }
         """;
 
+    private const string CompositeValueObject = """
+        [global::System.Text.Json.Serialization.JsonConverter(typeof(global::Trellis.Primitives.CompositeValueObjectJsonConverter<Address>))]
+        public sealed class Address : global::Trellis.ValueObject
+        {
+            private Address(string street, string city) { Street = street; City = city; }
+
+            public string Street { get; private set; } = string.Empty;
+
+            public string City { get; private set; } = string.Empty;
+
+            public static global::Trellis.Result<Address> TryCreate(string street, string city, string? fieldName = null) =>
+                global::Trellis.Result.Ok(new Address(street, city));
+
+            protected override void GetEqualityComponents(ref global::Trellis.EqualityComponents components)
+            {
+                components.Add(Street);
+                components.Add(City);
+            }
+        }
+        """;
+
+    private const string NestingCompositeValueObject = """
+        [global::System.Text.Json.Serialization.JsonConverter(typeof(global::Trellis.Primitives.CompositeValueObjectJsonConverter<NestingAddress>))]
+        public sealed class NestingAddress : global::Trellis.ValueObject
+        {
+            private NestingAddress(global::TestNamespace.InnerDto inner) { Inner = inner; }
+
+            public global::TestNamespace.InnerDto Inner { get; private set; } = default!;
+
+            protected override void GetEqualityComponents(ref global::Trellis.EqualityComponents components) =>
+                components.Add(Inner.Email.Value);
+        }
+        """;
+
     [Fact]
     public void Collection_property_of_dtos_containing_a_value_object_is_registered()
     {
@@ -105,10 +139,95 @@ public class PathTrackingRegistryGeneratorTests
         generated.Should().Contain("RegisterCollection<global::System.Collections.Generic.List<global::TestNamespace.MemberDto>, global::TestNamespace.MemberDto>()");
     }
 
+    /// <summary>
+    /// §8.2(b) — the generator predicate must move in lockstep with the runtime install gate. Under
+    /// Native AOT the generated registrations are the <em>only</em> path, because
+    /// <c>CreatePathTrackingContainerConverter</c> returns <see langword="null"/> once
+    /// <c>RuntimeFeature.IsDynamicCodeSupported</c> is false. A composite value object built entirely
+    /// from primitives contains no <c>IScalarValue</c>, so before the widening it was skipped here and
+    /// the fix would have worked in reflection mode and silently not under AOT.
+    /// </summary>
     [Fact]
-    public void Nested_object_property_containing_a_value_object_is_registered()
+    public void Primitive_only_composite_value_object_property_is_registered()
     {
         var source = $$"""
+            {{CompositeValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Text.Json.Serialization;
+
+                public sealed record OrderCommand(Address ShipTo);
+
+                [JsonSerializable(typeof(OrderCommand))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterObject<global::Address>()");
+    }
+
+    [Fact]
+    public void Collection_of_primitive_only_composite_value_objects_is_registered()
+    {
+        var source = $$"""
+            {{CompositeValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Collections.Generic;
+                using System.Text.Json.Serialization;
+
+                public sealed record RouteCommand(List<Address> Stops);
+
+                [JsonSerializable(typeof(RouteCommand))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterCollection<global::System.Collections.Generic.List<global::Address>, global::Address>()");
+    }
+
+    /// <summary>
+    /// The parity rule runs in both directions. A composite value object owns its JSON shape through
+    /// its own converter, so the runtime modifier sees an empty <c>JsonTypeInfo.Properties</c> and never
+    /// installs wrappers inside it. Registering its inner properties would be over-registration — AOT
+    /// wrapping something reflection leaves alone.
+    /// </summary>
+    [Fact]
+    public void The_walk_does_not_descend_into_a_composite_value_object()
+    {
+        var source = $$"""
+            {{ValueObject}}
+            {{NestingCompositeValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Collections.Generic;
+                using System.Text.Json.Serialization;
+
+                public sealed record InnerDto(Email Email);
+
+                public sealed record ShipmentCommand(NestingAddress ShipTo);
+
+                [JsonSerializable(typeof(ShipmentCommand))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterObject<global::NestingAddress>()");
+        generated.Should().NotContain("RegisterObject<global::TestNamespace.InnerDto>()");
+    }
+
+    [Fact]
+    public void Nested_object_property_containing_a_value_object_is_registered()
+    {        var source = $$"""
             {{ValueObject}}
 
             namespace TestNamespace

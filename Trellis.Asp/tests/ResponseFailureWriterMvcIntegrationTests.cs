@@ -92,7 +92,7 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
         using var body = await ReadBodyAsync(resp);
         var raw = body.RootElement.GetRawText();
 
-        body.RootElement.TryGetProperty("rules", out var rules)
+        body.RootElement.TryGetProperty("ruleViolations", out var rules)
             .Should().BeTrue($"rules extension missing. body={raw}");
         rules.GetArrayLength().Should().Be(1);
     }

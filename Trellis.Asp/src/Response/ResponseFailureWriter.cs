@@ -3,8 +3,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -12,6 +14,7 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Net.Http.Headers;
 using Trellis;
 
 /// <summary>
@@ -27,13 +30,13 @@ internal static class ResponseFailureWriter
     /// The only string on the wire meaning "no finer reason available". Emitted wherever an
     /// error carries no explicit code of its own.
     /// </summary>
-    internal const string UnspecifiedCode = "error.unspecified";
+    internal const string UnspecifiedCode = ViolationProjection.UnspecifiedCode;
 
     /// <summary>
     /// Recognized legacy spelling of <see cref="UnspecifiedCode"/>, normalized in the wire
     /// projection so that a single payload can never carry two live sentinels.
     /// </summary>
-    private const string LegacyUnspecifiedCode = "validation.error";
+    private const string LegacyUnspecifiedCode = ViolationProjection.LegacyUnspecifiedCode;
 
     private static readonly ConcurrentDictionary<Type, byte> _loggedExceptionTypes = new();
 
@@ -101,6 +104,7 @@ internal static class ResponseFailureWriter
         // request URL under Extensions["request"]. Best-effort: any malformed ResourceRef or
         // resolver error keeps the original behaviour.
         var (instance, originalRequest) = TrySynthesizeInstance(httpContext, error, requestPath, aspOptions);
+        EmitContentLanguage(httpContext, aspOptions);
 
         Microsoft.AspNetCore.Http.IResult inner;
 
@@ -188,6 +192,34 @@ internal static class ResponseFailureWriter
         }
 
         await inner.ExecuteAsync(httpContext).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Emits <c>Content-Language</c> on a problem response when the application has declared what
+    /// language its problem prose is in.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Default-unset is deliberate. Emitting <c>Content-Language: en</c> unconditionally would
+    /// assert that application-supplied <c>detail</c> prose is English, which the framework cannot
+    /// know, and would change behaviour silently for every existing application.
+    /// </para>
+    /// <para>
+    /// <c>Vary: Accept-Language</c> is deliberately not emitted. <c>Vary</c> declares that the
+    /// response <em>varies by</em> the named request header; this is a single static configured
+    /// value and nothing here reads <c>Accept-Language</c>, so the response does not vary by it.
+    /// Emitting it would tell caches to partition on a dimension that never changes the payload —
+    /// a cost with no benefit, and a false statement about the resource. It becomes correct, and
+    /// required, on the day server-side negotiation lands.
+    /// </para>
+    /// </remarks>
+    private static void EmitContentLanguage(HttpContext httpContext, TrellisAspOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(options.ProblemContentLanguage))
+            return;
+
+        if (!httpContext.Response.Headers.ContainsKey(HeaderNames.ContentLanguage))
+            httpContext.Response.Headers.ContentLanguage = options.ProblemContentLanguage;
     }
 
     private static (string Instance, string? OriginalRequest) TrySynthesizeInstance(
@@ -478,8 +510,7 @@ internal static class ResponseFailureWriter
     private static string WireCode(Error error) =>
         error.HasExplicitCode ? NormalizeCode(error.Code) : UnspecifiedCode;
 
-    private static string NormalizeCode(string code) =>
-        string.Equals(code, LegacyUnspecifiedCode, StringComparison.Ordinal) ? UnspecifiedCode : code;
+    private static string NormalizeCode(string code) => ViolationProjection.NormalizeCode(code);
 
     /// <summary>
     /// Projects an <see cref="Error.InvalidInput"/>'s field violations into the flat
@@ -537,14 +568,14 @@ internal static class ResponseFailureWriter
             ProjectHttpErrorPayload(ext, fault);
         }
 
+        if (error is Error.InvalidInput { Fields.Items.Length: > 0 } withFields)
+        {
+            ext["fieldViolations"] = ViolationProjection.ToFieldViolations(withFields.Fields);
+        }
+
         if (rules.Items.Length > 0)
         {
-            ext["rules"] = rules.Items
-                .Select(rv => new RuleViolationProblemDetail(
-                    NormalizeCode(rv.ReasonCode),
-                    rv.Detail,
-                    rv.Fields.Items.Select(p => p.Path).ToArray()))
-                .ToArray();
+            ext["ruleViolations"] = ViolationProjection.ToRuleViolations(rules);
         }
 
         return ext;
@@ -593,5 +624,58 @@ internal static class ResponseFailureWriter
     };
 }
 
+/// <summary>
+/// The wire form of a validation error's location: which part of the input it came from, and
+/// where within that part.
+/// </summary>
+/// <param name="In">
+/// The location discriminator — <c>body</c>, <c>query</c>, <c>path</c>, <c>header</c>, or
+/// <c>unknown</c>. Always present, never defaulted by omission: an omitted discriminator would
+/// force every client to encode the default.
+/// </param>
+/// <param name="Pointer">
+/// An RFC 6901 JSON Pointer into the request document. Present for <c>body</c> and
+/// <c>unknown</c>; absent otherwise.
+/// </param>
+/// <param name="Name">
+/// The parameter name. Present for <c>query</c>, <c>path</c> and <c>header</c>; absent otherwise.
+/// </param>
+/// <remarks>
+/// <c>unknown</c> means <em>"do not resolve <c>pointer</c> as a document location"</em>. A JSON
+/// Pointer addresses a location in a JSON document, and a query parameter is not in one — so a
+/// single member cannot carry both meanings.
+/// </remarks>
+[SuppressMessage(
+    "Naming",
+    "CA1720:Identifier contains type name",
+    Justification = "'pointer' is the frozen RFC 9457 wire member name for an RFC 6901 JSON Pointer, "
+        + "not a .NET type reference. Renaming it would change the published contract.")]
+public sealed record ViolationLocation(
+    string In,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Pointer,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name);
+
+/// <summary>JSON shape used for field violations in ProblemDetails extensions.</summary>
+/// <param name="Code">The machine-readable reason code.</param>
+/// <param name="Detail">A human-readable explanation. Omitted when absent.</param>
+/// <param name="Location">Where the offending value came from.</param>
+/// <param name="Args">Arguments that parameterize the message. Omitted when absent.</param>
+public sealed record FieldViolationProblemDetail(
+    string Code,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Detail,
+    ViolationLocation Location,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, string>? Args);
+
 /// <summary>JSON shape used for rule violations in ProblemDetails extensions.</summary>
-public sealed record RuleViolationProblemDetail(string Code, string? Detail, string[] Fields);
+/// <param name="Code">The machine-readable reason code.</param>
+/// <param name="Detail">A human-readable explanation. Omitted when absent.</param>
+/// <param name="Locations">
+/// Every location the rule spans. Always present: an empty array is a positive statement that the
+/// rule is form-level rather than bound to any field, which an omitted member could not express.
+/// </param>
+/// <param name="Args">Arguments that parameterize the message. Omitted when absent.</param>
+public sealed record RuleViolationProblemDetail(
+    string Code,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Detail,
+    IReadOnlyList<ViolationLocation> Locations,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, string>? Args);

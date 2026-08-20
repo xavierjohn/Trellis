@@ -61,11 +61,31 @@ T> : JsonConverter<T>
 
     private static CompositeMetadata Metadata => LazyMetadata.Value;
 
+    /// <summary>
+    /// The placeholder reason code carried by every violation this converter mints. It predates
+    /// the code vocabulary and is normalized to a neutral sentinel at the boundary.
+    /// </summary>
+    private const string LegacyUnspecifiedCode = "validation.error";
+
+    /// <summary>
+    /// The code for a property explicitly present as JSON <c>null</c>. Distinct from
+    /// <see cref="ConversionFailureCode"/> because a null is a nullability failure, not a format
+    /// failure — the same condition as a missing property. Both resolve to the placeholder today.
+    /// </summary>
+    private const string NullValueCode = LegacyUnspecifiedCode;
+
+    /// <summary>
+    /// The code for a value whose JSON token cannot be read as the target primitive.
+    /// </summary>
+    private const string ConversionFailureCode = LegacyUnspecifiedCode;
+
     /// <inheritdoc />
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.StartObject)
-            throw new TrellisJsonValidationException($"Expected JSON object for {typeof(T).Name} value.");
+            throw Invalid(
+                $"Expected JSON object for {typeof(T).Name} value.",
+                InputPointer.Root);
 
         var values = new object?[Metadata.Properties.Count];
         var seen = new bool[Metadata.Properties.Count];
@@ -101,10 +121,25 @@ T> : JsonConverter<T>
 
         if (missing is not null)
         {
-            throw new TrellisJsonValidationException(
-                missing.Count == 1
-                    ? $"Required property '{missing[0]}' is missing."
-                    : $"Required properties missing: {string.Join(", ", missing.Select(n => $"'{n}'"))}.");
+            var message = missing.Count == 1
+                ? $"Required property '{missing[0]}' is missing."
+                : $"Required properties missing: {string.Join(", ", missing.Select(n => $"'{n}'"))}.";
+
+            // One violation per missing property, not one violation naming several. A client
+            // highlighting fields needs each pointer separately, and joining them into a
+            // sentence is exactly the flattening this work removes. The joined message is
+            // retained as the error-level detail so the existing rendering is unchanged.
+            throw new TrellisJsonValidationException(message)
+            {
+                InvalidInput = new Error.InvalidInput(EquatableArray.Create(
+                    missing.Select(name => new FieldViolation(
+                        InputPointer.ForProperty(name),
+                        LegacyUnspecifiedCode,
+                        Detail: $"Required property '{name}' is missing.")).ToArray()))
+                {
+                    Detail = message,
+                },
+            };
         }
 
         var result = Metadata.Invoke(values);
@@ -140,13 +175,18 @@ T> : JsonConverter<T>
 
     private static object? ReadPrimitive(ref Utf8JsonReader reader, Type primitiveType, string jsonName)
     {
+        // Captured before the try because the catch clauses need it and a Utf8JsonReader is a
+        // ref struct. Get* does not advance the reader, so this is still the offending token.
+        var tokenType = reader.TokenType;
+
         try
         {
             if (primitiveType == typeof(string))
             {
                 if (reader.TokenType == JsonTokenType.Null)
-                    throw new TrellisJsonValidationException(
-                        $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.");
+                    throw Invalid(
+                        $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.",
+                        InputPointer.ForProperty(jsonName));
 
                 return reader.GetString();
             }
@@ -176,18 +216,48 @@ T> : JsonConverter<T>
         }
         catch (FormatException)
         {
-            throw new TrellisJsonValidationException(
-                $"Property '{jsonName}' is not a valid {DescribePrimitive(primitiveType)}.");
+            throw Invalid(
+                $"Property '{jsonName}' is not a valid {DescribePrimitive(primitiveType)}.",
+                InputPointer.ForProperty(jsonName));
         }
         catch (InvalidOperationException)
         {
-            throw new TrellisJsonValidationException(
-                $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.");
+            // `reader.GetInt32()` on a Null token throws the same InvalidOperationException as a
+            // genuinely wrong token type, so the two are separated here rather than downstream.
+            // A property explicitly present as `null` is a nullability failure, not a format
+            // failure — the same condition as the missing-property case above — and the two
+            // deserve different reason codes. They share one today only because this change
+            // deliberately makes no code decisions; the branch exists so that later change is a
+            // one-line edit rather than a rediscovery of this distinction.
+            var message = $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.";
+            var reasonCode = tokenType == JsonTokenType.Null ? NullValueCode : ConversionFailureCode;
+            throw Invalid(message, InputPointer.ForProperty(jsonName), reasonCode);
         }
 
-        throw new TrellisJsonValidationException(
-            $"Composite value object '{typeof(T).Name}' uses unsupported primitive '{primitiveType.Name}' for property '{jsonName}'.");
+        throw Invalid(
+            $"Composite value object '{typeof(T).Name}' uses unsupported primitive '{primitiveType.Name}' for property '{jsonName}'.",
+            InputPointer.ForProperty(jsonName));
     }
+
+    /// <summary>
+    /// Builds a validation exception carrying a structured, composite-relative violation.
+    /// </summary>
+    /// <remarks>
+    /// The pointer is relative to the composite value object, not to the request document. The
+    /// converter has no idea where in the document it was invoked; the path-tracking wrapper that
+    /// called it does, and re-roots the violation on the way out.
+    /// </remarks>
+    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer) =>
+        Invalid(message, pointer, LegacyUnspecifiedCode);
+
+    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode) =>
+        new(message)
+        {
+            InvalidInput = Error.InvalidInput.ForField(pointer, reasonCode, message) with
+            {
+                Detail = message,
+            },
+        };
 
     private static string DescribePrimitive(Type primitiveType)
     {

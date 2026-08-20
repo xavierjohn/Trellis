@@ -67,6 +67,37 @@ public sealed class TrellisAspOptions
     internal static TrellisAspOptions SystemDefault { get; } = new();
 
     /// <summary>
+    /// The language tag emitted as <c>Content-Language</c> on problem responses, or
+    /// <see langword="null"/> (the default) to emit no such header.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every Trellis problem response ships prose in <c>title</c> and <c>detail</c>. Setting this
+    /// declares what language that prose is in, e.g. <c>"en"</c>.
+    /// </para>
+    /// <para>
+    /// The default is deliberately unset: <c>detail</c> is frequently application-supplied, so the
+    /// framework cannot know its language, and emitting <c>Content-Language: en</c> unconditionally
+    /// would assert something it has not checked as well as silently changing behaviour for every
+    /// existing application.
+    /// </para>
+    /// <para>
+    /// This is a single static value, not server-side negotiation. Nothing reads
+    /// <c>Accept-Language</c>, and no <c>Vary</c> header is emitted, because the response does not
+    /// in fact vary by it. This composes with rather than competes against the reason-code and
+    /// arguments mechanism: <c>detail</c> is negotiated prose where negotiation exists, while codes
+    /// and arguments let the <em>client</em> hold the catalog, which is the only option when the
+    /// server has no translations at all.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddTrellisAsp(options =&gt; options.ProblemContentLanguage = "en");
+    /// </code>
+    /// </example>
+    public string? ProblemContentLanguage { get; set; }
+
+    /// <summary>
     /// When <c>true</c>, calls to <c>.WithVersionedRoute()</c> (or its pinned overload)
     /// that would silently skip <c>api-version</c> injection because the target endpoint
     /// has no <c>ApiVersionMetadata</c> attached throw

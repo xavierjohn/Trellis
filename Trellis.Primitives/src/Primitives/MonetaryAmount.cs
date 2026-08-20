@@ -149,7 +149,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     public static MonetaryAmount Parse(string? s, IFormatProvider? provider) =>
         TryCreate(s, provider).Match(
             onSuccess: value => value,
-            onFailure: error => throw new FormatException(error.GetDisplayMessage()));
+            onFailure: error => throw new TrellisValidationFormatException(error.GetDisplayMessage(), error as Error.InvalidInput));
 
     /// <inheritdoc/>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out MonetaryAmount result)

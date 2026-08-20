@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
+types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -605,12 +605,36 @@ HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterVa
 | Type | Shape | Purpose |
 | --- | --- | --- |
 | `ResourceRef` | `readonly record struct (string Type, string? Id = null)` plus `ResourceRef.For(string type, object? id = null)` and `ResourceRef.For<TResource>(object? id = null)` | Aggregate identity. The `For(...)` helpers convert IDs with invariant formatting when possible. `For<TResource>` peels `Maybe<T>` wrappers and strips generic arity. `ResourceRef.FormatTypeName(Type)` exposes just the arity-stripping step — `typeof(List<int>)` → `"List"` — **without** the `Maybe<T>` peeling, which stays scoped to `For<TResource>` because that method owns the resource-naming contract. Use it when a component needs a type-derived identifier on the wire (AOT-generated converter fallback messages, for example). Throws `ArgumentNullException` for a null type. |
-| `InputPointer` | `readonly record struct` with `InputPointer(string Path)` | RFC 6901 JSON Pointer (for example `/email`). Construct simple property names via `InputPointer.ForProperty("email")`, or use `InputPointer.Root` for the document root. |
+| `InputPointer` | `readonly record struct` with `InputPointer(string Path)` and `InputPointer(string Path, InputLocation In)` | RFC 6901 JSON Pointer (for example `/email`) plus the part of the input it addresses. Construct simple property names via `InputPointer.ForProperty("email")`, or use `InputPointer.Root` for the document root. See [`InputPointer` locations](#inputpointer-locations) for the location-stamping factories. |
+| `InputLocation` | `enum { Unspecified = 0, Body, Query, Path, Header }` | Which part of the input an offending value came from — the `in` discriminator of a violation's wire location. `Unspecified` projects as `"unknown"`. |
 | `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Single per-field violation inside `InvalidInput.Fields`. `Equals` / `GetHashCode` compare `Args` by content. |
 | `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `InvalidInput.Rules`. `Equals` / `GetHashCode` compare `Args` by content. |
 | `ITransportFault` | marker interface | Transport-specific payload contract used by `Error.TransportFault`. HTTP-aware code uses `HttpError` from `Trellis.Http.Abstractions`; other transports can define their own implementations. |
 | `RetryAdvice` | `readonly record struct (TimeSpan? After = null, DateTimeOffset? At = null)` | Transport-neutral retry hint carried by `Error.RateLimited` and `Error.Unavailable`. Boundary layers translate it to headers such as `Retry-After`. |
 | `EquatableArray<T>` | `readonly struct (ImmutableArray<T> Items)` | Wraps `ImmutableArray<T>` so records get sequence equality instead of reference equality. |
+
+---
+
+### `InputPointer` locations
+
+A pointer carries *where* a value came from as well as *which* value it was. The location is what lets the boundary decide whether the accompanying path is resolvable as a document location or is merely a parameter name.
+
+| Member | Returns | Purpose |
+| --- | --- | --- |
+| `public InputPointer(string Path)` | — | A pointer with `In = InputLocation.Unspecified`. Throws `ArgumentException` when `Path` is neither empty nor `/`-rooted, or when it contains an escape other than `~0` / `~1`. |
+| `public InputPointer(string Path, InputLocation In)` | — | As above, stamping an explicit location. |
+| `public InputLocation In { get; init; }` | `InputLocation` | Which part of the input the value came from. |
+| `public static InputPointer ForProperty(string propertyName)` | `InputPointer` | Escapes a simple name (`~`→`~0`, `/`→`~1`) and prepends `/`; passes an already-`/`-rooted pointer through unchanged. Leaves `In` unspecified. |
+| `public static InputPointer ForBody(string jsonPointer)` | `InputPointer` | `ForProperty` semantics, stamped `InputLocation.Body` — so `ForBody("/items/0/quantity")` addresses a nested value rather than a field literally named that. Empty input yields the root path stamped `Body`, which is deliberately not `Root`: a whole-body violation is idiomatically the root pointer, and stamping it is what makes it project as `body` rather than `unknown`. |
+| `public static InputPointer ForQuery(string name)` | `InputPointer` | A query-string parameter, addressed by name. |
+| `public static InputPointer ForPath(string name)` | `InputPointer` | A route parameter, addressed by name. |
+| `public static InputPointer ForHeader(string name)` | `InputPointer` | A request header, addressed by name. |
+| `public void Deconstruct(out string Path)` | `void` | Path only — preserves the single-element deconstruction the original positional record offered. |
+| `public void Deconstruct(out string Path, out InputLocation In)` | `void` | Path and location. |
+
+The three name factories store the name as **one** escaped token, so a parameter named `a/b` becomes `/a~1b` — one parameter, not two segments. Unlike `ForProperty` and `ForBody` they escape a leading `/` rather than treating it as an already-formed pointer, because a parameter named `/id` is a name and a name factory must never reinterpret it as a location. They reject an empty name rather than collapsing to root, since the root pointer is meaningful for a body and meaningless for a named parameter.
+
+`Equals` and `GetHashCode` compare `Path` **and** `In`. Path alone would make two pointers that project to different wire locations compare equal, and de-duplication would then collapse distinct failures into one.
 
 ---
 
@@ -1889,6 +1913,32 @@ public sealed class TrellisJsonValidationException : System.Text.Json.JsonExcept
 | `UnprocessableContent` | `Error.InvalidInput?` (init-only) | Optional structured payload describing per-field violations recovered during deserialization. Populated by `CompositeValueObjectJsonConverter<T>` when a composite VO's `TryCreate` returns an `Error.InvalidInput`. When non-null with at least one `FieldViolation`, `Trellis.Asp`'s `ScalarValueValidationMiddleware` emits one wire entry per `FieldViolation` keyed `<parentPath>.<leaf>` (MVC dot+bracket convention) instead of collapsing all leaves into the single `;`-joined `Message`. When `null` or `Fields` is empty (e.g., rules-only `Error.InvalidInput`), the middleware falls back to a single entry under the translated parent path with `Message` as the value, preserving the curated message. |
 
 Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON converters when a structured value object's invariants are violated during deserialization (e.g., `CompositeValueObjectJsonConverter<Money>` rejecting a negative amount). `Trellis.Asp`'s `ScalarValueValidationMiddleware` recognizes this subtype and surfaces its content in the resulting Problem Details payload — preferring the structured per-field shape from `Error.InvalidInput` when present (one entry per `FieldViolation`), and falling back to surfacing `Message` and `JsonException.Path` as a single entry otherwise. Plain `JsonException` instances are deliberately not surfaced because their messages can include internal type names; converters opt in to message surfacing by throwing this subclass with a curated message (e.g., `error.GetDisplayMessage()` from a `Result` failure).
+
+### `TrellisValidationFormatException`
+
+```csharp
+namespace Trellis;
+
+public sealed class TrellisValidationFormatException : FormatException
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public TrellisValidationFormatException()` | — | Default constructor. |
+| `public TrellisValidationFormatException(string? message)` | — | The flattened parse message, unchanged from what callers saw before. |
+| `public TrellisValidationFormatException(string? message, Exception? innerException)` | — | Wraps an inner exception. |
+| `public TrellisValidationFormatException(string? message, Error.InvalidInput? invalidInput)` | — | Carries the structured failure alongside the flattened message. |
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `InvalidInput` | `Error.InvalidInput?` (init-only) | The structured failure the parse produced, when there was one. |
+
+A parse failure has to satisfy two contracts at once and no single exception type satisfies both: `IParsable<TSelf>` requires malformed input to be signalled with a `FormatException`, while the ASP boundary recognizes a structured failure only through `TrellisJsonValidationException`, which is a `JsonException`. So the failure crosses in two hops — `Parse` throws this type, and `ParsableJsonConverter<T>` rethrows it as a `TrellisJsonValidationException` carrying the same `InvalidInput`.
+
+Deriving from `FormatException` rather than adding a sibling type is what keeps existing `catch (FormatException)` sites matching, and the base message is the unchanged flattened message, so a caller that catches and logs sees exactly what it saw before. The structure is strictly additional. It lives in `Trellis.Core` and is public because it is thrown from `Trellis.Primitives` and caught in `Trellis.Core`: internal would put it out of reach of the throwing sites, and moving it to `Trellis.Primitives` would make Core's converter reference Primitives and invert the dependency.
+
+> **Status side effect.** Routing `RequiredEnum<TSelf>` and collection wrong-token parse failures through this carrier moves them from **400** to **422**. That is a correction, not a regression: 400 is for bytes that are not valid JSON, whereas these parsed fine and failed *semantic* validation — and the identical failure already returned 422 when it arrived through `CompositeValueObjectJsonConverter<T>`.
+
 
 ## Primitive value object base classes
 

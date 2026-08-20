@@ -52,7 +52,8 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
             return Results.ValidationProblem(
                 dictionary,
                 instance: context.HttpContext.Request.GetEncodedPathAndQuery(),
-                statusCode: ScalarValidationStatus.Resolve(context.HttpContext));
+                statusCode: ScalarValidationStatus.Resolve(context.HttpContext),
+                extensions: ViolationProjection.ToProblemExtensions(validationError));
         }
 
         return await next(context).ConfigureAwait(false);

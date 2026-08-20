@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.FluentValidation
 namespaces: [Trellis.FluentValidation]
-types: [FluentValidationResultExtensions, JsonPointerNormalizer]
+types: [FluentValidationResultExtensions, JsonPointerNormalizer, ValidationArgsProjection]
 version: v3
 last_verified: 2026-06-04
 audience: [llm]
@@ -97,6 +97,73 @@ public static class JsonPointerNormalizer
 | `/already/a/pointer` | `/already/a/pointer` (returned unchanged) |
 | `Field~Name` | `/field~0Name` |
 | `Path/With/Slash` | `/path~1With~1Slash` |
+
+### `ValidationArgsProjection`
+
+**Declaration**
+
+```csharp
+public static class ValidationArgsProjection
+```
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static ImmutableDictionary<string, string>? Project(ValidationFailure failure)` | `ImmutableDictionary<string,string>?` | Projects a failure's `FormattedMessagePlaceholderValues` onto the `Args` carried by `FieldViolation`, applying the allowlist, the containment gate and the encoding rules below. Returns `null` when nothing survives. Both adapters call this — `FluentValidationResultExtensions.ToResult` and, in `Trellis.Mediator.FluentValidation`, `FluentValidationMessageValidatorAdapter`. |
+
+`Args` is what lets a client render its own localized message instead of displaying the server's English prose. Blanket camelCase pass-through of FluentValidation's placeholders is unsafe on two independent counts, so two controls apply.
+
+**Correctness — the per-validator allowlist.** FluentValidation populates placeholders its message never uses, with sentinel values: a `MinimumLength(50)` failure carries `MaxLength = -1`, and a `MaximumLength(2)` failure carries `MinLength = 0`. A client rendering *"must be between 50 and -1 characters"* from those is a real bug.
+
+| Validator | Args |
+| --- | --- |
+| `Length` | `minLength`, `maxLength`, `totalLength` |
+| `MinimumLength` | `minLength`, `totalLength` |
+| `MaximumLength` | `maxLength`, `totalLength` |
+| `ExactLength` | `maxLength`, `totalLength` |
+| `Equal`, `NotEqual`, `LessThan`, `LessThanOrEqual`, `GreaterThan`, `GreaterThanOrEqual` | `comparisonValue`, `comparisonProperty` |
+| `InclusiveBetween`, `ExclusiveBetween` | `from`, `to` |
+| `ScalePrecision` | `expectedPrecision`, `expectedScale`, `actualScale`, `digits` |
+| `RegularExpression` | `regularExpression` |
+| all others | none |
+
+`ExactLength` allows `maxLength` and **not** `minLength`, which looks arbitrary because `ExactLengthValidator(n)` calls `base(n, n)` and so populates both with the same correct value. The allowlist does not act alone — it composes with the gate below, and the pinned template names `{MaxLength}`. Allowlisting `minLength` would gate it out for being absent from the template while `maxLength` was dropped for not being allowlisted, and the expected length would vanish from the wire entirely, leaving a client with the length it sent and no bound to compare it against. **The allowlist tracks the template, not merely the populated fields.**
+
+**Disclosure — the containment gate.** An arg is emitted only when the **culture-active message template names that placeholder** *and* **its rendered value already appears in the `ErrorMessage`** the client receives anyway. Both halves are required:
+
+- Without the template check, containment is fooled by coincidence — `Matches("A")` on a property named `A` renders *"'A' is not in the correct format"*, in which the pattern is trivially a substring. The collision gets likelier the shorter the arg, which is to say likeliest for numeric thresholds.
+- Without the message check, the template check alone still passes after the application replaced the message: `.WithMessage("bad")` leaves the default template and its `{MinLength}` untouched.
+
+The consequences fall out uniformly, with no per-arg judgement:
+
+| Case | Result |
+| --- | --- |
+| default message | the templated args emit — they are already in today's `errors` string, so nothing new is disclosed |
+| `.WithMessage("bad")` | nothing emits — the app took the values out of its prose |
+| `AppendArgument("Secret", …)` | nothing emits — in no template, and Trellis cannot classify it |
+| localized message (e.g. `culture es`) | the templated args emit, because `GetString` returns the *culture-active* template |
+| an app-supplied `ErrorCode` | nothing emits — an unrecognized code resolves to no template, which is fail-safe and consistent with a user-set code always winning |
+| `Matches(...)`, any message | `regularExpression` never emits — it is in no default template, so emitting it would disclose an internal format |
+
+`PropertyValue`, `PropertyPath` and `PropertyName` are denied unconditionally, on app-authored placeholders too: `PropertyValue` carries the user's submitted input and *is* rendered into some default messages, so containment alone would let it through. `PropertyName` is redundant with the violation's own location.
+
+**Bounding.** Every string-valued arg is capped at 64 characters (with a `...` marker) and control characters are escaped as `\uXXXX`. The bound is universal rather than targeted because no structural rule identifies which args can carry submitted input: `Equal(x => x.Other + "!")` carries the full submitted value with an **empty** `ComparisonProperty`, byte-for-byte indistinguishable from a safe literal comparison.
+
+**Encoding.** Placeholders arrive boxed rather than pre-stringified, which is what makes per-type encoding implementable.
+
+| Type | Encoding |
+| --- | --- |
+| `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly` | round-trip `"O"` |
+| numerics | invariant culture |
+| `TimeSpan` | `"c"` |
+| enum | the **name**, not the numeric value |
+
+Naive conversion is not acceptable: `Convert.ToString(dateTime, InvariantCulture)` yields a month-first US format, not ISO 8601.
+
+The gate compares FluentValidation's **rendered** form, because that is what the message contains — but what Trellis publishes is the **encoded** form, and the two differ for dates. So an arg is emitted only when the encoded value is *also* reconcilable with the message: identical to the rendered form, identical to it after bounding, or present in the message verbatim. Otherwise it is **suppressed**.
+
+In practice that makes temporal args a standing false negative, since a culture-rendered date and a round-trip one essentially never coincide. That direction is deliberate — a false negative hides a safe arg and stays recoverable through an explicit opt-in, while a false positive discloses and cannot be taken back. Bounding and escaping are reconciled rather than treated as a mismatch: `Sanitize` derives every character it emits from a character of the value the gate already accepted — truncation omits, escaping re-encodes — so it cannot introduce content the message lacked, even though its output is not byte-for-byte present there. Demanding verbatim presence would suppress exactly the long and control-bearing values the bound exists to serve.
 
 ## Extension methods
 

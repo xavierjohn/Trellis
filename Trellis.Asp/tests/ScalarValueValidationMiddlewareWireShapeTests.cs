@@ -486,10 +486,9 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
     [Fact]
     public async Task TrellisJsonValidationException_with_root_pointer_leaf_uses_parent_only()
     {
-        // Coverage: exercises `CombineMvcKeys` `string.IsNullOrEmpty(leaf)` early-return branch.
-        // FieldViolation with InputPointer.Root has Field.Path = "" which JsonPointerToMvc
-        // translates to ""; combining "shippingAddress" + "" must yield "shippingAddress",
-        // not "shippingAddress." (with trailing dot).
+        // Coverage: a FieldViolation with InputPointer.Root has Field.Path = "", so the rebase
+        // yields the parent pointer unchanged and JsonPointerToMvc translates it to
+        // "shippingAddress" — not "shippingAddress." (with a trailing dot).
         var ctx = NewContext();
         var fields = EquatableArray.Create(
         [

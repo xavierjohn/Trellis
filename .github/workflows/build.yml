@@ -204,11 +204,20 @@ jobs:
               return 1
               ;;
           esac
-          # Body must be non-empty JSON ProblemDetails. Catches missing
-          # JsonSerializerContext entries (would yield empty body) and
-          # ResponseFailureWriter regressions (anonymous-type rules array).
-          if ! grep -qE '"(title|detail|errors|rules|status)"' "${LABEL}-fail.json"; then
+          # Body must be non-empty JSON ProblemDetails.
+          if ! grep -qE '"(title|detail|errors|status)"' "${LABEL}-fail.json"; then
             echo "${LABEL} failure response lacks ProblemDetails fields:"
+            cat "${LABEL}-fail.json"
+            return 1
+          fi
+          # A zero deposit is a field violation, so the response must carry the
+          # structured extension. This is the assertion that actually exercises
+          # polymorphic serialization of FieldViolationProblemDetail[] out of the
+          # object-valued Extensions dictionary -- the one thing native AOT needs a
+          # [JsonSerializable] root for and cannot degrade gracefully without.
+          # The generic check above passes on "title" alone and would not catch it.
+          if ! grep -q '"fieldViolations"' "${LABEL}-fail.json"; then
+            echo "${LABEL} failure response lacks fieldViolations; a JsonSerializerContext entry is likely missing:"
             cat "${LABEL}-fail.json"
             return 1
           fi

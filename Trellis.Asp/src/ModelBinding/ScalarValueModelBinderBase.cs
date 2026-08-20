@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Trellis;
+using Trellis.Asp.Validation;
 
 /// <summary>
 /// Base model binder for scalar value types that handles primitive conversion,
@@ -63,6 +64,7 @@ public abstract class ScalarValueModelBinderBase<TResult, TValue, TPrimitive> : 
         if (!parseResult.TryGetValue(out var primitiveValue, out var parseError))
         {
             bindingContext.ModelState.AddModelError(modelName, parseError.Detail ?? parseError.Code);
+            RecordStructured(bindingContext, parseError, modelName);
             bindingContext.Result = ModelBindingResult.Failed();
             return Task.CompletedTask;
         }
@@ -76,9 +78,19 @@ public abstract class ScalarValueModelBinderBase<TResult, TValue, TPrimitive> : 
         else if (result.TryGetError(out var createError))
         {
             bindingContext.ModelState.AddResultErrors(modelName, createError);
+            RecordStructured(bindingContext, createError, modelName);
             bindingContext.Result = ModelBindingResult.Failed();
         }
 
         return Task.CompletedTask;
     }
+
+    // ModelState carries strings, so the structured violation is recorded alongside it. The
+    // binding source is read here because this is the only point in the pipeline that knows it.
+    private static void RecordStructured(ModelBindingContext bindingContext, Error error, string modelName) =>
+        BoundViolationCollector.AddFrom(
+            bindingContext.HttpContext,
+            error,
+            modelName,
+            BoundViolationCollector.ToInputLocation(bindingContext.BindingSource));
 }

@@ -212,8 +212,13 @@ public sealed class ScalarValueValidationMiddleware
         var rawPath = (ex.InnerException as JsonException)?.Path;
 
         // Translate JSON Path notation to MVC dot+bracket convention so this 400 path shares the
-        // same wire-key shape as every other Trellis.Asp ValidationProblem emitter.
-        var key = JsonPathToMvcKey(rawPath);
+        // same wire-key shape as every other Trellis.Asp ValidationProblem emitter. A recorded
+        // ancestor wins: once a path-tracking wrapper has handled the throw, JsonException.Path has
+        // been displaced by the wrapper's nested JsonSerializer call and is relative to that nested
+        // root, whereas the recorded ancestor is absolute and RFC 6901-lossless.
+        var key = ex.InnerException is { } inner && JsonValidationPathRebase.RecordedAbsolutePath(inner) is { } absolute
+            ? JsonPointerToMvc.Translate(absolute)
+            : JsonPathToMvcKey(rawPath);
 
         // Structured shape: when the inner exception is a TrellisJsonValidationException
         // carrying a structured Error.InvalidInput with at least one FieldViolation,
@@ -224,13 +229,21 @@ public sealed class ScalarValueValidationMiddleware
         // Rules-only InvalidInput (no FieldViolations) falls through to the unstructured
         // branch so the curated exception message surfaces under the parent key — emitting an
         // empty `errors` object would silently swallow the rule violation.
-        if (ex.InnerException is TrellisJsonValidationException { InvalidInput: { Fields.Length: > 0 } structuredError })
+        if (ex.InnerException is TrellisJsonValidationException { InvalidInput: { Fields.Length: > 0 } } structuredEx)
         {
+            // Arms 1 and 2 of the path-resolution rule. A marked exception was re-rooted by the
+            // innermost path-tracking wrapper while the ancestor stack was live, so its pointers
+            // are already absolute and must never be prefixed again. An unmarked one never passed
+            // a wrapper: its pointers are composite-relative, and JsonException.Path is the
+            // best-effort ancestor. Either way, everything downstream sees absolute pointers.
+            var structuredError = JsonValidationPathRebase.IsMarked(structuredEx)
+                ? structuredEx.InvalidInput!
+                : JsonValidationPathRebase.RebaseTo(structuredEx.InvalidInput!, JsonPathToPointer(rawPath));
+
             var perLeafErrors = new Dictionary<string, string[]>(StringComparer.Ordinal);
             foreach (var fv in structuredError.Fields)
             {
-                var leafKey = JsonPointerToMvc.Translate(fv.Field.Path);
-                var combinedKey = CombineMvcKeys(key, leafKey);
+                var combinedKey = JsonPointerToMvc.Translate(fv.Field.Path);
 
                 var detail = !string.IsNullOrEmpty(fv.Detail) ? fv.Detail : fv.ReasonCode;
                 if (perLeafErrors.TryGetValue(combinedKey, out var existing))
@@ -249,7 +262,8 @@ public sealed class ScalarValueValidationMiddleware
             var structuredResult = Results.ValidationProblem(
                 perLeafErrors,
                 instance: context.Request.GetEncodedPathAndQuery(),
-                statusCode: statusCode);
+                statusCode: statusCode,
+                extensions: ViolationProjection.ToProblemExtensions(structuredError));
             await structuredResult.ExecuteAsync(context).ConfigureAwait(false);
             return;
         }
@@ -313,9 +327,10 @@ public sealed class ScalarValueValidationMiddleware
     /// equivalent JSON Pointer. This is a deliberate trade-off: legitimate paths with
     /// adjacent non-identifier property names (e.g. <c>$['weird name']['another weird']</c>)
     /// are common; property names containing the literal <c>'][</c> sequence are not.
-    /// Consumers requiring lossless field paths for adversarial keys should rely on
-    /// <c>RuleViolation</c> payloads carrying raw JSON Pointers in
-    /// <c>extensions["rules"][n].fields[]</c>.
+    /// Consumers requiring lossless field paths for adversarial keys should read the RFC 6901
+    /// pointer from <c>extensions["fieldViolations"][n].location.pointer</c> (or, for rule
+    /// violations, <c>extensions["ruleViolations"][n].locations[]</c>) rather than the
+    /// <c>errors</c> map key.
     /// </para>
     /// </remarks>
     internal static string JsonPathToMvcKey(string? jsonExceptionPath)
@@ -323,117 +338,31 @@ public sealed class ScalarValueValidationMiddleware
         if (string.IsNullOrEmpty(jsonExceptionPath) || jsonExceptionPath == "$")
             return string.Empty;
 
-        if (jsonExceptionPath[0] != '$')
+        if (!JsonPathSegments.IsParsable(jsonExceptionPath))
             return jsonExceptionPath;
 
-        var sb = new StringBuilder(jsonExceptionPath.Length);
-        var i = 1;
-        while (i < jsonExceptionPath.Length)
-        {
-            var c = jsonExceptionPath[i];
-            if (c == '.')
-            {
-                i++;
-                var start = i;
-                while (i < jsonExceptionPath.Length
-                       && jsonExceptionPath[i] != '.'
-                       && jsonExceptionPath[i] != '[')
-                    i++;
-                if (i > start)
-                {
-                    if (sb.Length > 0) sb.Append('.');
-                    sb.Append(jsonExceptionPath, start, i - start);
-                }
-                else
-                {
-                    sb.Append("[\"\"]");
-                }
-            }
-            else if (c == '[')
-            {
-                if (i + 1 < jsonExceptionPath.Length && jsonExceptionPath[i + 1] == '\'')
-                {
-                    var contentStart = i + 2;
-                    var closeIdx = -1;
-                    for (var j = contentStart; j + 1 < jsonExceptionPath.Length; j++)
-                    {
-                        if (jsonExceptionPath[j] != '\'') continue;
-                        if (jsonExceptionPath[j + 1] != ']') continue;
-                        var afterIdx = j + 2;
-                        if (afterIdx == jsonExceptionPath.Length
-                            || jsonExceptionPath[afterIdx] == '.'
-                            || jsonExceptionPath[afterIdx] == '[')
-                        {
-                            closeIdx = j;
-                            break;
-                        }
-                    }
-
-                    string content;
-                    if (closeIdx >= 0)
-                    {
-                        content = jsonExceptionPath.Substring(contentStart, closeIdx - contentStart);
-                        i = closeIdx + 2;
-                    }
-                    else
-                    {
-                        content = jsonExceptionPath[contentStart..];
-                        i = jsonExceptionPath.Length;
-                    }
-
-                    if (content.Length == 0)
-                    {
-                        sb.Append("[\"\"]");
-                    }
-                    else
-                    {
-                        if (sb.Length > 0) sb.Append('.');
-                        sb.Append(content);
-                    }
-                }
-                else
-                {
-                    var start = i;
-                    while (i < jsonExceptionPath.Length && jsonExceptionPath[i] != ']') i++;
-                    if (i < jsonExceptionPath.Length) i++;
-                    sb.Append(jsonExceptionPath, start, i - start);
-                }
-            }
-            else
-            {
-                sb.Append(c);
-                i++;
-            }
-        }
-
-        return sb.ToString();
+        return JsonPathSegments.ToMvcKey(JsonPathSegments.Parse(jsonExceptionPath));
     }
 
     /// <summary>
-    /// Combines a parent MVC key with a translated leaf MVC key per MVC dot+bracket convention.
+    /// Translates <see cref="System.Text.Json.JsonException.Path"/> to an RFC 6901 pointer, for use
+    /// as the ancestor prefix in arm 2 of the path-resolution rule — the best-effort tier, reached
+    /// only when a structured failure never passed a path-tracking wrapper and its pointers are
+    /// therefore still composite-relative.
     /// </summary>
     /// <remarks>
-    /// MVC convention is <c>parent.child</c> for property segments and <c>parent[0]</c> /
-    /// <c>parent[""]</c> for indexer segments — never <c>parent.[0]</c>. The dot separator is
-    /// inserted only when the leaf starts with a property segment (i.e., does NOT start with
-    /// <c>'['</c>); for indexer leaves the separator is omitted.
+    /// A root or unparsable path yields the empty string, which makes the rebase a no-op. That is
+    /// the correct answer for a top-level composite value object, and an honest degradation
+    /// elsewhere: the violation stays root-relative rather than being given an invented location.
     /// </remarks>
-    internal static string CombineMvcKeys(string parent, string leaf)
+    internal static string JsonPathToPointer(string? jsonExceptionPath)
     {
-        if (string.IsNullOrEmpty(parent))
-            return leaf;
+        if (string.IsNullOrEmpty(jsonExceptionPath) || jsonExceptionPath == "$")
+            return string.Empty;
 
-        if (string.IsNullOrEmpty(leaf))
-            return parent;
+        if (!JsonPathSegments.IsParsable(jsonExceptionPath))
+            return string.Empty;
 
-        // MVC indexer keys (e.g., "[0]", "[\"\"]", "[\"name\"]") concatenate without a dot:
-        //   parent + "[0]"     -> "parent[0]"
-        //   parent + "[\"\"]"  -> "parent[\"\"]"
-        // Property segments insert a dot:
-        //   parent + "child"   -> "parent.child"
-        //   parent + "a[0].b"  -> "parent.a[0].b"
-        return leaf[0] == '['
-            ? string.Concat(parent, leaf)
-            : string.Concat(parent, ".", leaf);
+        return JsonPathSegments.ToPointer(JsonPathSegments.Parse(jsonExceptionPath));
     }
 }

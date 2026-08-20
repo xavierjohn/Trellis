@@ -10,6 +10,35 @@ using System.Globalization;
 internal static class PrimitiveConverter
 {
     /// <summary>
+    /// Builds the conversion failure carried by every rejection below.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The violation is <em>root-relative</em>: this converter is deliberately field-agnostic —
+    /// it is handed a raw string and a target type, and nothing more — so the pointer it can
+    /// honestly emit is the root. The caller that does know the field re-roots it, which is the
+    /// same arrangement the JSON path-tracking wrappers use.
+    /// </para>
+    /// <para>
+    /// A violation is emitted rather than a bare <c>Detail</c> because the boundary's
+    /// <c>ValidationProblem</c> gate keys on there being at least one field violation. A failure
+    /// with an empty <c>Fields</c> array renders as an untyped problem no client can dispatch on,
+    /// which is precisely the degradation this work removes.
+    /// </para>
+    /// <para>
+    /// The reason code is the legacy placeholder, normalized to the neutral sentinel on the wire.
+    /// The vocabulary decision for these 18 sites is deliberately a separate change: it freezes
+    /// on merge, and mixing it into a mechanical restructuring would bury it.
+    /// </para>
+    /// </remarks>
+    private static Error.InvalidInput Invalid(string detail) =>
+        new(EquatableArray.Create(
+            new FieldViolation(InputPointer.Root, ViolationProjection.LegacyUnspecifiedCode, Detail: detail)))
+        {
+            Detail = detail,
+        };
+
+    /// <summary>
     /// Converts a string value to the specified primitive type.
     /// </summary>
     /// <typeparam name="TPrimitive">The target primitive type.</typeparam>
@@ -26,10 +55,10 @@ internal static class PrimitiveConverter
         // empty strings; rejecting empty here prevents the binder from ever reaching
         // the type's own validation rules.
         if (value is null)
-            return Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Value is required." });
+            return Result.Fail<TPrimitive>(Invalid("Value is required."));
 
         if (value.Length == 0 && underlyingType != typeof(string))
-            return Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Value is required." });
+            return Result.Fail<TPrimitive>(Invalid("Value is required."));
 
         try
         {
@@ -44,78 +73,78 @@ internal static class PrimitiveConverter
                         || underlyingType.IsDefined(typeof(FlagsAttribute), inherit: false)))
                     return Result.Ok((TPrimitive)enumValue);
 
-                return Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a recognized option." });
+                return Result.Fail<TPrimitive>(Invalid("The value is not a recognized option."));
             }
 
             if (underlyingType == typeof(Guid))
                 return Guid.TryParse(value, out var guid)
                     ? Result.Ok((TPrimitive)(object)guid)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid GUID." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid GUID."));
 
             if (underlyingType == typeof(int))
                 return int.TryParse(value, out var i)
                     ? Result.Ok((TPrimitive)(object)i)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid integer." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid integer."));
 
             if (underlyingType == typeof(long))
                 return long.TryParse(value, out var l)
                     ? Result.Ok((TPrimitive)(object)l)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid integer." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid integer."));
 
             if (underlyingType == typeof(short))
                 return short.TryParse(value, out var s)
                     ? Result.Ok((TPrimitive)(object)s)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid integer." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid integer."));
 
             if (underlyingType == typeof(byte))
                 return byte.TryParse(value, out var by)
                     ? Result.Ok((TPrimitive)(object)by)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid byte (0-255)." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid byte (0-255)."));
 
             if (underlyingType == typeof(decimal))
                 return decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var d)
                     ? Result.Ok((TPrimitive)(object)d)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid decimal." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid decimal."));
 
             if (underlyingType == typeof(double))
                 return double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var dbl)
                     ? Result.Ok((TPrimitive)(object)dbl)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid number." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid number."));
 
             if (underlyingType == typeof(float))
                 return float.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var flt)
                     ? Result.Ok((TPrimitive)(object)flt)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid number." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid number."));
 
             if (underlyingType == typeof(bool))
                 return bool.TryParse(value, out var b)
                     ? Result.Ok((TPrimitive)(object)b)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid boolean." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid boolean."));
 
             if (underlyingType == typeof(DateTime))
                 return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt)
                     ? Result.Ok((TPrimitive)(object)dt)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid date/time." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid date/time."));
 
             if (underlyingType == typeof(DateTimeOffset))
                 return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto)
                     ? Result.Ok((TPrimitive)(object)dto)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid date/time." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid date/time."));
 
             if (underlyingType == typeof(DateOnly))
                 return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly)
                     ? Result.Ok((TPrimitive)(object)dateOnly)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid date." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid date."));
 
             if (underlyingType == typeof(TimeOnly))
                 return TimeOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var timeOnly)
                     ? Result.Ok((TPrimitive)(object)timeOnly)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid time." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid time."));
 
             if (underlyingType == typeof(TimeSpan))
                 return TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var timeSpan)
                     ? Result.Ok((TPrimitive)(object)timeSpan)
-                    : Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value is not a valid time span." });
+                    : Result.Fail<TPrimitive>(Invalid("The value is not a valid time span."));
 
             // Fallback: try Convert.ChangeType
             var converted = Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
@@ -123,7 +152,7 @@ internal static class PrimitiveConverter
         }
         catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException or ArgumentException)
         {
-            return Result.Fail<TPrimitive>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The value could not be converted to the expected type." });
+            return Result.Fail<TPrimitive>(Invalid("The value could not be converted to the expected type."));
         }
     }
 }

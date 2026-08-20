@@ -315,9 +315,22 @@ public sealed class ResponseFailureWriterTests
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
         ctx.Response.Body.Position = 0;
-        var raw = await new StreamReader(ctx.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken);
-        raw.Should().Contain("items[0].name");
-        raw.Should().NotContain("items/0/name", "JSON Pointer slash form must not appear in the wire `errors` keys");
+        using var body = await JsonDocument.ParseAsync(ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);
+
+        var errorKeys = body.RootElement.GetProperty("errors").EnumerateObject().Select(p => p.Name).ToArray();
+        errorKeys.Should().Contain("items[0].name");
+        errorKeys.Should().NotContain(
+            key => key.Contains("items/0/name", StringComparison.Ordinal),
+            "JSON Pointer slash form must not appear in the wire `errors` keys");
+
+        // The pointer form is correct — and required — inside the structured location object,
+        // which addresses the document rather than an MVC model-binding key.
+        body.RootElement
+            .GetProperty("fieldViolations")[0]
+            .GetProperty("location")
+            .GetProperty("pointer")
+            .GetString()
+            .Should().Be("/items/0/name");
     }
 
     [Fact]
