@@ -18,15 +18,27 @@ public static class StringExtensions
 
     /// <summary>
     /// Parses a string value using the specified <see cref="IScalarValue{TSelf, TPrimitive}"/> factory.
-    /// Throws <see cref="FormatException"/> if the value is invalid.
+    /// Throws <see cref="TrellisValidationFormatException"/> if the value is invalid.
     /// </summary>
+    /// <remarks>
+    /// The thrown exception derives from <see cref="FormatException"/>, so
+    /// <see cref="IParsable{TSelf}"/>'s contract and every existing <c>catch (FormatException)</c>
+    /// are unaffected, and the message is the same flattened sentence as before. What is new is
+    /// that the structured failure travels with it instead of being discarded here — this helper
+    /// backs nine of the twelve hand-authored parse sites, so it is the single largest place
+    /// structure was being thrown away.
+    /// </remarks>
     public static T ParseScalarValue<T>(string? s) where T : class, IScalarValue<T, string> =>
         T.TryCreate(s!).Match(
             onSuccess: value => value,
-            onFailure: error => throw new FormatException(
-                error is Error.InvalidInput uc && uc.Fields.Length > 0
-                    ? uc.Fields[0].Detail ?? error.Detail ?? "Validation failed."
-                    : error.Detail ?? "Validation failed."));
+            onFailure: ThrowParseFailure<T>);
+
+    private static T ThrowParseFailure<T>(Error error) =>
+        throw new TrellisValidationFormatException(
+            error is Error.InvalidInput uc && uc.Fields.Length > 0
+                ? uc.Fields[0].Detail ?? error.Detail ?? "Validation failed."
+                : error.Detail ?? "Validation failed.",
+            error as Error.InvalidInput);
 
     /// <summary>
     /// Tries to parse a string value using the specified <see cref="IScalarValue{TSelf, TPrimitive}"/> factory.

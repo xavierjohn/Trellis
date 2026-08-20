@@ -347,7 +347,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
         /// <summary>
         /// Parses the input into a <see cref=""{g.ClassName}""/> or throws
-        /// <see cref=""FormatException""/> when the input fails validation.
+        /// <see cref=""TrellisValidationFormatException""/> when the input fails validation.
         /// </summary>
         /// <param name=""s"">The value to parse.</param>
         /// <param name=""provider"">Format provider (currently unused for non-IFormattable bases).</param>
@@ -358,8 +358,14 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 onSuccess: value => value,
                 onFailure: error =>
                 {{
-                    var val = (Error.InvalidInput)error;
-                    throw new FormatException(val.Fields.Items[0].Detail ?? val.Fields.Items[0].ReasonCode);
+                    // Derives from FormatException, so IParsable's contract is unchanged and the
+                    // message is byte-for-byte what it was; the structured failure now travels
+                    // with it so the boundary can render per-field violations.
+                    var val = error as Error.InvalidInput;
+                    var detail = val is {{ Fields.Items.Length: > 0 }}
+                        ? val.Fields.Items[0].Detail ?? val.Fields.Items[0].ReasonCode
+                        : error.Detail ?? ""Validation failed."";
+                    throw new TrellisValidationFormatException(detail, val);
                 }});
         }}"));
 

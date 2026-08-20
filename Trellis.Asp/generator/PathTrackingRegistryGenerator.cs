@@ -32,6 +32,7 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
     private const string JsonSerializableAttribute = "System.Text.Json.Serialization.JsonSerializableAttribute";
     private const string ScalarValueInterface = "Trellis.IScalarValue`2";
     private const string MaybeType = "Trellis.Maybe`1";
+    private const string ValueObjectType = "Trellis.ValueObject";
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -75,8 +76,12 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         foreach (var root in roots)
             walker.Walk(root);
 
-        if (walker.ObjectRegistrations.Count == 0 && walker.CollectionRegistrations.Count == 0)
+        if (walker.ObjectRegistrations.Count == 0
+            && walker.CollectionRegistrations.Count == 0
+            && walker.DictionaryRegistrations.Count == 0)
+        {
             return;
+        }
 
         context.AddSource("TrellisScalarValuePathTracking.g.cs", Emit(walker));
     }
@@ -109,6 +114,9 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         foreach (var pair in walker.CollectionRegistrations)
             sb.AppendLine($"        ScalarValuePathTracking.RegisterCollection<{pair.Collection}, {pair.Element}>();");
 
+        foreach (var pair in walker.DictionaryRegistrations)
+            sb.AppendLine($"        ScalarValuePathTracking.RegisterDictionary<{pair.Collection}, {pair.Element}>();");
+
         sb.AppendLine("    }");
         sb.AppendLine("}");
 
@@ -125,7 +133,9 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         private readonly Compilation _compilation;
         private readonly INamedTypeSymbol? _scalarValueInterface;
         private readonly INamedTypeSymbol? _maybeType;
+        private readonly INamedTypeSymbol? _valueObjectType;
         private readonly INamedTypeSymbol? _listType;
+        private readonly INamedTypeSymbol? _dictionaryType;
         private readonly HashSet<ITypeSymbol> _visited = new(SymbolEqualityComparer.Default);
 
         public GraphWalker(Compilation compilation)
@@ -133,12 +143,16 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
             _compilation = compilation;
             _scalarValueInterface = compilation.GetTypeByMetadataName(ScalarValueInterface);
             _maybeType = compilation.GetTypeByMetadataName(MaybeType);
+            _valueObjectType = compilation.GetTypeByMetadataName(ValueObjectType);
             _listType = compilation.GetTypeByMetadataName("System.Collections.Generic.List`1");
+            _dictionaryType = compilation.GetTypeByMetadataName("System.Collections.Generic.Dictionary`2");
         }
 
         public SortedSet<string> ObjectRegistrations { get; } = new(System.StringComparer.Ordinal);
 
         public SortedSet<CollectionRegistration> CollectionRegistrations { get; } = new();
+
+        public SortedSet<CollectionRegistration> DictionaryRegistrations { get; } = new();
 
         public void Walk(ITypeSymbol type)
         {
@@ -183,11 +197,32 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
                     continue;
                 }
 
+                var wrappableValue = GetWrappableDictionaryValueType(propertyType);
+                if (wrappableValue is not null)
+                {
+                    if (IsAccessible(propertyType) && IsAccessible(wrappableValue))
+                    {
+                        DictionaryRegistrations.Add(new CollectionRegistration(
+                            propertyType.ToDisplayString(FullyQualified),
+                            wrappableValue.ToDisplayString(FullyQualified)));
+                    }
+
+                    Walk(wrappableValue);
+                    continue;
+                }
+
                 if (!IsUserObjectType(propertyType))
                     continue;
 
                 if (IsAccessible(propertyType))
                     ObjectRegistrations.Add(propertyType.ToDisplayString(FullyQualified));
+
+                // A converter-backed value object owns its own JSON shape, so the runtime modifier sees
+                // an empty JsonTypeInfo.Properties and never installs wrappers inside it. Recursing here
+                // would register converters the reflection pipeline never installs, which is the parity
+                // break in the other direction.
+                if (IsConverterBackedValueObject(propertyType))
+                    continue;
 
                 Walk(propertyType);
             }
@@ -222,6 +257,18 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
             if (IsScalarValue(type) || IsMaybeScalarValue(type))
                 return true;
 
+            // Mirrors IsConverterBackedValueObject in the runtime type-info modifier: a composite value
+            // object built entirely from primitives contains no IScalarValue, yet its converter still
+            // throws composite-relative pointers that only an ancestor-aware wrapper can re-root.
+            if (IsConverterBackedValueObject(type))
+                return true;
+
+            // Mirrors the runtime gate: a string-keyed dictionary is checked before the general
+            // enumerable walk, whose KeyValuePair element is a struct that IsUserObjectType rejects.
+            var dictionaryValue = GetWrappableDictionaryValueType(type);
+            if (dictionaryValue is not null)
+                return ContainsScalarValueTransitively(dictionaryValue, visited);
+
             var element = GetEnumerableElementType(type);
             if (element is not null)
                 return ContainsScalarValueTransitively(element, visited);
@@ -247,6 +294,69 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
             && type is INamedTypeSymbol { TypeArguments.Length: 1 } named
             && SymbolEqualityComparer.Default.Equals(named.OriginalDefinition, _maybeType)
             && IsScalarValue(named.TypeArguments[0]);
+
+        // Mirrors IsConverterBackedValueObject in the runtime type-info modifier. The converter
+        // attribute, not the ValueObject base, is the discriminator: a ValueObject with no converter is
+        // serialised as a plain object, so the modifier walks into its properties normally and treating
+        // it as opaque here would under-register relative to reflection.
+        private bool IsConverterBackedValueObject(ITypeSymbol type)
+        {
+            if (_valueObjectType is null || IsScalarValue(type))
+                return false;
+
+            if (!type.GetAttributes().Any(a =>
+                    a.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonConverterAttribute"))
+            {
+                return false;
+            }
+
+            for (var current = type.BaseType; current is not null; current = current.BaseType)
+            {
+                if (SymbolEqualityComparer.Default.Equals(current, _valueObjectType))
+                    return true;
+            }
+
+            return false;
+        }
+
+        // Mirrors GetWrappableDictionaryValueType in the runtime type-info modifier: a STRING-keyed
+        // dictionary whose Dictionary<string, value> is assignable back to the declared property type.
+        // Non-string keys are excluded because they have no faithful RFC 6901 rendering.
+        private ITypeSymbol? GetWrappableDictionaryValueType(ITypeSymbol type)
+        {
+            if (type is IArrayTypeSymbol || type.SpecialType == SpecialType.System_String)
+                return null;
+
+            var candidates = type is INamedTypeSymbol named
+                ? new[] { named }.Concat(type.AllInterfaces)
+                : type.AllInterfaces.AsEnumerable();
+
+            foreach (var candidate in candidates)
+            {
+                if (candidate is not { IsGenericType: true, TypeArguments.Length: 2 })
+                    continue;
+
+                var definition = candidate.OriginalDefinition.ToDisplayString();
+                if (definition is not "System.Collections.Generic.IDictionary<TKey, TValue>"
+                    and not "System.Collections.Generic.IReadOnlyDictionary<TKey, TValue>")
+                {
+                    continue;
+                }
+
+                if (candidate.TypeArguments[0].SpecialType != SpecialType.System_String)
+                    return null;
+
+                if (_dictionaryType is null)
+                    return null;
+
+                var dictionaryType = _dictionaryType.Construct(candidate.TypeArguments[0], candidate.TypeArguments[1]);
+                return _compilation.ClassifyCommonConversion(dictionaryType, type).IsImplicit
+                    ? candidate.TypeArguments[1]
+                    : null;
+            }
+
+            return null;
+        }
 
         // Mirrors the runtime rule: an array element, or an element whose List<element> is assignable
         // back to the declared property type. Other collection shapes are left to STJ (leaf-only paths).

@@ -52,6 +52,17 @@ public class ParsableJsonConverter<T> : JsonConverter<T>
         {
             return T.Parse(raw, CultureInfo.InvariantCulture);
         }
+        catch (TrellisValidationFormatException ex)
+        {
+            // The parse carried a structured failure. Preserve it: this is the only shape the
+            // ASP boundary reads, and dropping it here is what left a curated per-field failure
+            // rendering as an untyped problem. Ordered before the general catch below, which
+            // would otherwise swallow it — a TrellisValidationFormatException is a FormatException.
+            throw new TrellisJsonValidationException($"Cannot deserialize '{raw}' to '{typeof(T).Name}'.", ex)
+            {
+                InvalidInput = ex.InvalidInput,
+            };
+        }
         catch (Exception ex) when (ex is FormatException or ArgumentException or OverflowException)
         {
             throw new JsonException($"Cannot deserialize '{raw}' to '{typeof(T).Name}'.", ex);

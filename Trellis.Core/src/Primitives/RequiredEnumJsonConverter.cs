@@ -33,18 +33,24 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     /// <inheritdoc />
     public override bool HandleNull => true;
 
+    /// <summary>
+    /// The placeholder reason code carried by this converter's violations; normalized to a
+    /// neutral sentinel at the boundary.
+    /// </summary>
+    private const string LegacyUnspecifiedCode = "validation.error";
+
     /// <inheritdoc />
     public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
-            throw new JsonException(
+            throw Invalid(
                 $"Cannot deserialize null into RequiredEnum<{typeof(TRequiredEnum).Name}>. " +
                 "A required enum value must be a non-null string.");
 
         return reader.TokenType switch
         {
             JsonTokenType.String => ReadFromString(ref reader),
-            _ => throw new JsonException($"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
+            _ => throw Invalid($"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
         };
     }
 
@@ -68,11 +74,41 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
                     .Select(value => value.Value)
                     .OrderBy(value => value, StringComparer.Ordinal));
 
-                throw new JsonException(
+                throw Invalid(
                     $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'. " +
                     $"Valid values are: {validValues}.");
             });
     }
+
+    /// <summary>
+    /// Builds a structured validation failure carrying the converter's own curated message.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The violation is root-relative: this converter reads a single scalar and does not know
+    /// where in the document it sits. The caller re-roots it.
+    /// </para>
+    /// <para>
+    /// The message deliberately comes from this converter rather than from the producer's error
+    /// detail. The invalid-value message is sanitized here — a raw enum name is attacker-supplied
+    /// input — and propagating the producer's unsanitized detail in its place would silently
+    /// remove that guarantee.
+    /// </para>
+    /// <para>
+    /// This also moves these failures from 400 to 422. That is a correction: the boundary reserves
+    /// 400 for bytes that are not valid JSON, and an enum name that is not a member parsed
+    /// perfectly well and then failed semantic validation. The identical failure already returns
+    /// 422 through the composite converter, so the two producers now agree.
+    /// </para>
+    /// </remarks>
+    private static TrellisJsonValidationException Invalid(string message) =>
+        new(message)
+        {
+            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, LegacyUnspecifiedCode, message) with
+            {
+                Detail = message,
+            },
+        };
 
     private static string SanitizeForExceptionMessage(string? value, int maxLength = 64)
     {

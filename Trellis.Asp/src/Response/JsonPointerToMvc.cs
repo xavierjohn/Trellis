@@ -51,13 +51,11 @@ using System.Text;
 /// <c>.</c>, <c>[</c>, or <c>]</c> (for example a custom adapter mapping a
 /// dotted path to a flat field) will produce a single-segment pointer that
 /// collides with structurally distinct multi-segment pointers under this
-/// translation. Raw JSON Pointer values are preserved per-rule on
-/// <c>extensions["rules"][n].fields[]</c> for any
-/// <see cref="Error.InvalidInput"/> that includes
-/// <see cref="RuleViolation"/> entries; <c>FieldViolation</c>-only payloads
-/// only carry the translated MVC key on the wire and have no escape hatch.
-/// Producers needing path fidelity for a flat field violation must therefore
-/// also emit a corresponding <c>RuleViolation</c>.
+/// translation. This is a property of the legacy <c>errors</c> map only: every
+/// field violation is also emitted under <c>extensions["problems"][n].location.pointer</c>
+/// with its RFC 6901 pointer intact, and every rule violation under
+/// <c>extensions["rules"][n].locations[]</c>. A producer needing path fidelity
+/// therefore needs no workaround — it is already on the wire beside the lossy key.
 /// </item>
 /// </list>
 /// </remarks>

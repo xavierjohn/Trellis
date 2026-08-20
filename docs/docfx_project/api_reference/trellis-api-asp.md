@@ -176,6 +176,7 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 | --- | --- | --- |
 | `SystemDefault` | `static TrellisAspOptions` (internal) | Read-only default instance used when DI cannot resolve a configured `TrellisAspOptions` (e.g. the host did not call `AddTrellisAsp`). Internal — not callable from user code. Hosts customize the mappings by passing a configure delegate to `AddTrellisAsp(o => o.MapError<...>(...))`; raw `AddSingleton(new TrellisAspOptions())` is unsupported and will be replaced by the bridge factory the next time `AddTrellisAsp` runs. |
 | `FailFastOnSilentVersionInjection` | `bool` | When `true`, every `.WithVersionedRoute()` (or pinned overload) call that would silently skip `api-version` injection because the target endpoint has no `ApiVersionMetadata` throws `InvalidOperationException` instead of logging a single warning per endpoint. Defaults to `false` (warn-once-per-(endpoint, AppDomain) via the `Trellis.Asp.ApiVersioning` `ILogger` category). Intended for non-Production environments to surface mid-migration regressions where `AddApiVersioning(...)` was removed but `.WithVersionedRoute()` chains remain. |
+| `ProblemContentLanguage` | `string?` | The language tag emitted as `Content-Language` on problem responses, or `null` (the default) to emit none. Every problem response ships prose in `title` and `detail`; setting this declares what language that prose is in. The default is deliberately unset because `detail` is frequently application-supplied, so the framework cannot know its language and would otherwise assert something it has not checked. This is a single static value, not server-side negotiation: nothing reads `Accept-Language`, and no `Vary` header is emitted, because the response genuinely does not vary by it. It composes with rather than competes against reason codes and args — `detail` is negotiated prose where negotiation exists, while codes and args let the *client* hold the catalog, which is the only option when the server has no translations at all. |
 | `SynthesizeProblemDetailsInstanceFromResourceRef` | `bool` | When `true` (the default), `ResponseFailureWriter` populates `ProblemDetails.Instance` from the failing `ResourceRef` (`/{collectionName}/{id}`) when the request URL does not already identify the resource, and preserves the original request URL under `Extensions["request"]`. Applies to `NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`, and `TransportFault(HttpError.PreconditionFailed)`. Set to `false` to retain the historical request-URL-only `Instance`. Collection name defaults to `{Type.ToLowerInvariant()}s`; override via `[ResourceCollectionName(name)]` on the aggregate or `services.AddResourceCollectionName<T>(name)`. |
 
 | Signature | Returns | Description |
@@ -296,15 +297,65 @@ public sealed record ResourceCollectionNameOverride(string ResourceType, string 
 
 DI-friendly carrier record. Register one per type via `services.AddSingleton(new ResourceCollectionNameOverride("Person", "people"))` (or use the `AddResourceCollectionName*` extensions, which do the same). `ResourceCollectionNameRegistry` consumes them via `IEnumerable<ResourceCollectionNameOverride>` in its constructor — Microsoft DI auto-injects an empty enumerable when no overrides are registered.
 
+### `ViolationLocation`
+
+**Declaration**
+
+```csharp
+public sealed record ViolationLocation(string In, string? Pointer, string? Name);
+```
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `In` | `string` | The location discriminator — `body`, `query`, `path`, `header`, or `unknown`. **Always present**, never defaulted by omission: an omitted discriminator would force every client to encode the default. |
+| `Pointer` | `string?` | An RFC 6901 JSON Pointer into the request document. Present for `body` and `unknown`; omitted otherwise. |
+| `Name` | `string?` | The parameter name. Present for `query`, `path` and `header`; omitted otherwise. |
+
+`unknown` means *"do not resolve `pointer` as a document location"*. A JSON Pointer addresses a location in a JSON document and a query parameter is not in one, so a single member cannot carry both meanings — which is why `pointer` and `name` are separate members rather than one polymorphic field.
+
+### `FieldViolationProblemDetail`
+
+**Declaration**
+
+```csharp
+public sealed record FieldViolationProblemDetail(
+    string Code,
+    string? Detail,
+    ViolationLocation Location,
+    IReadOnlyDictionary<string, string>? Args);
+```
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `Code` | `string` | The machine-readable reason code. |
+| `Detail` | `string?` | Human-readable explanation. Omitted when absent. |
+| `Location` | `ViolationLocation` | Where the offending value came from. |
+| `Args` | `IReadOnlyDictionary<string, string>?` | Arguments that parameterize the message, letting a client render its own localized prose. Omitted when absent. |
+
+AOT-friendly JSON payload used inside Problem Details `extensions["problems"]` for `Error.InvalidInput` field violations. Application code should treat this as response shape metadata, not as a domain model.
+
 ### `RuleViolationProblemDetail`
 
 **Declaration**
 
 ```csharp
-public sealed record RuleViolationProblemDetail(string Code, string? Detail, string[] Fields);
+public sealed record RuleViolationProblemDetail(
+    string Code,
+    string? Detail,
+    IReadOnlyList<ViolationLocation> Locations,
+    IReadOnlyDictionary<string, string>? Args);
 ```
 
+| Member | Type | Description |
+| --- | --- | --- |
+| `Code` | `string` | The machine-readable reason code. |
+| `Detail` | `string?` | Human-readable explanation. Omitted when absent. |
+| `Locations` | `IReadOnlyList<ViolationLocation>` | Every location the rule spans. **Always present**: an empty array is a positive statement that the rule is form-level rather than bound to any field, which an omitted member could not express. |
+| `Args` | `IReadOnlyDictionary<string, string>?` | Arguments that parameterize the message. Omitted when absent. |
+
 AOT-friendly JSON payload used inside Problem Details `extensions["rules"]` for `Error.InvalidInput` rule violations. Application code should treat this as response shape metadata, not as a domain model.
+
+> **Breaking change.** The member was previously `string[] Fields`, a bare array of JSON Pointer strings. It is now `Locations`, so that a rule spanning a query parameter and a body field can say so — the old shape could only ever assert "these are pointers into the body", which was false for every non-body input.
 
 ### `AggregateRepresentationValidator<T>`
 
@@ -1204,6 +1255,7 @@ Registry of compile-time-closed path-tracking converter factories. Populated by 
 | --- | --- | --- |
 | `public static void RegisterObject<T>()` | `void` | Registers a factory producing `PathTrackingObjectConverter<T>` for a nested user object whose graph transitively contains a scalar value object. Idempotent. |
 | `public static void RegisterCollection<TCollection, TElement>()` | `void` | Registers a factory producing `PathTrackingCollectionConverter<TCollection, TElement>` for a collection property, so element indexes appear in the reported path. Idempotent. |
+| `public static void RegisterDictionary<TDictionary, TValue>()` | `void` | Registers a factory producing `PathTrackingDictionaryConverter<TDictionary, TValue>` for a **string-keyed** dictionary property, so the key appears in the reported path (`/prices/USD/amount`). Idempotent. Non-string keys are deliberately unsupported: they have no faithful RFC 6901 rendering, so such properties fall back to leaf-only paths rather than emitting a pointer the client cannot map back to the input it sent. Keys are escaped per RFC 6901 (`~`→`~0`, `/`→`~1`), so a key containing those characters stays one segment. |
 ### `ValidationErrorsContext`
 
 **Declaration**
@@ -1222,12 +1274,15 @@ public static class ValidationErrorsContext
 | `public static IDisposable BeginScope()` | `IDisposable` | Starts a new async-local validation collection scope; disposing restores the previous scope and property name. |
 | `public static void AddError(string fieldName, string errorMessage)` | `void` | Appends a single field violation to the current scope. No-op when no scope is active. Called by both reflection-mode (`ScalarValueJsonConverterBase<,,>`) and AOT-generated converters when `TryCreate` returns a non-`Error.InvalidInput` failure. |
 | `public static void AddError(Error.InvalidInput unprocessableContent)` | `void` | Merges every `FieldViolation` and `RuleViolation` in the supplied error into the current scope, preserving each violation's `ReasonCode`, `Args`, and `Detail`. No-op when no scope is active. Called by both reflection-mode and AOT-generated converters when `TryCreate` returns an `Error.InvalidInput` failure. |
+| `public static void AddBodyError(string fieldName, string errorMessage)` | `void` | As `AddError(string, string)`, but locates the violation at `InputLocation.Body`. |
+| `public static void AddBodyError(string fieldName, string code, string message, IReadOnlyDictionary<string, string>? args = null)` | `void` | A coded body violation with optional renderer arguments. No-op when no scope is active. |
+| `public static void AddBodyError(Error.InvalidInput unprocessableContent)` | `void` | As `AddError(Error.InvalidInput)`, but promotes every merged violation to `InputLocation.Body` when the producer left the location unspecified. The JSON pipeline is the one caller that knows by construction that everything it collects came out of the request document — a converter cannot state that itself, since the same converter runs for a body property and for a query-bound scalar. Violations that already carry a location are left alone. |
 | `public static Error.InvalidInput? GetUnprocessableContent()` | `Error.InvalidInput?` | Returns the aggregated `Error.InvalidInput` for the current scope (with `Fields` / `Rules` populated from collected `FieldViolation`s) or `null` when no errors were collected. |
 
 ## Behavioral notes
 
 - **One verb, every shape.** `ToHttpResponse` is the only supported response mapper. The generic result types it constructs (`TrellisHttpResult<TDomain, TBody>`, `TrellisWriteOutcomeResult<TDomain, TBody>`, and the paged success wrapper) implement `IResult`; the non-paged generic result types also implement the `IStatusCodeHttpResult` / `IValueHttpResult<T>` / `IContentTypeHttpResult` metadata interfaces and `IEndpointMetadataProvider` so OpenAPI/ApiExplorer surfaces the success status, body type, and the union of error envelopes the writer can emit (`200`, `201`, `304`, `400`, `404`, `412`, `500`). Standalone `Error.ToHttpResponse(...)` uses `TrellisErrorOnlyResult`, an `IResult` failure writer. Layer your own `[ProducesResponseType]` / `Produces<T>` on top.
-- **Failures use Problem Details.** A failure runs through `ResponseFailureWriter` (internal). `Error.InvalidInput` with field violations uses `Results.ValidationProblem(...)`; everything else uses `Results.Problem(...)`. The `errors` dictionary keys are the violation `Field.Path` translated from RFC 6901 JSON Pointer to ASP.NET Core MVC dot+bracket convention, and raw JSON Pointer values are preserved per rule under the top-level `rules` array's `fields[]` entries (populated via `ProblemDetails.Extensions["rules"]`). Companion headers are emitted automatically: `Allow` for `Error.TransportFault(new HttpError.MethodNotAllowed(...))`, `Content-Range: {Unit} */{CompleteLength}` for `Error.TransportFault(new HttpError.RangeNotSatisfiable(...))`, `Retry-After` from `RetryAdvice` on `Error.RateLimited` / `Error.Unavailable`, and `WWW-Authenticate` from `Error.AuthenticationRequired.Scheme` or the registered `IAuthenticationSchemeProvider` fallback when the resolved status is `401`. For `Error.TransportFault`, the top-level Problem Details extension members `code` and `kind` come from the wrapped `HttpError`, not the outer `transport-fault` envelope. Every failure response carries top-level `code` and `kind` (RFC 9457 §3.2 extension members, populated via `ProblemDetails.Extensions["code"]` / `["kind"]` and serialized at the JSON root, not nested under an `extensions` object); `Error.Unexpected` adds top-level `faultId` when set; rule violations are surfaced under the top-level `rules` array; `Error.Aggregate` adds top-level `problems`; every response also carries top-level `instance`. For `5xx` responses the public `detail` is always `"An internal error occurred."`, and the same redaction is applied per child inside `Error.Aggregate`'s top-level `problems` array — a child whose own mapped status is `5xx` reports the redacted detail even when the envelope status is not.
+- **Failures use Problem Details.** A failure runs through `ResponseFailureWriter` (internal). `Error.InvalidInput` with field violations uses `Results.ValidationProblem(...)`; everything else uses `Results.Problem(...)`. The `errors` dictionary keys are the violation `Field.Path` translated from RFC 6901 JSON Pointer to ASP.NET Core MVC dot+bracket convention, and the RFC 6901 pointers are preserved losslessly beside that map — per field under the top-level `problems` array's `location` member, and per rule under the `rules` array's `locations[]` entries (populated via `ProblemDetails.Extensions["problems"]` / `["rules"]`). Companion headers are emitted automatically: `Allow` for `Error.TransportFault(new HttpError.MethodNotAllowed(...))`, `Content-Range: {Unit} */{CompleteLength}` for `Error.TransportFault(new HttpError.RangeNotSatisfiable(...))`, `Retry-After` from `RetryAdvice` on `Error.RateLimited` / `Error.Unavailable`, and `WWW-Authenticate` from `Error.AuthenticationRequired.Scheme` or the registered `IAuthenticationSchemeProvider` fallback when the resolved status is `401`. For `Error.TransportFault`, the top-level Problem Details extension members `code` and `kind` come from the wrapped `HttpError`, not the outer `transport-fault` envelope. Every failure response carries top-level `code` and `kind` (RFC 9457 §3.2 extension members, populated via `ProblemDetails.Extensions["code"]` / `["kind"]` and serialized at the JSON root, not nested under an `extensions` object); `Error.Unexpected` adds top-level `faultId` when set; rule violations are surfaced under the top-level `rules` array; `Error.Aggregate` adds top-level `problems`; every response also carries top-level `instance`. For `5xx` responses the public `detail` is always `"An internal error occurred."`, and the same redaction is applied per child inside `Error.Aggregate`'s top-level `problems` array — a child whose own mapped status is `5xx` reports the redacted detail even when the envelope status is not.
 - **Status code resolution precedence.** `WithErrorMapping(Func<Error, int>)` (per call) → `WithErrorMapping<TError>(int)` (per call, walks the type hierarchy) → `TrellisAspOptions` resolved from `HttpContext.RequestServices` (or `TrellisAspOptions.SystemDefault` if none registered) → `500 Internal Server Error`. A `Func<Error, int>` mapper opts out of a given error by returning any value outside `100`–`599` (`default`/`0` is the idiomatic choice); resolution then continues at the next step in the chain instead of writing an invalid status.
 - **Conditional requests.** `EvaluatePreconditions()` runs only on `GET` / `HEAD` and only when at least one of `WithETag` / `WithLastModified` is configured. The internal `ConditionalRequestEvaluator` evaluates RFC 9110 preconditions in this order: `If-Match` (strong); else `If-Unmodified-Since`; then `If-None-Match` (weak); else `If-Modified-Since` for safe methods. Failed `If-Match` / `If-Unmodified-Since` → `412`; failed `If-None-Match` / `If-Modified-Since` on `GET`/`HEAD` → `304`.
 - **`Vary` is append-only.** Both the `HonorPrefer()` switch and `Vary(...)` use `AppendVaryUnique` — they preserve any pre-existing `Vary` values added by other middleware and skip duplicates (case-insensitive).

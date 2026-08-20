@@ -210,7 +210,7 @@ public static class FluentValidationResultExtensions
                 var rawName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
                 var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
                 var reasonCode = string.IsNullOrWhiteSpace(e.ErrorCode) ? "validation.error" : e.ErrorCode;
-                return new FieldViolation(new InputPointer(pointerPath), reasonCode) { Detail = e.ErrorMessage };
+                return new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(e)) { Detail = e.ErrorMessage };
             })
             .ToArray();
 

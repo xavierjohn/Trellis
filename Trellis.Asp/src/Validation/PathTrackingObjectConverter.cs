@@ -42,7 +42,17 @@ internal sealed class PathTrackingObjectConverter<T> : JsonConverter<T?>
     {
         using (ValidationErrorsContext.PushPathSegment(_propertyName))
         {
-            return JsonSerializer.Deserialize(ref reader, TypeInfo(options));
+            // Re-root composite-relative pointers while the ancestor stack is still live. Marked
+            // exceptions are already absolute and pass straight through — see
+            // JsonValidationPathRebase for why the marker, and not a prefix check, decides.
+            try
+            {
+                return JsonSerializer.Deserialize(ref reader, TypeInfo(options));
+            }
+            catch (TrellisJsonValidationException ex) when (!JsonValidationPathRebase.IsMarked(ex))
+            {
+                throw JsonValidationPathRebase.Rebase(ex);
+            }
         }
     }
 

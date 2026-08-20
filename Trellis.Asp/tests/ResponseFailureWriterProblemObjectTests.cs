@@ -131,7 +131,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
             new Error.InvalidInput(default, rules)));
 
         var child = body.RootElement.GetProperty("problems")[0];
-        var childRules = child.GetProperty("rules");
+        var childRules = child.GetProperty("ruleViolations");
         childRules.GetArrayLength().Should().Be(1);
         childRules[0].GetProperty("code").GetString().Should().Be("date-range.invalid");
     }
@@ -274,7 +274,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
 
         using var body = await WriteAsync(new Error.InvalidInput(default, rules));
 
-        body.RootElement.GetProperty("rules")[0].GetProperty("code").GetString().Should().Be(Sentinel);
+        body.RootElement.GetProperty("ruleViolations")[0].GetProperty("code").GetString().Should().Be(Sentinel);
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
 
         using var body = await WriteAsync(new Error.InvalidInput(default, rules));
 
-        body.RootElement.GetProperty("rules")[0].GetProperty("code").GetString().Should().Be("date-range.invalid");
+        body.RootElement.GetProperty("ruleViolations")[0].GetProperty("code").GetString().Should().Be("date-range.invalid");
     }
 
     // ----------------- transport faults bypass the rule -----------------

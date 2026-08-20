@@ -40,7 +40,24 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
             return default;
 
         if (reader.TokenType != JsonTokenType.StartArray)
-            throw new JsonException($"Expected the start of an array for '{_propertyName}'.");
+        {
+            // The property segment is pushed before throwing rather than left to be rebased from
+            // JsonException.Path afterwards: arrays sit in the guaranteed body-pointer tier, and
+            // the live ancestor stack is the lossless source. A plain JsonException here could
+            // not produce a field violation at all, so this failure was invisible to clients.
+            using (ValidationErrorsContext.PushPathSegment(_propertyName))
+            {
+                var message = $"Expected the start of an array for '{_propertyName}'.";
+                throw JsonValidationPathRebase.Rebase(new TrellisJsonValidationException(message)
+                {
+                    InvalidInput = Error.InvalidInput.ForField(
+                        InputPointer.Root, ViolationProjection.LegacyUnspecifiedCode, message) with
+                    {
+                        Detail = message,
+                    },
+                });
+            }
+        }
 
         var elementTypeInfo = (JsonTypeInfo<TElement?>)options.GetTypeInfo(typeof(TElement));
         var items = new List<TElement?>();
@@ -52,7 +69,17 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
             {
                 using (ValidationErrorsContext.PushPathSegment(index.ToString(CultureInfo.InvariantCulture)))
                 {
-                    items.Add(JsonSerializer.Deserialize(ref reader, elementTypeInfo));
+                    // Re-root composite-relative pointers while the ancestor stack is still live.
+                    // Marked exceptions are already absolute and pass straight through — see
+                    // JsonValidationPathRebase for why the marker, and not a prefix check, decides.
+                    try
+                    {
+                        items.Add(JsonSerializer.Deserialize(ref reader, elementTypeInfo));
+                    }
+                    catch (TrellisJsonValidationException ex) when (!JsonValidationPathRebase.IsMarked(ex))
+                    {
+                        throw JsonValidationPathRebase.Rebase(ex);
+                    }
                 }
 
                 index++;

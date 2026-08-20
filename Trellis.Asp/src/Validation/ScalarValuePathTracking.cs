@@ -55,6 +55,23 @@ public static class ScalarValuePathTracking
         s_factories[typeof(TCollection)] = static name => new PathTrackingCollectionConverter<TCollection, TElement>(name);
 
     /// <summary>
+    /// Registers a string-keyed dictionary property type so failures inside its values report a
+    /// key-precise path (e.g. <c>/prices/USD/amount</c>).
+    /// </summary>
+    /// <typeparam name="TDictionary">The declared dictionary property type —
+    /// <c>Dictionary&lt;string, TValue&gt;</c>, or an interface
+    /// (<c>IDictionary</c>/<c>IReadOnlyDictionary</c> of <c>string</c> and
+    /// <typeparamref name="TValue"/>) that it is assignable to.</typeparam>
+    /// <typeparam name="TValue">The value type.</typeparam>
+    /// <remarks>
+    /// Only string-keyed dictionaries are supported: a non-string key has no faithful RFC 6901
+    /// rendering, so those shapes fall back to leaf-only paths rather than emitting a pointer a client
+    /// cannot map back to its input.
+    /// </remarks>
+    public static void RegisterDictionary<TDictionary, TValue>() =>
+        s_factories[typeof(TDictionary)] = static name => new PathTrackingDictionaryConverter<TDictionary, TValue>(name);
+
+    /// <summary>
     /// Creates the registered path-tracking converter for <paramref name="propertyType"/>, if any.
     /// </summary>
     internal static JsonConverter? TryCreate(Type propertyType, string propertyName) =>

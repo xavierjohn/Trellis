@@ -53,7 +53,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
 
         if (primitiveValue is null)
         {
-            ValidationErrorsContext.AddError(fieldName, $"Cannot deserialize null to {ResourceRef.FormatTypeName(typeof(TValue))}");
+            ValidationErrorsContext.AddBodyError(fieldName, $"Cannot deserialize null to {ResourceRef.FormatTypeName(typeof(TValue))}");
             return OnValidationFailure();
         }
 
@@ -62,9 +62,9 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             onFailure: createError =>
             {
                 if (createError is Error.InvalidInput unprocessable)
-                    ValidationErrorsContext.AddError(unprocessable);
+                    ValidationErrorsContext.AddBodyError(unprocessable);
                 else
-                    ValidationErrorsContext.AddError(
+                    ValidationErrorsContext.AddBodyError(
                         fieldName,
                         string.IsNullOrWhiteSpace(createError.Detail)
                             ? $"{ResourceRef.FormatTypeName(typeof(TValue))} is invalid."
@@ -101,7 +101,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             if (TryParseEnumValue(rawValue, out primitiveValue))
                 return true;
 
-            ValidationErrorsContext.AddError(fieldName, $"'{rawValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+            ValidationErrorsContext.AddBodyError(fieldName, $"'{rawValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
             return false;
         }
 
@@ -112,7 +112,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
                 var enumValue = ReadNumericEnumValue(ref reader);
                 if (!IsValidEnumValue(enumValue))
                 {
-                    ValidationErrorsContext.AddError(fieldName, $"'{enumValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+                    ValidationErrorsContext.AddBodyError(fieldName, $"'{enumValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
                     return false;
                 }
 
@@ -121,12 +121,12 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             }
             catch (Exception ex) when (ex is FormatException or InvalidOperationException)
             {
-                ValidationErrorsContext.AddError(fieldName, $"JSON number is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+                ValidationErrorsContext.AddBodyError(fieldName, $"JSON number is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
                 return false;
             }
         }
 
-        ValidationErrorsContext.AddError(fieldName, $"JSON token '{reader.TokenType}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+        ValidationErrorsContext.AddBodyError(fieldName, $"JSON token '{reader.TokenType}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
         return false;
     }
 

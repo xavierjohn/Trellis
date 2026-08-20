@@ -78,7 +78,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
                 var reasonCode = string.IsNullOrWhiteSpace(failure.ErrorCode)
                     ? "validation.error"
                     : failure.ErrorCode;
-                violations.Add(new FieldViolation(new InputPointer(pointerPath), reasonCode)
+                violations.Add(new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(failure))
                 {
                     Detail = failure.ErrorMessage,
                 });

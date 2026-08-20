@@ -299,8 +299,9 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
         var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
 
-        converter.Should().Contain("ValidationErrorsContext.AddError",
-            "M-2: validation failures must be reported via ValidationErrorsContext so the request middleware can surface a 422 response");
+        converter.Should().Contain("ValidationErrorsContext.AddBodyError",
+            "M-2: validation failures must be reported via ValidationErrorsContext so the request middleware can surface a 422 response, "
+            + "and the body-asserting overload is what locates the violation at in: \"body\" rather than \"unknown\"");
     }
 
     [Fact]

@@ -159,7 +159,78 @@ public static class ValidationErrorsContext
     /// rich, structured validation failures.
     /// </para>
     /// </remarks>
-    public static void AddError(Error.InvalidInput unprocessableContent)
+    public static void AddError(Error.InvalidInput unprocessableContent) =>
+        Merge(unprocessableContent, promoteToBody: false);
+
+    /// <summary>
+    /// Adds a validation error for a specific field of the request body to the current scope.
+    /// </summary>
+    /// <param name="fieldName">The name of the field that failed validation.</param>
+    /// <param name="errorMessage">The validation error message.</param>
+    /// <remarks>
+    /// If no scope is active, this method is a no-op. Unlike <see cref="AddError(string, string)"/>,
+    /// this asserts that the value came from the request body, so the resulting violation is
+    /// located at <see cref="InputLocation.Body"/>.
+    /// </remarks>
+    public static void AddBodyError(string fieldName, string errorMessage) =>
+        s_current.Value?.AddFieldViolation(
+            new FieldViolation(new InputPointer(BuildPointer(fieldName), InputLocation.Body), "validation.error")
+            {
+                Detail = errorMessage,
+            });
+
+    /// <summary>
+    /// Adds a coded validation error for a specific field of the request body to the current scope.
+    /// </summary>
+    /// <param name="fieldName">The name of the field that failed validation.</param>
+    /// <param name="code">The machine-readable reason code.</param>
+    /// <param name="message">The human-readable validation error message.</param>
+    /// <param name="args">Optional arguments that parameterize the message.</param>
+    /// <remarks>
+    /// If no scope is active, this method is a no-op. The resulting violation is located at
+    /// <see cref="InputLocation.Body"/>.
+    /// </remarks>
+    public static void AddBodyError(
+        string fieldName,
+        string code,
+        string message,
+        IReadOnlyDictionary<string, string>? args = null)
+    {
+        var collector = s_current.Value;
+        if (collector is null)
+            return;
+
+        var violation = new FieldViolation(new InputPointer(BuildPointer(fieldName), InputLocation.Body), code)
+        {
+            Detail = message,
+        };
+
+        if (args is { Count: > 0 })
+            violation = violation with { Args = args.ToImmutableDictionary(StringComparer.Ordinal) };
+
+        collector.AddFieldViolation(violation);
+    }
+
+    /// <summary>
+    /// Adds all field violations and rule violations from an existing <see cref="Error.InvalidInput"/>
+    /// to the current scope, asserting that they describe the request body.
+    /// </summary>
+    /// <param name="unprocessableContent">The error whose violations should be merged.</param>
+    /// <remarks>
+    /// <para>If no scope is active, this method is a no-op.</para>
+    /// <para>
+    /// Violations are merged under the body-context rebase rule: a violation with no explicit
+    /// location is prefixed with the current ancestor path and promoted to
+    /// <see cref="InputLocation.Body"/>; one already located in the body is prefixed; and one
+    /// carrying an explicit <see cref="InputLocation.Query"/>, <see cref="InputLocation.Path"/>
+    /// or <see cref="InputLocation.Header"/> location passes through untouched, because a body
+    /// ancestor is meaningless for a named parameter.
+    /// </para>
+    /// </remarks>
+    public static void AddBodyError(Error.InvalidInput unprocessableContent) =>
+        Merge(unprocessableContent, promoteToBody: true);
+
+    private static void Merge(Error.InvalidInput unprocessableContent, bool promoteToBody)
     {
         var collector = s_current.Value;
         if (collector is null)
@@ -168,25 +239,63 @@ public static class ValidationErrorsContext
         var ancestor = AncestorPointer();
         foreach (var fieldViolation in unprocessableContent.Fields)
         {
-            var prefixed = ancestor.Length == 0
-                ? fieldViolation
-                : fieldViolation with { Field = new InputPointer(ancestor + fieldViolation.Field.Path) };
-            collector.AddFieldViolation(prefixed);
+            var rebased = Rebase(fieldViolation.Field, ancestor, promoteToBody);
+            collector.AddFieldViolation(
+                rebased == fieldViolation.Field ? fieldViolation : fieldViolation with { Field = rebased });
         }
 
         foreach (var ruleViolation in unprocessableContent.Rules)
         {
-            var prefixedRule = ancestor.Length == 0 || ruleViolation.Fields.IsEmpty
+            var prefixedRule = ruleViolation.Fields.IsEmpty
                 ? ruleViolation
                 : ruleViolation with
                 {
                     Fields = ruleViolation.Fields.Items
-                        .Select(pointer => new InputPointer(ancestor + pointer.Path))
+                        .Select(pointer => Rebase(pointer, ancestor, promoteToBody))
                         .ToImmutableArray(),
                 };
             collector.AddRuleViolation(prefixedRule);
         }
     }
+
+    /// <summary>
+    /// The single body-context rebase rule.
+    /// </summary>
+    /// <remarks>
+    /// A named parameter is exempt from ancestor prefixing because its path is a single
+    /// escaped token, not a document location: prefixing <c>/customer</c> onto
+    /// <c>ForQuery("a/b")</c> would yield <c>/customer/a~1b</c>, from which the name
+    /// <c>a/b</c> can no longer be recovered.
+    /// </remarks>
+    private static InputPointer Rebase(InputPointer pointer, string ancestor, bool promoteToBody) =>
+        pointer.In switch
+        {
+            InputLocation.Query or InputLocation.Path or InputLocation.Header => pointer,
+            InputLocation.Body => new InputPointer(ancestor + pointer.Path, InputLocation.Body),
+            _ when promoteToBody => new InputPointer(ancestor + pointer.Path, InputLocation.Body),
+            _ => ancestor.Length == 0 ? pointer : new InputPointer(ancestor + pointer.Path),
+        };
+
+    /// <summary>
+    /// Gets the RFC 6901 pointer for the live ancestor stack, or the empty string at depth 0.
+    /// </summary>
+    /// <remarks>
+    /// Exposed for <see cref="Validation.JsonValidationPathRebase"/>, which re-roots composite-relative
+    /// pointers thrown from <c>Trellis.Primitives</c> — a layer that cannot see this type.
+    /// </remarks>
+    internal static string CurrentAncestorPointer() => AncestorPointer();
+
+    /// <summary>
+    /// Applies the single body-context rebase rule with promotion, against an explicitly supplied
+    /// ancestor rather than the live stack.
+    /// </summary>
+    /// <remarks>
+    /// Shared with <see cref="Validation.JsonValidationPathRebase"/> so the rule has exactly one implementation.
+    /// Promotion is correct for every caller of this overload: both are JSON-body contexts by
+    /// construction, reached only from a converter reading a request body.
+    /// </remarks>
+    internal static InputPointer RebaseToBody(InputPointer pointer, string ancestor) =>
+        Rebase(pointer, ancestor, promoteToBody: true);
 
     /// <summary>
     /// Gets whether an error has already been collected for the given leaf field at the current

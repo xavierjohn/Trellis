@@ -190,6 +190,73 @@ public sealed class BinderValidationStatusCodeTests
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    /// <summary>
+    /// §8.3 — the MVC model-binding side-channel. <c>ModelStateExtensions</c> receives no
+    /// <see cref="Microsoft.AspNetCore.Http.HttpContext"/> and <c>ModelState</c> cannot carry an
+    /// <see cref="Error.InvalidInput"/>, so without a request-scoped collector a binder-produced
+    /// violation reaches the wire as a string only. The binder is also the sole place in the
+    /// pipeline that knows the binding source, so losing it here is what would force the
+    /// projection to guess.
+    /// </summary>
+    [Fact]
+    public async Task Mvc_query_bound_scalar_failure_emits_a_field_violation_located_in_the_query()
+    {
+        using var host = CreateMvcHost();
+        using var client = host.GetTestClient();
+
+        var resp = await client.GetAsync("/binder-status/scalar?value=", TestContext.Current.CancellationToken);
+
+        var body = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(body);
+
+        doc.RootElement.TryGetProperty("fieldViolations", out var violations).Should().BeTrue(
+            "a binder-produced violation must reach the wire structurally, not only as an 'errors' string");
+
+        var first = violations.EnumerateArray().Should().ContainSingle().Subject;
+        first.GetProperty("code").GetString().Should().Be("error.unspecified");
+        var location = first.GetProperty("location");
+        location.GetProperty("in").GetString().Should().Be(
+            "query", "the binder knows the binding source and it is the only place that does");
+        location.GetProperty("name").GetString().Should().Be("value");
+        location.TryGetProperty("pointer", out _).Should().BeFalse(
+            "a named parameter has no document for a pointer to address");
+    }
+
+    [Fact]
+    public async Task Mvc_route_bound_scalar_failure_is_located_in_the_path()
+    {
+        using var host = CreateMvcHost();
+        using var client = host.GetTestClient();
+
+        var resp = await client.GetAsync("/binder-status/route/bad", TestContext.Current.CancellationToken);
+
+        var body = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(body);
+
+        var first = doc.RootElement.GetProperty("fieldViolations").EnumerateArray().Should().ContainSingle().Subject;
+        first.GetProperty("location").GetProperty("in").GetString().Should().Be("path");
+        first.GetProperty("location").GetProperty("name").GetString().Should().Be("value");
+    }
+
+    /// <summary>
+    /// The structured violation and the <c>errors</c> map describe the same failure, so the
+    /// violation must appear once. This is the de-duplication requirement in §8.3: the filter
+    /// must not re-derive from <c>ModelState</c> a violation the collector already holds.
+    /// </summary>
+    [Fact]
+    public async Task Mvc_binder_violation_is_not_double_counted_by_the_filter()
+    {
+        using var host = CreateMvcHost();
+        using var client = host.GetTestClient();
+
+        var resp = await client.GetAsync("/binder-status/scalar?value=", TestContext.Current.CancellationToken);
+
+        var body = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(body);
+
+        doc.RootElement.GetProperty("fieldViolations").GetArrayLength().Should().Be(1);
+    }
+
     private static async Task AssertRfc9457ProblemDetails(
         HttpResponseMessage response,
         int expectedStatus,
@@ -316,6 +383,9 @@ public sealed class StatusCodeController : ControllerBase
 
     [HttpGet("scalar")]
     public IActionResult GetScalar([FromQuery] StatusCodeScalar value) => Ok();
+
+    [HttpGet("route/{value}")]
+    public IActionResult GetRouteScalar([FromRoute] StatusCodeScalar value) => Ok();
 
     [HttpGet("maybe-scalar")]
     public IActionResult GetMaybeScalar([FromQuery] Maybe<StatusCodeScalar> value) => Ok();
