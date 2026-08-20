@@ -109,7 +109,7 @@ public Task<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct) =
 ## Common traps
 
 - Do not use throwing value access in production code. Prefer `TryGetValue`, `Match`, `Bind`, `Map`, or deconstruction guarded by the success flag.
-- Do not use `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default_initialized")` failure.
+- Do not use `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default-initialized")` failure.
 - For no-payload success, use `Result.Ok()` (which returns `Result<Unit>`). The `Trellis.Unit` type is the canonical "no value" payload — it is a public `readonly record struct` with a single value (`Unit.Default`).
 - Use `ParallelAsync` only for independent work. If operation B depends on operation A, compose with `Bind`/`BindAsync` instead.
 
@@ -135,7 +135,7 @@ Migration notes for users moving from the previous `Trellis.Core` API surface.
 | Conditional factory | `Result.SuccessIf(cond, value, error)` / `Result.SuccessIf(cond, t1, t2, error)` | *(removed)* | Use a ternary: `cond ? Result.Ok(value) : Result.Fail<T>(error)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
 | Inverse-conditional factory | `Result.FailureIf(cond, value, error)` / `Result.FailureIf(predicate, value, error)` | *(removed)* | Use a ternary: `cond ? Result.Fail<T>(error) : Result.Ok(value)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
 | Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `(await predicate()) ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed; parens required because `await` binds tighter than `?:`) | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Try` / `Result.TryAsync` for inline exception capture, or log the exception and return `Result.Fail(new Error.Unexpected("unhandled_exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Do not copy `ex.Message` into public `Detail`. |
+| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Try` / `Result.TryAsync` for inline exception capture, or log the exception and return `Result.Fail(new Error.Unexpected("unhandled-exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Do not copy `ex.Message` into public `Detail`. |
 | Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
 | Non-generic `Result` for void flows | `Result` was a separate `readonly struct` for success/failure with no payload, distinct from `Result<T>`. | The non-generic `Result` instance type was removed. `Result` is now a `public static partial class` factory only; for no-payload success/failure use `Result<Unit>` (returned by parameterless `Result.Ok()` / `Result.Fail(error)` / `Result.Ensure(...)` / `Result.Try(...)` factories). The `Trellis.Unit` type is a public `readonly record struct` with a single value (`Unit.Default`). | Replace `Result` parameter/return types with `Result<Unit>`; replace `Task<Result>` with `Task<Result<Unit>>`; in lambdas after `.Bind(...)` / `BindAsync(...)` accept the `Unit` argument explicitly (`_ =>` or `(Unit _) =>`). |
 | `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **12 nested `sealed record` cases** (`Error.NotFound`, `Error.InvalidInput`, …). Closed via `private` constructor; no static factories. | Replace not-found factories with `new Error.NotFound(ResourceRef.For<TResource>(id)) { Detail = "..." }`. Replace validation factories with `Error.InvalidInput.ForField(field, code, detail)` or `Error.InvalidInput.ForRule(code, detail)`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.InvalidInput`, `Error.NotFound`. See "Error Cases (closed ADT)" below. | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
@@ -229,7 +229,7 @@ None.
 Static factory and helper surface for `Result<TValue>`. There is no non-generic instance `Result` type — for no-payload success/failure, use `Result<Unit>` (returned by the parameterless overloads listed below).
 
 > **Default-state invariant.** `default(Result<T>)` represents a **failure** carrying the
-> shared `new Error.Unexpected("default_initialized")` sentinel — *not* success. This makes uninitialized
+> shared `new Error.Unexpected("default-initialized")` sentinel — *not* success. This makes uninitialized
 > state a typed failure rather than a silent success that would hide a programming error. Always
 > construct via `Result.Ok(...)` or `Result.Fail(error)`. Analyzer **`TRLS019`** flags explicit
 > `default(Result<T>)` at call sites.
@@ -259,7 +259,7 @@ Static factory and helper surface for `Result<TValue>`. There is no non-generic 
 | `public static Result<(T1, ..., T9)> Combine<...>(...)` | Additional generated arities up to 9 |
 | `public static (Task<Result<T1>>, ..., Task<Result<T9>>) ParallelAsync<...>(...)` | Starts async result-producing operations in parallel, arities 2-9 |
 
-The default exception mapper produces `new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." }`. It never copies `Exception.Message` into public `Detail`; log exception details at the call site or provide a custom mapper with safe, domain-specific text. `OperationCanceledException` is always rethrown rather than mapped.
+The default exception mapper produces `new Error.Unexpected("unhandled-exception", Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." }`. It never copies `Exception.Message` into public `Detail`; log exception details at the call site or provide a custom mapper with safe, domain-specific text. `OperationCanceledException` is always rethrown rather than mapped.
 
 #### Factory Methods
 
@@ -299,10 +299,10 @@ Opt-in marker carried by result types whose **failure** outcome should still tri
 Represents either a successful `TValue` or a failure `Error`.
 
 > **Default-state invariant.** `default(Result<T>)` represents a **failure** carrying
-> the shared `new Error.Unexpected("default_initialized")` sentinel — *not* success with `default(T)`.
+> the shared `new Error.Unexpected("default-initialized")` sentinel — *not* success with `default(T)`.
 > All failure-facing APIs (`Error`, `TryGetError`, `Deconstruct`, `Equals`, `GetHashCode`, `ToString`,
 > `AsUnit`) route through this sentinel so that `default(Result<T>)` is observationally equivalent to
-> `Result.Fail<T>(new Error.Unexpected("default_initialized"))`. Always construct via `Result.Ok(value)`
+> `Result.Fail<T>(new Error.Unexpected("default-initialized"))`. Always construct via `Result.Ok(value)`
 > or `Result.Fail<T>(error)`. Analyzer **`TRLS019`** flags explicit `default(Result<T>)` at call sites.
 
 > **JSON serialization fails fast.** `Result<T>` (and the `IResult` / `IResult<T>` interfaces) carry a default `[JsonConverter(typeof(ResultRequiresExplicitHttpMappingConverter))]` that throws `NotSupportedException` on any direct `JsonSerializer.Serialize` / `Deserialize` call. The intended pattern is to call `.ToHttpResponse()` from `Trellis.Asp` on the result before it reaches STJ (the resulting `Microsoft.AspNetCore.Http.IResult` writes the body itself; the struct is never serialized), or to unwrap the value via `Match` / `TryGetValue` for non-HTTP contexts. Consumers who genuinely need a raw JSON dump (logging, IPC, storage) can register a converter (or a `JsonConverterFactory`) in `JsonSerializerOptions.Converters` — option-registered converters take precedence over the type-level `[JsonConverter]` attribute. **The override must match the declared static type:** a `JsonConverter<Result<T>>` covers only `Result<T>`-declared values; `IResult<T>`-declared values need `JsonConverter<IResult<T>>`; `IResult`-declared values need `JsonConverter<IResult>`. Use a `JsonConverterFactory` if you need to cover multiple result shapes at once.
@@ -313,7 +313,7 @@ Represents either a successful `TValue` or a failure `Error`.
 
 | Name | Type | Notes |
 | --- | --- | --- |
-| `Error` | `Error?` | `null` on success; never throws. Pattern-match on the value (e.g. `if (result.Error is { } error)`) for imperative branches. For `default(Result<T>)`, returns the shared `new Error.Unexpected("default_initialized")` sentinel. |
+| `Error` | `Error?` | `null` on success; never throws. Pattern-match on the value (e.g. `if (result.Error is { } error)`) for imperative branches. For `default(Result<T>)`, returns the shared `new Error.Unexpected("default-initialized")` sentinel. |
 | `IsSuccess` | `bool` | Success flag. `[MemberNotNullWhen(false, nameof(Error))]`. |
 | `IsFailure` | `bool` | Failure flag. `[MemberNotNullWhen(true, nameof(Error))]`. `default(Result<T>).IsFailure` is `true`. |
 
@@ -612,6 +612,125 @@ HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterVa
 | `ITransportFault` | marker interface | Transport-specific payload contract used by `Error.TransportFault`. HTTP-aware code uses `HttpError` from `Trellis.Http.Abstractions`; other transports can define their own implementations. |
 | `RetryAdvice` | `readonly record struct (TimeSpan? After = null, DateTimeOffset? At = null)` | Transport-neutral retry hint carried by `Error.RateLimited` and `Error.Unavailable`. Boundary layers translate it to headers such as `Retry-After`. |
 | `EquatableArray<T>` | `readonly struct (ImmutableArray<T> Items)` | Wraps `ImmutableArray<T>` so records get sequence equality instead of reference equality. |
+
+---
+
+### `ValidationCodes` — the reason-code vocabulary
+
+`ValidationCodes` (namespace `Trellis`) is the closed set of reason codes the framework itself emits on `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode`. `FaultCodes` is its counterpart for `Error.Unexpected`.
+
+**These values are frozen.** They are wire contract: a client branches on them, and renaming one silently breaks that client at runtime with no compile error anywhere. Codes may be *added*; an existing code's spelling and meaning may not change.
+
+Two conventions make the set predictable:
+
+- **Punctuation is uniform** — lower-case, dot-separated namespaces, `kebab-case` within a segment. Never `snake_case`.
+- **The namespace tells you what failed**, so a client can fall back on the prefix when it does not recognise the full code:
+
+| Namespace | Means | Example |
+| --- | --- | --- |
+| `format.*` | A CLR scalar could not be constructed from the input at all. Includes out-of-range-for-type — `"99999999999"` into an `int` is `format.integer`, because `int.TryParse` cannot distinguish it from `"abc"`. | `format.integer`, `format.guid`, `format.date-time`, `format.conversion` |
+| `string.*` | A string arrived intact but did not match a required shape. All ISO code sets live here. | `string.email`, `string.pattern`, `string.max-length`, `string.country-code` |
+| `number.*` | Validation of an **already-parsed** number. `number.overflow` is arithmetic only. | `number.precision`, `number.overflow` |
+| `value.*` | Type-agnostic presence or comparison. | `value.not-null`, `value.not-empty`, `value.not-default`, `value.greater-than`, `value.between-inclusive` |
+| `fields.*` | The subject is *a set of fields* rather than one. | `fields.mutually-exclusive`, `fields.exactly-one`, `fields.at-least-one` |
+| `enum.*`, `money.*`, `http.*`, `etag.*`, `cursor.*`, `page-size.*`, `attribute.*` | Domain-specific. | `enum.name-undefined`, `money.currency-mismatch`, `http.bad-request` |
+
+#### The complete set
+
+Emit these by constant, not by literal — a typo in a literal is a silent wire break, while a typo in a constant name does not compile.
+
+| Constant | Wire value | Emitted when |
+| --- | --- | --- |
+| `Unspecified` | `error.unspecified` | The producer has no code to report. |
+| `LegacyUnspecified` | `validation.error` | Pre-vocabulary placeholder; recognised and normalised at the boundary. **Do not emit.** |
+| `FormatInteger` | `format.integer` | Not parseable as `int`/`long`/`short`/`byte`, including out of range for the type. |
+| `FormatNumber` | `format.number` | Not parseable as `double`/`float`. |
+| `FormatDecimal` | `format.decimal` | Not parseable as `decimal`. |
+| `FormatBoolean` | `format.boolean` | Not parseable as `bool`. |
+| `FormatGuid` | `format.guid` | Not parseable as `Guid`. |
+| `FormatDateTime` | `format.date-time` | Not parseable as `DateTime`/`DateTimeOffset`. |
+| `FormatDate` | `format.date` | Not parseable as `DateOnly`. |
+| `FormatTime` | `format.time` | Not parseable as `TimeOnly`. |
+| `FormatDuration` | `format.duration` | Not parseable as `TimeSpan`. |
+| `FormatConversion` | `format.conversion` | Conversion to the target type failed with no more specific code — including a JSON token of the wrong kind. |
+| `StringLength` | `string.length` | Length outside an allowed range. |
+| `StringMinLength` | `string.min-length` | Shorter than the minimum. Args: `minLength`. |
+| `StringMaxLength` | `string.max-length` | Longer than the maximum. Args: `maxLength`, `totalLength`. |
+| `StringExactLength` | `string.exact-length` | Not the required exact length. |
+| `StringPattern` | `string.pattern` | Did not match a required regular expression. |
+| `StringEmail` | `string.email` | Not a valid email address. |
+| `StringUrl` | `string.url` | Not a valid absolute HTTP/HTTPS URL. |
+| `StringHostname` | `string.hostname` | Not RFC 1123 compliant. |
+| `StringIpAddress` | `string.ip-address` | Not a valid IPv4 or IPv6 address. |
+| `StringSlug` | `string.slug` | Not a valid slug. |
+| `StringPhoneE164` | `string.phone-e164` | Not E.164 format. |
+| `StringCountryCode` | `string.country-code` | Not an ISO 3166-1 alpha-2 code. |
+| `StringLanguageCode` | `string.language-code` | Not an ISO 639-1 alpha-2 code. |
+| `StringCurrencyCode` | `string.currency-code` | Not an ISO 4217 code. |
+| `StringCreditCard` | `string.credit-card` | Failed credit-card validation. |
+| `NumberPrecision` | `number.precision` | A parsed decimal exceeded the allowed scale or precision. |
+| `NumberOverflow` | `number.overflow` | **Arithmetic** overflow, such as `Money.Add`. Malformed input is a `format.*` code. |
+| `ValueNotNull` | `value.not-null` | Required and absent (or explicitly `null`). |
+| `ValueNotEmpty` | `value.not-empty` | Present but empty or whitespace. |
+| `ValueNotDefault` | `value.not-default` | Left at the type default — `Guid.Empty`, `0`, `default(DateTime)`. |
+| `ValueMustBeNull` | `value.must-be-null` | Supplied where it must be absent. |
+| `ValueMustBeEmpty` | `value.must-be-empty` | Non-empty where it must be empty. |
+| `ValueMustEqual` | `value.must-equal` | Did not equal a required value. |
+| `ValueMustNotEqual` | `value.must-not-equal` | Equalled a forbidden value. |
+| `ValueLessThan` | `value.less-than` | Not less than the bound. Args: `comparisonValue`. |
+| `ValueLessThanOrEqual` | `value.less-than-or-equal` | Above the maximum. Args: `comparisonValue`. |
+| `ValueGreaterThan` | `value.greater-than` | Not greater than the bound. Args: `comparisonValue`. |
+| `ValueGreaterThanOrEqual` | `value.greater-than-or-equal` | Below the minimum. Args: `comparisonValue`. |
+| `ValueBetweenInclusive` | `value.between-inclusive` | Outside an inclusive range. Args: `from`, `to`. |
+| `ValueBetweenExclusive` | `value.between-exclusive` | Outside an exclusive range. Args: `from`, `to`. |
+| `FieldsRequiredWith` | `fields.required-with` | Required because a companion field was supplied. |
+| `FieldsAllOrNone` | `fields.all-or-none` | Some but not all of a group were supplied. |
+| `FieldsMutuallyExclusive` | `fields.mutually-exclusive` | More than one of a mutually exclusive group was supplied. |
+| `FieldsExactlyOne` | `fields.exactly-one` | Exactly one of a group was required. |
+| `FieldsOnlyOne` | `fields.only-one` | At most one of a group was allowed. |
+| `FieldsAtLeastOne` | `fields.at-least-one` | None of a group was supplied. |
+| `EnumNameUndefined` | `enum.name-undefined` | The supplied name is not a member of the enum. |
+| `EnumUndefined` | `enum.undefined` | A numeric value parsed but is not a defined member. |
+| `MoneyCurrencyMismatch` | `money.currency-mismatch` | An operation combined two different currencies. |
+| `MoneyNegativeResult` | `money.negative-result` | The operation would produce a negative amount. |
+| `PageSizeOutOfRange` | `page-size.out-of-range` | Page size not positive, or above the maximum. |
+| `HttpBadRequest` | `http.bad-request` | An upstream HTTP response was 400. |
+| `HttpUnprocessableContent` | `http.unprocessable-content` | An upstream HTTP response was 422. |
+| `HttpForbidden` | `http.forbidden` | An upstream HTTP response was 403. |
+| `HttpConflict` | `http.conflict` | An upstream HTTP response was 409. |
+| `EtagMalformed` | `etag.malformed` | An ETag header value could not be parsed. |
+| `CursorMalformed` | `cursor.malformed` | A pagination cursor could not be decoded. |
+| `AttributeInvalid` | `attribute.invalid` | An actor attribute was missing or not valid. |
+
+`FaultCodes` carries the two `Error.Unexpected` reason codes — these describe a failure of the *system*, not of the input, so they live apart from the validation vocabulary:
+
+| Constant | Wire value | Emitted when |
+| --- | --- | --- |
+| `DefaultInitialized` | `default-initialized` | A `Result` was default-initialized and never assigned. |
+| `UnhandledException` | `unhandled-exception` | An exception escaped to a boundary that converts it into a failed `Result`. |
+
+Three distinctions are easy to get wrong and are worth stating outright:
+
+- **`value.not-null` vs `value.not-empty`** — absent versus present-but-blank. Producers keep these apart so a client can tell "you omitted this" from "you sent it blank" without parsing prose.
+- **`value.not-empty` vs `value.not-default`** — an empty string is empty; `Guid.Empty` and `0` are *default*, not empty.
+- **`enum.name-undefined` vs `enum.undefined`** — the name was not a member at all, versus a numeric value that parsed into an undefined member. A "did you mean?" affordance needs the first.
+
+`ValidationCodes.Unspecified` (`error.unspecified`) is the neutral sentinel, emitted when a producer genuinely has no code to report — a `Must(...)` predicate, or a message-only API. `ValidationCodes.LegacyUnspecified` (`validation.error`) is the pre-vocabulary placeholder, retained only so the boundary can recognise and normalise it; do not emit it.
+
+**Producer independence.** The same failure reports the same code regardless of which part of the framework noticed it. A malformed integer is `format.integer` whether it arrived through query-string binding, a JSON body, or a generated `TryCreate`. This is what makes a single client branch sufficient, and it is enforced by `ProducerIndependenceTests`.
+
+#### `ValidationArgs`
+
+`ValidationArgs.Of(...)` builds the `Args` dictionary carried by a violation — the machine-readable operands of the rule, such as the `50` in "must be at most 50" or the `0`/`255` bounds on a byte.
+
+```csharp
+Error.InvalidInput.ForField("age", ValidationCodes.ValueBetweenInclusive,
+    ValidationArgs.Of("from", "0", "to", "150"), "Age is unrealistically high.");
+```
+
+Values are `string`, and the `IFormattable` overloads format with the invariant culture, so a server's locale never leaks onto the wire. **Never put the rejected value itself in `Args`** — it would be reflected back in the error response and into anything that logs it.
+
+`Error.InvalidInput.ForField` and `ForRule` each have an overload taking `args` directly.
 
 ---
 

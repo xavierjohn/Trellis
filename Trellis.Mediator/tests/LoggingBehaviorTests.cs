@@ -13,7 +13,7 @@ public class LoggingBehaviorTests
         { Error.InvalidInput.ForField("field", "validation.error", "Something failed."), LogLevel.Information },
         { new Error.AuthenticationRequired(), LogLevel.Information },
         { new Error.Forbidden("authorization.insufficient.permissions"), LogLevel.Information },
-        { new Error.Unexpected("unhandled_exception"), LogLevel.Warning },
+        { new Error.Unexpected("unhandled-exception"), LogLevel.Warning },
     };
 
     #region Successful handler — logs at Debug level

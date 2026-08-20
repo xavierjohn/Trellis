@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.FluentValidation
 namespaces: [Trellis.FluentValidation]
-types: [FluentValidationResultExtensions, JsonPointerNormalizer, ValidationArgsProjection]
+types: [FluentValidationResultExtensions, JsonPointerNormalizer, ValidationArgsProjection, ValidationCodeProjection]
 version: v3
 last_verified: 2026-06-04
 audience: [llm]
@@ -97,6 +97,64 @@ public static class JsonPointerNormalizer
 | `/already/a/pointer` | `/already/a/pointer` (returned unchanged) |
 | `Field~Name` | `/field~0Name` |
 | `Path/With/Slash` | `/path~1With~1Slash` |
+
+### `ValidationCodeProjection`
+
+**Declaration**
+
+```csharp
+public static class ValidationCodeProjection
+```
+
+Translates a FluentValidation `ErrorCode` into the Trellis reason-code vocabulary, so a client keying on `value.not-empty` gets the same code from a FluentValidation rule as from a generated `TryCreate`. Without this, a caller would have to branch on `NotEmptyValidator` for one producer and `value.not-empty` for the other.
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `Project(string? errorCode)` | `string` | The mapped Trellis code for a reserved FluentValidation validator name; `error.unspecified` for a blank code or the legacy `validation.error` placeholder; otherwise `errorCode` **unchanged**. |
+| `Project(string? errorCode, object? attemptedValue)` | `string` | As above, but refines `NotEmptyValidator` against the rejected value. Both adapters call this overload. |
+
+**`NotEmpty()` is one rule spanning three codes.** FluentValidation's `NotEmpty()` fails for `null`, for a blank string or empty collection, and for a value type left at its default — three failures the vocabulary deliberately keeps apart. Mapping the rule to a single code would make `RuleFor(x => x.Id).NotEmpty()` report `value.not-empty` for `Guid.Empty` while a Trellis primitive reports `value.not-default` for the same input, which is exactly the producer divergence the vocabulary exists to remove. The code describes the failure, not the rule that caught it:
+
+| `AttemptedValue` | Code |
+| --- | --- |
+| `null` | `value.not-null` |
+| a `string` (including blank) | `value.not-empty` |
+| any other `IEnumerable` | `value.not-empty` |
+| anything else — `Guid.Empty`, `0`, `default(DateTime)` | `value.not-default` |
+
+
+The table is keyed on the **error-code string, never the CLR validator type**. The two disagree in practice — `AspNetCoreCompatibleEmailValidator` reports `Name = "EmailValidator"` — so a type-keyed lookup would miss it. Keying on the string also means a caller's `WithErrorCode("EmailValidator")` maps identically to the built-in rule.
+
+| FluentValidation `ErrorCode` | Trellis code |
+| --- | --- |
+| `NotNullValidator` | `value.not-null` |
+| `NotEmptyValidator` | `value.not-null`, `value.not-empty` or `value.not-default` — see below |
+| `NullValidator` | `value.must-be-null` |
+| `EmptyValidator` | `value.must-be-empty` |
+| `EqualValidator` | `value.must-equal` |
+| `NotEqualValidator` | `value.must-not-equal` |
+| `GreaterThanValidator` | `value.greater-than` |
+| `GreaterThanOrEqualValidator` | `value.greater-than-or-equal` |
+| `LessThanValidator` | `value.less-than` |
+| `LessThanOrEqualValidator` | `value.less-than-or-equal` |
+| `InclusiveBetweenValidator` | `value.between-inclusive` |
+| `ExclusiveBetweenValidator` | `value.between-exclusive` |
+| `LengthValidator` | `string.length` |
+| `MinimumLengthValidator` | `string.min-length` |
+| `MaximumLengthValidator` | `string.max-length` |
+| `ExactLengthValidator` | `string.exact-length` |
+| `RegularExpressionValidator` | `string.pattern` |
+| `EmailValidator`, `AspNetCoreCompatibleEmailValidator` | `string.email` |
+| `CreditCardValidator` | `string.credit-card` |
+| `EnumValidator` | `enum.undefined` |
+| `ScalePrecisionValidator` | `number.precision` |
+| `PredicateValidator`, `AsyncPredicateValidator` | `error.unspecified` |
+
+**A custom `WithErrorCode` passes through verbatim.** A caller who wrote `WithErrorCode("order.too-large")` means it; rewriting it would make `WithErrorCode` useless.
+
+**`Must(...)` maps to the sentinel.** A predicate can express any condition, so its validator name says only "some custom predicate failed" — which is exactly what `error.unspecified` means. Give a `Must(...)` rule a real code with `WithErrorCode`, or a client has nothing to branch on.
 
 ### `ValidationArgsProjection`
 

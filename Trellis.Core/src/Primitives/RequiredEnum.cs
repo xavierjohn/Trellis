@@ -221,14 +221,20 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         var field = NormalizeFieldName(fieldName, typeof(TSelf).Name);
 
         if (string.IsNullOrWhiteSpace(value))
-            return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, "validation.error", $"{typeof(TSelf).Name} cannot be empty."));
+        {
+            // The generator's null check maps to value.not-null, so collapsing null into
+            // value.not-empty here would make the same failure carry different codes depending on
+            // which producer saw it -- the producer-dependence this vocabulary exists to remove.
+            var emptinessCode = value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty;
+            return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, emptinessCode, $"{typeof(TSelf).Name} cannot be empty."));
+        }
 
         var cache = GetCache();
         if (cache.ByName.TryGetValue(value, out var member))
             return Result.Ok(member);
 
         var validNames = string.Join(", ", cache.ByName.Keys.OrderBy(n => n, StringComparer.Ordinal));
-        return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, "validation.error", $"'{value}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
+        return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, ValidationCodes.EnumNameUndefined, $"'{value}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
     }
 
     /// <summary>

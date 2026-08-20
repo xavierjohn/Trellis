@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `ValidationCodes`, a frozen reason-code vocabulary for validation failures
+
+Trellis already carried a `code` on every field and rule violation, and every producer filled it with the same
+placeholder. A client that wanted to react to *which* rule failed — highlight the offending input, retry with a
+corrected value, translate the message — had only the English `detail` string to work with, so it either parsed
+prose or gave up. This release fills that slot with a real vocabulary and makes roughly 210 producer sites use it.
+
+`ValidationCodes` (namespace `Trellis`, so it arrives with `Trellis.Core`) declares the complete set as
+constants: `format.*` for input that never became a CLR scalar, `string.*` for a string that arrived intact but
+did not match a shape, `number.*` for an already-parsed number, `value.*` for type-agnostic presence and
+comparison, `fields.*` where the subject is a *set* of fields, plus small `enum.*`, `money.*`, `http.*`,
+`etag.*`, `cursor.*`, `page-size.*` and `attribute.*` families. `FaultCodes` sits beside it for the two
+`Error.Unexpected` codes, which describe a failure of the system rather than of the input.
+
+**The vocabulary's central promise is producer independence: the same failure reports the same code no matter
+which layer detected it.** A value below a minimum is `value.greater-than-or-equal` whether it was caught by
+query-string binding, by a generated `TryCreate`, by a hand-written primitive, or by a FluentValidation rule.
+`ProducerIndependenceTests` pins that across packages, because the guarantee is worthless if it holds only by
+convention — a client keying on one code and getting another from a different entry point is exactly the bug
+the vocabulary exists to remove.
+
+Codes travel with machine-readable operands where a bound is involved. `ValidationArgs.Of(...)` builds them, and
+new `Error.InvalidInput.ForField`/`ForRule` overloads carry them, so a range failure reports
+`args: { comparisonValue: "150" }` and a `[StringLength]` failure reports `args: { maxLength: "64" }` rather than
+burying the bound in prose. **Args are always operands, never the rejected value** — echoing the input back is
+how a validation error becomes a reflected-XSS vector.
+
+Three failures the vocabulary deliberately keeps apart, because a client acts differently on each: an **absent**
+value is `value.not-null`, a value that **arrived but is blank** is `value.not-empty`, and a value type left at
+its **default** — `Guid.Empty`, `0`, `default(DateTime)` — is `value.not-default`. Every producer now checks for
+blank input *before* attempting to parse, so `EmployeeId.TryCreate("")` reports `value.not-empty` rather than
+`format.guid`; whitespace cannot parse into any scalar, so a `format.*` code there would name a shape the caller
+never attempted. FluentValidation's `NotEmpty()` spans all three on its own, and projects to whichever one the
+rejected value actually was.
+
+FluentValidation failures project through `ValidationCodeProjection`, a 24-entry table keyed on the
+`ErrorCode` **string** rather than the validator's CLR type — the two disagree in practice, since
+`AspNetCoreCompatibleEmailValidator` reports `Name = "EmailValidator"`. A custom `WithErrorCode` passes through
+verbatim, and `Must(...)` projects to `error.unspecified`, which is the honest answer for an arbitrary predicate.
+
+Two boundary rules are worth knowing before you branch on a code:
+
+- **Out-of-range-for-type is a `format.*` code, not a `number.*` one.** `int.TryParse("99999999999")` and
+  `int.TryParse("abc")` both return `false`, and the producer genuinely cannot tell them apart. `number.overflow`
+  is reserved for *arithmetic* overflow, such as `Money.Add`.
+- **`value.not-empty` and `value.not-default` are different failures.** An empty string is empty; `Guid.Empty`
+  and `0` are *default*. Likewise `enum.name-undefined` (the supplied name is not a member) is not
+  `enum.undefined` (a numeric value parsed into an undefined member).
+
+`error.unspecified` remains available and is what a producer with genuinely nothing to say emits — the
+message-only `ValidationErrorsContext.AddError(string, string)` overloads, for instance. The legacy
+`validation.error` placeholder is recognised and normalised at the boundary, so existing responses keep working.
+
+**BREAKING (wire values): six reason codes were renamed to the vocabulary's hyphen convention.** These are
+values a client may already be matching on, and there is no deprecation window — the code changes with this
+release:
+
+| Old wire value | New wire value |
+| --- | --- |
+| `page_size.out_of_range` | `page-size.out-of-range` |
+| `http.bad_request` | `http.bad-request` |
+| `http.unprocessable_content` | `http.unprocessable-content` |
+| `etag.parse.error` | `etag.malformed` |
+| `default_initialized` | `default-initialized` |
+| `unhandled_exception` | `unhandled-exception` |
+
+The `http.*` three are the sharp edge: a caller branching on them in retry or fallback logic stops matching
+**silently**, taking the default path instead of erroring. Search for the old literals before upgrading.
+
+Control values the framework itself matches on to select HTTP behaviour — `concurrent_modification`,
+`not_implemented`, and the transport-fault condition codes — were deliberately left alone. They are not
+vocabulary, and renaming them would change dispatch, not just presentation.
+
+**The vocabulary freezes on release.** Adding a code later is additive and safe; narrowing an existing one
+degrades through namespace fallback rather than breaking a catalog entry a client already recognises.
+
 ### Added — `Trellis.Messaging.AzureServiceBus`, the wire between the outbox and the inbox
 
 Trellis shipped both ends of reliable cross-service messaging — a transactional outbox that stages integration

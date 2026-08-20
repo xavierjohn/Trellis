@@ -18,7 +18,7 @@ public class EmailAddressTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().Be(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("school email"), "validation.error") { Detail = "Email address is not valid." })));
+        result.UnwrapError().Should().Be(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("school email"), ValidationCodes.StringEmail) { Detail = "Email address is not valid." })));
     }
 
     [Theory]

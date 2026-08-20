@@ -77,9 +77,10 @@ public class SourceGeneratedCreateMethodTests
         // Act
         var act = () => EmployeeId.Create(emptyString);
 
-        // Assert - Empty string fails at parsing stage, not empty validation
+        // Assert - a present-but-blank string is rejected as empty before it reaches the Guid
+        // parser; reporting the Guid format here would describe a shape the caller never supplied.
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create EmployeeId:*Guid should contain 32 digits with 4 dashes*");
+            .WithMessage("Failed to create EmployeeId:*cannot be empty*");
     }
 
     #endregion
@@ -136,7 +137,7 @@ public class SourceGeneratedCreateMethodTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create TicketNumber:*Value must be a valid integer*");
+            .WithMessage("Failed to create TicketNumber:*Ticket Number must be a valid integer*");
     }
 
     #endregion
@@ -193,7 +194,7 @@ public class SourceGeneratedCreateMethodTests
 
         // Assert
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("Failed to create UnitPrice:*Value must be a valid decimal*");
+            .WithMessage("Failed to create UnitPrice:*Unit Price must be a valid decimal*");
     }
 
     #endregion

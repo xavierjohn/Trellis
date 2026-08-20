@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Primitives;
 
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Trellis;
@@ -28,16 +29,19 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     /// <summary>A zero monetary amount.</summary>
     public static MonetaryAmount Zero => s_zero;
 
+    // The comparison operand shared by every "must not be negative" check here.
+    private static ImmutableDictionary<string, string> ZeroArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
+
     // Field-normalization + InvalidInput failure in one place (default field name: "amount").
-    private static Result<MonetaryAmount> Invalid(string? fieldName, string message) =>
+    private static Result<MonetaryAmount> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
         Result.Fail<MonetaryAmount>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("amount"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("amount"), reasonCode, args, message));
 
     // No-span validation core. Every public factory opens exactly one span, then delegates here.
     private static Result<MonetaryAmount> Validate(decimal value, string? fieldName)
     {
         if (value < 0)
-            return Invalid(fieldName, "Amount cannot be negative.");
+            return Invalid(fieldName, ValidationCodes.ValueGreaterThanOrEqual, "Amount cannot be negative.", ZeroArgs);
 
         var rounded = Math.Round(value, DefaultDecimalPlaces, MidpointRounding.AwayFromZero);
         return Result.Ok(new MonetaryAmount(rounded));
@@ -67,7 +71,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
         return value is null
-            ? Invalid(fieldName, "Amount is required.")
+            ? Invalid(fieldName, ValidationCodes.ValueNotNull, "Amount is required.")
             : Validate(value.Value, fieldName);
     }
 
@@ -95,10 +99,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(MonetaryAmount) + '.' + nameof(TryCreate));
 
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Amount is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Amount is required.");
 
         if (!decimal.TryParse(value, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Invalid(fieldName, "Amount must be a valid decimal.");
+            return Invalid(fieldName, ValidationCodes.FormatDecimal, "Amount must be a valid decimal.");
 
         return Validate(parsed, fieldName);
     }
@@ -110,7 +114,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         ArgumentNullException.ThrowIfNull(other);
 
         try { return TryCreate(Value + other.Value); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", "validation.error", "Addition would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Addition would overflow.")); }
     }
 
     /// <summary>Subtracts a monetary amount. Fails if result would be negative.</summary>
@@ -120,7 +124,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         ArgumentNullException.ThrowIfNull(other);
 
         try { return TryCreate(Value - other.Value); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", "validation.error", "Subtraction would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Subtraction would overflow.")); }
     }
 
     /// <summary>Multiplies by a non-negative integer quantity.</summary>
@@ -128,10 +132,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     {
         if (quantity < 0)
             return Result.Fail<MonetaryAmount>(
-                Error.InvalidInput.ForField(nameof(quantity), "validation.error", "Quantity cannot be negative."));
+                Error.InvalidInput.ForField(nameof(quantity), ValidationCodes.ValueGreaterThanOrEqual, ZeroArgs, "Quantity cannot be negative."));
 
         try { return TryCreate(Value * quantity); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", "validation.error", "Multiplication would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Multiplication would overflow.")); }
     }
 
     /// <summary>Multiplies by a non-negative decimal multiplier.</summary>
@@ -139,10 +143,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     {
         if (multiplier < 0)
             return Result.Fail<MonetaryAmount>(
-                Error.InvalidInput.ForField(nameof(multiplier), "validation.error", "Multiplier cannot be negative."));
+                Error.InvalidInput.ForField(nameof(multiplier), ValidationCodes.ValueGreaterThanOrEqual, ZeroArgs, "Multiplier cannot be negative."));
 
         try { return TryCreate(Value * multiplier); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", "validation.error", "Multiplication would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Multiplication would overflow.")); }
     }
 
     /// <inheritdoc/>

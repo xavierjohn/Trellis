@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Primitives;
 
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Trellis;
@@ -84,19 +85,24 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     public static Percentage Full => _full;
 
     // Field-normalization + InvalidInput failure in one place (default field name: "percentage").
-    private static Result<Percentage> Invalid(string? fieldName, string message) =>
+    private static Result<Percentage> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
         Result.Fail<Percentage>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("percentage"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("percentage"), reasonCode, args, message));
 
     // Field-normalization + InvalidInput failure in one place (default field name: "fraction").
-    private static Result<Percentage> InvalidFraction(string? fieldName, string message) =>
+    private static Result<Percentage> InvalidFraction(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
         Result.Fail<Percentage>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("fraction"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("fraction"), reasonCode, args, message));
+
+    // The two permitted ranges, carried as args so a client can localize either bound itself.
+    private static ImmutableDictionary<string, string> PercentRangeArgs { get; } = ValidationArgs.Of("from", "0", "to", "100");
+
+    private static ImmutableDictionary<string, string> FractionRangeArgs { get; } = ValidationArgs.Of("from", "0", "to", "1");
 
     // No-span validation core. Every public factory opens exactly one span, then delegates here.
     private static Result<Percentage> Validate(decimal value, string? fieldName) =>
         value is < 0m or > 100m
-            ? Invalid(fieldName, "Percentage must be between 0 and 100.")
+            ? Invalid(fieldName, ValidationCodes.ValueBetweenInclusive, "Percentage must be between 0 and 100.", PercentRangeArgs)
             : Result.Ok(new Percentage(value));
 
     /// <summary>
@@ -127,7 +133,7 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
         return value is null
-            ? Invalid(fieldName, "Percentage is required.")
+            ? Invalid(fieldName, ValidationCodes.ValueNotNull, "Percentage is required.")
             : Validate(value.Value, fieldName);
     }
 
@@ -157,12 +163,12 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(TryCreate));
 
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Percentage is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Percentage is required.");
 
         var trimmed = value.TrimEnd('%', ' ');
 
         if (!decimal.TryParse(trimmed, System.Globalization.NumberStyles.Number, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Invalid(fieldName, "Percentage must be a valid decimal.");
+            return Invalid(fieldName, ValidationCodes.FormatDecimal, "Percentage must be a valid decimal.");
 
         return Validate(parsed, fieldName);
     }
@@ -181,7 +187,7 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Percentage) + '.' + nameof(FromFraction));
 
         if (fraction is < 0m or > 1m)
-            return InvalidFraction(fieldName, "Fraction must be between 0 and 1.");
+            return InvalidFraction(fieldName, ValidationCodes.ValueBetweenInclusive, "Fraction must be between 0 and 1.", FractionRangeArgs);
 
         return Validate(fraction * 100m, fieldName);
     }

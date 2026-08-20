@@ -116,7 +116,7 @@ public class ErrorBenchmarks
     [Benchmark]
     public Error CreateErrorFromException()
     {
-        return new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N"))
+        return new Error.Unexpected("unhandled-exception", Guid.NewGuid().ToString("N"))
         {
             Detail = "An unexpected error occurred while processing the request.",
         };

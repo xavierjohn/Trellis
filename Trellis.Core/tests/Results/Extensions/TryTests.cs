@@ -15,7 +15,7 @@ public class TryTests
 
         r.IsFailure.Should().BeTrue();
         var error = r.Error.Should().BeOfType<Error.Unexpected>().Subject;
-        error.ReasonCode.Should().Be("unhandled_exception");
+        error.ReasonCode.Should().Be("unhandled-exception");
         error.FaultId.Should().NotBeNullOrWhiteSpace();
         error.Detail.Should().Be("An unexpected error occurred while processing the request.");
         error.Detail.Should().NotContain("Boom");
@@ -42,7 +42,7 @@ public class TryTests
 
         r.IsFailure.Should().BeTrue();
         var error = r.Error.Should().BeOfType<Error.Unexpected>().Subject;
-        error.ReasonCode.Should().Be("unhandled_exception");
+        error.ReasonCode.Should().Be("unhandled-exception");
         error.FaultId.Should().NotBeNullOrWhiteSpace();
         error.Detail.Should().Be("An unexpected error occurred while processing the request.");
         error.Detail.Should().NotContain("AsyncBoom");

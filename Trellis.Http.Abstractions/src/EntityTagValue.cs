@@ -118,7 +118,7 @@ public sealed record EntityTagValue
     public static Result<EntityTagValue> TryParse(string? headerValue)
     {
         if (string.IsNullOrWhiteSpace(headerValue))
-            return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule("etag.parse.error", "ETag header value cannot be null or empty."));
+            return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(ValidationCodes.EtagMalformed, "ETag header value cannot be null or empty."));
 
         if (headerValue == "*")
             return Result.Ok(Wildcard());
@@ -127,7 +127,7 @@ public sealed record EntityTagValue
         {
             var tag = headerValue[3..^1];
             if (HasInvalidOpaqueTagChars(tag))
-                return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule("etag.parse.error", "Invalid ETag format."));
+                return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(ValidationCodes.EtagMalformed, "Invalid ETag format."));
             return Result.Ok(new EntityTagValue(tag, true));
         }
 
@@ -135,11 +135,11 @@ public sealed record EntityTagValue
         {
             var tag = headerValue[1..^1];
             if (HasInvalidOpaqueTagChars(tag))
-                return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule("etag.parse.error", "Invalid ETag format."));
+                return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(ValidationCodes.EtagMalformed, "Invalid ETag format."));
             return Result.Ok(new EntityTagValue(tag, false));
         }
 
-        return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule("etag.parse.error", "Invalid ETag format."));
+        return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(ValidationCodes.EtagMalformed, "Invalid ETag format."));
     }
 
     /// <summary>

@@ -79,14 +79,14 @@ public class GetValueOrThrowTests
     [Fact]
     public void GetValueOrThrow_default_Result_throws()
     {
-        // default(Result<T>) is a typed failure carrying the shared "default_initialized" sentinel
+        // default(Result<T>) is a typed failure carrying the shared "default-initialized" sentinel
         // (TRLS019). Verify GetValueOrThrow surfaces it rather than returning default(TValue).
         Result<string> sut = default;
 
         var act = () => sut.GetValueOrThrow();
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*default_initialized*");
+            .WithMessage("*default-initialized*");
     }
 
     [Fact]

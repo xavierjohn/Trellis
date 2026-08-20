@@ -12,7 +12,7 @@ internal static class ResultDefaults
     /// The single shared <see cref="Trellis.Error.Unexpected"/> instance returned by
     /// <see cref="Result{TValue}.Error"/> when the result was default-initialized.
     /// </summary>
-    internal static readonly Error Sentinel = new Error.Unexpected("default_initialized")
+    internal static readonly Error Sentinel = new Error.Unexpected(FaultCodes.DefaultInitialized)
     {
         Detail = "Result was default-initialized; use Result.Ok(...) or Result.Fail(...) instead.",
     };

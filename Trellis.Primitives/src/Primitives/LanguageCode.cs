@@ -23,9 +23,9 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
     private LanguageCode(string value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "languageCode").
-    private static Result<LanguageCode> Invalid(string? fieldName, string message) =>
+    private static Result<LanguageCode> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<LanguageCode>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("languageCode"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("languageCode"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a language code.
@@ -38,10 +38,10 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(LanguageCode) + '.' + nameof(TryCreate));
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Language code is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Language code is required.");
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsAsciiLetter))
-            return Invalid(fieldName, "Language code must be an ISO 639-1 alpha-2 code.");
+            return Invalid(fieldName, ValidationCodes.StringLanguageCode, "Language code must be an ISO 639-1 alpha-2 code.");
         return Result.Ok(new LanguageCode(code.ToLowerInvariant()));
     }
 

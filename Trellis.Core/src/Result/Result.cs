@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 /// </para>
 /// <para>
 /// <c>default(Result&lt;Unit&gt;)</c> represents a <em>failure</em> carrying a sentinel
-/// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c> — uninitialized state
+/// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default-initialized"</c> — uninitialized state
 /// is a typed failure, never a silent success. Always construct via <see cref="Ok()"/>; analyzer <c>TRLS019</c>
 /// flags explicit <c>default(Result&lt;Unit&gt;)</c> at call sites.
 /// </para>
@@ -367,5 +367,5 @@ public static partial class Result
     /// indexed by <c>FaultId</c>.
     /// </summary>
     private static Error.Unexpected DefaultExceptionMapper(Exception _) =>
-        new("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = UnexpectedExceptionDetail };
+        new(FaultCodes.UnhandledException, Guid.NewGuid().ToString("N")) { Detail = UnexpectedExceptionDetail };
 }

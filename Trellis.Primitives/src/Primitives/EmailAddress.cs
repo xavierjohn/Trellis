@@ -235,7 +235,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
             }
         }
 
-        return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(fieldName.NormalizeFieldName("email"), "validation.error", "Email address is not valid."));
+        return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(fieldName.NormalizeFieldName("email"), ValidationCodes.StringEmail, "Email address is not valid."));
     }
 
     /// <summary>

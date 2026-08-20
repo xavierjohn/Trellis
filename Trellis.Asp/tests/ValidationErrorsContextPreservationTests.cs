@@ -95,7 +95,7 @@ public class ValidationErrorsContextPreservationTests
     }
 
     [Fact]
-    public void AddError_StringOverload_StillUsesValidationErrorReasonCode()
+    public void AddError_StringOverload_UsesNeutralSentinelReasonCode()
     {
         // The string-based AddError(field, message) overload is used by the JSON converter
         // path which has no semantic ReasonCode available; it should continue to default
@@ -106,7 +106,7 @@ public class ValidationErrorsContextPreservationTests
 
             var aggregated = ValidationErrorsContext.GetUnprocessableContent();
             var violation = aggregated!.Fields.Items.Single();
-            violation.ReasonCode.Should().Be("validation.error");
+            violation.ReasonCode.Should().Be(ValidationCodes.Unspecified);
             violation.Detail.Should().Be("Email is required.");
         }
     }

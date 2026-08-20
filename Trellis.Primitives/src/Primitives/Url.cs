@@ -62,9 +62,9 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         => _uri = uri;
 
     // Field-normalization + InvalidInput failure in one place (default field name: "url").
-    private static Result<Url> Invalid(string? fieldName, string message) =>
+    private static Result<Url> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<Url>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("url"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("url"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a <see cref="Url"/> from the specified string.
@@ -80,16 +80,16 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Url) + '.' + nameof(TryCreate));
 
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "URL is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "URL is required.");
 
         // Normalize input to avoid issues with accidental whitespace
         var trimmed = value.Trim();
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
-            return Invalid(fieldName, "URL must be a valid absolute HTTP or HTTPS URL.");
+            return Invalid(fieldName, ValidationCodes.StringUrl, "URL must be a valid absolute HTTP or HTTPS URL.");
 
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-            return Invalid(fieldName, "URL must use HTTP or HTTPS scheme.");
+            return Invalid(fieldName, ValidationCodes.StringUrl, "URL must use HTTP or HTTPS scheme.");
 
         return Result.Ok(new Url(uri));
     }

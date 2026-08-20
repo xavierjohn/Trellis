@@ -12,7 +12,7 @@ public class UnexpectedErrorTests
 {
     [Fact]
     public void Kind_is_unexpected() =>
-        new Error.Unexpected("default_initialized").Kind.Should().Be("unexpected");
+        new Error.Unexpected("default-initialized").Kind.Should().Be("unexpected");
 
     [Fact]
     public void Code_overrides_to_ReasonCode() =>
@@ -21,25 +21,25 @@ public class UnexpectedErrorTests
     [Fact]
     public void Construct_with_ReasonCode_only_leaves_FaultId_null()
     {
-        var error = new Error.Unexpected("default_initialized");
+        var error = new Error.Unexpected("default-initialized");
 
-        error.ReasonCode.Should().Be("default_initialized");
+        error.ReasonCode.Should().Be("default-initialized");
         error.FaultId.Should().BeNull();
     }
 
     [Fact]
     public void Construct_with_ReasonCode_and_FaultId_preserves_both()
     {
-        var error = new Error.Unexpected("unhandled_exception", "fault-7");
+        var error = new Error.Unexpected("unhandled-exception", "fault-7");
 
-        error.ReasonCode.Should().Be("unhandled_exception");
+        error.ReasonCode.Should().Be("unhandled-exception");
         error.FaultId.Should().Be("fault-7");
     }
 
     [Fact]
     public void Detail_init_property_inherited_from_base()
     {
-        var error = new Error.Unexpected("default_initialized") { Detail = "Result was default-initialized." };
+        var error = new Error.Unexpected("default-initialized") { Detail = "Result was default-initialized." };
 
         error.Detail.Should().Be("Result was default-initialized.");
     }
@@ -47,7 +47,7 @@ public class UnexpectedErrorTests
     [Fact]
     public void GetDisplayMessage_prefers_Detail_when_set()
     {
-        var error = new Error.Unexpected("default_initialized") { Detail = "human-readable detail" };
+        var error = new Error.Unexpected("default-initialized") { Detail = "human-readable detail" };
 
         error.GetDisplayMessage().Should().Be("human-readable detail");
     }
@@ -59,8 +59,8 @@ public class UnexpectedErrorTests
     [Fact]
     public void Two_Unexpected_with_same_payload_are_equal()
     {
-        var a = new Error.Unexpected("default_initialized");
-        var b = new Error.Unexpected("default_initialized");
+        var a = new Error.Unexpected("default-initialized");
+        var b = new Error.Unexpected("default-initialized");
 
         a.Should().Be(b);
         a.GetHashCode().Should().Be(b.GetHashCode());
@@ -69,7 +69,7 @@ public class UnexpectedErrorTests
     [Fact]
     public void Two_Unexpected_with_different_ReasonCode_are_not_equal()
     {
-        var a = new Error.Unexpected("default_initialized");
+        var a = new Error.Unexpected("default-initialized");
         var b = new Error.Unexpected("invariant_violation");
 
         a.Equals(b).Should().BeFalse();
@@ -78,8 +78,8 @@ public class UnexpectedErrorTests
     [Fact]
     public void Two_Unexpected_with_different_FaultId_are_not_equal()
     {
-        var a = new Error.Unexpected("unhandled_exception", "fault-1");
-        var b = new Error.Unexpected("unhandled_exception", "fault-2");
+        var a = new Error.Unexpected("unhandled-exception", "fault-1");
+        var b = new Error.Unexpected("unhandled-exception", "fault-2");
 
         a.Equals(b).Should().BeFalse();
     }
@@ -87,8 +87,8 @@ public class UnexpectedErrorTests
     [Fact]
     public void Unexpected_with_null_vs_set_FaultId_are_not_equal()
     {
-        var a = new Error.Unexpected("unhandled_exception");
-        var b = new Error.Unexpected("unhandled_exception", "fault-1");
+        var a = new Error.Unexpected("unhandled-exception");
+        var b = new Error.Unexpected("unhandled-exception", "fault-1");
 
         a.Equals(b).Should().BeFalse();
     }
@@ -105,7 +105,7 @@ public class UnexpectedErrorTests
     [Fact]
     public void Switch_pattern_matches_as_distinct_case()
     {
-        Error error = new Error.Unexpected("default_initialized");
+        Error error = new Error.Unexpected("default-initialized");
 
         var matched = error switch
         {
@@ -113,7 +113,7 @@ public class UnexpectedErrorTests
             _ => "other",
         };
 
-        matched.Should().Be("unexpected:default_initialized");
+        matched.Should().Be("unexpected:default-initialized");
     }
 
     [Fact]

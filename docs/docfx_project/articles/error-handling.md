@@ -211,7 +211,7 @@ All three operators have `Async` variants on `Task<Result<T>>` and `ValueTask<Re
 
 ## Capturing exceptions
 
-Expected failures should be regular `Error` values. For code that genuinely throws, `Result.Try` and `Result.TryAsync` bridge the gap. Without a custom map, the default mapping wraps the exception as `new Error.Unexpected("unhandled_exception", faultId)` with a generated `FaultId`.
+Expected failures should be regular `Error` values. For code that genuinely throws, `Result.Try` and `Result.TryAsync` bridge the gap. Without a custom map, the default mapping wraps the exception as `new Error.Unexpected("unhandled-exception", faultId)` with a generated `FaultId`.
 
 ```csharp
 using System.IO;
@@ -230,7 +230,7 @@ static Result<string> LoadConfig(string path) =>
         {
             FileNotFoundException       => new Error.NotFound(ResourceRef.For<FileInfo>(path)) { Detail = $"{path} was not found" },
             UnauthorizedAccessException => new Error.Forbidden("file.read") { Detail = "Access denied" },
-            _                           => new Error.Unexpected("unhandled_exception", Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while loading the file." },
+            _                           => new Error.Unexpected("unhandled-exception", Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while loading the file." },
         });
 ```
 

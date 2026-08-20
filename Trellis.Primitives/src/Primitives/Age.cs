@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Primitives;
 
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Trellis;
@@ -27,17 +28,20 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     private Age(int value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "age").
-    private static Result<Age> Invalid(string? fieldName, string message) =>
+    private static Result<Age> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
         Result.Fail<Age>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("age"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("age"), reasonCode, args, message));
+
+    // The permitted range, carried as args so a client can render its own message for either bound.
+    private static ImmutableDictionary<string, string> RangeArgs { get; } = ValidationArgs.Of("from", "0", "to", "150");
 
     // No-span validation core. Every public factory opens exactly one span, then delegates here.
     private static Result<Age> Validate(int value, string? fieldName)
     {
         if (value < 0)
-            return Invalid(fieldName, "Age must be non-negative.");
+            return Invalid(fieldName, ValidationCodes.ValueBetweenInclusive, "Age must be non-negative.", RangeArgs);
         if (value > 150)
-            return Invalid(fieldName, "Age is unrealistically high.");
+            return Invalid(fieldName, ValidationCodes.ValueBetweenInclusive, "Age is unrealistically high.", RangeArgs);
         return Result.Ok(new Age(value));
     }
 
@@ -78,10 +82,13 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Age) + '.' + nameof(TryCreate));
 
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Age is required.");
+            return Invalid(
+                fieldName,
+                value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty,
+                "Age is required.");
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            return Invalid(fieldName, "Age must be a valid integer.");
+            return Invalid(fieldName, ValidationCodes.FormatInteger, "Age must be a valid integer.");
 
         return Validate(parsed, fieldName);
     }

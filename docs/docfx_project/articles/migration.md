@@ -28,7 +28,7 @@ This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For rele
 | `Result.Success(...)` / `Result.Failure(...)` | `Result.Ok(...)` / `Result.Fail(...)` | [Result and Error renames](#result-and-error-renames-trelliscore) |
 | Implicit `T → Result<T>` / `Error → Result<T>` | Explicit `Result.Ok(value)` / `Result.Fail<T>(error)` | [Result and Error renames](#result-and-error-renames-trelliscore) |
 | `Result.SuccessIf` / `Result.FailureIf` / `*Async` variants | Inline ternary | [Removed factories](#removed-factories) |
-| `Result.FromException(ex)` | `Result.Try` / `Result.TryAsync` or `new Error.Unexpected("unhandled_exception", ...)` | [Removed factories](#removed-factories) |
+| `Result.FromException(ex)` | `Result.Try` / `Result.TryAsync` or `new Error.Unexpected("unhandled-exception", ...)` | [Removed factories](#removed-factories) |
 | Non-generic `Result` instance type | `Result<Unit>` (ADR-005) | [Non-generic Result removed (ADR-005)](#non-generic-result-removed-adr-005) |
 | `result.Value` getter | `TryGetValue` / `Match` / `var (ok, v, err) = result;` | [Accessor changes](#accessor-changes) |
 | `Error` open class hierarchy + `Error.X("msg")` factories | `Error` closed ADT + `new Error.X(payload) { Detail = "msg" }` | [Error becomes a closed ADT](#error-becomes-a-closed-adt) |
@@ -112,7 +112,7 @@ return (await predicate()) ? Result.Ok(value) : Result.Fail<T>(error);
 
 // Exception → result: use Try / TryAsync, or build the error explicitly
 return Result.Try(() => DoWork());
-return Result.Fail<T>(new Error.Unexpected("unhandled_exception", faultId) { Detail = "An unexpected error occurred while processing the request." });
+return Result.Fail<T>(new Error.Unexpected("unhandled-exception", faultId) { Detail = "An unexpected error occurred while processing the request." });
 ```
 
 `OperationCanceledException` is always rethrown by `Try` / `TryAsync` rather than mapped.
@@ -187,7 +187,7 @@ public async ValueTask<Result<Unit>> Handle(SubmitOrderCommand cmd, Cancellation
 In lambdas after `.Bind(...)` / `BindAsync(...)`, accept the `Unit` argument explicitly: `_ =>` or `(Unit _) =>`. `AsUnit()` on `Result<T>` now returns `Result<Unit>` (it bridges value-bearing chains back to a no-payload terminal without crossing a type boundary). Background and trade-off analysis: [ADR-005](../adr/ADR-005-reintroduce-unit.md).
 
 > [!IMPORTANT]
-> `default(Result<T>)` is a **failure** carrying `new Error.Unexpected("default_initialized")`. Always construct via `Result.Ok(...)` / `Result.Fail(...)`. Analyzer `TRLS019` flags explicit `default(Result<T>)` at call sites.
+> `default(Result<T>)` is a **failure** carrying `new Error.Unexpected("default-initialized")`. Always construct via `Result.Ok(...)` / `Result.Fail(...)`. Analyzer `TRLS019` flags explicit `default(Result<T>)` at call sites.
 
 ## HTTP (Trellis.Http)
 

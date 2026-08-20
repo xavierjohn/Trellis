@@ -253,6 +253,30 @@ public abstract record Error
             new(EquatableArray.Create(new FieldViolation(field, reasonCode, Detail: detail)));
 
         /// <summary>
+        /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a single
+        /// <see cref="FieldViolation"/> with machine-readable operands attached.
+        /// </summary>
+        /// <param name="propertyName">Simple property name or full JSON Pointer.</param>
+        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
+        /// <param name="args">Operands of the rule (e.g. <c>maxLength</c>, <c>comparisonValue</c>), built with <see cref="ValidationArgs"/>. Never put the rejected value itself here.</param>
+        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
+        public static InvalidInput ForField(string propertyName, string reasonCode, ImmutableDictionary<string, string>? args, string? detail = null) =>
+            ForField(InputPointer.ForProperty(propertyName), reasonCode, args, detail);
+
+        /// <summary>
+        /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a single
+        /// <see cref="FieldViolation"/> at the supplied pointer with machine-readable operands attached.
+        /// </summary>
+        /// <param name="field">JSON Pointer locating the offending field.</param>
+        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
+        /// <param name="args">Operands of the rule (e.g. <c>maxLength</c>, <c>comparisonValue</c>), built with <see cref="ValidationArgs"/>. Never put the rejected value itself here.</param>
+        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
+        public static InvalidInput ForField(InputPointer field, string reasonCode, ImmutableDictionary<string, string>? args, string? detail = null) =>
+            new(EquatableArray.Create(new FieldViolation(field, reasonCode, args, detail)));
+
+        /// <summary>
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
         /// single <see cref="RuleViolation"/> — the global / multi-field counterpart to
         /// <see cref="ForField(string, string, string?)"/>. Use for invariants that are not bound
@@ -264,6 +288,19 @@ public abstract record Error
         public static InvalidInput ForRule(string reasonCode, string? detail = null) =>
             new(EquatableArray<FieldViolation>.Empty,
                 EquatableArray.Create(new RuleViolation(reasonCode, Detail: detail)))
+            { Detail = detail };
+
+        /// <summary>
+        /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a single
+        /// <see cref="RuleViolation"/> with machine-readable operands attached.
+        /// </summary>
+        /// <param name="reasonCode">Stable machine-readable code identifying the rule.</param>
+        /// <param name="args">Operands of the rule, built with <see cref="ValidationArgs"/>. Never put a rejected value itself here.</param>
+        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <returns>An <see cref="InvalidInput"/> wrapping the single rule violation.</returns>
+        public static InvalidInput ForRule(string reasonCode, ImmutableDictionary<string, string>? args, string? detail = null) =>
+            new(EquatableArray<FieldViolation>.Empty,
+                EquatableArray.Create(new RuleViolation(reasonCode, Args: args, Detail: detail)))
             { Detail = detail };
     }
 
@@ -575,7 +612,7 @@ public abstract record Error
     /// An unhandled internal failure occurred. <paramref name="ReasonCode"/> identifies the
     /// kind of failure; <paramref name="FaultId"/> optionally correlates to deeper diagnostics.
     /// </summary>
-    /// <param name="ReasonCode">Stable machine-readable code identifying the kind of unexpected condition (e.g. <c>"unhandled_exception"</c>, <c>"default_initialized"</c>, <c>"not_implemented"</c>).</param>
+    /// <param name="ReasonCode">Stable machine-readable code identifying the kind of unexpected condition (e.g. <c>"unhandled-exception"</c>, <c>"default-initialized"</c>, <c>"not_implemented"</c>).</param>
     /// <param name="FaultId">Optional opaque per-incident identifier correlating to richer diagnostics in the logging/telemetry layer.</param>
     public sealed record Unexpected(string ReasonCode, string? FaultId = null) : Error
     {

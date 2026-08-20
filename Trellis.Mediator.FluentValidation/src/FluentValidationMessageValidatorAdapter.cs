@@ -75,9 +75,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
                     ? typeof(TMessage).Name
                     : failure.PropertyName;
                 var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
-                var reasonCode = string.IsNullOrWhiteSpace(failure.ErrorCode)
-                    ? "validation.error"
-                    : failure.ErrorCode;
+                var reasonCode = ValidationCodeProjection.Project(failure.ErrorCode, failure.AttemptedValue);
                 violations.Add(new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(failure))
                 {
                     Detail = failure.ErrorMessage,

@@ -87,7 +87,7 @@ Bare `ToResultAsync()` uses the built-in mapper from `Trellis.Http/src/HttpRespo
 
 | HTTP status | Produced error |
 |---|---|
-| `400` | `Error.InvalidInput.ForRule("http.bad_request")` |
+| `400` | `Error.InvalidInput.ForRule("http.bad-request")` |
 | `401` | `new Error.AuthenticationRequired()` |
 | `403` | `new Error.Forbidden("http.forbidden")` |
 | `404` | `new Error.NotFound(ResourceRef.For("HttpResponse"))` |
@@ -100,7 +100,7 @@ Bare `ToResultAsync()` uses the built-in mapper from `Trellis.Http/src/HttpRespo
 | `413` | `new Error.TransportFault(new HttpError.ContentTooLarge())` |
 | `415` | `new Error.TransportFault(new HttpError.UnsupportedMediaType(EquatableArray<string>.Empty))` |
 | `416` with known `Content-Range` length | `new Error.TransportFault(new HttpError.RangeNotSatisfiable(length, unit))` |
-| `422` | `Error.InvalidInput.ForRule("http.unprocessable_content")` |
+| `422` | `Error.InvalidInput.ForRule("http.unprocessable-content")` |
 | `428` | `new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))` |
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | `501` | `new Error.Unexpected("not_implemented")` |

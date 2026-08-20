@@ -102,9 +102,9 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
     private PhoneNumber(string value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "phoneNumber").
-    private static Result<PhoneNumber> Invalid(string? fieldName, string message) =>
+    private static Result<PhoneNumber> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<PhoneNumber>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("phoneNumber"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("phoneNumber"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a <see cref="PhoneNumber"/> from the specified string.
@@ -120,22 +120,22 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(PhoneNumber) + '.' + nameof(TryCreate));
 
         if (value is null || value.Length == 0)
-            return Invalid(fieldName, "Phone number is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Phone number is required.");
 
         // Length cap MUST come before any O(n) scan so adversarial all-whitespace inputs
         // don't force IsNullOrWhiteSpace to walk the full string.
         if (value.Length > MaxInputLength)
-            return Invalid(fieldName, "Phone number must be in E.164 format (e.g., +14155551234).");
+            return Invalid(fieldName, ValidationCodes.StringPhoneE164, "Phone number must be in E.164 format (e.g., +14155551234).");
 
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Phone number is required.");
+            return Invalid(fieldName, ValidationCodes.ValueNotEmpty, "Phone number is required.");
 
         // Normalize: remove spaces, dashes, and parentheses for validation
         var normalized = NormalizeRegex().Replace(value.Trim(), "");
 
         // Validate E.164 format
         if (!E164Regex().IsMatch(normalized))
-            return Invalid(fieldName, "Phone number must be in E.164 format (e.g., +14155551234).");
+            return Invalid(fieldName, ValidationCodes.StringPhoneE164, "Phone number must be in E.164 format (e.g., +14155551234).");
 
         return Result.Ok(new PhoneNumber(normalized));
     }

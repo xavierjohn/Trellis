@@ -90,6 +90,10 @@ FluentValidation property names are converted to JSON Pointers via [`JsonPointer
 
 Dotted FluentValidation paths split into separate JSON-pointer segments; bracketed indexers become numeric segments. Other producers (e.g., the ASP integration) build `InputPointer` values directly via `InputPointer.ForProperty(...)`, which does **not** split on `.`, so the normalizer is FluentValidation-specific.
 
+### Reason-code projection
+
+Each `ValidationFailure.ErrorCode` is projected through [`ValidationCodeProjection.Project`](trellis-api-fluentvalidation.md#validationcodeprojection) before it reaches `FieldViolation.Code`, so a `NotEmptyValidator` failure arriving through the Mediator pipeline reports the same `value.not-empty` a generated `TryCreate` would. Custom `WithErrorCode` values pass through verbatim; `Must(...)` predicates project to `error.unspecified`.
+
 ## Behavioral notes
 
 - FluentValidation does **not** add an additional pipeline behavior. It plugs into the existing `ValidationBehavior<TMessage,TResponse>` via the open-generic `IMessageValidator<TMessage>` extension point.

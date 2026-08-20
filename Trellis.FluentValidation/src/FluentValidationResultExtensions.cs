@@ -156,8 +156,9 @@ public static class FluentValidationResultExtensions
     /// <paramref name="paramName"/> is normalized and used as the pointer.
     /// </para>
     /// <para>
-    /// The <see cref="ValidationFailure.ErrorCode"/> becomes <see cref="FieldViolation.ReasonCode"/>
-    /// (falling back to <c>"validation.error"</c>), and the <see cref="ValidationFailure.ErrorMessage"/>
+    /// The <see cref="ValidationFailure.ErrorCode"/> is translated to a Trellis reason code by
+    /// <see cref="ValidationCodeProjection"/> and becomes <see cref="FieldViolation.ReasonCode"/>;
+    /// the <see cref="ValidationFailure.ErrorMessage"/>
     /// becomes <see cref="FieldViolation.Detail"/>. Multiple failures on the same property produce
     /// multiple <see cref="FieldViolation"/> entries — no information is lost.
     /// </para>
@@ -186,8 +187,8 @@ public static class FluentValidationResultExtensions
     ///     }
     /// }
     /// // Output:
-    /// // /name:  Name is required (validation.error)
-    /// // /email: Email must be a valid email address (validation.error)
+    /// // /name:  Name is required (value.not-empty)
+    /// // /email: Email must be a valid email address (string.email)
     /// </code>
     /// </example>
     /// <param name="paramName">
@@ -209,7 +210,7 @@ public static class FluentValidationResultExtensions
             {
                 var rawName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
                 var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
-                var reasonCode = string.IsNullOrWhiteSpace(e.ErrorCode) ? "validation.error" : e.ErrorCode;
+                var reasonCode = ValidationCodeProjection.Project(e.ErrorCode, e.AttemptedValue);
                 return new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(e)) { Detail = e.ErrorMessage };
             })
             .ToArray();
@@ -309,7 +310,8 @@ public static class FluentValidationResultExtensions
 
         if (value is null)
         {
-            var nullResult = new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")]);
+            var nullFailure = new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.") { ErrorCode = "NotNullValidator" };
+            var nullResult = new ValidationResult([nullFailure]);
             return nullResult.ToResult(value!, paramName);
         }
 
@@ -441,7 +443,8 @@ public static class FluentValidationResultExtensions
 
         if (value is null)
         {
-            var nullResult = new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.")]);
+            var nullFailure = new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.") { ErrorCode = "NotNullValidator" };
+            var nullResult = new ValidationResult([nullFailure]);
             return nullResult.ToResult(value!, paramName);
         }
 

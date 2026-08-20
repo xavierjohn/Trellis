@@ -33,24 +33,21 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     /// <inheritdoc />
     public override bool HandleNull => true;
 
-    /// <summary>
-    /// The placeholder reason code carried by this converter's violations; normalized to a
-    /// neutral sentinel at the boundary.
-    /// </summary>
-    private const string LegacyUnspecifiedCode = "validation.error";
-
     /// <inheritdoc />
     public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
             throw Invalid(
+                ValidationCodes.ValueNotNull,
                 $"Cannot deserialize null into RequiredEnum<{typeof(TRequiredEnum).Name}>. " +
                 "A required enum value must be a non-null string.");
 
         return reader.TokenType switch
         {
             JsonTokenType.String => ReadFromString(ref reader),
-            _ => throw Invalid($"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
+            _ => throw Invalid(
+                ValidationCodes.FormatConversion,
+                $"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
         };
     }
 
@@ -75,6 +72,7 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
                     .OrderBy(value => value, StringComparer.Ordinal));
 
                 throw Invalid(
+                    ValidationCodes.EnumNameUndefined,
                     $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'. " +
                     $"Valid values are: {validValues}.");
             });
@@ -101,10 +99,10 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     /// 422 through the composite converter, so the two producers now agree.
     /// </para>
     /// </remarks>
-    private static TrellisJsonValidationException Invalid(string message) =>
+    private static TrellisJsonValidationException Invalid(string reasonCode, string message) =>
         new(message)
         {
-            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, LegacyUnspecifiedCode, message) with
+            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, reasonCode, message) with
             {
                 Detail = message,
             },
