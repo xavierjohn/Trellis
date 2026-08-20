@@ -73,7 +73,8 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
         using var body = await ReadBodyAsync(resp);
         var raw = body.RootElement.GetRawText();
 
-        body.RootElement.GetProperty("code").GetString().Should().Be("invalid-input");
+        body.RootElement.GetProperty("code").GetString().Should().Be("error.unspecified");
+        body.RootElement.GetProperty("kind").GetString().Should().Be("unprocessable-content");
         body.RootElement.TryGetProperty("errors", out var errors)
             .Should().BeTrue($"errors dict missing. body={raw}");
         errors.GetProperty("email").EnumerateArray().Should().HaveCount(2);
@@ -106,7 +107,7 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
 
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
         using var body = await ReadBodyAsync(resp);
-        body.RootElement.GetProperty("code").GetString().Should().Be("not-found");
+        body.RootElement.GetProperty("code").GetString().Should().Be("error.unspecified");
         body.RootElement.GetProperty("kind").GetString().Should().Be("not-found");
     }
 

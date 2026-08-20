@@ -129,7 +129,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     }
 
     [Fact]
-    public async Task Aggregate_renders_errors_extension_with_per_child_problem_details()
+    public async Task Aggregate_renders_problems_extension_with_per_child_problem_details()
     {
         var ctx = NewContext();
         var fields = EquatableArray.Create(
@@ -143,17 +143,23 @@ public sealed class ResponseFailureWriterPhase3Tests
 
         using var body = await ReadBody(ctx);
         body.RootElement.GetProperty("kind").GetString().Should().Be("multi");
-        var errors = body.RootElement.GetProperty("errors");
-        errors.GetArrayLength().Should().Be(2);
+        var problems = body.RootElement.GetProperty("problems");
+        problems.GetArrayLength().Should().Be(2);
 
-        var first = errors[0];
-        first.GetProperty("type").GetString().Should().Be("not-found");
+        var first = problems[0];
+
+        // `type` is a URI reference per RFC 9457, not the kind slug. That it matches the URI the
+        // same status yields at the root is asserted in ResponseFailureWriterProblemObjectTests;
+        // here we only pin the shape.
+        first.GetProperty("type").GetString().Should().StartWith("https://");
         first.GetProperty("status").GetInt32().Should().Be(404);
         first.GetProperty("kind").GetString().Should().Be("not-found");
-        first.GetProperty("code").GetString().Should().Be("not-found");
 
-        var second = errors[1];
-        second.GetProperty("type").GetString().Should().Be("unprocessable-content");
+        // NotFound carries no reason code of its own, so its kind is no longer restated as one.
+        first.GetProperty("code").GetString().Should().Be("error.unspecified");
+
+        var second = problems[1];
+        second.GetProperty("type").GetString().Should().StartWith("https://");
         second.GetProperty("status").GetInt32().Should().Be(422);
         second.GetProperty("kind").GetString().Should().Be("unprocessable-content");
     }
@@ -162,7 +168,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Aggregate_child_status_honors_per_call_typed_error_mapping()
     {
         // Per-call mappings sit at the top of the status precedence chain, so an aggregate's
-        // errors[] children must be projected through the same chain as the outer status.
+        // problems[] children must be projected through the same chain as the outer status.
         // Rendering children from ambient options only makes the child status contradict the
         // endpoint's own mapping.
         var ctx = NewContext();
@@ -175,9 +181,9 @@ public sealed class ResponseFailureWriterPhase3Tests
             .ExecuteAsync(ctx);
 
         using var body = await ReadBody(ctx);
-        var errors = body.RootElement.GetProperty("errors");
-        errors[0].GetProperty("status").GetInt32().Should().Be(410);
-        errors[1].GetProperty("status").GetInt32().Should().Be(409);
+        var problems = body.RootElement.GetProperty("problems");
+        problems[0].GetProperty("status").GetInt32().Should().Be(410);
+        problems[1].GetProperty("status").GetInt32().Should().Be(409);
     }
 
     [Fact]
@@ -195,11 +201,11 @@ public sealed class ResponseFailureWriterPhase3Tests
             .ExecuteAsync(ctx);
 
         using var body = await ReadBody(ctx);
-        var errors = body.RootElement.GetProperty("errors");
-        errors[0].GetProperty("status").GetInt32().Should().Be(410);
+        var problems = body.RootElement.GetProperty("problems");
+        problems[0].GetProperty("status").GetInt32().Should().Be(410);
 
         // The unmatched arm returns `default`; the child must fall through to its ambient status.
-        errors[1].GetProperty("status").GetInt32().Should().Be(409);
+        problems[1].GetProperty("status").GetInt32().Should().Be(409);
     }
 
     [Fact]
@@ -222,7 +228,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Aggregate_child_detail_is_scrubbed_for_5xx_children()
     {
         // The outer detail is scrubbed at >= 500, but each child carries its own status. A 5xx
-        // child's detail must be scrubbed with the same rule or the errors[] array becomes a
+        // child's detail must be scrubbed with the same rule or the problems[] array becomes a
         // disclosure channel for internal context the outer detail deliberately withholds.
         var ctx = NewContext();
         var agg = new Error.Aggregate(
@@ -234,13 +240,13 @@ public sealed class ResponseFailureWriterPhase3Tests
 
         ctx.Response.StatusCode.Should().Be(500);
         using var body = await ReadBody(ctx);
-        var errors = body.RootElement.GetProperty("errors");
+        var problems = body.RootElement.GetProperty("problems");
 
-        errors[0].GetProperty("status").GetInt32().Should().Be(404);
-        errors[0].GetProperty("detail").GetString().Should().Be("Item 42 does not exist.");
+        problems[0].GetProperty("status").GetInt32().Should().Be(404);
+        problems[0].GetProperty("detail").GetString().Should().Be("Item 42 does not exist.");
 
-        errors[1].GetProperty("status").GetInt32().Should().Be(500);
-        errors[1].GetProperty("detail").GetString().Should().Be("An internal error occurred.");
+        problems[1].GetProperty("status").GetInt32().Should().Be(500);
+        problems[1].GetProperty("detail").GetString().Should().Be("An internal error occurred.");
     }
 
     [Fact]
@@ -262,13 +268,13 @@ public sealed class ResponseFailureWriterPhase3Tests
             .ExecuteAsync(ctx);
 
         using var body = await ReadBody(ctx);
-        var errors = body.RootElement.GetProperty("errors");
+        var problems = body.RootElement.GetProperty("problems");
 
-        errors[0].GetProperty("status").GetInt32().Should().Be(500);
-        errors[0].GetProperty("detail").GetString().Should().Be("An internal error occurred.");
+        problems[0].GetProperty("status").GetInt32().Should().Be(500);
+        problems[0].GetProperty("detail").GetString().Should().Be("An internal error occurred.");
 
-        errors[1].GetProperty("status").GetInt32().Should().Be(400);
-        errors[1].GetProperty("detail").GetString().Should().Be("Safe once demoted to 4xx.");
+        problems[1].GetProperty("status").GetInt32().Should().Be(400);
+        problems[1].GetProperty("detail").GetString().Should().Be("Safe once demoted to 4xx.");
     }
 
     // ----------------- Concurrent modification override -----------------
@@ -368,12 +374,14 @@ public sealed class ResponseFailureWriterPhase3Tests
     }
 
     [Fact]
-    public async Task AuthenticationRequired_without_ReasonCode_keeps_kind_in_wire_code()
+    public async Task AuthenticationRequired_without_ReasonCode_emits_the_unspecified_sentinel()
     {
-        // Backward-compat: pre-ReasonCode call sites (`new Error.AuthenticationRequired()`,
-        // `new Error.AuthenticationRequired("Bearer")`) must continue to emit the same
-        // `code` value they did before the override was added. `Code => ReasonCode ?? Kind`
-        // falls through to "authentication-required" when ReasonCode is null.
+        // A kind is not a reason. `AuthenticationRequired` with no ReasonCode has nothing finer
+        // to say than its kind, which `kind` already carries, so `code` degrades to the single
+        // sentinel rather than restating the kind and inviting clients to switch on it.
+        // (Breaking change: this previously emitted "authentication-required".) Note `kind` is
+        // the wire slug for the error, which defaults to the HTTP condition name and is not
+        // necessarily Error.Kind -- here `authentication-required` surfaces as `unauthorized`.
         var ctx = NewContext();
         var r = Result.Fail<T>(new Error.AuthenticationRequired("Bearer"));
 
@@ -381,7 +389,8 @@ public sealed class ResponseFailureWriterPhase3Tests
 
         ctx.Response.StatusCode.Should().Be(401);
         using var body = await ReadBody(ctx);
-        body.RootElement.GetProperty("code").GetString().Should().Be("authentication-required");
+        body.RootElement.GetProperty("code").GetString().Should().Be("error.unspecified");
+        body.RootElement.GetProperty("kind").GetString().Should().Be("unauthorized");
     }
 
     private sealed class ProviderStub(string name) : IAuthenticationSchemeProvider
