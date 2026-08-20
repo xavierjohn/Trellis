@@ -465,7 +465,8 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             : InputLocation.Unspecified;
     }
 
-    private static string? GetRawParameterValue(ActionExecutingContext context, string parameterName)    {
+    private static string? GetRawParameterValue(ActionExecutingContext context, string parameterName)
+    {
         // Try to get the raw value from route data
         if (context.RouteData.Values.TryGetValue(parameterName, out var routeValue))
             return routeValue?.ToString();

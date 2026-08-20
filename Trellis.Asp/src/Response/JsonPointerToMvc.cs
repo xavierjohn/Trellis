@@ -52,9 +52,9 @@ using System.Text;
 /// dotted path to a flat field) will produce a single-segment pointer that
 /// collides with structurally distinct multi-segment pointers under this
 /// translation. This is a property of the legacy <c>errors</c> map only: every
-/// field violation is also emitted under <c>extensions["problems"][n].location.pointer</c>
+/// field violation is also emitted under <c>extensions["fieldViolations"][n].location.pointer</c>
 /// with its RFC 6901 pointer intact, and every rule violation under
-/// <c>extensions["rules"][n].locations[]</c>. A producer needing path fidelity
+/// <c>extensions["ruleViolations"][n].locations[]</c>. A producer needing path fidelity
 /// therefore needs no workaround — it is already on the wire beside the lossy key.
 /// </item>
 /// </list>

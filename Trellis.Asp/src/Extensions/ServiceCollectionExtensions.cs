@@ -479,7 +479,8 @@ public static class ServiceCollectionExtensions
 
     [UnconditionalSuppressMessage("Trimming", "IL2070",
         Justification = "Inspects generic IEnumerable<T> interfaces on collection property types from JSON metadata; reflection-mode fallback only.")]
-    private static Type? GetEnumerableElementType(Type type)    {
+    private static Type? GetEnumerableElementType(Type type)
+    {
         if (type == typeof(string))
             return null;
 

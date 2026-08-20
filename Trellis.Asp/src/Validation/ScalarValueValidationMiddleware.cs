@@ -328,8 +328,9 @@ public sealed class ScalarValueValidationMiddleware
     /// adjacent non-identifier property names (e.g. <c>$['weird name']['another weird']</c>)
     /// are common; property names containing the literal <c>'][</c> sequence are not.
     /// Consumers requiring lossless field paths for adversarial keys should read the RFC 6901
-    /// pointer from <c>extensions["problems"][n].location.pointer</c> (or, for rule violations,
-    /// <c>extensions["rules"][n].locations[]</c>) rather than the <c>errors</c> map key.
+    /// pointer from <c>extensions["fieldViolations"][n].location.pointer</c> (or, for rule
+    /// violations, <c>extensions["ruleViolations"][n].locations[]</c>) rather than the
+    /// <c>errors</c> map key.
     /// </para>
     /// </remarks>
     internal static string JsonPathToMvcKey(string? jsonExceptionPath)

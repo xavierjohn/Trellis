@@ -332,7 +332,7 @@ public sealed record FieldViolationProblemDetail(
 | `Location` | `ViolationLocation` | Where the offending value came from. |
 | `Args` | `IReadOnlyDictionary<string, string>?` | Arguments that parameterize the message, letting a client render its own localized prose. Omitted when absent. |
 
-AOT-friendly JSON payload used inside Problem Details `extensions["problems"]` for `Error.InvalidInput` field violations. Application code should treat this as response shape metadata, not as a domain model.
+AOT-friendly JSON payload used inside Problem Details `extensions["fieldViolations"]` for `Error.InvalidInput` field violations. Application code should treat this as response shape metadata, not as a domain model.
 
 ### `RuleViolationProblemDetail`
 
@@ -353,7 +353,7 @@ public sealed record RuleViolationProblemDetail(
 | `Locations` | `IReadOnlyList<ViolationLocation>` | Every location the rule spans. **Always present**: an empty array is a positive statement that the rule is form-level rather than bound to any field, which an omitted member could not express. |
 | `Args` | `IReadOnlyDictionary<string, string>?` | Arguments that parameterize the message. Omitted when absent. |
 
-AOT-friendly JSON payload used inside Problem Details `extensions["rules"]` for `Error.InvalidInput` rule violations. Application code should treat this as response shape metadata, not as a domain model.
+AOT-friendly JSON payload used inside Problem Details `extensions["ruleViolations"]` for `Error.InvalidInput` rule violations. Application code should treat this as response shape metadata, not as a domain model.
 
 > **Breaking change.** The member was previously `string[] Fields`, a bare array of JSON Pointer strings. It is now `Locations`, so that a rule spanning a query parameter and a body field can say so — the old shape could only ever assert "these are pointers into the body", which was false for every non-body input.
 
