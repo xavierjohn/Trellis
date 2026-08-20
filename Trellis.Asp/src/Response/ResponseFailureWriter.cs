@@ -125,7 +125,15 @@ internal static class ResponseFailureWriter
                     var childRules = child is Error.InvalidInput childInput ? childInput.Rules : default;
                     var childObject = BuildExtensions(child, childRules);
 
-                    childObject["type"] = DefaultProblemTypeForStatus(childStatus) ?? childObject["kind"];
+                    // Only when the framework has a default URI for this status. Several statuses
+                    // Trellis emits have none (429, 428, 451, 431, 423, 424), and the root omits
+                    // `type` for those; RFC 9457 section 3.1.1 makes an absent `type` equivalent
+                    // to "about:blank". Falling back to the kind slug here would put a bare
+                    // non-URI token back in `type` -- the exact shape this projection removes.
+                    var childType = DefaultProblemTypeForStatus(childStatus);
+                    if (childType is not null)
+                        childObject["type"] = childType;
+
                     childObject["status"] = childStatus;
                     childObject["detail"] = PublicDetailForStatus(child, childStatus);
 

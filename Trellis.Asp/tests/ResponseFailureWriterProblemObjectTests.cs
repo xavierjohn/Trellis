@@ -158,6 +158,38 @@ public sealed class ResponseFailureWriterProblemObjectTests
     }
 
     [Fact]
+    public async Task Aggregate_child_type_never_degrades_to_a_bare_slug_for_a_status_with_no_default_uri()
+    {
+        // ASP.NET Core has no default problem type for several statuses Trellis actually emits --
+        // notably 429 (RateLimited) and 428 (PreconditionRequired). The child must not silently
+        // fall back to the kind slug there, which is the very shape this change removes.
+        // RFC 9457 section 3.1.1 makes an absent `type` equivalent to "about:blank", so matching
+        // the root's own absence is both correct and keeps child and root consistent.
+        var rateLimited = new Error.RateLimited();
+
+        using var standalone = await WriteAsync(rateLimited);
+        var rootHasType = standalone.RootElement.TryGetProperty("type", out var rootType);
+
+        using var aggregated = await WriteAsync(new Error.Aggregate(rateLimited));
+        var child = aggregated.RootElement.GetProperty("problems")[0];
+        child.GetProperty("status").GetInt32().Should().Be(429);
+
+        var childHasType = child.TryGetProperty("type", out var childType);
+        childHasType.Should().Be(rootHasType, "a child must carry `type` exactly when the root does");
+
+        if (childHasType)
+        {
+            childType.GetString().Should().Be(rootType.GetString());
+            Uri.IsWellFormedUriString(childType.GetString(), UriKind.Absolute).Should().BeTrue();
+        }
+
+        // The regression guard proper: whatever happens, `type` is never the kind slug.
+        child.GetProperty("kind").GetString().Should().Be("too-many-requests");
+        if (childHasType)
+            childType.GetString().Should().NotBe("too-many-requests");
+    }
+
+    [Fact]
     public async Task Aggregate_child_Unexpected_retains_its_faultId()
     {
         using var body = await WriteAsync(new Error.Aggregate(
