@@ -29,5 +29,11 @@ using Trellis.Showcase.MinimalApi.Endpoints;
 [JsonSerializable(typeof(Dictionary<string, string[]>))]
 [JsonSerializable(typeof(Dictionary<string, object?>))]
 [JsonSerializable(typeof(object[]))]
+
+// Both violation arrays land in ProblemDetails.Extensions, which is object-valued, so STJ
+// resolves them polymorphically at write time and native AOT needs each array type rooted
+// here explicitly. Registering the element type alone is not enough. Any AOT consumer of
+// Trellis.Asp needs these same two entries; see trellis-api-asp.md.
+[JsonSerializable(typeof(FieldViolationProblemDetail[]))]
 [JsonSerializable(typeof(RuleViolationProblemDetail[]))]
 internal sealed partial class ShowcaseJsonSerializerContext : JsonSerializerContext;

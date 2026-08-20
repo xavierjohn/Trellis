@@ -357,6 +357,16 @@ AOT-friendly JSON payload used inside Problem Details `extensions["ruleViolation
 
 > **Breaking change.** The member was previously `string[] Fields`, a bare array of JSON Pointer strings. It is now `Locations`, so that a rule spanning a query parameter and a body field can say so — the old shape could only ever assert "these are pointers into the body", which was false for every non-body input.
 
+> **Native AOT registration.** Both payloads land in `ProblemDetails.Extensions`, which is `object`-valued, so `System.Text.Json` resolves them polymorphically at write time. Under AOT that requires each **array** type to be rooted on your `JsonSerializerContext` explicitly — registering the element type is not sufficient:
+>
+> ```csharp
+> [JsonSerializable(typeof(FieldViolationProblemDetail[]))]
+> [JsonSerializable(typeof(RuleViolationProblemDetail[]))]
+> internal sealed partial class MyJsonSerializerContext : JsonSerializerContext;
+> ```
+>
+> An AOT application missing an entry does not fail to build and does not degrade gracefully — it throws `NotSupportedException` from inside the response writer while serializing the error response, converting a 422 into a 500 on exactly the path a client hits when it sends bad input. `FieldViolationProblemDetail[]` is new in this release, so an existing AOT consumer that already registered `RuleViolationProblemDetail[]` must add the second entry.
+
 ### `AggregateRepresentationValidator<T>`
 
 **Declaration**
