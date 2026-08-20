@@ -64,6 +64,28 @@ public abstract record Error
     public virtual string Code => Kind;
 
     /// <summary>
+    /// Gets a value indicating whether this instance carries a machine-readable code of its
+    /// own, as opposed to <see cref="Code"/> merely restating <see cref="Kind"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is a <em>presence</em> test and never a value comparison: a payload whose code
+    /// happens to equal its own <see cref="Kind"/> still carries an explicit code and reports
+    /// <see langword="true"/>. Boundary renderers use this to decide whether to emit
+    /// <see cref="Code"/> or a sentinel meaning "no finer reason available", so that a kind
+    /// restated as a code is never mistaken for a reason.
+    /// </para>
+    /// <para>
+    /// Declared <see langword="abstract"/> rather than <see langword="virtual"/> deliberately.
+    /// <see cref="Error"/> is a closed union — its constructor is private and no external code
+    /// can extend the catalog — so requiring every case to answer costs nothing and turns
+    /// "a new case carries a code and forgets to say so" from a silent wire defect into a
+    /// compile error.
+    /// </para>
+    /// </remarks>
+    public abstract bool HasExplicitCode { get; }
+
+    /// <summary>
     /// Gets the optional human-readable detail. When non-null the boundary renderer prefers
     /// this over the default template for <see cref="Code"/>.
     /// </summary>
@@ -202,6 +224,10 @@ public abstract record Error
         /// <inheritdoc />
         public override string Kind => "invalid-input";
 
+        /// <inheritdoc />
+        /// <remarks>Per-violation codes live on the individual field and rule violations, not on the error itself.</remarks>
+        public override bool HasExplicitCode => false;
+
         /// <summary>
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
         /// single <see cref="FieldViolation"/> built from a property name. The property name is
@@ -251,6 +277,9 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "invariant-violation";
+
+        /// <inheritdoc />
+        public override bool HasExplicitCode => true;
 
         /// <inheritdoc />
         public override string Code => ReasonCode;
@@ -304,6 +333,9 @@ public abstract record Error
         /// <inheritdoc />
         public override string Kind => "not-found";
 
+        /// <inheritdoc />
+        public override bool HasExplicitCode => false;
+
         /// <summary>
         /// Convenience factory that builds a <see cref="NotFound"/> for the resource type
         /// <typeparamref name="TResource"/> (its CLR name becomes the resource name).
@@ -333,6 +365,9 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "gone";
+
+        /// <inheritdoc />
+        public override bool HasExplicitCode => false;
 
         /// <summary>
         /// Convenience factory that builds a <see cref="Gone"/> for the resource type
@@ -368,6 +403,9 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "conflict";
+
+        /// <inheritdoc />
+        public override bool HasExplicitCode => true;
 
         /// <inheritdoc />
         public override string Code => ReasonCode;
@@ -454,6 +492,9 @@ public abstract record Error
         public override string Kind => "authentication-required";
 
         /// <inheritdoc />
+        public override bool HasExplicitCode => ReasonCode is not null;
+
+        /// <inheritdoc />
         public override string Code => ReasonCode ?? Kind;
     }
 
@@ -464,6 +505,9 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "forbidden";
+
+        /// <inheritdoc />
+        public override bool HasExplicitCode => true;
 
         /// <inheritdoc />
         public override string Code => PolicyId;
@@ -500,6 +544,9 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "rate-limited";
+
+        /// <inheritdoc />
+        public override bool HasExplicitCode => false;
     }
 
     /// <summary>
@@ -512,6 +559,9 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "unavailable";
+
+        /// <inheritdoc />
+        public override bool HasExplicitCode => ReasonCode is not null;
 
         /// <inheritdoc />
         public override string Code => ReasonCode ?? Kind;
@@ -533,6 +583,9 @@ public abstract record Error
         public override string Kind => "unexpected";
 
         /// <inheritdoc />
+        public override bool HasExplicitCode => true;
+
+        /// <inheritdoc />
         public override string Code => ReasonCode;
     }
 
@@ -547,6 +600,14 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "transport-fault";
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// The transport fault carries its own code (an HTTP condition name rather than a domain
+        /// code), which boundary renderers read directly from <see cref="Fault"/> ahead of this
+        /// property. The error itself contributes none.
+        /// </remarks>
+        public override bool HasExplicitCode => false;
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -582,6 +643,10 @@ public abstract record Error
 
         /// <inheritdoc />
         public override string Kind => "aggregate";
+
+        /// <inheritdoc />
+        /// <remarks>Codes belong to the individual children, not to the aggregate.</remarks>
+        public override bool HasExplicitCode => false;
 
         private static EquatableArray<Error> Flatten(EquatableArray<Error> input)
         {

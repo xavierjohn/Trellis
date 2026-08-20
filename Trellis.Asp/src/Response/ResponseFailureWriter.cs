@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Trellis;
@@ -21,6 +22,18 @@ using Trellis;
 internal static class ResponseFailureWriter
 {
     private const string LoggerCategoryName = "Trellis.Asp.ResponseFailureWriter";
+
+    /// <summary>
+    /// The only string on the wire meaning "no finer reason available". Emitted wherever an
+    /// error carries no explicit code of its own.
+    /// </summary>
+    internal const string UnspecifiedCode = "error.unspecified";
+
+    /// <summary>
+    /// Recognized legacy spelling of <see cref="UnspecifiedCode"/>, normalized in the wire
+    /// projection so that a single payload can never carry two live sentinels.
+    /// </summary>
+    private const string LegacyUnspecifiedCode = "validation.error";
 
     private static readonly ConcurrentDictionary<Type, byte> _loggedExceptionTypes = new();
 
@@ -98,21 +111,35 @@ internal static class ResponseFailureWriter
             var extensions = BuildExtensions(error, default, wireKindOverride);
             if (originalRequest is not null)
                 extensions["request"] = originalRequest;
-            extensions["errors"] = aggregate.Errors.Items
+            extensions["problems"] = aggregate.Errors.Items
                 .Select(child =>
                 {
-                    var (childCode, childKind) = GetCodeAndKind(child);
                     var childStatus = resolveChildStatus is not null
                         ? resolveChildStatus(child)
                         : options.GetStatusCode(child);
-                    return (object?)new Dictionary<string, object?>(StringComparer.Ordinal)
+
+                    // Project the child through the same extension builder as a standalone
+                    // problem, so a nested InvalidInput keeps its own rules, an Unexpected keeps
+                    // its faultId, and a TransportFault keeps its payload. Previously children
+                    // were flattened to a fixed five members and everything else was discarded.
+                    var childRules = child is Error.InvalidInput childInput ? childInput.Rules : default;
+                    var childObject = BuildExtensions(child, childRules);
+
+                    childObject["type"] = DefaultProblemTypeForStatus(childStatus) ?? childObject["kind"];
+                    childObject["status"] = childStatus;
+                    childObject["detail"] = PublicDetailForStatus(child, childStatus);
+
+                    // A validation-shaped child always carries an `errors` member, even when it
+                    // is empty, because the standalone rendering goes through ValidationProblem
+                    // and HttpValidationProblemDetails.Errors is a declared property. A rules-only
+                    // child would otherwise be structurally different from the same error at root.
+                    if (child is Error.InvalidInput { } childValidation
+                        && (childValidation.Fields.Items.Length > 0 || childValidation.Rules.Items.Length > 0))
                     {
-                        ["type"] = childKind,
-                        ["status"] = childStatus,
-                        ["code"] = childCode,
-                        ["kind"] = childKind,
-                        ["detail"] = PublicDetailForStatus(child, childStatus),
-                    };
+                        childObject["errors"] = BuildErrorsMap(childValidation)!;
+                    }
+
+                    return (object?)childObject;
                 })
                 .ToArray();
 
@@ -125,9 +152,7 @@ internal static class ResponseFailureWriter
         else if (error is Error.InvalidInput unprocessable
             && (unprocessable.Fields.Items.Length > 0 || unprocessable.Rules.Items.Length > 0))
         {
-            var errors = unprocessable.Fields.Items
-                .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path))
-                .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
+            var errors = BuildErrorsMap(unprocessable)!;
 
             var validationDetail = effectiveStatus >= 500 ? RedactedServerDetail : unprocessable.Detail;
             var extensions = BuildExtensions(error, unprocessable.Rules, wireKindOverride);
@@ -437,7 +462,52 @@ internal static class ResponseFailureWriter
     private static (string Code, string Kind) GetCodeAndKind(Error error) =>
         error is Error.TransportFault { Fault: HttpError httpError }
             ? (httpError.Code, httpError.Kind)
-            : (error.Code, ToWireKind(error));
+            : (WireCode(error), ToWireKind(error));
+
+    /// <summary>
+    /// Projects an error's code for the wire: an explicit code normalized, or the sentinel.
+    /// </summary>
+    private static string WireCode(Error error) =>
+        error.HasExplicitCode ? NormalizeCode(error.Code) : UnspecifiedCode;
+
+    private static string NormalizeCode(string code) =>
+        string.Equals(code, LegacyUnspecifiedCode, StringComparison.Ordinal) ? UnspecifiedCode : code;
+
+    /// <summary>
+    /// Projects an <see cref="Error.InvalidInput"/>'s field violations into the flat
+    /// MVC-keyed <c>errors</c> map; <see langword="null"/> for any other case.
+    /// </summary>
+    private static Dictionary<string, string[]>? BuildErrorsMap(Error error) =>
+        error is Error.InvalidInput input
+            ? input.Fields.Items
+                .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path), StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray(), StringComparer.Ordinal)
+            : null;
+
+    /// <summary>
+    /// The <c>type</c> URI ASP.NET Core assigns a problem of this status by default, so an
+    /// aggregate child carries a proper RFC 9457 §3.1.1 URI reference rather than a bare kind
+    /// slug. Read from the framework rather than restated here, so the two cannot drift.
+    /// </summary>
+    /// <remarks>
+    /// This is the framework <em>default</em> for the status. An application that registers
+    /// <c>AddProblemDetails(o =&gt; o.CustomizeProblemDetails = ...)</c> can rewrite the root
+    /// problem's <c>type</c>, and that customization is deliberately not replayed per child:
+    /// <c>ProblemDetailsContext</c> describes the <em>response</em> (it carries the
+    /// <c>HttpContext</c>, the triggering exception, and endpoint metadata), so invoking it once
+    /// per nested child would stamp children with root-scoped values and let it overwrite each
+    /// child's own <c>Status</c> and <c>Instance</c>.
+    /// <para>
+    /// Caching by status alone is sound because the lookup takes no other input; it is bounded
+    /// because <c>ErrorStatusCodeResolver</c> only ever resolves a status in 100–599.
+    /// </para>
+    /// </remarks>
+    private static string? DefaultProblemTypeForStatus(int status) =>
+        _problemTypeByStatus.GetOrAdd(
+            status,
+            static s => (Microsoft.AspNetCore.Http.Results.Problem(statusCode: s) as ProblemHttpResult)?.ProblemDetails.Type);
+
+    private static readonly ConcurrentDictionary<int, string?> _problemTypeByStatus = new();
 
     private static Dictionary<string, object?> BuildExtensions(Error error, EquatableArray<RuleViolation> rules, string? wireKindOverride = null)
     {
@@ -463,7 +533,7 @@ internal static class ResponseFailureWriter
         {
             ext["rules"] = rules.Items
                 .Select(rv => new RuleViolationProblemDetail(
-                    rv.ReasonCode,
+                    NormalizeCode(rv.ReasonCode),
                     rv.Detail,
                     rv.Fields.Items.Select(p => p.Path).ToArray()))
                 .ToArray();

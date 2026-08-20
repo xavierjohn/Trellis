@@ -2591,10 +2591,12 @@ services.AddResourceCollectionNames(typeof(Person).Assembly);  // alternative
   "status": 404,
   "instance": "/customers/abc-123",
   "request": "/api/orders",
-  "code": "not-found",
+  "code": "error.unspecified",
   "kind": "not-found"
 }
 ```
+
+`NotFound` carries no machine-readable reason of its own, so `code` is the sentinel `error.unspecified`; the HTTP condition is already carried by `kind` and `status`. A case that *does* carry a reason — `Conflict`, `Forbidden`, `InvariantViolation`, `Unexpected`, or an `AuthenticationRequired`/`Unavailable` constructed with a `ReasonCode` — emits that reason verbatim.
 
 If the same error is raised on `GET /api/customers/abc-123`, the URL already identifies the resource, so synthesis is suppressed and `instance` stays `/api/customers/abc-123` with no `request` extension. Suppression is segment-and-query-value-aware: an id of `"1"` does not match the path segment `v1`, and a percent-encoded path segment `a%2fb` correctly matches the raw id `a/b` (RFC 3986 case-insensitive percent escapes).
 

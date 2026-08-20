@@ -266,7 +266,9 @@ builder.Services.AddTrellis(t => t.UseProblemDetails());
 
 ### Wire shape
 
-`Error.Aggregate` renders as one outer Problem Details object with the worst child status and an RFC 9457 `errors[]` extension containing one child object per inner error (`type`, `status`, `code`, `kind`, `detail`). `Error.TransportFault` projects the wrapped `HttpError` payload into `extensions` and uses the inner `code` / `kind`, not the outer `transport-fault` envelope. Every response also carries `instance`.
+`Error.Aggregate` renders as one outer Problem Details object with the worst child status and a `problems[]` extension containing one child object per inner error. Each child is a full Problem Details object — `type` (a URI reference: ASP.NET Core's default problem type for the child's own status), `status`, `code`, `kind`, `detail`, plus any child-specific extensions such as a nested validation problem's `errors` map and `rules` array, or an `Unexpected`'s `faultId`. (This extension was named `errors` before v-next; it was renamed because it collided with the flat field-violation `errors` map.) `Error.TransportFault` projects the wrapped `HttpError` payload into `extensions` and uses the inner `code` / `kind`, not the outer `transport-fault` envelope. Every response also carries `instance`.
+
+The top-level `code` is `error.unspecified` whenever the error carries no machine-readable reason of its own; it is the error's own `Code` only when it does. Branch on `kind` or `status` for the HTTP condition, and on `code` only for a genuine domain reason.
 
 The two ProblemDetails-producing paths use different 5xx detail messages:
 
@@ -283,7 +285,7 @@ Content-Type: application/problem+json
   "title": "One or more validation errors occurred.",
   "status": 422,
   "instance": "/api/customers?api-version=2026-11-12",
-  "code": "invalid-input",
+  "code": "error.unspecified",
   "kind": "unprocessable-content",
   "errors": {
     "email": ["Email is required"]
