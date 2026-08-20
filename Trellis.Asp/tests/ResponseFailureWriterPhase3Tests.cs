@@ -379,8 +379,9 @@ public sealed class ResponseFailureWriterPhase3Tests
         // A kind is not a reason. `AuthenticationRequired` with no ReasonCode has nothing finer
         // to say than its kind, which `kind` already carries, so `code` degrades to the single
         // sentinel rather than restating the kind and inviting clients to switch on it.
-        // (Breaking change: this previously emitted "authentication-required".) Note the wire
-        // `kind` is the HTTP condition slug, not Error.Kind.
+        // (Breaking change: this previously emitted "authentication-required".) Note `kind` is
+        // the wire slug for the error, which defaults to the HTTP condition name and is not
+        // necessarily Error.Kind -- here `authentication-required` surfaces as `unauthorized`.
         var ctx = NewContext();
         var r = Result.Fail<T>(new Error.AuthenticationRequired("Bearer"));
 
