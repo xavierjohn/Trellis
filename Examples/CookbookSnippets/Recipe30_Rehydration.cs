@@ -110,7 +110,7 @@ internal static class Recipe30Demonstrator
     // The application layer matches on the typed failure to pick a wire shape.
     public static string DescribeOutcome(Result<Contact> result) =>
         result.Match(
-            onSuccess: contact => $"200 {contact.Email.Value}",
+            onSuccess: contact => $"200 {contact.Email}",
             onFailure: err => err switch
             {
                 Error.NotFound => "404",

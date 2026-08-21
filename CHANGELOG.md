@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — validation failures now say which part of the request they came from
+
+A violation raised in the domain names the field that failed but cannot know where the value arrived from, so it
+reached the wire as `location.in = "unknown"`. `Trellis.Asp` now resolves that at the response boundary from the
+endpoint's own binding map: route parameters project as `path`, bound query and header parameters as `query` and
+`header`, and anything left over as `body` when the endpoint binds one — otherwise `unknown` stands. Nothing is
+declared and no annotation is added to the endpoint.
+
+`[InputOrigin(...)]` and `.WithInputOrigin(...)` are added as the escape hatch for what derivation cannot reach.
+
+Full behaviour, the two known limits, and the escape hatch: [`trellis-api-asp.md` → `InputOriginAttribute`](docs/docfx_project/api_reference/trellis-api-asp.md#inputoriginattribute).
+
 ### Added — two Info diagnostics that ask an unnamed failure to name itself
 
 `Error.WireCode` (below) made every operator-facing channel spell a code the same way, but it cannot invent a code
