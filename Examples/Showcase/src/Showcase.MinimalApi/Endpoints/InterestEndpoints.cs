@@ -17,8 +17,7 @@ public static class InterestEndpoints
             repo.GetById(id)
                 .BindAsync(account => workflow.PayInterestAsync(account, request.AnnualRate, ct))
                 .ToHttpResponseAsync(AccountResponse.From))
-            .WithScalarValueValidation()
-            .WithInputOrigin(InputLocation.Body);
+            .WithScalarValueValidation();
 
         return routes;
     }

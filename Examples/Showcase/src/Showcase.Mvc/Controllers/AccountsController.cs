@@ -10,7 +10,6 @@ using Trellis.Showcase.Domain.ValueObjects;
 
 [ApiController]
 [Route("api/accounts")]
-[InputOrigin(InputLocation.Body)]
 public class AccountsController : ControllerBase
 {
     private readonly IAccountRepository _repository;
@@ -23,7 +22,6 @@ public class AccountsController : ControllerBase
     }
 
     [HttpGet(Name = "Showcase_GetAccounts")]
-    [InputOrigin(InputLocation.Query)]
     public ActionResult<PagedResponse<AccountResponse>> List(
         [FromQuery] int? limit,
         [FromQuery] string? cursor,

@@ -39,7 +39,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Get_seeded_account_returns_account_response()
     {
         var client = _factory.CreateClient();
-        var response = await client.GetAsync(new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}", UriKind.Relative), Ct);
+        var response = await client.GetAsync(new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId}", UriKind.Relative), Ct);
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<AccountResponse>(JsonOptions, Ct);
@@ -52,7 +52,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         var response = await client.PostAsJsonAsync(
-            new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}/deposit", UriKind.Relative),
+            new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId}/deposit", UriKind.Relative),
             new DepositRequest(Money.Create(0m, "USD")),
             Ct);
 
@@ -71,7 +71,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         var response = await client.PostAsJsonAsync(
-            new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}/secure-withdraw", UriKind.Relative),
+            new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId}/secure-withdraw", UriKind.Relative),
             new SecureWithdrawRequest(Money.Create(2000m, "USD"), VerificationCode: "abc"),
             Ct);
 
@@ -83,7 +83,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         var response = await client.PostAsJsonAsync(
-            new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId.Value}/secure-withdraw", UriKind.Relative),
+            new Uri($"/api/accounts/{ShowcaseSeed.AliceCheckingId}/secure-withdraw", UriKind.Relative),
             new SecureWithdrawRequest(Money.Create(2000m, "USD"), VerificationCode: "000000"),
             Ct);
 
@@ -105,7 +105,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         var response = await client.PostAsync(
-            new Uri($"/api/accounts/{ShowcaseSeed.BobCheckingId.Value}/unfreeze", UriKind.Relative),
+            new Uri($"/api/accounts/{ShowcaseSeed.BobCheckingId}/unfreeze", UriKind.Relative),
             content: null,
             Ct);
 

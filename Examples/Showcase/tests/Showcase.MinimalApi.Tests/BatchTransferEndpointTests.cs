@@ -34,7 +34,7 @@ public sealed class BatchTransferEndpointTests : IClassFixture<WebApplicationFac
         Converters = { new JsonStringEnumConverter() },
     };
     private static readonly Uri BatchEndpoint = new(
-        $"/api/transfers/batch/{ShowcaseSeed.AliceCheckingId.Value}",
+        $"/api/transfers/batch/{ShowcaseSeed.AliceCheckingId}",
         UriKind.Relative);
 
     private readonly WebApplicationFactory<Program> _factory;

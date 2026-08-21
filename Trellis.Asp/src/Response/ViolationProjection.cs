@@ -57,7 +57,7 @@ internal static class ViolationProjection
     /// Recovers a parameter name from its single-token pointer, reversing the RFC 6901 §3
     /// escaping. <c>'~1'</c> is unescaped before <c>'~0'</c>, mirroring the escape order.
     /// </summary>
-    private static string ToName(string path)
+    public static string ToName(string path)
     {
         var token = path.Length > 0 && path[0] == '/' ? path[1..] : path;
         return token.Replace("~1", "/", StringComparison.Ordinal)

@@ -27,8 +27,7 @@ public static class BatchTransferEndpoints
                     new SubmitBatchTransfersCommand(fromId, request.Metadata, request.Lines),
                     ct)
                     .ToHttpResponseAsync())
-            .WithScalarValueValidation()
-            .WithInputOrigin(InputLocation.Body);
+            .WithScalarValueValidation();
 
         return routes;
     }

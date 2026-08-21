@@ -324,67 +324,88 @@ public sealed class InputOriginAttribute(InputLocation location) : Attribute;
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `Location` | `InputLocation` | Where this endpoint's otherwise-unlocated violations came from. |
+| `Location` | `InputLocation` | The residual location for this endpoint's otherwise-unlocated violations. |
 
-Declares where an endpoint's unlocated validation failures came from. An MVC action or controller applies it directly as `[InputOrigin(InputLocation.Body)]` (MVC copies both action and controller attributes into endpoint metadata); a Minimal API endpoint or route group calls `WithInputOrigin(InputLocation.Body)`, which adds the same metadata. One declaration type keeps the two hosting models from drifting apart on the wire.
+Overrides where an endpoint's unlocated validation failures are said to have come from. An MVC action or controller applies it directly as `[InputOrigin(InputLocation.Body)]` (MVC copies both action and controller attributes into endpoint metadata); a Minimal API endpoint or route group calls `WithInputOrigin(InputLocation.Body)`, which adds the same metadata. One declaration type keeps the two hosting models from drifting apart on the wire.
 
-Only `Body`, `Query` and `Unspecified` may be declared; `Path` and `Header` throw `ArgumentOutOfRangeException`. There is no evidence yet that a domain producer raises unlocated violations about route or header values, and a declaration nobody can justify is a claim nobody checks.
+Only `Body`, `Query` and `Unspecified` may be declared; `Path` and `Header` throw `ArgumentOutOfRangeException`.
 
-#### The endpoint-declared input origin
+**Most endpoints do not need it** — see below.
+
+#### Locations are derived, not declared
 
 A model binder stamps the parameter it binds, so a route, query or header violation arrives already located. A violation that comes back up from the **domain** does not: an aggregate names the field that failed but cannot know where the value came from, because the same method is reachable from a worker, a message handler, or a test. It therefore emits `InputLocation.Unspecified`, which projects as `unknown` — the producer declining to assert a checkable claim that may be false.
 
-The endpoint is the first place in the pipeline that knows the answer, which is why it is declared there rather than guessed at the boundary:
+The response boundary resolves those from the endpoint's own binding map, which ASP.NET already builds. Nothing is declared and nothing is guessed:
+
+| The violation names… | Read from | Projects as |
+| --- | --- | --- |
+| one of the endpoint's route parameters | its route pattern | `path` |
+| a query parameter the endpoint binds | its API description | `query` |
+| a header parameter the endpoint binds | its API description | `header` |
+| anything else, when the endpoint binds a body | its API description | `body` |
+| anything else, when it binds no body | — | `unknown` |
+
+So `POST /api/accounts/{id}/deposit`, which binds `{id}` from the route and a `DepositRequest` body, resolves a domain violation on `amount` to `{"in": "body", "pointer": "/amount"}` and one on `id` to `{"in": "path", "name": "id"}` — with no annotation on the endpoint.
+
+The last row is what makes the body row safe. `POST /api/accounts/{id}/close` takes no body, so there is nothing to attribute a residual to and `unknown` remains the honest answer.
+
+ApiExplorer reports the same binding map for a controller action and a minimal API endpoint, so the two hosting models cannot disagree about the same request. An application that never registered ApiExplorer derives nothing and falls back to whatever the endpoint declared.
+
+#### Why the body is a residual rather than a lookup
+
+Query and route names are matched directly. The body is not: a body parameter names a *type*, not a set of members, so recovering member names would mean reflecting over the DTO graph — which the AOT-friendly projection path avoids.
+
+That limits the `pointer`, not the `in`. A domain producer may raise a name matching no member of the body it was bound from:
 
 ```csharp
-// Minimal API
-app.MapPost("/api/accounts/{id}/deposit", DepositAsync)
-   .WithInputOrigin(InputLocation.Body);
+// Showcase.Domain — the name raised is the domain parameter…
+Error.InvalidInput.ForField(nameof(interestAmount), "validation.range", ...)
 
-// MVC
-[HttpPost("{id:AccountId}/deposit")]
-[InputOrigin(InputLocation.Body)]
-public Task<ActionResult<AccountResponse>> Deposit(AccountId id, [FromBody] DepositRequest request) => ...
+// Showcase.Application — …and the body member is called something else.
+public sealed record InterestRequest(decimal AnnualRate);
 ```
 
-With that declaration, a domain violation on `amount` projects as `{"in": "body", "pointer": "/amount"}` instead of `{"in": "unknown", "pointer": "/amount"}`.
-
-The declaration only fills a gap; it never overwrites. It applies once at the response boundary, before any projection reads a pointer, so field violations, rule violations, the MVC-shaped `errors` map, and every `Error.Aggregate` child all see the same located pointer. Violations already carrying `Query`, `Path`, `Header` or `Body` pass through untouched — which is what makes it safe on an endpoint like the one above, where `{id}` is bound from the route and stamped by the binder.
-
-Endpoints without a declaration are unchanged: an unlocated violation still projects as `unknown`.
+The emitted pointer `/interestAmount` then addresses nothing. But `"in": "body"` is still correct — the URL does not account for the name and the endpoint binds a body — and an explicit declaration would produce exactly the same pointer. The unresolvable pointer is a property of the producer's naming, not of deriving versus declaring.
 
 #### The nearest declaration wins
 
-A declaration on a controller covers every action on it, and an action that disagrees overrides it by declaring its own. This is not bespoke precedence logic — MVC appends action metadata after controller metadata, and `GetMetadata<T>()` returns the last match, so the nearest declaration is simply the one read. Minimal APIs get the same behaviour from convention order, so a route group's declaration is overridden by an endpoint's.
-
-That is what makes a controller-wide default safe on a mixed controller. Without an override, a `GET` action whose domain rejects a query value it was handed would inherit `Body` and tell the caller their request body was at fault when they sent none:
+Where a declaration *is* used, one on a controller covers every action, and an action that disagrees overrides it by declaring its own. This is not bespoke precedence logic — MVC appends action metadata after controller metadata, and `GetMetadata<T>()` returns the last match, so the nearest declaration is simply the one read. Minimal APIs get the same behaviour from convention order, so a route group's declaration is overridden by an endpoint's.
 
 ```csharp
 [ApiController]
-[InputOrigin(InputLocation.Body)]        // the default for this controller
 public sealed class AccountsController : ControllerBase
 {
-    [HttpGet]
-    [InputOrigin(InputLocation.Query)]   // this action answers for itself
+    [HttpGet]                                // cursor derives as query
     public ActionResult<PagedResponse<AccountResponse>> List([FromQuery] string? cursor) => ...
 
-    [HttpPost("{id:AccountId}/deposit")]  // inherits Body
+    [HttpPost("{id:AccountId}/deposit")]     // amount derives as body
     public Task<ActionResult<AccountResponse>> Deposit(AccountId id, [FromBody] DepositRequest request) => ...
+
+    [HttpPost("{id:AccountId}/reconcile")]
+    [InputOrigin(InputLocation.Unspecified)] // binds a body, but its violations describe neither
+    public Task<ActionResult<AccountResponse>> Reconcile(AccountId id, [FromBody] ReconcileRequest request) => ...
 }
 ```
 
-A malformed cursor then reports the query string that carried it:
+The Showcase carries no declaration at all, in either hosting model. That is the intended state for an ordinary API.
 
-```jsonc
-// GET /api/accounts?cursor=not-a-cursor
-{ "code": "cursor.malformed", "location": { "in": "query", "name": "cursor" } }
+#### Limits
+
+A query or body location applies only to a pointer naming exactly one top-level member. A document pointer like `/lines/0/amount` addresses a body member either way, and `/employeeId/0/name` is not mistaken for a route parameter — no URL can carry a document.
+
+Matching is case-insensitive, as routing is.
+
+Derivation gets one case wrong, and it is the main reason to reach for an override: a body member sharing a name with a route or query parameter — `PUT /employee/{id}` carrying `{"id": …}` — where the URL is evidence about a different value of the same name.
+
+One further limit is specific to minimal APIs. A controller action is identified by its `ActionDescriptor` instance, but a minimal API endpoint is identified only by its handler method, and one method can be mapped to several routes:
+
+```csharp
+app.MapGet("/items/{id}", Handle);   // id is a route parameter here
+app.MapGet("/items/search", Handle); // …and a query parameter here
 ```
 
-Note that a query location is addressed by `name`, not `pointer` — the same shape the model binder emits, because a JSON Pointer addresses a document and a query string is not one.
-
-Declaring `InputLocation.Unspecified` opts an endpoint out of an enclosing declaration, restoring the default `unknown`. Use it for an action that reads only route values, where neither `body` nor `query` would be true.
-
-A query declaration applies only to a pointer naming one top-level member. A nested pointer such as `/lines/0/amount` addresses a document no query string can carry, so it is left unlocated rather than promoted into a shape the model binder never produces.
+The route template and HTTP method disambiguate those. When they cannot, no evidence is derived and the violation falls back to the declared residual — the same answer as an application without ApiExplorer, rather than another route's binding map.
 
 ### `FieldViolationProblemDetail`
 

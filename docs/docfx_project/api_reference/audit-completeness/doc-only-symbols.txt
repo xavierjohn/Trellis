@@ -38,6 +38,7 @@ LineItem
 IOrderRepository
 IRepository
 CreateCustomerRequest
+DepositRequest
 CustomerProfileDto
 CustomerEmail
 TenantScopedCommand
