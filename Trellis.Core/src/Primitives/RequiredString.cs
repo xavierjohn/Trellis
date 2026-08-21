@@ -342,7 +342,7 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     /// <c>U+00AD</c> — note that the same argument yields opposite answers:
     /// </para>
     /// <code>
-    /// var name = ProductName.TryCreate("cooper\u00ADative").Value;
+    /// var name = ProductName.Create("cooper\u00ADative");
     /// name.EndsWith("rative");  // true  — culture-sensitive, ignores the soft hyphen
     /// name.Contains("rative");  // false — ordinal, the soft hyphen is a real character
     /// name.StartsWith("coopera"); // true, for the same reason as EndsWith
