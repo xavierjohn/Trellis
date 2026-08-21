@@ -355,6 +355,107 @@ public class ResponseFailureWriterInputOriginTests
     }
 
     [Fact]
+    public void AHandlerMappedToTwoMethodsOnOneRoute_ResolvesTheMethodBeingServed()
+    {
+        var context = NewContextWithSharedRoutes(
+            servedRoute: "items/{id}",
+            servedMethod: "POST",
+            described:
+            [
+                ("items/{id}", "GET", "note", BindingSource.Query),
+                ("items/{id}", "POST", "request", BindingSource.Body),
+            ]);
+
+        var promoted = (Error.InvalidInput)InputOriginPromotion.Apply(
+            context,
+            Error.InvalidInput.ForField("note", "note.invalid"));
+
+        promoted.Fields.Items[0].Field.In.Should().Be(
+            InputLocation.Body,
+            "the same template is mapped twice, so the HTTP method decides which binding map applies");
+    }
+
+    [Fact]
+    public void TwoDescriptionsSharingRouteAndMethod_DeriveNothing()
+    {
+        var context = NewContextWithSharedRoutes(
+            servedRoute: "items/{id}",
+            servedMethod: "POST",
+            described:
+            [
+                ("items/{id}", "POST", "note", BindingSource.Query),
+                ("items/{id}", "POST", "request", BindingSource.Body),
+            ]);
+
+        var promoted = (Error.InvalidInput)InputOriginPromotion.Apply(
+            context,
+            Error.InvalidInput.ForField("note", "note.invalid"));
+
+        promoted.Fields.Items[0].Field.In.Should().Be(
+            InputLocation.Unspecified,
+            "route and method cannot separate the two, so no evidence is derived rather than a guess");
+    }
+
+    [Fact]
+    public void AFormBoundEndpoint_CountsAsBindingABody()
+    {
+        var context = NewContextWithSharedRoutes(
+            servedRoute: "items",
+            servedMethod: "POST",
+            described: [("items", "POST", "upload", BindingSource.Form)]);
+
+        var promoted = (Error.InvalidInput)InputOriginPromotion.Apply(
+            context,
+            Error.InvalidInput.ForField("amount", "validation.range"));
+
+        promoted.Fields.Items[0].Field.In.Should().Be(
+            InputLocation.Body,
+            "a form post carries its values in the request body");
+    }
+
+    private static DefaultHttpContext NewContextWithSharedRoutes(
+        string servedRoute,
+        string servedMethod,
+        (string Route, string Method, string Parameter, BindingSource Source)[] described)
+    {
+        var handler = typeof(ResponseFailureWriterInputOriginTests)
+            .GetMethod(nameof(DescribedHandler), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var descriptions = new ApiDescription[described.Length];
+        for (var i = 0; i < described.Length; i++)
+        {
+            var description = new ApiDescription
+            {
+                RelativePath = described[i].Route,
+                HttpMethod = described[i].Method,
+                ActionDescriptor = new ActionDescriptor { EndpointMetadata = [handler] },
+            };
+
+            description.ParameterDescriptions.Add(new ApiParameterDescription
+            {
+                Name = described[i].Parameter,
+                Source = described[i].Source,
+            });
+
+            descriptions[i] = description;
+        }
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IApiDescriptionGroupCollectionProvider>(new StubApiDescriptionProvider(descriptions));
+
+        var context = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        context.Response.Body = new MemoryStream();
+        context.Features.Set<IEndpointFeature>(new StubEndpointFeature(new RouteEndpoint(
+            _ => Task.CompletedTask,
+            RoutePatternFactory.Parse(servedRoute),
+            0,
+            new EndpointMetadataCollection(new HttpMethodMetadata([servedMethod]), handler),
+            "test")));
+        return context;
+    }
+
+    [Fact]
     public void TheNearestDeclarationWins()
     {
         var context = NewContext(new InputOriginAttribute(InputLocation.Body), new InputOriginAttribute(InputLocation.Query));
