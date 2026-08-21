@@ -24,13 +24,13 @@ using Trellis.Asp.Validation;
 /// </summary>
 public class JsonValidationPathRebaseTests
 {
-    private const string LegacyCode = ValidationCodes.Unspecified;
+    private const string UnspecifiedCode = ValidationCodes.Unspecified;
 
     private static TrellisJsonValidationException CompositeRelativeFailure() =>
         new("Postal code is not valid for the country.")
         {
             InvalidInput = new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty("postalCode"), LegacyCode)
+                new FieldViolation(InputPointer.ForProperty("postalCode"), UnspecifiedCode)
                 {
                     Detail = "Postal code is not valid for the country.",
                 })),
@@ -100,7 +100,7 @@ public class JsonValidationPathRebaseTests
         var failure = new TrellisJsonValidationException("Nested members are not valid.")
         {
             InvalidInput = new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty("members"), LegacyCode))),
+                new FieldViolation(InputPointer.ForProperty("members"), UnspecifiedCode))),
         };
 
         var rebased = JsonValidationPathRebase.Rebase(failure);
@@ -134,7 +134,7 @@ public class JsonValidationPathRebaseTests
         var failure = new TrellisJsonValidationException("Bad query parameter.")
         {
             InvalidInput = new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForQuery("page"), LegacyCode))),
+                new FieldViolation(InputPointer.ForQuery("page"), UnspecifiedCode))),
         };
 
         var rebased = JsonValidationPathRebase.Rebase(failure);
@@ -155,7 +155,7 @@ public class JsonValidationPathRebaseTests
             InvalidInput = new Error.InvalidInput(
                 EquatableArray<FieldViolation>.Empty,
                 EquatableArray.Create(new RuleViolation(
-                    LegacyCode,
+                    UnspecifiedCode,
                     ImmutableArray.Create(
                         InputPointer.ForProperty("postalCode"),
                         InputPointer.ForProperty("region"))))),
