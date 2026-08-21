@@ -126,4 +126,5 @@ FailureIfAsync
 # resolve against FluentValidation, not a Trellis assembly, so the auditor cannot vouch for them.
 ExactLength
 ScalePrecision
+ScalePrecisionValidator
 ComparisonProperty

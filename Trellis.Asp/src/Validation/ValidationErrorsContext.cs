@@ -139,10 +139,16 @@ public static class ValidationErrorsContext
     /// If no scope is active, this method is a no-op. Called by the framework's reflection-mode
     /// converters and by AOT-generated scalar value converters to surface deserialization
     /// failures as 422 responses via <see cref="ScalarValueValidationMiddleware"/>.
+    /// <para>
+    /// The violation carries the neutral sentinel code, because this overload accepts a message and
+    /// no code — there is nothing truthful to report. To emit a real reason code, build the
+    /// violation yourself and use <see cref="AddError(Error.InvalidInput)"/>, which preserves the
+    /// code, args, and detail unchanged.
+    /// </para>
     /// </remarks>
     public static void AddError(string fieldName, string errorMessage) =>
         s_current.Value?.AddFieldViolation(
-            new FieldViolation(new InputPointer(BuildPointer(fieldName)), "validation.error") { Detail = errorMessage });
+            new FieldViolation(new InputPointer(BuildPointer(fieldName)), ValidationCodes.Unspecified) { Detail = errorMessage });
 
     /// <summary>
     /// Adds all field violations and rule violations from an existing <see cref="Error.InvalidInput"/> to the current scope.
@@ -170,11 +176,12 @@ public static class ValidationErrorsContext
     /// <remarks>
     /// If no scope is active, this method is a no-op. Unlike <see cref="AddError(string, string)"/>,
     /// this asserts that the value came from the request body, so the resulting violation is
-    /// located at <see cref="InputLocation.Body"/>.
+    /// located at <see cref="InputLocation.Body"/>. As with that overload, the violation carries the
+    /// neutral sentinel code because no code is supplied.
     /// </remarks>
     public static void AddBodyError(string fieldName, string errorMessage) =>
         s_current.Value?.AddFieldViolation(
-            new FieldViolation(new InputPointer(BuildPointer(fieldName), InputLocation.Body), "validation.error")
+            new FieldViolation(new InputPointer(BuildPointer(fieldName), InputLocation.Body), ValidationCodes.Unspecified)
             {
                 Detail = errorMessage,
             });

@@ -29,9 +29,9 @@ public partial class Slug : ScalarValueObject<Slug, string>, IScalarValue<Slug, 
     private Slug(string value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "slug").
-    private static Result<Slug> Invalid(string? fieldName, string message) =>
+    private static Result<Slug> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<Slug>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("slug"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("slug"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a slug.
@@ -44,11 +44,11 @@ public partial class Slug : ScalarValueObject<Slug, string>, IScalarValue<Slug, 
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Slug) + '.' + nameof(TryCreate));
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Slug is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Slug is required.");
         var trimmed = value.Trim();
         // lower-case, numbers, hyphens, single hyphen separators
         if (!SlugRegex().IsMatch(trimmed))
-            return Invalid(fieldName, "Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
+            return Invalid(fieldName, ValidationCodes.StringSlug, "Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
         return Result.Ok(new Slug(trimmed));
     }
 

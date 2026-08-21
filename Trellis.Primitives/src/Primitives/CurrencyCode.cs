@@ -39,9 +39,9 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
     private CurrencyCode(string value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "currencyCode").
-    private static Result<CurrencyCode> Invalid(string? fieldName, string message) =>
+    private static Result<CurrencyCode> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<CurrencyCode>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("currencyCode"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("currencyCode"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a currency code from a 3-letter ISO 4217 code.
@@ -55,11 +55,11 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(CurrencyCode) + '.' + nameof(TryCreate));
 
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Currency code is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Currency code is required.");
 
         var code = value.Trim();
         if (code.Length != 3 || !code.All(char.IsAsciiLetter))
-            return Invalid(fieldName, "Currency code must be a 3-letter ISO 4217 code.");
+            return Invalid(fieldName, ValidationCodes.StringCurrencyCode, "Currency code must be a 3-letter ISO 4217 code.");
 
         var upper = code.ToUpperInvariant();
         return Result.Ok(new CurrencyCode(upper));

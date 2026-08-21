@@ -1,4 +1,4 @@
----
+﻿---
 title: Pagination
 package: Trellis.Core
 topics: [pagination, cursors, asp, results]
@@ -140,7 +140,7 @@ PageSize.TryCreate(1000)
 ```
 
 `TryCreate` returns `Result.Fail<PageSize>` with `Error.InvalidInput` (field =
-`fieldName ?? "pageSize"`, reason code `"page_size.out_of_range"`) on any
+`fieldName ?? "pageSize"`, reason code `"page-size.out-of-range"`) on any
 non-positive value or any value greater than `max`. Pick whichever fits your
 contract; both compose cleanly with `Page<T>`.
 
@@ -272,7 +272,7 @@ all survive the projection. Use it freely at the application/transport boundary.
 | Failure | Result | Wire |
 | --- | --- | --- |
 | Malformed cursor token (bad base64, bad payload) | `Error.InvalidInput.ForField("cursor", "cursor.malformed", …)` | `422 Unprocessable Content` |
-| Out-of-range `limit` via `PageSize.TryCreate` | `Error.InvalidInput.ForField("pageSize", "page_size.out_of_range", …)` | `422 Unprocessable Content` |
+| Out-of-range `limit` via `PageSize.TryCreate` | `Error.InvalidInput.ForField("pageSize", "page-size.out-of-range", …)` | `422 Unprocessable Content` |
 | Storage/timeout/connectivity | Whatever your repository chooses to surface (often `Error.Unavailable`) | `503` / `500` per `Trellis.Asp` mapping |
 | Success | `Result.Ok(page)` | `200 OK` + body envelope + `Link` header |
 

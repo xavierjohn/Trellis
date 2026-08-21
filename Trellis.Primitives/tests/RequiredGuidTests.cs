@@ -140,8 +140,8 @@ public class RequiredGuidTests
     }
 
     [Theory]
-    [InlineData("")]
     [InlineData("Invalid")]
+    [InlineData("12345")]
     public void Cannot_create_RequiredGuid_from_invalid_string(string value)
     {
         // Act
@@ -152,8 +152,25 @@ public class RequiredGuidTests
         myGuidResult.UnwrapError().Should().BeOfType<Error.InvalidInput>();
         Error.InvalidInput ve = (Error.InvalidInput)myGuidResult.UnwrapError();
         ve.Fields[0].Field.Path.Should().Be("/employeeId");
+        ve.Fields[0].ReasonCode.Should().Be(ValidationCodes.FormatGuid);
         ve.Fields[0].Detail.Should().Be("Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)");
 
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Cannot_create_RequiredGuid_from_blank_string(string value)
+    {
+        // A blank string is present but empty, which is a different failure from a malformed Guid:
+        // the caller supplied the parameter, they just left it blank. Reporting the Guid format
+        // would tell them to fix a shape they never attempted.
+        var myGuidResult = EmployeeId.TryCreate(value);
+
+        myGuidResult.IsFailure.Should().BeTrue();
+        Error.InvalidInput ve = (Error.InvalidInput)myGuidResult.UnwrapError();
+        ve.Fields[0].Field.Path.Should().Be("/employeeId");
+        ve.Fields[0].ReasonCode.Should().Be(ValidationCodes.ValueNotEmpty);
     }
 
     [Fact]

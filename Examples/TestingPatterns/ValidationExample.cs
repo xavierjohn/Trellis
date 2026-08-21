@@ -30,9 +30,9 @@ public class ValidationExample
     {
         // Arrange
         ImmutableArray<FieldViolation> expected = [
-            new(InputPointer.ForProperty("lastName"), "validation.error") { Detail = "Last Name cannot be empty." },
-            new(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email address is not valid." },
-            new(InputPointer.ForProperty("updatedAt"), "validation.error") { Detail = "updateAt cannot be less than createdAt" },
+            new(InputPointer.ForProperty("lastName"), ValidationCodes.ValueNotEmpty) { Detail = "Last Name cannot be empty." },
+            new(InputPointer.ForProperty("email"), ValidationCodes.StringEmail) { Detail = "Email address is not valid." },
+            new(InputPointer.ForProperty("updatedAt"), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "updateAt cannot be less than createdAt" },
         ];
 
         var createdAt = DateTime.UtcNow;
@@ -42,7 +42,7 @@ public class ValidationExample
         var actual = FirstName.TryCreate("Xavier")
             .Combine(LastName.TryCreate(string.Empty))
             .Combine(EmailAddress.TryCreate("xavier @ somewhereelse.com"))
-            .Combine(Ensure(createdAt <= updatedAt, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), "validation.error") { Detail = "updateAt cannot be less than createdAt" }))))
+            .Combine(Ensure(createdAt <= updatedAt, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "updateAt cannot be less than createdAt" }))))
             .Bind((firstName, lastName, email, _) =>
             {
                 true.Should().BeFalse("this code should not get executed");

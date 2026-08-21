@@ -33,24 +33,21 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     /// <inheritdoc />
     public override bool HandleNull => true;
 
-    /// <summary>
-    /// The placeholder reason code carried by this converter's violations; normalized to a
-    /// neutral sentinel at the boundary.
-    /// </summary>
-    private const string LegacyUnspecifiedCode = "validation.error";
-
     /// <inheritdoc />
     public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
             throw Invalid(
+                ValidationCodes.ValueNotNull,
                 $"Cannot deserialize null into RequiredEnum<{typeof(TRequiredEnum).Name}>. " +
                 "A required enum value must be a non-null string.");
 
         return reader.TokenType switch
         {
             JsonTokenType.String => ReadFromString(ref reader),
-            _ => throw Invalid($"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
+            _ => throw Invalid(
+                ValidationCodes.FormatConversion,
+                $"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
         };
     }
 
@@ -68,17 +65,25 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
         var name = reader.GetString();
         return TRequiredEnum.TryCreate(name).Match(
             onSuccess: value => value,
-            onFailure: _ =>
+            onFailure: error =>
             {
                 var validValues = string.Join(", ", RequiredEnum<TRequiredEnum>.GetAll()
                     .Select(value => value.Value)
                     .OrderBy(value => value, StringComparer.Ordinal));
 
+                // The message is this converter's, but the code is the producer's: TryCreate already
+                // separates absent from blank from not-a-member, and overwriting all three with
+                // `enum.name-undefined` would make the same blank value report a different code
+                // through JSON than through query binding or a direct TryCreate.
                 throw Invalid(
+                    ReasonCodeOf(error, ValidationCodes.EnumNameUndefined),
                     $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'. " +
                     $"Valid values are: {validValues}.");
             });
     }
+
+    private static string ReasonCodeOf(Error error, string fallback) =>
+        error is Error.InvalidInput { Fields.Length: > 0 } invalid ? invalid.Fields[0].ReasonCode : fallback;
 
     /// <summary>
     /// Builds a structured validation failure carrying the converter's own curated message.
@@ -101,10 +106,10 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     /// 422 through the composite converter, so the two producers now agree.
     /// </para>
     /// </remarks>
-    private static TrellisJsonValidationException Invalid(string message) =>
+    private static TrellisJsonValidationException Invalid(string reasonCode, string message) =>
         new(message)
         {
-            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, LegacyUnspecifiedCode, message) with
+            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, reasonCode, message) with
             {
                 Detail = message,
             },

@@ -220,22 +220,24 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
     public static Result<EmailAddress> TryCreate(string? value, string? fieldName = null)
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(EmailAddress) + '.' + nameof(TryCreate));
-        if (value is not null)
-        {
-            // Normalize input: trim whitespace
-            var trimmed = value.Trim();
+        var field = fieldName.NormalizeFieldName("email");
 
-            if (trimmed.Length is > 0 and <= MaxLength && HasValidLocalPartLength(trimmed))
-            {
-                var isEmail = EmailRegEx().IsMatch(trimmed);
-                if (isEmail)
-                {
-                    return Result.Ok(new EmailAddress(trimmed));
-                }
-            }
-        }
+        // Absent, blank, and malformed are three different failures. Reporting `string.email` for a
+        // value that was never supplied tells the caller to fix an address they did not write, and
+        // leaves them unable to distinguish "you missed this field" from "this address is wrong".
+        if (value is null)
+            return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotNull, "Email address is required."));
 
-        return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(fieldName.NormalizeFieldName("email"), "validation.error", "Email address is not valid."));
+        // Normalize input: trim whitespace
+        var trimmed = value.Trim();
+
+        if (trimmed.Length == 0)
+            return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotEmpty, "Email address is required."));
+
+        if (trimmed.Length <= MaxLength && HasValidLocalPartLength(trimmed) && EmailRegEx().IsMatch(trimmed))
+            return Result.Ok(new EmailAddress(trimmed));
+
+        return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field, ValidationCodes.StringEmail, "Email address is not valid."));
     }
 
     /// <summary>

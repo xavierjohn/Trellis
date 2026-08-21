@@ -96,7 +96,7 @@ The full case set and slug-change table is in the [Error union DDD realignment](
 | `result.Value` at a persistence DTO → entity rehydration seam | `result.GetValueOrThrow("context message")` — see [cookbook Recipe 30](docs/docfx_project/api_reference/trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
 | `result.Value` in test arrangement | `result.Unwrap()` (from `Trellis.Testing`, test-only) |
 
-`GetValueOrThrow(string? errorMessage = null)` ships in `Trellis.Core` and mirrors the existing `Maybe<T>.GetValueOrThrow(string? errorMessage = null)` precedent. It throws `InvalidOperationException` on failure, which bubbles through `ExceptionBehavior` to a wire `new Error.Unexpected("unhandled_exception", faultId)` (HTTP 500) with the row-identifying message in operator-side logs.
+`GetValueOrThrow(string? errorMessage = null)` ships in `Trellis.Core` and mirrors the existing `Maybe<T>.GetValueOrThrow(string? errorMessage = null)` precedent. It throws `InvalidOperationException` on failure, which bubbles through `ExceptionBehavior` to a wire `new Error.Unexpected("unhandled-exception", faultId)` (HTTP 500) with the row-identifying message in operator-side logs.
 
 Implicit `T → Result<T>` is also gone. Factory methods that previously returned a bare value now require an explicit `Result.Ok(...)` wrap:
 

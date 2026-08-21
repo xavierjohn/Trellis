@@ -9,8 +9,8 @@ using Trellis.Testing;
 /// <remarks>
 /// <para>
 /// <c>default(Result)</c> and <c>default(Result&lt;T&gt;)</c> must be observationally
-/// equivalent to <c>Result.Fail(new Error.Unexpected("default_initialized"))</c> /
-/// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default_initialized"))</c>. This means every failure-facing API
+/// equivalent to <c>Result.Fail(new Error.Unexpected("default-initialized"))</c> /
+/// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default-initialized"))</c>. This means every failure-facing API
 /// (<see cref="Result.Error"/>, <c>TryGetError</c>, <c>Deconstruct</c>, <c>Equals</c>,
 /// <c>GetHashCode</c>, <c>ToString</c>, <c>AsUnit</c>) must route through the same
 /// effective-error helper so that callers cannot distinguish the two forms.
@@ -18,7 +18,7 @@ using Trellis.Testing;
 /// </remarks>
 public class DefaultStateInvariantTests
 {
-    private static Error.Unexpected MakeSentinel() => new Error.Unexpected("default_initialized")
+    private static Error.Unexpected MakeSentinel() => new Error.Unexpected("default-initialized")
     {
         Detail = "Result was default-initialized; use Result.Ok(...) or Result.Fail(...) instead.",
     };
@@ -41,7 +41,7 @@ public class DefaultStateInvariantTests
 
         r.Error!.Should().NotBeNull();
         r.Error!.Should().BeOfType<Error.Unexpected>();
-        ((Error.Unexpected)r.Error!).ReasonCode.Should().Be("default_initialized");
+        ((Error.Unexpected)r.Error!).ReasonCode.Should().Be("default-initialized");
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class DefaultStateInvariantTests
 
         r.Error!.Should().NotBeNull();
         r.Error!.Should().BeOfType<Error.Unexpected>();
-        ((Error.Unexpected)r.Error!).ReasonCode.Should().Be("default_initialized");
+        ((Error.Unexpected)r.Error!).ReasonCode.Should().Be("default-initialized");
     }
 
     [Fact]

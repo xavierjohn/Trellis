@@ -220,7 +220,7 @@ using System.Diagnostics;
 ///     public static Result&lt;ProductSKU&gt; TryCreateWithValidation(string? value) =>
 ///         TryCreate(value) // Generated: validates non-empty + length &lt;= 20
 ///             .Ensure(sku => sku.Value.All(c => char.IsLetterOrDigit(c) || c == '-'),
-///                    new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("sku"), "validation.error") { Detail = "SKU can only contain letters, digits, and hyphens" })));
+///                    new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("sku"), ValidationCodes.StringPattern) { Detail = "SKU can only contain letters, digits, and hyphens" })));
 /// }
 /// 
 /// // Usage

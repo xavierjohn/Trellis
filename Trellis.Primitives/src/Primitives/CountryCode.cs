@@ -27,9 +27,9 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
     private CountryCode(string value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "countryCode").
-    private static Result<CountryCode> Invalid(string? fieldName, string message) =>
+    private static Result<CountryCode> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<CountryCode>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("countryCode"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("countryCode"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a country code.
@@ -42,10 +42,10 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(CountryCode) + '.' + nameof(TryCreate));
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Country code is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Country code is required.");
         var code = value.Trim();
         if (code.Length != 2 || !code.All(char.IsAsciiLetter))
-            return Invalid(fieldName, "Country code must be an ISO 3166-1 alpha-2 code.");
+            return Invalid(fieldName, ValidationCodes.StringCountryCode, "Country code must be an ISO 3166-1 alpha-2 code.");
         return Result.Ok(new CountryCode(code.ToUpperInvariant()));
     }
 

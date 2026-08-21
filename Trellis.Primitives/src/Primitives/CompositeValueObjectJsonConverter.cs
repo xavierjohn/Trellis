@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
@@ -62,22 +63,16 @@ T> : JsonConverter<T>
     private static CompositeMetadata Metadata => LazyMetadata.Value;
 
     /// <summary>
-    /// The placeholder reason code carried by every violation this converter mints. It predates
-    /// the code vocabulary and is normalized to a neutral sentinel at the boundary.
-    /// </summary>
-    private const string LegacyUnspecifiedCode = "validation.error";
-
-    /// <summary>
     /// The code for a property explicitly present as JSON <c>null</c>. Distinct from
     /// <see cref="ConversionFailureCode"/> because a null is a nullability failure, not a format
-    /// failure — the same condition as a missing property. Both resolve to the placeholder today.
+    /// failure — the same condition as a missing property.
     /// </summary>
-    private const string NullValueCode = LegacyUnspecifiedCode;
+    private const string NullValueCode = ValidationCodes.ValueNotNull;
 
     /// <summary>
     /// The code for a value whose JSON token cannot be read as the target primitive.
     /// </summary>
-    private const string ConversionFailureCode = LegacyUnspecifiedCode;
+    private const string ConversionFailureCode = ValidationCodes.FormatConversion;
 
     /// <inheritdoc />
     public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -134,7 +129,7 @@ T> : JsonConverter<T>
                 InvalidInput = new Error.InvalidInput(EquatableArray.Create(
                     missing.Select(name => new FieldViolation(
                         InputPointer.ForProperty(name),
-                        LegacyUnspecifiedCode,
+                        NullValueCode,
                         Detail: $"Required property '{name}' is missing.")).ToArray()))
                 {
                     Detail = message,
@@ -179,6 +174,13 @@ T> : JsonConverter<T>
         // ref struct. Get* does not advance the reader, so this is still the offending token.
         var tokenType = reader.TokenType;
 
+        // A blank string token is absence, not a shape the caller got wrong, so it must not reach a
+        // `format.*` code — the same rule every other producer applies before parsing. Captured here
+        // for the same reason as tokenType: the catch clauses below cannot touch the ref struct.
+        var isBlankString = primitiveType != typeof(string)
+            && tokenType == JsonTokenType.String
+            && string.IsNullOrWhiteSpace(reader.GetString());
+
         try
         {
             if (primitiveType == typeof(string))
@@ -186,7 +188,8 @@ T> : JsonConverter<T>
                 if (reader.TokenType == JsonTokenType.Null)
                     throw Invalid(
                         $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.",
-                        InputPointer.ForProperty(jsonName));
+                        InputPointer.ForProperty(jsonName),
+                        NullValueCode);
 
                 return reader.GetString();
             }
@@ -216,9 +219,17 @@ T> : JsonConverter<T>
         }
         catch (FormatException)
         {
+            if (isBlankString)
+                throw Invalid(
+                    $"Property '{jsonName}' is required.",
+                    InputPointer.ForProperty(jsonName),
+                    ValidationCodes.ValueNotEmpty);
+
             throw Invalid(
                 $"Property '{jsonName}' is not a valid {DescribePrimitive(primitiveType)}.",
-                InputPointer.ForProperty(jsonName));
+                InputPointer.ForProperty(jsonName),
+                FormatCodeFor(primitiveType),
+                FormatArgsFor(primitiveType));
         }
         catch (InvalidOperationException)
         {
@@ -226,11 +237,15 @@ T> : JsonConverter<T>
             // genuinely wrong token type, so the two are separated here rather than downstream.
             // A property explicitly present as `null` is a nullability failure, not a format
             // failure — the same condition as the missing-property case above — and the two
-            // deserve different reason codes. They share one today only because this change
-            // deliberately makes no code decisions; the branch exists so that later change is a
-            // one-line edit rather than a rediscovery of this distinction.
+            // get different reason codes accordingly.
             var message = $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.";
-            var reasonCode = tokenType == JsonTokenType.Null ? NullValueCode : ConversionFailureCode;
+
+            var reasonCode = tokenType switch
+            {
+                JsonTokenType.Null => NullValueCode,
+                _ when isBlankString => ValidationCodes.ValueNotEmpty,
+                _ => ConversionFailureCode,
+            };
             throw Invalid(message, InputPointer.ForProperty(jsonName), reasonCode);
         }
 
@@ -248,16 +263,38 @@ T> : JsonConverter<T>
     /// called it does, and re-roots the violation on the way out.
     /// </remarks>
     private static TrellisJsonValidationException Invalid(string message, InputPointer pointer) =>
-        Invalid(message, pointer, LegacyUnspecifiedCode);
+        Invalid(message, pointer, ConversionFailureCode);
 
     private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode) =>
+        Invalid(message, pointer, reasonCode, null);
+
+    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode, ImmutableDictionary<string, string>? args) =>
         new(message)
         {
-            InvalidInput = Error.InvalidInput.ForField(pointer, reasonCode, message) with
+            InvalidInput = Error.InvalidInput.ForField(pointer, reasonCode, args, message) with
             {
                 Detail = message,
             },
         };
+
+    // A byte is the one integer whose bounds a client cannot infer from the code alone, and the
+    // model binder already reports them for the same failure. Without this the same out-of-range
+    // value would carry the bounds when it arrived as a query parameter and lose them when it
+    // arrived nested in a JSON object.
+    private static ImmutableDictionary<string, string> ByteRangeArgs { get; } = ValidationArgs.Of("min", "0", "max", "255");
+
+    private static ImmutableDictionary<string, string>? FormatArgsFor(Type primitiveType) =>
+        primitiveType == typeof(byte) ? ByteRangeArgs : null;
+
+    /// <summary>
+    /// Maps a target primitive to the <c>format.*</c> code for "this token could not be read as
+    /// that type", so a composite property reports the same code a top-level scalar of the same
+    /// type would. Producer independence is the point: a client keying on the code must not have to
+    /// know whether the value arrived nested or standalone, which is why the mapping is
+    /// <see cref="ValidationCodes.FormatCodeFor"/> rather than a table local to this converter.
+    /// </summary>
+    private static string FormatCodeFor(Type primitiveType) =>
+        ValidationCodes.FormatCodeFor(primitiveType);
 
     private static string DescribePrimitive(Type primitiveType)
     {

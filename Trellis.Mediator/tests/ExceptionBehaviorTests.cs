@@ -42,7 +42,7 @@ public class ExceptionBehaviorTests
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         var error = result.UnwrapError().Should().BeOfType<Error.Unexpected>().Subject;
-        error.ReasonCode.Should().Be("unhandled_exception");
+        error.ReasonCode.Should().Be("unhandled-exception");
         error.FaultId.Should().NotBeNullOrWhiteSpace();
         Guid.TryParseExact(error.FaultId!, "N", out _).Should().BeTrue();
     }

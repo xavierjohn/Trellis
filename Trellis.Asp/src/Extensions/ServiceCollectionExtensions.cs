@@ -225,7 +225,7 @@ public static class ServiceCollectionExtensions
                     if (ValidationErrorsContext.Current is not null
                         && !HasExistingErrorForField(name))
                     {
-                        ValidationErrorsContext.AddBodyError(name, $"'{name}' is required.");
+                        ValidationErrorsContext.AddBodyError(name, ValidationCodes.ValueNotNull, $"'{name}' is required.");
                     }
                 }
             };

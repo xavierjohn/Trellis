@@ -168,9 +168,9 @@ public static class HttpResponseExtensions
 
         Error error = statusCode switch
         {
-            HttpStatusCode.BadRequest => Error.InvalidInput.ForRule("http.bad_request"),
+            HttpStatusCode.BadRequest => Error.InvalidInput.ForRule(ValidationCodes.HttpBadRequest),
             HttpStatusCode.Unauthorized => new Error.AuthenticationRequired(),
-            HttpStatusCode.Forbidden => new Error.Forbidden("http.forbidden"),
+            HttpStatusCode.Forbidden => new Error.Forbidden(ValidationCodes.HttpForbidden),
             HttpStatusCode.NotFound => new Error.NotFound(resource),
             // RFC 9110 §15.5.6 says a 405 response MUST include the Allow header. When the
             // upstream is non-conforming and omits it, fall through to InternalServerError
@@ -179,7 +179,7 @@ public static class HttpResponseExtensions
             HttpStatusCode.MethodNotAllowed when ExtractAllow(response) is { IsEmpty: false } allow
                 => new Error.TransportFault(new HttpError.MethodNotAllowed(allow)),
             HttpStatusCode.NotAcceptable => new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty)),
-            HttpStatusCode.Conflict => new Error.Conflict(null, "http.conflict"),
+            HttpStatusCode.Conflict => new Error.Conflict(null, ValidationCodes.HttpConflict),
             HttpStatusCode.Gone => new Error.Gone(resource),
             HttpStatusCode.PreconditionFailed => new Error.TransportFault(new HttpError.PreconditionFailed(resource, PreconditionKind.IfMatch)),
             HttpStatusCode.RequestEntityTooLarge => new Error.TransportFault(new HttpError.ContentTooLarge()),
@@ -195,7 +195,7 @@ public static class HttpResponseExtensions
             HttpStatusCode.RequestedRangeNotSatisfiable
                 when response.Content?.Headers.ContentRange is { Length: { } length } cr
                 => new Error.TransportFault(new HttpError.RangeNotSatisfiable(length, cr.Unit ?? "bytes")),
-            HttpStatusCode.UnprocessableEntity => Error.InvalidInput.ForRule("http.unprocessable_content"),
+            HttpStatusCode.UnprocessableEntity => Error.InvalidInput.ForRule(ValidationCodes.HttpUnprocessableContent),
             (HttpStatusCode)428 => new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch)),
             (HttpStatusCode)429 => new Error.RateLimited(ExtractRetryAdvice(response)),
             HttpStatusCode.NotImplemented => new Error.Unexpected("not_implemented"),

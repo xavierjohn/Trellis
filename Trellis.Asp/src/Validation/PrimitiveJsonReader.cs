@@ -22,6 +22,20 @@ internal static class PrimitiveJsonReader
     {
         value = default;
 
+        // A blank string token never became the target scalar, but neither did the caller attempt a
+        // shape the `format.*` namespace names: they sent nothing. Classified before the typed read
+        // so a JSON body agrees with query binding, which rejects blank before parsing too.
+        if (typeof(TPrimitive) != typeof(string)
+            && reader.TokenType == JsonTokenType.String
+            && string.IsNullOrWhiteSpace(reader.GetString()))
+        {
+            ValidationErrorsContext.AddBodyError(
+                fieldName,
+                ValidationCodes.ValueNotEmpty,
+                $"'{fieldName}' is required.");
+            return false;
+        }
+
         try
         {
             if (TryReadKnownPrimitive(ref reader, out value))
@@ -29,10 +43,18 @@ internal static class PrimitiveJsonReader
         }
         catch (Exception ex) when (ex is FormatException or InvalidOperationException)
         {
-            ValidationErrorsContext.AddBodyError(fieldName, $"'{fieldName}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+            // The same code a query-bound scalar of this type would report. A JSON body that said
+            // `error.unspecified` here would make the wire answer depend on where the value arrived.
+            ValidationErrorsContext.AddBodyError(
+                fieldName,
+                ValidationCodes.FormatCodeFor(typeof(TPrimitive)),
+                $"'{fieldName}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
             return false;
         }
 
+        // An unsupported primitive type is a configuration defect in the consuming application, not
+        // a fault in the submitted document, so it keeps the neutral sentinel: there is no rule the
+        // caller could satisfy by sending different input.
         ValidationErrorsContext.AddBodyError(
             fieldName,
             $"Primitive type '{ResourceRef.FormatTypeName(typeof(TPrimitive))}' is not supported by the Trellis validation JSON converter. Provide a custom JsonConverter.");

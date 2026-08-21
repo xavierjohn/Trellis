@@ -23,7 +23,11 @@ public class RequiredStringTests
         var validation = (Error.InvalidInput)trackingId1.UnwrapError();
         validation.Fields[0].Field.Path.Should().Be("/trackingId");
         validation.Fields[0].Detail.Should().Be(expectedDetail);
-        validation.Fields[0].ReasonCode.Should().Be("validation.error");
+
+        // Null and whitespace are separate conditions and get separate codes: a client can
+        // distinguish "you omitted this" from "you sent it blank" without parsing the message.
+        validation.Fields[0].ReasonCode.Should().Be(
+            input is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty);
     }
 
     [Fact]

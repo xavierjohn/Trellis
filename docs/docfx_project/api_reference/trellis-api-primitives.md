@@ -457,6 +457,41 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 | `Slug` | `Trellis.Primitives` | Scalar | JSON string | Lowercase letters, digits, single hyphens. |
 | `Url` | `Trellis.Primitives` | Scalar | JSON string | Absolute HTTP/HTTPS URI. |
 
+## Reason codes emitted by the built-in primitives
+
+Every built-in primitive's `TryCreate` failure carries a `FieldViolation.ReasonCode` drawn from [`ValidationCodes`](trellis-api-core.md#validationcodes--the-reason-code-vocabulary). The code identifies *which* rule failed, so a client branches on it rather than on the message text.
+
+| Type | Failure | Code | Args |
+| --- | --- | --- | --- |
+| all string primitives | input was `null` | `value.not-null` | — |
+| all string primitives | input was empty or whitespace | `value.not-empty` | — |
+| `EmailAddress` | absent or blank | `value.not-null` / `value.not-empty` | — |
+| `EmailAddress` | not a valid address | `string.email` | — |
+| `CountryCode` | not two ASCII letters | `string.country-code` | — |
+| `CurrencyCode` | not three ASCII letters | `string.currency-code` | — |
+| `LanguageCode` | not two ASCII letters | `string.language-code` | — |
+| `Hostname` | not RFC 1123 compliant | `string.hostname` | — |
+| `IpAddress` | not IPv4 or IPv6 | `string.ip-address` | — |
+| `Slug` | not a valid slug | `string.slug` | — |
+| `Url` | not an absolute HTTP/HTTPS URI | `string.url` | — |
+| `PhoneNumber` | not E.164 | `string.phone-e164` | — |
+| `Age` | below `0` | `value.greater-than-or-equal` | `comparisonValue: 0` |
+| `Age` | above `150` | `value.less-than-or-equal` | `comparisonValue: 150` |
+| `Percentage` | below `0` | `value.greater-than-or-equal` | `comparisonValue: 0` |
+| `Percentage` | above `100` | `value.less-than-or-equal` | `comparisonValue: 100` |
+| `Percentage.FromFraction` | below `0` / above `1` | `value.greater-than-or-equal` / `value.less-than-or-equal` | `comparisonValue: 0` / `comparisonValue: 1` |
+| `MonetaryAmount` | negative | `value.greater-than-or-equal` | `comparisonValue: 0` |
+| `Money` | negative amount | `value.greater-than-or-equal` | `comparisonValue: 0` |
+| `Money` | operation across two currencies | `money.currency-mismatch` | `expected`, `actual` |
+| `Money` | operation would go negative | `money.negative-result` | — |
+| `Money` | arithmetic overflow | `number.overflow` | — |
+
+**Range failures are directional.** `Age`, `Percentage` and the generated range checks report `value.greater-than-or-equal` or `value.less-than-or-equal` with a `comparisonValue`, never a single `value.between-inclusive` covering both ends. A client that cannot tell which bound failed cannot say "too old" rather than "not yet born", and a directional code keeps a hand-written primitive agreeing with a generated one on the same input.
+
+**Out-of-range is not a `format.*` code.** `Age.TryCreate(200)` receives an `int` that parsed fine, so it reports `value.less-than-or-equal`. `format.integer` means the text never became an `int` at all.
+
+**Blank is not a `format.*` code either.** Every generated and hand-written `TryCreate(string?)` overload rejects a blank string *before* attempting to parse, so `EmployeeId.TryCreate("")` reports `value.not-empty` rather than `format.guid`. Whitespace cannot parse into any scalar, so a `format.*` code there would name a shape the caller never attempted.
+
 ## Default validation field names
 
 Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, the failure `Error.InvalidInput.ForField(...)` uses the default below — which becomes the key in the `errors` dictionary of a 400 `ProblemDetails` response, and therefore the string a test asserts on. **Two defaults do not match the type name**, and are the usual source of a failing assertion:

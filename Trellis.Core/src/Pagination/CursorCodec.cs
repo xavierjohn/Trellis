@@ -104,13 +104,13 @@ public static class CursorCodec
         where TKey : IParsable<TKey>
     {
         if (cursor.Equals(default(Cursor)))
-            return Fail<TKey>(fieldName, "cursor.malformed", "Cursor is default-constructed and has no token.");
+            return Fail<TKey>(fieldName, ValidationCodes.CursorMalformed, "Cursor is default-constructed and has no token.");
 
         if (!TryFromBase64Url(cursor.Token, out var payload))
-            return Fail<TKey>(fieldName, "cursor.malformed", "Cursor is not a valid URL-safe base64 token.");
+            return Fail<TKey>(fieldName, ValidationCodes.CursorMalformed, "Cursor is not a valid URL-safe base64 token.");
 
         if (!TKey.TryParse(payload, CultureInfo.InvariantCulture, out var parsed) || parsed is null)
-            return Fail<TKey>(fieldName, "cursor.malformed", $"Cursor payload could not be parsed as {typeof(TKey).Name}.");
+            return Fail<TKey>(fieldName, ValidationCodes.CursorMalformed, $"Cursor payload could not be parsed as {typeof(TKey).Name}.");
 
         return Result.Ok(parsed);
     }
@@ -155,23 +155,23 @@ public static class CursorCodec
         where TKey : IParsable<TKey>
     {
         if (cursor.Equals(default(Cursor)))
-            return Fail<(DateTimeOffset, TKey)>(fieldName, "cursor.malformed", "Cursor is default-constructed and has no token.");
+            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor is default-constructed and has no token.");
 
         if (!TryFromBase64Url(cursor.Token, out var payload))
-            return Fail<(DateTimeOffset, TKey)>(fieldName, "cursor.malformed", "Cursor is not a valid URL-safe base64 token.");
+            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor is not a valid URL-safe base64 token.");
 
         var pipe = payload.IndexOf(Separator, StringComparison.Ordinal);
         if (pipe < 0)
-            return Fail<(DateTimeOffset, TKey)>(fieldName, "cursor.malformed", "Cursor payload is missing the composite separator.");
+            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor payload is missing the composite separator.");
 
         var datePart = payload.AsSpan(0, pipe);
         var idPart = payload.AsSpan(pipe + 1);
 
         if (!DateTimeOffset.TryParseExact(datePart, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var createdAt))
-            return Fail<(DateTimeOffset, TKey)>(fieldName, "cursor.malformed", "Cursor payload date segment could not be parsed.");
+            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor payload date segment could not be parsed.");
 
         if (!TKey.TryParse(idPart.ToString(), CultureInfo.InvariantCulture, out var id) || id is null)
-            return Fail<(DateTimeOffset, TKey)>(fieldName, "cursor.malformed", $"Cursor payload id segment could not be parsed as {typeof(TKey).Name}.");
+            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, $"Cursor payload id segment could not be parsed as {typeof(TKey).Name}.");
 
         return Result.Ok((createdAt, id));
     }

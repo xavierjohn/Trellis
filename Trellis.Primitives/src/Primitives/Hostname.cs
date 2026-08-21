@@ -14,9 +14,9 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
     private Hostname(string value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "hostname").
-    private static Result<Hostname> Invalid(string? fieldName, string message) =>
+    private static Result<Hostname> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<Hostname>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("hostname"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("hostname"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a hostname.
@@ -29,10 +29,10 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Hostname) + '.' + nameof(TryCreate));
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Hostname is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Hostname is required.");
         var trimmed = value.Trim();
         if (!HostnameRegex().IsMatch(trimmed))
-            return Invalid(fieldName, "Hostname must be RFC 1123 compliant.");
+            return Invalid(fieldName, ValidationCodes.StringHostname, "Hostname must be RFC 1123 compliant.");
         return Result.Ok(new Hostname(trimmed));
     }
 

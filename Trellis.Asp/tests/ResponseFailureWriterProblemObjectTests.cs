@@ -193,7 +193,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
     public async Task Aggregate_child_Unexpected_retains_its_faultId()
     {
         using var body = await WriteAsync(new Error.Aggregate(
-            new Error.Unexpected("unhandled_exception", FaultId: "fault-123")));
+            new Error.Unexpected("unhandled-exception", FaultId: "fault-123")));
 
         body.RootElement.GetProperty("problems")[0].GetProperty("faultId").GetString().Should().Be("fault-123");
     }

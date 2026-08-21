@@ -33,8 +33,6 @@ using System.Diagnostics;
 [DebuggerStepThrough]
 public static class MaybeInvariant
 {
-    private const string ValidationErrorCode = "validation.error";
-
     #region AllOrNone
 
     /// <summary>
@@ -170,7 +168,7 @@ public static class MaybeInvariant
 
         return Result.Fail(
             new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(requiredFieldName), ValidationErrorCode)
+                new FieldViolation(InputPointer.ForProperty(requiredFieldName), ValidationCodes.FieldsRequiredWith)
                 {
                     Detail = $"'{requiredFieldName}' is required when '{sourceFieldName}' is provided.",
                 })));
@@ -510,7 +508,7 @@ public static class MaybeInvariant
             if (!fields[i].hasValue)
             {
                 string message = $"'{fields[i].fieldName}' is required when related fields are provided.";
-                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = message });
+                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationCodes.FieldsAllOrNone) { Detail = message });
             }
         }
 
@@ -538,7 +536,7 @@ public static class MaybeInvariant
             if (fields[i].hasValue)
             {
                 string message = $"'{fields[i].fieldName}' cannot be provided together with other mutually exclusive fields.";
-                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = message });
+                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationCodes.FieldsMutuallyExclusive) { Detail = message });
             }
         }
 
@@ -566,7 +564,7 @@ public static class MaybeInvariant
             // None present — report all fields
             for (int i = 0; i < fields.Length; i++)
             {
-                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = "Exactly one field must be provided." });
+                violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationCodes.FieldsExactlyOne) { Detail = "Exactly one field must be provided." });
             }
         }
         else
@@ -576,7 +574,7 @@ public static class MaybeInvariant
             {
                 if (fields[i].hasValue)
                 {
-                    violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = "Only one field may be provided." });
+                    violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationCodes.FieldsOnlyOne) { Detail = "Only one field may be provided." });
                 }
             }
         }
@@ -599,7 +597,7 @@ public static class MaybeInvariant
         const string message = "At least one of the related fields must be provided.";
         for (int i = 0; i < fields.Length; i++)
         {
-            violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationErrorCode) { Detail = message });
+            violations.Add(new FieldViolation(InputPointer.ForProperty(fields[i].fieldName), ValidationCodes.FieldsAtLeastOne) { Detail = message });
         }
 
         return Result.Fail(new Error.InvalidInput(EquatableArray<FieldViolation>.From(violations)));

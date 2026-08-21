@@ -15,7 +15,7 @@ using System.Diagnostics;
 /// </para>
 /// <para>
 /// <c>default(Result&lt;T&gt;)</c> represents a <em>failure</em> carrying a sentinel
-/// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default_initialized"</c>. This makes
+/// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default-initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success that would hide a programming error.
 /// Always construct via <see cref="Result.Ok{T}(T)"/>, <see cref="Result.Fail{T}(Error)"/>, or
 /// <see cref="Result.FailAfterCommit{T}(Error)"/> (the persist-on-failure factory consumed by
@@ -186,7 +186,7 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// <see cref="Trellis.Error"/> means the result is a failure; <see langword="null"/> means success.
     /// For <c>default(Result&lt;T&gt;)</c>, returns the shared <see cref="Trellis.Error.Unexpected"/>
     /// sentinel so default-initialized failures are observationally equivalent to
-    /// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default_initialized"))</c>.
+    /// <c>Result.Fail&lt;T&gt;(new Error.Unexpected("default-initialized"))</c>.
     /// </remarks>
     /// <example>
     /// <code>

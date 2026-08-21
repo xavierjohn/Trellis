@@ -102,9 +102,9 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
     private PhoneNumber(string value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "phoneNumber").
-    private static Result<PhoneNumber> Invalid(string? fieldName, string message) =>
+    private static Result<PhoneNumber> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<PhoneNumber>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("phoneNumber"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("phoneNumber"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create a <see cref="PhoneNumber"/> from the specified string.
@@ -120,22 +120,28 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(PhoneNumber) + '.' + nameof(TryCreate));
 
         if (value is null || value.Length == 0)
-            return Invalid(fieldName, "Phone number is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Phone number is required.");
 
-        // Length cap MUST come before any O(n) scan so adversarial all-whitespace inputs
-        // don't force IsNullOrWhiteSpace to walk the full string.
+        // Blank is classified before the length cap so that "  " and a longer run of spaces report
+        // the same code — otherwise the answer would depend on how much whitespace was sent, which
+        // is not a distinction any client can act on. The bounded probe short-circuits at the first
+        // non-whitespace character, so the full scan only runs for an input that opens with
+        // MaxInputLength whitespace characters, and it is a plain span scan rather than the
+        // normalization regex the length cap below exists to protect.
+        if (value.AsSpan(0, Math.Min(value.Length, MaxInputLength)).IsWhiteSpace() && value.AsSpan().IsWhiteSpace())
+            return Invalid(fieldName, ValidationCodes.ValueNotEmpty, "Phone number is required.");
+
+        // Length cap MUST come before any O(n) scan so adversarial inputs don't force the
+        // normalization regex to walk the full string.
         if (value.Length > MaxInputLength)
-            return Invalid(fieldName, "Phone number must be in E.164 format (e.g., +14155551234).");
-
-        if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "Phone number is required.");
+            return Invalid(fieldName, ValidationCodes.StringPhoneE164, "Phone number must be in E.164 format (e.g., +14155551234).");
 
         // Normalize: remove spaces, dashes, and parentheses for validation
         var normalized = NormalizeRegex().Replace(value.Trim(), "");
 
         // Validate E.164 format
         if (!E164Regex().IsMatch(normalized))
-            return Invalid(fieldName, "Phone number must be in E.164 format (e.g., +14155551234).");
+            return Invalid(fieldName, ValidationCodes.StringPhoneE164, "Phone number must be in E.164 format (e.g., +14155551234).");
 
         return Result.Ok(new PhoneNumber(normalized));
     }

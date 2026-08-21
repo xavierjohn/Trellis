@@ -25,9 +25,9 @@ public class IpAddress : ScalarValueObject<IpAddress, string>, IScalarValue<IpAd
     private IpAddress(string value, IPAddress ip) : base(value) => _ip = ip;
 
     // Field-normalization + InvalidInput failure in one place (default field name: "ipAddress").
-    private static Result<IpAddress> Invalid(string? fieldName, string message) =>
+    private static Result<IpAddress> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<IpAddress>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("ipAddress"), "validation.error", message));
+            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("ipAddress"), reasonCode, message));
 
     /// <summary>
     /// Attempts to create an IP address.
@@ -40,10 +40,10 @@ public class IpAddress : ScalarValueObject<IpAddress, string>, IScalarValue<IpAd
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(IpAddress) + '.' + nameof(TryCreate));
         if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, "IP address is required.");
+            return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "IP address is required.");
         var trimmed = value.Trim();
         if (!IPAddress.TryParse(trimmed, out var ip))
-            return Invalid(fieldName, "IP address must be a valid IPv4 or IPv6.");
+            return Invalid(fieldName, ValidationCodes.StringIpAddress, "IP address must be a valid IPv4 or IPv6.");
         return Result.Ok(new IpAddress(trimmed, ip));
     }
 
