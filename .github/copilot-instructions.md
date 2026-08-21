@@ -110,6 +110,24 @@ If the new helper falls in the first category, the work is **not complete** unti
 
 If it falls in the second category, say so explicitly in the PR description and add the helper to `RegistrationSurfaceTests.Expected` with `Slot: null` and a reason, so the next session does not re-litigate the decision.
 
+### Adding a new packable package
+
+A new package must deliver the API reference set to whoever installs it. The references are what an agent reads before writing Trellis code, so a package that ships without them leaves an agent in a consuming project with no signatures to work from — and it invents plausible ones instead, which is the failure the reference set exists to prevent.
+
+Delivery is opt-in per csproj, and opt-in is how a package comes to ship with none: `Trellis.ResourceNaming.Azure` published that way and nothing failed. There are three valid routes, and a new package must take one:
+
+| Route | How | Who uses it |
+|---|---|---|
+| Ship the whole set | `<TrellisShipsApiReferenceSet>true</TrellisShipsApiReferenceSet>` | `Trellis.Core` only |
+| Ship its own reference | `<TrellisShipsOwnApiReference>true</TrellisShipsOwnApiReference>` + `<TrellisApiRefName>` | `Trellis.Analyzers`, which cannot depend on Core; and packages published from **other repositories**, which version independently and use `build/Trellis.ApiReference.Payload.targets` |
+| Inherit it | a `ProjectReference` path to `Trellis.Core` | every other first-party package |
+
+**This is enforced, not advisory.** `Trellis.Core/tests/Packaging/ApiReferencePayloadGateTests.cs` enumerates every packable `*/src/*.csproj` and walks the first-party project graph, so a package with no route to a payload fails the build. It enumerates rather than hand-lists deliberately: a hand-listed set stops covering the next package added, which is the same miss one generation later. Two companion assertions close the ways that enumeration could go quiet — a typo'd `TrellisApiRefName` (otherwise silent, because the MSBuild `Include` matches nothing and the package packs successfully with no reference), and a packable project added **outside** the `*/src/` convention, which the enumeration would simply not see.
+
+So: put a new package at `<Package>/src/<Package>.csproj`. A project that lives elsewhere must be marked `IsPackable=false` or it fails the gate.
+
+Also set `<TrellisApiRefName>` on any package that owns a reference file, even when it inherits delivery: TRLDOC004, the freshness audit, and the completeness audit all key off it.
+
 ### Validating sub-agent findings
 
 Sub-agents (rubber-duck, code-review) are recommendation engines, not ground truth. Before adopting a finding:
