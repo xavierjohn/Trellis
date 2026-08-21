@@ -302,6 +302,24 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     /// Returns whether the string value starts with the specified prefix.
     /// Enables natural LINQ queries like <c>c.Name.StartsWith("Al")</c> without accessing <c>.Value</c>.
     /// </summary>
+    /// <param name="value">The prefix to test for.</param>
+    /// <returns><see langword="true"/> when the value starts with <paramref name="value"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Evaluated in memory this is <em>culture-sensitive</em>, because
+    /// <see cref="string.StartsWith(string)"/> compares using
+    /// <see cref="StringComparison.CurrentCulture"/>. It therefore does not agree with
+    /// <see cref="Contains(string)"/>, which is ordinal — see
+    /// <see cref="Contains(string)"/> for a worked example of the disagreement.
+    /// </para>
+    /// <para>
+    /// Translated to SQL by EF Core the comparison is performed by the database using the
+    /// provider's own string-matching functions and collations, which may match neither
+    /// and are provider-specific. Use
+    /// <see cref="StartsWith(string, StringComparison)"/> when the semantics must be
+    /// explicit and the call is not part of a query.
+    /// </para>
+    /// </remarks>
     // Single-parameter overloads match what EF Core's ScalarValueExpressionRewriter
     // targets on string — the rewriter maps Name.StartsWith(x) to ((string)Name).StartsWith(x).
     // Adding StringComparison.Ordinal would produce a two-parameter call that EF Core cannot translate.
@@ -312,12 +330,55 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
     /// Returns whether the string value contains the specified substring.
     /// Enables natural LINQ queries like <c>c.Name.Contains("li")</c> without accessing <c>.Value</c>.
     /// </summary>
+    /// <param name="value">The substring to test for.</param>
+    /// <returns><see langword="true"/> when the value contains <paramref name="value"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Evaluated in memory this is <em>ordinal</em>, because
+    /// <see cref="string.Contains(string)"/> compares by code unit. That makes it disagree
+    /// with <see cref="StartsWith(string)"/> and <see cref="EndsWith(string)"/>, which are
+    /// culture-sensitive. The difference is observable whenever the data contains
+    /// characters a culture treats as ignorable, such as the soft hyphen
+    /// <c>U+00AD</c> — note that the same argument yields opposite answers:
+    /// </para>
+    /// <code>
+    /// var name = ProductName.TryCreate("cooper\u00ADative").Value;
+    /// name.EndsWith("rative");  // true  — culture-sensitive, ignores the soft hyphen
+    /// name.Contains("rative");  // false — ordinal, the soft hyphen is a real character
+    /// name.StartsWith("coopera"); // true, for the same reason as EndsWith
+    /// </code>
+    /// <para>
+    /// Translated to SQL by EF Core the comparison is performed by the database using the
+    /// provider's own string-matching functions and collations, which may match neither
+    /// and are provider-specific. Use
+    /// <see cref="Contains(string, StringComparison)"/> when the semantics must be explicit
+    /// and the call is not part of a query.
+    /// </para>
+    /// </remarks>
     public bool Contains(string value) => Value.Contains(value);
 
     /// <summary>
     /// Returns whether the string value ends with the specified suffix.
     /// Enables natural LINQ queries like <c>c.Name.EndsWith("ce")</c> without accessing <c>.Value</c>.
     /// </summary>
+    /// <param name="value">The suffix to test for.</param>
+    /// <returns><see langword="true"/> when the value ends with <paramref name="value"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Evaluated in memory this is <em>culture-sensitive</em>, because
+    /// <see cref="string.EndsWith(string)"/> compares using
+    /// <see cref="StringComparison.CurrentCulture"/>. It therefore does not agree with
+    /// <see cref="Contains(string)"/>, which is ordinal — see
+    /// <see cref="Contains(string)"/> for a worked example of the disagreement.
+    /// </para>
+    /// <para>
+    /// Translated to SQL by EF Core the comparison is performed by the database using the
+    /// provider's own string-matching functions and collations, which may match neither
+    /// and are provider-specific. Use
+    /// <see cref="EndsWith(string, StringComparison)"/> when the semantics must be explicit
+    /// and the call is not part of a query.
+    /// </para>
+    /// </remarks>
     public bool EndsWith(string value) => Value.EndsWith(value);
 #pragma warning restore CA1310
 
