@@ -63,11 +63,13 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
 
         if (response.TryGetError(out var error))
         {
-            // Always log the stable Code; only include Detail when explicitly opted in,
-            // because Detail can contain user input / PII (ga-12).
+            // Always log the stable code; only include Detail when explicitly opted in,
+            // because Detail can contain user input / PII (ga-12). WireCode rather than Code so an
+            // operator can grep the log for a code taken off a response body — and the error type
+            // alongside it, so the cases whose wire code is the sentinel stay distinguishable.
             var summary = _options.IncludeErrorDetail
                 ? error.GetDisplayMessage()
-                : error.Code;
+                : $"{ErrorTelemetryNaming.FormatErrorTypeName(error.GetType())} ({error.WireCode})";
             var logLevel = ClassifyFailureLogLevel(error);
 
             if (logLevel == LogLevel.Warning)

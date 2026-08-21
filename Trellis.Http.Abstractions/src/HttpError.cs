@@ -15,7 +15,7 @@ using System.Diagnostics;
 /// client-side (<c>Trellis.Http</c>).
 /// </remarks>
 [DebuggerDisplay("{Kind,nq}: {Detail ?? Code,nq}")]
-public abstract record HttpError : ITransportFault
+public abstract record HttpError : ICodedTransportFault
 {
     private readonly HttpError? _cause;
 

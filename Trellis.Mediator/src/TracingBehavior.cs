@@ -83,8 +83,11 @@ public sealed class TracingBehavior<TMessage, TResponse>
                 // string is opt-in (ga-12) — it can carry user input or domain payloads.
                 var description = _options.IncludeErrorDetail ? error.GetDisplayMessage() : null;
                 activity.SetStatus(ActivityStatusCode.Error, description);
-                activity.SetTag("error.type", FormatErrorTypeName(error.GetType()));
-                activity.SetTag("error.code", error.Code);
+                activity.SetTag("error.type", ErrorTelemetryNaming.FormatErrorTypeName(error.GetType()));
+
+                // WireCode, not Code: an operator pastes a code out of a bug report and into a
+                // trace query, so the span has to spell it the way the response body did.
+                activity.SetTag("error.code", error.WireCode);
             }
             else
             {
@@ -93,11 +96,5 @@ public sealed class TracingBehavior<TMessage, TResponse>
         }
 
         return response;
-    }
-
-    private static string FormatErrorTypeName(Type errorType)
-    {
-        var declaring = errorType.DeclaringType;
-        return declaring is null ? errorType.Name : $"{declaring.Name}.{errorType.Name}";
     }
 }

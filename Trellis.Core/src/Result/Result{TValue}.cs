@@ -115,7 +115,13 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
         current.SetStatus(IsFailure ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
 
         if (IsFailure && _error is not null)
-            current.SetTag("result.error.code", _error.Code);
+        {
+            // WireCode, not Code: this dimension is the one an operator filters on, so it has to
+            // spell a code the way the HTTP boundary does. The type keeps the case identifiable
+            // for the errors whose wire code is the sentinel.
+            current.SetTag("result.error.code", _error.WireCode);
+            current.SetTag("result.error.type", _error.GetType().Name);
+        }
     }
 
     // Only spans started by Trellis's own ROP / primitive-value-object sources may be stamped from a

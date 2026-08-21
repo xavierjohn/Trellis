@@ -16,14 +16,14 @@ internal static class ViolationProjection
     /// <summary>
     /// The neutral code emitted when a producer has not made a code decision.
     /// </summary>
-    public const string UnspecifiedCode = "error.unspecified";
+    public const string UnspecifiedCode = ValidationCodes.Unspecified;
 
     /// <summary>
     /// The legacy placeholder that predates the code vocabulary; normalized to
     /// <see cref="UnspecifiedCode"/> on the wire so clients never see two spellings of
     /// "no code was chosen".
     /// </summary>
-    public const string LegacyUnspecifiedCode = "validation.error";
+    public const string LegacyUnspecifiedCode = ValidationCodes.LegacyUnspecified;
 
     private const string BodyLocation = "body";
     private const string QueryLocation = "query";
@@ -34,8 +34,7 @@ internal static class ViolationProjection
     /// <summary>
     /// Maps the legacy placeholder onto the neutral sentinel, leaving every other code untouched.
     /// </summary>
-    public static string NormalizeCode(string code) =>
-        string.Equals(code, LegacyUnspecifiedCode, StringComparison.Ordinal) ? UnspecifiedCode : code;
+    public static string NormalizeCode(string code) => ValidationCodes.Normalize(code);
 
     /// <summary>
     /// Projects a pointer onto a location object.

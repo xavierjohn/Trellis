@@ -86,6 +86,27 @@ public abstract record Error
     public abstract bool HasExplicitCode { get; }
 
     /// <summary>
+    /// Gets the code a consumer sees: <see cref="Code"/> when this instance carries one of its own,
+    /// and <see cref="ValidationCodes.Unspecified"/> when it does not.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="Code"/> defaults to <see cref="Kind"/>, so reading it directly at a boundary
+    /// publishes a kind restated as a reason — a consumer switching on it would branch on
+    /// <c>"not-found"</c> as though a producer had chosen it. This property applies
+    /// <see cref="HasExplicitCode"/> and <see cref="ValidationCodes.Normalize"/> once, so every
+    /// boundary answers the question the same way.
+    /// </para>
+    /// <para>
+    /// <b>Read this, not <see cref="Code"/>, anywhere the value leaves the process</b> — an HTTP
+    /// body, a span tag, a metric dimension, a log field. The value of a code is that an operator
+    /// can carry it from a bug report into a trace query, and that only holds while the two agree.
+    /// <see cref="Code"/> remains the in-process value for a producer that needs the raw decision.
+    /// </para>
+    /// </remarks>
+    public virtual string WireCode => HasExplicitCode ? ValidationCodes.Normalize(Code) : ValidationCodes.Unspecified;
+
+    /// <summary>
     /// Gets the optional human-readable detail. When non-null the boundary renderer prefers
     /// this over the default template for <see cref="Code"/>.
     /// </summary>
@@ -640,11 +661,23 @@ public abstract record Error
 
         /// <inheritdoc />
         /// <remarks>
-        /// The transport fault carries its own code (an HTTP condition name rather than a domain
-        /// code), which boundary renderers read directly from <see cref="Fault"/> ahead of this
-        /// property. The error itself contributes none.
+        /// True when the wrapped fault is an <see cref="ICodedTransportFault"/> and can say what its
+        /// code is. A bare <see cref="ITransportFault"/> is opaque and contributes none.
         /// </remarks>
-        public override bool HasExplicitCode => false;
+        public override bool HasExplicitCode => Fault is ICodedTransportFault;
+
+        /// <inheritdoc />
+        public override string Code => Fault is ICodedTransportFault coded ? coded.Code : Kind;
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Overridden to skip normalization. A transport code comes from another system and is not a
+        /// <see cref="ValidationCodes"/> entry — an upstream service that happens to send
+        /// <c>validation.error</c> means its own thing by it, and rewriting that into Trellis's
+        /// sentinel would misreport a foreign vocabulary as this one.
+        /// </remarks>
+        public override string WireCode =>
+            Fault is ICodedTransportFault coded ? coded.Code : ValidationCodes.Unspecified;
     }
 
     // ───────────────────────────────────────────────────────────────────────────

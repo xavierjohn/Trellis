@@ -81,10 +81,25 @@ public static class ValidationCodes
     public const string Unspecified = "error.unspecified";
 
     /// <summary>
-    /// The placeholder that predates this vocabulary. Producers no longer emit it; the ASP projection
-    /// still maps it onto <see cref="Unspecified"/> so an application that adopted it keeps working.
+    /// The placeholder that predates this vocabulary. Producers no longer emit it; every projection
+    /// maps it onto <see cref="Unspecified"/> so an application that adopted it keeps working.
     /// </summary>
     public const string LegacyUnspecified = "validation.error";
+
+    /// <summary>
+    /// Maps <see cref="LegacyUnspecified"/> onto <see cref="Unspecified"/>, leaving every other code
+    /// untouched.
+    /// </summary>
+    /// <remarks>
+    /// Lives here rather than in a boundary package because more than one boundary applies it, and a
+    /// second copy is how two altitudes come to disagree about the spelling of "no reason available".
+    /// A consumer that reads a code from an HTTP body and pastes it into a trace query is relying on
+    /// exactly this being one function.
+    /// </remarks>
+    /// <param name="code">The producer-supplied code.</param>
+    /// <returns>The code a consumer should see.</returns>
+    public static string Normalize(string code) =>
+        string.Equals(code, LegacyUnspecified, StringComparison.Ordinal) ? Unspecified : code;
 
     // ---- format.* — a CLR scalar could not be constructed from the text ----
 

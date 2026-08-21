@@ -146,7 +146,7 @@ To enable ROP forensics during an investigation, add `.AddResultsInstrumentation
 
 When ROP instrumentation is not enabled, `Result` operators do not mutate the ambient ASP.NET request span
 or the `Trellis.Mediator` pipeline span. Those outer spans keep their own status semantics; only ROP spans
-created by the `"Trellis.Core"` source receive per-step `Ok` / `Error` status and `result.error.code` tags.
+created by the `"Trellis.Core"` source receive per-step `Ok` / `Error` status and `result.error.code` / `result.error.type` tags.
 
 ```csharp
 builder.Services.AddOpenTelemetry()

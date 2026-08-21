@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a span and a response body now spell an error code the same way
+
+`ResponseFailureWriter` applied `Error.HasExplicitCode` before publishing a code; `TracingBehavior` did not. Since
+`Error.Code` falls back to `Kind`, an `Error.NotFound` came out as `error.unspecified` in the response body and as
+`not-found` on the span. An operator handed a code in a bug report could not paste it into a trace query — which is
+most of what a machine-readable code is for.
+
+`Error.WireCode` is now the single answer to "what code does a consumer see?": the explicit code when there is one,
+normalized, and the sentinel when there is not. Both the HTTP writer and the tracing behavior read it, and tests on
+both sides assert against it rather than against a hard-coded string, so the two altitudes cannot drift apart again.
+`Error.Code` is unchanged and remains the in-process value for a producer that needs the raw decision.
+
+`ValidationCodes.Normalize` moved from `Trellis.Asp`'s internal `ViolationProjection` into `Trellis.Core` beside the
+constants it maps, for the same reason: more than one boundary applies it, and a second copy is how two altitudes
+come to disagree about the spelling of "no reason available".
+
+**Behavior change.** The `error.code` span tag now reports `error.unspecified` for every case that carries no code of
+its own — `InvalidInput`, `NotFound`, `Gone`, `RateLimited`, `Aggregate`, a bare `TransportFault`, and
+`AuthenticationRequired` / `Unavailable` constructed without a `ReasonCode` — where it previously reported the kind.
+Nothing is lost: the kind was always available on the `error.type` tag, and the two tags now answer two different
+questions. A dashboard grouping on `error.code` to distinguish those cases should group on `error.type` instead.
+
+The same divergence existed one layer down and is fixed the same way. `Result<T>` publishes `result.error.code` from
+`WireCode` now, alongside a new `result.error.type` tag so the sentinel cases stay distinguishable, and
+`LoggingBehavior`'s redacted failure summary reports the wire code and the error type — `Error.NotFound
+(error.unspecified)` — rather than a raw code an operator could not find in any response body. The `debug.error.*`
+tags on `ResultDebugExtensions` deliberately keep publishing the raw `Code`: that facility compiles away outside
+DEBUG builds, already emits the unredacted `Detail`, and is namespaced away from the operator-facing dimensions
+precisely so it can show the producer's actual decision.
+
+`Error.TransportFault` was the last divergent case. The HTTP writer special-cased it and emitted the fault's own
+code, but the error reported `HasExplicitCode` as `false` and did not override `Code`, so the span fell back to the
+kind: the body said `IfMatch` and the span said `transport-fault`. `ICodedTransportFault` — a new opt-in
+sub-interface of `ITransportFault` carrying `Kind` and `Code` — lets a transport package tell Core that its payload
+names itself. `HttpError` implements it, and its existing members satisfy it unchanged. A transport fault's code
+reaches the wire **unnormalized**, because it is the transport's word rather than a Trellis reason code. So the span
+tag for an `HttpError` fault moves from `transport-fault` to the fault's own code, and for a bare `ITransportFault`
+implementation from `transport-fault` to `error.unspecified`.
+
+Two further operator-facing channels were still publishing the raw code and now use `WireCode`: the
+`fieldViolations[].code` that `Trellis.Asp` synthesizes when a bound scalar fails with something other than
+`Error.InvalidInput`, and the Azure Service Bus dead-letter reason (plus its matching warning log) for a message
+whose envelope cannot be read.
+
 ### Added — `ValidationCodes`, a frozen reason-code vocabulary for validation failures
 
 Trellis already carried a `code` on every field and rule violation, and every producer filled it with the same
