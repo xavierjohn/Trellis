@@ -6,8 +6,8 @@
 /// <remarks>
 /// Shared by <see cref="TracingBehavior{TMessage,TResponse}"/> and
 /// <see cref="LoggingBehavior{TMessage,TResponse}"/> so a span tag and a log line name the same
-/// failure identically. Two copies of a formatting rule is how a log stops being greppable by the
-/// value an operator read off a span.
+/// failure identically. Two copies of a formatting rule are how a log stops being greppable by the
+/// value an operator already took off a span.
 /// </remarks>
 internal static class ErrorTelemetryNaming
 {

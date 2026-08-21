@@ -56,7 +56,36 @@ public class ErrorWireCodeTests
             .Should().OnlyContain(e => e.WireCode == ValidationCodes.Unspecified);
     }
 
+    [Fact]
+    public void TransportFault_carrying_a_bare_fault_stays_opaque()
+    {
+        // Core cannot read an arbitrary transport payload, so it must not guess. The kind stays
+        // available on Code for in-process use, but nothing a consumer sees claims to know a code
+        // that was never supplied.
+        var error = new Error.TransportFault(new SampleTransportFault("http-timeout"));
+
+        error.HasExplicitCode.Should().BeFalse();
+        error.Code.Should().Be("transport-fault", "the in-process value still falls back to the kind");
+        error.WireCode.Should().Be(ValidationCodes.Unspecified);
+    }
+
+    [Fact]
+    public void TransportFault_carrying_a_coded_fault_publishes_the_faults_own_code_unnormalized()
+    {
+        // A transport's code is the transport's word. ValidationCodes has no jurisdiction over it,
+        // so it must reach a consumer exactly as the transport spelled it -- including the legacy
+        // placeholder, which means something else entirely in a foreign vocabulary.
+        var error = new Error.TransportFault(new SampleCodedFault("precondition-failed", ValidationCodes.LegacyUnspecified));
+
+        error.HasExplicitCode.Should().BeTrue();
+        error.Code.Should().Be(ValidationCodes.LegacyUnspecified);
+        error.WireCode.Should().Be(ValidationCodes.LegacyUnspecified,
+            "normalizing a foreign vocabulary would misreport it as this one");
+    }
+
     private sealed record SampleTransportFault(string Name) : ITransportFault;
+
+    private sealed record SampleCodedFault(string Kind, string Code) : ICodedTransportFault;
 
     private static List<Error> SampleOfEveryCase()
     {
