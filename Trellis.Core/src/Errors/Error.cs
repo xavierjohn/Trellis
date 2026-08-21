@@ -633,7 +633,7 @@ public abstract record Error
     /// An unhandled internal failure occurred. <paramref name="ReasonCode"/> identifies the
     /// kind of failure; <paramref name="FaultId"/> optionally correlates to deeper diagnostics.
     /// </summary>
-    /// <param name="ReasonCode">Stable machine-readable code identifying the kind of unexpected condition (e.g. <c>"unhandled-exception"</c>, <c>"default-initialized"</c>, <c>FaultCodes.NotImplemented</c>).</param>
+    /// <param name="ReasonCode">Stable machine-readable code identifying the kind of unexpected condition. Pass a <see cref="FaultCodes"/> constant rather than a literal — <see cref="FaultCodes.UnhandledException"/> (<c>"unhandled-exception"</c>), <see cref="FaultCodes.DefaultInitialized"/> (<c>"default-initialized"</c>), or <see cref="FaultCodes.NotImplemented"/> (<c>"not-implemented"</c>), which the ASP boundary maps to HTTP 501.</param>
     /// <param name="FaultId">Optional opaque per-incident identifier correlating to richer diagnostics in the logging/telemetry layer.</param>
     public sealed record Unexpected(string ReasonCode, string? FaultId = null) : Error
     {

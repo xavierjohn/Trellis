@@ -907,7 +907,7 @@ The closed union now has 12 cases: `InvalidInput`, `InvariantViolation`, `NotFou
 | `Error.TooManyRequests()` | `Error.RateLimited()` (optional `RetryAdvice`) |
 | `Error.ServiceUnavailable()` | `Error.Unavailable()` (optional `ReasonCode`, `RetryAdvice`) |
 | `Error.InternalServerError(faultId)` | `new Error.Unexpected(reasonCode, faultId)` |
-| `Error.NotImplemented("X")` | `new Error.Unexpected("not-implemented") { Detail = "Feature 'X' is not implemented." }` |
+| `Error.NotImplemented("X")` | `new Error.Unexpected(FaultCodes.NotImplemented) { Detail = "Feature 'X' is not implemented." }` |
 | `Error.MethodNotAllowed`, `NotAcceptable`, `UnsupportedMediaType`, `RangeNotSatisfiable`, `ContentTooLarge`, `PreconditionFailed`, `PreconditionRequired` | Removed from `Trellis.Core`. Use `new Error.TransportFault(new HttpError.X(...))` from `Trellis.Http.Abstractions`. |
 
 #### New cases
@@ -932,7 +932,7 @@ Telemetry consumers that aggregate failures by `Error.Kind` need to update their
 | `too-many-requests` | `rate-limited` |
 | `service-unavailable` | `unavailable` |
 | `internal-server-error` | `unexpected` |
-| `not-implemented` | `unexpected` (with `ReasonCode == "not-implemented"`) |
+| `not-implemented` | `unexpected` (with `ReasonCode == FaultCodes.NotImplemented`) |
 
 #### Wire format unchanged
 

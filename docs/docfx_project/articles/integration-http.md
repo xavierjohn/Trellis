@@ -103,7 +103,7 @@ Bare `ToResultAsync()` uses the built-in mapper from `Trellis.Http/src/HttpRespo
 | `422` | `Error.InvalidInput.ForRule("http.unprocessable-content")` |
 | `428` | `new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))` |
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
-| `501` | `new Error.Unexpected("not-implemented")` |
+| `501` | `new Error.Unexpected(FaultCodes.NotImplemented)` |
 | `503` | `new Error.Unavailable(Retry: retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | other / default | `new Error.Unexpected(Guid.NewGuid().ToString("N"))` |
 

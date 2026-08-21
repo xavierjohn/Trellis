@@ -50,7 +50,7 @@ audience: [developer]
 Every case carries a strongly-typed payload, an init-only `Detail` property, and a structured (never `Exception`) `Cause` chain. Full per-case constructor signatures, payload notes, and the supporting types (`ResourceRef`, `InputPointer`, `FieldViolation`, `RuleViolation`, `RetryAdvice`, `ITransportFault`, `EquatableArray<T>`) live in [`trellis-api-core.md` → `Error`](../api_reference/trellis-api-core.md#public-abstract-record-error).
 
 > [!NOTE]
-> `Unexpected(reasonCode, faultId?)` covers both unhandled faults (set `FaultId` to correlate with telemetry) and internal invariant violations ("shouldn't happen"). The optional `FaultId` surfaces as a `faultId` problem-details extension at the ASP boundary when set. Use the `ReasonCode == "not-implemented"` convention if you need the boundary to map to HTTP 501; the default maps to 500.
+> `Unexpected(reasonCode, faultId?)` covers both unhandled faults (set `FaultId` to correlate with telemetry) and internal invariant violations ("shouldn't happen"). The optional `FaultId` surfaces as a `faultId` problem-details extension at the ASP boundary when set. Use the `ReasonCode == FaultCodes.NotImplemented` convention if you need the boundary to map to HTTP 501; the default maps to 500.
 
 ## Installation
 
@@ -285,7 +285,7 @@ Full mapping rules and per-case behaviour live in:
 ## Practical guidance
 
 - **Pick the case the caller can act on.** `InvalidInput` when the request data can be fixed; `Conflict` when state or a business rule blocks an otherwise-valid request; `InvariantViolation` when the rule is real but not bound to a request field; `NotFound` when the resource does not exist; `Gone` for soft-deleted resources.
-- **Use `Unexpected(reasonCode, faultId?)` for true surprises.** Set `FaultId` when you need telemetry correlation; use `ReasonCode == "not-implemented"` only when you intentionally want HTTP 501 at the boundary.
+- **Use `Unexpected(reasonCode, faultId?)` for true surprises.** Set `FaultId` when you need telemetry correlation; use `ReasonCode == FaultCodes.NotImplemented` only when you intentionally want HTTP 501 at the boundary.
 - **Set `Detail` only when it adds information.** Boundary renderers compute a usable default from `Kind`/`Code` and the typed payload; override `Detail` only when you have something more specific to say.
 - **Prefer `Match` (or a property pattern on `result.Error`) at boundaries.** Inside pipelines, prefer `Bind`/`Map`/`Ensure` over inspecting `Error` directly.
 - **Use `TapOnFailure` for logging and metrics.** It does not mutate the result.
@@ -307,7 +307,7 @@ Full mapping rules and per-case behaviour live in:
 | `Error.TooManyRequests` | `Error.RateLimited` |
 | `Error.ServiceUnavailable` | `Error.Unavailable` |
 | `Error.InternalServerError` | `Error.Unexpected` |
-| `Error.NotImplemented` | `Error.Unexpected` with `ReasonCode == "not-implemented"` |
+| `Error.NotImplemented` | `Error.Unexpected` with `ReasonCode == FaultCodes.NotImplemented` |
 | `Error.MethodNotAllowed` / `NotAcceptable` / `UnsupportedMediaType` / `RangeNotSatisfiable` / `ContentTooLarge` / `PreconditionFailed` / `PreconditionRequired` | `Error.TransportFault(new HttpError.X(...))` |
 
 For the full upgrade narrative, including telemetry-slug changes and `AuthChallenge` removal, see the project CHANGELOG.

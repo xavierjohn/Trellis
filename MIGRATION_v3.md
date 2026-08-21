@@ -248,7 +248,7 @@ return new Error.InternalServerError(faultId) { Detail = "DB write failed." };
 return new Error.Unexpected("db_write_failed", faultId) { Detail = "DB write failed." };
 ```
 
-The required `ReasonCode` makes the failure addressable in telemetry. `Error.Unexpected { ReasonCode == "not-implemented" }` is special-cased at the boundary to `501 Not Implemented`.
+The required `ReasonCode` makes the failure addressable in telemetry. `Error.Unexpected { ReasonCode == FaultCodes.NotImplemented }` is special-cased at the boundary to `501 Not Implemented`.
 
 ### Aggregate of multiple errors
 

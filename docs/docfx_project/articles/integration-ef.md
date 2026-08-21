@@ -273,7 +273,7 @@ Failure mapping (identical for both):
 
 | EF Core failure | Trellis result |
 |---|---|
-| `DbUpdateConcurrencyException` | `new Error.Conflict(null, "concurrent-modification")` |
+| `DbUpdateConcurrencyException` | `new Error.Conflict(null, FaultCodes.ConcurrentModification)` |
 | Duplicate-key `DbUpdateException` | `new Error.Conflict(null, "duplicate.key")` |
 | Foreign-key `DbUpdateException` | `new Error.Conflict(null, "referential.integrity")` |
 
@@ -343,7 +343,7 @@ public sealed class LinkRepository(AppDbContext db)
 Footguns the API enforces or surfaces:
 
 - **Only `Added` entries are retryable.** If `DbUpdateException.Entries` contains a `Modified` entry the method throws `InvalidOperationException` rather than attempt the fragile detach/re-`Modified` cycle (which would lose original values, per-property `IsModified` flags, and temporary-value metadata). Use a different strategy — typically `ExecuteUpdate` with a `WHERE` over the rowversion, or a load-modify-save cycle inside a tighter transaction — for update collisions.
-- **Concurrency exceptions bypass `shouldRetry`.** `DbUpdateConcurrencyException` is mapped immediately to `new Error.Conflict(null, "concurrent-modification")`; regenerating a natural key cannot resolve a stale rowversion.
+- **Concurrency exceptions bypass `shouldRetry`.** `DbUpdateConcurrencyException` is mapped immediately to `new Error.Conflict(null, FaultCodes.ConcurrentModification)`; regenerating a natural key cannot resolve a stale rowversion.
 - **Make the classifier narrow.** Returning `true` for every `DbUpdateException` will retry on FK violations, NOT-NULL violations, and check-constraint failures — which `regenerate` cannot fix. Prefer `DbExceptionClassifier.IsDuplicateKey` or a constraint-name predicate.
 - **Detach scope is precisely `ex.Entries`.** Sibling aggregates pending in the change tracker (outbox rows staged by a domain-event handler; an unrelated `Added` entity from the same logical operation; entities promoted via `db.Entry(x).State = Added` rather than `DbSet.Add`) are **not** detached. They will be saved together with the regenerated entries on the next attempt.
 - **The `regenerate` callback returns a `ValueTask<bool>`.** Return `true` to continue; return `false` to abort the retry loop. Aborting leaves the conflicting entries detached (sibling aggregates remain tracked) and returns `Error.Conflict` with reason code `"retry.aborted"`.
@@ -496,7 +496,7 @@ Once `ApplyTrellisConventions*` and `AddTrellisInterceptors()` are wired:
 - a new `ETag` is generated on **Added** and **Modified** aggregates,
 - aggregate roots are also promoted when loaded dependents change, so concurrency works at the aggregate boundary.
 
-A losing writer surfaces as `DbUpdateConcurrencyException` → `new Error.Conflict(null, "concurrent-modification")` from `SaveChangesResult*Async` (and therefore from `IUnitOfWork.CommitAsync` / the transactional pipeline behavior). You do **not** configure `AggregateETagConvention` or `AggregateETagInterceptor` directly — they are internal types reached through the supported public entry points.
+A losing writer surfaces as `DbUpdateConcurrencyException` → `new Error.Conflict(null, FaultCodes.ConcurrentModification)` from `SaveChangesResult*Async` (and therefore from `IUnitOfWork.CommitAsync` / the transactional pipeline behavior). You do **not** configure `AggregateETagConvention` or `AggregateETagInterceptor` directly — they are internal types reached through the supported public entry points.
 
 ## Composition
 

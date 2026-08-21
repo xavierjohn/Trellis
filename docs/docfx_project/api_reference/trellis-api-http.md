@@ -83,7 +83,7 @@ When `statusMap` is omitted, the default mapper in `Trellis.Http/src/HttpRespons
 | `422` | `Error.InvalidInput.ForRule("http.unprocessable-content")` |
 | `428` | `new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))` |
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
-| `501` | `new Error.Unexpected("not-implemented")` |
+| `501` | `new Error.Unexpected(FaultCodes.NotImplemented)` |
 | `503` | `new Error.Unavailable(Retry: retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | other / `5xx` default | `new Error.Unexpected(Guid.NewGuid().ToString("N"))` |
 

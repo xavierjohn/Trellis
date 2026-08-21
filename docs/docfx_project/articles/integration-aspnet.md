@@ -205,13 +205,13 @@ Trellis.Core.Error is transport-neutral. The ASP boundary translates domain fail
 | `Error.InvariantViolation` | `422` | `unprocessable-content` | — |
 | `Error.NotFound` | `404` | `not-found` | — |
 | `Error.Forbidden` | `403` | `forbidden` | — |
-| `Error.Conflict` + `ReasonCode == "concurrent-modification"` and request had `If-Match` | `412` | `precondition-failed` | — |
+| `Error.Conflict` + `ReasonCode == FaultCodes.ConcurrentModification` and request had `If-Match` | `412` | `precondition-failed` | — |
 | `Error.Conflict` | `409` | `conflict` | — |
 | `Error.Gone` | `410` | `gone` | — |
 | `Error.AuthenticationRequired` | `401` | `unauthorized` | `WWW-Authenticate` |
 | `Error.Unavailable` | `503` | `service-unavailable` | `Retry-After` |
 | `Error.RateLimited` | `429` | `too-many-requests` | `Retry-After` |
-| `Error.Unexpected` (`ReasonCode == "not-implemented"`) | `501` | `not-implemented` | — |
+| `Error.Unexpected` (`ReasonCode == FaultCodes.NotImplemented`) | `501` | `not-implemented` | — |
 | `Error.Unexpected` | `500` | `internal-server-error` | `faultId` when set |
 | `Error.Aggregate` | worst child | `multi` | per-child |
 | `Error.TransportFault` wrapping `HttpError.*` | `405/406/412/413/415/416/428` | inner wire kind | `Allow` / `Content-Range` / inner-specific |
