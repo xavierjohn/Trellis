@@ -237,6 +237,40 @@ public sealed class ResponseFailureWriterProblemObjectTests
         body.RootElement.GetProperty("code").GetString().Should().Be("invariant-violation");
     }
 
+    /// <summary>
+    /// The wire and the span have to spell a code identically, or an operator cannot carry one from
+    /// a bug report into a trace query. Both now read <see cref="Error.WireCode"/>; this asserts the
+    /// HTTP end of that contract, and <c>TracingBehaviorTests</c> asserts the other.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EveryCodeBearingCase))]
+    public async Task The_root_code_is_always_Error_WireCode(Error error)
+    {
+        using var body = await WriteAsync(error);
+
+        body.RootElement.GetProperty("code").GetString().Should().Be(error.WireCode);
+    }
+
+    public static TheoryData<Error> EveryCodeBearingCase()
+    {
+        var resource = new ResourceRef("Order", "42");
+        return
+        [
+            new Error.InvalidInput(EquatableArray<FieldViolation>.Empty),
+            new Error.InvariantViolation("order.line-limit-exceeded", resource),
+            new Error.NotFound(resource),
+            new Error.Gone(resource),
+            new Error.Conflict(resource, "order.already-shipped"),
+            new Error.Conflict(null, ValidationCodes.LegacyUnspecified),
+            new Error.AuthenticationRequired(),
+            new Error.Forbidden("orders.write", resource),
+            new Error.RateLimited(),
+            new Error.Unavailable(),
+            new Error.Unavailable("maintenance-window"),
+            new Error.Unexpected("boom"),
+        ];
+    }
+
     [Fact]
     public async Task Nullable_code_sources_degrade_when_absent_and_survive_when_present()
     {
@@ -300,5 +334,19 @@ public sealed class ResponseFailureWriterProblemObjectTests
         using var body = await WriteAsync(fault);
 
         body.RootElement.GetProperty("code").GetString().Should().Be("IfMatch");
+    }
+
+    [Fact]
+    public void TransportFault_WireCode_agrees_with_the_body_for_a_real_HttpError()
+    {
+        // The span tag reads Error.WireCode while the body goes through the writer. This pins the
+        // two together for the one case that bypasses the sentinel, and in doing so asserts that
+        // HttpError really does implement ICodedTransportFault — if it regressed to a bare
+        // ITransportFault the wire code would silently fall back to the sentinel.
+        var fault = new Error.TransportFault(
+            new HttpError.PreconditionFailed(ResourceRef.For("Item", "42"), PreconditionKind.IfMatch));
+
+        fault.WireCode.Should().Be("IfMatch");
+        fault.HasExplicitCode.Should().BeTrue();
     }
 }

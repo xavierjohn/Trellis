@@ -500,17 +500,9 @@ internal static class ResponseFailureWriter
         ?? (error is Error.TransportFault { Fault: HttpError httpError } ? httpError.Detail : null);
 
     private static (string Code, string Kind) GetCodeAndKind(Error error) =>
-        error is Error.TransportFault { Fault: HttpError httpError }
-            ? (httpError.Code, httpError.Kind)
-            : (WireCode(error), ToWireKind(error));
-
-    /// <summary>
-    /// Projects an error's code for the wire: an explicit code normalized, or the sentinel.
-    /// </summary>
-    private static string WireCode(Error error) =>
-        error.HasExplicitCode ? NormalizeCode(error.Code) : UnspecifiedCode;
-
-    private static string NormalizeCode(string code) => ViolationProjection.NormalizeCode(code);
+        error is Error.TransportFault { Fault: ICodedTransportFault coded }
+            ? (error.WireCode, coded.Kind)
+            : (error.WireCode, ToWireKind(error));
 
     /// <summary>
     /// Projects an <see cref="Error.InvalidInput"/>'s field violations into the flat

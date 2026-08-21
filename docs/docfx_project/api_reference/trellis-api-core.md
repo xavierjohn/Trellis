@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
+types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, ICodedTransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -514,7 +514,8 @@ Closed discriminated union of domain error values. Each case is a nested `sealed
 | Name | Type | Notes |
 | --- | --- | --- |
 | `Kind` | `string` | Stable domain slug (e.g. `"not-found"`, `"invalid-input"`). Survives CLR renames. Suitable for telemetry. Wire-format mapping for HTTP problem-details `type` is the boundary's responsibility — see `trellis-api-asp.md`. |
-| `Code` | `string` | Per-instance machine-readable code. Defaults to `Kind`; cases whose payload carries a per-instance reason (for example `Conflict`, `Forbidden`, `InvariantViolation`, `Unexpected`) override it. Unchanged by the wire projection — see `HasExplicitCode` for what the boundary actually emits. |
+| `Code` | `string` | Per-instance machine-readable code. Defaults to `Kind`; cases whose payload carries a per-instance reason (for example `Conflict`, `Forbidden`, `InvariantViolation`, `Unexpected`) override it. **In-process value only** — anywhere the code leaves the process, read `WireCode` instead. |
+| `WireCode` | `string` | The code a consumer sees: `Code` when `HasExplicitCode` is `true` (normalized, so the legacy `validation.error` becomes `error.unspecified`), and the sentinel `error.unspecified` when it is `false`. **Read this, not `Code`, at every boundary** — an HTTP body, a span tag, a metric dimension, a log field. `Code` defaults to `Kind`, so publishing it directly would present a kind restated as a reason, and a consumer switching on it would branch on `"not-found"` as though a producer had chosen it. Applying the rule once here is what lets an operator carry a code out of a response body and into a trace query: `ResponseFailureWriter` and `Trellis.Mediator.TracingBehavior` both read this property, and tests on both sides assert against it so the two altitudes cannot drift. |
 | `HasExplicitCode` | `bool` | `true` when this instance carries a machine-readable code of its own, rather than `Code` merely restating `Kind`. **A presence test, never a value comparison:** an instance whose reason code happens to equal its own `Kind` still reports `true` and is emitted verbatim. Boundary renderers use this to decide between emitting `Code` and emitting the sentinel `error.unspecified` (see `trellis-api-asp.md`), so a kind restated as a code is never mistaken for a reason. `false` for `InvalidInput` (codes live on the individual violations), `NotFound`, `Gone`, `RateLimited`, `TransportFault` (the wrapped `HttpError` supplies the code), and `Aggregate` (codes belong to the children); `true` for `InvariantViolation`, `Conflict`, `Forbidden`, `Unexpected`; and `ReasonCode is not null` for `AuthenticationRequired` and `Unavailable`. Declared `abstract` rather than `virtual`: `Error` is a closed union, so every case must answer, which turns "a new case carries a code and forgets to say so" from a silent wire defect into a compile error. |
 | `Detail` | `string?` | Human-readable detail. Init-only (`Detail = "..."`). Boundary renderers prefer it when non-null; otherwise they compute a message from `Kind`/`Code` plus the typed payload. |
 | `Cause` | `Error?` | Structured cause chain. **Never holds a live `System.Exception`** — wrap context as a child `Error`. Cycles are detected at `init` and throw `InvalidOperationException`. |
@@ -610,8 +611,27 @@ HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterVa
 | `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Single per-field violation inside `InvalidInput.Fields`. `Equals` / `GetHashCode` compare `Args` by content. |
 | `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `InvalidInput.Rules`. `Equals` / `GetHashCode` compare `Args` by content. |
 | `ITransportFault` | marker interface | Transport-specific payload contract used by `Error.TransportFault`. HTTP-aware code uses `HttpError` from `Trellis.Http.Abstractions`; other transports can define their own implementations. |
+| `ICodedTransportFault` | `ITransportFault` plus `string Kind { get; }` and `string Code { get; }` | Opt-in sub-interface for a fault that names its own failure. See [Coded transport faults](#icodedtransportfault--a-fault-that-names-itself) below. |
 | `RetryAdvice` | `readonly record struct (TimeSpan? After = null, DateTimeOffset? At = null)` | Transport-neutral retry hint carried by `Error.RateLimited` and `Error.Unavailable`. Boundary layers translate it to headers such as `Retry-After`. |
 | `EquatableArray<T>` | `readonly struct (ImmutableArray<T> Items)` | Wraps `ImmutableArray<T>` so records get sequence equality instead of reference equality. |
+
+#### `ICodedTransportFault` — a fault that names itself
+
+`ITransportFault` is a marker: `Trellis.Core` knows nothing about HTTP, gRPC, or a message bus, so it cannot ask an arbitrary payload what went wrong. That leaves `Error.TransportFault` with no code of its own, and its `WireCode` falls back to the sentinel — which is correct for a payload Core genuinely cannot read.
+
+`ICodedTransportFault` is how a transport package opts out of that fallback:
+
+```csharp
+public interface ICodedTransportFault : ITransportFault
+{
+    string Kind { get; }
+    string Code { get; }
+}
+```
+
+When `Error.TransportFault` wraps one, the error's `HasExplicitCode` is `true`, its `Code` is the fault's `Code`, and its `WireCode` is that same value **passed through unnormalized**. That last part is deliberate and is the one place `WireCode` departs from the vocabulary rules: a transport fault's code is the transport's word, not a Trellis reason code. `HttpError.PreconditionFailed(..., PreconditionKind.IfMatch)` codes as `IfMatch` — an HTTP precondition name — and rewriting it into `error.*` shape would misrepresent a value the caller has to match against the HTTP spec, not against this vocabulary.
+
+`HttpError` in `Trellis.Http.Abstractions` implements this interface; its existing `Kind` and `Code` members satisfy it unchanged. Faults that stay bare `ITransportFault` implementations keep the sentinel behavior and continue to compile.
 
 ---
 
@@ -642,7 +662,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | Constant | Wire value | Emitted when |
 | --- | --- | --- |
 | `Unspecified` | `error.unspecified` | The producer has no code to report. |
-| `LegacyUnspecified` | `validation.error` | Pre-vocabulary placeholder; recognised and normalised at the boundary. **Do not emit.** |
+| `LegacyUnspecified` | `validation.error` | Pre-vocabulary placeholder; recognised and normalised at the boundary by `ValidationCodes.Normalize`. **Do not emit.** |
 | `FormatInteger` | `format.integer` | Not parseable as `int`/`long`/`short`/`byte`, including out of range for the type. |
 | `FormatNumber` | `format.number` | Not parseable as `double`/`float`. |
 | `FormatDecimal` | `format.decimal` | Not parseable as `decimal`. |
@@ -717,7 +737,7 @@ Three distinctions are easy to get wrong and are worth stating outright:
 - **`value.not-empty` vs `value.not-default`** — an empty string is empty; `Guid.Empty` and `0` are *default*, not empty.
 - **`enum.name-undefined` vs `enum.undefined`** — the name was not a member at all, versus a numeric value that parsed into an undefined member. A "did you mean?" affordance needs the first.
 
-`ValidationCodes.Unspecified` (`error.unspecified`) is the neutral sentinel, emitted when a producer genuinely has no code to report — a `Must(...)` predicate, or a message-only API. `ValidationCodes.LegacyUnspecified` (`validation.error`) is the pre-vocabulary placeholder, retained only so the boundary can recognise and normalise it; do not emit it.
+`ValidationCodes.Unspecified` (`error.unspecified`) is the neutral sentinel, emitted when a producer genuinely has no code to report — a `Must(...)` predicate, or a message-only API. `ValidationCodes.LegacyUnspecified` (`validation.error`) is the pre-vocabulary placeholder, retained only so the boundary can recognise and normalise it; do not emit it. `ValidationCodes.Normalize(code)` performs that mapping and leaves every other code untouched. It lives in Core rather than in a boundary package because more than one boundary applies it — the HTTP writer and the mediator's tracing behavior both do — and a second copy is how two altitudes come to disagree about the spelling of "no reason available". For an `Error` rather than a bare code, prefer `Error.WireCode`, which applies both this and `HasExplicitCode`.
 
 **Producer independence.** The same failure reports the same code regardless of which part of the framework noticed it. A malformed integer is `format.integer` whether it arrived through query-string binding, a JSON body, or a generated `TryCreate`. This is what makes a single client branch sufficient, and it is enforced by `ProducerIndependenceTests`.
 
@@ -837,7 +857,7 @@ The per-operation tracing is essentially free when no listener is registered. `A
 | 10-step `Map` chain | ~115 ns, 0 B | ~2,227 ns, 4,000 B |
 | 10-step `Tap` chain | ~176 ns, 0 B | ~2,281 ns, 4,096 B |
 
-**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source. Trellis does not set status or `result.error.code` on an ambient ASP.NET or Mediator activity from ROP operators unless that activity was started by the Trellis ROP `ActivitySource`.
+**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source. Trellis does not set status or `result.error.code` on an ambient ASP.NET or Mediator activity from ROP operators unless that activity was started by the Trellis ROP `ActivitySource`. On a failure the tags are `result.error.code` (`Error.WireCode`, so it spells the code the way the HTTP boundary does) and `result.error.type` (the error class name, which keeps the cases whose wire code is the sentinel distinguishable).
 
 **With `AddResultsInstrumentation` registered:** each combinator costs ~200 ns and allocates ~400 B (the Activity object + name + tags). At 10 000 RPS with a 10-step pipeline that's ~22 ms/sec of CPU and ~40 MB/sec of GC pressure — material at high throughput.
 

@@ -72,7 +72,7 @@ internal static class BoundViolationCollector
 
         Add(httpContext, new FieldViolation(
             Relocate(InputPointer.ForProperty(parameterName), parameterName, location),
-            error.Code,
+            error.WireCode,
             Detail: error.Detail));
     }
 

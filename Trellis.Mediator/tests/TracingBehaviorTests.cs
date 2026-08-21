@@ -78,8 +78,43 @@ public class TracingBehaviorTests : IDisposable
         activity.StatusDescription.Should().BeNullOrEmpty(
             "Error.Detail can carry user input or PII and must not leak into trace status descriptions by default");
         activity.GetTagItem("error.type").Should().Be("Error.InvalidInput");
-        activity.GetTagItem("error.code").Should().Be("invalid-input");
+        activity.GetTagItem("error.code").Should().Be(ValidationCodes.Unspecified,
+            "Error.InvalidInput carries no explicit code, so the wire renders the sentinel and the span must spell it the same way");
+        activity.GetTagItem("error.code").Should().Be(
+            new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error"))).WireCode,
+            "the tag is Error.WireCode, so it cannot drift from what the boundary publishes");
     }
+
+    [Fact]
+    public async Task Handle_FailedResult_TagsTheExplicitCode_WhenTheErrorCarriesOne()
+    {
+        var behavior = new TracingBehavior<TestCommand, Result<string>>();
+        var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
+            Result.Fail<string>(new Error.Forbidden("orders.write")));
+
+        await behavior.Handle(new TestCommand("Alice"), next, CancellationToken.None);
+
+        // The kind stays available on error.type, so narrowing error.code to the producer's own
+        // decision loses nothing: the two tags now answer two different questions.
+        _activities[0].GetTagItem("error.code").Should().Be("orders.write");
+    }
+
+    [Fact]
+    public async Task Handle_FailedTransportResult_TagsTheFaultsOwnCode()
+    {
+        var behavior = new TracingBehavior<TestCommand, Result<string>>();
+        var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
+            Result.Fail<string>(new Error.TransportFault(new CodedFault("precondition-failed", "IfMatch"))));
+
+        await behavior.Handle(new TestCommand("Alice"), next, CancellationToken.None);
+
+        // A coded transport fault is the one case where the boundary emits the fault's own code
+        // rather than the sentinel. The span has to agree, or the code in the response body cannot
+        // be pasted into a trace query — which is the whole point of this dimension.
+        _activities[0].GetTagItem("error.code").Should().Be("IfMatch");
+    }
+
+    private sealed record CodedFault(string Kind, string Code) : ICodedTransportFault;
 
     [Fact]
     public async Task Handle_FailedResult_IncludesDetailInDescription_WhenOptedIn()

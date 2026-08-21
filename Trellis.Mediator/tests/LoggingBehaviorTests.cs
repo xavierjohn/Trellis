@@ -65,9 +65,9 @@ public class LoggingBehaviorTests
         logEntries[1].Level.Should().Be(expectedLevel);
         logEntries[1].Message.Should().Contain("TestCommand");
         // ga-12: Detail is redacted by default (it can contain user input/PII). Only the
-        // stable error Code is emitted unless TrellisMediatorTelemetryOptions.IncludeErrorDetail
-        // is opted in.
-        logEntries[1].Message.Should().Contain(error.Code);
+        // wire code and the error type are emitted unless
+        // TrellisMediatorTelemetryOptions.IncludeErrorDetail is opted in.
+        logEntries[1].Message.Should().Contain(error.WireCode);
         logEntries[1].Message.Should().NotContain("Something failed.");
     }
 
@@ -83,7 +83,8 @@ public class LoggingBehaviorTests
 
         await behavior.Handle(command, next, CancellationToken.None);
 
-        logEntries[1].Message.Should().Contain("not-found");
+        logEntries[1].Message.Should().Contain("Error.NotFound",
+            "the type keeps the case identifiable when the wire code is the sentinel");
         logEntries[1].Message.Should().NotContain("order 42 for tenant acme",
             "Error.Detail can carry user input or PII and must not leak into logs by default");
     }

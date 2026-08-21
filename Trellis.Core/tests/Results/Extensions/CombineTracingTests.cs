@@ -50,7 +50,13 @@ public class CombineTracingTests : TestBase
         // Verify error is also tracked in activity tags
         var errorTag = activity.TagObjects.FirstOrDefault(t => t.Key == "result.error.code");
         errorTag.Should().NotBeNull();
-        errorTag.Value.Should().Be("invalid-input");
+        errorTag.Value.Should().Be(ValidationCodes.Unspecified,
+            "InvalidInput carries no explicit code, so the code dimension is the sentinel the HTTP boundary also writes");
+
+        var typeTag = activity.TagObjects.FirstOrDefault(t => t.Key == "result.error.type");
+        typeTag.Should().NotBeNull();
+        typeTag.Value.Should().Be("InvalidInput",
+            "the type keeps the case identifiable when the code is the sentinel");
     }
 
     [Fact]

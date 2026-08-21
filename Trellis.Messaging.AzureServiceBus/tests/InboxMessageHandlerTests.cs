@@ -109,8 +109,7 @@ public class InboxMessageHandlerTests
         var (settler, _) = await HandleAsync(message, InboxDispatchOutcome.Processed);
 
         settler.DeadLetterReason.Should().Be(ServiceBusConsumerErrors.MalformedBodyCode);
-        settler.DeadLetterDescription.Should().NotBeNullOrWhiteSpace("the dead-letter must carry the diagnosis");
-    }
+        settler.DeadLetterDescription.Should().NotBeNullOrWhiteSpace("the dead-letter must carry the diagnosis");    }
 
     [Fact]
     public async Task TheEnvelopeHandedToTheInboxCarriesTheServiceBusMessageId()
@@ -187,6 +186,29 @@ public class InboxMessageHandlerTests
             Dispatched.Add(envelope);
             return Task.FromResult(outcome);
         }
+    }
+
+    [Fact]
+    public void EveryEnvelopeFailure_CarriesAnExplicitCode_SoTheDeadLetterReasonIsNeverTheSentinel()
+    {
+        // The handler dead-letters with Error.WireCode, which narrows to the sentinel for any error
+        // that carries no code of its own. That is correct at the boundary, but it would make every
+        // unreadable message land in the DLQ under one indistinguishable reason. These errors must
+        // therefore keep naming themselves — this is the guard for a future case that forgets to.
+        Error[] envelopeFailures =
+        [
+            ServiceBusConsumerErrors.UnusableMessageId(null),
+            ServiceBusConsumerErrors.MissingSubject,
+            ServiceBusConsumerErrors.UnknownContract("orders.never-heard-of-it.v1"),
+            ServiceBusConsumerErrors.MalformedBody(OrderPlaced.WireName, "unexpected token"),
+        ];
+
+        envelopeFailures.Should().OnlyContain(e => e.HasExplicitCode);
+        envelopeFailures.Select(e => e.WireCode).Should().Equal(
+            ServiceBusConsumerErrors.UnusableMessageIdCode,
+            ServiceBusConsumerErrors.MissingSubjectCode,
+            ServiceBusConsumerErrors.UnknownContractCode,
+            ServiceBusConsumerErrors.MalformedBodyCode);
     }
 
     private sealed class ThrowingDispatcher : IInboxDispatcher

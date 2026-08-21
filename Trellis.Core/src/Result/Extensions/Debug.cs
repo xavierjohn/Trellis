@@ -15,6 +15,16 @@ using System.Diagnostics;
 /// These methods create dedicated Activities for debug operations, making them compatible with OpenTelemetry
 /// and modern observability systems like .NET Aspire, Application Insights, and Jaeger.
 /// Debug activities appear as child spans in distributed traces, making it easy to filter them out in production.
+/// 
+/// <para>
+/// <b>These tags publish the raw <see cref="Error.Code"/>, not <c>Error.WireCode</c>, and that is deliberate.</b>
+/// Every other tag Trellis emits is operator-facing and uses <c>WireCode</c> so a code can be carried from a
+/// response body into a trace query. This facility is not that: it compiles away outside DEBUG, it emits the
+/// unredacted <c>Error.Detail</c>, and its tags are namespaced <c>debug.*</c> precisely so nothing joins them to
+/// the operator-facing <c>error.code</c>. A developer stepping through a railway wants the producer's actual
+/// decision, including a kind that no boundary would publish — narrowing it to the sentinel here would hide the
+/// only thing being inspected.
+/// </para>
 /// </remarks>
 public static class ResultDebugExtensions
 {
