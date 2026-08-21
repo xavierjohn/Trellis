@@ -778,7 +778,7 @@ public sealed class DocumentService
 
         // FireResult pre-checks CanFire and converts invalid transitions to an
         // Error.InvariantViolation (HTTP 422) with ReasonCode
-        // "state.machine.invalid.transition" — a rejected transition is a domain-invariant
+        // "state-machine.invalid-transition" — a rejected transition is a domain-invariant
         // breach, not inbound-input validation or a concurrent-modification conflict.
         Result<DocumentState> result = machine.FireResult(DocumentTrigger.Submit);
         return result.Tap(newState => doc.State = newState);
@@ -790,12 +790,12 @@ public sealed class DocumentService
 
 **Side-effect placement.** Keep Stateless configuration declarative: states, triggers, permitted transitions, and pure/idempotent guards. Put business mutation, domain events, outbox writes, and other side effects after `FireResult` succeeds, usually in `.Tap(...)` as shown above. `FireResult` short-circuits when `CanFire(...)` is false and does **not** invoke `Fire(...)`, so configured `OnUnhandledTrigger` callbacks do not run from the typed-result path. Consumers who want an `OnUnhandledTrigger` callback to run must call Stateless `Fire(...)` directly. If side effects live in `OnEntry`, `OnExit`, transition callbacks, or `OnUnhandledTrigger`, they can run outside the visible ROP success/failure path and make handler behavior diverge from tests.
 
-> **HTTP semantics.** Invalid state-machine transitions surface as `Error.InvariantViolation` (HTTP 422), not `Error.InvalidInput` or `Error.Conflict` (HTTP 409). The reasoning: a rejected transition ("you asked for `Submit` on a `Cancelled` order") is a breach of the aggregate's lifecycle invariant evaluated against its current state — the request itself is well-formed (so it is not inbound-input validation), and it is not a concurrent-modification conflict that a retry could resolve. Both `InvalidInput` and `InvariantViolation` map to 422 and share the on-wire ProblemDetails `kind` `unprocessable-content`, so the HTTP response is unchanged; the distinction is the domain error type (its `Kind` slug becomes `invariant-violation`). Callers that need to distinguish state-machine rejections from other 422s can match on the `ReasonCode` value `state.machine.invalid.transition`.
+> **HTTP semantics.** Invalid state-machine transitions surface as `Error.InvariantViolation` (HTTP 422), not `Error.InvalidInput` or `Error.Conflict` (HTTP 409). The reasoning: a rejected transition ("you asked for `Submit` on a `Cancelled` order") is a breach of the aggregate's lifecycle invariant evaluated against its current state — the request itself is well-formed (so it is not inbound-input validation), and it is not a concurrent-modification conflict that a retry could resolve. Both `InvalidInput` and `InvariantViolation` map to 422 and share the on-wire ProblemDetails `kind` `unprocessable-content`, so the HTTP response is unchanged; the distinction is the domain error type (its `Kind` slug becomes `invariant-violation`). Callers that need to distinguish state-machine rejections from other 422s can match on the `ReasonCode` value `state-machine.invalid-transition`.
 
 ```csharp
 // Asserting on a state-machine rejection in tests:
 var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
-invariant.ReasonCode.Should().Be("state.machine.invalid.transition");
+invariant.ReasonCode.Should().Be("state-machine.invalid-transition");
 ```
 
 ---

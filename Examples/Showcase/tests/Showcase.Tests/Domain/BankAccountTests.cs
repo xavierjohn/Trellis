@@ -74,7 +74,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
-        conflict.ReasonCode.Should().Be("account.not.active");
+        conflict.ReasonCode.Should().Be("account.not-active");
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
-        invariant.ReasonCode.Should().Be("state.machine.invalid.transition");
+        invariant.ReasonCode.Should().Be(FaultCodes.StateMachineInvalidTransition);
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
-        invariant.ReasonCode.Should().Be("state.machine.invalid.transition");
+        invariant.ReasonCode.Should().Be(FaultCodes.StateMachineInvalidTransition);
         account.UncommittedEvents().Should().BeEmpty();
     }
 

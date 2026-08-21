@@ -53,7 +53,7 @@ public static class StateMachineExtensions
     /// <returns>
     /// A <see cref="Result{TState}"/> containing the new state if the transition is valid,
     /// or an <see cref="Error.InvariantViolation"/> with reason code
-    /// <c>state.machine.invalid.transition</c> if the trigger cannot be fired from the current
+    /// <c>state-machine.invalid-transition</c> if the trigger cannot be fired from the current
     /// state or a guard throws <see cref="InvalidOperationException"/>.
     /// </returns>
     /// <remarks>
@@ -70,7 +70,7 @@ public static class StateMachineExtensions
     /// validation or a concurrent-modification conflict — retry will not succeed. The returned error
     /// is therefore <see cref="Error.InvariantViolation"/> (HTTP 422), not <see cref="Error.InvalidInput"/>
     /// or <see cref="Error.Conflict"/> (HTTP 409). Callers can distinguish state-machine rejections from
-    /// other 422s by matching on the <c>ReasonCode</c> value <c>state.machine.invalid.transition</c>.
+    /// other 422s by matching on the <c>ReasonCode</c> value <c>state-machine.invalid-transition</c>.
     /// </para>
     /// <para>
     /// <see cref="InvalidOperationException"/> thrown while evaluating a guard is converted to
@@ -135,6 +135,6 @@ public static class StateMachineExtensions
     private static Result<TState> InvalidTransition<TState>(string detail) =>
         Result.Fail<TState>(
             Error.InvariantViolation.ForReason(
-                reasonCode: "state.machine.invalid.transition",
+                reasonCode: FaultCodes.StateMachineInvalidTransition,
                 detail: detail));
 }

@@ -45,6 +45,42 @@ public class ValidationCodesTests
     }
 
     [Fact]
+    public void No_frozen_code_has_more_than_one_dot()
+    {
+        // The concrete invariant is the dot cap; the *reason* for it is that a segment is one concept,
+        // hyphenated internally, never subdivided. Depth alone is not the sin -- a genuinely nested
+        // namespace such as `resource.authorization-via.load-failed` is three real levels and is fine
+        // outside this frozen set. But every code in the frozen set is either a single segment (the
+        // FaultCodes, which name a fault with no namespace) or `namespace.name`, so the cap holds here
+        // and is worth enforcing mechanically.
+        //
+        // `state.machine.invalid.transition` shipped for a release against this rule because it was a
+        // bare literal rather than a constant, so this reflection guard never saw it -- and the Shape
+        // regex above would have passed it anyway, since it allows unlimited segments.
+        foreach (var (name, value) in Owned)
+            value.Count(c => c == '.').Should().BeLessThanOrEqualTo(1,
+                "{0} = '{1}' must be a single segment or 'namespace.name' -- hyphenate a multi-word "
+                + "concept inside its segment instead of splitting it across dots", name, value);
+    }
+
+    [Theory]
+    [InlineData(nameof(FaultCodes.DefaultInitialized), FaultCodes.DefaultInitialized, "default-initialized")]
+    [InlineData(nameof(FaultCodes.UnhandledException), FaultCodes.UnhandledException, "unhandled-exception")]
+    [InlineData(nameof(FaultCodes.NotImplemented), FaultCodes.NotImplemented, "not-implemented")]
+    [InlineData(nameof(FaultCodes.ConcurrentModification), FaultCodes.ConcurrentModification, "concurrent-modification")]
+    [InlineData(nameof(FaultCodes.StateMachineInvalidTransition), FaultCodes.StateMachineInvalidTransition, "state-machine.invalid-transition")]
+    public void Each_fault_code_keeps_its_published_wire_value(string name, string actual, string published) =>
+        // The one place the frozen values are pinned on purpose. Everywhere else -- behavior tests,
+        // status-mapping tables -- should use the constant, because those tests are about behavior and
+        // repeating the literal there only invites drift. That leaves nothing asserting the value
+        // itself, though: Trellis dispatches on these strings, so renaming one is a wire break, and a
+        // suite that only ever compares the constant to itself would stay green through it. This test
+        // is the counterweight. Changing a value here is allowed, but it has to be deliberate, and the
+        // diff has to say so.
+        actual.Should().Be(published,
+            "{0} is a published wire value -- changing it breaks every consumer matching on it", name);
+
+    [Fact]
     public void No_code_is_declared_twice() =>
         Owned.GroupBy(c => c.Value, StringComparer.Ordinal)
             .Where(g => g.Count() > 1)

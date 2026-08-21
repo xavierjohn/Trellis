@@ -591,18 +591,25 @@ non-empty. An **absent** or empty header is unchanged: it still yields the confi
 (intentional dev convenience). Set `ThrowOnMalformedHeader = false` to restore the previous lenient
 fall-back-to-default behavior. Development-only — the provider already throws outside Development.
 
-### Changed — `Trellis.StateMachine` `FireResult` returns `Error.InvariantViolation` for rejected transitions
+### Breaking — `Trellis.StateMachine` `FireResult` returns `Error.InvariantViolation`, and its reason code is repunctuated
 
 `StateMachineExtensions.FireResult` (and `LazyStateMachine.FireResult`) now classify a disallowed
-transition as `Error.InvariantViolation.ForReason("state.machine.invalid.transition", detail)` instead of
-`Error.InvalidInput`. A rejected lifecycle transition is a domain-invariant breach evaluated against the
+transition as `Error.InvariantViolation.ForReason(FaultCodes.StateMachineInvalidTransition, detail)` instead
+of `Error.InvalidInput`. A rejected lifecycle transition is a domain-invariant breach evaluated against the
 aggregate's current state — the trigger is well-formed; the state forbids it — so `InvariantViolation` is
-the correct classification. The reason code `state.machine.invalid.transition` is unchanged. HTTP responses
-are also unchanged: both error types map to status 422 and share the on-wire ProblemDetails `kind`
-`unprocessable-content`. What changes is the domain error type — its `Kind` slug (`invalid-input` →
-`invariant-violation`) and its `Code` (now the reason code `state.machine.invalid.transition`, since
+the correct classification. HTTP responses are unchanged: both error types map to status 422 and share the
+on-wire ProblemDetails `kind` `unprocessable-content`. What changes is the domain error type — its `Kind`
+slug (`invalid-input` → `invariant-violation`) and its `Code` (now the reason code, since
 `InvariantViolation.Code` returns its `ReasonCode`). Consumers that matched on the error type or read
 `Error.InvalidInput.Rules` must switch to `Error.InvariantViolation` and its `ReasonCode`.
+
+**The reason code itself also changed**, which an earlier draft of this entry said it had not:
+`state.machine.invalid.transition` → `state-machine.invalid-transition`. It split two multi-word concepts
+across dots, which the punctuation convention forbids — a segment hyphenates internally, it does not
+subdivide. It survived because it was a bare string literal rather than a constant, so the reflection-based
+guard in `ValidationCodesTests` never saw it. It is now `FaultCodes.StateMachineInvalidTransition`, and that
+guard has been tightened — its shape regex allowed unlimited dot-separated segments, so it would have passed
+the old spelling even as a constant. It now also caps frozen codes at `namespace.name`.
 
 ### Changed — binder/JSON value-validation status honors `MapError<Error.InvalidInput>`
 
