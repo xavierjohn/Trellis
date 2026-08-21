@@ -43,13 +43,13 @@ public class ValidationErrorsContextCallSiteGuardTests
     /// shape is visible as a count change rather than passing unnoticed.
     /// </summary>
     [Fact]
-    public void All_sixteen_framework_producers_call_AddBodyError()
+    public void All_eighteen_framework_producers_call_AddBodyError()
     {
         var total = ProductionSources()
             .Where(file => !string.Equals(Path.GetFileName(file), DeclaringFile, StringComparison.Ordinal))
             .Sum(file => CountCalls(File.ReadAllText(file), "AddBodyError"));
 
-        total.Should().Be(16);
+        total.Should().Be(18);
     }
 
     /// <summary>

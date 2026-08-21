@@ -170,7 +170,12 @@ internal static class PrimitiveConverter
         }
         catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException or ArgumentException)
         {
-            return Result.Fail<TPrimitive>(Invalid(ValidationCodes.FormatConversion, "The value could not be converted to the expected type."));
+            // Routed through the shared mapping rather than hard-coding `format.conversion`, so a
+            // type the branches above do not special-case — `uint`, `sbyte` — still reports the same
+            // code the JSON body producer reports for the identical input.
+            return Result.Fail<TPrimitive>(Invalid(
+                ValidationCodes.FormatCodeFor(underlyingType),
+                "The value could not be converted to the expected type."));
         }
     }
 }

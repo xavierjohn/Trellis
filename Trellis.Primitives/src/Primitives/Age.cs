@@ -32,16 +32,21 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
         Result.Fail<Age>(
             Error.InvalidInput.ForField(fieldName.NormalizeFieldName("age"), reasonCode, args, message));
 
-    // The permitted range, carried as args so a client can render its own message for either bound.
-    private static ImmutableDictionary<string, string> RangeArgs { get; } = ValidationArgs.Of("from", "0", "to", "150");
+    // The bound that was crossed, carried as an operand so a client can render its own message.
+    // Directional codes rather than one `between` code: a client that cannot tell which end failed
+    // cannot say "too old" versus "not yet born", and the generator's range checks are directional,
+    // so collapsing them here would make Age disagree with a generated primitive on the same input.
+    private static ImmutableDictionary<string, string> MinArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
+
+    private static ImmutableDictionary<string, string> MaxArgs { get; } = ValidationArgs.Of("comparisonValue", "150");
 
     // No-span validation core. Every public factory opens exactly one span, then delegates here.
     private static Result<Age> Validate(int value, string? fieldName)
     {
         if (value < 0)
-            return Invalid(fieldName, ValidationCodes.ValueBetweenInclusive, "Age must be non-negative.", RangeArgs);
+            return Invalid(fieldName, ValidationCodes.ValueGreaterThanOrEqual, "Age must be non-negative.", MinArgs);
         if (value > 150)
-            return Invalid(fieldName, ValidationCodes.ValueBetweenInclusive, "Age is unrealistically high.", RangeArgs);
+            return Invalid(fieldName, ValidationCodes.ValueLessThanOrEqual, "Age is unrealistically high.", MaxArgs);
         return Result.Ok(new Age(value));
     }
 

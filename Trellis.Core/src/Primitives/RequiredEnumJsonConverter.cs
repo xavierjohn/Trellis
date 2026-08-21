@@ -65,18 +65,25 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
         var name = reader.GetString();
         return TRequiredEnum.TryCreate(name).Match(
             onSuccess: value => value,
-            onFailure: _ =>
+            onFailure: error =>
             {
                 var validValues = string.Join(", ", RequiredEnum<TRequiredEnum>.GetAll()
                     .Select(value => value.Value)
                     .OrderBy(value => value, StringComparer.Ordinal));
 
+                // The message is this converter's, but the code is the producer's: TryCreate already
+                // separates absent from blank from not-a-member, and overwriting all three with
+                // `enum.name-undefined` would make the same blank value report a different code
+                // through JSON than through query binding or a direct TryCreate.
                 throw Invalid(
-                    ValidationCodes.EnumNameUndefined,
+                    ReasonCodeOf(error, ValidationCodes.EnumNameUndefined),
                     $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'. " +
                     $"Valid values are: {validValues}.");
             });
     }
+
+    private static string ReasonCodeOf(Error error, string fallback) =>
+        error is Error.InvalidInput { Fields.Length: > 0 } invalid ? invalid.Fields[0].ReasonCode : fallback;
 
     /// <summary>
     /// Builds a structured validation failure carrying the converter's own curated message.

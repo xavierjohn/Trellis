@@ -30,9 +30,11 @@ the vocabulary exists to remove.
 
 Codes travel with machine-readable operands where a bound is involved. `ValidationArgs.Of(...)` builds them, and
 new `Error.InvalidInput.ForField`/`ForRule` overloads carry them, so a range failure reports
-`args: { comparisonValue: "150" }` and a `[StringLength]` failure reports `args: { maxLength: "64" }` rather than
-burying the bound in prose. **Args are always operands, never the rejected value** — echoing the input back is
-how a validation error becomes a reflected-XSS vector.
+`args: { comparisonValue: "150" }`, a `[StringLength]` failure reports `args: { minLength: "3", maxLength: "64" }`,
+and a `money.currency-mismatch` reports `args: { expected: "USD", actual: "EUR" }` rather than
+burying the operand in prose. **Args are always operands, never the rejected value** — echoing the input back is
+how a validation error becomes a reflected-XSS vector. (Currency codes are validated ISO 4217 symbols, not free
+text, which is why they are safe to carry.)
 
 Three failures the vocabulary deliberately keeps apart, because a client acts differently on each: an **absent**
 value is `value.not-null`, a value that **arrived but is blank** is `value.not-empty`, and a value type left at

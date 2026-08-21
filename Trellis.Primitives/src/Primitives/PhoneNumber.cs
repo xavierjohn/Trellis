@@ -122,13 +122,19 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         if (value is null || value.Length == 0)
             return Invalid(fieldName, value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Phone number is required.");
 
-        // Length cap MUST come before any O(n) scan so adversarial all-whitespace inputs
-        // don't force IsNullOrWhiteSpace to walk the full string.
+        // Blank is classified before the length cap so that "  " and a longer run of spaces report
+        // the same code — otherwise the answer would depend on how much whitespace was sent, which
+        // is not a distinction any client can act on. The bounded probe short-circuits at the first
+        // non-whitespace character, so the full scan only runs for an input that opens with
+        // MaxInputLength whitespace characters, and it is a plain span scan rather than the
+        // normalization regex the length cap below exists to protect.
+        if (value.AsSpan(0, Math.Min(value.Length, MaxInputLength)).IsWhiteSpace() && value.AsSpan().IsWhiteSpace())
+            return Invalid(fieldName, ValidationCodes.ValueNotEmpty, "Phone number is required.");
+
+        // Length cap MUST come before any O(n) scan so adversarial inputs don't force the
+        // normalization regex to walk the full string.
         if (value.Length > MaxInputLength)
             return Invalid(fieldName, ValidationCodes.StringPhoneE164, "Phone number must be in E.164 format (e.g., +14155551234).");
-
-        if (string.IsNullOrWhiteSpace(value))
-            return Invalid(fieldName, ValidationCodes.ValueNotEmpty, "Phone number is required.");
 
         // Normalize: remove spaces, dashes, and parentheses for validation
         var normalized = NormalizeRegex().Replace(value.Trim(), "");

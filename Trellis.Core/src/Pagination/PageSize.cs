@@ -107,10 +107,10 @@ public readonly record struct PageSize
         var req = requested.Value;
         if (req <= 0)
             return Result.Fail<PageSize>(
-                Error.InvalidInput.ForField(field, ValidationCodes.PageSizeOutOfRange, $"{field} must be positive."));
+                Error.InvalidInput.ForField(field, ValidationCodes.PageSizeOutOfRange, ValidationArgs.Of("comparisonValue", 1), $"{field} must be positive."));
         if (req > max)
             return Result.Fail<PageSize>(
-                Error.InvalidInput.ForField(field, ValidationCodes.PageSizeOutOfRange, $"{field} must be at most {max}."));
+                Error.InvalidInput.ForField(field, ValidationCodes.PageSizeOutOfRange, ValidationArgs.Of("comparisonValue", max), $"{field} must be at most {max}."));
 
         return Result.Ok(new PageSize(req, req));
     }

@@ -36,6 +36,11 @@ public class Money : ValueObject
     // Hoisted so the bound reaches the client structurally rather than only inside English prose.
     private static ImmutableDictionary<string, string> ZeroArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
 
+    // The two currencies that failed to match. A client rendering its own message needs both, and
+    // ISO 4217 codes are validated symbols rather than free text, so they are safe to echo.
+    private static ImmutableDictionary<string, string> MismatchArgs(CurrencyCode expected, CurrencyCode actual) =>
+        ValidationArgs.Of("expected", expected.Value, "actual", actual.Value);
+
     private Money(decimal amount, CurrencyCode currency)
     {
         Amount = amount;
@@ -148,7 +153,7 @@ public class Money : ValueObject
 
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, $"Cannot add {other.Currency} to {Currency}."));
+                Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, MismatchArgs(Currency, other.Currency), $"Cannot add {other.Currency} to {Currency}."));
 
         try { return TryCreate(Amount + other.Amount, Currency); }
         catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Addition would overflow.")); }
@@ -164,7 +169,7 @@ public class Money : ValueObject
 
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, $"Cannot subtract {other.Currency} from {Currency}."));
+                Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, MismatchArgs(Currency, other.Currency), $"Cannot subtract {other.Currency} from {Currency}."));
 
         if (Amount < other.Amount)
             return Result.Fail<Money>(
@@ -497,7 +502,7 @@ public class Money : ValueObject
 
                 if (!currency.Equals(current.Currency))
                     return Result.Fail<Money>(
-                        Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, $"Cannot add {current.Currency} to {currency}."));
+                        Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, MismatchArgs(currency, current.Currency), $"Cannot add {current.Currency} to {currency}."));
 
                 totalAmount += current.Amount;
             }

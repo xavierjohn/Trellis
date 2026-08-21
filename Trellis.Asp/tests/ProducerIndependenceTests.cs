@@ -4,6 +4,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.ModelBinding;
+using Trellis.Asp.Validation;
 using Trellis.Primitives;
 using Xunit;
 
@@ -163,6 +164,66 @@ public class ProducerIndependenceTests
             .Should().Be(ValidationCodes.ValueNotNull);
         CodeOf(((TrellisJsonValidationException)wrongToken!).InvalidInput!)
             .Should().Be(ValidationCodes.FormatConversion);
+    }
+
+    /// <summary>
+    /// Reads a scalar value object from a JSON document and returns the code the body producer
+    /// recorded, so a body failure can be compared against the query-binding failure for the same
+    /// input.
+    /// </summary>
+    private static string CodeFromJsonBody<TValue, TPrimitive>(string json)
+        where TValue : class, IScalarValue<TValue, TPrimitive>
+        where TPrimitive : IComparable
+    {
+        using var _ = ValidationErrorsContext.BeginScope();
+        var converter = new ValidatingJsonConverter<TValue, TPrimitive>();
+        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(json));
+        reader.Read();
+        converter.Read(ref reader, typeof(TValue), new JsonSerializerOptions());
+
+        return ValidationErrorsContext.GetUnprocessableContent()!.Fields.Items[0].ReasonCode;
+    }
+
+    [Fact]
+    public void A_malformed_integer_reports_the_same_code_in_a_body_as_in_a_query_string() =>
+        // The JSON body is the fifth producer, and the one most likely to be exercised. Before this
+        // it reported `error.unspecified` while `?ticket=abc` reported `format.integer`, so a client
+        // keying on the code had to know which half of the request the value came from.
+        CodeFromJsonBody<ProducerIndependenceTicket, int>("\"abc\"")
+            .Should().Be(CodeOf(PrimitiveConverter.ConvertToPrimitive<int>("abc").Error!));
+
+    [Fact]
+    public void A_null_body_value_reports_value_not_null_rather_than_the_sentinel() =>
+        CodeFromJsonBody<ProducerIndependenceTicket, int>("null")
+            .Should().Be(ValidationCodes.ValueNotNull);
+
+    [Fact]
+    public void A_malformed_guid_reports_the_same_code_in_a_body_as_in_a_query_string() =>
+        CodeFromJsonBody<ProducerIndependenceOrderId, Guid>("\"not-a-guid\"")
+            .Should().Be(CodeOf(PrimitiveConverter.ConvertToPrimitive<Guid>("not-a-guid").Error!));
+
+    [Fact]
+    public void A_blank_body_value_is_not_empty_rather_than_a_format_failure() =>
+        // Blank never became the target scalar, but `format.integer` would name a shape the caller
+        // never attempted. Query binding already said `value.not-empty`; the body now agrees.
+        CodeFromJsonBody<ProducerIndependenceTicket, int>("\"   \"")
+            .Should().Be(CodeOf(PrimitiveConverter.ConvertToPrimitive<int>("   ").Error!));
+
+    [Fact]
+    public void An_unsigned_integer_reports_format_integer_from_query_binding_too() =>
+        // `uint` has no dedicated branch in the binder and falls through to Convert.ChangeType. It
+        // still has to report what the JSON reader reports for the same input.
+        CodeOf(PrimitiveConverter.ConvertToPrimitive<uint>("abc").Error!)
+            .Should().Be(ValidationCodes.FormatInteger);
+
+    [Fact]
+    public void A_blank_composite_property_is_not_empty_rather_than_a_format_failure()
+    {
+        var blankAmount = Record.Exception(() =>
+            JsonSerializer.Deserialize<Money>("""{"amount":"   ","currency":"USD"}"""));
+
+        CodeOf(((TrellisJsonValidationException)blankAmount!).InvalidInput!)
+            .Should().Be(ValidationCodes.ValueNotEmpty);
     }
 }
 

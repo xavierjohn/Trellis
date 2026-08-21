@@ -297,6 +297,39 @@ public static class ValidationCodes
 
     /// <summary>An actor attribute was not valid.</summary>
     public const string AttributeInvalid = "attribute.invalid";
+
+    /// <summary>
+    /// Returns the <c>format.*</c> code for "this input could not be read as <paramref name="type"/>".
+    /// </summary>
+    /// <param name="type">The target CLR type. A nullable value type is unwrapped first.</param>
+    /// <returns>
+    /// The matching <c>format.*</c> code, or <see cref="FormatConversion"/> when no more specific
+    /// code applies.
+    /// </returns>
+    /// <remarks>
+    /// Producer independence is the point: a value that fails to parse must report the same code
+    /// whether it arrived as a query parameter, as a JSON scalar, or nested inside a composite. The
+    /// mapping lives here, once, so a new producer cannot quietly invent a different answer for a
+    /// failure the framework already has a code for.
+    /// </remarks>
+    public static string FormatCodeFor(Type type)
+    {
+        var target = Nullable.GetUnderlyingType(type) ?? type;
+
+        if (target == typeof(int) || target == typeof(long) || target == typeof(short) || target == typeof(byte)
+            || target == typeof(uint) || target == typeof(ulong) || target == typeof(ushort) || target == typeof(sbyte))
+            return FormatInteger;
+        if (target == typeof(decimal)) return FormatDecimal;
+        if (target == typeof(double) || target == typeof(float)) return FormatNumber;
+        if (target == typeof(bool)) return FormatBoolean;
+        if (target == typeof(Guid)) return FormatGuid;
+        if (target == typeof(DateTime) || target == typeof(DateTimeOffset)) return FormatDateTime;
+        if (target == typeof(DateOnly)) return FormatDate;
+        if (target == typeof(TimeOnly)) return FormatTime;
+        if (target == typeof(TimeSpan)) return FormatDuration;
+
+        return FormatConversion;
+    }
 }
 
 /// <summary>

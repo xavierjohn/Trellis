@@ -92,7 +92,7 @@ Dotted FluentValidation paths split into separate JSON-pointer segments; bracket
 
 ### Reason-code projection
 
-Each `ValidationFailure.ErrorCode` is projected through [`ValidationCodeProjection.Project`](trellis-api-fluentvalidation.md#validationcodeprojection) before it reaches `FieldViolation.Code`, so a `NotEmptyValidator` failure arriving through the Mediator pipeline reports the same `value.not-empty` a generated `TryCreate` would. Custom `WithErrorCode` values pass through verbatim; `Must(...)` predicates project to `error.unspecified`.
+Each `ValidationFailure.ErrorCode` is projected through [`ValidationCodeProjection.Project`](trellis-api-fluentvalidation.md#validationcodeprojection) before it reaches `FieldViolation.ReasonCode`, so a `MaximumLengthValidator` failure arriving through the Mediator pipeline reports the same `string.max-length` a generated `TryCreate` would. `NotEmptyValidator` is refined against the rejected value — `null` becomes `value.not-null`, a string or collection becomes `value.not-empty`, and a value type left at its default such as `Guid.Empty` or `0` becomes `value.not-default` — because those are three failures a client acts on differently. Custom `WithErrorCode` values pass through verbatim; `Must(...)` predicates project to `error.unspecified`.
 
 ## Behavioral notes
 

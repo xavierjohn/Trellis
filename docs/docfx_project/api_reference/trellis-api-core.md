@@ -655,7 +655,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `FormatConversion` | `format.conversion` | Conversion to the target type failed with no more specific code — including a JSON token of the wrong kind. |
 | `StringLength` | `string.length` | Length outside an allowed range. |
 | `StringMinLength` | `string.min-length` | Shorter than the minimum. Args: `minLength`. |
-| `StringMaxLength` | `string.max-length` | Longer than the maximum. Args: `maxLength`, `totalLength`. |
+| `StringMaxLength` | `string.max-length` | Longer than the maximum. Args: `maxLength`; the FluentValidation adapter adds `totalLength`, which generated primitives do not carry. |
 | `StringExactLength` | `string.exact-length` | Not the required exact length. |
 | `StringPattern` | `string.pattern` | Did not match a required regular expression. |
 | `StringEmail` | `string.email` | Not a valid email address. |
@@ -691,7 +691,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `FieldsAtLeastOne` | `fields.at-least-one` | None of a group was supplied. |
 | `EnumNameUndefined` | `enum.name-undefined` | The supplied name is not a member of the enum. |
 | `EnumUndefined` | `enum.undefined` | A numeric value parsed but is not a defined member. |
-| `MoneyCurrencyMismatch` | `money.currency-mismatch` | An operation combined two different currencies. |
+| `MoneyCurrencyMismatch` | `money.currency-mismatch` | An operation combined two different currencies. Args: `expected`, `actual`. |
 | `MoneyNegativeResult` | `money.negative-result` | The operation would produce a negative amount. |
 | `PageSizeOutOfRange` | `page-size.out-of-range` | Page size not positive, or above the maximum. |
 | `HttpBadRequest` | `http.bad-request` | An upstream HTTP response was 400. |
@@ -701,6 +701,8 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `EtagMalformed` | `etag.malformed` | An ETag header value could not be parsed. |
 | `CursorMalformed` | `cursor.malformed` | A pagination cursor could not be decoded. |
 | `AttributeInvalid` | `attribute.invalid` | An actor attribute was missing or not valid. |
+
+`ValidationCodes.FormatCodeFor(Type)` returns the `format.*` code for "this input could not be read as that type", unwrapping a nullable value type first and falling back to `format.conversion`. Every producer that turns a parse failure into a code routes through it — the query/route binder, the scalar JSON converters, and the composite JSON converter — so the mapping exists once rather than once per producer, and a new producer cannot quietly invent a different answer for a failure the framework already names.
 
 `FaultCodes` carries the two `Error.Unexpected` reason codes — these describe a failure of the *system*, not of the input, so they live apart from the validation vocabulary:
 

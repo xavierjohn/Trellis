@@ -78,9 +78,23 @@ public class EmailAddressTests
         // Act
         Action act = () => EmailAddress.Parse(str, null);
 
-        // Assert
+        // Assert — absent is "required", not "not valid": the caller wrote no address to correct.
         act.Should().Throw<FormatException>()
-            .WithMessage("Email address is not valid.");
+            .WithMessage("Email address is required.");
+    }
+
+    [Theory]
+    [InlineData(null, ValidationCodes.ValueNotNull)]
+    [InlineData("", ValidationCodes.ValueNotEmpty)]
+    [InlineData("   ", ValidationCodes.ValueNotEmpty)]
+    public void TryCreate_separates_absent_from_blank_before_the_shape_check(string? email, string expected)
+    {
+        // Arrange & Act
+        var result = EmailAddress.TryCreate(email);
+
+        // Assert — `string.email` would tell the caller to fix an address they never wrote.
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].ReasonCode.Should().Be(expected);
     }
 
     [Theory]
@@ -151,7 +165,6 @@ public class EmailAddressTests
 
     public static TheoryData<string?> GetBadEmailAddresses() =>
     [
-        string.Empty,
         "xavier",
         "xavier@",
         "@com",

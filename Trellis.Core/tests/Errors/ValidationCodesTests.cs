@@ -98,4 +98,29 @@ public class ValidationCodesTests
         Owned.Where(c => c.Value.Contains('_'))
             .Select(c => c.Value)
             .Should().BeEmpty("the convention is hyphen-separated words, not snake_case");
+
+    [Theory]
+    [InlineData(typeof(int), "format.integer")]
+    [InlineData(typeof(long), "format.integer")]
+    [InlineData(typeof(short), "format.integer")]
+    [InlineData(typeof(byte), "format.integer")]
+    [InlineData(typeof(decimal), "format.decimal")]
+    [InlineData(typeof(double), "format.number")]
+    [InlineData(typeof(float), "format.number")]
+    [InlineData(typeof(bool), "format.boolean")]
+    [InlineData(typeof(Guid), "format.guid")]
+    [InlineData(typeof(DateTime), "format.date-time")]
+    [InlineData(typeof(DateTimeOffset), "format.date-time")]
+    [InlineData(typeof(DateOnly), "format.date")]
+    [InlineData(typeof(TimeOnly), "format.time")]
+    [InlineData(typeof(TimeSpan), "format.duration")]
+    [InlineData(typeof(string), "format.conversion")]
+    public void FormatCodeFor_maps_each_scalar_to_its_format_code(Type type, string expected) =>
+        ValidationCodes.FormatCodeFor(type).Should().Be(expected);
+
+    [Fact]
+    public void FormatCodeFor_unwraps_a_nullable_value_type() =>
+        // An optional query parameter arrives as `int?`; a client keying on the code must not have to
+        // know whether the producer's target was declared nullable.
+        ValidationCodes.FormatCodeFor(typeof(int?)).Should().Be(ValidationCodes.FormatInteger);
 }
