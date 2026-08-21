@@ -400,7 +400,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                         new Error.InvalidInput(EquatableArray.Create(
                             new FieldViolation(
                                 InputPointer.ForProperty(parameter.Name!),
-                                ViolationProjection.LegacyUnspecifiedCode,
+                                ValidationCodes.Unspecified,
                                 Detail: errorMessage))),
                         parameter.Name!,
                         ResolveLocation(context, parameter));
