@@ -236,13 +236,13 @@ public sealed class ValidationArgsOptions
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `Default` | `ValidationArgsOptions` | The static configuration used when the application registered none. Widens nothing. |
+| `Default` | `ValidationArgsOptions` | The static configuration used when the application registered none. Widens nothing, and rejects `AllowArgs` with `InvalidOperationException` because it is shared process-wide. |
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public ValidationArgsOptions AllowArgs(string errorCode, params string[] placeholderNames)` | `ValidationArgsOptions` | Allows the named placeholders — spelled as FluentValidation spells them, in PascalCase — to be emitted for failures carrying `errorCode`. Returns the same instance so calls chain. Throws `ArgumentException` for a blank error code or name, or for a placeholder that can never be allowed. |
+| `public ValidationArgsOptions AllowArgs(string errorCode, params string[] placeholderNames)` | `ValidationArgsOptions` | Allows the named placeholders — spelled as FluentValidation spells them, in PascalCase — to be emitted for failures carrying `errorCode`. Returns the same instance so calls chain. Throws `ArgumentException` for a blank error code or name, or for a placeholder that can never be allowed, and `InvalidOperationException` when called on `Default`. |
 
 This is the explicit opt-in the two controls above defer to. The default allowlist carries only the operands whose meaning Trellis can vouch for across every validator that populates them, so a rule Trellis did not write — a `Must()` with `context.MessageFormatter.AppendArgument(...)`, or a validator behind a custom `WithErrorCode` — emits no args at all. `AllowArgs` is how the application supplies the knowledge Trellis lacks.
 
@@ -257,7 +257,9 @@ Three properties are worth stating, because each is load-bearing:
 
 - **It only ever widens.** There is no remove operation. The default set is the conservative one, so removing could only narrow a client contract something already depends on — and an application that wants fewer args can stop reading them.
 - **An explicit opt-in satisfies the template half of the containment gate without consulting the template.** The template check defends against a placeholder *Trellis guessed* was safe, which is why coincidence can fool it; an application naming its own validator's placeholder is not guessing, and a custom validator has no language-manager entry for the check to consult. Leaving it in force would make the opt-in inert. **The message half still holds**, so an opted-in arg still cannot carry anything the client's own message did not.
-- **`PropertyValue` and `PropertyPath` can never be re-admitted.** `AllowArgs` throws rather than silently dropping them, because an application that asked for `PropertyValue` has misunderstood what args are for and a silent drop would leave it waiting for an arg that is never coming.
+- **`PropertyValue` and `PropertyPath` can never be re-admitted.** `AllowArgs` throws rather than silently dropping them, because an application that asked for `PropertyValue` has misunderstood what args are for and a silent drop would leave it waiting for an arg that is never coming. The two are denied for different reasons, and the exception says which: `PropertyValue` carries the submitted input verbatim, a disclosure and PII hazard; `PropertyPath` carries the traversal path the violation's own location already reports.
+
+- **`Default` cannot be widened.** It is shared process-wide, so `ValidationArgsOptions.Default.AllowArgs(...)` throws `InvalidOperationException` rather than applying a global effect from what reads like a local one. Register through `services.Configure<ValidationArgsOptions>(...)`, which hands out an instance of your own.
 
 
 ## Extension methods

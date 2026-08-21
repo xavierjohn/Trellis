@@ -41,20 +41,37 @@ using System.Collections.Generic;
 public sealed class ValidationArgsOptions
 {
     /// <summary>
-    /// Placeholders no opt-in can re-admit.
+    /// Placeholders no opt-in can re-admit, each with the reason it is denied.
     /// </summary>
-    private static readonly HashSet<string> NeverAllowed = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> NeverAllowed = new(StringComparer.OrdinalIgnoreCase)
     {
-        "PropertyValue",
-        "PropertyPath",
+        ["PropertyValue"] = "it carries the submitted input verbatim, which is a disclosure and PII hazard. Report the value's location instead, which the violation already does.",
+        ["PropertyPath"] = "it carries the traversal path the violation's own location already reports. Read the violation's pointer instead.",
     };
 
     private readonly Dictionary<string, HashSet<string>> additional = new(StringComparer.Ordinal);
 
+    private readonly bool isShared;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ValidationArgsOptions"/> class.
+    /// </summary>
+    public ValidationArgsOptions()
+    {
+    }
+
+    private ValidationArgsOptions(bool isShared) => this.isShared = isShared;
+
     /// <summary>
     /// The configuration used when an application registered none.
     /// </summary>
-    public static ValidationArgsOptions Default { get; } = new();
+    /// <remarks>
+    /// This instance is shared process-wide, so it rejects <see cref="AllowArgs"/>. Widening it
+    /// would silently widen every validation call in the process, including those in unrelated
+    /// scopes and on other threads — a global effect from what reads like a local one. Configure
+    /// through the options system instead, which hands out an instance of your own.
+    /// </remarks>
+    public static ValidationArgsOptions Default { get; } = new(isShared: true);
 
     /// <summary>
     /// Allows the named placeholders to be emitted for failures carrying
@@ -73,8 +90,17 @@ public sealed class ValidationArgsOptions
     /// Thrown when <paramref name="errorCode"/> is blank, or when <paramref name="placeholderNames"/>
     /// names a placeholder that can never be allowed.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when called on <see cref="Default"/>, which is shared process-wide.
+    /// </exception>
     public ValidationArgsOptions AllowArgs(string errorCode, params string[] placeholderNames)
     {
+        if (isShared)
+        {
+            throw new InvalidOperationException(
+                $"{nameof(ValidationArgsOptions)}.{nameof(Default)} is shared across the process and cannot be widened. Register your own through services.Configure<{nameof(ValidationArgsOptions)}>(...) so the change is scoped to the application that made it.");
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(errorCode);
         ArgumentNullException.ThrowIfNull(placeholderNames);
 
@@ -85,10 +111,10 @@ public sealed class ValidationArgsOptions
             // Failing loudly beats silently dropping the name: an application that asked for
             // PropertyValue has misunderstood what args are for, and a silent drop would leave it
             // waiting for an arg that is never coming.
-            if (NeverAllowed.Contains(name))
+            if (NeverAllowed.TryGetValue(name, out var reason))
             {
                 throw new ArgumentException(
-                    $"'{name}' can never be emitted as a validation arg because it carries the submitted input. Report the value's location instead, which the violation already does.",
+                    $"'{name}' can never be emitted as a validation arg because {reason}",
                     nameof(placeholderNames));
             }
 

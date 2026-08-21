@@ -2025,9 +2025,16 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
     /// The extra parameter on the emitted declaration, the extra argument on the emitted call, the
     /// declaration of the code local, and the expression that supplies the violation's reason code.
     /// </returns>
+    /// <remarks>
+    /// The blank check is the runtime sibling of TRLS060. An attribute's <c>Code</c> is a literal an
+    /// analyzer can read, so a blank one fails the build; a code assigned inside
+    /// <c>ValidateAdditional</c> is only known when the value is rejected, so the guard has to live
+    /// in the emitted code. Both exist to keep an empty string off the wire, where it would read as
+    /// a reason rather than as the absence of one.
+    /// </remarks>
     private static (string Param, string Arg, string Init, string Code) ValidateAdditionalShape(RequiredPartialClassInfo g) =>
         g.ValidateAdditionalHasCode
-            ? (", ref string? errorCode", ", ref additionalCode", " string? additionalCode = null;", "additionalCode ?? ValidationCodes.Unspecified")
+            ? (", ref string? errorCode", ", ref additionalCode", " string? additionalCode = null;", "(string.IsNullOrWhiteSpace(additionalCode) ? ValidationCodes.Unspecified : additionalCode!)")
             : ("", "", "", "ValidationCodes.Unspecified");
 
     private static string GenerateDateTimeMethods(RequiredPartialClassInfo g, SourceProductionContext context, HashSet<string> reportedCollisions)

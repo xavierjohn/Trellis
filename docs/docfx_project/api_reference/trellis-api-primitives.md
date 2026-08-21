@@ -155,7 +155,7 @@ static partial void ValidateAdditional(string value, string fieldName, ref strin
 static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode);
 ```
 
-The generator emits whichever declaration you implemented, so existing three-argument implementations compile and behave unchanged. In the four-argument form, setting `errorMessage` still decides *whether* the value is rejected; leaving `errorCode` unset falls back to `error.unspecified`. Declaring both overloads is `TRLS061`.
+The generator emits whichever declaration you implemented, so existing three-argument implementations compile and behave unchanged. In the four-argument form, setting `errorMessage` still decides *whether* the value is rejected; leaving `errorCode` unset — or setting it to a blank string — falls back to `error.unspecified`, because an empty code on the wire reads as a reason rather than as the absence of one. (`TRLS060` catches the same mistake on an attribute's `Code`, where the value is a literal an analyzer can read.) Declaring both overloads is `TRLS061`.
 
 ```csharp
 public partial class ReservationCode : RequiredString<ReservationCode>

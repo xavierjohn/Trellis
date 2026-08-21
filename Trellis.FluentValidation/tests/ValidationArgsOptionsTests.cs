@@ -102,12 +102,34 @@ public class ValidationArgsOptionsTests
     [InlineData("PropertyValue")]
     [InlineData("PropertyPath")]
     [InlineData("propertyvalue")]
-    public void AllowArgs_refuses_the_placeholders_that_carry_submitted_input(string name)
+    [InlineData("propertypath")]
+    public void AllowArgs_refuses_the_permanently_denied_placeholders(string name)
     {
         var act = () => new ValidationArgsOptions().AllowArgs("GreaterThanValidator", name);
 
-        act.Should().Throw<ArgumentException>().WithMessage("*submitted input*");
+        act.Should().Throw<ArgumentException>().WithMessage($"*'{name}'*");
     }
+
+    [Fact]
+    public void AllowArgs_says_PropertyValue_is_denied_for_disclosure() =>
+        new Func<object>(() => new ValidationArgsOptions().AllowArgs("GreaterThanValidator", "PropertyValue"))
+            .Should().Throw<ArgumentException>().WithMessage("*submitted input*");
+
+    [Fact]
+    public void AllowArgs_says_PropertyPath_is_denied_for_redundancy() =>
+        new Func<object>(() => new ValidationArgsOptions().AllowArgs("GreaterThanValidator", "PropertyPath"))
+            .Should().Throw<ArgumentException>().WithMessage("*already reports*",
+                "PropertyPath is withheld because the violation's location carries it, not because it discloses input");
+
+    [Fact]
+    public void AllowArgs_refuses_to_widen_the_shared_default() =>
+        new Func<object>(() => ValidationArgsOptions.Default.AllowArgs("GreaterThanValidator", "ComparisonValue"))
+            .Should().Throw<InvalidOperationException>().WithMessage("*shared*",
+                "widening the process-wide instance would be a global effect from what reads like a local one");
+
+    [Fact]
+    public void The_shared_default_widens_nothing() =>
+        ValidationArgsOptions.Default.IsEmpty.Should().BeTrue();
 
     [Fact]
     public void AllowArgs_rejects_a_blank_error_code() =>

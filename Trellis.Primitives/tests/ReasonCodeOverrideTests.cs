@@ -76,6 +76,25 @@ public partial class LegacyReservationCode : RequiredString<LegacyReservationCod
     }
 }
 
+/// <summary>
+/// The four-argument overload assigning a blank code. TRLS060 catches a blank <c>Code</c> on an
+/// attribute because that is a literal an analyzer can read, but a code assigned here is only known
+/// once the value is rejected, so the generated code has to fall back at runtime. Either way an
+/// empty string must never reach the wire, where it would read as a reason rather than as the
+/// absence of one.
+/// </summary>
+public partial class BlankCodedReservation : RequiredString<BlankCodedReservation>
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+    {
+        if (value.Length >= 4)
+            return;
+
+        errorMessage = "Blank Coded Reservation is too short.";
+        errorCode = "   ";
+    }
+}
+
 public class ReasonCodeOverrideTests
 {
     private static FieldViolation FirstViolation(Error error) =>
@@ -160,6 +179,12 @@ public class ReasonCodeOverrideTests
     public void ValidateAdditional_leaving_the_code_unset_falls_back_to_unspecified() =>
         FirstViolation(LegacyReservationCode.TryCreate("abc").UnwrapError()).ReasonCode
             .Should().Be(ValidationCodes.Unspecified);
+
+    [Fact]
+    public void ValidateAdditional_setting_a_blank_code_falls_back_to_unspecified() =>
+        FirstViolation(BlankCodedReservation.TryCreate("abc").UnwrapError()).ReasonCode
+            .Should().Be(ValidationCodes.Unspecified,
+                "a blank code on the wire reads as a reason rather than as the absence of one");
 
     [Fact]
     public void ValidateAdditional_still_reports_error_unspecified_for_the_three_argument_overload() =>
