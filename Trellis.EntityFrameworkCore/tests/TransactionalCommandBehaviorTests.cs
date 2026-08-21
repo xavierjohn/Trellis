@@ -201,7 +201,7 @@ public class TransactionalCommandBehaviorTests
     public async Task Handle_fail_after_commit_with_commit_failure_returns_commit_error()
     {
         var ct = TestContext.Current.CancellationToken;
-        var commitError = new Error.Conflict(null, "concurrent_modification") { Detail = "row was concurrently modified" };
+        var commitError = new Error.Conflict(null, FaultCodes.ConcurrentModification) { Detail = "row was concurrently modified" };
         var uow = new FakeUnitOfWork { CommitResult = Result.Fail(commitError) };
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
         var handlerError = new Error.Conflict(null, "external.permanent_failure") { Detail = "gateway rejected" };

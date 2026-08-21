@@ -283,28 +283,28 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Conflict_concurrent_modification_with_IfMatch_maps_to_412_precondition_failed()
     {
         var ctx = NewContext(ifMatch: "\"etag\"");
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), "concurrent_modification"));
+        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), FaultCodes.ConcurrentModification));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(412);
         using var body = await ReadBody(ctx);
         body.RootElement.GetProperty("kind").GetString().Should().Be("precondition-failed");
-        body.RootElement.GetProperty("code").GetString().Should().Be("concurrent_modification");
+        body.RootElement.GetProperty("code").GetString().Should().Be(FaultCodes.ConcurrentModification);
     }
 
     [Fact]
     public async Task Conflict_concurrent_modification_without_IfMatch_stays_409_conflict()
     {
         var ctx = NewContext();
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), "concurrent_modification"));
+        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), FaultCodes.ConcurrentModification));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(409);
         using var body = await ReadBody(ctx);
         body.RootElement.GetProperty("kind").GetString().Should().Be("conflict");
-        body.RootElement.GetProperty("code").GetString().Should().Be("concurrent_modification");
+        body.RootElement.GetProperty("code").GetString().Should().Be(FaultCodes.ConcurrentModification);
     }
 
     [Fact]
@@ -427,7 +427,7 @@ public sealed class ResponseFailureWriterPhase3Tests
             { new Error.RateLimited(), "too-many-requests", 429 },
             { new Error.Unavailable(), "service-unavailable", 503 },
             { new Error.Unexpected("boom"), "internal-server-error", 500 },
-            { new Error.Unexpected("not_implemented"), "not-implemented", 501 },
+            { new Error.Unexpected(FaultCodes.NotImplemented), "not-implemented", 501 },
             { new Error.Aggregate(new Error.NotFound(rr)), "multi", 404 },
         };
     }
@@ -450,7 +450,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Conflict_concurrent_modification_with_IfMatch_wire_round_trip()
     {
         var ctx = NewContext(ifMatch: "\"etag\"");
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), "concurrent_modification"));
+        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), FaultCodes.ConcurrentModification));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 

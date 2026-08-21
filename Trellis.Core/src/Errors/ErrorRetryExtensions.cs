@@ -29,7 +29,7 @@
 /// <code language="csharp">
 /// var classification = error switch
 /// {
-///     Error.Conflict c when c.ReasonCode == "concurrent_modification" =&gt; RetryClassification.Transient,
+///     Error.Conflict c when c.ReasonCode == FaultCodes.ConcurrentModification =&gt; RetryClassification.Transient,
 ///     _ =&gt; error.Classify(),
 /// };
 /// </code>

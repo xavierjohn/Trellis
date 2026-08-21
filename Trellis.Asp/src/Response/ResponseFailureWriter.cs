@@ -79,7 +79,7 @@ internal static class ResponseFailureWriter
 
         EmitCompanionHeaders(httpContext.Response, error);
 
-        // Conflict + concurrent_modification + If-Match → 412 / precondition-failed.
+        // Conflict + concurrent-modification + If-Match → 412 / precondition-failed.
         // Applied locally here (not in GetStatusCode) because the override depends on the
         // request's If-Match header, which TrellisAspOptions has no access to.
         var overriden = TryConcurrentModificationOverride(httpContext, error);
@@ -452,7 +452,7 @@ internal static class ResponseFailureWriter
 
     private static (int Status, string WireKind)? TryConcurrentModificationOverride(HttpContext httpContext, Error error)
     {
-        if (error is Error.Conflict { ReasonCode: "concurrent_modification" }
+        if (error is Error.Conflict { ReasonCode: FaultCodes.ConcurrentModification }
             && httpContext.Request.Headers.ContainsKey("If-Match"))
         {
             return (StatusCodes.Status412PreconditionFailed, "precondition-failed");
@@ -613,7 +613,7 @@ internal static class ResponseFailureWriter
         Error.AuthenticationRequired => "unauthorized",
         Error.RateLimited => "too-many-requests",
         Error.Unavailable => "service-unavailable",
-        Error.Unexpected u when u.ReasonCode == "not_implemented" => "not-implemented",
+        Error.Unexpected u when u.ReasonCode == FaultCodes.NotImplemented => "not-implemented",
         Error.Unexpected => "internal-server-error",
         Error.Aggregate => "multi",
         _ => error.Kind,

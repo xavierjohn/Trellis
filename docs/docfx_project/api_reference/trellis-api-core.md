@@ -724,12 +724,20 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 
 `ValidationCodes.FormatCodeFor(Type)` returns the `format.*` code for "this input could not be read as that type", unwrapping a nullable value type first and falling back to `format.conversion`. Every producer that turns a parse failure into a code routes through it — the query/route binder, the scalar JSON converters, and the composite JSON converter — so the mapping exists once rather than once per producer, and a new producer cannot quietly invent a different answer for a failure the framework already names.
 
-`FaultCodes` carries the two `Error.Unexpected` reason codes — these describe a failure of the *system*, not of the input, so they live apart from the validation vocabulary:
+`FaultCodes` carries the non-validation reason codes — these describe a failure of the *system* or of the request's fate rather than of the input, so they live apart from the validation vocabulary:
 
 | Constant | Wire value | Emitted when |
 | --- | --- | --- |
 | `DefaultInitialized` | `default-initialized` | A `Result` was default-initialized and never assigned. |
 | `UnhandledException` | `unhandled-exception` | An exception escaped to a boundary that converts it into a failed `Result`. |
+| `NotImplemented` | `not-implemented` | A boundary reached a path the framework does not implement. Carried by `Error.Unexpected`; surfaces as HTTP 501. |
+| `ConcurrentModification` | `concurrent-modification` | A write lost a race — the row changed between read and save. Carried by `Error.Conflict`; surfaces as 412 when the request carried `If-Match`, otherwise 409. |
+
+`NotImplemented` and `ConcurrentModification` are *control* values: the framework matches on them to select
+HTTP behaviour, so they are dispatch keys as well as presentation. That is exactly why they belong here as
+constants — while they were bare literals scattered across `Trellis.Http`, `Trellis.Asp` and
+`Trellis.EntityFrameworkCore`, the shape tests in `ValidationCodesTests` could not see them, which is how
+`not_implemented` and `concurrent_modification` kept a `snake_case` spelling the convention forbids.
 
 Three distinctions are easy to get wrong and are worth stating outright:
 

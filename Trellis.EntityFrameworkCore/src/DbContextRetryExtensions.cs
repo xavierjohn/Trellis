@@ -23,7 +23,7 @@ public static class DbContextRetryExtensions
     /// <para>
     /// <b>Concurrency exceptions bypass retry.</b> <see cref="DbUpdateConcurrencyException"/>
     /// is mapped to <see cref="Error.Conflict"/> with reason code
-    /// <c>concurrent_modification</c> WITHOUT calling <paramref name="shouldRetry"/> —
+    /// <c>concurrent-modification</c> WITHOUT calling <paramref name="shouldRetry"/> —
     /// regenerating a natural key cannot resolve a stale rowversion conflict.
     /// </para>
     /// <para>
@@ -135,7 +135,7 @@ public static class DbContextRetryExtensions
             {
                 return Result.Fail<Unit>(new Error.Conflict(
                     Resource: null,
-                    ReasonCode: "concurrent_modification")
+                    ReasonCode: FaultCodes.ConcurrentModification)
                 {
                     Detail = $"One or more entities were modified by another process. {ex.Entries.Count} entities affected."
                 });

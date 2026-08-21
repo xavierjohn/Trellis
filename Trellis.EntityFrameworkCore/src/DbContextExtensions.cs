@@ -69,7 +69,7 @@ public static class DbContextExtensions
         {
             return Result.Fail<int>(new Error.Conflict(
                 Resource: null,
-                ReasonCode: "concurrent_modification")
+                ReasonCode: FaultCodes.ConcurrentModification)
             { Detail = $"One or more entities were modified by another process. {ex.Entries.Count} entities affected." });
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))

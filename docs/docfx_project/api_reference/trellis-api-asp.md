@@ -184,7 +184,7 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 | `public TrellisAspOptions MapError<TError>(int statusCode) where TError : Error` | `TrellisAspOptions` | Overrides or adds an error-type-to-status-code mapping. Throws `ArgumentOutOfRangeException` when `statusCode` is outside `100`–`599`. |
 | `internal int GetStatusCode(Error error)` | `int` | Walks the error type hierarchy looking for a mapping; falls back to `500`. Invoked by the response writer. |
 
-Default mappings: `Error.InvalidInput=422`, `Error.InvariantViolation=422`, `Error.AuthenticationRequired=401`, `Error.Forbidden=403`, `Error.NotFound=404`, `Error.Conflict=409`, `Error.Gone=410`, `Error.RateLimited=429`, `Error.Unexpected=500`, and `Error.Unavailable=503`. `Error.Unexpected { ReasonCode: "not_implemented" }` is special-cased to `501`. `Error.TransportFault` unwraps `HttpError.MethodNotAllowed`, `HttpError.NotAcceptable`, `HttpError.PreconditionFailed`, `HttpError.ContentTooLarge`, `HttpError.UnsupportedMediaType`, `HttpError.RangeNotSatisfiable`, and `HttpError.PreconditionRequired` to `405/406/412/413/415/416/428`. Explicit `MapError<Error.TransportFault>(...)` overrides all wrapped transport faults at once.
+Default mappings: `Error.InvalidInput=422`, `Error.InvariantViolation=422`, `Error.AuthenticationRequired=401`, `Error.Forbidden=403`, `Error.NotFound=404`, `Error.Conflict=409`, `Error.Gone=410`, `Error.RateLimited=429`, `Error.Unexpected=500`, and `Error.Unavailable=503`. `Error.Unexpected { ReasonCode: "not-implemented" }` is special-cased to `501`. `Error.TransportFault` unwraps `HttpError.MethodNotAllowed`, `HttpError.NotAcceptable`, `HttpError.PreconditionFailed`, `HttpError.ContentTooLarge`, `HttpError.UnsupportedMediaType`, `HttpError.RangeNotSatisfiable`, and `HttpError.PreconditionRequired` to `405/406/412/413/415/416/428`. Explicit `MapError<Error.TransportFault>(...)` overrides all wrapped transport faults at once.
 
 The `Error.InvalidInput` mapping also governs **binder- and JSON-body value-validation failures** (`ScalarValueValidationMiddleware`, `ScalarValueValidationFilter`, and `ScalarValueValidationEndpointFilter`), so a single `MapError<Error.InvalidInput>(status)` applies uniformly to scalar/value-object validation at the route/query binder, the JSON request body, and domain handlers (default `422`). Syntactically malformed JSON is exempt — it stays `400` per RFC 9110 §15.5.1.
 
@@ -202,14 +202,14 @@ Trellis.Core.Error is transport-neutral. The ASP boundary translates domain fail
 | `InvariantViolation` | 422 | `unprocessable-content` | — |
 | `NotFound` | 404 | `not-found` | — |
 | `Forbidden` | 403 | `forbidden` | — |
-| `Conflict` (`ReasonCode=="concurrent_modification"` AND request had `If-Match`) | 412 | `precondition-failed` | — |
+| `Conflict` (`ReasonCode=="concurrent-modification"` AND request had `If-Match`) | 412 | `precondition-failed` | — |
 | `Conflict` (otherwise) | 409 | `conflict` | — |
 | `Gone` | 410 | `gone` | — |
 | `AuthenticationRequired` | 401 | `unauthorized` | `WWW-Authenticate` from `Scheme` or `IAuthenticationSchemeProvider` |
 | `Unavailable` | 503 | `service-unavailable` | `Retry-After` from `RetryAdvice` |
 | `RateLimited` | 429 | `too-many-requests` | `Retry-After` from `RetryAdvice` |
 | `Unexpected` (default) | 500 | `internal-server-error` | `faultId` extension when set |
-| `Unexpected` (`ReasonCode=="not_implemented"`) | 501 | `not-implemented` | — |
+| `Unexpected` (`ReasonCode=="not-implemented"`) | 501 | `not-implemented` | — |
 | `Aggregate` | worst-status of children | `multi` | per-child |
 | `TransportFault` | per inner `HttpError` (405/406/412/413/415/416/428) | inner wire kind | inner-specific |
 
@@ -254,7 +254,7 @@ Each child is a complete Problem Details object in its own right, not a fixed fi
 
 ### Concurrent modification override
 
-When `Error.Conflict.ReasonCode == "concurrent_modification"` and the incoming request carried `If-Match`, the boundary emits `412 Precondition Failed` with wire `kind` `precondition-failed` instead of `409 conflict`. The top-level Problem Details `type` continues to default to the ASP.NET status-code URL for 412. The domain `code` stays `"concurrent_modification"`.
+When `Error.Conflict.ReasonCode == "concurrent-modification"` and the incoming request carried `If-Match`, the boundary emits `412 Precondition Failed` with wire `kind` `precondition-failed` instead of `409 conflict`. The top-level Problem Details `type` continues to default to the ASP.NET status-code URL for 412. The domain `code` stays `"concurrent-modification"`.
 
 ### `ProblemDetails.Instance` synthesis from `ResourceRef`
 

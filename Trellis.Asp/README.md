@@ -51,7 +51,7 @@ Default mappings (overridable per call via `.WithErrorMapping(...)` or globally 
 | `RateLimited` | 429 | `too-many-requests` | `Retry-After` (from `RetryAdvice`) |
 | `Unavailable` | 503 | `service-unavailable` | `Retry-After` (from `RetryAdvice`) |
 | `Unexpected` (default) | 500 | `internal-server-error` | – |
-| `Unexpected { ReasonCode == "not_implemented" }` | 501 | `not-implemented` | – |
+| `Unexpected { ReasonCode == "not-implemented" }` | 501 | `not-implemented` | – |
 | `Aggregate` | inner-case status | inner kinds | per inner |
 | `TransportFault(HttpError.X)` | 405 / 406 / 412 / 413 / 415 / 416 / 428 | inner wire kind | `Allow` / `Content-Range` per inner |
 
