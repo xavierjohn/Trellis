@@ -2279,14 +2279,58 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public bool StartsWith(string value)` | `bool` | Delegates to `string.StartsWith(string)` for EF Core-translatable query predicates. |
+| `public bool StartsWith(string value)` | `bool` | Delegates to `string.StartsWith(string)` for EF Core-translatable query predicates. Culture-sensitive in memory — see [Comparison semantics](#comparison-semantics-of-the-single-argument-query-helpers). |
 | `public bool StartsWith(string value, StringComparison comparisonType)` | `bool` | Delegates to `string.StartsWith(string, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
-| `public bool Contains(string value)` | `bool` | Delegates to `string.Contains(string)` for EF Core-translatable query predicates. |
+| `public bool Contains(string value)` | `bool` | Delegates to `string.Contains(string)` for EF Core-translatable query predicates. Ordinal in memory — see [Comparison semantics](#comparison-semantics-of-the-single-argument-query-helpers). |
 | `public bool Contains(string value, StringComparison comparisonType)` | `bool` | Delegates to `string.Contains(string, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
 | `public bool Contains(char value, StringComparison comparisonType)` | `bool` | Delegates to `string.Contains(char, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
-| `public bool EndsWith(string value)` | `bool` | Delegates to `string.EndsWith(string)` for EF Core-translatable query predicates. |
+| `public bool EndsWith(string value)` | `bool` | Delegates to `string.EndsWith(string)` for EF Core-translatable query predicates. Culture-sensitive in memory — see [Comparison semantics](#comparison-semantics-of-the-single-argument-query-helpers). |
 | `public bool EndsWith(string value, StringComparison comparisonType)` | `bool` | Delegates to `string.EndsWith(string, StringComparison)`. This overload is not EF Core translatable; use the single-argument overload for queries. |
 | `public static TSelf Create(string value)` | `TSelf` | Inherited throwing scalar factory. Source-generated overloads are listed below. |
+
+#### Comparison semantics of the single-argument query helpers
+
+The single-argument `StartsWith`, `Contains`, and `EndsWith` exist so EF Core's
+`ScalarValueExpressionRewriter` can translate them: it maps `Name.StartsWith(x)` to
+`((string)Name).StartsWith(x)`, and a two-argument call carrying a `StringComparison`
+would not translate. The consequence is that they inherit the BCL's comparison
+semantics verbatim — **and the BCL is not self-consistent here**:
+
+| Helper | In-memory comparison |
+| --- | --- |
+| `StartsWith(string)` | Culture-sensitive (`StringComparison.CurrentCulture`) |
+| `EndsWith(string)` | Culture-sensitive (`StringComparison.CurrentCulture`) |
+| `Contains(string)` | **Ordinal** |
+
+The divergence is observable on any data containing characters a culture treats as
+ignorable. With the soft hyphen `U+00AD`, the same receiver and the same argument give
+opposite answers:
+
+```csharp
+var name = ProductName.Create("cooper\u00ADative");
+
+name.StartsWith("coopera"); // true  — culture-sensitive, ignores the soft hyphen
+name.EndsWith("rative");    // true  — likewise
+name.Contains("rative");    // false — ordinal, the soft hyphen is a real character
+```
+
+Two further consequences worth planning for:
+
+- **In-memory and SQL evaluation can disagree.** Translated to SQL, the comparison is
+  performed by the database using the provider's own string-matching functions,
+  operators, and collations — which may match neither the culture-sensitive nor the
+  ordinal .NET result. The rules are provider-specific rather than universally the
+  column's collation: SQL Server translates these to `LIKE`, which honours the column
+  collation, whereas the SQLite provider translates `Contains` to `instr`, which does
+  not. The same specification can therefore return different results when evaluated
+  against a `DbSet` versus an in-memory list — which matters for tests that use
+  in-memory collections to stand in for the database.
+- **Host configuration changes the answer.** A host running with
+  `InvariantGlobalization=true` collapses culture-sensitive comparison to ordinal-like
+  behavior, so `StartsWith`/`EndsWith` change results while `Contains` does not.
+
+When the semantics must be explicit and the call is not part of an EF Core query, use the
+two-argument overload and pass `StringComparison.Ordinal` explicitly.
 
 ### `RequiredGuid<TSelf>`
 
