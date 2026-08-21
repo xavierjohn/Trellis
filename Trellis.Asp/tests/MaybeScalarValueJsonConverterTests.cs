@@ -26,9 +26,9 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email must contain @." })));
             return Result.Ok(new Email(value));
         }
     }
@@ -41,9 +41,9 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age cannot be negative." })));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Age cannot be negative." })));
             if (value > 150)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age must be realistic." })));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Age must be realistic." })));
             return Result.Ok(new Age(value));
         }
 
@@ -59,9 +59,9 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "percentage";
             if (value < 0)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot be negative." })));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Percentage cannot be negative." })));
             if (value > 100)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot exceed 100." })));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Percentage cannot exceed 100." })));
             return Result.Ok(new Percentage(value));
         }
 
@@ -77,7 +77,7 @@ public class MaybeScalarValueJsonConverterTests
         {
             var field = fieldName ?? "itemId";
             if (value == Guid.Empty)
-                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.ItemId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "ItemId cannot be empty." })));
+                return Result.Fail<Asp.Tests.MaybeScalarValueJsonConverterTests.ItemId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "ItemId cannot be empty." })));
             return Result.Ok(new ItemId(value));
         }
 
@@ -98,7 +98,7 @@ public class MaybeScalarValueJsonConverterTests
 
         public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
             value == ProcessingMode.Unknown
-                ? Result.Fail<ProcessingModeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "processingMode"), "validation.error") { Detail = "Processing mode is required." })))
+                ? Result.Fail<ProcessingModeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "processingMode"), ValidationCodes.Unspecified) { Detail = "Processing mode is required." })))
                 : Result.Ok(new ProcessingModeVO(value));
 
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>

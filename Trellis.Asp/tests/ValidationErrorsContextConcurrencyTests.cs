@@ -96,7 +96,7 @@ public class ValidationErrorsContextConcurrencyTests
             var tasks = Enumerable.Range(0, taskCount)
                 .Select(taskId => Task.Run(() =>
                 {
-                    var validationError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field{taskId}"), "validation.error") { Detail = $"Error from task {taskId}" }));
+                    var validationError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field{taskId}"), ValidationCodes.Unspecified) { Detail = $"Error from task {taskId}" }));
                     ValidationErrorsContext.AddError((Error.InvalidInput)validationError);
                 }, TestContext.Current.CancellationToken))
                 .ToArray();
@@ -263,8 +263,8 @@ public class ValidationErrorsContextConcurrencyTests
                 .Select(taskId => Task.Run(() =>
                 {
                     // Create a Error.InvalidInput with multiple field errors
-                    var error1 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field1_{taskId}"), "validation.error") { Detail = $"Error 1 from task {taskId}" }));
-                    var error2 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field2_{taskId}"), "validation.error") { Detail = $"Error 2 from task {taskId}" }));
+                    var error1 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field1_{taskId}"), ValidationCodes.Unspecified) { Detail = $"Error 1 from task {taskId}" }));
+                    var error2 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty($"Field2_{taskId}"), ValidationCodes.Unspecified) { Detail = $"Error 2 from task {taskId}" }));
 
                     ValidationErrorsContext.AddError((Error.InvalidInput)error1);
                     ValidationErrorsContext.AddError((Error.InvalidInput)error2);

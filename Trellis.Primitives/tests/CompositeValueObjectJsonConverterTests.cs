@@ -441,7 +441,7 @@ public class CompositeValueObjectJsonConverterTests
         public static Result<ValidatedVo> TryCreate(int number, string? fieldName = null) =>
             number < 0
                 ? Result.Fail<ValidatedVo>(new Error.InvalidInput(EquatableArray.Create(
-                    new FieldViolation(InputPointer.ForProperty("number"), "validation.error") { Detail = "must be non-negative." })))
+                    new FieldViolation(InputPointer.ForProperty("number"), ValidationCodes.Unspecified) { Detail = "must be non-negative." })))
                 : Result.Ok(new ValidatedVo(number));
     }
 
@@ -470,11 +470,11 @@ public class CompositeValueObjectJsonConverterTests
         {
             var violations = new List<FieldViolation>();
             if (string.IsNullOrWhiteSpace(street))
-                violations.Add(new FieldViolation(InputPointer.ForProperty("street"), "validation.error") { Detail = "Street is required." });
+                violations.Add(new FieldViolation(InputPointer.ForProperty("street"), ValidationCodes.Unspecified) { Detail = "Street is required." });
             if (string.IsNullOrWhiteSpace(city))
-                violations.Add(new FieldViolation(InputPointer.ForProperty("city"), "validation.error") { Detail = "City is required." });
+                violations.Add(new FieldViolation(InputPointer.ForProperty("city"), ValidationCodes.Unspecified) { Detail = "City is required." });
             if (string.IsNullOrWhiteSpace(state))
-                violations.Add(new FieldViolation(InputPointer.ForProperty("state"), "validation.error") { Detail = "State is required." });
+                violations.Add(new FieldViolation(InputPointer.ForProperty("state"), ValidationCodes.Unspecified) { Detail = "State is required." });
 
             return violations.Count > 0
                 ? Result.Fail<MultiFieldValidatedVo>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())))

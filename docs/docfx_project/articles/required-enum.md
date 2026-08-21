@@ -196,7 +196,8 @@ bool notDone = paid.IsNot(OrderStatus.Cancelled);
 
 | Input or condition | Outcome |
 |---|---|
-| `null` or whitespace name passed to `TryCreate` | `Fail` with `Error.InvalidInput.ForField(field, "validation.error", "{Type} cannot be empty.")` |
+| `null` name passed to `TryCreate` | `Fail` with `Error.InvalidInput.ForField(field, ValidationCodes.ValueNotNull, "{Type} cannot be empty.")` |
+| Whitespace name passed to `TryCreate` | `Fail` with `Error.InvalidInput.ForField(field, ValidationCodes.ValueNotEmpty, "{Type} cannot be empty.")` |
 | Unknown name | `Fail` with message `'{name}' is not a valid {Type}. Valid values: {alphabetised list}` |
 | Two members declared with the same `Value` (case-insensitive) | `InvalidOperationException` thrown by the base class on first cache build, naming the duplicate symbol |
 | `[EnumValue]` on a non-`TSelf` field, an instance member, or a non-`readonly` field | Silently ignored — only `public static readonly TSelf` init-only fields are discovered |

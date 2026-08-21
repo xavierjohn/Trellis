@@ -224,7 +224,7 @@ public class ValidationBehaviorTests
             EquatableArray<FieldViolation>.Empty,
             EquatableArray.Create(ruleA));
         var externalError = new Error.InvalidInput(
-            EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("Email"), "validation.error") { Detail = "bad email" }),
+            EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("Email"), ValidationCodes.Unspecified) { Detail = "bad email" }),
             EquatableArray.Create(ruleB));
 
         var external = new StubMessageValidator<TestCommandNoValidation>(Result.Fail(externalError));
@@ -289,7 +289,7 @@ public class ValidationBehaviorTests
     }
 
     private static Error.InvalidInput UpcWith(string field, string detail)
-        => new(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = detail }));
+        => new(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = detail }));
 
     private sealed class StubMessageValidator<TMessage>(IResult result, Action? onInvoked = null)
         : IMessageValidator<TMessage>

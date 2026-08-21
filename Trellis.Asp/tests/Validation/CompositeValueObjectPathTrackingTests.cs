@@ -170,9 +170,9 @@ public sealed class CompositeValueObjectPathTrackingTests
         {
             var violations = new List<FieldViolation>();
             if (string.IsNullOrWhiteSpace(street))
-                violations.Add(new FieldViolation(InputPointer.ForProperty("street"), "validation.error") { Detail = "Street is required." });
+                violations.Add(new FieldViolation(InputPointer.ForProperty("street"), ValidationCodes.Unspecified) { Detail = "Street is required." });
             if (string.IsNullOrWhiteSpace(city))
-                violations.Add(new FieldViolation(InputPointer.ForProperty("city"), "validation.error") { Detail = "City is required." });
+                violations.Add(new FieldViolation(InputPointer.ForProperty("city"), ValidationCodes.Unspecified) { Detail = "City is required." });
 
             return violations.Count > 0
                 ? Result.Fail<CompositeAddress>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())))

@@ -26,7 +26,7 @@ public class RouteConstraintRegistrationExtensionsTests
         public static Result<ProductId> TryCreate(string? value, string? fieldName = null)
         {
             if (string.IsNullOrWhiteSpace(value) || value.Length < 3)
-                return Result.Fail<ProductId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "id"), "validation.error") { Detail = "ProductId must be at least 3 characters." })));
+                return Result.Fail<ProductId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "id"), ValidationCodes.Unspecified) { Detail = "ProductId must be at least 3 characters." })));
             return Result.Ok(new ProductId(value));
         }
 

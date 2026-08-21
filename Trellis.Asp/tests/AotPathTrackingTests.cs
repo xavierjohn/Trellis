@@ -39,7 +39,7 @@ public sealed class AotPathTrackingTests : IDisposable
             var field = fieldName ?? "email";
             return string.IsNullOrWhiteSpace(value) || !value.Contains('@')
                 ? Result.Fail<AotEmail>(new Error.InvalidInput(EquatableArray.Create(
-                    new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email address is not valid." })))
+                    new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email address is not valid." })))
                 : Result.Ok(new AotEmail(value));
         }
     }

@@ -23,21 +23,21 @@ public class ViolationProblemDetailSerializationTests
     public void Field_violation_omits_detail_and_args_when_absent()
     {
         var json = Serialize(new FieldViolationProblemDetail(
-            "validation.error",
+            ValidationCodes.Unspecified,
             Detail: null,
             new ViolationLocation("body", "/email", null),
             Args: null));
 
         json.TryGetProperty("detail", out _).Should().BeFalse("an absent detail is omitted, not null");
         json.TryGetProperty("args", out _).Should().BeFalse("absent args are omitted, not null");
-        json.GetProperty("code").GetString().Should().Be("validation.error");
+        json.GetProperty("code").GetString().Should().Be(ValidationCodes.Unspecified);
     }
 
     [Fact]
     public void Field_violation_emits_detail_and_args_when_present()
     {
         var json = Serialize(new FieldViolationProblemDetail(
-            "validation.error",
+            ValidationCodes.Unspecified,
             "Email address is not valid.",
             new ViolationLocation("body", "/email", null),
             new Dictionary<string, string> { ["min"] = "3" }));
@@ -50,7 +50,7 @@ public class ViolationProblemDetailSerializationTests
     public void Rule_violation_emits_an_empty_locations_array_rather_than_omitting_it()
     {
         var json = Serialize(new RuleViolationProblemDetail(
-            "validation.error",
+            ValidationCodes.Unspecified,
             "Something is wrong with the form.",
             Locations: [],
             Args: null));
@@ -65,7 +65,7 @@ public class ViolationProblemDetailSerializationTests
     public void Rule_violation_omits_detail_and_args_when_absent()
     {
         var json = Serialize(new RuleViolationProblemDetail(
-            "validation.error",
+            ValidationCodes.Unspecified,
             Detail: null,
             Locations: [],
             Args: null));

@@ -20,7 +20,7 @@ using System.Collections.Immutable;
 /// </summary>
 public class ValidationErrorsContextRebaseTests
 {
-    private const string LegacyCode = "validation.error";
+    private const string LegacyCode = ValidationCodes.Unspecified;
 
     // --- AddBodyError promotes Unspecified to Body, at every depth ---
 

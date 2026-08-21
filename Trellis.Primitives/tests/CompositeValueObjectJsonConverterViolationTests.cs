@@ -103,7 +103,7 @@ public sealed class ViolationComposite : ValueObject
     public static Result<ViolationComposite> TryCreate(string name, int count, string label, string? fieldName = null) =>
         string.IsNullOrWhiteSpace(name)
             ? Result.Fail<ViolationComposite>(
-                Error.InvalidInput.ForField(InputPointer.ForProperty("name"), "validation.error", "Name is required."))
+                Error.InvalidInput.ForField(InputPointer.ForProperty("name"), ValidationCodes.Unspecified, "Name is required."))
             : Result.Ok(new ViolationComposite(name, count, label));
 
     protected override void GetEqualityComponents(ref EqualityComponents components)

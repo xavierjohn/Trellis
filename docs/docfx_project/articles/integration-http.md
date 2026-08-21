@@ -302,7 +302,7 @@ public sealed class CheckoutClient(HttpClient httpClient)
             .EnsureAsync(
                 inventory => inventory.InStock,
                 new Error.InvalidInput(EquatableArray.Create(
-                    new FieldViolation(InputPointer.ForProperty(nameof(productId)), "validation.error") { Detail = "Out of stock." })))
+                    new FieldViolation(InputPointer.ForProperty(nameof(productId)), "stock.insufficient") { Detail = "Out of stock." })))
             .BindAsync(
                 (_, token) => httpClient.PostAsync($"payments/{productId}", null, token)
                     .ToResultAsync()

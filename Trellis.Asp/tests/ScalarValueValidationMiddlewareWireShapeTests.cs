@@ -343,9 +343,9 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         var ctx = NewContext();
         var fields = EquatableArray.Create(
         [
-            new FieldViolation(InputPointer.ForProperty("street"), "validation.error") { Detail = "Street is required." },
-            new FieldViolation(InputPointer.ForProperty("city"),   "validation.error") { Detail = "City is required." },
-            new FieldViolation(InputPointer.ForProperty("state"),  "validation.error") { Detail = "State is required." },
+            new FieldViolation(InputPointer.ForProperty("street"), ValidationCodes.Unspecified) { Detail = "Street is required." },
+            new FieldViolation(InputPointer.ForProperty("city"),   ValidationCodes.Unspecified) { Detail = "City is required." },
+            new FieldViolation(InputPointer.ForProperty("state"),  ValidationCodes.Unspecified) { Detail = "State is required." },
         ]);
         var error = new Error.InvalidInput(fields, EquatableArray<RuleViolation>.Empty)
         {
@@ -389,8 +389,8 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         var ctx = NewContext();
         var fields = EquatableArray.Create(
         [
-            new FieldViolation(InputPointer.ForProperty("amount"),   "validation.error") { Detail = "Amount must be positive." },
-            new FieldViolation(InputPointer.ForProperty("currency"), "validation.error") { Detail = "Currency must be ISO 4217." },
+            new FieldViolation(InputPointer.ForProperty("amount"),   ValidationCodes.Unspecified) { Detail = "Amount must be positive." },
+            new FieldViolation(InputPointer.ForProperty("currency"), ValidationCodes.Unspecified) { Detail = "Currency must be ISO 4217." },
         ]);
         var error = new Error.InvalidInput(fields, EquatableArray<RuleViolation>.Empty);
 
@@ -565,7 +565,7 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         var ctx = NewContext();
         var fields = EquatableArray.Create(
         [
-            new FieldViolation(new InputPointer(fieldPointer), "validation.error") { Detail = "Invalid line item." },
+            new FieldViolation(new InputPointer(fieldPointer), ValidationCodes.Unspecified) { Detail = "Invalid line item." },
         ]);
         var error = new Error.InvalidInput(fields, EquatableArray<RuleViolation>.Empty);
 

@@ -108,7 +108,7 @@ public sealed class UsersController : ControllerBase
     private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
     {
         return string.IsNullOrWhiteSpace(request.Email)
-            ? new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required." }))
+            ? new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.ValueNotEmpty) { Detail = "Email is required." }))
             : Result.Ok(new UserResponse(request.Email));
     }
 }
@@ -143,7 +143,7 @@ public static class UserRoutes
     private static Result<UserResponse> RegisterCore(RegisterUserRequest request)
     {
         return string.IsNullOrWhiteSpace(request.Email)
-            ? new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required." }))
+            ? new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.ValueNotEmpty) { Detail = "Email is required." }))
             : Result.Ok(new UserResponse(request.Email));
     }
 }

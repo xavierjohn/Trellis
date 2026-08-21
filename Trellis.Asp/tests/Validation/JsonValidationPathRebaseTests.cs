@@ -24,7 +24,7 @@ using Trellis.Asp.Validation;
 /// </summary>
 public class JsonValidationPathRebaseTests
 {
-    private const string LegacyCode = "validation.error";
+    private const string LegacyCode = ValidationCodes.Unspecified;
 
     private static TrellisJsonValidationException CompositeRelativeFailure() =>
         new("Postal code is not valid for the country.")

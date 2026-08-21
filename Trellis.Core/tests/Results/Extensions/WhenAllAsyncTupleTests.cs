@@ -81,8 +81,8 @@ public class WhenAllAsyncTupleTests : TestBase
 
         data.Add("tuple2 both failures combine validation errors", async () =>
         {
-            var error1 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), "validation.error") { Detail = "Error 1" }));
-            var error2 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field2"), "validation.error") { Detail = "Error 2" }));
+            var error1 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), ValidationCodes.Unspecified) { Detail = "Error 1" }));
+            var error2 = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field2"), ValidationCodes.Unspecified) { Detail = "Error 2" }));
             var result = await (Task.FromResult(Result.Fail<int>(error1)), Task.FromResult(Result.Fail<string>(error2))).WhenAllAsync();
             result.Should().BeFailureOfType<Error.InvalidInput>();
         });

@@ -15,7 +15,7 @@ using Trellis;
 
 Result<string> email = Result.Ok("ada@example.com")
     .Ensure(value => value.Contains('@'),
-        Error.InvalidInput.ForField("email", "validation.error", "Email is invalid."))
+        Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email is invalid."))
     .Map(value => value.Trim().ToLowerInvariant());
 ```
 

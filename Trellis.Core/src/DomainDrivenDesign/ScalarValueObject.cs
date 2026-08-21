@@ -44,14 +44,14 @@
 ///     
 ///     public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
 ///         value.ToResult()
-///             .Ensure(v => v != Guid.Empty, Error.InvalidInput.ForField(fieldName ?? "customerId", "invalid", "Customer ID cannot be empty"))
+///             .Ensure(v => v != Guid.Empty, Error.InvalidInput.ForField(fieldName ?? "customerId", ValidationCodes.ValueNotDefault, "Customer ID cannot be empty"))
 ///             .Map(v => new CustomerId(v));
 ///     
 ///     public static Result<CustomerId> TryCreate(string? stringOrNull, string? fieldName = null) =>
-///         stringOrNull.ToResult(Error.InvalidInput.ForField(fieldName ?? "customerId", "invalid", "Customer ID cannot be empty"))
+///         stringOrNull.ToResult(Error.InvalidInput.ForField(fieldName ?? "customerId", ValidationCodes.ValueNotNull, "Customer ID cannot be empty"))
 ///             .Bind(s => Guid.TryParse(s, out var guid)
 ///                 ? Result.Ok(guid)
-///                 : Result.Fail<Guid>(Error.InvalidInput.ForField(fieldName ?? "customerId", "invalid", "Invalid GUID format")))
+///                 : Result.Fail<Guid>(Error.InvalidInput.ForField(fieldName ?? "customerId", ValidationCodes.FormatGuid, "Invalid GUID format")))
 ///             .Bind(guid => TryCreate(guid, fieldName));
 /// }
 /// 
@@ -70,15 +70,15 @@
 ///     public static Result<Temperature> TryCreate(decimal value, string? fieldName = null) =>
 ///         value.ToResult()
 ///             .Ensure(v => v >= -273.15m, 
-///                    Error.InvalidInput.ForField(fieldName ?? "temperature", "invalid", "Temperature cannot be below absolute zero"))
+///                    Error.InvalidInput.ForField(fieldName ?? "temperature", ValidationCodes.ValueGreaterThanOrEqual, "Temperature cannot be below absolute zero"))
 ///             .Ensure(v => v <= 1_000_000m,
-///                    Error.InvalidInput.ForField(fieldName ?? "temperature", "invalid", "Temperature exceeds physical limits"))
+///                    Error.InvalidInput.ForField(fieldName ?? "temperature", ValidationCodes.ValueLessThanOrEqual, "Temperature exceeds physical limits"))
 ///             .Map(v => new Temperature(v));
 ///
 ///     public static Result<Temperature> TryCreate(string? value, string? fieldName = null) =>
 ///         decimal.TryParse(value, out var parsed)
 ///             ? TryCreate(parsed, fieldName)
-///             : Result.Fail<Temperature>(Error.InvalidInput.ForField(fieldName ?? "temperature", "invalid", "Temperature must be a decimal"));
+///             : Result.Fail<Temperature>(Error.InvalidInput.ForField(fieldName ?? "temperature", ValidationCodes.FormatDecimal, "Temperature must be a decimal"));
 ///     
 ///     // Custom equality - round to 2 decimal places
 ///     protected override void GetEqualityComponents(ref EqualityComponents components)
@@ -113,13 +113,13 @@
 ///     private EmailAddress(string value) : base(value) { }
 ///     
 ///     public static Result<EmailAddress> TryCreate(string? email, string? fieldName = null) =>
-///         email.ToResult(Error.InvalidInput.ForField(fieldName ?? "email", "invalid", "Email is required"))
+///         email.ToResult(Error.InvalidInput.ForField(fieldName ?? "email", ValidationCodes.ValueNotNull, "Email is required"))
 ///             .Ensure(e => !string.IsNullOrWhiteSpace(e),
-///                    Error.InvalidInput.ForField(fieldName ?? "email", "invalid", "Email cannot be empty"))
+///                    Error.InvalidInput.ForField(fieldName ?? "email", ValidationCodes.ValueNotEmpty, "Email cannot be empty"))
 ///             .Ensure(e => e.Contains('@'),
-///                    Error.InvalidInput.ForField(fieldName ?? "email", "invalid", "Email must contain @"))
+///                    Error.InvalidInput.ForField(fieldName ?? "email", ValidationCodes.StringEmail, "Email must contain @"))
 ///             .Ensure(e => e.Length <= 254,
-///                    Error.InvalidInput.ForField(fieldName ?? "email", "invalid", "Email too long"))
+///                    Error.InvalidInput.ForField(fieldName ?? "email", ValidationCodes.StringMaxLength, "Email too long"))
 ///             .Map(e => new EmailAddress(e.Trim().ToLowerInvariant()));
 ///     
 ///     public string Domain => Value.Split('@')[1];

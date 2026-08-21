@@ -8,7 +8,7 @@ using Trellis.Testing;
 public class CheckIfTests_Task_Right
 {
     private static readonly Error TestError = new Error.Unexpected("test") { Detail = "test error" };
-    private static readonly Error CheckError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "check failed" }));
+    private static readonly Error CheckError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "check failed" }));
 
     [Fact]
     public async Task CheckIfAsync_Task_Right_Bool_ConditionTrue_CheckPasses()

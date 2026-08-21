@@ -137,7 +137,7 @@ public partial class ContactPhone : RequiredString<ContactPhone>
         TryCreate(value) // Generated: validates non-empty/non-whitespace, trims + length 10–15
             .Ensure(
                 phone => phone.Value.All(c => char.IsDigit(c) || c == '-' || c == ' '),
-                Error.InvalidInput.ForField("contactPhone", "validation.error", "Phone number can only contain digits, dashes, and spaces"));
+                Error.InvalidInput.ForField("contactPhone", ValidationCodes.StringPattern, "Phone number can only contain digits, dashes, and spaces"));
 }
 
 public partial class ZipCode : RequiredString<ZipCode>
@@ -146,10 +146,10 @@ public partial class ZipCode : RequiredString<ZipCode>
         TryCreate(value)
             .Ensure(
                 zip => zip.Value.Length == 5 || zip.Value.Length == 10,
-                Error.InvalidInput.ForField("zipCode", "validation.error", "Zip code must be 5 or 10 characters (with dash)"))
+                Error.InvalidInput.ForField("zipCode", ValidationCodes.StringLength, "Zip code must be 5 or 10 characters (with dash)"))
             .Ensure(
                 zip => Regex.IsMatch(zip.Value, @"^\d{5}(-\d{4})?$"),
-                Error.InvalidInput.ForField("zipCode", "validation.error", "Invalid zip code format (use 12345 or 12345-6789)"));
+                Error.InvalidInput.ForField("zipCode", ValidationCodes.StringPattern, "Invalid zip code format (use 12345 or 12345-6789)"));
 }
 
 [StringLength(20, MinimumLength = 3)]
@@ -159,7 +159,7 @@ public partial class PartNumber : RequiredString<PartNumber>
         TryCreate(value) // Generated: validates non-empty/non-whitespace, trims + length 3–20
             .Ensure(
                 code => Regex.IsMatch(code.Value, @"^[A-Z0-9-]+$"),
-                Error.InvalidInput.ForField("partNumber", "validation.error", "Part number can only contain uppercase letters, digits, and dashes"));
+                Error.InvalidInput.ForField("partNumber", ValidationCodes.StringPattern, "Part number can only contain uppercase letters, digits, and dashes"));
 }
 
 // Usage
@@ -426,7 +426,7 @@ public class EntityService
             return result3.ToResult();
         }
         
-        return Error.InvalidInput.ForField("entityId", "validation.error", "Invalid entity ID");
+        return Error.InvalidInput.ForField("entityId", ValidationCodes.FormatGuid, "Invalid entity ID");
     }
     
     // Parsing from Guid
@@ -633,7 +633,7 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
             : "trackingId";
         if (requiredStringOrNothing is null)
-            return Result.Fail<TrackingId>(Error.InvalidInput.ForField(field, "validation.error", "Tracking Id cannot be null."));
+            return Result.Fail<TrackingId>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotNull, "Tracking Id cannot be null."));
 
         // Raw whitespace-only check runs BEFORE trim so the dedicated error message survives.
         if (requiredStringOrNothing.Length > 0)
@@ -644,13 +644,13 @@ public partial class TrackingId : RequiredString, IParsable<TrackingId>, ITryCre
                 if (!char.IsWhiteSpace(requiredStringOrNothing[i])) { isWhitespaceOnly = false; break; }
             }
             if (isWhitespaceOnly)
-                return Result.Fail<TrackingId>(Error.InvalidInput.ForField(field, "validation.error", "Tracking Id cannot be whitespace-only."));
+                return Result.Fail<TrackingId>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotEmpty, "Tracking Id cannot be whitespace-only."));
         }
 
         var normalized = requiredStringOrNothing.Trim();
 
         if (normalized.Length == 0)
-            return Result.Fail<TrackingId>(Error.InvalidInput.ForField(field, "validation.error", "Tracking Id cannot be empty."));
+            return Result.Fail<TrackingId>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotEmpty, "Tracking Id cannot be empty."));
 
         return Result.Ok(new TrackingId(normalized));
     }
@@ -674,7 +674,7 @@ public static Result<ProductName> TryCreate(string? value, string? fieldName = n
         ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
         : "productName";
     if (value is null)
-        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, "validation.error", "Product Name cannot be null."));
+        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotNull, "Product Name cannot be null."));
 
     // Raw whitespace check (before trim) — emits the dedicated whitespace-only error.
     if (value.Length > 0)
@@ -685,16 +685,16 @@ public static Result<ProductName> TryCreate(string? value, string? fieldName = n
             if (!char.IsWhiteSpace(value[i])) { isWhitespaceOnly = false; break; }
         }
         if (isWhitespaceOnly)
-            return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, "validation.error", "Product Name cannot be whitespace-only."));
+            return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotEmpty, "Product Name cannot be whitespace-only."));
     }
 
     var normalized = value.Trim();
     if (normalized.Length == 0)
-        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, "validation.error", "Product Name cannot be empty."));
+        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotEmpty, "Product Name cannot be empty."));
     if (normalized.Length < 3)
-        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, "validation.error", "Product Name must be at least 3 characters."));
+        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, ValidationCodes.StringMinLength, "Product Name must be at least 3 characters."));
     if (normalized.Length > 50)
-        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, "validation.error", "Product Name must be 50 characters or fewer."));
+        return Result.Fail<ProductName>(Error.InvalidInput.ForField(field, ValidationCodes.StringMaxLength, "Product Name must be 50 characters or fewer."));
     return Result.Ok(new ProductName(normalized));
 }
 ```
@@ -759,8 +759,8 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
             : "employeeId";
         return requiredGuidOrNothing
-            .ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
-            .Ensure(x => x != Guid.Empty, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
+            .ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) { Detail = "Employee Id cannot be null." })))
+            .Ensure(x => x != Guid.Empty, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotDefault) { Detail = "Employee Id cannot be empty." })))
             .Map(guid => new EmployeeId(guid));
      }
 
@@ -772,11 +772,11 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
             : "employeeId";
         Guid parsedGuid = Guid.Empty;
         return stringOrNull
-            .ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
+            .ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) { Detail = "Employee Id cannot be null." })))
             .Ensure(
                 x => Guid.TryParse(x, out parsedGuid), 
-                new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)" })))
-            .Ensure(_ => parsedGuid != Guid.Empty, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Employee Id cannot be empty." })))
+                new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatGuid) { Detail = "Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)" })))
+            .Ensure(_ => parsedGuid != Guid.Empty, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotDefault) { Detail = "Employee Id cannot be empty." })))
             .Map(guid => new EmployeeId(parsedGuid));
     }
 }
@@ -909,7 +909,7 @@ public class CustomerService
 // Validation error example:
 // When request.Name is empty, error will be:
 // {
-//   "code": "validation.error",
+//   "code": "value.not-empty",
 //   "detail": "Customer Name cannot be empty.",
 //   "fieldErrors": [{ "field": "customer.name", "details": ["Customer Name cannot be empty."] }]
 // }

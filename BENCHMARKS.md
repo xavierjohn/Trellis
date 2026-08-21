@@ -216,8 +216,8 @@ Testing validation/guard clauses.
 **Use Case:**
 ```csharp
 customer.CanBePromoted()
-    .Ensure(c => c.TotalPurchases > 1000, Error.InvalidInput.ForRule("validation.error", "Minimum purchase requirement"))
-    .Ensure(c => c.AccountAge > TimeSpan.FromDays(90), Error.InvalidInput.ForRule("validation.error", "Account age requirement"))
+    .Ensure(c => c.TotalPurchases > 1000, Error.InvalidInput.ForRule("customer.minimum-purchase", "Minimum purchase requirement"))
+    .Ensure(c => c.AccountAge > TimeSpan.FromDays(90), Error.InvalidInput.ForRule("customer.account-age", "Account age requirement"))
     .Tap(c => c.Promote());
 ```
 

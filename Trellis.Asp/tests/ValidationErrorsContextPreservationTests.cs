@@ -99,7 +99,7 @@ public class ValidationErrorsContextPreservationTests
     {
         // The string-based AddError(field, message) overload is used by the JSON converter
         // path which has no semantic ReasonCode available; it should continue to default
-        // to "validation.error" with the message stored as Detail.
+        // to ValidationCodes.Unspecified with the message stored as Detail.
         using (ValidationErrorsContext.BeginScope())
         {
             ValidationErrorsContext.AddError("email", "Email is required.");

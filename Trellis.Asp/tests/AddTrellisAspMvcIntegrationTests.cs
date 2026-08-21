@@ -329,11 +329,11 @@ public sealed class TestAddress : ValueObject
     {
         var violations = new System.Collections.Generic.List<FieldViolation>();
         if (string.IsNullOrWhiteSpace(street))
-            violations.Add(new FieldViolation(InputPointer.ForProperty("street"), "validation.error") { Detail = "Street is required." });
+            violations.Add(new FieldViolation(InputPointer.ForProperty("street"), ValidationCodes.Unspecified) { Detail = "Street is required." });
         if (string.IsNullOrWhiteSpace(city))
-            violations.Add(new FieldViolation(InputPointer.ForProperty("city"), "validation.error") { Detail = "City is required." });
+            violations.Add(new FieldViolation(InputPointer.ForProperty("city"), ValidationCodes.Unspecified) { Detail = "City is required." });
         if (string.IsNullOrWhiteSpace(state))
-            violations.Add(new FieldViolation(InputPointer.ForProperty("state"), "validation.error") { Detail = "State is required." });
+            violations.Add(new FieldViolation(InputPointer.ForProperty("state"), ValidationCodes.Unspecified) { Detail = "State is required." });
 
         return violations.Count > 0
             ? Result.Fail<TestAddress>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())))
@@ -380,7 +380,7 @@ public sealed class TestPhone : ScalarValueObject<TestPhone, string>, IScalarVal
         var field = fieldName ?? "phone";
         return string.IsNullOrWhiteSpace(value)
             ? Result.Fail<TestPhone>(new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Phone required." })))
+                new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Phone required." })))
             : Result.Ok(new TestPhone(value));
     }
 }
@@ -394,10 +394,10 @@ public sealed class TestEmail2 : ScalarValueObject<TestEmail2, string>, IScalarV
         var field = fieldName ?? "email";
         if (string.IsNullOrWhiteSpace(value))
             return Result.Fail<TestEmail2>(new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email required." })));
+                new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email required." })));
         if (!value.Contains('@'))
             return Result.Fail<TestEmail2>(new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
+                new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email must contain @." })));
         return Result.Ok(new TestEmail2(value));
     }
 }

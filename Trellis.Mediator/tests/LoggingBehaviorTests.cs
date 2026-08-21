@@ -10,7 +10,7 @@ public class LoggingBehaviorTests
 {
     public static TheoryData<Error, LogLevel> FailureLogLevelCases => new()
     {
-        { Error.InvalidInput.ForField("field", "validation.error", "Something failed."), LogLevel.Information },
+        { Error.InvalidInput.ForField("field", ValidationCodes.Unspecified, "Something failed."), LogLevel.Information },
         { new Error.AuthenticationRequired(), LogLevel.Information },
         { new Error.Forbidden("authorization.insufficient.permissions"), LogLevel.Information },
         { new Error.Unexpected("unhandled-exception"), LogLevel.Warning },
