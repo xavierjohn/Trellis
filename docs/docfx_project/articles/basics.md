@@ -245,7 +245,7 @@ Use `Ensure` when the value is structurally valid, but you still need a domain r
 ```csharp
 var result = CustomerEmail.TryCreate("jane@example.com", fieldName: "email")
     .Ensure(email => !email.Value.EndsWith("@blocked.example", StringComparison.OrdinalIgnoreCase),
-        new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Blocked email domains are not allowed." })));
+        new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "email.domain-blocked") { Detail = "Blocked email domains are not allowed." })));
 ```
 
 A good mental model is:
@@ -275,9 +275,9 @@ public sealed record CheckoutRequest(string CouponCode, decimal Subtotal, string
 
 var result = Result.Ok(new CheckoutRequest("SPRING25", 125m, "USD"))
     .EnsureAll(
-        (request => request.Subtotal > 0m, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("subtotal"), "validation.error") { Detail = "Subtotal must be greater than zero." }))),
-        (request => request.Currency.Length == 3, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("currency"), "validation.error") { Detail = "Currency must be a 3-letter code." }))),
-        (request => request.CouponCode.Length <= 20, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("couponCode"), "validation.error") { Detail = "Coupon code is too long." }))));
+        (request => request.Subtotal > 0m, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("subtotal"), ValidationCodes.ValueGreaterThan) { Detail = "Subtotal must be greater than zero." }))),
+        (request => request.Currency.Length == 3, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("currency"), ValidationCodes.StringExactLength) { Detail = "Currency must be a 3-letter code." }))),
+        (request => request.CouponCode.Length <= 20, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("couponCode"), ValidationCodes.StringMaxLength) { Detail = "Coupon code is too long." }))));
 ```
 
 ### `RecoverOnFailure`: provide a fallback path

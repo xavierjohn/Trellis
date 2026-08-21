@@ -348,14 +348,26 @@ public static class ValidationCodes
 }
 
 /// <summary>
-/// The reason codes Trellis emits on <see cref="Error.Unexpected"/> — internal faults rather than
-/// anything the caller supplied.
+/// The reason codes Trellis emits for outcomes that are not a validation failure of the caller's input —
+/// internal faults, and the conflicts and gaps a request can run into.
 /// </summary>
 /// <remarks>
-/// Separate from <see cref="ValidationCodes"/> because these describe a failure of the system, not of
-/// the input, and a client should never localize prose against them. They follow the same punctuation
-/// convention and are covered by the same test, so the framework's codes read consistently whichever
-/// family they belong to.
+/// <para>
+/// Separate from <see cref="ValidationCodes"/> because none of these describes something wrong with a
+/// supplied value, so none belongs in the validation vocabulary a client walks to render field-level
+/// messages. They follow the same punctuation convention and are covered by the same test, so the
+/// framework's codes read consistently whichever family they belong to.
+/// </para>
+/// <para>
+/// They differ in what a client may do with them. <see cref="DefaultInitialized"/> and
+/// <see cref="UnhandledException"/> are internal faults carried by <see cref="Error.Unexpected"/>: they
+/// mean the framework broke, prose about them is for an operator, and a client should never localize
+/// against them. <see cref="ConcurrentModification"/> is not that — it rides on <c>Error.Conflict</c>,
+/// it is the expected outcome of a lost write race rather than a defect, and a client may reasonably
+/// present it to a user ("someone else changed this"). What all of them share is that Trellis itself
+/// matches on the value to pick a status code, which is why they are constants: a literal here is a
+/// silent dispatch break, not merely a misspelt label.
+/// </para>
 /// </remarks>
 public static class FaultCodes
 {
@@ -364,4 +376,17 @@ public static class FaultCodes
 
     /// <summary>An exception escaped to a boundary that converts it into a failed <c>Result</c>.</summary>
     public const string UnhandledException = "unhandled-exception";
+
+    /// <summary>
+    /// A boundary reached a path the framework does not implement. Carried by
+    /// <c>Error.Unexpected</c> and surfaced as HTTP 501.
+    /// </summary>
+    public const string NotImplemented = "not-implemented";
+
+    /// <summary>
+    /// A write lost a race: the row changed between read and save. Carried by
+    /// <c>Error.Conflict</c>, and surfaced as HTTP 412 when the request carried
+    /// <c>If-Match</c>, otherwise 409.
+    /// </summary>
+    public const string ConcurrentModification = "concurrent-modification";
 }

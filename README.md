@@ -27,10 +27,10 @@ Trellis is an opinionated .NET service framework with compiler and analyzer guar
 
 ```csharp
 if (string.IsNullOrWhiteSpace(request.Email))
-    return Results.BadRequest(new { code = "validation.error", detail = "Email is required." });
+    return Results.BadRequest(new { code = "email.required", detail = "Email is required." });
 
 if (!request.Email.Contains('@'))
-    return Results.BadRequest(new { code = "validation.error", detail = "Email is invalid." });
+    return Results.BadRequest(new { code = "email.invalid", detail = "Email is invalid." });
 
 return Results.Ok(new User(request.Email.Trim().ToLowerInvariant()));
 ```
@@ -77,7 +77,7 @@ using Trellis;
 
 var result = Result.Ok("ada@example.com")
     .Ensure(email => email.Contains('@'),
-        Error.InvalidInput.ForField("email", "validation.error", "Email is invalid."))
+        Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email is invalid."))
     .Map(email => email.Trim().ToLowerInvariant());
 ```
 

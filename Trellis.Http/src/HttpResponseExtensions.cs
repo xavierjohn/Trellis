@@ -198,7 +198,7 @@ public static class HttpResponseExtensions
             HttpStatusCode.UnprocessableEntity => Error.InvalidInput.ForRule(ValidationCodes.HttpUnprocessableContent),
             (HttpStatusCode)428 => new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch)),
             (HttpStatusCode)429 => new Error.RateLimited(ExtractRetryAdvice(response)),
-            HttpStatusCode.NotImplemented => new Error.Unexpected("not_implemented"),
+            HttpStatusCode.NotImplemented => new Error.Unexpected(FaultCodes.NotImplemented),
             HttpStatusCode.ServiceUnavailable => new Error.Unavailable(Retry: ExtractRetryAdvice(response)),
             _ => new Error.Unexpected(Guid.NewGuid().ToString("N")),
         };

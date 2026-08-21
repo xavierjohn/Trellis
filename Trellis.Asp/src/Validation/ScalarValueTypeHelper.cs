@@ -263,7 +263,7 @@ internal static class ScalarValueTypeHelper
                 : convError!.Detail ?? convError.Code;
 
             conversionError = new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(fieldName), ViolationProjection.LegacyUnspecifiedCode, Detail: detail)));
+                new FieldViolation(InputPointer.ForProperty(fieldName), ValidationCodes.Unspecified, Detail: detail)));
             return null;
         }
 

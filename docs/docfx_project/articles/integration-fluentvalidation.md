@@ -195,7 +195,7 @@ validator.RuleFor(x => x).NotEmpty();
 Result<string?> result = validator.ValidateToResult(alias, message: "Alias is required.");
 ```
 
-`validator.Validate(null!)` is **not** called; the helper synthesizes a single `FieldViolation` for `paramName` with reason code `"validation.error"`.
+`validator.Validate(null!)` is **not** called; the helper synthesizes a single `FieldViolation` for `paramName` from a `NotNullValidator` failure, which projects to reason code `ValidationCodes.ValueNotNull` (`"value.not-null"`).
 
 ## Converting an existing `ValidationResult`
 
@@ -256,7 +256,7 @@ builder.Services.AddTrellisFluentValidation(typeof(SubmitBatchTransfersValidator
 | All registered validators pass | `Result.Ok()` |
 | One or more validators report failures | `Result.Fail(new Error.InvalidInput(EquatableArray.Create(violations)))` aggregating every failure |
 | FluentValidation `PropertyName` is null/whitespace | Pointer derived from `typeof(TMessage).Name` |
-| FluentValidation `ErrorCode` is null/whitespace | `FieldViolation.ReasonCode` defaults to `"validation.error"` |
+| FluentValidation `ErrorCode` is null/whitespace | `ValidationCodeProjection.Project` maps it to `ValidationCodes.Unspecified` (`"error.unspecified"`) |
 | `CancellationToken` cancelled mid-run | Forwarded to `validator.ValidateAsync`; cancellation propagates |
 
 Validators run **sequentially** and every failure is collected — the adapter does not short-circuit on the first failing validator.

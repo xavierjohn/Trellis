@@ -78,8 +78,8 @@ public class ViolationProjectionTests
     {
         var fields = new EquatableArray<FieldViolation>(
         [
-            new FieldViolation(InputPointer.ForBody("/email"), "validation.error") { Detail = "bad email" },
-            new FieldViolation(InputPointer.ForQuery("page"), "validation.error") { Detail = "bad page" },
+            new FieldViolation(InputPointer.ForBody("/email"), ValidationCodes.Unspecified) { Detail = "bad email" },
+            new FieldViolation(InputPointer.ForQuery("page"), ValidationCodes.Unspecified) { Detail = "bad page" },
         ]);
 
         var projected = ViolationProjection.ToFieldViolations(fields);
@@ -104,7 +104,7 @@ public class ViolationProjectionTests
     {
         var rules = new EquatableArray<RuleViolation>(
         [
-            new RuleViolation("validation.error")
+            new RuleViolation(ValidationCodes.Unspecified)
             {
                 Detail = "End date must follow start date.",
                 Fields = ImmutableArray.Create(
@@ -124,7 +124,7 @@ public class ViolationProjectionTests
     public void A_rule_with_no_pointers_projects_an_empty_locations_list()
     {
         var rules = new EquatableArray<RuleViolation>(
-            [new RuleViolation("validation.error") { Detail = "form-level" }]);
+            [new RuleViolation(ValidationCodes.Unspecified) { Detail = "form-level" }]);
 
         var projected = ViolationProjection.ToRuleViolations(rules);
 

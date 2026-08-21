@@ -250,7 +250,7 @@ Content-Type: application/json
 }
 
 ###############################################################################
-# Diagnostics — deterministic Error.Unexpected("diagnostics_fault", faultId) demo
+# Diagnostics — deterministic Error.Unexpected("diagnostics-fault", faultId) demo
 ###############################################################################
 
 ### Trigger fault (500 with stable faultId in Problem Details)

@@ -85,7 +85,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(string, string)>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" })));
+        var result = Result.Fail<(string, string)>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" })));
 
         // Act
         var actual = result.TapOnFailure(error => { /* Log validation error */ });
@@ -251,7 +251,7 @@ public class TapOnFailureTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" })))
+        var result = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" })))
             .Combine(Result.Ok("data"))
             .TapOnFailure(error => { /* Log error */ });
 
@@ -294,8 +294,8 @@ public class TapOnFailureTupleTracingTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         // Act
-        var result = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Bad email" })))
-            .Combine(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("phone"), "validation.error") { Detail = "Bad phone" }))))
+        var result = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Bad email" })))
+            .Combine(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("phone"), ValidationCodes.Unspecified) { Detail = "Bad phone" }))))
             .TapOnFailure(error => { /* Log validation errors */ });
 
         // Assert

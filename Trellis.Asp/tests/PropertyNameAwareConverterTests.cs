@@ -25,9 +25,9 @@ public class PropertyNameAwareConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
+                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
+                return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email must contain @." })));
             return Result.Ok(new Email(value));
         }
     }

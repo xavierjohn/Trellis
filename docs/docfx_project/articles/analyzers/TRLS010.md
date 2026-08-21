@@ -41,7 +41,7 @@ static class Example
         Result.Ok(value).Bind(text =>
         {
             if (string.IsNullOrWhiteSpace(text))
-                return Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), "validation.error") { Detail = "Value is required." })));
+                return Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(value)), ValidationCodes.ValueNotEmpty) { Detail = "Value is required." })));
 
             return Result.Ok(text.Trim());
         });

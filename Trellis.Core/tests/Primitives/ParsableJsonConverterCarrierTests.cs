@@ -63,7 +63,7 @@ public sealed class CarrierValue : IParsable<CarrierValue>
         s == "bad"
             ? throw new TrellisValidationFormatException(
                 "Value must not be 'bad'.",
-                Error.InvalidInput.ForField(InputPointer.ForProperty("carrier"), "validation.error", "Value must not be 'bad'."))
+                Error.InvalidInput.ForField(InputPointer.ForProperty("carrier"), ValidationCodes.Unspecified, "Value must not be 'bad'."))
             : new CarrierValue(s);
 
     public static bool TryParse(string? s, IFormatProvider? provider, out CarrierValue result)

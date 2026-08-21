@@ -301,7 +301,7 @@ public abstract record Error
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
         /// single <see cref="RuleViolation"/> — the global / multi-field counterpart to
         /// <see cref="ForField(string, string, string?)"/>. Use for invariants that are not bound
-        /// to a single field (e.g. <c>"order_must_have_items"</c>, <c>"passwords_must_match"</c>).
+        /// to a single field (e.g. <c>"order.must-have-items"</c>, <c>"password.mismatch"</c>).
         /// </summary>
         /// <param name="reasonCode">Stable machine-readable code identifying the rule.</param>
         /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
@@ -456,7 +456,7 @@ public abstract record Error
     /// stateless conflicts (e.g. workflow / state-machine guards, library code with no aggregate
     /// context).
     /// </param>
-    /// <param name="ReasonCode">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate_key"</c>, <c>"invalid_state"</c>).</param>
+    /// <param name="ReasonCode">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate-key"</c>, <c>"invalid-state"</c>).</param>
     public sealed record Conflict(ResourceRef? Resource, string ReasonCode) : Error
     {
         /// <inheritdoc />
@@ -633,7 +633,7 @@ public abstract record Error
     /// An unhandled internal failure occurred. <paramref name="ReasonCode"/> identifies the
     /// kind of failure; <paramref name="FaultId"/> optionally correlates to deeper diagnostics.
     /// </summary>
-    /// <param name="ReasonCode">Stable machine-readable code identifying the kind of unexpected condition (e.g. <c>"unhandled-exception"</c>, <c>"default-initialized"</c>, <c>"not_implemented"</c>).</param>
+    /// <param name="ReasonCode">Stable machine-readable code identifying the kind of unexpected condition. Pass a <see cref="FaultCodes"/> constant rather than a literal — <see cref="FaultCodes.UnhandledException"/> (<c>"unhandled-exception"</c>), <see cref="FaultCodes.DefaultInitialized"/> (<c>"default-initialized"</c>), or <see cref="FaultCodes.NotImplemented"/> (<c>"not-implemented"</c>), which the ASP boundary maps to HTTP 501.</param>
     /// <param name="FaultId">Optional opaque per-incident identifier correlating to richer diagnostics in the logging/telemetry layer.</param>
     public sealed record Unexpected(string ReasonCode, string? FaultId = null) : Error
     {

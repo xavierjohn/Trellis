@@ -204,9 +204,9 @@ public class ParallelAsyncTests : TestBase
     {
         // Act
         var result = await Result.ParallelAsync(
-            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), "validation.error") { Detail = "First invalid" })), 10),
-            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field2"), "validation.error") { Detail = "Second invalid" })), 20),
-            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field3"), "validation.error") { Detail = "Third invalid" })), 15)
+            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field1"), ValidationCodes.Unspecified) { Detail = "First invalid" })), 10),
+            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field2"), ValidationCodes.Unspecified) { Detail = "Second invalid" })), 20),
+            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field3"), ValidationCodes.Unspecified) { Detail = "Third invalid" })), 15)
         ).WhenAllAsync();
 
         // Assert
@@ -533,9 +533,9 @@ public class ParallelAsyncTests : TestBase
     {
         // Act
         var result = await Result.ParallelAsync(
-            () => CreateDelayedFailureTask<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email format" })), 10),
-            () => CreateDelayedFailureTask<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("phone"), "validation.error") { Detail = "Invalid phone number" })), 15),
-            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("age"), "validation.error") { Detail = "Age must be 18+" })), 20)
+            () => CreateDelayedFailureTask<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email format" })), 10),
+            () => CreateDelayedFailureTask<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("phone"), ValidationCodes.Unspecified) { Detail = "Invalid phone number" })), 15),
+            () => CreateDelayedFailureTask<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("age"), ValidationCodes.Unspecified) { Detail = "Age must be 18+" })), 20)
         ).WhenAllAsync();
 
         // Assert

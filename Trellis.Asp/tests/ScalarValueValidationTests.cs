@@ -28,7 +28,7 @@ public class ScalarValueValidationTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ScalarValueValidationTests.Name>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Name cannot be empty." })));
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.Name>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Name cannot be empty." })));
             return Result.Ok(new Name(value.Trim()));
         }
     }
@@ -44,9 +44,9 @@ public class ScalarValueValidationTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
+                return Result.Fail<Asp.Tests.ScalarValueValidationTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email must contain @." })));
             return Result.Ok(new TestEmail(value));
         }
     }
@@ -367,9 +367,9 @@ public class ScalarValueValidationTests
     {
         // Arrange
         var error = new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("Email"), "validation.error") { Detail = "Email is required" },
-            new FieldViolation(InputPointer.ForProperty("Password"), "validation.error") { Detail = "Password is too short" },
-            new FieldViolation(InputPointer.ForProperty("Email"), "validation.error") { Detail = "Email format is invalid" }));
+            new FieldViolation(InputPointer.ForProperty("Email"), ValidationCodes.Unspecified) { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("Password"), ValidationCodes.Unspecified) { Detail = "Password is too short" },
+            new FieldViolation(InputPointer.ForProperty("Email"), ValidationCodes.Unspecified) { Detail = "Email format is invalid" }));
 
         // Act - convert to dictionary by grouping field violations
         var dict = error.Fields.Items.GroupBy(f => f.Field.Path)
@@ -386,7 +386,7 @@ public class ScalarValueValidationTests
     public void ValidationError_ToDictionary_SingleFieldError()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("Name"), "validation.error") { Detail = "Name cannot be empty" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("Name"), ValidationCodes.Unspecified) { Detail = "Name cannot be empty" }));
 
         // Act
         var dict = error.Fields.Items.GroupBy(f => f.Field.Path)

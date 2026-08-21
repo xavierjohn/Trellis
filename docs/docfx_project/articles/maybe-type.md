@@ -255,7 +255,7 @@ using Trellis;
 static Result<string> NonEmpty(string value) =>
     string.IsNullOrWhiteSpace(value)
         ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("nickname"), "validation.error")
+            new FieldViolation(InputPointer.ForProperty("nickname"), ValidationCodes.ValueNotEmpty)
             {
                 Detail = "Value is required",
             })))
@@ -380,7 +380,7 @@ public Task<Result<Unit>> WelcomeAsync(string id, CancellationToken ct) =>
     Load(id)
         .Bind(customer => customer.Email.ToResult(
             new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty("email"), "validation.error")
+                new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.ValueNotNull)
                 {
                     Detail = "Customer has no email address on file.",
                 }))))

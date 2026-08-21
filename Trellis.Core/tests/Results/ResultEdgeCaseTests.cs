@@ -494,7 +494,7 @@ public class ResultEdgeCaseTests
     [Fact]
     public void Ensure_Bool_False_ReturnsFailureWithError()
     {
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Condition failed" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Condition failed" }));
 
         var result = Result.Ensure(false, error);
 

@@ -194,7 +194,7 @@ private static Result<Unit> Validate(ProductName name, Sku sku)
 {
     if (sku.Value.StartsWith("LEGACY-", StringComparison.OrdinalIgnoreCase))
         return Result.Fail(new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty(nameof(sku)), "validation.error")
+            new FieldViolation(InputPointer.ForProperty(nameof(sku)), "sku.legacy-prefix")
             {
                 Detail = "SKU cannot start with LEGACY.",
             })));

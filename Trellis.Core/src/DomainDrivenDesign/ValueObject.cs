@@ -127,7 +127,7 @@
 ///     // Domain operations return new instances (immutability)
 ///     public Result&lt;Money&gt; Add(Money other) =>
 ///         Currency != other.Currency
-///             ? Result.Fail&lt;Money&gt;(Error.InvalidInput.ForRule("currency_mismatch", $"Cannot add {other.Currency} to {Currency}"))
+///             ? Result.Fail&lt;Money&gt;(Error.InvalidInput.ForRule(ValidationCodes.MoneyCurrencyMismatch, $"Cannot add {other.Currency} to {Currency}"))
 ///             : Result.Ok(new Money(Amount + other.Amount, Currency));
 ///     
 ///     public Money Multiply(decimal factor) =>

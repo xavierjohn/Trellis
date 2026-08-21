@@ -65,7 +65,7 @@ public class TracingBehaviorTests : IDisposable
         var behavior = new TracingBehavior<TestCommand, Result<string>>();
         var command = new TestCommand("Alice");
         var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(
-            Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Bad input." }))));
+            Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Bad input." }))));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
@@ -81,7 +81,7 @@ public class TracingBehaviorTests : IDisposable
         activity.GetTagItem("error.code").Should().Be(ValidationCodes.Unspecified,
             "Error.InvalidInput carries no explicit code, so the wire renders the sentinel and the span must spell it the same way");
         activity.GetTagItem("error.code").Should().Be(
-            new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error"))).WireCode,
+            new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified))).WireCode,
             "the tag is Error.WireCode, so it cannot drift from what the boundary publishes");
     }
 

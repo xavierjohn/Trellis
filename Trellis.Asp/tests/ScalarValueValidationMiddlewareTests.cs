@@ -308,9 +308,9 @@ public class ScalarValueValidationMiddlewareTests
         {
             var field = fieldName ?? "orderCode";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Order code is required." })));
+                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Order code is required." })));
             if (!value.StartsWith("ORD-", StringComparison.Ordinal))
-                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Order code must start with 'ORD-'." })));
+                return Result.Fail<Asp.Tests.ScalarValueValidationMiddlewareTests.OrderCode>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Order code must start with 'ORD-'." })));
             return Result.Ok(new OrderCode(value));
         }
     }
@@ -330,7 +330,7 @@ public class ScalarValueValidationMiddlewareTests
         public int Value { get; }
         private IntOnlyScalarValue(int value) => Value = value;
         public static Result<IntOnlyScalarValue> TryCreate(int value, string? fieldName = null) =>
-            value > 0 ? Result.Ok(new IntOnlyScalarValue(value)) : Result.Fail<IntOnlyScalarValue>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be positive." })));
+            value > 0 ? Result.Ok(new IntOnlyScalarValue(value)) : Result.Fail<IntOnlyScalarValue>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be positive." })));
         public static Result<IntOnlyScalarValue> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }

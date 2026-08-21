@@ -43,7 +43,7 @@ public static class AntiPatternFixes
     // ─── TRLS010 — Throwing in a Result chain ──────────────────────────────
     public static Result<Order> TRLS010_Fix(Result<Order> input) =>
         input.Bind(o => Result.Fail<Order>(new Error.Conflict(
-            ResourceRef.For<Order>(o.Id), "invalid_state")));
+            ResourceRef.For<Order>(o.Id), "invalid-state")));
 
     // ─── TRLS016 — HasIndex on a Maybe<T> property: see Recipe08 FixPattern ─
 

@@ -22,7 +22,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email is required." })));
             return Result.Ok(new Email(value));
         }
     }
@@ -34,7 +34,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age cannot be negative." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Age cannot be negative." })));
             return Result.Ok(new Age(value));
         }
         public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
@@ -49,7 +49,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         {
             var field = fieldName ?? "url";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.URL>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "URL is required." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.URL>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "URL is required." })));
 
             return Result.Ok(new URL(value));
         }
@@ -73,7 +73,7 @@ public class ValidatingJsonConverterEdgeCasesTests
 
         public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
             value == ProcessingMode.Unknown
-                ? Result.Fail<ProcessingModeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "processingMode"), "validation.error") { Detail = "Processing mode is required." })))
+                ? Result.Fail<ProcessingModeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "processingMode"), ValidationCodes.Unspecified) { Detail = "Processing mode is required." })))
                 : Result.Ok(new ProcessingModeVO(value));
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -739,11 +739,11 @@ public class ValidatingJsonConverterEdgeCasesTests
         public static Result<MultiValidationVO> TryCreate(string? value, string? fieldName = null)
         {
             if (string.IsNullOrEmpty(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Required" })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), ValidationCodes.Unspecified) { Detail = "Required" })));
             if (value.Length < 5)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Too short" })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), ValidationCodes.Unspecified) { Detail = "Too short" })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), "validation.error") { Detail = "Must contain @" })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterEdgeCasesTests.MultiValidationVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "field"), ValidationCodes.Unspecified) { Detail = "Must contain @" })));
             return Result.Ok(new MultiValidationVO(value));
         }
     }

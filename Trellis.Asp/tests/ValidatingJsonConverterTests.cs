@@ -24,9 +24,9 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Email>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email must contain @." })));
             return Result.Ok(new Email(value));
         }
     }
@@ -39,9 +39,9 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "age";
             if (value < 0)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age cannot be negative." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Age cannot be negative." })));
             if (value > 150)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Age must be realistic." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Age>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Age must be realistic." })));
             return Result.Ok(new Age(value));
         }
         public static Result<Age> TryCreate(string? value, string? fieldName = null) =>
@@ -56,9 +56,9 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "percentage";
             if (value < 0)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot be negative." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Percentage cannot be negative." })));
             if (value > 100)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Percentage cannot exceed 100." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.Percentage>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Percentage cannot exceed 100." })));
             return Result.Ok(new Percentage(value));
         }
         public static Result<Percentage> TryCreate(string? value, string? fieldName = null) =>
@@ -73,7 +73,7 @@ public class ValidatingJsonConverterTests
         {
             var field = fieldName ?? "itemId";
             if (value == Guid.Empty)
-                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.ItemId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "ItemId cannot be empty." })));
+                return Result.Fail<Asp.Tests.ValidatingJsonConverterTests.ItemId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "ItemId cannot be empty." })));
             return Result.Ok(new ItemId(value));
         }
         public static Result<ItemId> TryCreate(string? value, string? fieldName = null) =>

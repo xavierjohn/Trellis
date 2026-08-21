@@ -20,7 +20,7 @@ using System.Collections.Immutable;
 /// </summary>
 public class ValidationErrorsContextRebaseTests
 {
-    private const string LegacyCode = "validation.error";
+    private const string UnspecifiedCode = ValidationCodes.Unspecified;
 
     // --- AddBodyError promotes Unspecified to Body, at every depth ---
 
@@ -30,7 +30,7 @@ public class ValidationErrorsContextRebaseTests
         using var scope = ValidationErrorsContext.BeginScope();
 
         ValidationErrorsContext.AddBodyError(
-            Error.InvalidInput.ForField("displayName", LegacyCode, "too short"));
+            Error.InvalidInput.ForField("displayName", UnspecifiedCode, "too short"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -47,7 +47,7 @@ public class ValidationErrorsContextRebaseTests
         using var segment = ValidationErrorsContext.PushPathSegment("customer");
 
         ValidationErrorsContext.AddBodyError(
-            Error.InvalidInput.ForField("displayName", LegacyCode, "too short"));
+            Error.InvalidInput.ForField("displayName", UnspecifiedCode, "too short"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -77,7 +77,7 @@ public class ValidationErrorsContextRebaseTests
 
         ValidationErrorsContext.AddBodyError(
             "displayName",
-            LegacyCode,
+            UnspecifiedCode,
             "too short",
             new Dictionary<string, string> { ["min"] = "3" });
 
@@ -85,7 +85,7 @@ public class ValidationErrorsContextRebaseTests
 
         var violation = error!.Fields.Items.Should().ContainSingle().Subject;
         violation.Field.In.Should().Be(InputLocation.Body);
-        violation.ReasonCode.Should().Be(LegacyCode);
+        violation.ReasonCode.Should().Be(UnspecifiedCode);
         violation.Detail.Should().Be("too short");
         violation.Args.Should().Contain(new KeyValuePair<string, string>("min", "3"));
     }
@@ -99,7 +99,7 @@ public class ValidationErrorsContextRebaseTests
         using var segment = ValidationErrorsContext.PushPathSegment("customer");
 
         ValidationErrorsContext.AddBodyError(
-            Error.InvalidInput.ForField(InputPointer.ForQuery("page"), LegacyCode, "out of range"));
+            Error.InvalidInput.ForField(InputPointer.ForQuery("page"), UnspecifiedCode, "out of range"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -119,7 +119,7 @@ public class ValidationErrorsContextRebaseTests
         using var segment = ValidationErrorsContext.PushPathSegment("customer");
 
         ValidationErrorsContext.AddBodyError(
-            Error.InvalidInput.ForField(InputPointer.ForQuery("a/b"), LegacyCode, "bad"));
+            Error.InvalidInput.ForField(InputPointer.ForQuery("a/b"), UnspecifiedCode, "bad"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -135,9 +135,9 @@ public class ValidationErrorsContextRebaseTests
         using var segment = ValidationErrorsContext.PushPathSegment("customer");
 
         ValidationErrorsContext.AddBodyError(
-            Error.InvalidInput.ForField(InputPointer.ForPath("id"), LegacyCode, "bad"));
+            Error.InvalidInput.ForField(InputPointer.ForPath("id"), UnspecifiedCode, "bad"));
         ValidationErrorsContext.AddBodyError(
-            Error.InvalidInput.ForField(InputPointer.ForHeader("If-Match"), LegacyCode, "bad"));
+            Error.InvalidInput.ForField(InputPointer.ForHeader("If-Match"), UnspecifiedCode, "bad"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -161,7 +161,7 @@ public class ValidationErrorsContextRebaseTests
         using var segment = ValidationErrorsContext.PushPathSegment("customer");
 
         ValidationErrorsContext.AddBodyError(
-            Error.InvalidInput.ForField(InputPointer.ForBody("street"), LegacyCode, "bad"));
+            Error.InvalidInput.ForField(InputPointer.ForBody("street"), UnspecifiedCode, "bad"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -178,7 +178,7 @@ public class ValidationErrorsContextRebaseTests
         using var scope = ValidationErrorsContext.BeginScope();
         using var segment = ValidationErrorsContext.PushPathSegment("customer");
 
-        var rule = new RuleViolation(LegacyCode)
+        var rule = new RuleViolation(UnspecifiedCode)
         {
             Fields = ImmutableArray.Create(InputPointer.ForProperty("start"), InputPointer.ForQuery("page")),
         };
@@ -215,7 +215,7 @@ public class ValidationErrorsContextRebaseTests
         using var scope = ValidationErrorsContext.BeginScope();
 
         ValidationErrorsContext.AddError(
-            Error.InvalidInput.ForField("page", LegacyCode, "bad"));
+            Error.InvalidInput.ForField("page", UnspecifiedCode, "bad"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -230,7 +230,7 @@ public class ValidationErrorsContextRebaseTests
         using var segment = ValidationErrorsContext.PushPathSegment("customer");
 
         ValidationErrorsContext.AddError(
-            Error.InvalidInput.ForField(InputPointer.ForQuery("page"), LegacyCode, "bad"));
+            Error.InvalidInput.ForField(InputPointer.ForQuery("page"), UnspecifiedCode, "bad"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -265,9 +265,9 @@ public class ValidationErrorsContextRebaseTests
         using var scope = ValidationErrorsContext.BeginScope();
 
         ValidationErrorsContext.AddError(
-            Error.InvalidInput.ForField(InputPointer.ForQuery("page"), LegacyCode, "bad"));
+            Error.InvalidInput.ForField(InputPointer.ForQuery("page"), UnspecifiedCode, "bad"));
         ValidationErrorsContext.AddError(
-            Error.InvalidInput.ForField(InputPointer.ForPath("page"), LegacyCode, "bad"));
+            Error.InvalidInput.ForField(InputPointer.ForPath("page"), UnspecifiedCode, "bad"));
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 

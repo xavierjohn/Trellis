@@ -147,7 +147,7 @@ Two boundary rules are worth knowing before you branch on a code:
 message-only `ValidationErrorsContext.AddError(string, string)` overloads, for instance. The legacy
 `validation.error` placeholder is recognised and normalised at the boundary, so existing responses keep working.
 
-**BREAKING (wire values): six reason codes were renamed to the vocabulary's hyphen convention.** These are
+**BREAKING (wire values): eight reason codes were renamed to the vocabulary's hyphen convention.** These are
 values a client may already be matching on, and there is no deprecation window — the code changes with this
 release:
 
@@ -159,13 +159,21 @@ release:
 | `etag.parse.error` | `etag.malformed` |
 | `default_initialized` | `default-initialized` |
 | `unhandled_exception` | `unhandled-exception` |
+| `concurrent_modification` | `concurrent-modification` |
+| `not_implemented` | `not-implemented` |
 
 The `http.*` three are the sharp edge: a caller branching on them in retry or fallback logic stops matching
 **silently**, taking the default path instead of erroring. Search for the old literals before upgrading.
 
-Control values the framework itself matches on to select HTTP behaviour — `concurrent_modification`,
-`not_implemented`, and the transport-fault condition codes — were deliberately left alone. They are not
-vocabulary, and renaming them would change dispatch, not just presentation.
+The control values the framework itself matches on to select HTTP behaviour — `concurrent_modification` and
+`not_implemented` — are renamed too, and they are the sharpest edge of all: they are dispatch keys, so a
+consumer constructing `new Error.Conflict(null, "concurrent_modification")` by hand no longer gets a `412`
+on an `If-Match` request, and one constructing `new Error.Unexpected("not_implemented")` no longer gets a
+`501`. Both now have constants — `FaultCodes.ConcurrentModification` and `FaultCodes.NotImplemented` —
+which is the real fix: as bare literals they were invisible to the shape tests that pin every other code,
+which is how they kept a spelling the convention forbids. Construct them by constant.
+
+The transport-fault condition codes are unchanged.
 
 **The vocabulary freezes on release.** Adding a code later is additive and safe; narrowing an existing one
 degrades through namespace fallback rather than breaking a catalog entry a client already recognises.
@@ -899,7 +907,7 @@ The closed union now has 12 cases: `InvalidInput`, `InvariantViolation`, `NotFou
 | `Error.TooManyRequests()` | `Error.RateLimited()` (optional `RetryAdvice`) |
 | `Error.ServiceUnavailable()` | `Error.Unavailable()` (optional `ReasonCode`, `RetryAdvice`) |
 | `Error.InternalServerError(faultId)` | `new Error.Unexpected(reasonCode, faultId)` |
-| `Error.NotImplemented("X")` | `new Error.Unexpected("not_implemented") { Detail = "Feature 'X' is not implemented." }` |
+| `Error.NotImplemented("X")` | `new Error.Unexpected(FaultCodes.NotImplemented) { Detail = "Feature 'X' is not implemented." }` |
 | `Error.MethodNotAllowed`, `NotAcceptable`, `UnsupportedMediaType`, `RangeNotSatisfiable`, `ContentTooLarge`, `PreconditionFailed`, `PreconditionRequired` | Removed from `Trellis.Core`. Use `new Error.TransportFault(new HttpError.X(...))` from `Trellis.Http.Abstractions`. |
 
 #### New cases
@@ -924,7 +932,7 @@ Telemetry consumers that aggregate failures by `Error.Kind` need to update their
 | `too-many-requests` | `rate-limited` |
 | `service-unavailable` | `unavailable` |
 | `internal-server-error` | `unexpected` |
-| `not-implemented` | `unexpected` (with `ReasonCode == "not_implemented"`) |
+| `not-implemented` | `unexpected` (with `ReasonCode == FaultCodes.NotImplemented`) |
 
 #### Wire format unchanged
 

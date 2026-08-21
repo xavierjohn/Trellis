@@ -31,7 +31,7 @@
 ///     public IResult Authorize(Actor actor, Order resource) =&gt;
 ///         Result.Ensure(
 ///             resource.OwnerId == actor.UserId,
-///             new Error.Forbidden("order_not_owned"));
+///             new Error.Forbidden("order.not-owned"));
 /// }
 /// </code>
 /// </example>

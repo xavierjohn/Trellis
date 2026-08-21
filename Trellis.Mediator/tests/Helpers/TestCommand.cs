@@ -11,7 +11,7 @@ internal sealed record TestCommand(string Name)
 {
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Name)
-            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Name)), "validation.error") { Detail = "Name is required." })))
+            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Name)), ValidationCodes.Unspecified) { Detail = "Name is required." })))
             : Result.Ok(Name);
 }
 
@@ -31,7 +31,7 @@ internal sealed record AdminCommand(string Data)
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Data)
-            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Data)), "validation.error") { Detail = "Data is required." })))
+            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Data)), ValidationCodes.Unspecified) { Detail = "Data is required." })))
             : Result.Ok(Data);
 }
 
@@ -61,7 +61,7 @@ internal sealed record TestQuery(int Id)
 {
     public IResult Validate() =>
         Id <= 0
-            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Id)), "validation.error") { Detail = "Id must be positive." })))
+            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Id)), ValidationCodes.Unspecified) { Detail = "Id must be positive." })))
             : Result.Ok(Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
 }
 
@@ -112,6 +112,6 @@ internal sealed record ValidatedFullAuthResourceCommand(string ResourceId, strin
 
     public IResult Validate() =>
         string.IsNullOrWhiteSpace(Payload)
-            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Payload)), "validation.error") { Detail = "Payload is required." })))
+            ? Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(Payload)), ValidationCodes.Unspecified) { Detail = "Payload is required." })))
             : Result.Ok();
 }

@@ -307,7 +307,7 @@ public class DbContextRetryExtensionsTests : IDisposable
 
             result.IsFailure.Should().BeTrue();
             result.Error.Should().BeOfType<Error.Conflict>()
-                .Which.ReasonCode.Should().Be("concurrent_modification");
+                .Which.ReasonCode.Should().Be(FaultCodes.ConcurrentModification);
             classifierWasCalled.Should().BeFalse("concurrency exceptions must bypass shouldRetry");
             regenerateWasCalled.Should().BeFalse();
         }

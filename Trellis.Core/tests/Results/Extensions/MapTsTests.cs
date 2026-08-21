@@ -106,7 +106,7 @@ public class MapTsTests : TestBase
     public void Map_2Tuple_Failure_PreservesOriginalError()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Test error" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Test error" }));
         var result = Result.Fail<(string, int)>(error);
 
         // Act

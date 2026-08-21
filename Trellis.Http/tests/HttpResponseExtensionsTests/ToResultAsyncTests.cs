@@ -385,7 +385,7 @@ public class ToResultAsyncTests
         var result = await task.ToResultAsync();
 
         var unexpected = result.Should().BeFailureOfType<Error.Unexpected>().Subject;
-        unexpected.ReasonCode.Should().Be("not_implemented");
+        unexpected.ReasonCode.Should().Be(FaultCodes.NotImplemented);
     }
 
     [Fact]

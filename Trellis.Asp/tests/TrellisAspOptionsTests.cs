@@ -19,7 +19,7 @@ public class TrellisAspOptionsTests
     public void GetStatusCode_ValidationError_returns_422()
     {
         var options = new TrellisAspOptions();
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Invalid" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Invalid" }));
 
         options.GetStatusCode(error).Should().Be(StatusCodes.Status422UnprocessableEntity);
     }
@@ -197,7 +197,7 @@ public class TrellisAspOptionsTests
         var options = new TrellisAspOptions();
         options.MapError<Error.InvalidInput>(StatusCodes.Status422UnprocessableEntity);
 
-        options.GetStatusCode(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Bad data" }))).Should().Be(StatusCodes.Status422UnprocessableEntity);
+        options.GetStatusCode(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Bad data" }))).Should().Be(StatusCodes.Status422UnprocessableEntity);
     }
 
     [Theory]

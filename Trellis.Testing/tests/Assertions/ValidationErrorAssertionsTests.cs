@@ -6,7 +6,7 @@ public class ValidationErrorAssertionsTests
     public void HaveFieldError_Should_Pass_When_Field_Error_Exists()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Email is required" }));
 
         // Act & Assert
         error.Should().HaveFieldError("email");
@@ -16,7 +16,7 @@ public class ValidationErrorAssertionsTests
     public void HaveFieldError_Should_Fail_When_Field_Error_Missing()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Email is required" }));
 
         // Act & Assert
         var act = () => error.Should().HaveFieldError("password");
@@ -29,7 +29,7 @@ public class ValidationErrorAssertionsTests
     public void HaveFieldErrorWithDetail_Should_Pass_When_Detail_Matches()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Email is required" }));
 
         // Act & Assert
         error.Should().HaveFieldErrorWithDetail("email", "Email is required");
@@ -39,7 +39,7 @@ public class ValidationErrorAssertionsTests
     public void HaveFieldErrorWithDetail_Should_Fail_When_Detail_Different()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Email is required" }));
 
         // Act & Assert
         var act = () => error.Should().HaveFieldErrorWithDetail("email", "Invalid format");
@@ -53,9 +53,9 @@ public class ValidationErrorAssertionsTests
     {
         // Arrange
         var error = new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" },
-            new FieldViolation(InputPointer.ForProperty("password"), "validation.error") { Detail = "Password is required" },
-            new FieldViolation(InputPointer.ForProperty("age"), "validation.error") { Detail = "Invalid age" }));
+            new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("password"), ValidationCodes.Unspecified) { Detail = "Password is required" },
+            new FieldViolation(InputPointer.ForProperty("age"), ValidationCodes.Unspecified) { Detail = "Invalid age" }));
 
         // Act & Assert
         error.Should().HaveFieldCount(3);
@@ -65,7 +65,7 @@ public class ValidationErrorAssertionsTests
     public void HaveFieldCount_Should_Fail_When_Count_Different()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Email is required" }));
 
         // Act & Assert
         var act = () => error.Should().HaveFieldCount(3);
@@ -78,8 +78,8 @@ public class ValidationErrorAssertionsTests
     {
         // Arrange
         var error = new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Email is required" },
-            new FieldViolation(InputPointer.ForProperty("password"), "validation.error") { Detail = "Password is required" }));
+            new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Email is required" },
+            new FieldViolation(InputPointer.ForProperty("password"), ValidationCodes.Unspecified) { Detail = "Password is required" }));
 
         // Act & Assert
         error.Should()

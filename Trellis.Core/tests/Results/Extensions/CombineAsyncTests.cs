@@ -73,13 +73,13 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
             .CombineAsync(Result.Ok("World"));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" });
+        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" });
     }
 
     [Fact]
@@ -87,26 +87,26 @@ public class CombineAsyncTests
     {
         // Arrange & Act
         var result = await Task.FromResult(Result.Ok("Hello"))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" }))));
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" }))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" });
+        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" });
     }
 
     [Fact]
     public async Task CombineAsync_Task_Left_BothFail_CombinesValidationErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" }))));
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" }))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields.Items.Should().HaveCount(2);
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" });
-        validation.Fields.Items[1].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" });
+        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" });
+        validation.Fields.Items[1].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" });
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Left_MixedErrorTypes_ReturnsAggregateError()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Invalid" }))))
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Invalid" }))))
             .CombineAsync(Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" }));
 
         // Assert
@@ -164,7 +164,7 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Right_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" })))
+        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" })))
             .CombineAsync(Task.FromResult(Result.Ok("World")));
 
         // Assert
@@ -176,7 +176,7 @@ public class CombineAsyncTests
     {
         // Arrange & Act
         var result = await Result.Ok("Hello")
-            .CombineAsync(Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" })))));
+            .CombineAsync(Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" })))));
 
         // Assert
         result.Should().BeFailureOfType<Error.InvalidInput>();
@@ -186,8 +186,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Right_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" })))
-            .CombineAsync(Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" })))));
+        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" })))
+            .CombineAsync(Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" })))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
@@ -213,7 +213,7 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Both_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
             .CombineAsync(Task.FromResult(Result.Ok("World")));
 
         // Assert
@@ -224,8 +224,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Both_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
-            .CombineAsync(Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" })))));
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
+            .CombineAsync(Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" })))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
@@ -263,7 +263,7 @@ public class CombineAsyncTests
     {
         // Arrange & Act
         var result = await Task.FromResult(Result.Ok("Hello"))
-            .CombineAsync(Result.Fail(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("check"), "validation.error") { Detail = "Must be valid" }))));
+            .CombineAsync(Result.Fail(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("check"), ValidationCodes.Unspecified) { Detail = "Must be valid" }))));
 
         // Assert
         result.Should().BeFailureOfType<Error.InvalidInput>();
@@ -273,7 +273,7 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Unit_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Bad" }))))
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Bad" }))))
             .CombineAsync(Result.Ok());
 
         // Assert
@@ -284,8 +284,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_Unit_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
-            .CombineAsync(Result.Fail(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" }))));
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
+            .CombineAsync(Result.Fail(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" }))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
@@ -311,7 +311,7 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Left_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
+        var result = await ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
             .CombineAsync(Result.Ok("World"));
 
         // Assert
@@ -322,8 +322,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Left_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" }))));
+        var result = await ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" }))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
@@ -373,7 +373,7 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Right_LeftFails_ReturnsFailure()
     {
         // Arrange & Act
-        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" })))
+        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" })))
             .CombineAsync(ValueTask.FromResult(Result.Ok("World")));
 
         // Assert
@@ -384,8 +384,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Right_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad" })))
-            .CombineAsync(ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad" })))));
+        var result = await Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad" })))
+            .CombineAsync(ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad" })))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
@@ -411,8 +411,8 @@ public class CombineAsyncTests
     public async Task CombineAsync_ValueTask_Both_BothFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), "validation.error") { Detail = "Bad left" }))))
-            .CombineAsync(ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), "validation.error") { Detail = "Bad right" })))));
+        var result = await ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" }))))
+            .CombineAsync(ValueTask.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" })))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
@@ -439,7 +439,7 @@ public class CombineAsyncTests
     {
         // Arrange & Act
         var result = await ValueTask.FromResult(Result.Ok("Hello"))
-            .CombineAsync(Result.Fail(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("check"), "validation.error") { Detail = "Bad" }))));
+            .CombineAsync(Result.Fail(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("check"), ValidationCodes.Unspecified) { Detail = "Bad" }))));
 
         // Assert
         result.Should().BeFailureOfType<Error.InvalidInput>();
@@ -466,7 +466,7 @@ public class CombineAsyncTests
     {
         // Arrange & Act
         var result = await Task.FromResult(Result.Ok("a"))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("b"), "validation.error") { Detail = "Bad b" }))))
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("b"), ValidationCodes.Unspecified) { Detail = "Bad b" }))))
             .CombineAsync(Result.Ok("c"));
 
         // Assert
@@ -479,7 +479,7 @@ public class CombineAsyncTests
         // Arrange & Act
         var result = await Task.FromResult(Result.Ok("a"))
             .CombineAsync(Result.Ok("b"))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("c"), "validation.error") { Detail = "Bad c" }))));
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("c"), ValidationCodes.Unspecified) { Detail = "Bad c" }))));
 
         // Assert
         result.Should().BeFailureOfType<Error.InvalidInput>();
@@ -489,9 +489,9 @@ public class CombineAsyncTests
     public async Task CombineAsync_Task_3Tuple_Chain_MultipleFail_CombinesErrors()
     {
         // Arrange & Act
-        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("a"), "validation.error") { Detail = "Bad a" }))))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("b"), "validation.error") { Detail = "Bad b" }))))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("c"), "validation.error") { Detail = "Bad c" }))));
+        var result = await Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("a"), ValidationCodes.Unspecified) { Detail = "Bad a" }))))
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("b"), ValidationCodes.Unspecified) { Detail = "Bad b" }))))
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("c"), ValidationCodes.Unspecified) { Detail = "Bad c" }))));
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
@@ -557,7 +557,7 @@ public class CombineAsyncTests
     {
         // Arrange & Act
         var result = await ValueTask.FromResult(Result.Ok("a"))
-            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("b"), "validation.error") { Detail = "Bad" }))))
+            .CombineAsync(Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("b"), ValidationCodes.Unspecified) { Detail = "Bad" }))))
             .CombineAsync(Result.Ok("c"));
 
         // Assert
@@ -676,8 +676,8 @@ public class CombineAsyncTests
     {
         // Simulates: async lookup succeeds but sync validations fail
         var asyncResult = Task.FromResult(Result.Ok("valid@email.com"));
-        var badFirst = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("firstName"), "validation.error") { Detail = "First name required" })));
-        var badLast = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("lastName"), "validation.error") { Detail = "Last name required" })));
+        var badFirst = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("firstName"), ValidationCodes.Unspecified) { Detail = "First name required" })));
+        var badLast = Result.Fail<string>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("lastName"), ValidationCodes.Unspecified) { Detail = "Last name required" })));
 
         // Act
         var result = await asyncResult
@@ -687,8 +687,8 @@ public class CombineAsyncTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields.Items.Should().HaveCount(2);
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("firstName"), "validation.error") { Detail = "First name required" });
-        validation.Fields.Items[1].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("lastName"), "validation.error") { Detail = "Last name required" });
+        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("firstName"), ValidationCodes.Unspecified) { Detail = "First name required" });
+        validation.Fields.Items[1].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("lastName"), ValidationCodes.Unspecified) { Detail = "Last name required" });
     }
 
     [Fact]

@@ -70,8 +70,8 @@ public class EnsureAllTests
         var sut = Result.Ok("Hello");
 
         var result = sut.EnsureAll(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
-            (v => v.Length <= 100, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name too long" }))));
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
+            (v => v.Length <= 100, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name too long" }))));
 
         result.Should().BeSuccess().Which.Should().Be("Hello");
     }
@@ -82,7 +82,7 @@ public class EnsureAllTests
         var sut = Result.Ok("");
 
         var result = sut.EnsureAll(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
             (v => true, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Always passes" }));
 
         result.Should().BeFailure();
@@ -95,8 +95,8 @@ public class EnsureAllTests
         var sut = Result.Ok("");
 
         var result = sut.EnsureAll(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
-            (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }))),
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
+            (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" }))),
             (v => true, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Always passes" }));
 
         result.Should().BeFailure();
@@ -137,7 +137,7 @@ public class EnsureAllTests
         var sut = Task.FromResult(Result.Ok("Hello"));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "required" }))));
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "required" }))));
 
         result.Should().BeSuccess().Which.Should().Be("Hello");
     }
@@ -148,8 +148,8 @@ public class EnsureAllTests
         var sut = Task.FromResult(Result.Ok(""));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
-            (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }))));
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
+            (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" }))));
 
         result.Should().BeFailure();
         result.Error!.Should().BeOfType<Error.InvalidInput>();
@@ -161,7 +161,7 @@ public class EnsureAllTests
         Task<Result<string>> sut = null!;
 
         var act = async () => await sut.EnsureAllAsync(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "required" }))));
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "required" }))));
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
@@ -176,7 +176,7 @@ public class EnsureAllTests
         var sut = new ValueTask<Result<string>>(Result.Ok("Hello"));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "required" }))));
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "required" }))));
 
         result.Should().BeSuccess().Which.Should().Be("Hello");
     }
@@ -187,8 +187,8 @@ public class EnsureAllTests
         var sut = new ValueTask<Result<string>>(Result.Ok(""));
 
         var result = await sut.EnsureAllAsync(
-            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), "validation.error") { Detail = "Name required" }))),
-            (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }))));
+            (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
+            (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" }))));
 
         result.Should().BeFailure();
         result.Error!.Should().BeOfType<Error.InvalidInput>();

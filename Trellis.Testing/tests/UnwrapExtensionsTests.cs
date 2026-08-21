@@ -5,7 +5,7 @@
 /// </summary>
 public class UnwrapExtensionsTests
 {
-    private static readonly Error TestError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("TestField"), "validation.error") { Detail = "Test validation error" }));
+    private static readonly Error TestError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("TestField"), ValidationCodes.Unspecified) { Detail = "Test validation error" }));
 
     #region Result<T>.Unwrap()
 

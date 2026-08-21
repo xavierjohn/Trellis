@@ -52,7 +52,7 @@ internal static class Recipe10TestingSurface
     {
         var error = Error.InvalidInput.ForField(
             "currency",
-            "invalid_length",
+            ValidationCodes.StringExactLength,
             "Currency must be 3 characters.");
 
         ValidationErrorAssertions assertions = error.Should();
@@ -67,7 +67,7 @@ internal static class Recipe10TestingSurface
     public static async Task AsyncResultAssertionSurface()
     {
         var idResult = Result.Ok(1);
-        var failureResult = Result.Fail<int>(new Error.Unexpected("async_assertion_failure"));
+        var failureResult = Result.Fail<int>(new Error.Unexpected("async-assertion-failure"));
         Task<Result<int>> taskResult = Task.FromResult(idResult);
         ValueTask<Result<int>> valueTaskResult = new(idResult);
         Task<Result<int>> failureTaskResult = Task.FromResult(failureResult);

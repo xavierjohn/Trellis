@@ -83,7 +83,7 @@ public sealed record UploadScorecardCommand(MatchId MatchId, Scorecard Scorecard
     public MatchId GetResourceId() => MatchId;
 
     public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
-        Result.Ensure(owners.Any(t => t.CreatedByActorId == actor.Id), new Error.Forbidden("not_team_owner"));
+        Result.Ensure(owners.Any(t => t.CreatedByActorId == actor.Id), new Error.Forbidden("team.not-owner"));
 }
 
 public sealed class UploadScorecardHandler(IAuthorizedResource<UploadScorecardCommand, Match> match)

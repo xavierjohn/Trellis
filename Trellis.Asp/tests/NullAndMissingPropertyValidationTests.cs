@@ -29,7 +29,7 @@ public class NullAndMissingPropertyValidationTests
         public static Result<Quantity> TryCreate(int value, string? fieldName = null) =>
             value > 0
                 ? Result.Ok(new Quantity(value))
-                : Result.Fail<Quantity>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "quantity"), "validation.error") { Detail = "Quantity must be positive." })));
+                : Result.Fail<Quantity>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "quantity"), ValidationCodes.Unspecified) { Detail = "Quantity must be positive." })));
         public static Result<Quantity> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -40,7 +40,7 @@ public class NullAndMissingPropertyValidationTests
         public static Result<Price> TryCreate(decimal value, string? fieldName = null) =>
             value >= 0
                 ? Result.Ok(new Price(value))
-                : Result.Fail<Price>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "price"), "validation.error") { Detail = "Price cannot be negative." })));
+                : Result.Fail<Price>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "price"), ValidationCodes.Unspecified) { Detail = "Price cannot be negative." })));
         public static Result<Price> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -51,7 +51,7 @@ public class NullAndMissingPropertyValidationTests
         public static Result<Counter> TryCreate(long value, string? fieldName = null) =>
             value >= 0
                 ? Result.Ok(new Counter(value))
-                : Result.Fail<Counter>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "counter"), "validation.error") { Detail = "Counter cannot be negative." })));
+                : Result.Fail<Counter>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "counter"), ValidationCodes.Unspecified) { Detail = "Counter cannot be negative." })));
         public static Result<Counter> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
     }
@@ -70,7 +70,7 @@ public class NullAndMissingPropertyValidationTests
         private ProductName(string value) : base(value) { }
         public static Result<ProductName> TryCreate(string? value, string? fieldName = null) =>
             string.IsNullOrWhiteSpace(value)
-                ? Result.Fail<ProductName>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productName"), "validation.error") { Detail = "Product name is required." })))
+                ? Result.Fail<ProductName>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productName"), ValidationCodes.Unspecified) { Detail = "Product name is required." })))
                 : Result.Ok(new ProductName(value));
     }
 

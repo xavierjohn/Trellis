@@ -29,7 +29,7 @@ public class ServiceCollectionExtensionsTests
         {
             var field = fieldName ?? "name";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestName>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Name is required." })));
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestName>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Name is required." })));
             return Result.Ok(new TestName(value));
         }
     }
@@ -42,9 +42,9 @@ public class ServiceCollectionExtensionsTests
         {
             var field = fieldName ?? "email";
             if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email is required." })));
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email is required." })));
             if (!value.Contains('@'))
-                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = "Email must contain @." })));
+                return Result.Fail<Asp.Tests.ServiceCollectionExtensionsTests.TestEmail>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = "Email must contain @." })));
             return Result.Ok(new TestEmail(value));
         }
     }
@@ -55,7 +55,7 @@ public class ServiceCollectionExtensionsTests
 
         public static Result<TestAge> TryCreate(int value, string? fieldName = null) =>
             value is < 0 or > 150
-                ? Result.Fail<TestAge>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "age"), "validation.error") { Detail = "Age must be between 0 and 150." })))
+                ? Result.Fail<TestAge>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "age"), ValidationCodes.Unspecified) { Detail = "Age must be between 0 and 150." })))
                 : Result.Ok(new TestAge(value));
         public static Result<TestAge> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();

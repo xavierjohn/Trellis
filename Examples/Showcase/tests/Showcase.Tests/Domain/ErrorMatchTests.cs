@@ -26,7 +26,7 @@ public class ErrorMatchTests
             nameof(Error.Conflict) => new Error.Conflict(null, "x"),
             nameof(Error.Forbidden) => new Error.Forbidden("policy.id"),
             nameof(Error.TransportFault) => new Error.TransportFault(new HttpError.PreconditionFailed(new ResourceRef("Thing", "1"), PreconditionKind.IfMatch)),
-            nameof(Error.Unexpected) => new Error.Unexpected("test_reason", "fault-id"),
+            nameof(Error.Unexpected) => new Error.Unexpected("test.reason", "fault-id"),
             _ => throw new InvalidOperationException(),
         };
 

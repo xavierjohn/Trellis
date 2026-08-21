@@ -14,7 +14,7 @@ public static class DiagnosticsEndpoints
         var group = routes.MapGroup("/api/diagnostics").WithTags("Diagnostics");
 
         group.MapGet("/fault", () =>
-            new Error.Unexpected("diagnostics_fault", "DIAG-FAULT-001")
+            new Error.Unexpected("diagnostics-fault", "DIAG-FAULT-001")
             {
                 Detail = "Deterministic fault path used to demonstrate Error.Unexpected mapping.",
             }.ToHttpResponse());

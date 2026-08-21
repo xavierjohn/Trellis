@@ -22,7 +22,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private StringVO(string value) : base(value) { }
         public static Result<StringVO> TryCreate(string? value, string? fieldName = null) =>
             string.IsNullOrWhiteSpace(value)
-                ? Result.Fail<StringVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Required" })))
+                ? Result.Fail<StringVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Required" })))
                 : Result.Ok(new StringVO(value));
     }
 
@@ -36,7 +36,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private OptionalRemarkVO(string value) : base(value) { }
         public static Result<OptionalRemarkVO> TryCreate(string? value, string? fieldName = null) =>
             value is null
-                ? Result.Fail<OptionalRemarkVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Required" })))
+                ? Result.Fail<OptionalRemarkVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Required" })))
                 : Result.Ok(new OptionalRemarkVO(value));
     }
 
@@ -45,7 +45,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private GuidVO(Guid value) : base(value) { }
         public static Result<GuidVO> TryCreate(Guid value, string? fieldName = null) =>
             value == Guid.Empty
-                ? Result.Fail<GuidVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Cannot be empty" })))
+                ? Result.Fail<GuidVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Cannot be empty" })))
                 : Result.Ok(new GuidVO(value));
         public static Result<GuidVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -56,7 +56,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private NonNegativeIntVO(int value) : base(value) { }
         public static Result<NonNegativeIntVO> TryCreate(int value, string? fieldName = null) =>
             value < 0
-                ? Result.Fail<NonNegativeIntVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<NonNegativeIntVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new NonNegativeIntVO(value));
         public static Result<NonNegativeIntVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -67,7 +67,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private LongVO(long value) : base(value) { }
         public static Result<LongVO> TryCreate(long value, string? fieldName = null) =>
             value < 0
-                ? Result.Fail<LongVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<LongVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new LongVO(value));
         public static Result<LongVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -78,7 +78,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DecimalVO(decimal value) : base(value) { }
         public static Result<DecimalVO> TryCreate(decimal value, string? fieldName = null) =>
             value < 0
-                ? Result.Fail<DecimalVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<DecimalVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new DecimalVO(value));
         public static Result<DecimalVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -89,7 +89,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DoubleVO(double value) : base(value) { }
         public static Result<DoubleVO> TryCreate(double value, string? fieldName = null) =>
             value < 0
-                ? Result.Fail<DoubleVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<DoubleVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new DoubleVO(value));
         public static Result<DoubleVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -109,7 +109,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DateTimeVO(DateTime value) : base(value) { }
         public static Result<DateTimeVO> TryCreate(DateTime value, string? fieldName = null) =>
             value == default
-                ? Result.Fail<DateTimeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Required" })))
+                ? Result.Fail<DateTimeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Required" })))
                 : Result.Ok(new DateTimeVO(value));
         public static Result<DateTimeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -120,7 +120,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DateOnlyVO(DateOnly value) : base(value) { }
         public static Result<DateOnlyVO> TryCreate(DateOnly value, string? fieldName = null) =>
             value == default
-                ? Result.Fail<DateOnlyVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Required" })))
+                ? Result.Fail<DateOnlyVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Required" })))
                 : Result.Ok(new DateOnlyVO(value));
         public static Result<DateOnlyVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -140,7 +140,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private TimeSpanVO(TimeSpan value) : base(value) { }
         public static Result<TimeSpanVO> TryCreate(TimeSpan value, string? fieldName = null) =>
             value < TimeSpan.Zero
-                ? Result.Fail<TimeSpanVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<TimeSpanVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new TimeSpanVO(value));
         public static Result<TimeSpanVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -151,7 +151,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private DateTimeOffsetVO(DateTimeOffset value) : base(value) { }
         public static Result<DateTimeOffsetVO> TryCreate(DateTimeOffset value, string? fieldName = null) =>
             value == default
-                ? Result.Fail<DateTimeOffsetVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Required" })))
+                ? Result.Fail<DateTimeOffsetVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Required" })))
                 : Result.Ok(new DateTimeOffsetVO(value));
         public static Result<DateTimeOffsetVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -162,7 +162,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private ShortVO(short value) : base(value) { }
         public static Result<ShortVO> TryCreate(short value, string? fieldName = null) =>
             value < 0
-                ? Result.Fail<ShortVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<ShortVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new ShortVO(value));
         public static Result<ShortVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -182,7 +182,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private SByteVO(sbyte value) : base(value) { }
         public static Result<SByteVO> TryCreate(sbyte value, string? fieldName = null) =>
             value < 0
-                ? Result.Fail<SByteVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<SByteVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new SByteVO(value));
         public static Result<SByteVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -220,7 +220,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private FloatVO(float value) : base(value) { }
         public static Result<FloatVO> TryCreate(float value, string? fieldName = null) =>
             value < 0
-                ? Result.Fail<FloatVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Must be non-negative" })))
+                ? Result.Fail<FloatVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Must be non-negative" })))
                 : Result.Ok(new FloatVO(value));
         public static Result<FloatVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();
@@ -238,7 +238,7 @@ public class ScalarValueModelBinderPrimitiveTypesTests
         private ProcessingModeVO(ProcessingMode value) : base(value) { }
         public static Result<ProcessingModeVO> TryCreate(ProcessingMode value, string? fieldName = null) =>
             value == ProcessingMode.Unknown
-                ? Result.Fail<ProcessingModeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), "validation.error") { Detail = "Mode is required" })))
+                ? Result.Fail<ProcessingModeVO>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "value"), ValidationCodes.Unspecified) { Detail = "Mode is required" })))
                 : Result.Ok(new ProcessingModeVO(value));
         public static Result<ProcessingModeVO> TryCreate(string? value, string? fieldName = null) =>
             throw new NotImplementedException();

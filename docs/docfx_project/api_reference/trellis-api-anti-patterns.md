@@ -109,7 +109,7 @@ Prefer the early-return guard in ROP code: it keeps the happy path unindented an
 .Bind(o => throw new InvalidOperationException("bad"))   // TRLS010
 
 // FIX
-.Bind(o => Result.Fail<Order>(new Error.Conflict(ResourceRef.For<Order>(o.Id), "invalid_state")))
+.Bind(o => Result.Fail<Order>(new Error.Conflict(ResourceRef.For<Order>(o.Id), "invalid-state")))
 ```
 
 ## TRLS016 — `HasIndex` on a `Maybe<T>` property
@@ -564,7 +564,7 @@ public async Task<Result<OrderOutcome>> Handle(ProcessOrderCommand cmd, Cancella
     // ↑ returns Result.FailAfterCommit(new Error.Unavailable(...))
 
     Result<int> independentRule = Result.Fail<int>(
-        Error.InvalidInput.ForRule("downstream_limit_exceeded", "Customer is over quota."));
+        Error.InvalidInput.ForRule("quota.downstream-limit-exceeded", "Customer is over quota."));
 
     return stagePermanentFailure
         .Combine(independentRule)
@@ -579,7 +579,7 @@ public async Task<Result<OrderOutcome>> Handle(ProcessOrderCommand cmd, Cancella
 public async Task<Result<OrderOutcome>> Handle(ProcessOrderCommand cmd, CancellationToken ct)
 {
     Result<int> independentRule = Result.Fail<int>(
-        Error.InvalidInput.ForRule("downstream_limit_exceeded", "Customer is over quota."));
+        Error.InvalidInput.ForRule("quota.downstream-limit-exceeded", "Customer is over quota."));
 
     if (independentRule.IsFailure)
         return Result.Fail<OrderOutcome>(independentRule.Error!);

@@ -147,7 +147,7 @@ public class ErrorAssertionsTests
     public void BeOfType_Should_Return_Typed_Error_For_Chaining()
     {
         // Arrange
-        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "validation.error") { Detail = "Invalid email" }));
+        var error = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" }));
 
         // Act & Assert
         error.Should()

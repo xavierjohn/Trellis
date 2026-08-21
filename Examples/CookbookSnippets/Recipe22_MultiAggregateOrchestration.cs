@@ -52,7 +52,7 @@ public sealed class Order : Aggregate<OrderId>
     public static Order ForTesting(OrderId id, IReadOnlyList<LineItem> lineItems) => new(id, lineItems);
 
     public Result<Trellis.Unit> Return(string reason, System.DateTimeOffset occurredAt) =>
-        Result.Ensure(!string.IsNullOrWhiteSpace(reason), Error.InvalidInput.ForField("reason", "required"))
+        Result.Ensure(!string.IsNullOrWhiteSpace(reason), Error.InvalidInput.ForField("reason", ValidationCodes.ValueNotEmpty))
             .Tap(() =>
             {
                 IsReturned = true;

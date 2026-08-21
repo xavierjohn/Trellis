@@ -72,13 +72,13 @@ var app = builder.Build();
 app.MapPost("/users/register", (RegisterUserRequest request) =>
 {
     if (string.IsNullOrWhiteSpace(request.FirstName))
-        return Results.BadRequest(new { code = "validation.error", detail = "First name is required." });
+        return Results.BadRequest(new { code = "first-name.required", detail = "First name is required." });
 
     if (string.IsNullOrWhiteSpace(request.LastName))
-        return Results.BadRequest(new { code = "validation.error", detail = "Last name is required." });
+        return Results.BadRequest(new { code = "last-name.required", detail = "Last name is required." });
 
     if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
-        return Results.BadRequest(new { code = "validation.error", detail = "Email is invalid." });
+        return Results.BadRequest(new { code = "email.invalid", detail = "Email is invalid." });
 
     return Results.Ok(new RegisterUserResponse(request.FirstName, request.LastName, request.Email));
 });

@@ -112,7 +112,7 @@ public class MaybeOptionalTests
     {
         // Arrange
         string? value = "invalid";
-        var expectedError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Value is invalid" }));
+        var expectedError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Value is invalid" }));
 
         // Act
         var result = Maybe.Optional(value, str => Result.Fail<string>(expectedError));
@@ -127,7 +127,7 @@ public class MaybeOptionalTests
     {
         // Arrange
         int? value = -5;
-        var expectedError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("number"), "validation.error") { Detail = "Value must be positive" }));
+        var expectedError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("number"), ValidationCodes.Unspecified) { Detail = "Value must be positive" }));
 
         // Act
         var result = Maybe.Optional<int, WrappedInt>(value, num =>
@@ -243,7 +243,7 @@ public class MaybeOptionalTests
         // Arrange
         string firstName = "John";
         string? invalidValue = "bad";
-        var validationError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), "validation.error") { Detail = "Invalid value" }));
+        var validationError = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("field"), ValidationCodes.Unspecified) { Detail = "Invalid value" }));
 
         // Act
         var result = Result.Ok(firstName)

@@ -14,7 +14,7 @@ public class DiagnosticsController : ControllerBase
 {
     [HttpGet("fault")]
     public Microsoft.AspNetCore.Http.IResult Fault() =>
-        new Error.Unexpected("diagnostics_fault", "DIAG-FAULT-001")
+        new Error.Unexpected("diagnostics-fault", "DIAG-FAULT-001")
         {
             Detail = "Deterministic fault path used to demonstrate Error.Unexpected mapping.",
         }.ToHttpResponse();

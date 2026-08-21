@@ -103,7 +103,7 @@ Bare `ToResultAsync()` uses the built-in mapper from `Trellis.Http/src/HttpRespo
 | `422` | `Error.InvalidInput.ForRule("http.unprocessable-content")` |
 | `428` | `new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))` |
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
-| `501` | `new Error.Unexpected("not_implemented")` |
+| `501` | `new Error.Unexpected(FaultCodes.NotImplemented)` |
 | `503` | `new Error.Unavailable(Retry: retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | other / default | `new Error.Unexpected(Guid.NewGuid().ToString("N"))` |
 
@@ -302,7 +302,7 @@ public sealed class CheckoutClient(HttpClient httpClient)
             .EnsureAsync(
                 inventory => inventory.InStock,
                 new Error.InvalidInput(EquatableArray.Create(
-                    new FieldViolation(InputPointer.ForProperty(nameof(productId)), "validation.error") { Detail = "Out of stock." })))
+                    new FieldViolation(InputPointer.ForProperty(nameof(productId)), "stock.insufficient") { Detail = "Out of stock." })))
             .BindAsync(
                 (_, token) => httpClient.PostAsync($"payments/{productId}", null, token)
                     .ToResultAsync()

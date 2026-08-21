@@ -229,7 +229,7 @@ using Trellis;
 using Trellis.Testing;
 
 var error = new Error.InvalidInput(EquatableArray.Create(
-    new FieldViolation(InputPointer.ForProperty("email"), "validation.error")
+    new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.ValueNotEmpty)
     {
         Detail = "Email is required.",
     }));

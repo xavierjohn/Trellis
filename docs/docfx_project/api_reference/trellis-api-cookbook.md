@@ -184,9 +184,9 @@ public sealed class Order : Aggregate<OrderId>
     // tuple-deconstructing overload lets the lambda bind the validated non-null values
     // directly as id/total/ownerId.
     public static Result<Order> TryCreate(OrderId? id, Money? total, ActorId? ownerId) =>
-        id.ToResult(Error.InvalidInput.ForField("id", "validation.error", "Order id is required."))
-            .Combine(total.ToResult(Error.InvalidInput.ForField("total", "validation.error", "Total is required.")))
-            .Combine(ownerId.ToResult(Error.InvalidInput.ForField("ownerId", "validation.error", "Owner id is required.")))
+        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Order id is required."))
+            .Combine(total.ToResult(Error.InvalidInput.ForField("total", ValidationCodes.ValueNotNull, "Total is required.")))
+            .Combine(ownerId.ToResult(Error.InvalidInput.ForField("ownerId", ValidationCodes.ValueNotNull, "Owner id is required.")))
             .Map((id, total, ownerId) => new Order(id) { Total = total, Status = OrderStatus.Draft, OwnerId = ownerId });
 }
 
@@ -332,7 +332,7 @@ public static class OrdersDi
 // FIX — MatchAsync awaits the Maybe carrier and dispatches without leaving the Result chain.
 .BindAsync(id => repo.FindAsync(id, ct)
     .MatchAsync(
-        some: _  => Result.Fail<OrderId>(new Error.Conflict(ResourceRef.For<Order>(id), "already_exists")),
+        some: _  => Result.Fail<OrderId>(new Error.Conflict(ResourceRef.For<Order>(id), "already-exists")),
         none: () => Result.Ok(id)))
 ```
 
@@ -979,7 +979,7 @@ public partial class ShippingAddress : ValueObject
         var pointer = string.IsNullOrWhiteSpace(owner)
             ? InputPointer.ForProperty(leaf)
             : new InputPointer($"/{owner}/{leaf}");
-        v.Add(new FieldViolation(pointer, "required") { Detail = $"{part} is required." });
+        v.Add(new FieldViolation(pointer, ValidationCodes.ValueNotEmpty) { Detail = $"{part} is required." });
     }
 }
 
@@ -997,9 +997,9 @@ public sealed partial class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
-        id.ToResult(Error.InvalidInput.ForField("id", "validation.error", "Customer id is required."))
-            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField("name", "required", "Name is required.")))
-            .Combine(shipping.ToResult(Error.InvalidInput.ForField("shipping", "validation.error", "Shipping address is required.")))
+        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Customer id is required."))
+            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField("name", ValidationCodes.ValueNotEmpty, "Name is required.")))
+            .Combine(shipping.ToResult(Error.InvalidInput.ForField("shipping", ValidationCodes.ValueNotNull, "Shipping address is required.")))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }
 
@@ -1980,7 +1980,7 @@ app.MapPut("/orders/{id:guid}", (OrderId id, ReplaceOrderRequest request, OrderD
 - **Construct errors via the closed ADT.** `new Error.NotFound(ResourceRef.For<Order>(id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
 - **Aggregate per-item Results with `Traverse` / `Sequence` (fail-fast) or `TraverseAll` / `SequenceAll` (accumulating).** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure. When you need to surface every failure (form-style validation), use `TraverseAll` / `SequenceAll`: they run through every item and fold failures via `Error.Combine` — two `Error.InvalidInput` errors merge their fields/rules, heterogeneous errors flatten into `Error.Aggregate`. See [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) for when to choose which.
-- **Use `Error.InvalidInput.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.InvalidInput.ForField("email", "invalid_format", "must contain @")` over `new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), "invalid_format") { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>`, or chain `.Combine(...)` across the per-field `TryCreate`s as in Recipe 1 (which folds multiple `Error.InvalidInput` into one).
+- **Use `Error.InvalidInput.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "must contain @")` over `new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.StringEmail) { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>`, or chain `.Combine(...)` across the per-field `TryCreate`s as in Recipe 1 (which folds multiple `Error.InvalidInput` into one).
 - **`InputPointer.Root` for whole-body violations.** Use `InputPointer.ForProperty(name)` for field-level violations and `InputPointer.Root` when the rule is object-level.
 - **Only the `Trellis` namespace is auto-imported.** The template's implicit usings include `Trellis` (which exposes `Result`, `Result<T>`, `Error`, `Maybe<T>`, `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredDateTime<T>`, etc.). Every other Trellis namespace requires an explicit `using` per file — e.g. `using Trellis.Primitives;` for `Money` / `EmailAddress` / `PhoneNumber` / `MonetaryAmount` / `CurrencyCode` / `CountryCode` / etc., `using Stateless;` for the upstream `StateMachine<TState, TTrigger>` type plus `using Trellis.StateMachine;` for the Trellis `FireResult` extension and `LazyStateMachine<TState, TTrigger>`, `using Trellis.Authorization;` for permission types. This is intentional: implicit usings cannot be added at the template level without breaking services that don't reference the package.
 - **Accessing `Maybe<T>.Value` inside `Expression<Func<...>>` lambdas (EF Core `Where`/`Select`, FluentValidation `RuleFor`, Specifications):** TRLS003 still applies inside expression trees, but it now recognises the multi-clause guard — `e => e.Status == X && e.Y.HasValue && e.Y.Value == y` is analyzer-clean, and `MaybeQueryInterceptor` translates each clause faithfully to SQL when `AddTrellisInterceptors()` is wired. The single-call equivalent `e.Y.HasValueWhere(v => v == y)` is also analyzer-clean and rewritten by the interceptor — use whichever reads better. Hoist into a guarded variable for projections that the interceptor doesn't cover. Do not suppress with `#pragma warning disable TRLS003`. See [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects) for the full Specification walkthrough.
@@ -2830,7 +2830,7 @@ public sealed record UploadScorecardCommand(MatchId MatchId, Scorecard Scorecard
     public MatchId GetResourceId() => MatchId;
     public IResult Authorize(Actor actor, IReadOnlyList<Team> teams) =>
         Result.Ensure(teams.Any(t => t.CreatedByActorId == actor.Id),
-            new Error.Forbidden("not_team_owner"));
+            new Error.Forbidden("team.not-owner"));
 }
 
 public sealed class UploadScorecardHandler(

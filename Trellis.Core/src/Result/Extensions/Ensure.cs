@@ -27,11 +27,11 @@ using System.Diagnostics;
 /// <example>
 /// <code>
 /// // Non-generic guard at the top of a handler:
-/// var guard = Result.Ensure(order.IsOpen, new Error.Conflict(null, "order_closed"));
+/// var guard = Result.Ensure(order.IsOpen, new Error.Conflict(null, "order.closed"));
 ///
 /// // Value-threaded guard inside a pipeline:
 /// var validated = parseAmount
-///     .Ensure(amt =&gt; amt &gt; 0, Error.InvalidInput.ForField("amount", "must_be_positive"));
+///     .Ensure(amt =&gt; amt &gt; 0, Error.InvalidInput.ForField("amount", ValidationCodes.ValueGreaterThan));
 /// </code>
 /// </example>
 [DebuggerStepThrough]
