@@ -5,6 +5,7 @@ using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Mediator;
+using Trellis.FluentValidation;
 using Trellis.Mediator.FluentValidation;
 using Trellis.Testing;
 
@@ -39,6 +40,63 @@ public class FluentValidationMessageValidatorAdapterTests
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("validators");
+    }
+
+    [Fact]
+    public void Constructor_throws_ArgumentNullException_when_argsOptions_is_null()
+    {
+        var act = () => new FluentValidationMessageValidatorAdapter<CreateUserCommand>([], null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("argsOptions");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_honours_the_configured_args_allowlist()
+    {
+        var adapter = ResolveAdapter(options => options.AllowArgs("MinimumNameLength", "MinNameLength"));
+
+        var result = await adapter.ValidateAsync(new CreateUserCommand("Al", "alice@example.com"), CancellationToken.None);
+
+        var violation = ((Error.InvalidInput)result.Error!).Fields[0];
+        violation.Args!["minNameLength"].Should().Be("3",
+            "the adapter must read the same options the standalone helpers take as a parameter");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_emits_no_args_for_a_custom_validator_by_default()
+    {
+        var adapter = ResolveAdapter(configure: null);
+
+        var result = await adapter.ValidateAsync(new CreateUserCommand("Al", "alice@example.com"), CancellationToken.None);
+
+        ((Error.InvalidInput)result.Error!).Fields[0].Args.Should().BeNull();
+    }
+
+    private static IMessageValidator<CreateUserCommand> ResolveAdapter(Action<ValidationArgsOptions>? configure)
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisFluentValidation();
+        services.AddScoped<IValidator<CreateUserCommand>, MinimumNameLengthValidator>();
+        if (configure is not null)
+            services.Configure(configure);
+
+        return services.BuildServiceProvider()
+            .CreateScope()
+            .ServiceProvider
+            .GetRequiredService<IMessageValidator<CreateUserCommand>>();
+    }
+
+    private sealed class MinimumNameLengthValidator : AbstractValidator<CreateUserCommand>
+    {
+        public MinimumNameLengthValidator() =>
+            RuleFor(x => x.Name)
+                .Must((_, value, context) =>
+                {
+                    context.MessageFormatter.AppendArgument("MinNameLength", 3);
+                    return value.Length >= 3;
+                })
+                .WithErrorCode("MinimumNameLength")
+                .WithMessage("Name must be at least {MinNameLength} characters.");
     }
 
     [Fact]

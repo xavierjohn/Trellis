@@ -85,6 +85,74 @@ vocabulary, and renaming them would change dispatch, not just presentation.
 **The vocabulary freezes on release.** Adding a code later is additive and safe; narrowing an existing one
 degrades through namespace fallback rather than breaking a catalog entry a client already recognises.
 
+### Added — naming a failure in the application's own vocabulary
+
+The frozen vocabulary above is the framework's, and freezing it constrains *Trellis*, not the application. An
+application whose clients already speak a catalog of its own should not have to choose between Trellis's names
+and its own, so this release adds two ways to override a reason code at the declaration site. Neither is
+encouraged or discouraged: no analyzer pressures either choice, and the framework code stays the default.
+
+**Constraint attributes carry a `Code`.** `[Range]`, `[StringLength]`, `[NotDefault]`, `[Positive]`,
+`[NonNegative]`, `[Negative]` and `[NonPositive]` each take an optional `Code` that replaces the framework
+reason code on the resulting `FieldViolation`:
+
+```csharp
+[StringLength(8, MinimumLength = 3, Code = "account.reference.length")]
+public partial class AccountReference : RequiredString<AccountReference>;
+```
+
+`[Trim]` gets none, because trimming normalizes and cannot fail. The four sign attributes share `[Range]`'s
+slot, since they synthesize into the same range emission. Two consequences are stated rather than solved:
+`[Range].Code` renames **both** directional failures, and the null check is never overridable — it belongs to no
+attribute and always reports `value.not-null`. An empty or whitespace `Code` is the new generator error
+**TRLS060**, because a blank code names nothing and would reach the wire where a client expects a catalog key.
+
+**`ValidateAdditional` gained a four-argument overload** that can name its own failure instead of reporting
+`error.unspecified`:
+
+```csharp
+static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode);
+```
+
+The generator emits whichever declaration you implemented, so existing three-argument implementations compile
+and behave exactly as before. Leaving `errorCode` unset falls back to `error.unspecified`. Declaring both
+overloads is **TRLS061** — the generator emits one defining declaration, so the other implementation would fail
+with a compiler error that names no Trellis concept.
+
+### Added — `ValidationArgsOptions`, the opt-in for validator args Trellis cannot classify
+
+`ValidationArgsProjection` publishes machine-readable operands only for validators whose placeholders Trellis
+can vouch for, which means a rule Trellis did not write — a `Must()` calling
+`context.MessageFormatter.AppendArgument(...)`, or any validator behind a custom `WithErrorCode` — emitted no
+args at all. `ValidationArgsOptions.AllowArgs(errorCode, placeholderNames)` supplies the knowledge Trellis
+lacks:
+
+```csharp
+services.Configure<ValidationArgsOptions>(options => options.AllowArgs("MinimumAge", "MinAge"));
+```
+
+`AddTrellisFluentValidation()` now calls `AddOptions<ValidationArgsOptions>()`, so the Mediator adapter always
+resolves the configured instance; the standalone `ToResult` / `ValidateToResult` / `ValidateToResultAsync`
+helpers have no container to read from and take the same object through an optional `argsOptions` parameter.
+
+An explicit opt-in satisfies the **template** half of the containment gate without consulting the template — the
+template check defends against a placeholder Trellis *guessed* was safe, and a custom validator has no
+language-manager entry for it to consult, so leaving it in force would make the opt-in inert. **The message half
+still holds**, so an opted-in arg still cannot carry anything the client's own message did not. The opt-in only
+ever widens, and `PropertyValue` / `PropertyPath` can never be re-admitted: `AllowArgs` throws rather than
+silently dropping them.
+
+Generated `[StringLength]` violations now also carry `totalLength` alongside `minLength` / `maxLength`, matching
+what the FluentValidation adapter already emitted for the same failure. Omitting it was a producer disagreement,
+which is precisely what the vocabulary exists to remove.
+
+### Changed — `ValidateToResultAsync` parameter order
+
+`ValidationArgsOptions? argsOptions` was inserted **before** `CancellationToken cancellationToken`, because
+CA1068 requires the cancellation token to be last. A call site that passed the token positionally as the fourth
+argument no longer compiles; name it (`cancellationToken:`) to fix.
+
+
 ### Added — `Trellis.Messaging.AzureServiceBus`, the wire between the outbox and the inbox
 
 Trellis shipped both ends of reliable cross-service messaging — a transactional outbox that stages integration

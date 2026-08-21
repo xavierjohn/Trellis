@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using global::FluentValidation;
+using Microsoft.Extensions.Options;
 using Trellis;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
@@ -37,6 +38,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
     where TMessage : global::Mediator.IMessage
 {
     private readonly IEnumerable<IValidator<TMessage>> _validators;
+    private readonly ValidationArgsOptions _argsOptions;
 
     /// <summary>
     /// Initializes a new instance of <see cref="FluentValidationMessageValidatorAdapter{TMessage}"/>.
@@ -47,9 +49,39 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
     /// </param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="validators"/> is null.</exception>
     public FluentValidationMessageValidatorAdapter(IEnumerable<IValidator<TMessage>> validators)
+        : this(validators, ValidationArgsOptions.Default)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="FluentValidationMessageValidatorAdapter{TMessage}"/>
+    /// with an application-configured validation-arg allowlist.
+    /// </summary>
+    /// <param name="validators">
+    /// The injected sequence of <see cref="IValidator{T}"/> implementations to run against each
+    /// message.
+    /// </param>
+    /// <param name="argsOptions">
+    /// The application's widening of the default arg allowlist. Supplied by the options system, so
+    /// the pipeline adapter and the standalone <c>ToResult</c> helpers project identically.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="validators"/> or <paramref name="argsOptions"/> is null.
+    /// </exception>
+    public FluentValidationMessageValidatorAdapter(
+        IEnumerable<IValidator<TMessage>> validators,
+        IOptions<ValidationArgsOptions> argsOptions)
+        : this(validators, (argsOptions ?? throw new ArgumentNullException(nameof(argsOptions))).Value)
+    {
+    }
+
+    private FluentValidationMessageValidatorAdapter(
+        IEnumerable<IValidator<TMessage>> validators,
+        ValidationArgsOptions argsOptions)
     {
         ArgumentNullException.ThrowIfNull(validators);
         _validators = validators;
+        _argsOptions = argsOptions;
     }
 
     /// <inheritdoc />
@@ -76,7 +108,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
                     : failure.PropertyName;
                 var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
                 var reasonCode = ValidationCodeProjection.Project(failure.ErrorCode, failure.AttemptedValue);
-                violations.Add(new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(failure))
+                violations.Add(new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(failure, _argsOptions))
                 {
                     Detail = failure.ErrorMessage,
                 });

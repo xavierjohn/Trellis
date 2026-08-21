@@ -654,8 +654,8 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `FormatDuration` | `format.duration` | Not parseable as `TimeSpan`. |
 | `FormatConversion` | `format.conversion` | Conversion to the target type failed with no more specific code — including a JSON token of the wrong kind. |
 | `StringLength` | `string.length` | Length outside an allowed range. |
-| `StringMinLength` | `string.min-length` | Shorter than the minimum. Args: `minLength`. |
-| `StringMaxLength` | `string.max-length` | Longer than the maximum. Args: `maxLength`; the FluentValidation adapter adds `totalLength`, which generated primitives do not carry. |
+| `StringMinLength` | `string.min-length` | Shorter than the minimum. Args: `minLength`, `totalLength`. |
+| `StringMaxLength` | `string.max-length` | Longer than the maximum. Args: `maxLength`, `totalLength`. Generated primitives and the FluentValidation adapter agree on both, so a client renders the same message whichever producer noticed. |
 | `StringExactLength` | `string.exact-length` | Not the required exact length. |
 | `StringPattern` | `string.pattern` | Did not match a required regular expression. |
 | `StringEmail` | `string.email` | Not a valid email address. |
@@ -2087,6 +2087,12 @@ Numeric Required bases (`RequiredInt`, `RequiredLong`, `RequiredDecimal`) accept
 
 The lenient defaults also drive the EF Core `TrellisScalarConverter` read path: only `null` triggers `TrellisPersistenceMappingException` during materialization. When `[NotDefault]` is present, persisted sentinel values also throw. Add `[NotDefault]` for columns where the sentinel is never valid persisted domain state.
 
+#### Overriding a constraint's reason code
+
+`RangeAttribute`, `StringLengthAttribute`, `NotDefaultAttribute`, `PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, and `NonPositiveAttribute` each carry an optional `Code` that replaces the framework reason code on the resulting `FieldViolation`. `TrimAttribute` carries none, because trimming normalizes and cannot fail. The four sign attributes share `RangeAttribute`'s slot, since they synthesize into the same range emission. An empty or whitespace `Code` is `TRLS060`.
+
+The framework vocabulary stays frozen and stays the default; the freeze constrains Trellis, not the application. `ValidateAdditional` also has a four-argument overload — `(T value, string fieldName, ref string? errorMessage, ref string? errorCode)` — that names a custom rule's failure instead of reporting `error.unspecified`; declaring both overloads is `TRLS061`. See [trellis-api-primitives.md](trellis-api-primitives.md#overriding-the-reason-code--code) for the full treatment.
+
 ### `ResultRequiresExplicitHttpMappingConverter`
 
 ```csharp
@@ -2115,7 +2121,7 @@ public sealed class RangeAttribute : Attribute
 
 | Name | Type | Description |
 | --- | --- | --- |
-| — | — | Constructor arguments are consumed by the source generator; no public properties are exposed. |
+| `Code` | `string?` | Replaces the framework reason code on both directional failures. `null` keeps `value.greater-than-or-equal` / `value.less-than-or-equal`. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -2134,6 +2140,7 @@ public sealed class StringLengthAttribute : Attribute
 | --- | --- | --- |
 | `MaximumLength` | `int` | Inclusive maximum length. |
 | `MinimumLength` | `int` | Inclusive minimum length; defaults to `0`. |
+| `Code` | `string?` | Replaces the framework reason code on both length failures. `null` keeps `string.min-length` / `string.max-length`. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -2151,6 +2158,10 @@ Opt-in attribute consumed by `Trellis.Core.Generator`. When present, the generat
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public NotDefaultAttribute()` | `NotDefaultAttribute` | Marker only — no constructor arguments. |
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Code` | `string?` | Replaces the framework reason code on the sentinel rejection. `null` keeps `value.not-default`, or `value.not-empty` on `RequiredString<TSelf>`. |
 
 ### `TrimAttribute`
 

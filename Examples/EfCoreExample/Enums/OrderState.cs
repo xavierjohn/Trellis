@@ -48,7 +48,7 @@ public partial class OrderState : RequiredEnum<OrderState>
 
         return Result.Fail<OrderState>(Error.InvalidInput.ForField(
             "state",
-            "validation.error",
+            "order.invalid-transition",
             $"Cannot transition from '{this}' to '{newState}'. Allowed transitions: {string.Join(", ", AllowedTransitions)}"));
     }
 }

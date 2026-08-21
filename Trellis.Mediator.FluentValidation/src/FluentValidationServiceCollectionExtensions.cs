@@ -7,6 +7,7 @@ using global::FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Trellis.FluentValidation;
 using Trellis.Mediator;
 
 /// <summary>
@@ -53,6 +54,13 @@ public static partial class FluentValidationServiceCollectionExtensions
     public static IServiceCollection AddTrellisFluentValidation(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // The adapter's greediest constructor takes IOptions<ValidationArgsOptions>, so the options
+        // machinery must be present even when the application configured nothing; otherwise DI
+        // silently falls back to the narrower constructor and any Configure<ValidationArgsOptions>
+        // registered later would be ignored.
+        services.AddOptions<ValidationArgsOptions>();
+
         // Idempotent: calling AddTrellisFluentValidation() multiple times (directly or via the
         // scanning overload) must not register the open-generic adapter more than once. Without
         // this guard, DI would resolve multiple IMessageValidator<TMessage> instances and the

@@ -325,8 +325,7 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
-    public void TrimAndNotDefaultOnRequiredString_ReportsNoPlacementDiagnostic()
-    {
+    public void TrimAndNotDefaultOnRequiredString_ReportsNoPlacementDiagnostic()    {
         var cancellationToken = TestContext.Current.CancellationToken;
 
         const string source = """
@@ -344,6 +343,108 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
 
         diagnostics.Should().NotContain(d => d.Id == "TRLS057");
         diagnostics.Should().NotContain(d => d.Id == "TRLS058");
+    }
+
+    [Theory]
+    [InlineData("[StringLength(5, Code = \"\")]", "RequiredString<Widget>", "[StringLength]")]
+    [InlineData("[StringLength(5, Code = \"   \")]", "RequiredString<Widget>", "[StringLength]")]
+    [InlineData("[Range(1, 5, Code = \"\")]", "RequiredInt<Widget>", "[Range]")]
+    [InlineData("[NotDefault(Code = \"\")]", "RequiredGuid<Widget>", "[NotDefault]")]
+    [InlineData("[Positive(Code = \"\")]", "RequiredInt<Widget>", "[Range]")]
+    public void EmptyReasonCodeOverride_Reports_TRLS060(string attribute, string baseType, string attributeInMessage)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        var source = $$"""
+            using Trellis;
+
+            namespace TestNamespace;
+
+            {{attribute}}
+            public partial class Widget : {{baseType}}
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS060");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Widget");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain(attributeInMessage);
+    }
+
+    [Fact]
+    public void NonEmptyReasonCodeOverride_ReportsNothing()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [StringLength(5, Code = "widget.name.length")]
+            public partial class Widget : RequiredString<Widget>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS060");
+    }
+
+    [Fact]
+    public void BothValidateAdditionalOverloads_Reports_TRLS061()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Widget : RequiredString<Widget>
+            {
+                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+                {
+                }
+
+                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS061");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Widget");
+    }
+
+    [Fact]
+    public void SingleValidateAdditionalOverload_ReportsNothing()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Widget : RequiredString<Widget>
+            {
+                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS061");
     }
 
     [Fact]

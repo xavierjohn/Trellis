@@ -27,8 +27,8 @@ public class Product : Entity<ProductId>
     /// </summary>
     public static Result<Product> TryCreate(string? name, decimal price, int stockQuantity) =>
         ProductName.TryCreate(name, nameof(name))
-            .Ensure(_ => price > 0, Error.InvalidInput.ForField(nameof(price), "validation.error", "Price must be greater than zero"))
-            .Ensure(_ => stockQuantity >= 0, Error.InvalidInput.ForField(nameof(stockQuantity), "validation.error", "Stock cannot be negative"))
+            .Ensure(_ => price > 0, Error.InvalidInput.ForField(nameof(price), ValidationCodes.ValueGreaterThan, "Price must be greater than zero"))
+            .Ensure(_ => stockQuantity >= 0, Error.InvalidInput.ForField(nameof(stockQuantity), ValidationCodes.ValueGreaterThanOrEqual, "Stock cannot be negative"))
             .Map(productName => new Product(
                 ProductId.NewUniqueV4(),
                 productName,
@@ -40,7 +40,7 @@ public class Product : Entity<ProductId>
     /// </summary>
     public Result<Product> ReduceStock(int quantity) =>
         this.ToResult()
-            .Ensure(_ => quantity > 0, Error.InvalidInput.ForField(nameof(quantity), "validation.error", "Quantity must be positive"))
-            .Ensure(_ => StockQuantity >= quantity, Error.InvalidInput.ForField(nameof(quantity), "validation.error", $"Insufficient stock. Available: {StockQuantity}"))
+            .Ensure(_ => quantity > 0, Error.InvalidInput.ForField(nameof(quantity), ValidationCodes.ValueGreaterThan, "Quantity must be positive"))
+            .Ensure(_ => StockQuantity >= quantity, Error.InvalidInput.ForField(nameof(quantity), "product.insufficient-stock", $"Insufficient stock. Available: {StockQuantity}"))
             .Tap(_ => StockQuantity -= quantity);
 }

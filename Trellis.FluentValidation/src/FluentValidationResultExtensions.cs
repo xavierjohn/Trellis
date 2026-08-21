@@ -195,10 +195,15 @@ public static class FluentValidationResultExtensions
     /// The caller argument expression for <paramref name="value"/>. Used as the field name when
     /// FluentValidation reports a root-level failure with no property name.
     /// </param>
+    /// <param name="argsOptions">
+    /// Widens the validation-arg allowlist beyond the framework default. Supplied explicitly here
+    /// because these helpers have no container to read <c>IOptions</c> from.
+    /// </param>
     public static Result<T> ToResult<T>(
         this ValidationResult validationResult,
         T value,
-        [CallerArgumentExpression(nameof(value))] string paramName = "value")
+        [CallerArgumentExpression(nameof(value))] string paramName = "value",
+        ValidationArgsOptions? argsOptions = null)
     {
         ArgumentNullException.ThrowIfNull(validationResult);
 
@@ -211,7 +216,7 @@ public static class FluentValidationResultExtensions
                 var rawName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
                 var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
                 var reasonCode = ValidationCodeProjection.Project(e.ErrorCode, e.AttemptedValue);
-                return new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(e)) { Detail = e.ErrorMessage };
+                return new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(e, argsOptions)) { Detail = e.ErrorMessage };
             })
             .ToArray();
 
@@ -300,11 +305,16 @@ public static class FluentValidationResultExtensions
     /// // Validator.Validate() is never called
     /// </code>
     /// </example>
+    /// <param name="argsOptions">
+    /// Widens the validation-arg allowlist beyond the framework default. Supplied explicitly here
+    /// because these helpers have no container to read <c>IOptions</c> from.
+    /// </param>
     public static Result<T> ValidateToResult<T>(
         this IValidator<T> validator,
         T value,
         [CallerArgumentExpression(nameof(value))] string paramName = "value",
-        string? message = null)
+        string? message = null,
+        ValidationArgsOptions? argsOptions = null)
     {
         ArgumentNullException.ThrowIfNull(validator);
 
@@ -312,10 +322,10 @@ public static class FluentValidationResultExtensions
         {
             var nullFailure = new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.") { ErrorCode = "NotNullValidator" };
             var nullResult = new ValidationResult([nullFailure]);
-            return nullResult.ToResult(value!, paramName);
+            return nullResult.ToResult(value!, paramName, argsOptions);
         }
 
-        return validator.Validate(value).ToResult(value, paramName);
+        return validator.Validate(value).ToResult(value, paramName, argsOptions);
     }
 
     /// <summary>
@@ -426,11 +436,16 @@ public static class FluentValidationResultExtensions
     /// );
     /// </code>
     /// </example>
+    /// <param name="argsOptions">
+    /// Widens the validation-arg allowlist beyond the framework default. Supplied explicitly here
+    /// because these helpers have no container to read <c>IOptions</c> from.
+    /// </param>
     public static async Task<Result<T>> ValidateToResultAsync<T>(
         this IValidator<T> validator,
         T value,
         [CallerArgumentExpression(nameof(value))] string paramName = "value",
         string? message = null,
+        ValidationArgsOptions? argsOptions = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(validator);
@@ -445,10 +460,10 @@ public static class FluentValidationResultExtensions
         {
             var nullFailure = new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.") { ErrorCode = "NotNullValidator" };
             var nullResult = new ValidationResult([nullFailure]);
-            return nullResult.ToResult(value!, paramName);
+            return nullResult.ToResult(value!, paramName, argsOptions);
         }
 
         var result = await validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false);
-        return result.ToResult(value, paramName);
+        return result.ToResult(value, paramName, argsOptions);
     }
 }

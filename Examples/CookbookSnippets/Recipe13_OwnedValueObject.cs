@@ -82,9 +82,9 @@ public sealed partial class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
-        id.ToResult(Error.InvalidInput.ForField("id", "validation.error", "Customer id is required."))
-            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField("name", "required", "Name is required.")))
-            .Combine(shipping.ToResult(Error.InvalidInput.ForField("shipping", "validation.error", "Shipping address is required.")))
+        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Customer id is required."))
+            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField("name", ValidationCodes.ValueNotEmpty, "Name is required.")))
+            .Combine(shipping.ToResult(Error.InvalidInput.ForField("shipping", ValidationCodes.ValueNotNull, "Shipping address is required.")))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }
 

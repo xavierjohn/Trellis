@@ -48,4 +48,20 @@ public sealed class RangeAttribute : Attribute
     /// C# does not allow decimal in attribute constructors, so double is used.
     /// </summary>
     public RangeAttribute(double minimum, double maximum) { }
+
+    /// <summary>
+    /// Gets or sets an application-defined reason code that replaces the framework default on every
+    /// failure this attribute produces.
+    /// </summary>
+    /// <value>
+    /// A non-empty code, or <see langword="null"/> to keep the framework default. Setting it to an
+    /// empty or whitespace string is a generator error (<c>TRLS060</c>).
+    /// </value>
+    /// <remarks>
+    /// The framework vocabulary is frozen so that one client catalog entry works across every Trellis
+    /// service. An application that owns both ends of its own contract — it wrote the declaration and
+    /// it writes the catalog key — may name the failure in its own terms instead, and nothing it does
+    /// here can invalidate another party's catalog. An override carries no warning and no penalty.
+    /// </remarks>
+    public string? Code { get; set; }
 }

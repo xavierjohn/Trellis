@@ -1043,6 +1043,8 @@ public sealed partial class CommentBody : RequiredString<CommentBody>;
 | TRLS045 | Error | Numeric convenience attribute combined with explicit `[Range]` |
 | TRLS057 | Error | `[Trim]` on a Required base other than `RequiredString` |
 | TRLS058 | Error | `[NotDefault]` on `RequiredBool` or `RequiredEnum` (no default sentinel to reject) |
+| TRLS060 | Error | A constraint attribute's `Code` override is empty or whitespace |
+| TRLS061 | Error | Both `ValidateAdditional` overloads declared on one value object |
 
 ---
 

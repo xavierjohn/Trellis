@@ -41,6 +41,8 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 | Define a custom SKU/order-id primitive | Use `partial class Sku : RequiredString<Sku>` or `partial class OrderId : RequiredGuid<OrderId>` from `Trellis.Core` | [Core primitive base classes](trellis-api-core.md#primitive-value-object-base-classes) |
 | Opt into strict Required behavior | Use `[NotDefault]` to reject the type's sentinel, `[Trim]` to enable string trimming | [`Required*` defaults and opt-ins](#required-defaults-and-opt-ins) |
 | Add length/range constraints to custom primitives | Use Trellis `[StringLength]` / `[Range]` attributes from `namespace Trellis`, not DataAnnotations | [Core attributes](trellis-api-core.md#primitive-value-object-base-classes) |
+| Report an application's own reason code instead of the framework's | Set `Code` on the constraint attribute | [Overriding the reason code](#overriding-the-reason-code--code) |
+| Name a failure raised by a custom rule rather than reporting `error.unspecified` | Declare the four-argument `ValidateAdditional` | [Naming a failure from `ValidateAdditional`](#naming-a-failure-from-validateadditional) |
 | Add JSON for composite value objects | `CompositeValueObjectJsonConverter<T>` | [`CompositeValueObjectJsonConverter<T>`](#compositevalueobjectjsonconvertert) |
 
 ## Common traps
@@ -113,6 +115,62 @@ Validation order:
 | TRLS045 | Error | Numeric convenience attribute combined with explicit `[Range]` |
 | TRLS057 | Error | `[Trim]` on a Required base other than `RequiredString` |
 | TRLS058 | Error | `[NotDefault]` on `RequiredBool` or `RequiredEnum` (no default sentinel to reject) |
+| TRLS060 | Error | A constraint attribute's `Code` is empty or whitespace |
+| TRLS061 | Error | Both `ValidateAdditional` overloads declared on one value object |
+
+### Overriding the reason code — `Code`
+
+Every constraint attribute that can *fail* carries an optional `Code`, which replaces the framework reason code on the resulting `FieldViolation`:
+
+```csharp
+[StringLength(8, MinimumLength = 3, Code = "account.reference.length")]
+public partial class AccountReference : RequiredString<AccountReference>;
+
+[Range(1, 10, Code = "cart.quantity.out-of-range")]
+public partial class CartQuantity : RequiredInt<CartQuantity>;
+
+[NotDefault(Code = "tenant.id.missing")]
+public partial class TenantId : RequiredGuid<TenantId>;
+```
+
+`RangeAttribute`, `StringLengthAttribute`, `NotDefaultAttribute`, `PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, and `NonPositiveAttribute` all expose `Code`. `TrimAttribute` does not, because trimming normalizes and cannot fail.
+
+Three consequences are worth stating plainly, because each surprises someone:
+
+- **The framework vocabulary stays frozen and stays the default.** Overriding is not encouraged or discouraged; no analyzer pressures either choice. The freeze constrains *Trellis*, not your application — an application that overrides owns both ends of its own contract.
+- **`[Range].Code` collapses both directions.** One attribute produces two failures — below the minimum and above the maximum — and one `Code` renames both. When a client must tell them apart, keep the framework codes and use `ValidateAdditional` for the case that needs its own name.
+- **The four sign-convenience attributes share the range slot.** `[Positive]`, `[NonNegative]`, `[Negative]`, and `[NonPositive]` synthesize into the same range emission, so their `Code` overrides the same reason code `[Range]` would.
+
+The null check is never overridable: it belongs to no attribute and always reports `value.not-null`.
+
+### Naming a failure from `ValidateAdditional`
+
+`ValidateAdditional` has two shapes, and a value object declares at most one:
+
+```csharp
+// Reports error.unspecified, which is what it has always meant.
+static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage);
+
+// Can name the failure.
+static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode);
+```
+
+The generator emits whichever declaration you implemented, so existing three-argument implementations compile and behave unchanged. In the four-argument form, setting `errorMessage` still decides *whether* the value is rejected; leaving `errorCode` unset falls back to `error.unspecified`. Declaring both overloads is `TRLS061`.
+
+```csharp
+public partial class ReservationCode : RequiredString<ReservationCode>
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+    {
+        if (value.StartsWith("RES-", StringComparison.Ordinal))
+            return;
+
+        errorMessage = "Reservation Code must start with RES-.";
+        errorCode = "reservation.code.malformed";
+    }
+}
+```
+
 
 ## Types
 

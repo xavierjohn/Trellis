@@ -15,7 +15,7 @@
 /// </code>
 /// <para>
 /// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges are emitted by the
-/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c> and <c>TRLS056</c>–<c>TRLS058</c>
+/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c>, <c>TRLS056</c>–<c>TRLS058</c> and <c>TRLS060</c>–<c>TRLS061</c>
 /// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
 /// and <c>Trellis.AspSourceGenerator</c>).
@@ -161,4 +161,10 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS058 — <c>[NotDefault]</c> applied to a sentinel-less Required base (<c>RequiredBool</c> or <c>RequiredEnum</c>), which has no default value to reject.</summary>
     public const string NotDefaultOnSentinellessBase = "TRLS058";
+
+    /// <summary>TRLS060 — a constraint attribute's <c>Code</c> override is empty or whitespace, which would put a blank reason code on the wire where a client expects a catalog key.</summary>
+    public const string EmptyReasonCodeOverride = "TRLS060";
+
+    /// <summary>TRLS061 — both <c>ValidateAdditional</c> overloads are declared on one value object; the generator emits a defining declaration for only one of them.</summary>
+    public const string ValidateAdditionalOverloadConflict = "TRLS061";
 }
