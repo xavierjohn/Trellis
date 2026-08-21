@@ -45,6 +45,20 @@ public class ValidationCodesTests
     }
 
     [Fact]
+    public void No_code_splits_one_concept_across_dots()
+    {
+        // A dot introduces a namespace level; a multi-word concept hyphenates inside its segment.
+        // `state.machine.invalid.transition` shipped for a release because it was a bare literal
+        // rather than a constant, so this reflection guard never saw it — and the Shape regex above
+        // would have passed it anyway, since it allows unlimited segments. The frozen set needs at
+        // most two: the FaultCodes name a fault with no namespace, everything else is namespace.name.
+        foreach (var (name, value) in Owned)
+            value.Count(c => c == '.').Should().BeLessThanOrEqualTo(1,
+                "{0} = '{1}' must be 'namespace.name' or a single segment — hyphenate a multi-word "
+                + "concept inside its segment instead of splitting it across dots", name, value);
+    }
+
+    [Fact]
     public void No_code_is_declared_twice() =>
         Owned.GroupBy(c => c.Value, StringComparer.Ordinal)
             .Where(g => g.Count() > 1)

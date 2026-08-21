@@ -15,7 +15,7 @@ audience: [developer]
 | Goal | Use | See |
 |---|---|---|
 | Fire a Stateless trigger and get a `Result<TState>` | `stateMachine.FireResult(trigger)` | [Quick start](#quick-start) |
-| Treat invalid transitions as 422 invariant violations | Default `FireResult` behavior — match on reason code `state.machine.invalid.transition` | [What `FireResult` guarantees](#what-fireresult-guarantees) |
+| Treat invalid transitions as 422 invariant violations | Default `FireResult` behavior — match on reason code `state-machine.invalid-transition` | [What `FireResult` guarantees](#what-fireresult-guarantees) |
 | Defer machine construction until entity state is populated (ORM materialization) | `LazyStateMachine<TState, TTrigger>` | [Lazy construction for aggregates](#lazy-construction-for-aggregates) |
 | Compose a transition with domain side effects and events | `FireResult(...).Tap(...).Map(...)` | [Composition](#composition) |
 | Block transitions on dynamic conditions | Stateless `PermitIf` / `IgnoreIf` (honored by `CanFire`) | [Guards](#guards) |
@@ -84,7 +84,7 @@ Result<OrderState> invalid = machine.FireResult(OrderTrigger.Submit);  // Fail (
 | Outcome | Result |
 |---|---|
 | `CanFire(trigger)` is `true` | Calls `Fire(trigger)`, returns `Result.Ok(stateMachine.State)`. |
-| `CanFire(trigger)` is `false` | Returns `Error.InvariantViolation` (HTTP 422) with reason code `state.machine.invalid.transition`, without invoking `Fire(trigger)` or any `OnUnhandledTrigger` callback. |
+| `CanFire(trigger)` is `false` | Returns `Error.InvariantViolation` (HTTP 422) with reason code `state-machine.invalid-transition`, without invoking `Fire(trigger)` or any `OnUnhandledTrigger` callback. |
 | A guard throws `InvalidOperationException` while `CanFire` evaluates it | Returns `Error.InvariantViolation` with the guard exception message. |
 | User entry/exit/transition/accessor/mutator code throws, or a guard throws another exception type | Exception propagates untouched. |
 
@@ -226,7 +226,7 @@ Keep business mutations **after** `FireResult` succeeds. Do not place domain sid
 ## Practical guidance
 
 - **Use `FireResult`, not `Fire`.** The whole reason to take this dependency is to keep invalid transitions inside the result pipeline.
-- **Distinguish state-machine 422s.** All `FireResult` failures share the reason code `state.machine.invalid.transition` — match on it when callers need to react specifically to workflow rejections.
+- **Distinguish state-machine 422s.** All `FireResult` failures share the reason code `state-machine.invalid-transition` — match on it when callers need to react specifically to workflow rejections.
 - **422, not 409.** Invalid transitions are domain-invariant breaches, not concurrent-modification conflicts; retrying will not help. That is why the failure is `Error.InvariantViolation` (HTTP 422), not `Error.Conflict` (409) — and not `Error.InvalidInput`, since the request itself is well-formed; it is the aggregate's state that forbids the transition.
 - **One state machine per aggregate instance.** They are not thread-safe; do not share across requests or threads.
 - **Keep guards pure.** They run via `CanFire` and again via `Fire`, so any side effect would execute twice on the success path.

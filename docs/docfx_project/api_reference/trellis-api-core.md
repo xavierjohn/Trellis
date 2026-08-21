@@ -644,6 +644,23 @@ When `Error.TransportFault` wraps one, the error's `HasExplicitCode` is `true`, 
 Two conventions make the set predictable:
 
 - **Punctuation is uniform** — lower-case, dot-separated namespaces, `kebab-case` within a segment. Never `snake_case`.
+
+  A segment is one concept, hyphenated internally; it is never subdivided across dots. A dot introduces a
+  new *namespace* level, so splitting a single idea across dots claims a hierarchy that does not exist and
+  defeats the prefix fallback below — a client matching on `state.*` would be told the failure category is
+  "state".
+
+  | Wrong | Right | Why |
+  | --- | --- | --- |
+  | `state.machine.invalid.transition` | `state-machine.invalid-transition` | Two concepts, two segments — not four levels. |
+  | `account.not.active` | `account.not-active` | "not active" is one idea. |
+  | `value.not_null` | `value.not-null` | `snake_case` is never used. |
+
+  Depth itself is not the rule — a genuinely nested namespace may go deeper, as
+  `resource.authorization-via.load-failed` does, where `resource` → `authorization-via` → `load-failed` are
+  three real levels rather than one idea chopped up. The frozen constants below happen to need at most two
+  segments: the `FaultCodes` are single-segment because they name a fault with no namespace, and every
+  `ValidationCodes` entry is `namespace.name`. `ValidationCodesTests` enforces that bound on the frozen set.
 - **The namespace tells you what failed**, so a client can fall back on the prefix when it does not recognise the full code:
 
 | Namespace | Means | Example |
@@ -732,6 +749,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `UnhandledException` | `unhandled-exception` | An exception escaped to a boundary that converts it into a failed `Result`. |
 | `NotImplemented` | `not-implemented` | A boundary reached a path the framework does not implement. Carried by `Error.Unexpected`; surfaces as HTTP 501. |
 | `ConcurrentModification` | `concurrent-modification` | A write lost a race — the row changed between read and save. Carried by `Error.Conflict`; surfaces as 412 when the request carried `If-Match`, otherwise 409. |
+| `StateMachineInvalidTransition` | `state-machine.invalid-transition` | A trigger was rejected because the aggregate's current state forbids it. Carried by `Error.InvariantViolation`; surfaces as 422. Emitted by `Trellis.StateMachine`'s `FireResult`. |
 
 `NotImplemented` and `ConcurrentModification` are *control* values: the framework matches on them to select
 HTTP behaviour, so they are dispatch keys as well as presentation. That is exactly why they belong here as

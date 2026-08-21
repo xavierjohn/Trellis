@@ -126,7 +126,7 @@ public class BankAccount : Aggregate<AccountId>
     public Result<BankAccount> Deposit(Money amount, string description = "Deposit") =>
         this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot deposit to {Status} account" })
+                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot deposit to {Status} account" })
             .Ensure(_ => amount.Amount > 0,
                 Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Deposit amount must be positive"))
             .Ensure(_ => amount.Amount <= 10000,
@@ -147,7 +147,7 @@ public class BankAccount : Aggregate<AccountId>
 
         return this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot withdraw from {Status} account" })
+                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot withdraw from {Status} account" })
             .Ensure(_ => amount.Amount > 0,
                 Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Withdrawal amount must be positive"))
             .Bind(_ => todayTotal.Add(amount))
@@ -174,7 +174,7 @@ public class BankAccount : Aggregate<AccountId>
 
         if (Status != AccountStatus.Active)
             return Result.Fail<BankAccount>(
-                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot pay interest to {Status} account." });
+                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot pay interest to {Status} account." });
 
         if (Balance.Amount <= 0)
             return Result.Fail<BankAccount>(
@@ -208,7 +208,7 @@ public class BankAccount : Aggregate<AccountId>
         // which would leave the source account debited while the destination is unchanged.
         if (toAccount.Status != AccountStatus.Active)
             return Result.Fail<(BankAccount From, BankAccount To)>(
-                new Error.Conflict(null, "account.not.active") { Detail = $"Cannot transfer to {toAccount.Status} account" });
+                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot transfer to {toAccount.Status} account" });
 
         if (amount.Amount > 10000)
             return Result.Fail<(BankAccount From, BankAccount To)>(

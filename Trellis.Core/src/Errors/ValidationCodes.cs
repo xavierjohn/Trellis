@@ -389,4 +389,12 @@ public static class FaultCodes
     /// <c>If-Match</c>, otherwise 409.
     /// </summary>
     public const string ConcurrentModification = "concurrent-modification";
+
+    /// <summary>
+    /// A trigger was rejected because the aggregate's current state forbids it. Carried by
+    /// <c>Error.InvariantViolation</c> and surfaced as HTTP 422. Emitted by
+    /// <c>Trellis.StateMachine</c>'s <c>FireResult</c>; the code lives here so it is covered by the
+    /// same punctuation guard as every other framework code.
+    /// </summary>
+    public const string StateMachineInvalidTransition = "state-machine.invalid-transition";
 }
