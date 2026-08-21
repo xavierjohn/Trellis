@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-08-18
@@ -487,8 +487,71 @@ public sealed partial class CustomerCode : RequiredString<CustomerCode>;
 
 > Severity: Error. The generator reports at the user member and skips emitting the conflicting generated member, so the diagnostic points at the redundant declaration instead of surfacing as a generic `CS0111` / `CS0102` duplicate-member error from generated source.
 
-## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
+## TRLS062 — `ValidateAdditional` rejects a value without naming a reason
 
+A custom rule is the value object's own reason for rejecting a value. The three-argument `ValidateAdditional` can reject but has nowhere to put that reason, so the failure reaches the client as `error.unspecified` — indistinguishable from every other unnamed failure.
+
+```csharp
+// WRONG — rejects, but the client is told only that something was invalid
+public sealed partial class ReservationCode : RequiredString<ReservationCode>
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage) // TRLS062
+    {
+        if (!value.StartsWith("RES-", StringComparison.Ordinal))
+            errorMessage = "Reservation Code must start with RES-.";
+    }
+}
+
+// FIX — take the four-argument overload and name the failure
+public sealed partial class ReservationCode : RequiredString<ReservationCode>
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+    {
+        if (value.StartsWith("RES-", StringComparison.Ordinal))
+            return;
+
+        errorMessage = "Reservation Code must start with RES-.";
+        errorCode = "reservation.code.malformed";
+    }
+}
+```
+
+> Severity: Info. The three-argument form stays legal and behaves exactly as before, so this is a prompt rather than a gate. Declare only one of the two overloads — declaring both is `TRLS061`, an error. Leaving `errorCode` unset or blank in the four-argument form falls back to `error.unspecified`, which is the same outcome as never having taken the overload.
+
+## TRLS063 — FluentValidation `Must` rule with no `WithErrorCode`
+
+Every built-in FluentValidation validator carries a name that `Trellis.FluentValidation` projects to a real reason code. `Must` and `MustAsync` are the exception: they report as `PredicateValidator` and `AsyncPredicateValidator`, both of which project to the `error.unspecified` sentinel. Since `Must` is also the validator applications reach for most, it is the largest single producer of failures a client cannot branch on.
+
+```csharp
+// WRONG — the client receives error.unspecified and cannot tell these two apart
+RuleFor(x => x.Name).Must(BeKnownCustomer);                 // TRLS063
+RuleFor(x => x.Slot).MustAsync(BeAvailableAsync);           // TRLS063
+
+// FIX — name each failure
+RuleFor(x => x.Name).Must(BeKnownCustomer).WithErrorCode("customer.unknown");
+RuleFor(x => x.Slot).MustAsync(BeAvailableAsync).WithErrorCode("slot.taken");
+```
+
+A `WithErrorCode` only counts for the rule component it follows. Modifiers such as `WithMessage`, `When`, and `WithName` can sit in between, but another validator starts a new component:
+
+```csharp
+// WRONG — the code names the second Must; the first is still unnamed
+RuleFor(x => x.Name)
+    .Must(BeLongEnough)                                     // TRLS063
+    .Must(BeShortEnough)
+    .WithErrorCode("name.too.long");
+
+// FIX — one code per component
+RuleFor(x => x.Name)
+    .Must(BeLongEnough).WithErrorCode("name.too.short")
+    .Must(BeShortEnough).WithErrorCode("name.too.long");
+```
+
+> Severity: Info, because uncoded `Must` rules are legal and existing validators are full of them. Raise it with `dotnet_diagnostic.TRLS063.severity = warning` once a codebase has caught up. There is deliberately no code fix: only the author knows what the rule's failure should be called, and a placeholder code looks deliberate on the wire in a way the sentinel does not.
+
+The analyzer reports only where it can prove no code applies. It stays silent when the rule's value escapes the statement (`var rule = RuleFor(...).Must(...);`), when the chain calls `Configure(...)` — which can set `ErrorCode` directly — or when it passes through any helper your application declared, including one placed in `namespace FluentValidation`, since such a helper may itself wrap `WithErrorCode`. Those shapes may well be uncoded, but a false accusation against an author who did the right thing costs more than a miss on a shape this rule flags everywhere else.
+
+## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. `Result.FailAfterCommit<TValue>(error)` is a **leaf** worker-handler operation: it converts a single aggregate's transient external rejection into a persisted `permanently_failed` state and returns. Threading that result through `Combine` / `TraverseAll` / `SequenceAll` / `WhenAllAsync` OR-accumulates the `PersistOnFailure` flag onto the aggregated failure — `TransactionalCommandBehavior` then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.
 
 ```csharp

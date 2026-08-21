@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloadConflict, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058]
+types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloadConflict, UnnamedValidateAdditionalFailure, MustWithoutErrorCode, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, MustWithoutErrorCodeAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058, TRLS062, TRLS063]
 version: v3
 last_verified: 2026-06-17
 audience: [llm]
@@ -102,6 +102,8 @@ In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuni
 
 | `TRLS060` | Error | Reason-code override is empty | Emitted by `RequiredPartialClassGenerator` when `[StringLength]`, `[Range]`, `[NotDefault]`, or one of the sign-convenience attributes sets `Code` to an empty or whitespace string. An application may name a failure in its own terms, but an empty code names nothing and would reach the wire where a client expects a catalog key. Give the failure a name, or omit `Code` to keep the framework default. |
 | `TRLS061` | Error | Both `ValidateAdditional` overloads declared | Emitted by `RequiredPartialClassGenerator` when a value object declares both the three-argument `ValidateAdditional` and the four-argument overload that can set a reason code. The generator emits one defining declaration, so the other implementation would fail with a compiler error that names no Trellis concept. Keep one. |
+| `TRLS062` | Info | `ValidateAdditional` rejects without naming a reason | Emitted by `RequiredPartialClassGenerator` when a value object implements the three-argument `ValidateAdditional`. That overload can reject a value but has nowhere to put a reason, so the failure reaches the client as `error.unspecified` and there is nothing to branch on. Add a `ref string? errorCode` parameter and set it. Info by default because the three-argument form is legal and unchanged; raise it with `dotnet_diagnostic.TRLS062.severity` once your value objects name their failures. |
+| `TRLS063` | Info | `Must` rule has no `WithErrorCode` | Emitted by `MustWithoutErrorCodeAnalyzer` when a FluentValidation `Must`/`MustAsync` rule component carries no `WithErrorCode`. Every built-in validator has a name Trellis projects to a real reason code; `Must` reports as `PredicateValidator`, which projects to the `error.unspecified` sentinel. Chain `WithErrorCode("...")`. The analyzer walks only as far as the next rule component, so a code attached to a later `Must` does not count for an earlier one. |
 
 ## Constants — `TrellisDiagnosticIds`
 
@@ -113,7 +115,7 @@ The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzer
 public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
-Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS061`) and the LINQ-analyzer IDs (`TRLS054`–`TRLS055`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
+Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS062`), the LINQ-analyzer IDs (`TRLS054`–`TRLS055`), and `TRLS063` are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
 
 ### Constant → diagnostic ID → emitter
 
@@ -160,6 +162,8 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `SerializerContextHasNoJsonSerializable` | `TRLS059` | `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) |
 | `EmptyReasonCodeOverride` | `TRLS060` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `ValidateAdditionalOverloadConflict` | `TRLS061` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `UnnamedValidateAdditionalFailure` | `TRLS062` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `MustWithoutErrorCode` | `TRLS063` | `MustWithoutErrorCodeAnalyzer` |
 
 ## Descriptors — `DiagnosticDescriptors`
 
@@ -190,10 +194,11 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 | `MissingApiVersionRouteValue` | `TRLS023` | Warning |
 | `MaybeEqualsInQueryable` | `TRLS054` | Warning |
 | `NonInlineHasValueWhereInQueryable` | `TRLS055` | Warning |
+| `MustWithoutErrorCode` | `TRLS063` | Info |
 
 > **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
-> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058` and `TRLS060`–`TRLS061`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
+> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058` and `TRLS060`–`TRLS062`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
 
 ```csharp
 // Re-exporting an analyzer rule in a custom analyzer:
@@ -428,6 +433,22 @@ When the guarded statements end the method with a `return`, the wrapped code no 
 - Key matching is case-insensitive (matches `RouteValueDictionary`'s runtime semantics): `"API-VERSION"`, `"Api-Version"`, etc., are all accepted.
 - Suppression also applies when the fluent chain calls the underlying primitive directly: `HttpResponseOptionsBuilder<T>.WithRouteValueResolver("api-version", httpContext => ...)`. The key match is case-insensitive (so `"API-Version"` also suppresses) and the symbol is gated to `Trellis.Asp.HttpResponseOptionsBuilder<T>` — a same-named extension on an unrelated type does not silence the diagnostic.
 - Code fix: appends `.WithVersionedRoute()` to the flagged `CreatedAtRoute(...)`, `CreatedAtAction(...)`, or `WithLocation(...)` call (the `Trellis.Asp.ApiVersioning` extension) and adds `using Trellis.Asp.ApiVersioning;` when missing. The new `using` is inserted in the same scope as existing usings (file-scoped namespace, block-scoped namespace, or top-level).
+
+### Validation rules
+
+#### `MustWithoutErrorCodeAnalyzer` — `TRLS063`
+- Activates only when the compilation references FluentValidation (probed via the `FluentValidation.IRuleBuilder` interface), so the overwhelming majority of consumers never pay for it.
+- Flags a `Must(...)` or `MustAsync(...)` rule component that no `WithErrorCode(...)` applies to. Both report as `PredicateValidator`/`AsyncPredicateValidator`, which `Trellis.FluentValidation` projects to the `error.unspecified` sentinel — see [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md#behavioral-notes).
+- The call must resolve to FluentValidation's **own** `Must`: declared in a `FluentValidation` namespace, on the built-in validator container `DefaultValidatorExtensions`, with a **receiver implementing `IRuleBuilder<T, TProperty>`**. All three matter — the name alone matches anything, a namespace test alone would also match an unrelated third-party namespace merely prefixed with the same word, and an application's own `Must` overload declared in `namespace FluentValidation` (a common convention) may name the failure itself.
+- **Reports only what it can prove.** From the `Must`, the analyzer walks the calls chained after it and stops at the first one that is not a known component modifier. `WithMessage`, `WithErrorCode`, `WithSeverity`, `WithName`, `WithState`, `When`, `Unless`, `WhenAsync`, `UnlessAsync`, `OverridePropertyName`, and `DependentRules` refine the component already on the chain. One of FluentValidation's own built-in validators there (`NotEmpty`, `Matches`, another `Must` — recognised by their declaring type, `DefaultValidatorExtensions`) starts a new component, so the earlier one is provably unnamed — which is why `Must(a).Must(b).WithErrorCode("x")` still reports the first `Must`.
+- It stays **silent** wherever the code could be attached out of sight:
+  - the chain's value escapes the statement (assigned to a local, returned, passed as an argument), so a later `rule.WithErrorCode(...)` is possible;
+  - the chain calls `Configure(...)`, which hands out the raw rule and can set `ErrorCode` directly;
+  - the chain passes through any helper the application declared — including one declared in `namespace FluentValidation`, a common convention that spares callers an extra `using` — since such a helper may itself wrap `WithErrorCode`.
+
+  Parentheses are climbed, so `(RuleFor(x).Must(p)).WithErrorCode("c")` reads as one chain. Only fluent syntax is analyzed; calling the extensions in static form is not recognised, which costs a diagnostic rather than producing a wrong one.
+- Default severity is Info, not Warning: an uncoded `Must` is legal and pre-existing code is full of them. Raise it with `dotnet_diagnostic.TRLS063.severity = warning` once a codebase has caught up.
+- No code fix — only the author knows what the rule's failure should be called, and a placeholder code on the wire is worse than the sentinel because it looks deliberate.
 
 ## Code fix providers
 

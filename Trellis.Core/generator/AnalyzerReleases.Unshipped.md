@@ -10,3 +10,4 @@ TRLS057  | Trellis  | Error    | RequiredPartialClassGenerator: [Trim] on a Requ
 TRLS058  | Trellis  | Error    | RequiredPartialClassGenerator: [NotDefault] on a sentinel-less Required base.
 TRLS060  | Trellis  | Error    | RequiredPartialClassGenerator: Reason-code override is empty or whitespace.
 TRLS061  | Trellis  | Error    | RequiredPartialClassGenerator: Both ValidateAdditional overloads declared.
+TRLS062  | Trellis  | Info     | RequiredPartialClassGenerator: ValidateAdditional rejects without naming a reason.

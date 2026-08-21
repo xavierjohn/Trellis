@@ -311,6 +311,16 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// </summary>
     public readonly bool DeclaredBothValidateAdditional;
 
+    /// <summary>
+    /// Gets whether the application declared only the three-argument <c>ValidateAdditional</c>
+    /// overload, so its custom rule can reject a value but cannot name why.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="ValidateAdditionalHasCode"/> being false, which is also the state of
+    /// the common value object that declares no hook at all and therefore has no failure to name.
+    /// </remarks>
+    public readonly bool DeclaredThreeArgValidateAdditionalOnly;
+
     public readonly bool HasUserJsonConverter;
 
     public readonly GeneratedMemberDeclaration[] UserDeclaredMembers;
@@ -345,6 +355,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <param name="notDefaultCode">Optional reason-code override from <c>[NotDefault].Code</c>.</param>
     /// <param name="validateAdditionalHasCode">True when the application declared the four-argument <c>ValidateAdditional</c>.</param>
     /// <param name="declaredBothValidateAdditional">True when the application declared both <c>ValidateAdditional</c> overloads.</param>
+    /// <param name="declaredThreeArgValidateAdditionalOnly">True when the application declared only the three-argument <c>ValidateAdditional</c>.</param>
     /// <param name="userDeclaredMembers">Members declared by the user that may collide with generated members.</param>
     public RequiredPartialClassInfo(
         string nameSpace,
@@ -374,6 +385,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         string? notDefaultCode = null,
         bool validateAdditionalHasCode = false,
         bool declaredBothValidateAdditional = false,
+        bool declaredThreeArgValidateAdditionalOnly = false,
         GeneratedMemberDeclaration[]? userDeclaredMembers = null)
     {
         NameSpace = nameSpace;
@@ -403,6 +415,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         NotDefaultCode = notDefaultCode;
         ValidateAdditionalHasCode = validateAdditionalHasCode;
         DeclaredBothValidateAdditional = declaredBothValidateAdditional;
+        DeclaredThreeArgValidateAdditionalOnly = declaredThreeArgValidateAdditionalOnly;
         UserDeclaredMembers = userDeclaredMembers ?? [];
     }
 
@@ -436,6 +449,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             && NotDefaultCode == other.NotDefaultCode
             && ValidateAdditionalHasCode == other.ValidateAdditionalHasCode
             && DeclaredBothValidateAdditional == other.DeclaredBothValidateAdditional
+            && DeclaredThreeArgValidateAdditionalOnly == other.DeclaredThreeArgValidateAdditionalOnly
             && TypePath == other.TypePath
             && NestingParents.SequenceEqual(other.NestingParents)
             && UserDeclaredMembers.SequenceEqual(other.UserDeclaredMembers);
@@ -473,6 +487,7 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             hash = (hash * 31) + (NotDefaultCode?.GetHashCode() ?? 0);
             hash = (hash * 31) + ValidateAdditionalHasCode.GetHashCode();
             hash = (hash * 31) + DeclaredBothValidateAdditional.GetHashCode();
+            hash = (hash * 31) + DeclaredThreeArgValidateAdditionalOnly.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             foreach (var member in UserDeclaredMembers)
                 hash = (hash * 31) + member.GetHashCode();

@@ -14,8 +14,8 @@
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges are emitted by the
-/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c>, <c>TRLS056</c>–<c>TRLS058</c> and <c>TRLS060</c>–<c>TRLS061</c>
+/// IDs in the <c>TRLS001</c>–<c>TRLS023</c>, <c>TRLS054</c>–<c>TRLS055</c> and <c>TRLS063</c> ranges are emitted by the
+/// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c>, <c>TRLS056</c>–<c>TRLS058</c> and <c>TRLS060</c>–<c>TRLS062</c>
 /// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
 /// and <c>Trellis.AspSourceGenerator</c>).
@@ -167,4 +167,10 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS061 — both <c>ValidateAdditional</c> overloads are declared on one value object; the generator emits a defining declaration for only one of them.</summary>
     public const string ValidateAdditionalOverloadConflict = "TRLS061";
+
+    /// <summary>TRLS062 — a value object implements the three-argument <c>ValidateAdditional</c>, so its custom rule rejects a value without naming a reason and the failure reaches the client as <c>error.unspecified</c>.</summary>
+    public const string UnnamedValidateAdditionalFailure = "TRLS062";
+
+    /// <summary>TRLS063 — a FluentValidation <c>Must</c>/<c>MustAsync</c> rule has no <c>WithErrorCode</c>, so its failure projects to the <c>error.unspecified</c> sentinel.</summary>
+    public const string MustWithoutErrorCode = "TRLS063";
 }

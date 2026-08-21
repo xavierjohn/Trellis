@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — two Info diagnostics that ask an unnamed failure to name itself
+
+`Error.WireCode` (below) made every operator-facing channel spell a code the same way, but it cannot invent a code
+that was never written. The two largest producers of application-authored failures still had no way to be told they
+were producing nothing: a FluentValidation `Must(...)` and a three-argument `ValidateAdditional` both reject a value
+and then report `error.unspecified`, which is indistinguishable from every other unnamed failure on the wire.
+
+- **`TRLS063`** (`MustWithoutErrorCodeAnalyzer`, `Trellis.Analyzers`) reports a `Must(...)` or `MustAsync(...)` rule
+  component that no `WithErrorCode(...)` applies to. Every built-in validator carries a name that projects to a real
+  reason code; `Must` reports as `PredicateValidator`, which projects to the sentinel — and `Must` is the validator
+  applications reach for most. The analyzer walks the chain only as far as the next rule component, so a code
+  attached to a later `Must` does not silence an earlier one. It activates only when the compilation references
+  FluentValidation, and requires both that the method be declared in a `FluentValidation` namespace and that its
+  receiver implement `IRuleBuilder<T, TProperty>` and the call resolve to FluentValidation's own built-in `Must`, so an
+  application's own `Must` is never flagged. It reports only
+  what it can prove: a rule whose value escapes the statement, is refined by `Configure(...)`, or passes through a
+  helper the application declared could be named out of sight, and those stay silent.
+- **`TRLS062`** (`RequiredPartialClassGenerator`) reports a value object that implements the three-argument
+  `ValidateAdditional`, whose signature has nowhere to put a reason. The four-argument overload added alongside it
+  can name the failure.
+
+Both default to **Info**, not Warning. The shapes they flag are legal, unchanged, and widespread in existing code, so
+these are prompts rather than gates — raise either with `dotnet_diagnostic.TRLS06x.severity` once a codebase has
+caught up. Neither ships a code fix: only the author knows what a rule's failure should be called, and a placeholder
+code reads as deliberate on the wire in a way the sentinel does not.
+
+No wire behavior changes, and no existing code stops compiling.
+
 ### Fixed — a span and a response body now spell an error code the same way
 
 `ResponseFailureWriter` applied `Error.HasExplicitCode` before publishing a code; `TracingBehavior` did not. Since
