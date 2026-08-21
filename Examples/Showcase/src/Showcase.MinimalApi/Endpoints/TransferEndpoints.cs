@@ -21,6 +21,7 @@ public static class TransferEndpoints
                 .MapAsync(pair => AccountResponse.From(pair.From))
                 .ToHttpResponseAsync())
             .WithScalarValueValidation()
+            .WithInputOrigin(InputLocation.Body)
             .WithMetadata(new IdempotentAttribute());
 
         return routes;

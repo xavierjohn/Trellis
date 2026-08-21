@@ -24,6 +24,7 @@ public class TransfersController : ControllerBase
 
     [HttpPost("{fromId:AccountId}")]
     [Idempotent]
+    [InputOrigin(InputLocation.Body)]
     public Task<ActionResult<AccountResponse>> Transfer(AccountId fromId, [FromBody] TransferRequest request, CancellationToken cancellationToken) =>
         _repository.GetById(fromId)
             .Combine(_repository.GetById(request.ToAccountId))

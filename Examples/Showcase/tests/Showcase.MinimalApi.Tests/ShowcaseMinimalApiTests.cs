@@ -58,6 +58,13 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
+
+        // The domain names the field; the endpoint's WithInputOrigin(InputLocation.Body) supplies
+        // the origin the domain could not know. Before that declaration this reported in="unknown".
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        var location = problem.RootElement.GetProperty("fieldViolations")[0].GetProperty("location");
+        location.GetProperty("in").GetString().Should().Be("body");
+        location.GetProperty("pointer").GetString().Should().Be("/amount");
     }
 
     [Fact]
@@ -255,6 +262,13 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
         var response = await client.GetAsync(new Uri("/api/accounts/?cursor=not-a-real-cursor", UriKind.Relative), Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(Ct);
+        var location = body.GetProperty("fieldViolations")[0].GetProperty("location");
+        location.GetProperty("in").GetString().Should().Be(
+            "query",
+            "the endpoint declares that its unlocated violations describe the query string");
+        location.GetProperty("name").GetString().Should().Be("cursor");
     }
 
     [Fact]

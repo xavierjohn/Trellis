@@ -57,6 +57,13 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
+
+        // The domain names the field; the action's [InputOrigin(InputLocation.Body)] supplies the
+        // origin the domain could not know. Before that declaration this reported in="unknown".
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        var location = problem.RootElement.GetProperty("fieldViolations")[0].GetProperty("location");
+        location.GetProperty("in").GetString().Should().Be("body");
+        location.GetProperty("pointer").GetString().Should().Be("/amount");
     }
 
     [Fact]

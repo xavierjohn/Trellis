@@ -16,7 +16,7 @@ public static class AccountEndpoints
 {
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder routes)
     {
-        var group = routes.MapGroup("/api/accounts").WithTags("Accounts");
+        var group = routes.MapGroup("/api/accounts").WithTags("Accounts").WithInputOrigin(InputLocation.Body);
 
         group.MapGet("/", (
             int? limit,
@@ -39,7 +39,8 @@ public static class AccountEndpoints
                             ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
                         body: AccountResponse.From);
             })
-            .WithName("Showcase_GetAccounts");
+            .WithName("Showcase_GetAccounts")
+            .WithInputOrigin(InputLocation.Query);
 
         group.MapGet("/{id:AccountId}", (AccountId id, IAccountRepository repo) =>
             repo.GetById(id)

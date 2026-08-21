@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
-types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
+types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -313,6 +313,79 @@ public sealed record ViolationLocation(string In, string? Pointer, string? Name)
 
 `unknown` means *"do not resolve `pointer` as a document location"*. A JSON Pointer addresses a location in a JSON document and a query parameter is not in one, so a single member cannot carry both meanings — which is why `pointer` and `name` are separate members rather than one polymorphic field.
 
+### `InputOriginAttribute`
+
+**Declaration**
+
+```csharp
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+public sealed class InputOriginAttribute(InputLocation location) : Attribute;
+```
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `Location` | `InputLocation` | Where this endpoint's otherwise-unlocated violations came from. |
+
+Declares where an endpoint's unlocated validation failures came from. An MVC action or controller applies it directly as `[InputOrigin(InputLocation.Body)]` (MVC copies both action and controller attributes into endpoint metadata); a Minimal API endpoint or route group calls `WithInputOrigin(InputLocation.Body)`, which adds the same metadata. One declaration type keeps the two hosting models from drifting apart on the wire.
+
+Only `Body`, `Query` and `Unspecified` may be declared; `Path` and `Header` throw `ArgumentOutOfRangeException`. There is no evidence yet that a domain producer raises unlocated violations about route or header values, and a declaration nobody can justify is a claim nobody checks.
+
+#### The endpoint-declared input origin
+
+A model binder stamps the parameter it binds, so a route, query or header violation arrives already located. A violation that comes back up from the **domain** does not: an aggregate names the field that failed but cannot know where the value came from, because the same method is reachable from a worker, a message handler, or a test. It therefore emits `InputLocation.Unspecified`, which projects as `unknown` — the producer declining to assert a checkable claim that may be false.
+
+The endpoint is the first place in the pipeline that knows the answer, which is why it is declared there rather than guessed at the boundary:
+
+```csharp
+// Minimal API
+app.MapPost("/api/accounts/{id}/deposit", DepositAsync)
+   .WithInputOrigin(InputLocation.Body);
+
+// MVC
+[HttpPost("{id:AccountId}/deposit")]
+[InputOrigin(InputLocation.Body)]
+public Task<ActionResult<AccountResponse>> Deposit(AccountId id, [FromBody] DepositRequest request) => ...
+```
+
+With that declaration, a domain violation on `amount` projects as `{"in": "body", "pointer": "/amount"}` instead of `{"in": "unknown", "pointer": "/amount"}`.
+
+The declaration only fills a gap; it never overwrites. It applies once at the response boundary, before any projection reads a pointer, so field violations, rule violations, the MVC-shaped `errors` map, and every `Error.Aggregate` child all see the same located pointer. Violations already carrying `Query`, `Path`, `Header` or `Body` pass through untouched — which is what makes it safe on an endpoint like the one above, where `{id}` is bound from the route and stamped by the binder.
+
+Endpoints without a declaration are unchanged: an unlocated violation still projects as `unknown`.
+
+#### The nearest declaration wins
+
+A declaration on a controller covers every action on it, and an action that disagrees overrides it by declaring its own. This is not bespoke precedence logic — MVC appends action metadata after controller metadata, and `GetMetadata<T>()` returns the last match, so the nearest declaration is simply the one read. Minimal APIs get the same behaviour from convention order, so a route group's declaration is overridden by an endpoint's.
+
+That is what makes a controller-wide default safe on a mixed controller. Without an override, a `GET` action whose domain rejects a query value it was handed would inherit `Body` and tell the caller their request body was at fault when they sent none:
+
+```csharp
+[ApiController]
+[InputOrigin(InputLocation.Body)]        // the default for this controller
+public sealed class AccountsController : ControllerBase
+{
+    [HttpGet]
+    [InputOrigin(InputLocation.Query)]   // this action answers for itself
+    public ActionResult<PagedResponse<AccountResponse>> List([FromQuery] string? cursor) => ...
+
+    [HttpPost("{id:AccountId}/deposit")]  // inherits Body
+    public Task<ActionResult<AccountResponse>> Deposit(AccountId id, [FromBody] DepositRequest request) => ...
+}
+```
+
+A malformed cursor then reports the query string that carried it:
+
+```jsonc
+// GET /api/accounts?cursor=not-a-cursor
+{ "code": "cursor.malformed", "location": { "in": "query", "name": "cursor" } }
+```
+
+Note that a query location is addressed by `name`, not `pointer` — the same shape the model binder emits, because a JSON Pointer addresses a document and a query string is not one.
+
+Declaring `InputLocation.Unspecified` opts an endpoint out of an enclosing declaration, restoring the default `unknown`. Use it for an action that reads only route values, where neither `body` nor `query` would be true.
+
+A query declaration applies only to a pointer naming one top-level member. A nested pointer such as `/lines/0/amount` addresses a document no query string can carry, so it is left unlocated rather than promoted into a shape the model binder never produces.
+
 ### `FieldViolationProblemDetail`
 
 **Declaration**
@@ -492,6 +565,7 @@ The main DI surface for `Trellis.Asp` (in folder `Extensions/`).
 | `public static IApplicationBuilder UseScalarValueValidation(this IApplicationBuilder app)` | `IApplicationBuilder` | Adds `ScalarValueValidationMiddleware` so `ValidatingJsonConverter<TValue,TPrimitive>` can collect errors per request. |
 | `public static IServiceCollection AddScalarValueValidationForMinimalApi(this IServiceCollection services)` | `IServiceCollection` | Configures only the Minimal API JSON pipeline. A strict subset of `AddScalarValueValidation()`, which already configures it — call **one or the other**, never both, or the JSON type-info modifier and converter factories are applied twice. Prefer `AddScalarValueValidation()` (surfaced as `UseScalarValueValidation()`) unless you want to avoid the inert `MvcOptions` / `MvcJsonOptions` callbacks in a controller-less host. |
 | `public static RouteHandlerBuilder WithScalarValueValidation(this RouteHandlerBuilder builder)` | `RouteHandlerBuilder` | Adds `ScalarValueValidationEndpointFilter` to the route handler. |
+| `public static TBuilder WithInputOrigin<TBuilder>(this TBuilder builder, InputLocation location) where TBuilder : IEndpointConventionBuilder` | `TBuilder` | Declares where validation failures reaching this endpoint without a location of their own came from, so they project as that location rather than `unknown`. Adds `InputOriginAttribute` to the endpoint; the MVC equivalent is `[InputOrigin(...)]` on the action or controller. Accepts `Body`, `Query`, or `Unspecified` to opt out of a route group's declaration; throws `ArgumentOutOfRangeException` otherwise. See *The endpoint-declared input origin* below. |
 | `public static IServiceCollection AddTrellisAsp(this IServiceCollection services)` | `IServiceCollection` | Registers `TrellisAspOptions` with default error mappings and `ResourceCollectionNameRegistry`. **Does NOT register scalar-value validation** — see `AddTrellisAspWithScalarValidation` or call `AddScalarValueValidation()` explicitly. The split exists so the global `MvcOptions`/`JsonOptions` mutation that scalar validation performs is opt-in instead of silent. |
 | `public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action<TrellisAspOptions> configure)` | `IServiceCollection` | Same as above, with a `MapError<TError>(...)` callback for overrides. **Calls compose** — when `AddTrellisAsp(o => ...)` is invoked more than once (e.g. by a library and the application), every `configure` delegate runs in registration order against the same `TrellisAspOptions` instance built lazily by `OptionsFactory<TrellisAspOptions>`. Same-`TError` mappings still follow last-wins, but mappings for different error types from earlier calls are preserved. |
 | `public static IServiceCollection AddTrellisAspWithScalarValidation(this IServiceCollection services)` | `IServiceCollection` | Convenience composition of `AddTrellisAsp()` and `AddScalarValueValidation()` for greenfield projects that want error mapping plus scalar-value model binding / JSON converters in a single call. |

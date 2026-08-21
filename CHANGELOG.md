@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an endpoint can declare where its unlocated violations came from
+
+A domain producer names the field that failed but cannot know where the value came from: the same aggregate method
+is reachable from a worker, a message handler, or a test. It therefore emits `InputLocation.Unspecified`, which
+projects as `location.in = "unknown"`. Model binders stamp the parameters they bind, so route, query and header
+violations arrive located — but a violation that came back up from the domain reached the wire as `unknown` even on
+an endpoint whose payload was unambiguously a request body.
+
+`WithInputOrigin(...)` (`Trellis.Asp`) lets the endpoint — the first place in the pipeline that knows — say so, and
+`[InputOrigin(...)]` says the same thing on an MVC action or controller, so the two hosting models cannot drift
+apart on the wire:
+
+```csharp
+app.MapPost("/api/accounts/{id}/deposit", DepositAsync)
+   .WithInputOrigin(InputLocation.Body);
+```
+
+A domain violation on `amount` now projects as `{"in": "body", "pointer": "/amount"}`.
+
+The nearest declaration wins, so a controller can set a default that a dissenting action overrides:
+
+```csharp
+[ApiController]
+[InputOrigin(InputLocation.Body)]        // the default for this controller
+public sealed class AccountsController : ControllerBase
+{
+    [HttpGet]
+    [InputOrigin(InputLocation.Query)]   // this action answers for itself
+    public ActionResult<PagedResponse<AccountResponse>> List([FromQuery] string? cursor) => ...
+}
+```
+
+That precedence is not bespoke logic: MVC appends action metadata after controller metadata and `GetMetadata<T>()`
+returns the last match, so the nearest declaration is simply the one read. Minimal APIs get the same behaviour from
+convention order, so a route group's declaration is overridden by an endpoint's. Declaring
+`InputLocation.Unspecified` opts out of an enclosing declaration, for an action where neither `body` nor `query`
+would be true.
+
+Only `Body`, `Query` and `Unspecified` may be declared; `Path` and `Header` throw. There is no evidence yet that a
+domain producer raises unlocated violations about route or header values, and a declaration nobody can justify is a
+claim nobody checks. A query declaration also applies only to a pointer naming one top-level member, because a
+nested pointer such as `/lines/0/amount` addresses a document no query string can carry.
+
+The declaration only fills a gap, it never overwrites: a violation already located in a route, query or header
+parameter, or already carrying a body pointer, passes through untouched, so the declaration is safe on an endpoint
+that mixes bound sources. It is applied once at the response boundary, before any projection reads a pointer, so
+field violations, rule violations, the MVC-shaped `errors` map, and every `Error.Aggregate` child agree. Endpoints
+without a declaration are unchanged.
+
+The alternative — inferring the origin from endpoint metadata — was rejected: an endpoint that accepts a body can
+still fail on a route parameter, and a guessed location is a checkable claim that may be false, which is the one
+thing this subsystem refuses to emit. Matching a domain field name against the request DTO does not rescue the
+inference either: the Showcase's own domain raises `interestAmount` for a body member named `AnnualRate`.
+
 ### Added — two Info diagnostics that ask an unnamed failure to name itself
 
 `Error.WireCode` (below) made every operator-facing channel spell a code the same way, but it cannot invent a code

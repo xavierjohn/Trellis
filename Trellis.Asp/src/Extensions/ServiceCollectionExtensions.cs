@@ -726,6 +726,56 @@ public static class ServiceCollectionExtensions
         builder.AddEndpointFilter<ScalarValueValidationEndpointFilter>();
 
     /// <summary>
+    /// Declares where validation failures reaching this endpoint without a location of their own
+    /// came from, so they project as that location rather than <c>unknown</c>.
+    /// </summary>
+    /// <typeparam name="TBuilder">The endpoint convention builder type.</typeparam>
+    /// <param name="builder">The endpoint convention builder.</param>
+    /// <param name="location">
+    /// Where this endpoint's otherwise-unlocated violations came from. Must be
+    /// <see cref="InputLocation.Body"/>, <see cref="InputLocation.Query"/>, or
+    /// <see cref="InputLocation.Unspecified"/> to opt out of a route group's declaration.
+    /// </param>
+    /// <returns>The builder for chaining.</returns>
+    /// <remarks>
+    /// <para>
+    /// A domain producer names the field that failed but cannot know where the value came from —
+    /// the same aggregate method is reachable from a worker or a test — so it declines to guess.
+    /// Model binders stamp the parameters they bind; this fills the remaining gap for the
+    /// violations that came back up from the domain.
+    /// </para>
+    /// <para>
+    /// The declaration never overwrites: a violation already located in a route, query or header
+    /// parameter, or already carrying a body pointer, passes through untouched. Applying it to an
+    /// endpoint that mixes bound sources is therefore safe.
+    /// </para>
+    /// <para>
+    /// The nearest declaration wins: applied to a route group it covers every endpoint in the
+    /// group, and an endpoint that disagrees overrides it by declaring its own. The MVC
+    /// equivalent is <see cref="InputOriginAttribute"/> on the action or controller, which adds
+    /// the same metadata, so the two hosting models cannot drift apart on the wire.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="location"/> is <see cref="InputLocation.Path"/>,
+    /// <see cref="InputLocation.Header"/>, or not a defined <see cref="InputLocation"/>.
+    /// </exception>
+    /// <example>
+    /// <code>
+    /// app.MapPost("/api/accounts/{id}/deposit", DepositAsync)
+    ///    .WithInputOrigin(InputLocation.Body);
+    /// </code>
+    /// </example>
+    public static TBuilder WithInputOrigin<TBuilder>(this TBuilder builder, InputLocation location)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var declaration = new InputOriginAttribute(location);
+        builder.Add(endpoint => endpoint.Metadata.Add(declaration));
+        return builder;
+    }
+
+    /// <summary>
     /// Registers Trellis ASP.NET Core integration with default error-to-HTTP-status-code mappings.
     /// </summary>
     /// <param name="services">The service collection.</param>

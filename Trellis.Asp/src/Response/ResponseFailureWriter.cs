@@ -73,6 +73,10 @@ internal static class ResponseFailureWriter
         int statusCode,
         Func<Error, int>? resolveChildStatus = null)
     {
+        // The endpoint is the first place that knows where an unlocated violation came from, so
+        // fill that in once, before any projection reads a pointer.
+        error = InputOriginPromotion.Apply(httpContext, error);
+
         EmitCompanionHeaders(httpContext.Response, error);
 
         // Conflict + concurrent_modification + If-Match → 412 / precondition-failed.
