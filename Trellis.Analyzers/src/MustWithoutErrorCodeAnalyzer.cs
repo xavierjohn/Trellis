@@ -15,9 +15,10 @@ using Microsoft.CodeAnalysis.Diagnostics;
 /// <remarks>
 /// <para>
 /// Every built-in validator carries a name that <c>Trellis.FluentValidation</c> projects to a real
-/// reason code. <c>Must</c> is the one that does not: it reports as <c>PredicateValidator</c>, which
-/// projects to the sentinel. It is also the validator applications reach for most, so without this
-/// rule the largest producer of application-authored failures is the one that says nothing.
+/// reason code. <c>Must</c> and <c>MustAsync</c> are the ones that do not: they report as
+/// <c>PredicateValidator</c> and <c>AsyncPredicateValidator</c>, both of which project to the
+/// sentinel. They are also the validators applications reach for most, so without this rule the
+/// largest producer of application-authored failures is the one that says nothing.
 /// </para>
 /// <para>
 /// The analyzer reports only when it can prove the component carries no code. A rule whose value
@@ -57,8 +58,13 @@ public sealed class MustWithoutErrorCodeAnalyzer : DiagnosticAnalyzer
     /// </summary>
     private const string ConfigureName = "Configure";
 
+    /// <summary>
+    /// The asynchronous predicate validator, which FluentValidation reports under its own name.
+    /// </summary>
+    private const string MustAsyncName = "MustAsync";
+
     private static readonly ImmutableHashSet<string> PredicateValidatorNames =
-        ["Must", "MustAsync"];
+        ["Must", MustAsyncName];
 
     /// <summary>
     /// FluentValidation calls that refine the rule component already on the chain without being able
@@ -142,8 +148,16 @@ public sealed class MustWithoutErrorCodeAnalyzer : DiagnosticAnalyzer
         context.ReportDiagnostic(Diagnostic.Create(
             DiagnosticDescriptors.MustWithoutErrorCode,
             memberAccess.Name.GetLocation(),
-            memberAccess.Name.Identifier.Text));
+            memberAccess.Name.Identifier.Text,
+            ReportedValidatorName(memberAccess.Name.Identifier.Text)));
     }
+
+    /// <summary>
+    /// The validator name FluentValidation puts on the failure, which <c>Trellis.FluentValidation</c>
+    /// then projects to <c>error.unspecified</c>.
+    /// </summary>
+    private static string ReportedValidatorName(string methodName) =>
+        methodName == MustAsyncName ? "AsyncPredicateValidator" : "PredicateValidator";
 
     /// <summary>
     /// Confirms the call is FluentValidation's own rule-building extension rather than an unrelated

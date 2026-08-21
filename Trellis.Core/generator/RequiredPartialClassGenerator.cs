@@ -904,7 +904,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 new DiagnosticDescriptor(
                     id: Ids.UnnamedValidateAdditionalFailure,
                     title: "ValidateAdditional rejects without naming a reason",
-                    messageFormat: "Class '{0}' implements the three-argument ValidateAdditional, so its custom rule reports error.unspecified. Add a 'ref string? errorCode' parameter and set it to name the failure.",
+                    messageFormat: "Class '{0}' implements the three-argument ValidateAdditional, so any failure its custom rule produces reports error.unspecified. Add a 'ref string? errorCode' parameter and set it to name the failure.",
                     category: "Trellis",
                     DiagnosticSeverity.Info,
                     isEnabledByDefault: true,

@@ -366,7 +366,7 @@ public static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor MustWithoutErrorCode = new(
         id: TrellisDiagnosticIds.MustWithoutErrorCode,
         title: "Give a Must rule a reason code",
-        messageFormat: "'{0}' reports as PredicateValidator, which maps to error.unspecified. Add WithErrorCode(\"...\") so the failure names itself.",
+        messageFormat: "'{0}' reports as {1}, which maps to error.unspecified. Add WithErrorCode(\"...\") so the failure names itself.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true,

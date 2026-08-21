@@ -39,7 +39,7 @@ public class MustWithoutErrorCodeAnalyzerTests
             .Select(call => AnalyzerTestHelper
                 .Diagnostic(DiagnosticDescriptors.MustWithoutErrorCode)
                 .WithLocation(call.Location)
-                .WithArguments(call.Method))
+                .WithArguments(call.Method, call.Method == "MustAsync" ? "AsyncPredicateValidator" : "PredicateValidator"))
             .ToArray();
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<MustWithoutErrorCodeAnalyzer>(source, expected);

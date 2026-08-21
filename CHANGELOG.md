@@ -16,12 +16,13 @@ and then report `error.unspecified`, which is indistinguishable from every other
 
 - **`TRLS063`** (`MustWithoutErrorCodeAnalyzer`, `Trellis.Analyzers`) reports a `Must(...)` or `MustAsync(...)` rule
   component that no `WithErrorCode(...)` applies to. Every built-in validator carries a name that projects to a real
-  reason code; `Must` reports as `PredicateValidator`, which projects to the sentinel — and `Must` is the validator
+  reason code; `Must` and `MustAsync` report as `PredicateValidator`/`AsyncPredicateValidator`, both of which project
+  to the sentinel — and `Must` is the validator
   applications reach for most. The analyzer walks the chain only as far as the next rule component, so a code
   attached to a later `Must` does not silence an earlier one. It activates only when the compilation references
-  FluentValidation, and requires both that the method be declared in a `FluentValidation` namespace and that its
-  receiver implement `IRuleBuilder<T, TProperty>` and the call resolve to FluentValidation's own built-in `Must`, so an
-  application's own `Must` is never flagged. It reports only
+  FluentValidation, and requires that the method be declared in a `FluentValidation` namespace, that its
+  receiver implement `IRuleBuilder<T, TProperty>`, and that the call resolve to FluentValidation's own built-in `Must`,
+  so an application's own `Must` is never flagged. It reports only
   what it can prove: a rule whose value escapes the statement, is refined by `Configure(...)`, or passes through a
   helper the application declared could be named out of sight, and those stay silent.
 - **`TRLS062`** (`RequiredPartialClassGenerator`) reports a value object that implements the three-argument
