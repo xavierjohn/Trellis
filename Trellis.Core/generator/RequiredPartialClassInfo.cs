@@ -270,6 +270,47 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <c>JsonSerializerContext</c>) must declare it in original source, and Trellis then has to
     /// step aside to avoid CS0579.
     /// </remarks>
+    /// <summary>
+    /// Gets the application-supplied reason code that replaces the framework default on every
+    /// failure the type's <c>[StringLength]</c> produces, or <see langword="null"/> to keep it.
+    /// </summary>
+    public readonly string? LengthCode;
+
+    /// <summary>
+    /// Gets the application-supplied reason code that replaces the framework default on every
+    /// range failure, or <see langword="null"/> to keep it.
+    /// </summary>
+    /// <remarks>
+    /// Sourced from <c>[Range].Code</c>, or from whichever numeric convenience attribute
+    /// (<c>[Positive]</c> and friends) synthesized the range, since those each produce exactly one
+    /// failure and synthesize into the same emission.
+    /// </remarks>
+    public readonly string? RangeCode;
+
+    /// <summary>
+    /// Gets the application-supplied reason code that replaces the framework default on the
+    /// <c>[NotDefault]</c> sentinel rejection, or <see langword="null"/> to keep it.
+    /// </summary>
+    public readonly string? NotDefaultCode;
+
+    /// <summary>
+    /// Gets whether the application declared the four-argument <c>ValidateAdditional</c> overload,
+    /// which can set a reason code, rather than the three-argument one, which cannot.
+    /// </summary>
+    /// <remarks>
+    /// The generator emits whichever declaration the application implemented. An existing
+    /// three-argument implementation therefore keeps compiling and keeps reporting
+    /// <c>error.unspecified</c>, which is what it means today.
+    /// </remarks>
+    public readonly bool ValidateAdditionalHasCode;
+
+    /// <summary>
+    /// Gets whether the application declared both <c>ValidateAdditional</c> overloads, which the
+    /// generator cannot satisfy: it emits one defining declaration, so the other implementation
+    /// would fail with a compiler error naming no Trellis concept.
+    /// </summary>
+    public readonly bool DeclaredBothValidateAdditional;
+
     public readonly bool HasUserJsonConverter;
 
     public readonly GeneratedMemberDeclaration[] UserDeclaredMembers;
@@ -299,6 +340,11 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
     /// <param name="hasNonPositive">True when the target carries <c>[NonPositive]</c>.</param>
     /// <param name="hasExplicitRange">True when the target had an explicit <c>[Range]</c> before convenience-attribute synthesis.</param>
     /// <param name="hasUserJsonConverter">True when the user's own declaration already carries <c>[JsonConverter]</c>.</param>
+    /// <param name="lengthCode">Optional reason-code override from <c>[StringLength].Code</c>.</param>
+    /// <param name="rangeCode">Optional reason-code override from <c>[Range].Code</c> or a numeric convenience attribute.</param>
+    /// <param name="notDefaultCode">Optional reason-code override from <c>[NotDefault].Code</c>.</param>
+    /// <param name="validateAdditionalHasCode">True when the application declared the four-argument <c>ValidateAdditional</c>.</param>
+    /// <param name="declaredBothValidateAdditional">True when the application declared both <c>ValidateAdditional</c> overloads.</param>
     /// <param name="userDeclaredMembers">Members declared by the user that may collide with generated members.</param>
     public RequiredPartialClassInfo(
         string nameSpace,
@@ -323,6 +369,11 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         bool hasNonPositive = false,
         bool hasExplicitRange = false,
         bool hasUserJsonConverter = false,
+        string? lengthCode = null,
+        string? rangeCode = null,
+        string? notDefaultCode = null,
+        bool validateAdditionalHasCode = false,
+        bool declaredBothValidateAdditional = false,
         GeneratedMemberDeclaration[]? userDeclaredMembers = null)
     {
         NameSpace = nameSpace;
@@ -347,6 +398,11 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
         HasNonPositive = hasNonPositive;
         HasExplicitRange = hasExplicitRange;
         HasUserJsonConverter = hasUserJsonConverter;
+        LengthCode = lengthCode;
+        RangeCode = rangeCode;
+        NotDefaultCode = notDefaultCode;
+        ValidateAdditionalHasCode = validateAdditionalHasCode;
+        DeclaredBothValidateAdditional = declaredBothValidateAdditional;
         UserDeclaredMembers = userDeclaredMembers ?? [];
     }
 
@@ -375,6 +431,11 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             && HasNonPositive == other.HasNonPositive
             && HasExplicitRange == other.HasExplicitRange
             && HasUserJsonConverter == other.HasUserJsonConverter
+            && LengthCode == other.LengthCode
+            && RangeCode == other.RangeCode
+            && NotDefaultCode == other.NotDefaultCode
+            && ValidateAdditionalHasCode == other.ValidateAdditionalHasCode
+            && DeclaredBothValidateAdditional == other.DeclaredBothValidateAdditional
             && TypePath == other.TypePath
             && NestingParents.SequenceEqual(other.NestingParents)
             && UserDeclaredMembers.SequenceEqual(other.UserDeclaredMembers);
@@ -407,6 +468,11 @@ internal class RequiredPartialClassInfo : IEquatable<RequiredPartialClassInfo>
             hash = (hash * 31) + HasNonPositive.GetHashCode();
             hash = (hash * 31) + HasExplicitRange.GetHashCode();
             hash = (hash * 31) + HasUserJsonConverter.GetHashCode();
+            hash = (hash * 31) + (LengthCode?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (RangeCode?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (NotDefaultCode?.GetHashCode() ?? 0);
+            hash = (hash * 31) + ValidateAdditionalHasCode.GetHashCode();
+            hash = (hash * 31) + DeclaredBothValidateAdditional.GetHashCode();
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TypePath);
             foreach (var member in UserDeclaredMembers)
                 hash = (hash * 31) + member.GetHashCode();

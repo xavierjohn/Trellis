@@ -233,7 +233,7 @@ public class FluentTests
         };
 
         // Act
-        var result = await validator.ValidateToResultAsync(myValue, "CustomParam", "Custom error message", TestContext.Current.CancellationToken);
+        var result = await validator.ValidateToResultAsync(myValue, "CustomParam", "Custom error message", cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         result.Should().BeFailureOfType<Error.InvalidInput>()

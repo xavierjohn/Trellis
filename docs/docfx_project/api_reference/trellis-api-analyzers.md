@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TrellisDiagnosticIds, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058]
+types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloadConflict, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058]
 version: v3
 last_verified: 2026-06-17
 audience: [llm]
@@ -100,6 +100,9 @@ In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuni
 | `TRLS058` | Error | `[NotDefault]` on a sentinel-less Required base | Emitted by `RequiredPartialClassGenerator` when `[NotDefault]` is applied to `RequiredBool` or `RequiredEnum`. Those bases have no meaningful default sentinel to reject (every value is valid), so the attribute is a no-op. Remove the attribute. |
 | `TRLS059` | Warning | `JsonSerializerContext` has `[GenerateScalarValueConverters]` but no `[JsonSerializable]` | Emitted by `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) when a context marked `[GenerateScalarValueConverters]` declares no `[JsonSerializable]` of its own. System.Text.Json's source generator only observes attributes present in the original compilation, so it skips such a context entirely and never emits the abstract members `JsonSerializerContext` requires — failing the build with two CS0534 errors that give no hint about the cause. Trellis cannot supply the attribute on your behalf, because source generators cannot observe one another's output. Add at least one `[JsonSerializable(typeof(...))]`. |
 
+| `TRLS060` | Error | Reason-code override is empty | Emitted by `RequiredPartialClassGenerator` when `[StringLength]`, `[Range]`, `[NotDefault]`, or one of the sign-convenience attributes sets `Code` to an empty or whitespace string. An application may name a failure in its own terms, but an empty code names nothing and would reach the wire where a client expects a catalog key. Give the failure a name, or omit `Code` to keep the framework default. |
+| `TRLS061` | Error | Both `ValidateAdditional` overloads declared | Emitted by `RequiredPartialClassGenerator` when a value object declares both the three-argument `ValidateAdditional` and the four-argument overload that can set a reason code. The generator emits one defining declaration, so the other implementation would fail with a compiler error that names no Trellis concept. Keep one. |
+
 ## Constants — `TrellisDiagnosticIds`
 
 The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzers` assembly) exposes every diagnostic ID above as a `public const string`. Use it from `[SuppressMessage]` attributes and rule sets to avoid magic strings:
@@ -110,7 +113,7 @@ The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzer
 public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
-Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`) and the LINQ-analyzer IDs (`TRLS054`–`TRLS055`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
+Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS061`) and the LINQ-analyzer IDs (`TRLS054`–`TRLS055`) are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
 
 ### Constant → diagnostic ID → emitter
 
@@ -155,6 +158,8 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `TrimOnNonStringBase` | `TRLS057` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `NotDefaultOnSentinellessBase` | `TRLS058` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `SerializerContextHasNoJsonSerializable` | `TRLS059` | `ScalarValueJsonConverterGenerator` (Trellis.AspSourceGenerator) |
+| `EmptyReasonCodeOverride` | `TRLS060` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
+| `ValidateAdditionalOverloadConflict` | `TRLS061` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 
 ## Descriptors — `DiagnosticDescriptors`
 
@@ -188,7 +193,7 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 
 > **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
-> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS045` and `TRLS056`–`TRLS058`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
+> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058` and `TRLS060`–`TRLS061`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
 
 ```csharp
 // Re-exporting an analyzer rule in a custom analyzer:

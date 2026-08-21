@@ -83,15 +83,57 @@ public static class ValidationArgsProjection
     private const int MaxStringLength = 64;
 
     /// <summary>
+    /// Combines the framework allowlist with the application's widening for one error code.
+    /// </summary>
+    /// <remarks>
+    /// An application may widen an error code the framework does not allowlist at all, which is the
+    /// point: <c>PredicateValidator</c> has no default entry because Trellis cannot know what a
+    /// <c>Must()</c> rule's placeholders mean, and the application does.
+    /// </remarks>
+    private static (IReadOnlyCollection<string> Names, HashSet<string>? OptedIn) ResolveAllowed(
+        string errorCode,
+        ValidationArgsOptions? options)
+    {
+        IReadOnlyCollection<string> defaults = Allowed.TryGetValue(errorCode, out var known) ? known : [];
+        if (options is null || options.IsEmpty)
+            return (defaults, null);
+
+        var extra = options.AdditionalFor(errorCode);
+        if (extra.Count == 0)
+            return (defaults, null);
+
+        var combined = new HashSet<string>(defaults, StringComparer.Ordinal);
+        var optedIn = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var name in extra)
+        {
+            combined.Add(name);
+            optedIn.Add(name);
+        }
+
+        return (combined, optedIn);
+    }
+
+    /// <summary>
     /// Builds the args for a failure, or <see langword="null"/> when none survive.
     /// </summary>
-    public static ImmutableDictionary<string, string>? Project(ValidationFailure failure)
+    /// <param name="failure">The FluentValidation failure to project.</param>
+    /// <param name="options">
+    /// The application's widening of the default allowlist, or <see langword="null"/> to apply the
+    /// framework default alone.
+    /// </param>
+    public static ImmutableDictionary<string, string>? Project(
+        ValidationFailure failure,
+        ValidationArgsOptions? options = null)
     {
         var placeholders = failure.FormattedMessagePlaceholderValues;
         if (placeholders is null || placeholders.Count == 0)
             return null;
 
-        if (string.IsNullOrEmpty(failure.ErrorCode) || !Allowed.TryGetValue(failure.ErrorCode, out var allowed))
+        if (string.IsNullOrEmpty(failure.ErrorCode))
+            return null;
+
+        var (allowed, optedIn) = ResolveAllowed(failure.ErrorCode, options);
+        if (allowed.Count == 0)
             return null;
 
         var template = ResolveTemplate(failure.ErrorCode);
@@ -106,7 +148,7 @@ public static class ValidationArgsProjection
                 continue;
 
             var rendered = Convert.ToString(raw, CultureInfo.CurrentCulture);
-            if (!ShouldEmit(rendered, template, name, failure.ErrorMessage))
+            if (!ShouldEmit(rendered, template, name, failure.ErrorMessage, optedIn?.Contains(name) == true))
                 continue;
 
             var encoded = Encode(raw);
@@ -150,10 +192,19 @@ public static class ValidationArgsProjection
     /// message contains. What Trellis puts on the wire is a different string — see
     /// <see cref="IsReconciled"/>, which closes the gap the two representations open.
     /// </para>
+    /// <para>
+    /// An explicit opt-in through <see cref="ValidationArgsOptions"/> satisfies the template half
+    /// without consulting the template. The template check defends against a placeholder Trellis
+    /// <em>guessed</em> was safe, which is why coincidence can fool it; an application naming its
+    /// own validator's placeholder is not guessing, and a custom validator has no entry in the
+    /// language manager for the check to consult in the first place — so leaving it in force would
+    /// make the opt-in inert, which is the same as not shipping it. The message half still holds,
+    /// so an opted-in arg still cannot carry anything the client's own message did not.
+    /// </para>
     /// </remarks>
-    private static bool ShouldEmit(string? rendered, string template, string name, string message)
+    private static bool ShouldEmit(string? rendered, string template, string name, string message, bool optedIn)
     {
-        if (!TemplateNamesPlaceholder(template, name))
+        if (!optedIn && !TemplateNamesPlaceholder(template, name))
             return false;
 
         return !string.IsNullOrEmpty(rendered)

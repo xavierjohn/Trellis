@@ -39,8 +39,8 @@ public sealed class Order : Aggregate<OrderId>
     private Order(OrderId id) : base(id) { }
 
     public static Result<Order> TryCreate(OrderId? id, Money? total) =>
-        id.ToResult(Error.InvalidInput.ForField("id", "validation.error", "Order id is required."))
-            .Combine(total.ToResult(Error.InvalidInput.ForField("total", "validation.error", "Total is required.")))
+        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Order id is required."))
+            .Combine(total.ToResult(Error.InvalidInput.ForField("total", ValidationCodes.ValueNotNull, "Total is required.")))
             .Map((id, total) => new Order(id) { Total = total });
 
     public Result<Order> Submit(TimeProvider clock)

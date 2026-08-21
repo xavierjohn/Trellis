@@ -40,7 +40,7 @@ public class Order : Aggregate<OrderId>
     /// </summary>
     public static Result<Order> TryCreate(CustomerId customerId) =>
         customerId.ToResult()
-            .Ensure(id => id != null, Error.InvalidInput.ForField(nameof(customerId), "validation.error", "Customer ID is required"))
+            .Ensure(id => id != null, Error.InvalidInput.ForField(nameof(customerId), ValidationCodes.ValueNotNull, "Customer ID is required"))
             .Map(_ => new Order(customerId));
 
     /// <summary>
@@ -51,7 +51,7 @@ public class Order : Aggregate<OrderId>
         this.ToResult()
             // RequiredEnum provides the CanModify property
             .Ensure(_ => State.CanModify, Error.InvalidInput.ForRule("order.not-modifiable", $"Cannot modify order in '{State}' state"))
-            .Ensure(_ => quantity > 0, Error.InvalidInput.ForField(nameof(quantity), "validation.error", "Quantity must be positive"))
+            .Ensure(_ => quantity > 0, Error.InvalidInput.ForField(nameof(quantity), ValidationCodes.ValueGreaterThan, "Quantity must be positive"))
             .Tap(_ => _lines.Add(new OrderLine(Id, product, quantity)));
 
     /// <summary>

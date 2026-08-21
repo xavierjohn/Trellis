@@ -25,7 +25,7 @@ audience: [llm]
   - [trellis-api-statemachine.md](trellis-api-statemachine.md#use-this-file-when) — `FireResult`, `LazyStateMachine<,>`
   - [trellis-api-testing-reference.md](trellis-api-testing-reference.md#use-this-file-when) — `Should().Be(...)`, `UnwrapError()`
   - [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#use-this-file-when) — `WebApplicationFactoryExtensions`, `.http` replay helpers
-  - [trellis-api-analyzers.md](trellis-api-analyzers.md#use-this-file-when) — `TRLS001`-`TRLS059`, `TrellisDiagnosticIds`
+  - [trellis-api-analyzers.md](trellis-api-analyzers.md#use-this-file-when) — `TRLS001`-`TRLS061`, `TrellisDiagnosticIds`
 
 ## How to read these recipes
 

@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.FluentValidation
 namespaces: [Trellis.FluentValidation]
-types: [FluentValidationResultExtensions, JsonPointerNormalizer, ValidationArgsProjection, ValidationCodeProjection]
+types: [FluentValidationResultExtensions, JsonPointerNormalizer, ValidationArgsProjection, ValidationArgsOptions, ValidationCodeProjection]
 version: v3
 last_verified: 2026-06-04
 audience: [llm]
@@ -36,6 +36,7 @@ For wiring FluentValidation validators into the Trellis Mediator validation stag
 | Validate a value outside Mediator | `validator.ValidateToResult(value)` / `ValidateToResultAsync(...)` | [`FluentValidationResultExtensions`](#fluentvalidationresultextensions) |
 | Normalize a FluentValidation property name into a JSON pointer | `JsonPointerNormalizer.ToJsonPointer(propertyName)` | [`JsonPointerNormalizer`](#jsonpointernormalizer) |
 | Wire FluentValidation into the Mediator pipeline | `services.AddTrellisFluentValidation()` from `Trellis.Mediator.FluentValidation` | [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#fluentvalidationservicecollectionextensions) |
+| A custom `Must()` rule emits no machine-readable `args` | Opt the placeholder in with `ValidationArgsOptions.AllowArgs(...)` | [`ValidationArgsOptions`](#validationargsoptions) |
 
 ## Common traps
 
@@ -168,7 +169,7 @@ public static class ValidationArgsProjection
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static ImmutableDictionary<string, string>? Project(ValidationFailure failure)` | `ImmutableDictionary<string,string>?` | Projects a failure's `FormattedMessagePlaceholderValues` onto the `Args` carried by `FieldViolation`, applying the allowlist, the containment gate and the encoding rules below. Returns `null` when nothing survives. Both adapters call this — `FluentValidationResultExtensions.ToResult` and, in `Trellis.Mediator.FluentValidation`, `FluentValidationMessageValidatorAdapter`. |
+| `public static ImmutableDictionary<string, string>? Project(ValidationFailure failure, ValidationArgsOptions? options = null)` | `ImmutableDictionary<string,string>?` | Projects a failure's `FormattedMessagePlaceholderValues` onto the `Args` carried by `FieldViolation`, applying the allowlist, the containment gate and the encoding rules below. Returns `null` when nothing survives. Both adapters call this — `FluentValidationResultExtensions.ToResult` and, in `Trellis.Mediator.FluentValidation`, `FluentValidationMessageValidatorAdapter`. |
 
 `Args` is what lets a client render its own localized message instead of displaying the server's English prose. Blanket camelCase pass-through of FluentValidation's placeholders is unsafe on two independent counts, so two controls apply.
 
@@ -223,6 +224,44 @@ The gate compares FluentValidation's **rendered** form, because that is what the
 
 In practice that makes temporal args a standing false negative, since a culture-rendered date and a round-trip one essentially never coincide. That direction is deliberate — a false negative hides a safe arg and stays recoverable through an explicit opt-in, while a false positive discloses and cannot be taken back. Bounding and escaping are reconciled rather than treated as a mismatch: `Sanitize` derives every character it emits from a character of the value the gate already accepted — truncation omits, escaping re-encodes — so it cannot introduce content the message lacked, even though its output is not byte-for-byte present there. Demanding verbatim presence would suppress exactly the long and control-bearing values the bound exists to serve.
 
+### `ValidationArgsOptions`
+
+**Declaration**
+
+```csharp
+public sealed class ValidationArgsOptions
+```
+
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Default` | `ValidationArgsOptions` | The static configuration used when the application registered none. Widens nothing, and rejects `AllowArgs` with `InvalidOperationException` because it is shared process-wide. |
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public ValidationArgsOptions AllowArgs(string errorCode, params string[] placeholderNames)` | `ValidationArgsOptions` | Allows the named placeholders — spelled as FluentValidation spells them, in PascalCase — to be emitted for failures carrying `errorCode`. Returns the same instance so calls chain. Throws `ArgumentException` for a blank error code or name, or for a placeholder that can never be allowed, and `InvalidOperationException` when called on `Default`. |
+
+This is the explicit opt-in the two controls above defer to. The default allowlist carries only the operands whose meaning Trellis can vouch for across every validator that populates them, so a rule Trellis did not write — a `Must()` with `context.MessageFormatter.AppendArgument(...)`, or a validator behind a custom `WithErrorCode` — emits no args at all. `AllowArgs` is how the application supplies the knowledge Trellis lacks.
+
+```csharp
+services.Configure<ValidationArgsOptions>(options =>
+    options.AllowArgs("MinimumAge", "MinAge"));
+```
+
+`AddTrellisFluentValidation()` calls `AddOptions<ValidationArgsOptions>()`, so the Mediator pipeline adapter always resolves the configured instance. The standalone `ToResult` / `ValidateToResult` / `ValidateToResultAsync` helpers have no container to read from, so they take the same object through an optional `argsOptions` parameter.
+
+Three properties are worth stating, because each is load-bearing:
+
+- **It only ever widens.** There is no remove operation. The default set is the conservative one, so removing could only narrow a client contract something already depends on — and an application that wants fewer args can stop reading them.
+- **An explicit opt-in satisfies the template half of the containment gate without consulting the template.** The template check defends against a placeholder *Trellis guessed* was safe, which is why coincidence can fool it; an application naming its own validator's placeholder is not guessing, and a custom validator has no language-manager entry for the check to consult. Leaving it in force would make the opt-in inert. **The message half still holds**, so an opted-in arg still cannot carry anything the client's own message did not.
+- **`PropertyValue` and `PropertyPath` can never be re-admitted.** `AllowArgs` throws rather than silently dropping them, because an application that asked for `PropertyValue` has misunderstood what args are for and a silent drop would leave it waiting for an arg that is never coming. The two are denied for different reasons, and the exception says which: `PropertyValue` carries the submitted input verbatim, a disclosure and PII hazard; `PropertyPath` carries the traversal path the violation's own location already reports.
+
+- **`Default` cannot be widened.** It is shared process-wide, so `ValidationArgsOptions.Default.AllowArgs(...)` throws `InvalidOperationException` rather than applying a global effect from what reads like a local one. Register through `services.Configure<ValidationArgsOptions>(...)`, which hands out an instance of your own.
+
+
 ## Extension methods
 
 ### `FluentValidationResultExtensions`
@@ -231,19 +270,22 @@ In practice that makes temporal args a standing false negative, since a culture-
 public static Result<T> ToResult<T>(
     this ValidationResult validationResult,
     T value,
-    [CallerArgumentExpression(nameof(value))] string paramName = "value")
+    [CallerArgumentExpression(nameof(value))] string paramName = "value",
+    ValidationArgsOptions? argsOptions = null)
 
 public static Result<T> ValidateToResult<T>(
     this IValidator<T> validator,
     T value,
     [CallerArgumentExpression(nameof(value))] string paramName = "value",
-    string? message = null)
+    string? message = null,
+    ValidationArgsOptions? argsOptions = null)
 
 public static async Task<Result<T>> ValidateToResultAsync<T>(
     this IValidator<T> validator,
     T value,
     [CallerArgumentExpression(nameof(value))] string paramName = "value",
     string? message = null,
+    ValidationArgsOptions? argsOptions = null,
     CancellationToken cancellationToken = default)
 ```
 
