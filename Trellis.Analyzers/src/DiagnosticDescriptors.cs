@@ -359,4 +359,20 @@ public static class DiagnosticDescriptors
         description: "MaybeExpressionRewriter can inspect and inline HasValueWhere(t => ...) predicate bodies in IQueryable expression trees. " +
                      "Captured Func<T, bool> variables, method groups, and other non-inline delegate shapes are opaque to the rewriter and fall through to EF Core translation failures.",
         helpLinkUri: HelpLinkBase);
+
+    /// <summary>
+    /// TRLS063: A FluentValidation Must/MustAsync rule has no WithErrorCode.
+    /// </summary>
+    public static readonly DiagnosticDescriptor MustWithoutErrorCode = new(
+        id: TrellisDiagnosticIds.MustWithoutErrorCode,
+        title: "Give a Must rule a reason code",
+        messageFormat: "'{0}' reports as {1}, which maps to error.unspecified. Add WithErrorCode(\"...\") so the failure names itself.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "Every built-in FluentValidation validator carries a name that Trellis projects to a real reason code. " +
+                     "Must and MustAsync report as PredicateValidator and AsyncPredicateValidator, both of which project to the " +
+                     "error.unspecified sentinel, so a client receiving the failure has nothing to branch on. " +
+                     "Chain WithErrorCode(\"...\") onto the rule to name it.",
+        helpLinkUri: HelpLinkBase);
 }

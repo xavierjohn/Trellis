@@ -170,6 +170,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         public const string NotDefaultOnSentinellessBase = "TRLS058";
         public const string EmptyReasonCodeOverride = "TRLS060";
         public const string ValidateAdditionalOverloadConflict = "TRLS061";
+        public const string UnnamedValidateAdditionalFailure = "TRLS062";
     }
 
     /// <summary>
@@ -895,6 +896,22 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 location: null,
                 g.ClassName));
             ok = false;
+        }
+
+        if (g.DeclaredThreeArgValidateAdditionalOnly)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                new DiagnosticDescriptor(
+                    id: Ids.UnnamedValidateAdditionalFailure,
+                    title: "ValidateAdditional rejects without naming a reason",
+                    messageFormat: "Class '{0}' implements the three-argument ValidateAdditional, so any failure its custom rule produces reports error.unspecified. Add a 'ref string? errorCode' parameter and set it to name the failure.",
+                    category: "Trellis",
+                    DiagnosticSeverity.Info,
+                    isEnabledByDefault: true,
+                    description: "A custom rule is the value object's own reason for rejecting a value, but the three-argument overload has nowhere to put that reason, so every such failure reaches the client as error.unspecified and there is nothing to branch on.",
+                    helpLinkUri: HelpLinkBase),
+                location: null,
+                g.ClassName));
         }
 
         var numericConvenienceCount = (g.HasPositive ? 1 : 0)
@@ -2340,8 +2357,10 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             var typePath = BuildTypePath(@namespace, classSymbol);
             var userDeclaredMembers = GetUserDeclaredMembers(classSymbol, cancellationToken);
             var hasUserJsonConverter = HasJsonConverterAttribute(classSymbol);
-            var validateAdditionalHasCode =
-                DetectValidateAdditionalArity(classSymbol, cancellationToken, out var declaredBothValidateAdditional) ?? false;
+            var validateAdditionalArity =
+                DetectValidateAdditionalArity(classSymbol, cancellationToken, out var declaredBothValidateAdditional);
+            var validateAdditionalHasCode = validateAdditionalArity ?? false;
+            var declaredThreeArgValidateAdditionalOnly = validateAdditionalArity == false;
 
             // Read [StringLength] attribute for RequiredString types
             int? maxLength = null;
@@ -2503,6 +2522,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 hasUserJsonConverter,
                 lengthCode, rangeCode, notDefaultCode,
                 validateAdditionalHasCode, declaredBothValidateAdditional,
+                declaredThreeArgValidateAdditionalOnly,
                 userDeclaredMembers));
         }
 

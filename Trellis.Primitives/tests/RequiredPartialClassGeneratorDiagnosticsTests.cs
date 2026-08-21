@@ -448,6 +448,105 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
+    public void ThreeArgValidateAdditional_Reports_TRLS062()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Widget : RequiredString<Widget>
+            {
+                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        var diagnostic = diagnostics.Single(d => d.Id == "TRLS062");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Info);
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Widget");
+    }
+
+    [Fact]
+    public void FourArgValidateAdditional_ReportsNo_TRLS062()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Widget : RequiredString<Widget>
+            {
+                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS062");
+    }
+
+    [Fact]
+    public void NoValidateAdditional_ReportsNo_TRLS062()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        // The overwhelmingly common case. A value object with no custom rule has no failure of its
+        // own to name, so suggesting the four-argument overload would be noise on nearly every type.
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Widget : RequiredString<Widget>
+            {
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS062");
+    }
+
+    [Fact]
+    public void BothValidateAdditionalOverloads_ReportsNo_TRLS062()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        // TRLS061 already says the declaration is wrong and must be reduced to one. Adding a hint
+        // that the four-argument form is available would be advice on code that does not compile.
+        const string source = """
+            using Trellis;
+
+            namespace TestNamespace;
+
+            public partial class Widget : RequiredString<Widget>
+            {
+                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
+                {
+                }
+
+                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
+
+        diagnostics.Should().NotContain(d => d.Id == "TRLS062");
+    }
+
+    [Fact]
     public void NegativeOnRequiredGuid_Reports_TRLS043()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

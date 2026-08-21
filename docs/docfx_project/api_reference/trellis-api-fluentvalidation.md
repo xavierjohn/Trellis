@@ -155,7 +155,7 @@ The table is keyed on the **error-code string, never the CLR validator type**. T
 
 **A custom `WithErrorCode` passes through verbatim.** A caller who wrote `WithErrorCode("order.too-large")` means it; rewriting it would make `WithErrorCode` useless.
 
-**`Must(...)` maps to the sentinel.** A predicate can express any condition, so its validator name says only "some custom predicate failed" — which is exactly what `error.unspecified` means. Give a `Must(...)` rule a real code with `WithErrorCode`, or a client has nothing to branch on.
+**`Must(...)` maps to the sentinel.** A predicate can express any condition, so its validator name says only "some custom predicate failed" — which is exactly what `error.unspecified` means. Give a `Must(...)` rule a real code with `WithErrorCode`, or a client has nothing to branch on. `TRLS063` reports an uncoded `Must`/`MustAsync` when the project references `Trellis.Analyzers`; see [trellis-api-anti-patterns.md](trellis-api-anti-patterns.md#trls063--fluentvalidation-must-rule-with-no-witherrorcode) for the WRONG/FIX shapes, including where a trailing `WithErrorCode` stops applying to an earlier rule.
 
 ### `ValidationArgsProjection`
 
