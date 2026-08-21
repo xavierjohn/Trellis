@@ -341,6 +341,20 @@ public class ResponseFailureWriterInputOriginTests
     }
 
     [Fact]
+    public void ANonValidationError_NeverConsultsTheBindingMap()
+    {
+        var context = NewContextWithBinding(declared: null, "accounts/{id}/deposit", bindsBody: true);
+        var provider = (StubApiDescriptionProvider)context.RequestServices
+            .GetRequiredService<IApiDescriptionGroupCollectionProvider>();
+
+        InputOriginPromotion.Apply(context, new Error.NotFound(new ResourceRef("Account", "a1")));
+
+        provider.Reads.Should().Be(
+            0,
+            "discovering a binding map walks every API description, which a 404 should not pay for");
+    }
+
+    [Fact]
     public void TheNearestDeclarationWins()
     {
         var context = NewContext(new InputOriginAttribute(InputLocation.Body), new InputOriginAttribute(InputLocation.Query));
@@ -695,10 +709,21 @@ public class ResponseFailureWriterInputOriginTests
 
     private sealed class StubApiDescriptionProvider : IApiDescriptionGroupCollectionProvider
     {
-        public StubApiDescriptionProvider(params ApiDescription[] descriptions) =>
-            ApiDescriptionGroups = new([new ApiDescriptionGroup("test", descriptions)], 1);
+        private readonly ApiDescriptionGroupCollection groups;
 
-        public ApiDescriptionGroupCollection ApiDescriptionGroups { get; }
+        public StubApiDescriptionProvider(params ApiDescription[] descriptions) =>
+            this.groups = new([new ApiDescriptionGroup("test", descriptions)], 1);
+
+        public int Reads { get; private set; }
+
+        public ApiDescriptionGroupCollection ApiDescriptionGroups
+        {
+            get
+            {
+                this.Reads++;
+                return this.groups;
+            }
+        }
     }
 
     private sealed class StubConventionBuilder : IEndpointConventionBuilder

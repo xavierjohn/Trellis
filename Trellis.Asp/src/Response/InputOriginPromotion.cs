@@ -23,8 +23,16 @@ internal static class InputOriginPromotion
     /// endpoint is known to bind and, where that does not reach, what it declared via
     /// <see cref="InputOriginAttribute"/>.
     /// </summary>
+    /// <remarks>
+    /// Only <see cref="Error.InvalidInput"/> and <see cref="Error.Aggregate"/> can carry a pointer,
+    /// so anything else leaves before the endpoint's binding map is consulted — discovering it
+    /// walks every API description the first time an endpoint is seen, which a 404 or a 409 should
+    /// not pay for.
+    /// </remarks>
     public static Error Apply(HttpContext httpContext, Error error)
     {
+        if (error is not (Error.InvalidInput or Error.Aggregate)) return error;
+
         var endpoint = httpContext.GetEndpoint();
         if (endpoint is null) return error;
 
