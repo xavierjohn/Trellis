@@ -392,11 +392,11 @@ The Showcase carries no declaration at all, in either hosting model. That is the
 
 #### Limits
 
-A query or body location applies only to a pointer naming exactly one top-level member. A document pointer like `/lines/0/amount` addresses a body member either way, and `/employeeId/0/name` is not mistaken for a route parameter — no URL can carry a document.
+Named evidence — `path`, `query` and `header` — applies only to a pointer naming exactly one top-level member, because no URL can carry a document: `/employeeId/0/name` is not mistaken for a route parameter. The body residual carries no such restriction, since a nested pointer like `/lines/0/amount` already addresses a body document and is rebased as one.
 
 Matching is case-insensitive, as routing is.
 
-Derivation gets one case wrong, and it is the main reason to reach for an override: a body member sharing a name with a route or query parameter — `PUT /employee/{id}` carrying `{"id": …}` — where the URL is evidence about a different value of the same name.
+Derivation gets one case wrong, and it is the main reason to reach for an override: a body member sharing a name with a route, query or header parameter — `PUT /employee/{id}` carrying `{"id": …}` — where the request's own parameters are evidence about a different value of the same name.
 
 One further limit is specific to minimal APIs. A controller action is identified by its `ActionDescriptor` instance, but a minimal API endpoint is identified only by its handler method, and one method can be mapped to several routes:
 

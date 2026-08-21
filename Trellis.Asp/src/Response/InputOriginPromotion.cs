@@ -155,29 +155,36 @@ internal static class InputOriginPromotion
     /// <remarks>
     /// <para>
     /// Evidence outranks the declaration. A violation naming one of the endpoint's own route
-    /// parameters is stamped <see cref="InputLocation.Path"/>, and one naming a query parameter
-    /// the endpoint binds is stamped <see cref="InputLocation.Query"/>, whatever the endpoint
-    /// declared — because <c>POST /employee/{employeeId}</c> says where an <c>employeeId</c> came
-    /// from more reliably than a declaration covering the endpoint as a whole. Without this, a
-    /// body declaration would tell a caller their request body was at fault for a value they put
-    /// in the URL.
+    /// parameters is stamped <see cref="InputLocation.Path"/>, and one naming a query or header
+    /// parameter the endpoint binds is stamped <see cref="InputLocation.Query"/> or
+    /// <see cref="InputLocation.Header"/>, whatever the endpoint declared — because
+    /// <c>POST /employee/{employeeId}</c> says where an <c>employeeId</c> came from more reliably
+    /// than a declaration covering the endpoint as a whole. Without this, a body residual would
+    /// tell a caller their request body was at fault for a value they put in the URL.
     /// </para>
     /// <para>
-    /// The declaration therefore only ever supplies the residual: the names the URL does not
-    /// account for. That residual cannot be checked — a domain producer may raise a name that
-    /// matches no member of the body it was bound from — which is why it stays declared rather
-    /// than derived. An author declaring <see cref="InputLocation.Body"/> is taking
-    /// responsibility for that claim.
+    /// What is left is the residual: the names the request's own parameters do not account for.
+    /// It is derived too — an endpoint that binds a body is where those values arrived, and one
+    /// that binds none leaves <see cref="InputLocation.Unspecified"/> standing. A declaration only
+    /// overrides that residual, for the cases derivation cannot reach.
     /// </para>
     /// <para>
-    /// The one case this gets wrong is a body member that shares a name with a route or query
-    /// parameter — <c>PUT /employee/{id}</c> carrying <c>{"id": …}</c> — where the URL is evidence
-    /// for a different value of the same name. Confirming that would mean reflecting over the body
-    /// type's members, which the AOT-friendly projection path deliberately avoids.
+    /// The residual locates but does not verify: a domain producer may raise a name matching no
+    /// member of the body it was bound from, so the <c>pointer</c> may address nothing. That is a
+    /// property of the producer's naming rather than of deriving, since an explicit declaration
+    /// yields the same pointer.
     /// </para>
     /// <para>
-    /// Evidence applies only to a pointer naming one top-level member, because a nested pointer
-    /// such as <c>/lines/0/amount</c> addresses a document that no URL can carry. A body residual
+    /// The one case this gets wrong is a body member that shares a name with a route, query or
+    /// header parameter — <c>PUT /employee/{id}</c> carrying <c>{"id": …}</c> — where the request's
+    /// own parameters are evidence for a different value of the same name. Confirming that would
+    /// mean reflecting over the body type's members, which the AOT-friendly projection path
+    /// deliberately avoids.
+    /// </para>
+    /// <para>
+    /// Named evidence applies only to a pointer naming one top-level member, because a nested
+    /// pointer such as <c>/lines/0/amount</c> addresses a document that no URL can carry. The body
+    /// residual has no such restriction — a nested pointer already addresses a body document — and
     /// reuses the framework's single body-context rebase rule.
     /// </para>
     /// </remarks>
