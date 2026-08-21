@@ -690,9 +690,9 @@ public partial class Address : ValueObject
         var violations = new List<FieldViolation>(2);
         var prefix = string.IsNullOrWhiteSpace(fieldName) ? null : fieldName;
         if (string.IsNullOrWhiteSpace(street))
-            violations.Add(new FieldViolation(Pointer(prefix, "street"), "required") { Detail = "Street is required." });
+            violations.Add(new FieldViolation(Pointer(prefix, "street"), ValidationCodes.ValueNotEmpty) { Detail = "Street is required." });
         if (string.IsNullOrWhiteSpace(city))
-            violations.Add(new FieldViolation(Pointer(prefix, "city"), "required") { Detail = "City is required." });
+            violations.Add(new FieldViolation(Pointer(prefix, "city"), ValidationCodes.ValueNotEmpty) { Detail = "City is required." });
         return violations.Count > 0
             ? Result.Fail<Address>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())))
             : Result.Ok(new Address(street.Trim(), city.Trim()));
@@ -714,13 +714,13 @@ public sealed class CustomerId : ScalarValueObject<CustomerId, Guid>, IScalarVal
 
     public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
         value == Guid.Empty
-            ? Result.Fail<CustomerId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "customerId"), "required") { Detail = "Customer ID is required." })))
+            ? Result.Fail<CustomerId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "customerId"), ValidationCodes.ValueNotDefault) { Detail = "Customer ID is required." })))
             : Result.Ok(new CustomerId(value));
 
     public static Result<CustomerId> TryCreate(string? value, string? fieldName = null) =>
         Guid.TryParse(value, out var guid)
             ? TryCreate(guid, fieldName)
-            : Result.Fail<CustomerId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "customerId"), "must_be_guid") { Detail = "Customer ID must be a GUID." })));
+            : Result.Fail<CustomerId>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "customerId"), ValidationCodes.FormatGuid) { Detail = "Customer ID must be a GUID." })));
 }
 
 public partial class Customer : Aggregate<CustomerId>

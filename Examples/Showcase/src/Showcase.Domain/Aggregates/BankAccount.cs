@@ -94,11 +94,11 @@ public class BankAccount : Aggregate<AccountId>
 
         var violations = new List<FieldViolation>();
         if (initialDeposit.Amount < 0)
-            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(initialDeposit)), "validation.range") { Detail = "Initial deposit must be non-negative" });
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(initialDeposit)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Initial deposit must be non-negative" });
         if (dailyWithdrawalLimit.Amount <= 0)
-            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(dailyWithdrawalLimit)), "validation.range") { Detail = "Daily withdrawal limit must be positive" });
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(dailyWithdrawalLimit)), ValidationCodes.ValueGreaterThan) { Detail = "Daily withdrawal limit must be positive" });
         if (overdraftLimit.Amount < 0)
-            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(overdraftLimit)), "validation.range") { Detail = "Overdraft limit must be non-negative" });
+            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(overdraftLimit)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Overdraft limit must be non-negative" });
 
         if (violations.Count > 0)
             return Result.Fail<BankAccount>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())));
@@ -128,7 +128,7 @@ public class BankAccount : Aggregate<AccountId>
             .Ensure(_ => Status == AccountStatus.Active,
                 new Error.Conflict(null, "account.not.active") { Detail = $"Cannot deposit to {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                Error.InvalidInput.ForField(nameof(amount), "validation.range", "Deposit amount must be positive"))
+                Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Deposit amount must be positive"))
             .Ensure(_ => amount.Amount <= 10000,
                 new Error.Conflict(null, "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" })
             .Bind(_ => Balance.Add(amount))
@@ -149,7 +149,7 @@ public class BankAccount : Aggregate<AccountId>
             .Ensure(_ => Status == AccountStatus.Active,
                 new Error.Conflict(null, "account.not.active") { Detail = $"Cannot withdraw from {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                Error.InvalidInput.ForField(nameof(amount), "validation.range", "Withdrawal amount must be positive"))
+                Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Withdrawal amount must be positive"))
             .Bind(_ => todayTotal.Add(amount))
             .Ensure(totalWithToday => !totalWithToday.IsGreaterThanOrEqual(DailyWithdrawalLimit),
                 new Error.Conflict(null, "withdrawal.daily.limit") { Detail = $"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded" })
@@ -182,7 +182,7 @@ public class BankAccount : Aggregate<AccountId>
 
         if (interestAmount.Amount <= 0)
             return Result.Fail<BankAccount>(
-                Error.InvalidInput.ForField(nameof(interestAmount), "validation.range", "Interest amount must be positive"));
+                Error.InvalidInput.ForField(nameof(interestAmount), ValidationCodes.ValueGreaterThan, "Interest amount must be positive"));
 
         return Balance.Add(interestAmount)
             .Tap(newBalance =>
@@ -218,7 +218,7 @@ public class BankAccount : Aggregate<AccountId>
             return Result.Fail<(BankAccount From, BankAccount To)>(
                 Error.InvalidInput.ForField(
                     nameof(amount),
-                    "validation.currency",
+                    ValidationCodes.MoneyCurrencyMismatch,
                     $"Cannot deposit {amount.Currency} into {toAccount.Balance.Currency} account"));
 
         return Withdraw(amount, $"{description} to {toAccount.Id}")
@@ -232,7 +232,7 @@ public class BankAccount : Aggregate<AccountId>
         if (string.IsNullOrWhiteSpace(reason))
         {
             return Result.Fail<BankAccount>(
-                Error.InvalidInput.ForField(nameof(reason), "validation.required", "Freeze reason is required"));
+                Error.InvalidInput.ForField(nameof(reason), ValidationCodes.ValueNotEmpty, "Freeze reason is required"));
         }
 
         return _lifecycle.FireResult(AccountTrigger.Freeze)

@@ -229,7 +229,7 @@ public static partial class Result
     /// public IResult Authorize(Actor actor, Order resource) =&gt;
     ///     Result.Ensure(
     ///         resource.OwnerId == actor.UserId,
-    ///         new Error.Forbidden("order_not_owned"));
+    ///         new Error.Forbidden("order.not-owned"));
     /// </code>
     /// </example>
     /// <example>
@@ -237,7 +237,7 @@ public static partial class Result
     /// <code>
     /// public Result&lt;Unit&gt; Cancel(DateTimeOffset now) =&gt;
     ///     Result.Ensure(Status == OrderStatus.Pending,
-    ///         new Error.Conflict(null, "order_not_cancellable") { Detail = "Only pending orders can be cancelled." })
+    ///         new Error.Conflict(null, "order.not-cancellable") { Detail = "Only pending orders can be cancelled." })
     ///     .Tap(() =&gt; { Status = OrderStatus.Cancelled; CancelledAt = now; });
     /// </code>
     /// </example>

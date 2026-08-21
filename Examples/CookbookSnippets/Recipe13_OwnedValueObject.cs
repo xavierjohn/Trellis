@@ -60,7 +60,7 @@ public partial class ShippingAddress : ValueObject
         var pointer = string.IsNullOrWhiteSpace(owner)
             ? InputPointer.ForProperty(leaf)
             : new InputPointer($"/{owner}/{leaf}");
-        v.Add(new FieldViolation(pointer, "required") { Detail = $"{part} is required." });
+        v.Add(new FieldViolation(pointer, ValidationCodes.ValueNotEmpty) { Detail = $"{part} is required." });
     }
 }
 

@@ -301,7 +301,7 @@ public abstract record Error
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
         /// single <see cref="RuleViolation"/> — the global / multi-field counterpart to
         /// <see cref="ForField(string, string, string?)"/>. Use for invariants that are not bound
-        /// to a single field (e.g. <c>"order_must_have_items"</c>, <c>"passwords_must_match"</c>).
+        /// to a single field (e.g. <c>"order.must-have-items"</c>, <c>"password.mismatch"</c>).
         /// </summary>
         /// <param name="reasonCode">Stable machine-readable code identifying the rule.</param>
         /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
@@ -456,7 +456,7 @@ public abstract record Error
     /// stateless conflicts (e.g. workflow / state-machine guards, library code with no aggregate
     /// context).
     /// </param>
-    /// <param name="ReasonCode">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate_key"</c>, <c>"invalid_state"</c>).</param>
+    /// <param name="ReasonCode">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate-key"</c>, <c>"invalid-state"</c>).</param>
     public sealed record Conflict(ResourceRef? Resource, string ReasonCode) : Error
     {
         /// <inheritdoc />

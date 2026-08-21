@@ -5,10 +5,16 @@ using System.Collections.Immutable;
 /// <summary>
 /// Describes a global or multi-field business-rule failure attached to a
 /// <see cref="Error.InvalidInput"/>. Use this for invariant violations that are
-/// not bound to a single field (e.g. <c>"order_must_have_items"</c>,
-/// <c>"passwords_must_match"</c>, <c>"cancel_after_ship"</c>).
+/// not bound to a single field (e.g. <c>"order.must-have-items"</c>,
+/// <c>"password.mismatch"</c>, <c>"order.cancel-after-ship"</c>).
 /// </summary>
-/// <param name="ReasonCode">Stable machine-readable code identifying the rule.</param>
+/// <param name="ReasonCode">
+/// Stable machine-readable code identifying the rule. The framework's own cross-field rules
+/// use the <c>fields.*</c> namespace of <see cref="ValidationCodes"/> (e.g.
+/// <see cref="ValidationCodes.FieldsMutuallyExclusive"/>); an application-specific rule code
+/// should follow the same convention — lower-case, dot-separated namespaces with
+/// <c>kebab-case</c> inside a segment.
+/// </param>
 /// <param name="Fields">
 /// Optional pointers to fields involved in the rule (used to highlight related inputs
 /// in a UI when no single field carries the violation).

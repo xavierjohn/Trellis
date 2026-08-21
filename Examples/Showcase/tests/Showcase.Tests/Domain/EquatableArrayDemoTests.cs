@@ -13,10 +13,10 @@ public class EquatableArrayDemoTests
     public void Two_InvalidInput_with_same_field_violations_are_equal()
     {
         var a = new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"), "validation.required") { Detail = "Email is required" }));
+            new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.ValueNotEmpty) { Detail = "Email is required" }));
 
         var b = new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"), "validation.required") { Detail = "Email is required" }));
+            new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.ValueNotEmpty) { Detail = "Email is required" }));
 
         a.Should().Be(b);
         a.GetHashCode().Should().Be(b.GetHashCode());
@@ -26,10 +26,10 @@ public class EquatableArrayDemoTests
     public void Differing_field_violations_break_equality()
     {
         var a = new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("email"), "validation.required")));
+            new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.ValueNotEmpty)));
 
         var b = new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty("name"), "validation.required")));
+            new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.ValueNotEmpty)));
 
         a.Should().NotBe(b);
     }

@@ -25,7 +25,7 @@ public sealed class InMemoryIdentityVerifier : IIdentityVerifier
         {
             return Task.FromResult(Result.Fail(Error.InvalidInput.ForField(
                 "verificationCode",
-                "validation.format",
+                ValidationCodes.StringPattern,
                 "Verification code must be exactly six digits.")));
         }
 

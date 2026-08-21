@@ -26,7 +26,7 @@ public sealed class Order : Aggregate<OrderId>
     public Result<Order> Replace(ReplaceOrderRequest request) =>
         Result.Ensure(
                 !string.IsNullOrWhiteSpace(request?.CustomerReference),
-                Error.InvalidInput.ForField("customerReference", "required"))
+                Error.InvalidInput.ForField("customerReference", ValidationCodes.ValueNotEmpty))
             .Tap(() => CustomerReference = request!.CustomerReference)
             .Map(_ => this);
 }

@@ -8,8 +8,11 @@ using System.Collections.Immutable;
 /// </summary>
 /// <param name="Field">JSON Pointer locating the offending field.</param>
 /// <param name="ReasonCode">
-/// Stable machine-readable code identifying the rule that was violated
-/// (e.g. <c>"required"</c>, <c>"length_out_of_range"</c>, <c>"invalid_format"</c>).
+/// Stable machine-readable code identifying the rule that was violated. Prefer a
+/// <see cref="ValidationCodes"/> constant (e.g. <see cref="ValidationCodes.ValueNotNull"/>,
+/// <see cref="ValidationCodes.StringLength"/>, <see cref="ValidationCodes.StringPattern"/>);
+/// an application-specific code should follow the same convention — lower-case,
+/// dot-separated namespaces with <c>kebab-case</c> inside a segment.
 /// </param>
 /// <param name="Args">
 /// Optional structured arguments for the renderer (e.g. <c>{ "min": "3", "max": "50" }</c>

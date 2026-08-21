@@ -74,9 +74,9 @@ public async Task<Result<OrderResponse>> Handle(CreateDraftOrderCommand cmd, Can
 {
     // 1. Sync precondition — produces a Result<Unit>, chains synchronously.
     var preconditions = Result.Ensure(cmd.LineItems.Count > 0,
-                            Error.InvalidInput.ForField("lineItems", "required", "..."))
+                            Error.InvalidInput.ForField("lineItems", ValidationCodes.ValueNotEmpty, "..."))
                         .Bind(_ => Result.Ensure(!cmd.HasDuplicates,
-                            Error.InvalidInput.ForField("lineItems", "duplicate_product", "...")));
+                            Error.InvalidInput.ForField("lineItems", "line-items.duplicate-product", "...")));
 
     if (preconditions.IsFailure) return Result.Fail<OrderResponse>(preconditions.Error);
 
@@ -532,7 +532,7 @@ Closed discriminated union of domain error values. Each case is a nested `sealed
 
 Construct cases directly: `new Error.NotFound(payload) { Detail = "..." }`. The base `Error` type intentionally exposes no static `Error.Validation(...)` / `Error.NotFound(...)` helpers — every call site names the case it produces. <!-- v1-stale-ok: explanatory note about removed v1 factory helpers --> For the common single-payload shapes, the resource-bearing cases (`NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`) and `InvalidInput` expose **case-scoped** convenience factories (e.g. `Error.NotFound.For<Order>(id, detail)`) that bundle the typed payload and an optional trailing `detail` argument while still naming the case — see each case row below.
 
-> **Why only some cases have factories.** The case-scoped factories exist to remove the one piece of construction ceremony these cases share: wrapping an id into a `ResourceRef` (and, for `InvalidInput`, a field into an `InputPointer`). So **every case that carries a `ResourceRef` provides a `For<TResource>(...)` factory** — `NotFound`, `Gone`, `Conflict`, `Forbidden`, and `InvariantViolation`. The exact companions vary with each case's shape: the resource-subject cases (`NotFound`, `Gone`, `Conflict`, `InvariantViolation`) also expose a `For(type, …)` overload that names the resource type as a string; cases whose resource is *optional* add a resourceless companion (`Conflict.ForReason` / `InvariantViolation.ForReason` / `Forbidden.ForPolicy`); `Forbidden` leads with its `policyId` (`For<TResource>(policyId, id)` / `ForPolicy`) rather than a `For(type, …)` overload. The remaining single-error cases (`AuthenticationRequired`, `RateLimited`, `Unavailable`, `Unexpected`, `TransportFault`) carry no resource, so their primary constructors are already minimal (e.g. `new Error.Unexpected("db_timeout")`) and deliberately have no factory — the constructor *is* the idiomatic path. (`Aggregate` is the composition case — a collection of errors built from its own multi-error constructor, not a single-payload shape.) This is the rule that makes the surface consistent: factory ⇔ resource ceremony, not factory-on-everything.
+> **Why only some cases have factories.** The case-scoped factories exist to remove the one piece of construction ceremony these cases share: wrapping an id into a `ResourceRef` (and, for `InvalidInput`, a field into an `InputPointer`). So **every case that carries a `ResourceRef` provides a `For<TResource>(...)` factory** — `NotFound`, `Gone`, `Conflict`, `Forbidden`, and `InvariantViolation`. The exact companions vary with each case's shape: the resource-subject cases (`NotFound`, `Gone`, `Conflict`, `InvariantViolation`) also expose a `For(type, …)` overload that names the resource type as a string; cases whose resource is *optional* add a resourceless companion (`Conflict.ForReason` / `InvariantViolation.ForReason` / `Forbidden.ForPolicy`); `Forbidden` leads with its `policyId` (`For<TResource>(policyId, id)` / `ForPolicy`) rather than a `For(type, …)` overload. The remaining single-error cases (`AuthenticationRequired`, `RateLimited`, `Unavailable`, `Unexpected`, `TransportFault`) carry no resource, so their primary constructors are already minimal (e.g. `new Error.Unexpected("db.timeout")`) and deliberately have no factory — the constructor *is* the idiomatic path. (`Aggregate` is the composition case — a collection of errors built from its own multi-error constructor, not a single-payload shape.) This is the rule that makes the surface consistent: factory ⇔ resource ceremony, not factory-on-everything.
 
 ---
 
@@ -1209,11 +1209,11 @@ Predicate-based validation. `Ensure` short-circuits on the first failed predicat
 ```csharp
 Result<Quote> Validate(Quote q) =>
     Result.Ok(q).EnsureAll(
-        (x => x.Total > 0,            Error.InvalidInput.ForField("total", "must_be_positive")),
-        (x => x.Currency.Length == 3, Error.InvalidInput.ForField("currency", "iso4217")));
+        (x => x.Total > 0,            Error.InvalidInput.ForField("total", ValidationCodes.ValueGreaterThan)),
+        (x => x.Currency.Length == 3, Error.InvalidInput.ForField("currency", ValidationCodes.StringCurrencyCode)));
 
 Result<string> NotBlank(string? raw) =>
-    raw.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(InputPointer.Root, "blank"));
+    raw.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(InputPointer.Root, ValidationCodes.ValueNotEmpty));
 ```
 
 #### Check / CheckIf families — `CheckExtensions`, `CheckExtensionsAsync`, `CheckIfExtensions`, `CheckIfExtensionsAsync`
@@ -1683,7 +1683,7 @@ public async Task<Result<Page<OrderListItem>>> Handle(ListOrdersQuery query, Can
 using Trellis;
 
 Result<int> Divide(int left, int right) =>
-    Result.Ensure(right != 0, Error.InvalidInput.ForRule("right_must_not_be_zero", "Right operand must not be zero"))
+    Result.Ensure(right != 0, Error.InvalidInput.ForRule("divisor.must-not-be-zero", "Right operand must not be zero"))
         .Map(_ => left / right);
 ```
 
@@ -1695,7 +1695,7 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe.From("user@example.com");
 
 Result<string> emailResult = maybeEmail.ToResult(
-    Error.InvalidInput.ForField("email", "required", "Email is required"));
+    Error.InvalidInput.ForField("email", ValidationCodes.ValueNotNull, "Email is required"));
 ```
 
 ### Reading errors without throwing
