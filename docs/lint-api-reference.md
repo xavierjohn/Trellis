@@ -82,13 +82,13 @@ If a package packs payload with no copy logic reachable, `_WarnTrellisApiReferen
 
 ## TRLDOC005 — documented symbols must exist
 
-TRLDOC005 and TRLDOC008 are **not** part of this script. Both are emitted by the `audit-completeness` tool, because they need to reflect over built assemblies rather than read Markdown, and they therefore run in the Build workflow after `dotnet build` rather than in the docs workflow. They check the doc↔API relationship in opposite directions, and both must hold: TRLDOC005 that every documented name is real, TRLDOC008 that every real name is documented.
+TRLDOC005, TRLDOC008 and TRLDOC014 are **not** part of this script. All three are emitted by the `audit-completeness` tool, because they need to reflect over built assemblies rather than read Markdown, and they therefore run in the Build workflow after `dotnet build` rather than in the docs workflow. The first two check the doc↔API relationship in opposite directions, and both must hold: TRLDOC005 that every documented name is real, TRLDOC008 that every real name is documented. TRLDOC014 then checks that fenced code attributes its members to the right *owner*.
 
 It is the reverse of the completeness audit. Completeness asks "is every public API documented?" and so can only start from symbols that exist; it is structurally blind to a confidently-documented type that was renamed or never existed. TRLDOC005 asks the opposite question — "does every API-shaped name in the docs resolve to a real symbol?" — which is the check that catches, for example, a doc telling readers to derive from a long-deleted `IRepositoryBase`.
 
 The rule scans backticked PascalCase identifiers and ignores things that are not API surface by construction: diagnostic IDs (`TRLS001`, `TRLSGEN102`), generic type parameters (`TSelf`, `TAggregate`), all-caps words (`WHERE`, `DELETE`), and `Xxx` placeholders. Anything left over must either resolve against a loaded assembly or be listed in `audit-completeness/doc-only-symbols.txt`.
 
-**Every dotted segment is checked, not just the head.** A reference like `` `TrellisAspOptions.ErrorStatusCodeMap` `` must resolve on *both* names. Checking only the type would let a real type vouch for a member that no longer exists — and the member name is the part a reader actually types. The known-symbol set contains member names alongside type and namespace names, so a segment resolves if anything in the loaded assemblies declares it. That is deliberately loose: the gate answers "does this name exist anywhere?", not "does this member exist *on that type*". It catches deleted and misspelled members, not members attributed to the wrong owner.
+**Every dotted segment is checked, not just the head.** A reference like `` `TrellisAspOptions.ErrorStatusCodeMap` `` must resolve on *both* names. Checking only the type would let a real type vouch for a member that no longer exists — and the member name is the part a reader actually types. The known-symbol set contains member names alongside type and namespace names, so a segment resolves if anything in the loaded assemblies declares it. That is deliberately loose: the gate answers "does this name exist anywhere?", not "does this member exist *on that type*". It catches deleted and misspelled members, not members attributed to the wrong owner — that second question is [TRLDOC014](#trldoc014--fenced-code-must-resolve-on-its-receiver)'s, and only inside C# fences, where the stricter answer is affordable.
 
 One capture limitation worth knowing: the pattern requires the backticked span to end at the identifier, so `` `Options.MapError` `` is checked but `` `Options.MapError<TError>(statusCode)` `` is not matched at all — the trailing call parentheses end the span. Prefer the bare form in tables and prose when you want the name gated.
 
@@ -117,6 +117,27 @@ Two consequences of the matching rule are worth knowing before chasing a report:
 - Matching is substring-based on the simple name. Describing a member conceptually ("the last-modified timestamp", "the delay in seconds") does not satisfy it; the doc has to name `LastModified` and `DelaySeconds`. This is the intended behaviour, since a name a reader cannot type is a name they cannot use.
 
 Static extension classes are a common source of hits, and the honest fix is usually not to name-drop the class but to give it its own `###` section. When `AddTrellisIdempotency` was documented under a generic `ServiceCollectionExtensions` heading rather than its real `IdempotencyServiceCollectionExtensions` owner, the gate was reporting a genuine accuracy defect, not a bookkeeping one.
+
+## TRLDOC014 — fenced code must resolve on its receiver
+
+TRLDOC014 is the third audit in the same tool. It reads the **C# fences** and, wherever the head of a dotted chain names a real type, requires the next segment to be a real member or nested type *of that type*.
+
+It exists because the other two gates share two blind spots, and a defect walked straight through both. While TRLS064 was being written, two anti-pattern snippets used `Error.Validation.ForField` and `ValidationCodes.NumberOutOfRange`; neither exists. TRLDOC005 passed them because it validates each dotted segment **independently** — some `Validation` and some `ForField` exist somewhere in the assemblies — and because it only reads **backticked prose**, never fence bodies. They were caught only because a probe project was compiled by hand. Fenced code is the most-copied content in the doc set, so it is the last place a made-up API should be able to hide.
+
+Resolution is deliberately restricted to the **head** of a chain, because only the head can be resolved without binding. An interior segment is usually a value rather than a type: in `order.Id.Value`, `Id` is a property that happens to share a type's simple name, and judging it against that type would report correct documentation as broken.
+
+Four rules keep the gate quiet on correct docs:
+
+- **Inline backticks are out of scope.** Prose shorthand like `DbSet.Include` or `Value.Length` names a member against the type the reader is thinking about rather than the type that declares it. That is legitimate writing. It also matters for accuracy: `trellis-api-core.md` deliberately cites the removed v1 factories `Error.Validation(...)` in its migration table, and a prose-scanning gate would demand that real history be deleted.
+- **String literals and comments are blanked** before matching, with the text replaced by spaces so line numbers survive. `"Subscriptions.Read"` is a permission name and `$"Corrupt User.FirstName in row {id}"` is prose, not member access.
+- **Types a document declares in its own fences shadow the assemblies.** An illustrative `public enum DocumentState` must not be judged against an unrelated runtime type that happens to share the name — without this the gate is loudest exactly where the documentation is self-contained and correct.
+- **Extension methods are indexed against the type they extend**, so `result.ToHttpResponse()` resolves even though `ToHttpResponse` is declared on an unrelated static class.
+
+What survives those rules is genuinely unresolvable without binding, and lives in `audit-completeness/doc-only-members.txt` in `Receiver.Member` form. There are two honest reasons to add an entry, both represented in the file: an inherited **property** whose name matches a type name (`HttpContext` inside a `ControllerBase`, `DbSet` inside a `RepositoryBase`), and an example type used in one fence but declared in another or left implicit. Entries are deliberately **receiver-qualified**. An earlier draft also honoured TRLDOC005's `doc-only-symbols.txt`, which lists bare member names; that quietly gutted the gate, because a bare `EnsureSuccess` on that list would excuse `Error.EnsureSuccess` — a real receiver paired with a non-member, which is exactly the shape TRLDOC014 exists to catch. The tool reports entries no doc references any more, on the same reasoning that keeps `doc-only-symbols.txt` honest: a stale exception suppresses a name long after the doc stopped using it.
+
+A receiver whose members cannot be listed at all — typically a type whose base type lives in an assembly that is not on the probe path — is dropped from the index for the whole run rather than judged against a partial member set. That is a deliberate false negative in favour of never failing a correct doc.
+
+Like TRLDOC013, the gate refuses to pass by checking nothing. It fails if the type index is empty, and fails if it extracted **zero** receiver-qualified accesses from the entire doc set — the state a broken fence marker or chain pattern would produce, and the one in which a silent green is most convincing and least deserved.
 
 ## Anchor slug rule
 

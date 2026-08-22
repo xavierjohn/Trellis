@@ -51,9 +51,9 @@ jobs:
     - name: Build
       run: dotnet build --no-restore -c Release
 
-    - name: API reference audits (TRLDOC005, TRLDOC008)
+    - name: API reference audits (TRLDOC005, TRLDOC008, TRLDOC014)
       # Reflects over the just-built assemblies to check the doc<->API relationship in both
-      # directions, and fails on either.
+      # directions, and fails on any of them.
       #   TRLDOC005 — every API-shaped name in the reference docs resolves to a real symbol.
       #     Catches a confidently-documented type that was renamed or never existed; the
       #     completeness direction cannot see those, because such a symbol has no counterpart
@@ -62,6 +62,11 @@ jobs:
       #     Catches new API shipping undocumented. These totals were printed but unenforced for
       #     a long time, which let 8 types and 33 members accumulate in a green build; the
       #     process exit code now covers both audits, not just TRLDOC005.
+      #   TRLDOC014 — every receiver-qualified member access in a C# fence resolves on the type
+      #     it is written against. TRLDOC005 validates each dotted segment independently and
+      #     only reads backticked prose, so Error.Validation.ForField passed it on the strength
+      #     of an unrelated Validation and a real ForField — inside a fence it never looked at
+      #     all. Fenced code is what readers copy, so it is held to binding-like resolution.
       run: |
         dotnet run -c Release --project docs/docfx_project/api_reference/audit-completeness/audit-completeness.csproj
       env:
