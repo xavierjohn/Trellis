@@ -137,7 +137,7 @@ public partial class TenantId : RequiredGuid<TenantId>;
 
 Three consequences are worth stating plainly, because each surprises someone:
 
-- **The framework vocabulary stays frozen and stays the default.** Overriding is not encouraged or discouraged; no analyzer pressures either choice. The freeze constrains *Trellis*, not your application — an application that overrides owns both ends of its own contract.
+- **The framework vocabulary stays frozen and stays the default.** Overriding is not encouraged or discouraged; no analyzer pressures either choice. The freeze constrains *Trellis*, not your application — an application that overrides owns both ends of its own contract. `TRLS064` does not narrow this: it never asks whether you *should* override, and a novel code of your own is silent. It reports only a `Code` that restates a frozen code verbatim (where the constant is the safer spelling of the same string) or one that claims a namespace the framework publishes a meaning for.
 - **`[Range].Code` collapses both directions.** One attribute produces two failures — below the minimum and above the maximum — and one `Code` renames both. When a client must tell them apart, keep the framework codes and use `ValidateAdditional` for the case that needs its own name.
 - **The four sign-convenience attributes share the range slot.** `[Positive]`, `[NonNegative]`, `[Negative]`, and `[NonPositive]` synthesize into the same range emission, so their `Code` overrides the same reason code `[Range]` would.
 

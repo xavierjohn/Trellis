@@ -375,4 +375,22 @@ public static class DiagnosticDescriptors
                      "error.unspecified sentinel, so a client receiving the failure has nothing to branch on. " +
                      "Chain WithErrorCode(\"...\") onto the rule to name it.",
         helpLinkUri: HelpLinkBase);
+
+    /// <summary>
+    /// TRLS064: A reason-code literal restates a frozen code or claims a framework namespace.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ReasonCodeVocabulary = new(
+        id: TrellisDiagnosticIds.ReasonCodeVocabulary,
+        title: "Reason code literal conflicts with the frozen vocabulary",
+        messageFormat: "Reason code \"{0}\" {1}",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "Trellis freezes the reason codes it emits itself and publishes a meaning for each namespace, " +
+                     "so a client may fall back on the prefix when it does not recognise a full code. This rule reports " +
+                     "a literal that restates one of those frozen codes, which should be emitted by its constant so a " +
+                     "typo fails the build rather than the wire, and a literal that claims a namespace the framework owns, " +
+                     "which makes an application failure read as a framework one. It does not check membership: the freeze " +
+                     "constrains Trellis, not the application, and an application is free to mint its own codes.",
+        helpLinkUri: HelpLinkBase);
 }

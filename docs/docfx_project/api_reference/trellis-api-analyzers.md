@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloadConflict, UnnamedValidateAdditionalFailure, MustWithoutErrorCode, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, MustWithoutErrorCodeAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058, TRLS062, TRLS063]
+types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloadConflict, UnnamedValidateAdditionalFailure, MustWithoutErrorCode, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, MustWithoutErrorCodeAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058, TRLS062, TRLS063, TRLS064, ReasonCodeVocabulary, ReasonCodeVocabularyAnalyzer, ReasonCodeVocabularyCodeFixProvider]
 version: v3
 last_verified: 2026-06-17
 audience: [llm]
@@ -104,6 +104,7 @@ In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuni
 | `TRLS061` | Error | Both `ValidateAdditional` overloads declared | Emitted by `RequiredPartialClassGenerator` when a value object declares both the three-argument `ValidateAdditional` and the four-argument overload that can set a reason code. The generator emits one defining declaration, so the other implementation would fail with a compiler error that names no Trellis concept. Keep one. |
 | `TRLS062` | Info | `ValidateAdditional` rejects without naming a reason | Emitted by `RequiredPartialClassGenerator` when a value object implements the three-argument `ValidateAdditional`. That overload can reject a value but has nowhere to put a reason, so the failure reaches the client as `error.unspecified` and there is nothing to branch on. Add a `ref string? errorCode` parameter and set it. Info by default because the three-argument form is legal and unchanged; raise it with `dotnet_diagnostic.TRLS062.severity` once your value objects name their failures. |
 | `TRLS063` | Info | `Must` rule has no `WithErrorCode` | Emitted by `MustWithoutErrorCodeAnalyzer` when a FluentValidation `Must`/`MustAsync` rule component carries no `WithErrorCode`. Every built-in validator has a name Trellis projects to a real reason code; `Must` and `MustAsync` report as `PredicateValidator`/`AsyncPredicateValidator`, which project to the `error.unspecified` sentinel. Chain `WithErrorCode("...")`. The analyzer walks only as far as the next rule component, so a code attached to a later `Must` does not count for an earlier one. |
+| `TRLS064` | Info | Reason-code literal conflicts with the frozen vocabulary | Emitted by `ReasonCodeVocabularyAnalyzer` when a string literal in a reason-code position restates a frozen framework code (use the `ValidationCodes`/`FaultCodes` constant — a code fix does this, with fix-all), claims the reserved `error.*` namespace, or claims a namespace the framework publishes a meaning for. Three positions are inspected: a `reasonCode` parameter on any Trellis method or constructor, FluentValidation's `WithErrorCode(...)`, and `Code` on the Trellis primitive attributes. It does **not** check membership: an application code such as `order.cancel-after-ship` is legitimate and stays silent. |
 
 ## Constants — `TrellisDiagnosticIds`
 
@@ -115,7 +116,7 @@ The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzer
 public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
-Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS062`), the LINQ-analyzer IDs (`TRLS054`–`TRLS055`), and `TRLS063` are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
+Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS062`), the LINQ-analyzer IDs (`TRLS054`–`TRLS055`), and `TRLS063`–`TRLS064` are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
 
 ### Constant → diagnostic ID → emitter
 
@@ -164,6 +165,7 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `ValidateAdditionalOverloadConflict` | `TRLS061` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `UnnamedValidateAdditionalFailure` | `TRLS062` | `RequiredPartialClassGenerator` (Trellis.Core.Generator) |
 | `MustWithoutErrorCode` | `TRLS063` | `MustWithoutErrorCodeAnalyzer` |
+| `ReasonCodeVocabulary` | `TRLS064` | `ReasonCodeVocabularyAnalyzer` |
 
 ## Descriptors — `DiagnosticDescriptors`
 
@@ -195,6 +197,7 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 | `MaybeEqualsInQueryable` | `TRLS054` | Warning |
 | `NonInlineHasValueWhereInQueryable` | `TRLS055` | Warning |
 | `MustWithoutErrorCode` | `TRLS063` | Info |
+| `ReasonCodeVocabulary` | `TRLS064` | Info |
 
 > **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
@@ -450,6 +453,29 @@ When the guarded statements end the method with a `return`, the wrapped code no 
 - Default severity is Info, not Warning: an uncoded `Must` is legal and pre-existing code is full of them. Raise it with `dotnet_diagnostic.TRLS063.severity = warning` once a codebase has caught up.
 - No code fix — only the author knows what the rule's failure should be called, and a placeholder code on the wire is worse than the sentinel because it looks deliberate.
 
+#### `ReasonCodeVocabularyAnalyzer` — `TRLS064`
+- Activates only when the compilation can see `Trellis.ValidationCodes`. The frozen vocabulary is read **out of the compilation** — the analyzer enumerates the `public const string` fields on `ValidationCodes` and `FaultCodes` rather than carrying a table of its own, so a code added to the vocabulary is covered the day it is added. A hard-coded copy would be a second source of truth, and duplicated reason codes drifting is the problem this rule exists to catch.
+- Matches an argument by **parameter or property name**, never by a list of members. Three positions carry a reason code to the wire, and all three are inspected:
+
+  | Position | Matched by | Note |
+  | --- | --- | --- |
+  | Any Trellis method or constructor | a parameter named `reasonCode`, compared case-insensitively | Covers all eleven `ForField`/`ForRule`/`ForReason`/`For` overloads regardless of arity or argument position, plus positional records (`FieldViolation.ReasonCode`, `RuleViolation.ReasonCode`), plus the twelfth overload the day it is added |
+  | FluentValidation `WithErrorCode(...)` | the method name plus its declaring namespace | Its argument becomes a Trellis reason code verbatim through `Trellis.FluentValidation`'s projection. The namespace is required so an unrelated API of the same method name is not analyzed; an application's own `WithErrorCode` declared in `namespace FluentValidation` *is* matched, because whatever wraps it, the argument is still an error code. FluentValidation's **test-helper** overload of the same name is excluded, because it names its parameter `expectedErrorCode` rather than `errorCode` |
+  | `Code` on a Trellis primitive attribute | the property name, on a Trellis-declared attribute | `[StringLength]`, `[Range]`, `[NotDefault]` and the sign-convenience attributes. A `Code` property on a non-Trellis attribute is ignored |
+
+- Reports three things, all Info:
+
+  | Shape | Message | Fixable |
+  | --- | --- | --- |
+  | Literal equals a frozen code (`"value.not-null"`) | Names the constant to use | Yes — replaces with `ValidationCodes.ValueNotNull`, with fix-all |
+  | Literal is the pre-vocabulary placeholder (`"validation.error"`) | Says to emit a real code | No — the guidance is not "use the constant" but "do not emit this" |
+  | Literal claims `error.*`, or a namespace the framework publishes (`value.*`, `format.*`, `page-size.*`, …) | Names the namespace and why it misleads | No — only the author knows where the code belongs |
+
+- **It does not check membership.** The freeze [constrains Trellis, not the application](trellis-api-core.md#validationcodes--the-reason-code-vocabulary), and [trellis-api-primitives.md](trellis-api-primitives.md#overriding-the-reason-code--code) promises that no analyzer pressures the choice to override or keep a framework code. A novel, well-formed application code such as `order.cancel-after-ship` — or a bare `required` — is silent. What is reported is narrower: restating a code that already has a constant, or claiming a namespace whose meaning Trellis has published, which makes an application failure read as a framework one to a client using the documented prefix fallback.
+- The `validation.*` namespace is **not** reserved against applications, even though `validation.error` itself is reported. That namespace is a pre-vocabulary artifact rather than one the framework gave a meaning to.
+- **Assertions are not reported.** Because the match requires the parameter to be named `reasonCode` or `errorCode`, a test asserting a literal wire value — `ShouldHaveValidationErrorFor(...).WithErrorCode("value.not-null")`, whose parameter is `expectedErrorCode` — stays silent. That is deliberate: pinning the exact published string in a test is what catches a renamed constant, and a test that compares the constant to itself stays green through precisely that break.
+- **Only literal syntax is reported.** A constant reference carries a constant *value* too, so testing the value alone would flag `ForField(f, ValidationCodes.ValueNotNull)` — precisely the shape this rule tells authors to write. The consequence is that a code reached through an application's own `const string` indirection is invisible here; that is the accepted trade, not an oversight.
+
 ## Code fix providers
 
 | Code fix provider | Fixes | Behavior |
@@ -458,6 +484,7 @@ When the guarded statements end the method with a `return`, the wrapped code no 
 | `UseBindInsteadOfMapCodeFixProvider` | `TRLS002` | Replaces `Map` with `Bind` and `MapAsync` with `BindAsync`. |
 | `UseAsyncMethodVariantCodeFixProvider` | `TRLS009` | Replaces sync method names with async variants, awaits the rewritten call, and adds `async` to Task/ValueTask-returning methods when that is locally safe. It withholds the fix for chained/nested calls and scopes that require manual delegate, parameter, or return-flow changes. |
 | `UseSaveChangesResultCodeFixProvider` | `TRLS015` | Replaces `SaveChangesAsync` / `SaveChanges` with `SaveChangesResultAsync` or `SaveChangesResultUnitAsync`, adds `await`/`async` for sync `SaveChanges`, and adds `using Trellis.EntityFrameworkCore;` when needed. When the returned row count is *used*, the fix is offered only where the consuming context can rebind to `Result<int>` — an implicitly-typed (`var`) local. It is withheld for explicit `int` locals, assignments, conditions, arguments, and `return` statements, because the mechanical rename would produce `CS0029`/`CS0019`; restructure those call sites into the railway by hand. |
+| `ReasonCodeVocabularyCodeFixProvider` | `TRLS064` | Replaces a literal that restates a frozen code with its constant — `"value.not-null"` becomes `ValidationCodes.ValueNotNull`. Fix-all is supported, because the motivating case is one literal repeated across dozens of call sites. Only that shape is fixed: the analyzer attaches the constant to the diagnostic, and a namespace-squatting diagnostic carries none, so no fix is offered where no mechanical replacement exists. |
 | `CreatedAtRouteMissingApiVersionCodeFixProvider` | `TRLS023` | Appends `.WithVersionedRoute()` to the flagged `CreatedAtRoute(...)`, `CreatedAtAction(...)`, or `WithLocation(...)` call (so the chain becomes `<original>.WithVersionedRoute()`) and inserts `using Trellis.Asp.ApiVersioning;` in the same scope as existing usings (file-scoped namespace, block-scoped namespace, or top-level) when missing. |
 
 ## Compilable examples
