@@ -27,3 +27,4 @@ TRLS023  | Trellis  | Warning  | CreatedAtRoute, CreatedAtAction, or WithLocatio
 TRLS054  | Trellis  | Warning  | Maybe<T>.Equals or object.Equals over Maybe<T> inside an IQueryable expression is not translatable; use == or != instead.
 TRLS055  | Trellis  | Warning  | HasValueWhere inside an IQueryable expression requires an inline lambda predicate.
 TRLS063  | Trellis  | Info     | FluentValidation Must/MustAsync rule has no WithErrorCode; its failure maps to error.unspecified.
+TRLS064  | Trellis  | Info     | Reason-code literal restates a frozen framework code, or claims a namespace the framework owns.

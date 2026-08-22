@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063, TRLS064]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-08-18
@@ -550,6 +550,56 @@ RuleFor(x => x.Name)
 > Severity: Info, because uncoded `Must` rules are legal and existing validators are full of them. Raise it with `dotnet_diagnostic.TRLS063.severity = warning` once a codebase has caught up. There is deliberately no code fix: only the author knows what the rule's failure should be called, and a placeholder code looks deliberate on the wire in a way the sentinel does not.
 
 The analyzer reports only where it can prove no code applies. It stays silent when the rule's value escapes the statement (`var rule = RuleFor(...).Must(...);`), when the chain calls `Configure(...)` — which can set `ErrorCode` directly — or when it passes through any helper your application declared, including one placed in `namespace FluentValidation`, since such a helper may itself wrap `WithErrorCode`. Those shapes may well be uncoded, but a false accusation against an author who did the right thing costs more than a miss on a shape this rule flags everywhere else.
+
+## TRLS064 — reason-code literal that collides with the frozen vocabulary
+
+Trellis freezes a small set of reason codes and dispatches on their exact wire spelling. Restating one as a literal works right up until the day it doesn't: a typo in a literal is a silent wire break, whereas a typo in a constant name does not compile.
+
+```csharp
+// WRONG — the literal is unchecked, and there are usually dozens of it
+Error.InvalidInput.ForField("email", "value.not-null");        // TRLS064
+Error.InvalidInput.ForField("name", "string.max-length");      // TRLS064
+
+// FIX — the constant is the same string, checked by the compiler
+Error.InvalidInput.ForField("email", ValidationCodes.ValueNotNull);
+Error.InvalidInput.ForField("name", ValidationCodes.StringMaxLength);
+```
+
+A code fix applies this, and because the motivating case is one literal repeated across a codebase, fix-all is supported.
+
+The other two shapes claim a name that is not yours to claim. `error.*` is reserved for the single `error.unspecified` sentinel — a second member there makes the fallback lossy, because a client that sees `error.` can no longer read it as "this failure was never named". And a first segment the framework publishes a meaning for makes an application failure read as a framework one to any client using the documented prefix fallback:
+
+```csharp
+// WRONG — squats a reserved or framework-owned namespace
+Error.InvalidInput.ForField("token", "error.expired");         // TRLS064
+Error.InvalidInput.ForField("total", "money.over-budget");     // TRLS064
+
+// FIX — name it in your own domain's terms
+Error.InvalidInput.ForField("token", "session.expired");
+Error.InvalidInput.ForField("total", "budget.exceeded");
+```
+
+The same three findings apply wherever a reason code is written, not only to a `reasonCode` argument. FluentValidation's `WithErrorCode` and the `Code` property on the Trellis primitive attributes both reach the wire the same way:
+
+```csharp
+// WRONG
+RuleFor(x => x.Name).NotEmpty().WithErrorCode("value.not-empty");   // TRLS064 — restates a frozen code
+RuleFor(x => x.Age).Must(BeAdult).WithErrorCode("value.too-young"); // TRLS064 — squats value.*
+
+[StringLength(50, Code = "string.max-length")]                      // TRLS064 — restates a frozen code
+public partial class DisplayName : RequiredString<DisplayName>;
+
+// FIX
+RuleFor(x => x.Name).NotEmpty().WithErrorCode(ValidationCodes.ValueNotEmpty);
+RuleFor(x => x.Age).Must(BeAdult).WithErrorCode("customer.under-age");
+
+[StringLength(50, Code = ValidationCodes.StringMaxLength)]
+public partial class DisplayName : RequiredString<DisplayName>;
+```
+
+Setting `Code` to a name of your own is the documented reason the property exists, so `[NotDefault(Code = "tenant.id.missing")]` is silent — as it should be.
+
+> Severity: Info. **This rule does not check vocabulary membership**, and that boundary is deliberate: the freeze constrains Trellis, not your application, and `trellis-api-primitives.md` promises that no analyzer pressures the choice to override a framework code or keep it. A novel, well-formed code of your own — `order.cancel-after-ship`, or a bare `required` — is silent, including where it is a synonym for a code Trellis also has. Only restating a frozen code, or claiming a namespace whose meaning Trellis has published, is reported. Note also that only *literals* are reported: `ValidationCodes.ValueNotNull` is the recommended shape, so matching on constant value rather than syntax would flag the fix itself.
 
 ## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. `Result.FailAfterCommit<TValue>(error)` is a **leaf** worker-handler operation: it converts a single aggregate's transient external rejection into a persisted `permanently_failed` state and returns. Threading that result through `Combine` / `TraverseAll` / `SequenceAll` / `WhenAllAsync` OR-accumulates the `PersistOnFailure` flag onto the aggregated failure — `TransactionalCommandBehavior` then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an Info diagnostic that keeps reason codes off the wire by accident
+
+`ValidationCodes` and `FaultCodes` freeze a small set of reason codes, and Trellis dispatches on their exact wire
+spelling — so the reference has always said to emit them by constant, because a typo in a literal is a silent wire
+break while a typo in a constant name does not compile. Nothing enforced it.
+
+**`TRLS064`** (`ReasonCodeVocabularyAnalyzer`, `Trellis.Analyzers`) reports a string literal in a reason-code
+position that restates a frozen code, claims the reserved `error.*` namespace, or claims a namespace the framework
+publishes a meaning for. `ReasonCodeVocabularyCodeFixProvider` rewrites the first shape to its constant, with
+fix-all, because the motivating case is one literal repeated across dozens of call sites.
+
+Three positions carry a reason code and all three are inspected: a `reasonCode` parameter on any Trellis method or
+constructor, FluentValidation's `WithErrorCode(...)`, and `Code` on the Trellis primitive attributes. It reads the
+vocabulary out of the compilation rather than carrying its own copy, so a code added to the frozen set is covered
+the day it is added — and it matches by parameter or property *name* rather than by a list of members, so it covers
+all eleven `ForField`/`ForRule`/`ForReason`/`For` overloads regardless of arity or argument position, plus the
+twelfth the day it is added.
+
+**It deliberately does not check vocabulary membership.** The freeze constrains Trellis, not your application, and
+`trellis-api-primitives.md` promises that no analyzer pressures the choice to override a framework code or keep it.
+A novel, well-formed code of your own — `order.cancel-after-ship`, or a bare `required` — is silent, including where
+it is a synonym for a code Trellis also has. Only *literals* are reported: `ValidationCodes.ValueNotNull` is the
+recommended shape, so matching on constant value rather than syntax would flag the fix itself.
+
+WRONG/FIX shapes: [`trellis-api-anti-patterns.md` → TRLS064](docs/docfx_project/api_reference/trellis-api-anti-patterns.md#trls064--reason-code-literal-that-collides-with-the-frozen-vocabulary).
+
 ### Added — validation failures now say which part of the request they came from
 
 A violation raised in the domain names the field that failed but cannot know where the value arrived from, so it

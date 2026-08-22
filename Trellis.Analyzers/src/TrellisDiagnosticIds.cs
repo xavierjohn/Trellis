@@ -14,7 +14,7 @@
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges, plus the single ID <c>TRLS063</c>, are emitted by the
+/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges, plus the IDs <c>TRLS063</c> and <c>TRLS064</c>, are emitted by the
 /// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c>, <c>TRLS056</c>–<c>TRLS058</c> and <c>TRLS060</c>–<c>TRLS062</c>
 /// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
@@ -173,4 +173,7 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS063 — a FluentValidation <c>Must</c>/<c>MustAsync</c> rule has no <c>WithErrorCode</c>, so its failure projects to the <c>error.unspecified</c> sentinel.</summary>
     public const string MustWithoutErrorCode = "TRLS063";
+
+    /// <summary>TRLS064 — a reason-code string literal restates a frozen framework code, or claims a namespace the framework owns.</summary>
+    public const string ReasonCodeVocabulary = "TRLS064";
 }
