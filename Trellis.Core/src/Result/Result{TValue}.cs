@@ -116,9 +116,9 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
 
         if (IsFailure && _error is not null)
         {
-            // Code, not Code: this dimension is the one an operator filters on, so it has to
-            // spell a code the way the HTTP boundary does. The type keeps the case identifiable
-            // for the errors whose wire code is the sentinel.
+            // Code, not Kind: this dimension is the one an operator filters on, so it has to
+            // spell the reason the producer named rather than the case it fell into. The type
+            // keeps the case identifiable for the errors whose code is the sentinel.
             current.SetTag("result.error.code", _error.Code);
             current.SetTag("result.error.type", _error.GetType().Name);
         }

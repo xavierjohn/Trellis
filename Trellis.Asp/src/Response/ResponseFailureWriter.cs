@@ -137,7 +137,7 @@ internal static class ResponseFailureWriter
                     // `type` for those; RFC 9457 section 3.1.1 makes an absent `type` equivalent
                     // to "about:blank". Falling back to the kind slug here would put a bare
                     // non-URI token back in `type` -- the exact shape this projection removes.
-                    var childType = DefaultProblemTypeForStatus(childStatus);
+                    var childType = ProblemEnvelope.ProblemTypeForStatus(childStatus);
                     if (childType is not null)
                         childObject["type"] = childType;
 
@@ -514,31 +514,6 @@ internal static class ResponseFailureWriter
                 .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path), StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray(), StringComparer.Ordinal)
             : null;
-
-    /// <summary>
-    /// The <c>type</c> URI ASP.NET Core assigns a problem of this status by default, so an
-    /// aggregate child carries a proper RFC 9457 §3.1.1 URI reference rather than a bare kind
-    /// slug. Read from the framework rather than restated here, so the two cannot drift.
-    /// </summary>
-    /// <remarks>
-    /// This is the framework <em>default</em> for the status. An application that registers
-    /// <c>AddProblemDetails(o =&gt; o.CustomizeProblemDetails = ...)</c> can rewrite the root
-    /// problem's <c>type</c>, and that customization is deliberately not replayed per child:
-    /// <c>ProblemDetailsContext</c> describes the <em>response</em> (it carries the
-    /// <c>HttpContext</c>, the triggering exception, and endpoint metadata), so invoking it once
-    /// per nested child would stamp children with root-scoped values and let it overwrite each
-    /// child's own <c>Status</c> and <c>Instance</c>.
-    /// <para>
-    /// Caching by status alone is sound because the lookup takes no other input; it is bounded
-    /// because <c>ErrorStatusCodeResolver</c> only ever resolves a status in 100–599.
-    /// </para>
-    /// </remarks>
-    private static string? DefaultProblemTypeForStatus(int status) =>
-        _problemTypeByStatus.GetOrAdd(
-            status,
-            static s => (Microsoft.AspNetCore.Http.Results.Problem(statusCode: s) as ProblemHttpResult)?.ProblemDetails.Type);
-
-    private static readonly ConcurrentDictionary<int, string?> _problemTypeByStatus = new();
 
     private static Dictionary<string, object?> BuildExtensions(Error error, EquatableArray<RuleViolation> rules, string? wireKindOverride = null)
     {

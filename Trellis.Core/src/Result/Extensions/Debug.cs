@@ -122,7 +122,7 @@ public static class ResultDebugExtensions
             {
                 var error = result.Error;
                 activity.SetTag("debug.error.type", error.GetType().Name);
-                activity.SetTag("debug.error.kind", error.Kind);
+                activity.SetTag("debug.error.code", error.Code);
                 activity.SetTag("debug.error.detail", error.Detail);
                 activity.SetTag("debug.error.kind", error.Kind);
 
@@ -143,6 +143,7 @@ public static class ResultDebugExtensions
                     {
                         var err = aggregated.Errors[i];
                         activity.SetTag($"debug.error.aggregate[{i}].kind", err.Kind);
+                        activity.SetTag($"debug.error.aggregate[{i}].code", err.Code);
                         activity.SetTag($"debug.error.aggregate[{i}].detail", err.Detail);
                     }
                 }

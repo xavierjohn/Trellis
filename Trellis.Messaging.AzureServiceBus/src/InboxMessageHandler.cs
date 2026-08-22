@@ -51,9 +51,9 @@ internal sealed class InboxMessageHandler(
 
         if (!envelopeResult.TryGetValue(out var envelope, out var error))
         {
-            // Code, not Code: the dead-letter reason is what an operator filters the DLQ by, so
-            // it has to spell a code the way every other Trellis boundary does. Detail carries the
-            // human-readable half.
+            // Code, not Kind: the dead-letter reason is what an operator filters the DLQ by, so
+            // it has to spell the reason the producer named rather than the case it fell into.
+            // Detail carries the human-readable half.
             ServiceBusTransportLog.DeadLettered(logger, message.MessageId, error.Code, error.Detail);
 
             await settler.DeadLetterAsync(error.Code, error.Detail, cancellationToken).ConfigureAwait(false);

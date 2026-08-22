@@ -33,7 +33,7 @@ Storing the code once also removes the per-case `ReasonCode` property that a fir
 | `conflict.ReasonCode`, `invariant.ReasonCode`, `unexpected.ReasonCode` | `.Code` |
 | `new Error.Forbidden(PolicyId: p)` | `new Error.Forbidden(Code: p)` — reading `.PolicyId` is unchanged |
 
-Code that read `error.Code` expecting the kind slug — in a log line, an exception message, or a debug span tag — should read `error.Kind`, which is what it meant. Trellis's own diagnostic surfaces were updated accordingly: `UnwrapFailedException` and `Result<T>.ToString()` now name the kind, and the DEBUG-only `debug.error.code` span tag is now `debug.error.kind`. `Trellis.Core`'s `CompatibilitySuppressions.xml` returns to the repository covering the 17 intended removals above.
+Code that read `error.Code` expecting the kind slug — in a log line, an exception message, or a debug span tag — should read `error.Kind`, which is what it meant. Trellis's own diagnostic surfaces were updated accordingly: `UnwrapFailedException` and `Result<T>.ToString()` now name the kind, and the DEBUG-only `debug.error.code` span tag is now `debug.error.kind` on the terse `Debug` overloads, whose single error tag was always naming the case. `DebugDetailed` emits both: `debug.error.kind` for the case and `debug.error.code` for the reason the producer named. `Trellis.Core`'s `CompatibilitySuppressions.xml` returns to the repository covering the 17 intended removals above.
 
 ### Fixed — a 404 can now say what was not found, and why
 
@@ -59,8 +59,9 @@ the Showcase, posting an invalid `Money` returned a 422 with no `code` and no `k
 of the same value returned both — so a client could not branch on `kind` without first knowing which layer had
 answered, which is the one thing the envelope exists to spare it.
 
-All five emitters now derive their members from a single internal `ProblemEnvelope`, which cannot drift the way five
-independent call sites did. `AddTrellisProblemDetails()` closes the remaining gap by seeding the envelope on documents
+All five emitters now derive their members from a single internal `ProblemEnvelope`, which cannot drift the way five independent call sites did. `type` is resolved there too: `IdempotencyMiddleware` hand-wrote `"type": "about:blank"` while every other seam resolved the status URI, so a `422` from before routing described itself differently from an identical `422` from a handler. Both now call `ProblemEnvelope.ProblemTypeForStatus`, which omits `type` entirely for the statuses ASP.NET Core has no default for — RFC 9457 §3.1.1 makes an absent `type` equivalent to `about:blank`, whereas a kind slug would put a bare non-URI token in a member declared to be a URI reference.
+
+`AddTrellisProblemDetails()` closes the remaining gap by seeding the envelope on documents
 ASP.NET Core itself produced — the exception handler and status-code pages — without overwriting one a Trellis writer
 already supplied. Where an `Error` exists the envelope comes from the error, so a rejected value reports
 `kind: unprocessable-content` even under `MapError<Error.InvalidInput>(400)` — `kind` names what failed, and moving

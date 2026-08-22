@@ -222,8 +222,9 @@ public sealed class ResponseFailureWriterProblemObjectTests
     [Fact]
     public async Task Explicit_code_equal_to_its_own_kind_is_still_emitted_verbatim()
     {
-        // HasExplicitCode is a presence test, never a value comparison. A payload whose code
-        // happens to equal its kind is explicit and must survive.
+        // A code that happens to equal its own kind is still a code the producer named, and is
+        // emitted verbatim. Nothing compares the two — the emitter has no notion of a code being
+        // "redundant" with its kind.
         using var body = await WriteAsync(new Error.Conflict(null, "conflict"));
 
         body.RootElement.GetProperty("code").GetString().Should().Be("conflict");
@@ -244,7 +245,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
     /// </summary>
     [Theory]
     [MemberData(nameof(EveryCodeBearingCase))]
-    public async Task The_root_code_is_always_Error_WireCode(Error error)
+    public async Task The_root_code_is_always_Error_Code(Error error)
     {
         using var body = await WriteAsync(error);
 

@@ -128,6 +128,9 @@ public sealed class IdempotencyMiddlewareTests
         body.Should().Contain("idempotency.key_required");
         body.Should().Contain("\"kind\":\"bad-request\"",
             "every failure response carries a top-level kind, whichever layer wrote it");
+        body.Should().Contain("\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\"",
+            "type is the status URI the response writer would resolve, not a hard-coded about:blank; "
+            + "the same status must not describe itself two ways depending on which layer answered");
     }
 
     [Fact]
@@ -814,7 +817,10 @@ public sealed class IdempotencyMiddlewareTests
             problem.RootElement.GetProperty("status").GetInt32().Should().Be(409);
             problem.RootElement.GetProperty("code").GetString().Should().Be(
                 "idempotency.in_flight",
-                "the in-flight Problem Details document must carry idempotency.in_flight in the code field (the type field stays about:blank) so clients can branch on it");
+                "the in-flight Problem Details document must carry idempotency.in_flight in the code field so clients can branch on it, alongside the status URI for 409 in the type field");
+            problem.RootElement.GetProperty("type").GetString().Should().Be(
+                ProblemEnvelope.ProblemTypeForStatus(409),
+                "the in-flight document resolves type from the same helper as every other emitter");
 
             gate.SetResult();
             var firstResp = await firstTask;

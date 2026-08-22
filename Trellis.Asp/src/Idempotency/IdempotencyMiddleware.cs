@@ -266,7 +266,15 @@ public sealed partial class IdempotencyMiddleware
         using (var writer = new Utf8JsonWriter(stream))
         {
             writer.WriteStartObject();
-            writer.WriteString("type", "about:blank");
+
+            // The status URI the response writer would resolve for this status, not a hard-coded
+            // about:blank. A client cannot tell which layer answered, so the same status must not
+            // describe itself two ways. Omitted where the framework has no default, which RFC 9457
+            // section 3.1.1 makes equivalent to about:blank anyway.
+            var type = ProblemEnvelope.ProblemTypeForStatus(status);
+            if (type is not null)
+                writer.WriteString("type", type);
+
             writer.WriteString("title", title);
             writer.WriteNumber("status", status);
             writer.WriteString("detail", detail);

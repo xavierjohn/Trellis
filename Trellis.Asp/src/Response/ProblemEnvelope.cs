@@ -1,6 +1,9 @@
 ﻿namespace Trellis.Asp;
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Trellis;
 
 /// <summary>
@@ -64,6 +67,45 @@ internal static class ProblemEnvelope
         >= 500 => "internal-server-error",
         _ => "error",
     };
+
+    /// <summary>
+    /// The <c>type</c> URI ASP.NET Core assigns a problem of this status by default, or
+    /// <see langword="null"/> where the framework has none.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Read from the framework rather than restated here, so the two cannot drift. A seam that
+    /// hard-codes <c>about:blank</c> answers the same status differently from the writer that
+    /// resolves it, and a client cannot tell which layer replied — the drift this class exists
+    /// to remove, one member above the envelope.
+    /// </para>
+    /// <para>
+    /// A <see langword="null"/> result means <c>type</c> must be <em>omitted</em>. Several
+    /// statuses Trellis emits (429, 428, 451, 431, 423, 424) have no framework default;
+    /// RFC 9457 §3.1.1 makes an absent <c>type</c> equivalent to <c>about:blank</c>, whereas
+    /// writing a bare kind slug would put a non-URI token in a member declared to be a URI
+    /// reference.
+    /// </para>
+    /// <para>
+    /// This is the framework <em>default</em> for the status. An application that registers
+    /// <c>AddProblemDetails(o =&gt; o.CustomizeProblemDetails = ...)</c> can rewrite the root
+    /// problem's <c>type</c>, and that customization is deliberately not replayed here:
+    /// <c>ProblemDetailsContext</c> describes the <em>response</em> (it carries the
+    /// <c>HttpContext</c>, the triggering exception, and endpoint metadata), so invoking it once
+    /// per nested child would stamp children with root-scoped values and let it overwrite each
+    /// child's own <c>Status</c> and <c>Instance</c>.
+    /// </para>
+    /// <para>
+    /// Caching by status alone is sound because the lookup takes no other input; it is bounded
+    /// because <c>ErrorStatusCodeResolver</c> only ever resolves a status in 100–599.
+    /// </para>
+    /// </remarks>
+    public static string? ProblemTypeForStatus(int status) =>
+        _problemTypeByStatus.GetOrAdd(
+            status,
+            static s => (Results.Problem(statusCode: s) as ProblemHttpResult)?.ProblemDetails.Type);
+
+    private static readonly ConcurrentDictionary<int, string?> _problemTypeByStatus = new();
 
     /// <summary>Writes the envelope members into a Problem Details extension bag.</summary>
     public static void Apply(IDictionary<string, object?> extensions, string code, string kind)

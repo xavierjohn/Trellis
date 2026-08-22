@@ -13,11 +13,12 @@ using Xunit;
 public sealed class BoundViolationCollectorCodeTests
 {
     [Fact]
-    public void AddFrom_WholeError_RecordsTheWireCode_NotTheRawKind()
+    public void AddFrom_WholeError_RecordsTheCode_NotTheKind()
     {
         // This violation is published as fieldViolations[].code in problem+json, so it is an
-        // operator- and client-facing code and must obey the same rule as the root code. Recording
-        // error.Code here would republish the kind — "not-found" — which is not a member of the
+        // operator- and client-facing code and must obey the same rule as the root code: it spells
+        // the reason the producer named, never the case the error fell into. A NotFound that named
+        // no reason therefore records the sentinel — not "not-found", which is not a member of the
         // reason-code vocabulary at all, so a client matching on it would be matching a value the
         // vocabulary never promised.
         var context = new DefaultHttpContext();

@@ -282,6 +282,31 @@ public sealed class FailureEnvelopeParityTests
         problem.Extensions[presentMember].Should().Be(presentMember == "code" ? "account.frozen" : "unprocessable-content");
     }
 
+    // ----------------- `type` parity -----------------
+    //
+    // `type` sits directly above the envelope members and drifts the same way. A seam that
+    // hand-writes `about:blank` answers a 422 differently from the writer that resolves the
+    // status URI, and a client cannot tell which layer replied.
+
+    [Theory]
+    [InlineData(400, "https://tools.ietf.org/html/rfc9110#section-15.5.1")]
+    [InlineData(409, "https://tools.ietf.org/html/rfc9110#section-15.5.10")]
+    [InlineData(422, "https://tools.ietf.org/html/rfc4918#section-11.2")]
+    public void ProblemTypeForStatus_resolves_the_uri_the_response_writer_uses(int status, string expected) =>
+        ProblemEnvelope.ProblemTypeForStatus(status).Should().Be(expected);
+
+    /// <remarks>
+    /// Several statuses Trellis emits have no framework default. RFC 9457 §3.1.1 makes an absent
+    /// <c>type</c> equivalent to <c>about:blank</c>, so omitting it is correct; writing a bare
+    /// kind slug into a member declared to be a URI reference is not.
+    /// </remarks>
+    [Theory]
+    [InlineData(429)]
+    [InlineData(428)]
+    [InlineData(451)]
+    public void ProblemTypeForStatus_is_absent_where_the_framework_has_no_default(int status) =>
+        ProblemEnvelope.ProblemTypeForStatus(status).Should().BeNull();
+
     [Fact]
     public void ProblemDetailsCustomization_does_not_label_a_success_as_a_failure()
     {

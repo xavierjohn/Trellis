@@ -281,7 +281,7 @@ public sealed class BinderValidationStatusCodeTests
 
         root.TryGetProperty("type", out var typeEl).Should().BeTrue("RFC 9457 §3.1 type member must be present");
         var typeUri = typeEl.GetString();
-        typeUri.Should().NotBeNullOrEmpty("type defaults to about:blank but should never be missing");
+        typeUri.Should().NotBeNullOrEmpty("type is a URI reference — either the resolved status URI or ASP.NET Core's about:blank default — but must never be present-and-empty");
 
         if (expectedInstance is not null)
         {
