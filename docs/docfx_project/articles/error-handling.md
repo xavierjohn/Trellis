@@ -50,7 +50,7 @@ audience: [developer]
 Every case carries a strongly-typed payload, an init-only `Detail` property, and a structured (never `Exception`) `Cause` chain. Full per-case constructor signatures, payload notes, and the supporting types (`ResourceRef`, `InputPointer`, `FieldViolation`, `RuleViolation`, `RetryAdvice`, `ITransportFault`, `EquatableArray<T>`) live in [`trellis-api-core.md` → `Error`](../api_reference/trellis-api-core.md#public-abstract-record-error).
 
 > [!NOTE]
-> `Unexpected(code, faultId?)` covers both unhandled faults (set `FaultId` to correlate with telemetry) and internal invariant violations ("shouldn't happen"). The optional `FaultId` surfaces as a `faultId` problem-details extension at the ASP boundary when set. Use the `ReasonCode == FaultCodes.NotImplemented` convention if you need the boundary to map to HTTP 501; the default maps to 500.
+> `Unexpected(code, faultId?)` covers both unhandled faults (set `FaultId` to correlate with telemetry) and internal invariant violations ("shouldn't happen"). The optional `FaultId` surfaces as a `faultId` problem-details extension at the ASP boundary when set. Use the `Code == FaultCodes.NotImplemented` convention if you need the boundary to map to HTTP 501; the default maps to 500.
 
 ## Installation
 

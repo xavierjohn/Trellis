@@ -200,7 +200,7 @@ come to disagree about the spelling of "no reason available".
 
 **Behavior change.** The `error.code` span tag now reports `error.unspecified` for every case that carries no code of
 its own — `InvalidInput`, `NotFound`, `Gone`, `RateLimited`, `Aggregate`, a bare `TransportFault`, and
-`AuthenticationRequired` / `Unavailable` constructed without a `ReasonCode` — where it previously reported the kind.
+`AuthenticationRequired` / `Unavailable` constructed without a `Code` — where it previously reported the kind.
 Nothing is lost: the kind was always available on the `error.type` tag, and the two tags now answer two different
 questions. A dashboard grouping on `error.code` to distinguish those cases should group on `error.type` instead.
 

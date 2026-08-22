@@ -15,7 +15,7 @@ using System.Diagnostics;
 /// </para>
 /// <para>
 /// <c>default(Result&lt;T&gt;)</c> represents a <em>failure</em> carrying a sentinel
-/// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default-initialized"</c>. This makes
+/// <see cref="Trellis.Error.Unexpected"/> with <c>Code = "default-initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success that would hide a programming error.
 /// Always construct via <see cref="Result.Ok{T}(T)"/>, <see cref="Result.Fail{T}(Error)"/>, or
 /// <see cref="Result.FailAfterCommit{T}(Error)"/> (the persist-on-failure factory consumed by
