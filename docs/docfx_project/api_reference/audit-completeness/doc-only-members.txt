@@ -1,0 +1,20 @@
+﻿# Receiver-qualified member accesses (TRLDOC014) that are correct as written but cannot be
+# resolved without binding the snippet. One entry per line, in Receiver.Member form.
+#
+# TRLDOC014 resolves the head of a dotted chain in a C# fence against the type of the same
+# simple name. That is exact for static access (Error.InvalidInput, ValidationCodes.ValueNotNull)
+# but has two blind spots, and both are represented below. Add an entry only when the snippet is
+# genuinely correct; a name that is simply wrong belongs fixed in the doc, which is the whole
+# point of the gate.
+#
+# 1. An inherited PROPERTY whose name matches a type name. Inside a ControllerBase, HttpContext
+#    is the inherited property, not the type; inside a RepositoryBase, DbSet likewise. Only
+#    binding can tell these apart from static access on the type.
+HttpContext.PageUrl
+DbSet.Include
+#
+# 2. An example type used in a fence but declared in a different fence, or left implicit. Types
+#    declared in the same document already shadow the assemblies automatically, so these are the
+#    cases where the declaration is absent from the doc entirely.
+OrderLine.Reconstitute
+Settings.Defaults

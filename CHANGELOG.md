@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a documentation gate that makes fenced code name real members
+
+Two documentation audits already ran in CI, and a made-up API walked through both. While `TRLS064` was being
+written, two anti-pattern snippets used `Error.Validation.ForField` and `ValidationCodes.NumberOutOfRange`; neither
+exists. `TRLDOC005` passed them for two compounding reasons: it validates each dotted segment **independently**, so
+`Error.Validation` resolves on the strength of some unrelated `Validation` plus a real `ForField`, and it only reads
+**backticked prose** — it never looked inside the fence at all. They were caught by hand, by compiling a probe.
+
+**`TRLDOC014`** (`DocMemberAudit`, `audit-completeness`) reads the C# fences and requires that wherever the head of a
+dotted chain names a real type, the next segment is a real member or nested type *of that type*. Fenced code is the
+most-copied content in the doc set, which makes it the last place an invented API should be able to hide.
+
+Resolution stops at the head of a chain, because only the head can be resolved without binding: in `order.Id.Value`,
+`Id` is a property that merely shares a type's simple name. Four rules keep it silent on correct docs — inline
+backticks are out of scope (prose shorthand like `DbSet.Include` is legitimate, and `trellis-api-core.md`
+deliberately cites the removed v1 `Error.Validation(...)` factories in its migration table); string literals and
+comments are blanked before matching; types a document declares in its own fences shadow the assemblies; and
+extension methods are indexed against the type they extend. What remains genuinely needs binding and is listed in
+`audit-completeness/doc-only-members.txt`, which holds four entries — inherited properties whose names match a type
+(`HttpContext` inside a `ControllerBase`) and example types declared in another fence.
+
+Like `TRLDOC013`, it refuses to pass by checking nothing: an empty type index or **zero** extracted member accesses
+across the whole doc set is a failure, not a green build.
+
 ### Added — an Info diagnostic that keeps reason codes off the wire by accident
 
 `ValidationCodes` and `FaultCodes` freeze a small set of reason codes, and Trellis dispatches on their exact wire
