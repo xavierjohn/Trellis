@@ -159,7 +159,7 @@ Three scope decisions are worth stating, because each one is a place the gate co
 
 Entries are self-expiring. Once no loaded type declares a ledgered name at all, the gate reports the entry as stale and fails until it is removed — because at that point TRLDOC005 rejects every mention on the stronger ground that the name does not exist, and a leftover entry would only add noise. As with the other ledgers, the risk being managed is a suppression outliving the thing it was written for.
 
-Like TRLDOC013 and TRLDOC014, the gate refuses to pass by checking nothing: it fails if it scanned zero Markdown files or extracted zero inline code spans, and reports both counts on success. A ledger is worth exactly as much as the corpus it was matched against, and a miswired docs path would otherwise report the same green as a full clean run.
+Like TRLDOC013 and TRLDOC014, the gate refuses to pass by checking nothing: it fails if it scanned zero Markdown files or extracted zero inline code spans, and reports both counts on success. A ledger is worth exactly as much as the corpus it was matched against, and a miswired docs path would otherwise report the same green as a full clean run. A **missing** ledger fails for the same reason — renamed or moved, it would silently reduce the gate to a no-op. An **empty** one does not: entries self-expire, so removing the last one is a legitimate resting state, and failing there would force dead entries to be kept alive purely to keep the gate quiet.
 
 ## Anchor slug rule
 

@@ -37,11 +37,25 @@ internal static class DocAttributionAudit
 
     public static int Run(string docsDir, IEnumerable<string> assemblyPaths, MetadataLoadContext mlc)
     {
-        var ledger = LoadLedger(docsDir, out var ledgerPath);
+        var ledger = LoadLedger(docsDir, out var ledgerPath, out var ledgerExists);
 
         Console.WriteLine();
         Console.WriteLine("=== Member-attribution audit (bare names must name their receiver) ===");
 
+        // A missing ledger and an empty one are the same value but not the same event, and only
+        // one of them is benign. If the file is gone -- renamed, moved, lost to a path change --
+        // the gate would report the same green as a full clean run, which is the miswiring the
+        // vacuity guard below exists to refuse.
+        if (!ledgerExists)
+        {
+            Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"{ledgerPath}(1,1): error TRLDOC015: the ambiguous-member ledger is missing, so this gate would enforce nothing. Restore the file, or delete this audit deliberately if it is no longer wanted."));
+            return 1;
+        }
+
+        // An empty ledger, by contrast, is a legitimate resting state: entries self-expire, so
+        // removing the last one leaves genuinely nothing to enforce. Failing here would force
+        // dead entries to be kept alive purely to keep the gate quiet.
         if (ledger.Count == 0)
         {
             Console.WriteLine($"No entries in {Path.GetFileName(ledgerPath)}; nothing to enforce.");
@@ -242,11 +256,12 @@ internal static class DocAttributionAudit
         return tick < 0 ? name : name[..tick];
     }
 
-    private static HashSet<string> LoadLedger(string docsDir, out string ledgerPath)
+    private static HashSet<string> LoadLedger(string docsDir, out string ledgerPath, out bool ledgerExists)
     {
         ledgerPath = Path.Combine(docsDir, "audit-completeness", "ambiguous-members.txt");
+        ledgerExists = File.Exists(ledgerPath);
 
-        if (!File.Exists(ledgerPath))
+        if (!ledgerExists)
             return new HashSet<string>(StringComparer.Ordinal);
 
         return File.ReadAllLines(ledgerPath)
