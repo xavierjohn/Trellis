@@ -896,6 +896,76 @@ The cost is bounded by the consumer's choice; the framework does not gate it fur
 
 ---
 
+### `public static class ValidationMetrics`
+
+The `Meter` and instruments Trellis publishes for validation failures. Lives in `Trellis.Core\src\ValidationMetrics.cs`.
+
+#### What it is for
+
+Validation failures look like user error, and that label is why nobody watches them. Server-side validation is a **backstop**: when a client enforces the same rules before sending, this counter sits near zero, and that expected value is what makes it alertable. A rising count means client-side validation has drifted from the server's, a client broke against you, or you tightened a rule without noticing — your defect, arriving disguised as theirs. Alert on a *code's rate changing* rather than on absolute volume, and expect a non-zero floor when third parties call you.
+
+`validation.code` is what makes it actionable, and why an HTTP-status metric is not a substitute: a 4xx rate says something drifted, the code says **which rule** did. There is deliberately no field or route tag — both are unbounded — so detection lives in the metric and diagnosis in the trace, whose JSON pointer names the field.
+
+A second, narrower use is the framework's own: whether a reason code the framework can emit is ever actually emitted. A trace answers that only for sampled requests, so a zero-volume code is indistinguishable from one whose traces were all sampled away. A code that never fires may also be *shadowed* by an earlier check rather than unused.
+
+#### Fields
+
+| Signature | Notes |
+| --- | --- |
+| `public const string MeterName` | `"Trellis.Validation"` — the meter carrying Trellis validation instruments. |
+| `public const string FailuresInstrumentName` | `"trellis.validation.failures"` — a `Counter<long>` incremented once per violation, unit `{failure}`. |
+| `public const string OtherCode` | `"other"` — the `validation.code` tag value substituted for any code outside the framework vocabulary. |
+
+#### Tags
+
+| Tag | Values |
+| --- | --- |
+| `validation.code` | A `ValidationCodes` constant, or `other`. |
+| `validation.violation` | `field` or `rule`, matching `FieldViolation` and `RuleViolation`. |
+
+#### Where the count happens
+
+**A violation is counted where it is created:** the `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode` initializers.
+
+The counting site is the violation, not the `Error.InvalidInput` that carries it, and the distinction is load-bearing. The carrying failure is *rebuilt* during re-projection — `JsonValidationPathRebase` re-roots pointers by constructing a fresh `InvalidInput` from an existing one's violations, and the ASP validation context aggregates collected violations into a final one — so counting there would count a single rule firing two or three times. The violation is the atom: created once when a rule fires, only copied thereafter.
+
+Nor can the count live at a reporting boundary. A validation failure surfaces at the HTTP boundary, at the mediator pipeline, at both, or — in a worker — at neither, so no reporting site observes each failure exactly once. Coordinating between them fails on a language detail: an `AsyncLocal` assigned inside an awaited `Send` is **not** visible to the caller afterwards, because a callee's assignment does not flow back up.
+
+A `with`-expression does not recount. The synthesized copy constructor copies backing fields rather than re-running initializers, which is what makes re-projection free — the rebase path rewrites a pointer with `violation with { Field = ... }` and the count is unaffected.
+
+The consequence worth stating plainly: the counter measures rules firing, not responses sent. A violation created and then discarded is still counted.
+
+One case deserves calling out, because it looks like a miscount and is not. `Trellis.Http` maps an upstream `400` or `422` response into an `Error.InvalidInput` carrying `ValidationCodes.HttpBadRequest` or `ValidationCodes.HttpUnprocessableContent`, so a *client* process increments the counter for a failure a *server* produced. That is honest — the client really did construct that violation — and the two codes are distinct members of the vocabulary, so they never blur into the counts for locally-evaluated rules.
+
+A corollary for framework code: an `Error.InvalidInput` built only to key a lookup on its runtime type must carry no violations, or it records a failure that never happened. `ScalarValidationStatus` does exactly this, and constructs its shared probe as `new Error.InvalidInput(EquatableArray<FieldViolation>.Empty)`.
+
+#### Why unknown codes are bucketed
+
+An application code reaches the wire verbatim: `ValidationCodeProjection` passes through anything it does not reserve. Tagging those verbatim would let an application minting a code per entity or per tenant create an unbounded number of time series. Framework codes are a closed set and are the only ones the dead-rule question is about, so everything else folds into `OtherCode`. The total stays exact; only the breakdown is bucketed. The known set is read from the `ValidationCodes` constants themselves, so a newly added code is tagged under its own name with no second list to maintain.
+
+---
+
+### `public static class ValidationMeterProviderBuilderExtensions`
+
+OpenTelemetry helper for collecting Trellis validation metrics. Lives in `Trellis.Core\src\ValidationMeterProviderBuilderExtensions.cs`.
+
+#### Methods
+
+| Signature | Notes |
+| --- | --- |
+| `public static MeterProviderBuilder AddTrellisValidationInstrumentation(this MeterProviderBuilder builder)` | Subscribes the meter provider to `ValidationMetrics.MeterName` (`"Trellis.Validation"`), so validation counts are collected. Returns the same builder for chaining. Throws `ArgumentNullException` when `builder` is null. Equivalent to `AddMeter("Trellis.Validation")`. |
+
+> **This gap is silent.** Trellis counts violations as they are created, but a counter with no listener records nothing. Until this is called the instrument is inert, and nothing reports the omission — a metric that never appears reads exactly like a rule that never fires, which is the ambiguity the counter exists to remove.
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics
+        .AddTrellisValidationInstrumentation()
+        .AddOtlpExporter());
+```
+
+---
+
 ### `public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>`
 
 Wraps `ImmutableArray<T>` so records and other value-equal types get sequence equality. Built-in `record` equality compares arrays by reference; this wrapper restores element-wise comparison. A default-initialized `EquatableArray<T>` represents an empty sequence — two `default` values compare equal, and `Items` always returns `ImmutableArray<T>.Empty` instead of an uninitialized array.

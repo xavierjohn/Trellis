@@ -32,6 +32,15 @@ public sealed record RuleViolation(
     ImmutableDictionary<string, string>? Args = null,
     string? Detail = null)
 {
+    /// <summary>
+    /// Stable machine-readable code identifying the rule that was violated.
+    /// </summary>
+    /// <remarks>
+    /// The initializer is the counting site for <see cref="ValidationMetrics"/>, for the reasons
+    /// given on <see cref="FieldViolation.ReasonCode"/>.
+    /// </remarks>
+    public string ReasonCode { get; init; } = ValidationMetrics.Observe(ReasonCode, "rule");
+
     /// <inheritdoc />
     public bool Equals(RuleViolation? other)
     {

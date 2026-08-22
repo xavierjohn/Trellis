@@ -26,8 +26,11 @@ using Trellis;
 internal static class ScalarValidationStatus
 {
     // Only the runtime type (Error.InvalidInput) drives the status lookup; the reason code is
-    // irrelevant, so a single shared probe avoids a per-request allocation.
-    private static readonly Error s_invalidInputProbe = Error.InvalidInput.ForRule("binder.validation");
+    // irrelevant, so a single shared probe avoids a per-request allocation. The probe deliberately
+    // carries no violations: a violation's construction is the counting site for ValidationMetrics,
+    // so building this probe with ForRule would record a bogus validation failure at type-init time
+    // — nondeterministically, depending on whether a meter listener was attached first.
+    private static readonly Error s_invalidInputProbe = new Error.InvalidInput(EquatableArray<FieldViolation>.Empty);
 
     /// <summary>
     /// Resolves the configured HTTP status code for <see cref="Error.InvalidInput"/> (default

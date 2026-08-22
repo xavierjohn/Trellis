@@ -28,6 +28,18 @@ public sealed record FieldViolation(
     ImmutableDictionary<string, string>? Args = null,
     string? Detail = null)
 {
+    /// <summary>
+    /// Stable machine-readable code identifying the rule that was violated.
+    /// </summary>
+    /// <remarks>
+    /// The initializer is the counting site for <see cref="ValidationMetrics"/>. The violation is
+    /// the atom that is created once when a rule fires and only copied afterwards, which is why
+    /// the count lives here rather than on the carrying <see cref="Error.InvalidInput"/> — that is
+    /// rebuilt during pointer rebasing and error aggregation, and would count one firing several
+    /// times. A <c>with</c>-expression does not recount.
+    /// </remarks>
+    public string ReasonCode { get; init; } = ValidationMetrics.Observe(ReasonCode, "field");
+
     /// <inheritdoc />
     public bool Equals(FieldViolation? other)
     {
