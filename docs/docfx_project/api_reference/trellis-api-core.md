@@ -900,6 +900,14 @@ The cost is bounded by the consumer's choice; the framework does not gate it fur
 
 The `Meter` and instruments Trellis publishes for validation failures. Lives in `Trellis.Core\src\ValidationMetrics.cs`.
 
+#### What it is for
+
+Validation failures look like user error, and that label is why nobody watches them. Server-side validation is a **backstop**: when a client enforces the same rules before sending, this counter sits near zero, and that expected value is what makes it alertable. A rising count means client-side validation has drifted from the server's, a client broke against you, or you tightened a rule without noticing — your defect, arriving disguised as theirs. Alert on a *code's rate changing* rather than on absolute volume, and expect a non-zero floor when third parties call you.
+
+`validation.code` is what makes it actionable, and why an HTTP-status metric is not a substitute: a 4xx rate says something drifted, the code says **which rule** did. There is deliberately no field or route tag — both are unbounded — so detection lives in the metric and diagnosis in the trace, whose JSON pointer names the field.
+
+A second, narrower use is the framework's own: whether a reason code the framework can emit is ever actually emitted. A trace answers that only for sampled requests, so a zero-volume code is indistinguishable from one whose traces were all sampled away. A code that never fires may also be *shadowed* by an earlier check rather than unused.
+
 #### Fields
 
 | Signature | Notes |
@@ -933,7 +941,7 @@ A corollary for framework code: an `Error.InvalidInput` built only to key a look
 
 #### Why unknown codes are bucketed
 
-An application code reaches the wire verbatim: `ValidationCodeProjection` passes through anything it does not reserve. Tagging those verbatim would let an application minting a code per entity or per tenant create an unbounded number of time series. Framework codes are a closed set and are the only ones the "is this rule dead?" question is about, so everything else folds into `OtherCode`. The total stays exact; only the breakdown is bucketed. The known set is read from the `ValidationCodes` constants themselves, so a newly added code is tagged under its own name with no second list to maintain.
+An application code reaches the wire verbatim: `ValidationCodeProjection` passes through anything it does not reserve. Tagging those verbatim would let an application minting a code per entity or per tenant create an unbounded number of time series. Framework codes are a closed set and are the only ones the dead-rule question is about, so everything else folds into `OtherCode`. The total stays exact; only the breakdown is bucketed. The known set is read from the `ValidationCodes` constants themselves, so a newly added code is tagged under its own name with no second list to maintain.
 
 ---
 

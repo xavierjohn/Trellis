@@ -9,11 +9,29 @@ using System.Reflection;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The question this exists to answer is "is this rule dead?" — whether a reason code the
-/// framework can emit is ever actually emitted in production. Nothing else answers it. A trace
-/// answers it only for requests that were sampled, and a zero-volume code is indistinguishable
-/// from a code whose traces were all sampled away; a log answers it only if someone is
-/// aggregating the logs, which is the thing a counter is for.
+/// Validation failures look like user error, and that label is why nobody looks at them. The
+/// reason to count them is that server-side validation is a <i>backstop</i>: when a client
+/// enforces the same rules before sending, this counter should sit near zero. That expected
+/// value is what makes it worth alerting on — a rising count does not mean users got worse at
+/// typing, it means client-side validation has drifted from the server's, or a client broke
+/// against you, or you tightened a rule and did not notice. All three are your defect, arriving
+/// disguised as theirs.
+/// </para>
+/// <para>
+/// The <c>validation.code</c> tag is what makes that actionable, and it is the reason an
+/// HTTP-status metric is not a substitute: a 4xx rate tells you something drifted, the reason
+/// code tells you <i>which rule</i> did. It deliberately stops there. There is no field or route
+/// tag, because those are unbounded (see <see cref="OtherCode"/> for the same reasoning applied
+/// to codes), so the division of labour is detection here and diagnosis in the trace, whose JSON
+/// pointer names the offending field.
+/// </para>
+/// <para>
+/// A second, narrower use is the framework's own: "is this rule dead?" — whether a reason code
+/// the framework can emit is ever actually emitted. Nothing else answers it. A trace answers it
+/// only for requests that were sampled, and a zero-volume code is indistinguishable from a code
+/// whose traces were all sampled away; a log answers it only if someone is aggregating the logs,
+/// which is the thing a counter is for. A code that never fires may also be <i>shadowed</i> by an
+/// earlier check rather than genuinely unused, which reads identically until you look.
 /// </para>
 /// <para>
 /// <b>A violation is counted where it is created.</b> The counting site is the <c>ReasonCode</c>

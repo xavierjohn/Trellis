@@ -232,7 +232,19 @@ The counter carries two tags: `validation.code` (a `ValidationCodes` constant, o
 
 ### What the counter is for
 
-It answers "is this rule dead?" — whether a reason code the framework can emit is ever actually emitted. Nothing else answers it. A trace answers it only for sampled requests, so a code with zero volume is indistinguishable from one whose traces were all sampled away.
+Validation failures look like user error, and that label is why nobody looks at them. The reason to watch them is that **server-side validation is a backstop**: when a client enforces the same rules before sending, this counter sits near zero. That expected value is what makes it alertable — a rising count does not mean users got worse at typing. It means one of:
+
+- **Client-side validation has drifted from the server's.** The same rules live in two places; this is the drift detector.
+- **A client broke against you.** One code climbing on one route after someone else's deploy is an integration break.
+- **You tightened a rule and did not notice.** A regex or length change silently rejects traffic that used to pass, and support tickets are otherwise the first alert.
+
+All three are your defect arriving disguised as theirs.
+
+**Alert on the rate of a code changing, not on absolute volume**, and expect a non-zero floor if third parties call you — you control your own client's rules, not theirs.
+
+The `validation.code` tag is what makes this actionable, and it is why an HTTP-status metric is not a substitute: a 4xx rate tells you *something* drifted; the reason code tells you **which rule** did. It deliberately stops there — there is no field or route tag, because both are unbounded. Detection lives here; diagnosis lives in the trace, whose JSON pointer names the offending field.
+
+A second, narrower use is the framework's own: "is this rule dead?" — whether a reason code the framework can emit is ever actually emitted. Nothing else answers it. A trace answers it only for sampled requests, so a code with zero volume is indistinguishable from one whose traces were all sampled away. Note that a code which never fires may be *shadowed* by an earlier check rather than genuinely unused; the two read identically until you look.
 
 Two properties are worth knowing before you build a dashboard on it:
 
