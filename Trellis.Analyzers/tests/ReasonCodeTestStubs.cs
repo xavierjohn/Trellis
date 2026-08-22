@@ -34,6 +34,19 @@ public static class ReasonCodeTestStubs
 
             public sealed record RuleViolation(string ReasonCode, string? Detail = null);
 
+            public abstract record CodedFailure
+            {
+                protected CodedFailure() { }
+
+                protected CodedFailure(string code) => Code = code;
+
+                public string Code { get; init; } = "error.unspecified";
+            }
+
+            public sealed record CodedConflict(string Resource, string Code) : CodedFailure(Code);
+
+            public sealed record CodedNotFound(string Resource) : CodedFailure;
+
             public static class Failure
             {
                 public static object ForField(string propertyName, string reasonCode, string? detail = null) => null!;
@@ -92,6 +105,11 @@ public static class ReasonCodeTestStubs
 
                 public static object WithErrorCode(string errorCode) => null!;
             }
+
+                public sealed record ForeignCoded
+                {
+                    public string? Code { get; init; }
+                }
         }
         """;
 }

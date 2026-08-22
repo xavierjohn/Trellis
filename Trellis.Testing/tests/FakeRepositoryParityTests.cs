@@ -16,7 +16,7 @@ public class FakeRepositoryParityTests
 
         conflict.IsFailure.Should().BeTrue();
         conflict.UnwrapError().Should().BeOfType<Error.Conflict>()
-            .Which.ReasonCode.Should().Be(canonicalDuplicateKeyCode);
+            .Which.Code.Should().Be(canonicalDuplicateKeyCode);
     }
 
     [Fact]

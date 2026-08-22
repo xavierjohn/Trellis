@@ -74,7 +74,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
-        conflict.ReasonCode.Should().Be("account.not-active");
+        conflict.Code.Should().Be("account.not-active");
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
-        conflict.ReasonCode.Should().Be("withdrawal.daily.limit");
+        conflict.Code.Should().Be("withdrawal.daily.limit");
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
-        invariant.ReasonCode.Should().Be(FaultCodes.StateMachineInvalidTransition);
+        invariant.Code.Should().Be(FaultCodes.StateMachineInvalidTransition);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
-        conflict.ReasonCode.Should().Be("account.close.nonzero.balance");
+        conflict.Code.Should().Be("account.close.nonzero.balance");
         account.Status.Should().Be(AccountStatus.Active);
     }
 
@@ -136,7 +136,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var conflict = result.Error.Should().BeOfType<Error.Conflict>().Subject;
-        conflict.ReasonCode.Should().Be("transfer.same.account");
+        conflict.Code.Should().Be("transfer.same.account");
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class BankAccountTests
 
         result.IsFailure.Should().BeTrue();
         var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
-        invariant.ReasonCode.Should().Be(FaultCodes.StateMachineInvalidTransition);
+        invariant.Code.Should().Be(FaultCodes.StateMachineInvalidTransition);
         account.UncommittedEvents().Should().BeEmpty();
     }
 

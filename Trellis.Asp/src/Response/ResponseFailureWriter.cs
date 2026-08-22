@@ -36,7 +36,6 @@ internal static class ResponseFailureWriter
     /// Recognized legacy spelling of <see cref="UnspecifiedCode"/>, normalized in the wire
     /// projection so that a single payload can never carry two live sentinels.
     /// </summary>
-    private const string LegacyUnspecifiedCode = ViolationProjection.LegacyUnspecifiedCode;
 
     private static readonly ConcurrentDictionary<Type, byte> _loggedExceptionTypes = new();
 
@@ -138,7 +137,7 @@ internal static class ResponseFailureWriter
                     // `type` for those; RFC 9457 section 3.1.1 makes an absent `type` equivalent
                     // to "about:blank". Falling back to the kind slug here would put a bare
                     // non-URI token back in `type` -- the exact shape this projection removes.
-                    var childType = DefaultProblemTypeForStatus(childStatus);
+                    var childType = ProblemEnvelope.ProblemTypeForStatus(childStatus);
                     if (childType is not null)
                         childObject["type"] = childType;
 
@@ -452,7 +451,7 @@ internal static class ResponseFailureWriter
 
     private static (int Status, string WireKind)? TryConcurrentModificationOverride(HttpContext httpContext, Error error)
     {
-        if (error is Error.Conflict { ReasonCode: FaultCodes.ConcurrentModification }
+        if (error is Error.Conflict { Code: FaultCodes.ConcurrentModification }
             && httpContext.Request.Headers.ContainsKey("If-Match"))
         {
             return (StatusCodes.Status412PreconditionFailed, "precondition-failed");
@@ -503,10 +502,7 @@ internal static class ResponseFailureWriter
         error.Detail
         ?? (error is Error.TransportFault { Fault: HttpError httpError } ? httpError.Detail : null);
 
-    private static (string Code, string Kind) GetCodeAndKind(Error error) =>
-        error is Error.TransportFault { Fault: ICodedTransportFault coded }
-            ? (error.WireCode, coded.Kind)
-            : (error.WireCode, ToWireKind(error));
+    private static (string Code, string Kind) GetCodeAndKind(Error error) => ProblemEnvelope.For(error);
 
     /// <summary>
     /// Projects an <see cref="Error.InvalidInput"/>'s field violations into the flat
@@ -519,42 +515,14 @@ internal static class ResponseFailureWriter
                 .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray(), StringComparer.Ordinal)
             : null;
 
-    /// <summary>
-    /// The <c>type</c> URI ASP.NET Core assigns a problem of this status by default, so an
-    /// aggregate child carries a proper RFC 9457 §3.1.1 URI reference rather than a bare kind
-    /// slug. Read from the framework rather than restated here, so the two cannot drift.
-    /// </summary>
-    /// <remarks>
-    /// This is the framework <em>default</em> for the status. An application that registers
-    /// <c>AddProblemDetails(o =&gt; o.CustomizeProblemDetails = ...)</c> can rewrite the root
-    /// problem's <c>type</c>, and that customization is deliberately not replayed per child:
-    /// <c>ProblemDetailsContext</c> describes the <em>response</em> (it carries the
-    /// <c>HttpContext</c>, the triggering exception, and endpoint metadata), so invoking it once
-    /// per nested child would stamp children with root-scoped values and let it overwrite each
-    /// child's own <c>Status</c> and <c>Instance</c>.
-    /// <para>
-    /// Caching by status alone is sound because the lookup takes no other input; it is bounded
-    /// because <c>ErrorStatusCodeResolver</c> only ever resolves a status in 100–599.
-    /// </para>
-    /// </remarks>
-    private static string? DefaultProblemTypeForStatus(int status) =>
-        _problemTypeByStatus.GetOrAdd(
-            status,
-            static s => (Microsoft.AspNetCore.Http.Results.Problem(statusCode: s) as ProblemHttpResult)?.ProblemDetails.Type);
-
-    private static readonly ConcurrentDictionary<int, string?> _problemTypeByStatus = new();
-
     private static Dictionary<string, object?> BuildExtensions(Error error, EquatableArray<RuleViolation> rules, string? wireKindOverride = null)
     {
         var (code, kind) = GetCodeAndKind(error);
         if (wireKindOverride is not null)
             kind = wireKindOverride;
 
-        var ext = new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["code"] = code,
-            ["kind"] = kind,
-        };
+        var ext = new Dictionary<string, object?>(StringComparer.Ordinal);
+        ProblemEnvelope.Apply(ext, code, kind);
 
         if (error is Error.Unexpected ise && ise.FaultId is not null)
             ext["faultId"] = ise.FaultId;
@@ -605,19 +573,6 @@ internal static class ResponseFailureWriter
                 break;
         }
     }
-
-    private static string ToWireKind(Error error) => error switch
-    {
-        Error.InvalidInput => "unprocessable-content",
-        Error.InvariantViolation => "unprocessable-content",
-        Error.AuthenticationRequired => "unauthorized",
-        Error.RateLimited => "too-many-requests",
-        Error.Unavailable => "service-unavailable",
-        Error.Unexpected u when u.ReasonCode == FaultCodes.NotImplemented => "not-implemented",
-        Error.Unexpected => "internal-server-error",
-        Error.Aggregate => "multi",
-        _ => error.Kind,
-    };
 }
 
 /// <summary>

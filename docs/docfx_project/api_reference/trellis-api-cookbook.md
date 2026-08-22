@@ -496,7 +496,7 @@ public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
     public Trellis.IResult Authorize(Actor actor, Order resource) =>
         resource.OwnerId == actor.Id || actor.Permissions.Contains("orders:write")
             ? Result.Ok()
-            : Result.Fail(new Error.Forbidden(PolicyId: "orders.owner", Resource: ResourceRef.For<Order>(OrderId)));
+            : Result.Fail(new Error.Forbidden(Code: "orders.owner", Resource: ResourceRef.For<Order>(OrderId)));
 }
 
 // Static permission gate (no resource load needed): every actor with the named permission
@@ -777,7 +777,7 @@ public sealed class DocumentService
                .Permit(DocumentTrigger.Reject,  DocumentState.Draft);
 
         // FireResult pre-checks CanFire and converts invalid transitions to an
-        // Error.InvariantViolation (HTTP 422) with ReasonCode
+        // Error.InvariantViolation (HTTP 422) with Code
         // "state-machine.invalid-transition" — a rejected transition is a domain-invariant
         // breach, not inbound-input validation or a concurrent-modification conflict.
         Result<DocumentState> result = machine.FireResult(DocumentTrigger.Submit);
@@ -790,12 +790,12 @@ public sealed class DocumentService
 
 **Side-effect placement.** Keep Stateless configuration declarative: states, triggers, permitted transitions, and pure/idempotent guards. Put business mutation, domain events, outbox writes, and other side effects after `FireResult` succeeds, usually in `.Tap(...)` as shown above. `FireResult` short-circuits when `CanFire(...)` is false and does **not** invoke `Fire(...)`, so configured `OnUnhandledTrigger` callbacks do not run from the typed-result path. Consumers who want an `OnUnhandledTrigger` callback to run must call Stateless `Fire(...)` directly. If side effects live in `OnEntry`, `OnExit`, transition callbacks, or `OnUnhandledTrigger`, they can run outside the visible ROP success/failure path and make handler behavior diverge from tests.
 
-> **HTTP semantics.** Invalid state-machine transitions surface as `Error.InvariantViolation` (HTTP 422), not `Error.InvalidInput` or `Error.Conflict` (HTTP 409). The reasoning: a rejected transition ("you asked for `Submit` on a `Cancelled` order") is a breach of the aggregate's lifecycle invariant evaluated against its current state — the request itself is well-formed (so it is not inbound-input validation), and it is not a concurrent-modification conflict that a retry could resolve. Both `InvalidInput` and `InvariantViolation` map to 422 and share the on-wire ProblemDetails `kind` `unprocessable-content`, so the HTTP response is unchanged; the distinction is the domain error type (its `Kind` slug becomes `invariant-violation`). Callers that need to distinguish state-machine rejections from other 422s can match on the `ReasonCode` value `state-machine.invalid-transition`.
+> **HTTP semantics.** Invalid state-machine transitions surface as `Error.InvariantViolation` (HTTP 422), not `Error.InvalidInput` or `Error.Conflict` (HTTP 409). The reasoning: a rejected transition ("you asked for `Submit` on a `Cancelled` order") is a breach of the aggregate's lifecycle invariant evaluated against its current state — the request itself is well-formed (so it is not inbound-input validation), and it is not a concurrent-modification conflict that a retry could resolve. Both `InvalidInput` and `InvariantViolation` map to 422 and share the on-wire ProblemDetails `kind` `unprocessable-content`, so the HTTP response is unchanged; the distinction is the domain error type (its `Kind` slug becomes `invariant-violation`). Callers that need to distinguish state-machine rejections from other 422s can match on the `Code` value `state-machine.invalid-transition`.
 
 ```csharp
 // Asserting on a state-machine rejection in tests:
 var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
-invariant.ReasonCode.Should().Be("state-machine.invalid-transition");
+invariant.Code.Should().Be("state-machine.invalid-transition");
 ```
 
 ---
@@ -2530,7 +2530,7 @@ public sealed class DispatchLogger(DispatchLogDbContext db, TimeProvider time, I
         if (result.IsSuccess)
             return Result.Ok(DeliveryOutcome.Recorded);
 
-        if (result.Error is Error.Conflict conflict && conflict.ReasonCode == "duplicate.key")
+        if (result.Error is Error.Conflict conflict && conflict.Code == "duplicate.key")
         {
             // The second delivery — exactly what idempotency promises. No-op, do not fail.
             log.LogInformation(
@@ -2546,7 +2546,7 @@ public sealed class DispatchLogger(DispatchLogDbContext db, TimeProvider time, I
 public enum DeliveryOutcome { Recorded, AlreadyRecorded }
 ```
 
-**What it shows.** `TryInsertUniqueAsync` is the framework idiom for "insert unless a unique constraint says it already exists". The success path returns `Result.Ok(entity)` and the entity has its EF-populated generated values (PK, row version, sequence-assigned columns) in place on the same instance the caller passed in. The duplicate path returns a failed `Result<TEntity>` carrying an `Error.Conflict` whose `ReasonCode` is `"duplicate.key"` and whose `ConstraintName` / `ConstraintTableName` telemetry fields are populated from the underlying provider exception, and the helper detaches the attempted entity from the change tracker so a retry with a freshly-constructed entity does not re-flush the original on the next `SaveChangesAsync`. `ConstraintName` and `ConstraintTableName` are best-effort and marked `[JsonIgnore]` on `Error.Conflict` — they are telemetry fields for structured logs, never serialized to API responses; the safe-for-clients message lives in `Detail`. Foreign-key violations, `DbUpdateConcurrencyException`, connection-level exceptions, and `OperationCanceledException` all propagate normally so retry policies still see them. The clean-context precondition (throws `InvalidOperationException` if `ChangeTracker.HasChanges()` is `true` on entry) prevents the failure from being mis-attributed to the inserted entity when unrelated pending changes exist; flush them first or use a fresh context. Pair the helper with `SaveChangesWithRetryAsync` (from `Trellis.EntityFrameworkCore.DbContextRetryExtensions`) when the retry shape is "regenerate a key and try again" rather than "second writer wins" — the two helpers are complementary, not substitutes.
+**What it shows.** `TryInsertUniqueAsync` is the framework idiom for "insert unless a unique constraint says it already exists". The success path returns `Result.Ok(entity)` and the entity has its EF-populated generated values (PK, row version, sequence-assigned columns) in place on the same instance the caller passed in. The duplicate path returns a failed `Result<TEntity>` carrying an `Error.Conflict` whose `Code` is `"duplicate.key"` and whose `ConstraintName` / `ConstraintTableName` telemetry fields are populated from the underlying provider exception, and the helper detaches the attempted entity from the change tracker so a retry with a freshly-constructed entity does not re-flush the original on the next `SaveChangesAsync`. `ConstraintName` and `ConstraintTableName` are best-effort and marked `[JsonIgnore]` on `Error.Conflict` — they are telemetry fields for structured logs, never serialized to API responses; the safe-for-clients message lives in `Detail`. Foreign-key violations, `DbUpdateConcurrencyException`, connection-level exceptions, and `OperationCanceledException` all propagate normally so retry policies still see them. The clean-context precondition (throws `InvalidOperationException` if `ChangeTracker.HasChanges()` is `true` on entry) prevents the failure from being mis-attributed to the inserted entity when unrelated pending changes exist; flush them first or use a fresh context. Pair the helper with `SaveChangesWithRetryAsync` (from `Trellis.EntityFrameworkCore.DbContextRetryExtensions`) when the retry shape is "regenerate a key and try again" rather than "second writer wins" — the two helpers are complementary, not substitutes.
 
 `DbExceptionClassifier.ExtractConstraintIdentity(DbUpdateException)` is the lower-level building block the helper uses; the same identity is also now populated on the `Error.Conflict` returned by `SaveChangesResultAsync` and `SaveChangesWithRetryAsync` for the `duplicate.key` and `referential.integrity` reason codes, so existing code paths get the new telemetry fields for free.
 
@@ -2596,7 +2596,7 @@ services.AddResourceCollectionNames(typeof(Person).Assembly);  // alternative
 }
 ```
 
-`NotFound` carries no machine-readable reason of its own, so `code` is the sentinel `error.unspecified`; the HTTP condition is already carried by `kind` and `status`. A case that *does* carry a reason — `Conflict`, `Forbidden`, `InvariantViolation`, `Unexpected`, or an `AuthenticationRequired`/`Unavailable` constructed with a `ReasonCode` — emits that reason verbatim.
+This `NotFound` was built with `new Error.NotFound(...)`, which names no reason, so `code` is the sentinel `error.unspecified`; the HTTP condition is already carried by `kind` and `status`. Build it as `new Error.NotFound(ResourceRef.For<Customer>(id)) { Code = "customer.not-found" }` and that code reaches the wire instead — worth doing whenever a client would act differently on "no such row" than on "exists, but withheld from you", since both share the 404 surface. `Code` is inherited by every case, so any error given one emits it verbatim; the cases whose reason is required — `Conflict`, `Forbidden`, `InvariantViolation`, `Unexpected` — take it positionally and can never be built without one.
 
 If the same error is raised on `GET /api/customers/abc-123`, the URL already identifies the resource, so synthesis is suppressed and `instance` stays `/api/customers/abc-123` with no `request` extension. Suppression is segment-and-query-value-aware: an id of `"1"` does not match the path segment `v1`, and a percent-encoded path segment `a%2fb` correctly matches the raw id `a/b` (RFC 3986 case-insensitive percent escapes).
 
@@ -3186,7 +3186,7 @@ public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
         actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden(
-                PolicyId: "tenant.isolation",
+                Code: "tenant.isolation",
                 Resource: ResourceRef.For<TenantDocument>(resource.Id)));
 }
 

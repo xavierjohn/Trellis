@@ -214,7 +214,7 @@ internal static class ScalarValueTypeHelper
 
         return new Dictionary<string, string[]>
         {
-            [parameterName ?? string.Empty] = [error.Detail ?? error.Code]
+            [parameterName ?? string.Empty] = [error.GetDisplayMessage()]
         };
     }
 
@@ -260,7 +260,7 @@ internal static class ScalarValueTypeHelper
             var fieldName = parameterName ?? string.Empty;
             var detail = string.IsNullOrEmpty(rawValue)
                 ? $"'{fieldName}' is required."
-                : convError!.Detail ?? convError.Code;
+                : convError!.GetDisplayMessage();
 
             conversionError = new Error.InvalidInput(EquatableArray.Create(
                 new FieldViolation(InputPointer.ForProperty(fieldName), ValidationCodes.Unspecified, Detail: detail)));

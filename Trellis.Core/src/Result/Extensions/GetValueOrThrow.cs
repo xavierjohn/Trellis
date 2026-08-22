@@ -100,5 +100,5 @@ public static class GetValueOrThrowExtensions
     }
 
     private static string BuildDefaultMessage<TValue>(Error error) =>
-        $"Result<{typeof(TValue).Name}> was a failure. Error: [{error.Code}] {error.GetDisplayMessage()}";
+        $"Result<{typeof(TValue).Name}> was a failure. Error: [{error.Kind}] {error.GetDisplayMessage()}";
 }

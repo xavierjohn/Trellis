@@ -132,14 +132,14 @@ public class ViolationProjectionTests
     }
 
     [Fact]
-    public void The_legacy_code_alias_is_normalized_to_the_sentinel()
+    public void An_application_supplied_code_is_projected_verbatim()
     {
         var fields = new EquatableArray<FieldViolation>(
             [new FieldViolation(InputPointer.ForBody("/email"), "validation.error")]);
 
         var projected = ViolationProjection.ToFieldViolations(fields);
 
-        projected.Should().ContainSingle().Subject.Code.Should().Be("error.unspecified");
+        projected.Should().ContainSingle().Subject.Code.Should().Be("validation.error");
     }
 
     [Fact]

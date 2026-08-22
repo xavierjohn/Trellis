@@ -394,9 +394,33 @@ public class DebugTests : TestBase
         var activity = activityTest.AssertActivityCaptured("Debug: Error test");
         activity.DisplayName.Should().Be("Debug: Error test");
         activity.Tags.Should().Contain(t => t.Key == "debug.result.status" && t.Value == "Failure");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.kind" && t.Value == "not-found");
         activity.Tags.Should().Contain(t => t.Key == "debug.error.detail" && t.Value == "User not found");
         activity.Status.Should().Be(ActivityStatusCode.Error);
+    }
+
+    /// <remarks>
+    /// The detailed view carries both halves: <c>kind</c> is the case, <c>code</c> is the reason
+    /// the producer named. Collapsing them onto one tag — which a blanket rename will do, since
+    /// the two lines sit three apart — drops the reason from the one view that exists to show it,
+    /// and leaves a duplicate tag that reads as harmless noise rather than as a lost diagnostic.
+    /// </remarks>
+    [Fact]
+    public void DebugDetailed_tags_the_kind_and_the_reason_separately()
+    {
+        using var activityTest = new ActivityTestHelper();
+
+        var error = new Error.NotFound(new ResourceRef("Resource", null))
+        {
+            Code = "user.not-found",
+            Detail = "User not found",
+        };
+        Result.Fail<string>(error).DebugDetailed("Detailed error test");
+
+        var activity = activityTest.AssertActivityCaptured("Debug: Detailed error test (Detailed)");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.kind" && t.Value == "not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "user.not-found");
+        activity.Tags.Count(t => t.Key == "debug.error.kind").Should().Be(1);
     }
 
     [Fact]
@@ -442,8 +466,32 @@ public class DebugTests : TestBase
 
         var activity = activityTest.AssertActivityCaptured("Debug: Aggregate error test (Detailed)");
         activity.Tags.Should().Contain(t => t.Key == "debug.error.type" && t.Value == "Aggregate");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].code" && t.Value == "not-found");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].code" && t.Value == "authentication-required");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].kind" && t.Value == "not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].kind" && t.Value == "authentication-required");
+    }
+
+    /// <remarks>
+    /// Children carry both halves for the same reason the root does. These tags are built with
+    /// interpolated names, so a grep for the literal tag prefix does not find them — which is
+    /// exactly how the root regression was fixed while this one survived.
+    /// </remarks>
+    [Fact]
+    public void DebugDetailed_tags_each_aggregate_child_kind_and_reason_separately()
+    {
+        using var activityTest = new ActivityTestHelper();
+
+        var error = new Error.Aggregate(
+        [
+            new Error.NotFound(new ResourceRef("Resource", null)) { Code = "user.not-found" },
+            new Error.Conflict(null, "account.frozen"),
+        ]);
+        Result.Fail<string>(error).DebugDetailed("Aggregate reason test");
+
+        var activity = activityTest.AssertActivityCaptured("Debug: Aggregate reason test (Detailed)");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].kind" && t.Value == "not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].code" && t.Value == "user.not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].kind" && t.Value == "conflict");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].code" && t.Value == "account.frozen");
     }
 
     [Fact]
@@ -492,7 +540,7 @@ public class DebugTests : TestBase
         result.DebugOnFailure(_ => { });
 
         var activity = activityTest.AssertActivityCapturedWithStatus("Debug: OnFailure", ActivityStatusCode.Error);
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "invalid-input");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.kind" && t.Value == "invalid-input");
     }
 
     [Fact]

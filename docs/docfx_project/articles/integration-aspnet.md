@@ -205,13 +205,13 @@ Trellis.Core.Error is transport-neutral. The ASP boundary translates domain fail
 | `Error.InvariantViolation` | `422` | `unprocessable-content` | — |
 | `Error.NotFound` | `404` | `not-found` | — |
 | `Error.Forbidden` | `403` | `forbidden` | — |
-| `Error.Conflict` + `ReasonCode == FaultCodes.ConcurrentModification` and request had `If-Match` | `412` | `precondition-failed` | — |
+| `Error.Conflict` + `Code == FaultCodes.ConcurrentModification` and request had `If-Match` | `412` | `precondition-failed` | — |
 | `Error.Conflict` | `409` | `conflict` | — |
 | `Error.Gone` | `410` | `gone` | — |
 | `Error.AuthenticationRequired` | `401` | `unauthorized` | `WWW-Authenticate` |
 | `Error.Unavailable` | `503` | `service-unavailable` | `Retry-After` |
 | `Error.RateLimited` | `429` | `too-many-requests` | `Retry-After` |
-| `Error.Unexpected` (`ReasonCode == FaultCodes.NotImplemented`) | `501` | `not-implemented` | — |
+| `Error.Unexpected` (`Code == FaultCodes.NotImplemented`) | `501` | `not-implemented` | — |
 | `Error.Unexpected` | `500` | `internal-server-error` | `faultId` when set |
 | `Error.Aggregate` | worst child | `multi` | per-child |
 | `Error.TransportFault` wrapping `HttpError.*` | `405/406/412/413/415/416/428` | inner wire kind | `Allow` / `Content-Range` / inner-specific |
@@ -533,7 +533,7 @@ For MVC controllers add `[Idempotent]` to the action method instead of `.WithMet
 | First request | Reserves the key, runs the handler, captures the response (status + headers + body), and stores the snapshot under TTL (default 24 h). |
 | Retry with same key + same fingerprint | Replays the captured response and adds `Idempotent-Replayed: true` (header name configurable via `ReplayHeaderName`). |
 | Retry with same key + different fingerprint | `422 Unprocessable Entity` (status configurable via `MismatchStatusCode`); the fresh request is **not** executed. "Different fingerprint" covers any change to method, `PathBase + Path`, canonical query, `Content-Type`, `Content-Encoding`, configured additional headers, or body bytes. |
-| Retry while first is still in flight | While the original reservation is within `ReservationTimeout` (default 30 s), the retry returns `409 Conflict` with `Retry-After` and a Problem Details document carrying `code: idempotency.in_flight` (the `type` stays `about:blank`). Once that window has elapsed, a same-key retry with a matching fingerprint creates a fresh reservation and re-executes the handler; if the original request later finishes, its stale-reservation completion is ignored by the store. A mismatched-fingerprint retry instead surfaces as `422` per the row above. |
+| Retry while first is still in flight | While the original reservation is within `ReservationTimeout` (default 30 s), the retry returns `409 Conflict` with `Retry-After` and a Problem Details document carrying `code: idempotency.in_flight` (and, like every Trellis failure, the `type` ASP.NET Core assigns a `409`). Once that window has elapsed, a same-key retry with a matching fingerprint creates a fresh reservation and re-executes the handler; if the original request later finishes, its stale-reservation completion is ignored by the store. A mismatched-fingerprint retry instead surfaces as `422` per the row above. |
 | Methods | `POST` and `PATCH` by default; `PUT` / `DELETE` are already idempotent per RFC 9110 and pass through. Override via `IdempotencyOptions.Methods`. |
 | Store key | `(scope, idempotency key)` — the scope partitions the keyspace so the same literal key under different actors / tenants never collides. |
 | Request fingerprint | `(method, PathBase + Path, canonical query, Content-Type, Content-Encoding, configured AdditionalFingerprintHeaders, body bytes)`. Multi-tenant hosts that mount the same routes under different `PathBase` values therefore never collide even when scope and key match. |

@@ -308,7 +308,7 @@ public class RecoverOnFailureTests
     public void RecoverOnFailure_with_predicate_executes_when_predicate_matches_error_code()
     {
         Result<string> input = Result.Fail<string>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Resource not found" });
-        Result<string> output = input.RecoverOnFailure(e => e.Code == "not-found", GetSuccessResult);
+        Result<string> output = input.RecoverOnFailure(e => e.Kind == "not-found", GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
         output.IsSuccess.Should().BeTrue();

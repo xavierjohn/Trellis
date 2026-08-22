@@ -85,9 +85,9 @@ public sealed class TracingBehavior<TMessage, TResponse>
                 activity.SetStatus(ActivityStatusCode.Error, description);
                 activity.SetTag("error.type", ErrorTelemetryNaming.FormatErrorTypeName(error.GetType()));
 
-                // WireCode, not Code: an operator pastes a code out of a bug report and into a
+                // Code, not Kind: an operator pastes a code out of a bug report and into a
                 // trace query, so the span has to spell it the way the response body did.
-                activity.SetTag("error.code", error.WireCode);
+                activity.SetTag("error.code", error.Code);
             }
             else
             {

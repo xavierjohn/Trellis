@@ -515,7 +515,7 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
 - `Clear()`, `Exists(TId id)`, `Get(TId id)`, `GetAll()`, `Count` — direct inspection helpers
 - `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` return `Error.NotFound` details in the EF-runtime format:
   - `"{AggregateTypeName} with ID '{id}' not found."`
-- Unique-constraint conflicts return `Error.Conflict` with `ReasonCode` `"duplicate.key"` and detail:
+- Unique-constraint conflicts return `Error.Conflict` with `Code` `"duplicate.key"` and detail:
   - `"A {AggregateTypeName} with the same value already exists."`
 
 > See cookbook **Recipe 16 — Unit of work in handlers** for guidance on which surface to use from where, and the pitfall of accidentally calling `SaveAsync` from a production-shaped repository contract.

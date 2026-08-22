@@ -15,24 +15,24 @@ public class UnexpectedErrorTests
         new Error.Unexpected("default-initialized").Kind.Should().Be("unexpected");
 
     [Fact]
-    public void Code_overrides_to_ReasonCode() =>
+    public void Code_is_the_positional_reason() =>
         new Error.Unexpected("internal_invariant_violated").Code.Should().Be("internal_invariant_violated");
 
     [Fact]
-    public void Construct_with_ReasonCode_only_leaves_FaultId_null()
+    public void Construct_with_code_only_leaves_FaultId_null()
     {
         var error = new Error.Unexpected("default-initialized");
 
-        error.ReasonCode.Should().Be("default-initialized");
+        error.Code.Should().Be("default-initialized");
         error.FaultId.Should().BeNull();
     }
 
     [Fact]
-    public void Construct_with_ReasonCode_and_FaultId_preserves_both()
+    public void Construct_with_code_and_FaultId_preserves_both()
     {
         var error = new Error.Unexpected("unhandled-exception", "fault-7");
 
-        error.ReasonCode.Should().Be("unhandled-exception");
+        error.Code.Should().Be("unhandled-exception");
         error.FaultId.Should().Be("fault-7");
     }
 
@@ -67,7 +67,7 @@ public class UnexpectedErrorTests
     }
 
     [Fact]
-    public void Two_Unexpected_with_different_ReasonCode_are_not_equal()
+    public void Two_Unexpected_with_different_Code_are_not_equal()
     {
         var a = new Error.Unexpected("default-initialized");
         var b = new Error.Unexpected("invariant_violation");
@@ -109,7 +109,7 @@ public class UnexpectedErrorTests
 
         var matched = error switch
         {
-            Error.Unexpected u => $"unexpected:{u.ReasonCode}",
+            Error.Unexpected u => $"unexpected:{u.Code}",
             _ => "other",
         };
 

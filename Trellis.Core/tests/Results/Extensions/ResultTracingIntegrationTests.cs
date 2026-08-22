@@ -351,7 +351,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("invalid-input");
+        result.Error!.Kind.Should().Be("invalid-input");
 
         // Get all activities by name
         var activities = activityTest.CapturedActivities;

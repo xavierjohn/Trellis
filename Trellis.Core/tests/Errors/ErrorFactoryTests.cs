@@ -75,7 +75,7 @@ public class ErrorFactoryTests
         error.Resource.Should().NotBeNull();
         error.Resource!.Value.Type.Should().Be("Team");
         error.Resource.Value.Id.Should().Be("5");
-        error.ReasonCode.Should().Be("team.unresolved_penalties");
+        error.Code.Should().Be("team.unresolved_penalties");
         error.Code.Should().Be("team.unresolved_penalties");
         error.Detail.Should().Be("has penalties");
     }
@@ -87,7 +87,7 @@ public class ErrorFactoryTests
 
         error.Resource!.Value.Type.Should().Be("Team");
         error.Resource.Value.Id.Should().Be("5");
-        error.ReasonCode.Should().Be("x.y");
+        error.Code.Should().Be("x.y");
         error.Detail.Should().Be("d");
     }
 
@@ -97,7 +97,7 @@ public class ErrorFactoryTests
         var error = Error.Conflict.ForReason("registration.pending_exists", "pending");
 
         error.Resource.Should().BeNull();
-        error.ReasonCode.Should().Be("registration.pending_exists");
+        error.Code.Should().Be("registration.pending_exists");
         error.Detail.Should().Be("pending");
     }
 
@@ -146,7 +146,7 @@ public class ErrorFactoryTests
         error.Resource.Should().NotBeNull();
         error.Resource!.Value.Type.Should().Be("Team");
         error.Resource.Value.Id.Should().Be("5");
-        error.ReasonCode.Should().Be("team.roster_locked");
+        error.Code.Should().Be("team.roster_locked");
         error.Code.Should().Be("team.roster_locked");
         error.Detail.Should().Be("roster is locked");
     }
@@ -156,7 +156,7 @@ public class ErrorFactoryTests
     {
         var error = Error.InvariantViolation.For<Team>("team.roster_locked");
 
-        error.ReasonCode.Should().Be("team.roster_locked");
+        error.Code.Should().Be("team.roster_locked");
         error.Resource!.Value.Type.Should().Be("Team");
         error.Resource.Value.Id.Should().BeNull();
         error.Detail.Should().BeNull();
@@ -169,7 +169,7 @@ public class ErrorFactoryTests
 
         error.Resource!.Value.Type.Should().Be("Team");
         error.Resource.Value.Id.Should().Be("5");
-        error.ReasonCode.Should().Be("x.y");
+        error.Code.Should().Be("x.y");
         error.Detail.Should().Be("d");
     }
 
@@ -179,7 +179,7 @@ public class ErrorFactoryTests
         var error = Error.InvariantViolation.ForReason("order.must_have_items", "empty order");
 
         error.Resource.Should().BeNull();
-        error.ReasonCode.Should().Be("order.must_have_items");
+        error.Code.Should().Be("order.must_have_items");
         error.Code.Should().Be("order.must_have_items");
         error.Detail.Should().Be("empty order");
     }

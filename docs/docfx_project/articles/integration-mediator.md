@@ -760,7 +760,7 @@ Guidance:
 - Catches every unhandled exception **except** `OperationCanceledException` (which propagates so cancellation flows correctly).
 - Logs the exception, then returns `TResponse.CreateFailure(new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." })`.
 
-The generated `"N"`-format Guid becomes `Error.ReasonCode` (and therefore `Error.Code`) today, so operators can join the failed response to the logged stack trace.
+The generated `"N"`-format Guid becomes `Error.Code` today, so operators can join the failed response to the logged stack trace.
 
 > [!WARNING]
 > Don't use exceptions for expected business outcomes — return `Result<T>` failures instead and let `ExceptionBehavior` handle only true surprises.

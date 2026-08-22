@@ -67,7 +67,7 @@ public class LoggingBehaviorTests
         // ga-12: Detail is redacted by default (it can contain user input/PII). Only the
         // wire code and the error type are emitted unless
         // TrellisMediatorTelemetryOptions.IncludeErrorDetail is opted in.
-        logEntries[1].Message.Should().Contain(error.WireCode);
+        logEntries[1].Message.Should().Contain(error.Code);
         logEntries[1].Message.Should().NotContain("Something failed.");
     }
 

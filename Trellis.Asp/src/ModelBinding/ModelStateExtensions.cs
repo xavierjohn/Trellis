@@ -26,7 +26,7 @@ internal static class ModelStateExtensions
         }
         else
         {
-            modelState.AddModelError(modelName, error.Detail ?? error.Code);
+            modelState.AddModelError(modelName, error.GetDisplayMessage());
         }
     }
 }

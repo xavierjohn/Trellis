@@ -353,30 +353,31 @@ public sealed class ResponseFailureWriterPhase3Tests
     }
 
     [Fact]
-    public async Task AuthenticationRequired_with_ReasonCode_projects_it_to_wire_code()
+    public async Task AuthenticationRequired_with_explicit_code_projects_it_to_the_wire()
     {
-        // ReasonCode lets consumers distinguish causes that share the 401 surface
+        // A code lets consumers distinguish causes that share the 401 surface
         // (invalid credentials vs missing credentials vs token expired) without
-        // parsing Detail. Error.Code overrides to ReasonCode; ResponseFailureWriter
-        // projects Error.Code into the ProblemDetails `code` extension verbatim.
+        // parsing Detail. ResponseFailureWriter projects Error.Code into the
+        // ProblemDetails `code` extension verbatim.
         var ctx = NewContext();
-        var r = Result.Fail<T>(new Error.AuthenticationRequired(
-            Scheme: "Bearer",
-            ReasonCode: "Authentication.InvalidCredentials"));
+        var r = Result.Fail<T>(new Error.AuthenticationRequired(Scheme: "Bearer")
+        {
+            Code = "Authentication.InvalidCredentials",
+        });
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(401);
         using var body = await ReadBody(ctx);
         body.RootElement.GetProperty("code").GetString().Should().Be("Authentication.InvalidCredentials");
-        // Scheme still flows through to WWW-Authenticate independently of ReasonCode.
+        // Scheme still flows through to WWW-Authenticate independently of the code.
         ctx.Response.Headers["WWW-Authenticate"].ToString().Should().Be("Bearer");
     }
 
     [Fact]
-    public async Task AuthenticationRequired_without_ReasonCode_emits_the_unspecified_sentinel()
+    public async Task AuthenticationRequired_without_an_explicit_code_emits_the_unspecified_sentinel()
     {
-        // A kind is not a reason. `AuthenticationRequired` with no ReasonCode has nothing finer
+        // A kind is not a reason. `AuthenticationRequired` with no code has nothing finer
         // to say than its kind, which `kind` already carries, so `code` degrades to the single
         // sentinel rather than restating the kind and inviting clients to switch on it.
         // (Breaking change: this previously emitted "authentication-required".) Note `kind` is

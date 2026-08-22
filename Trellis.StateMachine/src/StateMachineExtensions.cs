@@ -70,7 +70,7 @@ public static class StateMachineExtensions
     /// validation or a concurrent-modification conflict — retry will not succeed. The returned error
     /// is therefore <see cref="Error.InvariantViolation"/> (HTTP 422), not <see cref="Error.InvalidInput"/>
     /// or <see cref="Error.Conflict"/> (HTTP 409). Callers can distinguish state-machine rejections from
-    /// other 422s by matching on the <c>ReasonCode</c> value <c>state-machine.invalid-transition</c>.
+    /// other 422s by matching on the <c>Code</c> value <c>state-machine.invalid-transition</c>.
     /// </para>
     /// <para>
     /// <see cref="InvalidOperationException"/> thrown while evaluating a guard is converted to

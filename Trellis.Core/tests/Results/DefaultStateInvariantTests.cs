@@ -41,7 +41,7 @@ public class DefaultStateInvariantTests
 
         r.Error!.Should().NotBeNull();
         r.Error!.Should().BeOfType<Error.Unexpected>();
-        ((Error.Unexpected)r.Error!).ReasonCode.Should().Be("default-initialized");
+        ((Error.Unexpected)r.Error!).Code.Should().Be("default-initialized");
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class DefaultStateInvariantTests
 
         r.Error!.Should().NotBeNull();
         r.Error!.Should().BeOfType<Error.Unexpected>();
-        ((Error.Unexpected)r.Error!).ReasonCode.Should().Be("default-initialized");
+        ((Error.Unexpected)r.Error!).Code.Should().Be("default-initialized");
     }
 
     [Fact]

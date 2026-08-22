@@ -53,7 +53,6 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
     private const string TrellisRootNamespace = "Trellis";
     private const string ReasonCodeParameterName = "reasonCode";
     private const string ErrorNamespacePrefix = "error.";
-
     /// <summary>
     /// FluentValidation's own naming surface. A code written here reaches the wire through
     /// <c>Trellis.FluentValidation</c>'s projection exactly as a <c>reasonCode</c> does, so the same
@@ -66,9 +65,20 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// The settable property through which the Trellis primitive attributes
     /// (<c>[StringLength]</c>, <c>[Range]</c>, <c>[NotDefault]</c> and the sign-convenience
-    /// attributes) override a generated value object's reason code.
+    /// attributes) override a generated value object's reason code, and the member on
+    /// <c>Trellis.Error</c> through which every error case names its reason.
     /// </summary>
     private const string CodePropertyName = "Code";
+
+    /// <summary>
+    /// Parameter names that put a string on the wire as a reason code. <c>Code</c> is here because
+    /// the error cases whose reason is required take it positionally (<c>Error.Conflict</c>,
+    /// <c>Error.InvariantViolation</c>, <c>Error.Unexpected</c>, <c>Error.Forbidden</c>); matching is
+    /// case-insensitive, so a positional record parameter declared as <c>Code</c> is covered.
+    /// </summary>
+    private static readonly string[] TrellisReasonCodeParameterNames = [ReasonCodeParameterName, CodePropertyName];
+
+    private static readonly string[] FluentValidationParameterNames = [ErrorCodeParameterName];
 
     /// <summary>
     /// The pre-vocabulary placeholder. It is a frozen value with a constant, but the documented
@@ -104,6 +114,10 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
                 ctx => AnalyzeObjectCreation(ctx, vocabulary),
                 OperationKind.ObjectCreation);
 
+            compilationContext.RegisterOperationAction(
+                ctx => AnalyzeCodeAssignment(ctx, vocabulary),
+                OperationKind.SimpleAssignment);
+
             compilationContext.RegisterSyntaxNodeAction(
                 ctx => AnalyzeAttribute(ctx, vocabulary),
                 SyntaxKind.Attribute);
@@ -115,15 +129,15 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
         var operation = (IInvocationOperation)context.Operation;
         var method = operation.TargetMethod;
 
-        var parameterName =
-            IsTrellisDeclared(method.ContainingType) ? ReasonCodeParameterName
-            : IsFluentValidationErrorCode(method) ? ErrorCodeParameterName
+        var parameterNames =
+            IsTrellisDeclared(method.ContainingType) ? TrellisReasonCodeParameterNames
+            : IsFluentValidationErrorCode(method) ? FluentValidationParameterNames
             : null;
 
-        if (parameterName is null)
+        if (parameterNames is null)
             return;
 
-        AnalyzeArguments(context, vocabulary, operation.Arguments, parameterName);
+        AnalyzeArguments(context, vocabulary, operation.Arguments, parameterNames);
     }
 
     /// <summary>
@@ -146,7 +160,37 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
         if (operation.Constructor is not { } constructor || !IsTrellisDeclared(constructor.ContainingType))
             return;
 
-        AnalyzeArguments(context, vocabulary, operation.Arguments, ReasonCodeParameterName);
+        AnalyzeArguments(context, vocabulary, operation.Arguments, TrellisReasonCodeParameterNames);
+    }
+
+    /// <summary>
+    /// Reports a frozen or squatting literal assigned to <c>Code</c> on a Trellis type — the object
+    /// initializer through which every error case whose reason is optional names one, as in
+    /// <c>new Error.NotFound(resource) { Code = "order.archived" }</c>.
+    /// </summary>
+    private static void AnalyzeCodeAssignment(OperationAnalysisContext context, Vocabulary vocabulary)
+    {
+        var operation = (ISimpleAssignmentOperation)context.Operation;
+
+        // An attribute's `Code = "..."` named argument is also modelled as a simple assignment, and
+        // AnalyzeAttribute already reports it; without this guard every such literal is reported twice.
+        if (operation.Syntax.FirstAncestorOrSelf<AttributeSyntax>() is not null)
+            return;
+
+        if (operation.Target is not IPropertyReferenceOperation { Property: var property }
+            || !string.Equals(property.Name, CodePropertyName, StringComparison.Ordinal)
+            || !IsTrellisDeclared(property.ContainingType))
+        {
+            return;
+        }
+
+        if (UnwrapLiteral(operation.Value) is not { } literal)
+            return;
+
+        if (literal.ConstantValue.Value is not string code)
+            return;
+
+        Report(context.ReportDiagnostic, vocabulary, code, literal.Syntax.GetLocation());
     }
 
     /// <summary>
@@ -192,11 +236,11 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
         OperationAnalysisContext context,
         Vocabulary vocabulary,
         ImmutableArray<IArgumentOperation> arguments,
-        string parameterName)
+        string[] parameterNames)
     {
         foreach (var argument in arguments)
         {
-            if (!IsReasonCodeParameter(argument.Parameter, parameterName))
+            if (!IsReasonCodeParameter(argument.Parameter, parameterNames))
                 continue;
 
             if (UnwrapLiteral(argument.Value) is not { } literal)
@@ -235,11 +279,22 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
     /// Keying on the parameter name rather than a list of method names and argument positions is what
     /// keeps this rule from going stale: the eleven current factory overloads differ in arity and in
     /// where the code sits, and a twelfth is covered the day it is added. Comparison is
-    /// case-insensitive because positional records declare the parameter as <c>ReasonCode</c>.
+    /// case-insensitive because positional records declare the parameter as <c>ReasonCode</c> or
+    /// <c>Code</c>.
     /// </remarks>
-    private static bool IsReasonCodeParameter(IParameterSymbol? parameter, string parameterName) =>
-        parameter is not null
-        && string.Equals(parameter.Name, parameterName, StringComparison.OrdinalIgnoreCase);
+    private static bool IsReasonCodeParameter(IParameterSymbol? parameter, string[] parameterNames)
+    {
+        if (parameter is null)
+            return false;
+
+        foreach (var name in parameterNames)
+        {
+            if (string.Equals(parameter.Name, name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// Returns the literal underneath an argument, seeing through the implicit conversions the

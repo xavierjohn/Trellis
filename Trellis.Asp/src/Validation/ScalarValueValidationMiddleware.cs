@@ -86,6 +86,12 @@ public sealed class ScalarValueValidationMiddleware
         }
     }
 
+    /// <summary>
+    /// The envelope source for a rejected value the seam did not express as a populated error:
+    /// the wire members depend only on the case, so an empty one answers for all of them.
+    /// </summary>
+    private static readonly Error.InvalidInput EmptyInvalidInput = new(default);
+
     private static async Task WriteGenericBadRequestAsync(HttpContext context)
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -99,7 +105,8 @@ public sealed class ScalarValueValidationMiddleware
 
         var result = Results.ValidationProblem(
             errors,
-            instance: context.Request.GetEncodedPathAndQuery());
+            instance: context.Request.GetEncodedPathAndQuery(),
+            extensions: ProblemEnvelope.ForStatus(StatusCodes.Status400BadRequest));
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
 
@@ -187,7 +194,8 @@ public sealed class ScalarValueValidationMiddleware
         var result = Results.ValidationProblem(
             errors,
             instance: context.Request.GetEncodedPathAndQuery(),
-            statusCode: statusCode);
+            statusCode: statusCode,
+            extensions: ProblemEnvelope.ForError(EmptyInvalidInput));
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
 
@@ -286,7 +294,13 @@ public sealed class ScalarValueValidationMiddleware
         var result = Results.ValidationProblem(
             errors,
             instance: context.Request.GetEncodedPathAndQuery(),
-            statusCode: statusCode);
+            statusCode: statusCode,
+            // Same predicate that chose the status: a Trellis converter throw is a rejected
+            // value (Error.InvalidInput, whatever status it maps to), while a plain
+            // JsonException means the bytes never parsed, so no value was ever rejected.
+            extensions: ex.InnerException is TrellisJsonValidationException
+                ? ProblemEnvelope.ForError(EmptyInvalidInput)
+                : ProblemEnvelope.ForStatus(statusCode));
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
 

@@ -15,7 +15,7 @@ using System.Diagnostics;
 /// </para>
 /// <para>
 /// <c>default(Result&lt;T&gt;)</c> represents a <em>failure</em> carrying a sentinel
-/// <see cref="Trellis.Error.Unexpected"/> with <c>ReasonCode = "default-initialized"</c>. This makes
+/// <see cref="Trellis.Error.Unexpected"/> with <c>Code = "default-initialized"</c>. This makes
 /// uninitialized state a typed failure rather than a silent success that would hide a programming error.
 /// Always construct via <see cref="Result.Ok{T}(T)"/>, <see cref="Result.Fail{T}(Error)"/>, or
 /// <see cref="Result.FailAfterCommit{T}(Error)"/> (the persist-on-failure factory consumed by
@@ -45,7 +45,7 @@ using System.Diagnostics;
 ///     .Map(user => user.Name);
 /// </code>
 /// </example>
-[DebuggerDisplay("{IsSuccess ? \"Success\" : \"Failure\"}, Value = {(_value is null ? \"<null>\" : _value)}, Error = {(IsSuccess ? \"<none>\" : EffectiveError().Code)}")]
+[DebuggerDisplay("{IsSuccess ? \"Success\" : \"Failure\"}, Value = {(_value is null ? \"<null>\" : _value)}, Error = {(IsSuccess ? \"<none>\" : EffectiveError().Kind)}")]
 [DebuggerTypeProxy(typeof(ResultDebugView<>))]
 [System.Text.Json.Serialization.JsonConverter(typeof(ResultRequiresExplicitHttpMappingConverter))]
 public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValue>>, IFailureFactory<Result<TValue>>, IPersistOnFailure
@@ -116,10 +116,10 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
 
         if (IsFailure && _error is not null)
         {
-            // WireCode, not Code: this dimension is the one an operator filters on, so it has to
-            // spell a code the way the HTTP boundary does. The type keeps the case identifiable
-            // for the errors whose wire code is the sentinel.
-            current.SetTag("result.error.code", _error.WireCode);
+            // Code, not Kind: this dimension is the one an operator filters on, so it has to
+            // spell the reason the producer named rather than the case it fell into. The type
+            // keeps the case identifiable for the errors whose code is the sentinel.
+            current.SetTag("result.error.code", _error.Code);
             current.SetTag("result.error.type", _error.GetType().Name);
         }
     }
@@ -385,6 +385,6 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     {
         if (_isOk) return $"Success({(_value is null ? "<null>" : _value)})";
         var error = EffectiveError();
-        return $"Failure({error.Code}: {error.Detail})";
+        return $"Failure({error.Kind}: {error.Detail})";
     }
 }

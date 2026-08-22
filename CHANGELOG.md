@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — one code member, stored once, instead of four
+
+`Error` exposed `Kind`, `Code`, `HasExplicitCode`, and `WireCode`, plus a `ValidationCodes.Normalize` rewrite rule. Three of those existed only to compensate for the fourth: `Code` was non-nullable and defaulted to `Kind`, so it could not express "the producer named no reason", so that fact had to live in a separate `HasExplicitCode`, so reading `Code` at a boundary was unsafe, so `WireCode` existed to be read instead. A member whose documentation warns you not to read it is a design defect, and it had already produced one: the mediator tagged spans with `Code` while the HTTP writer emitted `WireCode`, so the same 404 was `not-found` on the span and `error.unspecified` in the body.
+
+`Error.Code` is now a single non-virtual `{ get; init; }` property on the base record, defaulting to `ValidationCodes.Unspecified`. `HasExplicitCode` and `WireCode` are removed; every surface reads `Code`. This does not merely discourage publishing a kind as a reason — it makes it unreachable, because the kind is no longer in the member for a boundary to leak. `HasExplicitCode`'s compile-time forcing function is replaced by a reflection test over the closed union, which fails until a newly added case is sampled and its `Code` asserted — the same enforcement without the mechanism in the public API.
+
+Storing the code once also removes the per-case `ReasonCode` property that a first pass at this had introduced. Every case now names a reason the same way — `new Error.NotFound(resource) { Code = "account.not-found" }` — and the four cases whose reason is *required* (`Conflict`, `InvariantViolation`, `Unexpected`, `Forbidden`) take it as a positional parameter forwarded to the base, so the compiler still refuses one that says nothing. `Error.Forbidden.PolicyId` survives as a reading alias over the same storage, so the policy that refused and the code the client sees cannot drift. `Error.Equals`/`GetHashCode` are hand-written and now include `Code`; without that, two failures with different reasons would have compared equal.
+
+`ValidationCodes.Normalize` is removed with them. It rewrote exactly one string — the pre-vocabulary `validation.error` — onto the sentinel, which contradicted this library's stated promise that an application's own codes pass through verbatim, and folded a code a producer deliberately chose onto the value meaning *nobody chose one*. `Error.TransportFault` had to override `WireCode` purely to escape it, on the reasoning that rewriting a foreign vocabulary misreports it as ours — which is true of every code the framework did not choose. `ReasonCodeVocabularyAnalyzer` already flags that placeholder at the producer, which is where it is worth catching. The `ValidationCodes.LegacyUnspecified` constant remains so the string stays documented and unreused.
+
+`TRLS064` was extended so this rename did not silently shrink analyzer coverage: it matched on a parameter named `reasonCode`, which the mandatory-reason cases no longer have, and it never saw the `{ Code = "…" }` initializer at all. It now inspects both.
+
+**Migration:**
+
+| Before | After |
+| --- | --- |
+| `error.WireCode` | `error.Code` |
+| `error.HasExplicitCode` | `error.Code != ValidationCodes.Unspecified` |
+| `Error.NotFound.ForReason<T>(code, id, detail)` | `new Error.NotFound(ResourceRef.For<T>(id)) { Code = code, Detail = detail }` |
+| `Error.Gone.ForReason<T>(code, id, detail)` | `new Error.Gone(ResourceRef.For<T>(id)) { Code = code, Detail = detail }` |
+| `Error.RateLimited.ForReason(code, retry, detail)` | `new Error.RateLimited(retry) { Code = code, Detail = detail }` |
+| `new Error.AuthenticationRequired(scheme, code)` | `new Error.AuthenticationRequired(scheme) { Code = code }` |
+| `new Error.Unavailable(code, retry)` | `new Error.Unavailable(retry) { Code = code }` |
+| `conflict.ReasonCode`, `invariant.ReasonCode`, `unexpected.ReasonCode` | `.Code` |
+| `new Error.Forbidden(PolicyId: p)` | `new Error.Forbidden(Code: p)` — reading `.PolicyId` is unchanged |
+
+Code that read `error.Code` expecting the kind slug — in a log line, an exception message, or a debug span tag — should read `error.Kind`, which is what it meant. Trellis's own diagnostic surfaces were updated accordingly: `UnwrapFailedException` and `Result<T>.ToString()` now name the kind, and the DEBUG-only `debug.error.code` span tag is now `debug.error.kind` on the terse `Debug` overloads, whose single error tag was always naming the case. `DebugDetailed` emits both: `debug.error.kind` for the case and `debug.error.code` for the reason the producer named. `Trellis.Core`'s `CompatibilitySuppressions.xml` returns to the repository covering the 17 intended removals above.
+
+### Fixed — a 404 can now say what was not found, and why
+
+`Error.NotFound`, `Error.Gone`, and `Error.RateLimited` hard-coded `HasExplicitCode => false` with no member behind it, so `code` on those responses was a compile-time constant. The sentinel exists to distinguish "the producer named no reason" from "the producer named this one", and on these three cases the second state was unreachable — every 404 the framework could produce said `error.unspecified`, whether or not the producer had something to say. A client could not tell "no such row" from "exists, but withheld from you", which are different answers to different questions.
+
+All three now reach a reason through the inherited `Code` initializer, and so do `AuthenticationRequired` and `Unavailable`, which previously took theirs as a positional parameter. `InvalidInput` and `Aggregate` keep the sentinel by convention: their codes belong per-violation and per-child, and a root code would compete with the real ones.
+
+Because `Code` is an inherited `init` property rather than a constructor parameter, no record's primary constructor or `Deconstruct` arity changed for the optional cases — `is NotFound(var resource)` keeps working — and silence remains the default: a producer that names nothing still reports the sentinel.
+
+The Showcase now names its reason, so its 404 reads `"code": "account.not-found"` with a `detail` that identifies the id, rather than `error.unspecified` with no detail at all.
+
+### Fixed — every failure response now carries the `code`/`kind` envelope it was documented to carry
+
+The ASP reference stated the invariant plainly: "Every failure response carries top-level `code` and `kind`." It was
+true of `ResponseFailureWriter` and of nothing else. Four other seams write Problem Details for requests that fail
+before a handler runs, and between them they emitted the envelope inconsistently or not at all —
+`ScalarValueValidationFilter` (MVC) and `ScalarValueValidationEndpointFilter` (Minimal API) emitted neither member,
+`ScalarValueValidationMiddleware` emitted neither across all four of its `ValidationProblem` sites, and
+`IdempotencyMiddleware` emitted `code` but not `kind`.
+
+The effect was that the same failure class described itself two different ways depending on where it was caught. In
+the Showcase, posting an invalid `Money` returned a 422 with no `code` and no `kind`, while a domain-level rejection
+of the same value returned both — so a client could not branch on `kind` without first knowing which layer had
+answered, which is the one thing the envelope exists to spare it.
+
+All five emitters now derive their members from a single internal `ProblemEnvelope`, which cannot drift the way five independent call sites did. `type` is resolved there too: `IdempotencyMiddleware` hand-wrote `"type": "about:blank"` while every other seam resolved the status URI, so a `422` from before routing described itself differently from an identical `422` from a handler. Both now call `ProblemEnvelope.ProblemTypeForStatus`, which omits `type` entirely for the statuses ASP.NET Core has no default for — RFC 9457 §3.1.1 makes an absent `type` equivalent to `about:blank`, whereas a kind slug would put a bare non-URI token in a member declared to be a URI reference.
+
+`AddTrellisProblemDetails()` closes the remaining gap by seeding the envelope on documents
+ASP.NET Core itself produced — the exception handler and status-code pages — without overwriting one a Trellis writer
+already supplied. Where an `Error` exists the envelope comes from the error, so a rejected value reports
+`kind: unprocessable-content` even under `MapError<Error.InvalidInput>(400)` — `kind` names what failed, and moving
+where a failure lands does not change what it was. Where no error was ever constructed — unparseable bytes, a
+parameter the binder could not bind, a missing idempotency key — it falls back to the slug for the status.
+
+This is additive on the wire: responses that already carried both members are byte-identical, and the rest gain
+members that were documented as always present. A client that (reasonably) treated `kind` as optional is unaffected.
+
 ### Changed — the cookbook recipes now compile under Trellis's own analyzers
 
 `Examples/CookbookSnippets` mirrors the code fences in the cookbook and is compiled by CI, which is what lets a
@@ -136,7 +200,7 @@ come to disagree about the spelling of "no reason available".
 
 **Behavior change.** The `error.code` span tag now reports `error.unspecified` for every case that carries no code of
 its own — `InvalidInput`, `NotFound`, `Gone`, `RateLimited`, `Aggregate`, a bare `TransportFault`, and
-`AuthenticationRequired` / `Unavailable` constructed without a `ReasonCode` — where it previously reported the kind.
+`AuthenticationRequired` / `Unavailable` constructed without a `Code` — where it previously reported the kind.
 Nothing is lost: the kind was always available on the `error.type` tag, and the two tags now answer two different
 questions. A dashboard grouping on `error.code` to distinguish those cases should group on `error.type` instead.
 

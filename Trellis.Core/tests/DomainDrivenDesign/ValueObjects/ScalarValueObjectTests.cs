@@ -383,7 +383,7 @@ public class ScalarValueObjectTests
 
         var error = new Error.Conflict(null, quantity.ToString(CultureInfo.InvariantCulture)) { Detail = "Insufficient quantity." };
 
-        error.ReasonCode.Should().Be("42");
+        error.Code.Should().Be("42");
     }
 
     [Fact]
@@ -393,7 +393,7 @@ public class ScalarValueObjectTests
 
         var error = new Error.Conflict(null, money.ToString(CultureInfo.InvariantCulture)) { Detail = "Amount mismatch." };
 
-        error.ReasonCode.Should().Be("1234.56");
+        error.Code.Should().Be("1234.56");
     }
 
     #endregion

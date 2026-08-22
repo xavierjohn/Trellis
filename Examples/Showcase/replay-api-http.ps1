@@ -29,7 +29,9 @@
 
 .PARAMETER TranscriptPath
     Where to write the transcript. Defaults to replay-<environment>.txt beside the
-    script. Pass an explicit path to keep a baseline for diffing.
+    script. Pass an explicit path to keep a baseline for diffing. The header carries a
+    'started' timestamp, so two transcripts of identical runs differ on that one line;
+    skip the header when diffing.
 
 .PARAMETER Set
     Overrides for variables in http-client.env.json, as name=value.
@@ -308,6 +310,7 @@ try {
     $null = $transcript.AppendLine("environment : $Environment")
     $null = $transcript.AppendLine("host        : $baseUri")
     $null = $transcript.AppendLine("requests    : $($requests.Count)")
+    $null = $transcript.AppendLine("started     : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')")
     $null = $transcript.AppendLine()
 
     $results = [System.Collections.Generic.List[object]]::new()

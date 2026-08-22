@@ -1010,6 +1010,14 @@ public static class ServiceCollectionExtensions
         ctx.ProblemDetails.Extensions["traceId"] =
             Activity.Current?.Id ?? ctx.HttpContext.TraceIdentifier;
 
+        // A response written by the exception handler or the status-code pages has no Error
+        // behind it, so the HTTP condition is all there is to report. Seeding rather than
+        // assigning matters: this hook also runs over problems the Trellis writers produced,
+        // and their kind came from the error, which is the better answer.
+        var status = ctx.ProblemDetails.Status ?? ctx.HttpContext.Response.StatusCode;
+        if (status >= 400)
+            ProblemEnvelope.Seed(ctx.ProblemDetails.Extensions, ValidationCodes.Unspecified, ProblemEnvelope.KindForStatus(status));
+
         // Replace the raw exception detail on 500 with a support-friendly message
         // so internal information (stack-frame paths, message text) does not leak
         // to the client. Application-specific messaging can override this by

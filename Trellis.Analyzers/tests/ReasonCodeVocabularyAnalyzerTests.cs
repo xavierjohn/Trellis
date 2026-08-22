@@ -89,6 +89,48 @@ public class ReasonCodeVocabularyAnalyzerTests
                     Failure.ForField(reasonCode: {|#0:"value.not-null"|}, propertyName: "name");
             """, ExpectFrozen(0, "value.not-null", "ValidationCodes.ValueNotNull"));
 
+    /// <remarks>
+    /// The error cases whose reason is required take it as a positional parameter named <c>Code</c>
+    /// rather than <c>ReasonCode</c>. A rule that matched only the latter would go quiet on
+    /// <c>Error.Conflict</c>, <c>Error.InvariantViolation</c>, <c>Error.Unexpected</c>, and
+    /// <c>Error.Forbidden</c> — the four places a reason is mandatory, and so the four where a frozen
+    /// literal is most likely to be typed.
+    /// </remarks>
+    [Fact]
+    public async Task Positional_Code_parameter_is_reported() =>
+        await VerifyAsync("""
+                    _ = new CodedConflict("Order", {|#0:"value.not-null"|});
+            """, ExpectFrozen(0, "value.not-null", "ValidationCodes.ValueNotNull"));
+
+    /// <remarks>
+    /// Cases whose reason is optional name it through an object initializer, which is an assignment
+    /// rather than an argument — a different operation, and therefore a surface the argument walk
+    /// cannot see.
+    /// </remarks>
+    [Fact]
+    public async Task Code_object_initializer_is_reported() =>
+        await VerifyAsync("""
+                    _ = new CodedNotFound("Order") { Code = {|#0:"value.not-null"|} };
+            """, ExpectFrozen(0, "value.not-null", "ValidationCodes.ValueNotNull"));
+
+    [Fact]
+    public async Task Placeholder_in_a_Code_initializer_is_reported() =>
+        await VerifyAsync("""
+                    _ = new CodedNotFound("Order") { Code = {|#0:"validation.error"|} };
+            """, Expect(0).WithArguments("validation.error", PlaceholderExplanation));
+
+    [Fact]
+    public async Task Application_code_in_a_Code_initializer_is_clean() =>
+        await VerifyAsync("""
+                    _ = new CodedNotFound("Order") { Code = "order.archived" };
+            """);
+
+    [Fact]
+    public async Task Non_Trellis_type_with_a_Code_property_is_clean() =>
+        await VerifyAsync("""
+                    _ = new NotTrellis.ForeignCoded { Code = "value.not-null" };
+            """);
+
     [Fact]
     public async Task Reason_code_in_a_later_position_is_reported() =>
         // `For` puts the code third; keying on the parameter name rather than an index is what makes

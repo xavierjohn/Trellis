@@ -6,10 +6,10 @@ public class ErrorAssertionsTests
     public void HaveCode_Should_Pass_When_Code_Matches()
     {
         // Arrange
-        var error = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
+        var error = new Error.Conflict(null, "order.already-shipped") { Detail = "Already shipped" };
 
         // Act & Assert
-        error.Should().HaveCode("not-found");
+        error.Should().HaveCode("order.already-shipped");
     }
 
     [Fact]
@@ -88,10 +88,10 @@ public class ErrorAssertionsTests
     public void HaveCode_Should_Support_Because_Reason()
     {
         // Arrange
-        var error = new Error.AuthenticationRequired() { Detail = "Not authenticated" };
+        var error = new Error.AuthenticationRequired { Code = "token.expired", Detail = "Not authenticated" };
 
         // Act & Assert
-        error.Should().HaveCode("authentication-required", "because authentication is required");
+        error.Should().HaveCode("token.expired", "because authentication is required");
     }
 
     [Fact]

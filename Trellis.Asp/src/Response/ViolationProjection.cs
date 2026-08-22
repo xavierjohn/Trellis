@@ -18,23 +18,11 @@ internal static class ViolationProjection
     /// </summary>
     public const string UnspecifiedCode = ValidationCodes.Unspecified;
 
-    /// <summary>
-    /// The legacy placeholder that predates the code vocabulary; normalized to
-    /// <see cref="UnspecifiedCode"/> on the wire so clients never see two spellings of
-    /// "no code was chosen".
-    /// </summary>
-    public const string LegacyUnspecifiedCode = ValidationCodes.LegacyUnspecified;
-
     private const string BodyLocation = "body";
     private const string QueryLocation = "query";
     private const string PathLocation = "path";
     private const string HeaderLocation = "header";
     private const string UnknownLocation = "unknown";
-
-    /// <summary>
-    /// Maps the legacy placeholder onto the neutral sentinel, leaving every other code untouched.
-    /// </summary>
-    public static string NormalizeCode(string code) => ValidationCodes.Normalize(code);
 
     /// <summary>
     /// Projects a pointer onto a location object.
@@ -70,7 +58,7 @@ internal static class ViolationProjection
     public static FieldViolationProblemDetail[] ToFieldViolations(EquatableArray<FieldViolation> fields) =>
         fields.Items
             .Select(fv => new FieldViolationProblemDetail(
-                NormalizeCode(fv.ReasonCode),
+                fv.ReasonCode,
                 fv.Detail,
                 ToLocation(fv.Field),
                 ToArgs(fv.Args)))
@@ -87,29 +75,30 @@ internal static class ViolationProjection
     public static RuleViolationProblemDetail[] ToRuleViolations(EquatableArray<RuleViolation> rules) =>
         rules.Items
             .Select(rv => new RuleViolationProblemDetail(
-                NormalizeCode(rv.ReasonCode),
+                rv.ReasonCode,
                 rv.Detail,
                 rv.Fields.Items.Select(ToLocation).ToArray(),
                 ToArgs(rv.Args)))
             .ToArray();
 
     /// <summary>
-    /// Builds the problem extensions carrying the structured violations, so every pipeline
-    /// emits the same members for the same failure.
+    /// Builds the problem extensions carrying the envelope and the structured violations, so
+    /// every pipeline emits the same members for the same failure.
     /// </summary>
     /// <remarks>
-    /// Returns <see langword="null"/> when there is nothing structured to add, which lets a
-    /// caller pass it straight to <c>Results.ValidationProblem(extensions:)</c>.
+    /// Always returns a bag, never <see langword="null"/>: <c>code</c> and <c>kind</c> are
+    /// carried by every failure response whichever layer wrote it, so there is no such thing as
+    /// nothing to add. The structured members are added only when they have content.
     /// </remarks>
-    public static Dictionary<string, object?>? ToProblemExtensions(Error.InvalidInput error)
+    public static Dictionary<string, object?> ToProblemExtensions(Error.InvalidInput error)
     {
-        Dictionary<string, object?>? extensions = null;
+        var extensions = ProblemEnvelope.ForError(error);
 
         if (error.Fields.Items.Length > 0)
-            (extensions ??= new(StringComparer.Ordinal))["fieldViolations"] = ToFieldViolations(error.Fields);
+            extensions["fieldViolations"] = ToFieldViolations(error.Fields);
 
         if (error.Rules.Items.Length > 0)
-            (extensions ??= new(StringComparer.Ordinal))["ruleViolations"] = ToRuleViolations(error.Rules);
+            extensions["ruleViolations"] = ToRuleViolations(error.Rules);
 
         return extensions;
     }

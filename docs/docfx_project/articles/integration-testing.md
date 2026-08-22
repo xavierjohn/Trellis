@@ -528,7 +528,7 @@ Full surface: [`trellis-api-testing-worker.md`](../api_reference/trellis-api-tes
 
 - **Prefer fakes over mocks for repositories.** `FakeRepository` reproduces real not-found behavior, unique constraints, and domain-event capture; mocks usually drift from the real `IRepository` contract.
 - **Pick the right repository surface.** Production handlers should consume the staging API (`Add` / `Remove` / `RemoveByIdAsync`). The fake-only `SaveAsync` / `DeleteAsync` (both `Task<Result<Unit>>`) exist so tests can assert on conflict / not-found result shapes.
-- **Assert on error case, not error string.** Use `BeFailureOfType<TError>()` against the closed `Error` ADT; the typed payload (`Error.NotFound.Resource`, `Error.Conflict.ReasonCode`, etc.) carries the meaningful state.
+- **Assert on error case, not error string.** Use `BeFailureOfType<TError>()` against the closed `Error` ADT; the typed payload (`Error.NotFound.Resource`, `Error.Conflict.Code`, etc.) carries the meaningful state.
 - **Async assertions live on the awaitable.** `BeSuccessAsync` / `BeFailureAsync` / `BeFailureOfTypeAsync` are extensions on `Task<Result<T>>` and `ValueTask<Result<T>>` — not on `ResultAssertions<T>`. `Unwrap()` / `UnwrapError()` are test-only; never copy them into production code.
 - **Use the rich `Actor` overload when authorization is non-trivial.** When a policy reads `ForbiddenPermissions` or `Attributes`, pass a full `Actor` to `TestActorProvider` and `CreateClientWithActor`; the simple `(id, perms)` overload only sets granted permissions.
 - **Configure DI before `CreateClient()`.** Use `ConfigureTestServices` for `ReplaceSingleton` / `ReplaceResourceLoader` / `ReplaceDbProvider`; mutating services after the host is built has no effect.

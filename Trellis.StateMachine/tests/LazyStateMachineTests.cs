@@ -113,7 +113,7 @@ public class LazyStateMachineTests
         result.IsFailure.Should().BeTrue();
         result.TryGetError(out var err).Should().BeTrue();
         var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
-        invariant.ReasonCode.Should().Be(FaultCodes.StateMachineInvalidTransition);
+        invariant.Code.Should().Be(FaultCodes.StateMachineInvalidTransition);
     }
 
     [Fact]

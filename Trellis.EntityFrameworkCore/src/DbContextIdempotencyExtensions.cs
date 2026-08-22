@@ -33,7 +33,7 @@ public static class DbContextIdempotencyExtensions
     /// <para>
     /// On a unique-constraint violation: <see cref="Result.Fail{TValue}(Error)"/>
     /// containing an <see cref="Error.Conflict"/> with
-    /// <see cref="Error.Conflict.ReasonCode"/> = <c>"duplicate.key"</c> and the
+    /// <see cref="Error.Code"/> = <c>"duplicate.key"</c> and the
     /// provider-reported <see cref="Error.Conflict.ConstraintName"/> and
     /// <see cref="Error.Conflict.ConstraintTableName"/> populated on a best-effort
     /// basis (see <see cref="DbExceptionClassifier.ExtractConstraintIdentity(DbUpdateException)"/>).
@@ -158,7 +158,7 @@ public static class DbContextIdempotencyExtensions
             var (constraintName, tableName) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
             return Result.Fail<TEntity>(new Error.Conflict(
                 Resource: null,
-                ReasonCode: "duplicate.key")
+                Code: "duplicate.key")
             {
                 Detail = "A record with the same unique value already exists.",
                 ConstraintName = constraintName,
