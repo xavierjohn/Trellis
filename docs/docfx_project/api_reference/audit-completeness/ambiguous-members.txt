@@ -1,0 +1,23 @@
+﻿# Ambiguous member names (TRLDOC015)
+#
+# One member name per line. A name listed here must always be written with its receiver in
+# documentation prose -- `FieldViolation.ReasonCode`, never a bare `ReasonCode`.
+#
+# Add a name here when it is declared by more than one type and readers have been sent to the
+# wrong one, which in practice means: whenever a member is removed from one type while a member
+# of the same name survives on another. That is the moment the name becomes unresolvable by
+# eye, and the moment every other doc gate stops being able to help -- TRLDOC005 asks only
+# whether a name exists somewhere, and a bare name carries no receiver for TRLDOC014 to check.
+#
+# Entries are self-expiring: once no loaded type declares the name at all, TRLDOC005 rejects
+# every mention on the stronger ground that it does not exist, and this gate fails until the
+# now-redundant entry is removed.
+#
+# Scope is inline code spans in api_reference/ and articles/. Fenced code blocks are exempt,
+# because a bare name there can be a legitimate named argument. ADRs are exempt because they
+# are dated records, and an ADR describing the API as it stood is correct precisely by being
+# out of date.
+
+# Removed from Error in the Error.Code collapse (PR #731); still declared by FieldViolation and
+# RuleViolation, so ten stale "use ReasonCode on an Error" references passed every gate.
+ReasonCode

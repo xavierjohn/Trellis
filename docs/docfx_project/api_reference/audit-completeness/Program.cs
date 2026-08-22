@@ -178,9 +178,13 @@ Console.WriteLine($"Report written: {outPath}");
 
 var symbolAuditExit = DocSymbolAudit.Run(docsDir, auditRefPaths, auditMlc);
 var memberAuditExit = DocMemberAudit.Run(docsDir, auditRefPaths, auditMlc);
+var attributionAuditExit = DocAttributionAudit.Run(docsDir, auditRefPaths, auditMlc);
 
 if (memberAuditExit != 0)
     symbolAuditExit = memberAuditExit;
+
+if (attributionAuditExit != 0)
+    symbolAuditExit = attributionAuditExit;
 
 var gapPackages = summary.Where(s => s.Item3 > 0 || s.Item5 > 0).ToList();
 if (gapPackages.Count == 0)
