@@ -7,6 +7,7 @@ using Trellis.Mediator.Tests.Helpers;
 /// <summary>
 /// Tests for <see cref="TracingBehavior{TMessage, TResponse}"/>.
 /// </summary>
+[Collection(SerializedMediatorActivitySource.Name)]
 public class TracingBehaviorTests : IDisposable
 {
     private readonly ActivitySource _activitySource = TracingBehavior<TestCommand, Result<string>>.ActivitySource;

@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
-types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
+types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
-last_verified: 2026-08-18
+last_verified: 2026-08-22
 audience: [llm]
 ---
 # Trellis.Mediator — API Reference
@@ -418,15 +418,36 @@ public sealed class TracingBehavior<TMessage, TResponse> : IPipelineBehavior<TMe
 
 **Recording these spans**
 
-`AddTrellisBehaviors()` registers `TracingBehavior`, so on each command/query it *calls* `ActivitySource.StartActivity` — but that only returns a live `Activity` if your `TracerProvider` listens to the `"Trellis.Mediator"` source. If the source is not registered, `StartActivity` returns `null` and the per-command/query span never appears (you still see the HTTP and value-object spans, but not the handler). Add the source to your tracing setup:
+`AddTrellisBehaviors()` registers `TracingBehavior`, so on each command/query it *calls* `ActivitySource.StartActivity` — but that only returns a live `Activity` if your `TracerProvider` listens to the `"Trellis.Mediator"` source. If the source is not registered, `StartActivity` returns `null` and the per-command/query span never appears (you still see the HTTP and value-object spans, but not the handler). Call `AddTrellisMediatorInstrumentation()`:
 
 ```csharp
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
-        .AddSource("Trellis.Mediator") // == TracingBehavior<TMessage, TResponse>.ActivitySourceName
+        .AddTrellisMediatorInstrumentation()
         .AddOtlpExporter());
 ```
+
+`AddSource("Trellis.Mediator")` is equivalent — the helper exists so the name is not repeated as a string literal, and so this package matches `AddResultsInstrumentation()` in Trellis.Core and `AddPrimitiveValueObjectInstrumentation()` in Trellis.Primitives.
+
+> **This gap is silent.** A service that never registers the source looks exactly like a service in which nothing failed: there is no warning, no startup error, and no empty-result signal — the spans are simply never collected. Because this span carries `error.code` and `error.type`, the gap is normally discovered *during* an incident, at the moment those tags were wanted.
+
+### MediatorTraceProviderBuilderExtensions
+**Declaration**
+
+```csharp
+public static class MediatorTraceProviderBuilderExtensions
+```
+
+Registers the mediator pipeline's activity source with an OpenTelemetry `TracerProvider`.
+
+**Methods**
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static TracerProviderBuilder AddTrellisMediatorInstrumentation(this TracerProviderBuilder builder)` | `TracerProviderBuilder` | Subscribes the tracer provider to `TracingBehavior<TMessage, TResponse>.ActivitySourceName` (`"Trellis.Mediator"`), so the per-command/query span is collected. Returns the same builder for chaining. Throws `ArgumentNullException` when `builder` is null. Equivalent to `AddSource("Trellis.Mediator")`. |
+
+The method is named for the Trellis pipeline rather than for the mediator alone because it instruments Trellis behaviors, not the underlying Mediator library, and the two would otherwise be easy to confuse on a `TracerProviderBuilder` chain.
 
 ### TrellisMediatorTelemetryOptions
 **Declaration**
