@@ -84,7 +84,7 @@ If a package packs payload with no copy logic reachable, `_WarnTrellisApiReferen
 
 ## TRLDOC005 — documented symbols must exist
 
-TRLDOC005, TRLDOC008 and TRLDOC014 are **not** part of this script. All three are emitted by the `audit-completeness` tool, because they need to reflect over built assemblies rather than read Markdown, and they therefore run in the Build workflow after `dotnet build` rather than in the docs workflow. The first two check the doc↔API relationship in opposite directions, and both must hold: TRLDOC005 that every documented name is real, TRLDOC008 that every real name is documented. TRLDOC014 then checks that fenced code attributes its members to the right *owner*.
+TRLDOC005, TRLDOC008, TRLDOC014 and TRLDOC015 are **not** part of this script. All four are emitted by the `audit-completeness` tool, because they need to reflect over built assemblies rather than read Markdown, and they therefore run in the Build workflow after `dotnet build` rather than in the docs workflow. The first two check the doc↔API relationship in opposite directions, and both must hold: TRLDOC005 that every documented name is real, TRLDOC008 that every real name is documented. TRLDOC014 then checks that fenced code attributes its members to the right *owner*, and TRLDOC015 that a member name known to be ambiguous names an owner at all.
 
 It is the reverse of the completeness audit. Completeness asks "is every public API documented?" and so can only start from symbols that exist; it is structurally blind to a confidently-documented type that was renamed or never existed. TRLDOC005 asks the opposite question — "does every API-shaped name in the docs resolve to a real symbol?" — which is the check that catches, for example, a doc telling readers to derive from a long-deleted `IRepositoryBase`.
 
@@ -142,6 +142,24 @@ What survives those rules is genuinely unresolvable without binding, and lives i
 A receiver whose members cannot be listed at all — typically a type whose base type lives in an assembly that is not on the probe path — is dropped from the index for the whole run rather than judged against a partial member set. That is a deliberate false negative in favour of never failing a correct doc.
 
 Like TRLDOC013, the gate refuses to pass by checking nothing. It fails if the type index is empty, and fails if it extracted **zero** receiver-qualified accesses from the entire doc set — the state a broken fence marker or chain pattern would produce, and the one in which a silent green is most convincing and least deserved.
+
+## TRLDOC015 — ambiguous member names must name their receiver
+
+TRLDOC015 is the fourth audit in the tool, and it closes the gap the other three leave for a **bare** member name in prose.
+
+It exists because ten stale references walked through every gate at once. When `Error` lost its `ReasonCode` member to the `Error.Code` collapse, sentences like "match on its `ReasonCode`" kept telling readers to use a member that `Error` no longer had. TRLDOC008 was satisfied because the *real* `ReasonCode` on `FieldViolation` and `RuleViolation` was still documented. TRLDOC005 was satisfied because the name still resolves — it just resolves to a different type than the sentence means. TRLDOC014 never looked, because a bare name has no receiver to check and the mentions were in prose rather than fences. The removal itself is what created the hazard: **a member deleted from one type while a same-named member survives on another** turns every unqualified mention into a claim no tool can verify and no reader can check by eye.
+
+So the rule is narrow by construction. It reads a ledger of such names from `audit-completeness/ambiguous-members.txt` and requires each one, wherever it appears in an inline code span, to be written with an owner — `FieldViolation.ReasonCode`, not `ReasonCode`. A mention preceded by a `.` is attributed and passes, which covers both `FieldViolation.ReasonCode` and `violation.ReasonCode`. Names not on the ledger are ignored entirely; this gate deliberately has no opinion about the overwhelming majority of member names, which are unambiguous and read fine bare.
+
+Three scope decisions are worth stating, because each one is a place the gate could have been made louder and worse:
+
+- **Inline spans only, never fenced blocks.** In a fence, a bare name can be a legitimate named argument — `new FieldViolation(ReasonCode: "x")` is correct code that a receiver requirement would break. Prose is where attribution is *asserted* rather than compiled, and all four observed defects were inline.
+- **A span containing a parameter list is skipped.** `` `sealed record (string ReasonCode, …)` `` is how the member's own declaration is documented; demanding a receiver inside it would demand a signature the compiler would reject. Every drift this gate targets is receiverless prose, which has no parameter list.
+- **`articles/` is scanned as well as `api_reference/`** — unlike the other three audits, which read the reference set only. The motivating defect lived in `articles/error-handling.md`, and the walk is **recursive**, because the per-diagnostic pages under `articles/analyzers/` are exactly the prose most likely to name a member bare. **ADRs are excluded**: they sit in a sibling directory the walk never reaches, and a dated decision record describing the API as it stood is correct *because* it is out of date.
+
+Entries are self-expiring. Once no loaded type declares a ledgered name at all, the gate reports the entry as stale and fails until it is removed — because at that point TRLDOC005 rejects every mention on the stronger ground that the name does not exist, and a leftover entry would only add noise. As with the other ledgers, the risk being managed is a suppression outliving the thing it was written for.
+
+Like TRLDOC013 and TRLDOC014, the gate refuses to pass by checking nothing: it fails if it scanned zero Markdown files or extracted zero inline code spans, and reports both counts on success. A ledger is worth exactly as much as the corpus it was matched against, and a miswired docs path would otherwise report the same green as a full clean run.
 
 ## Anchor slug rule
 

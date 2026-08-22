@@ -51,7 +51,7 @@ jobs:
     - name: Build
       run: dotnet build --no-restore -c Release
 
-    - name: API reference audits (TRLDOC005, TRLDOC008, TRLDOC014)
+    - name: API reference audits (TRLDOC005, TRLDOC008, TRLDOC014, TRLDOC015)
       # Reflects over the just-built assemblies to check the doc<->API relationship in both
       # directions, and fails on any of them.
       #   TRLDOC005 — every API-shaped name in the reference docs resolves to a real symbol.
@@ -67,6 +67,11 @@ jobs:
       #     only reads backticked prose, so Error.Validation.ForField passed it on the strength  # v1-stale-ok: cites a made-up API as the motivating defect
       #     of an unrelated Validation and a real ForField — inside a fence it never looked at
       #     all. Fenced code is what readers copy, so it is held to binding-like resolution.
+      #   TRLDOC015 — a member name listed in ambiguous-members.txt must name its receiver in
+      #     prose. When Error lost ReasonCode but FieldViolation and RuleViolation kept theirs,
+      #     ten "use its ReasonCode" references stayed green: the name still resolves for
+      #     TRLDOC005, the surviving members keep TRLDOC008 satisfied, and a bare name has no
+      #     receiver for TRLDOC014 to check. This is the only audit that also reads articles/.
       run: |
         dotnet run -c Release --project docs/docfx_project/api_reference/audit-completeness/audit-completeness.csproj
       env:

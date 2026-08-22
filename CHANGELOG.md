@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — TRLDOC015, ambiguous member names must name their receiver
+
+The `Error.Code` collapse below left ten references telling readers to use `Error`'s `ReasonCode`, a member it no longer has. All four existing doc gates passed them, and the reason is worth recording because it will recur: `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode` still exist, so TRLDOC005 saw a name that resolves, TRLDOC008 saw a documented member, and TRLDOC014 saw no receiver to check — a bare name in prose carries none. Deleting a member while a same-named member survives elsewhere is precisely the move that makes every unqualified mention unverifiable.
+
+TRLDOC015 is a fourth audit in `audit-completeness`. It reads `ambiguous-members.txt` and requires each listed name, wherever it appears in an inline code span, to be written with an owner. Scope is deliberately narrow: inline spans only (a bare name inside a fence can be a legitimate named argument), spans with a parameter list skipped (that is how a member's own declaration is documented), and ADRs excluded (a dated record is correct *because* it is stale). It is the only audit that also scans `articles/`, since that is where the motivating defect lived. Entries self-expire — once no type declares the name, the gate demands the entry's removal, because TRLDOC005 then rejects such mentions on stronger grounds.
+
+Enabling it immediately found four more unattributed mentions in `trellis-api-asp.md` and `articles/integration-aspnet.md` that the manual sweep had missed.
+
 ### Changed — one code member, stored once, instead of four
 
 `Error` exposed `Kind`, `Code`, `HasExplicitCode`, and `WireCode`, plus a `ValidationCodes.Normalize` rewrite rule. Three of those existed only to compensate for the fourth: `Code` was non-nullable and defaulted to `Kind`, so it could not express "the producer named no reason", so that fact had to live in a separate `HasExplicitCode`, so reading `Code` at a boundary was unsafe, so `WireCode` existed to be read instead. A member whose documentation warns you not to read it is a design defect, and it had already produced one: the mediator tagged spans with `Code` while the HTTP writer emitted `WireCode`, so the same 404 was `not-found` on the span and `error.unspecified` in the body.
