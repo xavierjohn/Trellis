@@ -49,7 +49,6 @@ This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For rele
 | `Trellis.Asp.Authorization` package | Folded into `Trellis.Asp.nupkg` (namespace unchanged) | [Package map](#package-map-legacy--current) |
 | Raw `string Actor.Id` + `string CreatedByActorId` audit fields | Typed `Actor.Id : ActorId` (`RequiredString<ActorId>` in `Trellis.Authorization`) + `ActorId CreatedByActorId` aggregate fields | [Typed `ActorId` audit fields](#typed-actorid-audit-fields-trellisauthorization) |
 | `services.AddApiVersioning().AddMvc(...)` with default `IActorProvider` | Optional `Maybe<Actor>` return from `IActorProvider.GetCurrentActorAsync` for anonymous-allowed endpoints | (see CHANGELOG `[3.0.0]` for the actor-provider breaking change) |
-| OpenTelemetry source `"Trellis.Results"` | `"Trellis.Core"` (`RopTrace.ActivitySourceName`) | [Observability](#observability) |
 | Analyzer IDs `TRLSGEN001`..`TRLSGEN103` | `TRLS031`..`TRLS038` | [Analyzer ID renames](#analyzer-id-renames) |
 
 ## Use this guide when
@@ -74,7 +73,6 @@ This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For rele
 | Package merges | DDD, Primitives generator, Asp source generator, EF Core generator, Asp authorization | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
 | `WriteOutcome<T>` move | `Trellis.Asp.WriteOutcome<T>` → `Trellis.WriteOutcome<T>` (in `Trellis.Core`) | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
 | Test helper namespace | `Trellis.Results.Tests.*` → `Trellis.Core.Tests.*` | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| OTel `ActivitySource` name | `"Trellis.Results"` → `"Trellis.Core"` | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
 | HTTP surface | 60+ overloads collapsed to one static class with seven methods; all sync removed; new disposal contract | [`trellis-api-http.md` → Breaking changes from v1](../api_reference/trellis-api-http.md#breaking-changes-from-v1) |
 | State machine | Package and namespace renamed `Trellis.Stateless` → `Trellis.StateMachine`; public surface otherwise identical | [`trellis-api-statemachine.md` → Breaking changes from v1](../api_reference/trellis-api-statemachine.md#breaking-changes-from-v1) |
 | Analyzer IDs | `TRLSGEN001`–`TRLSGEN103` renamed to `TRLS031`–`TRLS038` | [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md) |
@@ -270,19 +268,17 @@ Authoritative diff (with `<PackageReference>` snippets): [`trellis-api-core.md` 
 
 ## Observability
 
-Update OpenTelemetry subscriptions when you upgrade:
+The ROP `ActivitySource` is still named `"Trellis.Results"`, so existing subscriptions keep working:
 
 ```csharp
-// v1
 builder.AddSource("Trellis.Results");
-
-// v2
-builder.AddSource("Trellis.Core");
 // or, programmatically:
 builder.AddSource(RopTrace.ActivitySourceName);
 ```
 
-The OTel extension method names (`AddResultsInstrumentation()`, `AddPrimitiveValueObjectInstrumentation()`) are unchanged. See [`integration-observability.md`](integration-observability.md) for tracing setup and [`debugging.md`](debugging.md) for ROP-trace forensics.
+The source is named for what it traces rather than for the package that ships it — `Trellis.Core` also emits the `"Trellis.Primitives"` source and the `"Trellis.Validation"` meter.
+
+The OTel extension methods are now `AddTrellisResultsInstrumentation()` and `AddTrellisPrimitivesInstrumentation()`, matching the `AddTrellis{Segment}Instrumentation` shape used across the framework. See [`integration-observability.md`](integration-observability.md) for tracing setup and [`debugging.md`](debugging.md) for ROP-trace forensics.
 
 ## Analyzer ID renames
 
@@ -313,7 +309,7 @@ Recommended order — each step is small enough that the build should succeed be
 6. **Replace `result.Value` reads.** Use `TryGetValue`, `Match`, or deconstruction. Replace `result.Error` reads with `if (result.Error is { } e)` or `result.TryGetError(out var e)`.
 7. **Remove `MatchError` / `FlattenValidationErrors` calls.** `MatchError` → `Match` + `switch`. `FlattenValidationErrors` is no-op — `Combine` already merges field/rule violations.
 8. **Audit HTTP call sites.** Replace `EnsureSuccess*` / `HandleClientError*` / `HandleServerError*` / `HandleForbidden*` / `HandleFailureAsync<TContext>` with `ToResultAsync(statusMap)` or body-aware `ToResultAsync(mapper, ct)`. Rename `ReadResultFromJsonAsync` / `ReadResultMaybeFromJsonAsync` to `ReadJsonAsync` / `ReadJsonMaybeAsync`. Stop disposing `HttpResponseMessage` after the chain reaches `ReadJson*` — `Trellis.Http` owns it.
-9. **Update OTel sources.** `"Trellis.Results"` → `"Trellis.Core"` (or `RopTrace.ActivitySourceName`).
+9. **OTel sources are unchanged.** The ROP source is still `"Trellis.Results"` (or `RopTrace.ActivitySourceName`); only the registration helper was renamed, to `AddTrellisResultsInstrumentation()`.
 10. **Update analyzer suppressions.** Apply the `TRLSGEN*` → `TRLS0xx` map.
 11. **Build, run tests, and iterate.** The compiler errors (`CS0029`, `CS0117`, `CS1061`, `CS1593`) are deliberately the migration map — work through them top-down.
 12. **Add `Trellis.Analyzers`** if you want the compiler to enforce current patterns (notably `TRLS003` on `Maybe<T>.Value` and `TRLS019` on `default(Result<T>)`).

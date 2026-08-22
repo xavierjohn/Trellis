@@ -227,8 +227,8 @@ using Trellis.Primitives;
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracerBuilder => tracerBuilder
-        .AddResultsInstrumentation()
-        .AddPrimitiveValueObjectInstrumentation()
+        .AddTrellisResultsInstrumentation()
+        .AddTrellisPrimitivesInstrumentation()
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation());
 ```
@@ -237,11 +237,11 @@ builder.Services.AddOpenTelemetry()
 
 | Instrumentation | Best for |
 | --- | --- |
-| `AddResultsInstrumentation()` | Deep, temporary pipeline forensics |
-| `AddPrimitiveValueObjectInstrumentation()` | Lower-noise validation and parsing diagnostics |
+| `AddTrellisResultsInstrumentation()` | Deep, temporary pipeline forensics |
+| `AddTrellisPrimitivesInstrumentation()` | Lower-noise validation and parsing diagnostics |
 
 > [!WARNING]
-> `AddResultsInstrumentation()` can generate a lot of spans because it traces individual result operations. Treat it as a break-glass diagnostic tool, not a default production setting.
+> `AddTrellisResultsInstrumentation()` can generate a lot of spans because it traces individual result operations. Treat it as a break-glass diagnostic tool, not a default production setting.
 
 ## Common errors and what they usually mean
 
@@ -311,5 +311,5 @@ When you do that, most pipeline bugs become straightforward to locate.
 
 ## Cross-references
 
-- `Result<T>` accessors (`TryGetValue`, `TryGetError`, `Match`), `Tap` / `TapOnFailure`, `ResultDebugSettings`, `AddResultsInstrumentation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
-- `AddPrimitiveValueObjectInstrumentation`: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
+- `Result<T>` accessors (`TryGetValue`, `TryGetError`, `Match`), `Tap` / `TapOnFailure`, `ResultDebugSettings`, `AddTrellisResultsInstrumentation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- `AddTrellisPrimitivesInstrumentation`: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)

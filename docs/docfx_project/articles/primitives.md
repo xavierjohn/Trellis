@@ -46,7 +46,7 @@ audience: [developer]
 | Scalar JSON converters | `ParsableJsonConverter<T>` (scalars), `RequiredEnumJsonConverter<TRequiredEnum>` | `Trellis.Core` |
 | Composite JSON converter | `CompositeValueObjectJsonConverter<T>` | `Trellis.Primitives` |
 | Tracing source | `PrimitiveValueObjectTrace.ActivitySource`, `PrimitiveValueObjectTrace.ActivitySourceName` | `Trellis.Core` |
-| Tracing registration | `AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder)` | `Trellis.Primitives` |
+| Tracing registration | `AddTrellisPrimitivesInstrumentation(this TracerProviderBuilder)` | `Trellis.Primitives` |
 
 Full signatures: [trellis-api-primitives.md](../api_reference/trellis-api-primitives.md).
 

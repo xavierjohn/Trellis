@@ -15,13 +15,13 @@ public class PvoTracingExtensionsTests : IDisposable
     private readonly PvoActivityTestHelper _activityHelper = new();
 
     [Fact]
-    public void AddPrimitiveValueObjectInstrumentation_RegistersActivitySource()
+    public void AddTrellisPrimitivesInstrumentation_RegistersActivitySource()
     {
         // Arrange
         var builder = Sdk.CreateTracerProviderBuilder();
 
         // Act
-        var result = builder.AddPrimitiveValueObjectInstrumentation();
+        var result = builder.AddTrellisPrimitivesInstrumentation();
 
         // Assert - Method should return builder for chaining
         result.Should().BeSameAs(builder);
@@ -29,11 +29,11 @@ public class PvoTracingExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void AddPrimitiveValueObjectInstrumentation_EnablesActivityCapture()
+    public void AddTrellisPrimitivesInstrumentation_EnablesActivityCapture()
     {
         // Arrange
         using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddPrimitiveValueObjectInstrumentation()
+            .AddTrellisPrimitivesInstrumentation()
             .Build();
 
         // Act
@@ -51,11 +51,11 @@ public class PvoTracingExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void AddPrimitiveValueObjectInstrumentation_SupportsMethodChaining()
+    public void AddTrellisPrimitivesInstrumentation_SupportsMethodChaining()
     {
         // Arrange & Act
         using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddPrimitiveValueObjectInstrumentation()
+            .AddTrellisPrimitivesInstrumentation()
             .AddSource("TestSource")  // Chain another call
             .Build();
 
@@ -64,7 +64,7 @@ public class PvoTracingExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void AddPrimitiveValueObjectInstrumentation_RegistersCorrectActivitySourceName()
+    public void AddTrellisPrimitivesInstrumentation_RegistersCorrectActivitySourceName()
     {
         // Arrange
         var expectedSourceName = "Trellis.Primitives";
@@ -180,9 +180,9 @@ public class PvoTracingExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void AddPrimitiveValueObjectInstrumentation_NullBuilder_ThrowsArgumentNullException() =>
+    public void AddTrellisPrimitivesInstrumentation_NullBuilder_ThrowsArgumentNullException() =>
         FluentActions.Invoking(() => PrimitiveValueObjectTraceProviderBuilderExtensions
-            .AddPrimitiveValueObjectInstrumentation(builder: null!))
+            .AddTrellisPrimitivesInstrumentation(builder: null!))
             .Should().Throw<ArgumentNullException>()
             .Where(ex => ex.ParamName == "builder");
 

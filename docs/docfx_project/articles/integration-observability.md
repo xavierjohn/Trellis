@@ -8,7 +8,7 @@ audience: [developer]
 ---
 # Observability and Monitoring
 
-Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `ActivitySource`s — `Trellis.Mediator`, `Trellis.Primitives`, and `Trellis.Core` — wired through the canonical `AddTrellis(...)` composition root, plus validation counters from one `Meter`, `Trellis.Validation`.
+Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `ActivitySource`s — `"Trellis.Mediator"`, `"Trellis.Primitives"`, and `"Trellis.Results"` — wired through the canonical `AddTrellis(...)` composition root, plus validation counters from one `Meter`, `Trellis.Validation`.
 
 ## Patterns Index
 
@@ -16,8 +16,8 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 |---|---|---|
 | Wire mediator tracing + logging via the composition root | `services.AddTrellis(o => o.UseMediator())` | [Default registration](#default-registration) |
 | Subscribe an OTel `TracerProvider` to mediator spans | `tracing.AddTrellisMediatorInstrumentation()` | [Tracing](#tracing) |
-| Subscribe to value-object spans (validation/parsing) | `tracing.AddPrimitiveValueObjectInstrumentation()` | [Tracing](#tracing) |
-| Subscribe to ROP spans (deep `Bind` / `Map` debugging) | `tracing.AddResultsInstrumentation()` | [Tracing](#tracing) |
+| Subscribe to value-object spans (validation/parsing) | `tracing.AddTrellisPrimitivesInstrumentation()` | [Tracing](#tracing) |
+| Subscribe to ROP spans (deep `Bind` / `Map` debugging) | `tracing.AddTrellisResultsInstrumentation()` | [Tracing](#tracing) |
 | Read structured per-message logs with elapsed-ms outcomes | Built in via `LoggingBehavior<,>` | [Logging](#logging) |
 | Allow `Error.Detail` into telemetry (non-PII environments only) | `o.UseMediator(t => t.IncludeErrorDetail = true)` | [Redaction](#redaction) |
 | Add business tags to the mediator span from a handler | `Activity.Current?.SetTag(...)` | [Custom enrichment](#custom-enrichment) |
@@ -38,8 +38,8 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 | Mediator tracing | `TracingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | One `Activity` per mediator message; tags `error.code`, `error.type`; `ActivityStatusCode.Ok` / `Error` (request cancellations stay `Unset`) | Registered by `AddTrellisBehaviors()`; subscribe with `tracing.AddTrellisMediatorInstrumentation()` (source name: `"Trellis.Mediator"`) |
 | Mediator logging | `LoggingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | `Debug` start, `Debug` end (with elapsed ms), `Warning` on failure (with `Error.Code`) | Registered by `AddTrellisBehaviors()`; consumed by any `ILogger` provider. Per-call timing is at Debug so production at the default `Information` minimum is quiet; raise via `"Trellis.Mediator": "Debug"` in logging configuration to opt back in. |
 | Redaction | `TrellisMediatorTelemetryOptions` (`Trellis.Mediator`) | Controls whether `Error.Detail` flows into the activity status description and log message | DI singleton, configured via `o.UseMediator(t => ...)` or `AddTrellisBehaviors(t => ...)` |
-| Primitive value-object tracing | `Trellis.Primitives` `ActivitySource` | Exactly one `Activity` per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call delegates to and is traced under `.TryCreate`), named after the factory (e.g. `EmailAddress.TryCreate`), with `Ok` / `Error` status on both success and failure | `tracing.AddPrimitiveValueObjectInstrumentation()` |
-| Result / ROP tracing | `Trellis.Core` `ActivitySource` (`RopTrace.ActivitySourceName`) | Spans for individual `Result` operations — verbose; intended for diagnostics | `tracing.AddResultsInstrumentation()` |
+| Primitive value-object tracing | `"Trellis.Primitives"` `ActivitySource` | Exactly one `Activity` per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call delegates to and is traced under `.TryCreate`), named after the factory (e.g. `EmailAddress.TryCreate`), with `Ok` / `Error` status on both success and failure | `tracing.AddTrellisPrimitivesInstrumentation()` |
+| Result / ROP tracing | `"Trellis.Results"` `ActivitySource` (`RopTrace.ActivitySourceName`) | Spans for individual `Result` operations — verbose; intended for diagnostics | `tracing.AddTrellisResultsInstrumentation()` |
 | Validation metrics | `ValidationMetrics` (`Trellis.Core`) | `trellis.validation.failures`, one increment per violation as a `FieldViolation` or `RuleViolation` is created; tags `validation.code`, `validation.violation` | `metrics.AddTrellisValidationInstrumentation()` (meter name: `"Trellis.Validation"`) |
 | Composition root | `TrellisServiceBuilder.UseMediator(Action<TrellisMediatorTelemetryOptions>?)` | Registers the five canonical behaviors and the telemetry options | `services.AddTrellis(o => o.UseMediator(...))` |
 
@@ -55,7 +55,7 @@ dotnet add package OpenTelemetry.Instrumentation.AspNetCore
 dotnet add package OpenTelemetry.Instrumentation.Http
 ```
 
-`Trellis.Core` already references the OpenTelemetry SDK so `AddResultsInstrumentation()` and `AddPrimitiveValueObjectInstrumentation()` work without extra packages. The exporter and ASP.NET Core / HTTP instrumentation packages above are standard OTel — Trellis does not wrap them.
+`Trellis.Core` already references the OpenTelemetry SDK so `AddTrellisResultsInstrumentation()` and `AddTrellisPrimitivesInstrumentation()` work without extra packages. The exporter and ASP.NET Core / HTTP instrumentation packages above are standard OTel — Trellis does not wrap them.
 
 ## Quick start
 
@@ -80,7 +80,7 @@ builder.Services.AddOpenTelemetry()
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddTrellisMediatorInstrumentation()
-        .AddPrimitiveValueObjectInstrumentation()
+        .AddTrellisPrimitivesInstrumentation()
         .AddOtlpExporter());
 
 var app = builder.Build();
@@ -118,8 +118,8 @@ Trellis ships three independent `ActivitySource`s. Subscribe to each on its own 
 | Source | Constant | Volume | When to subscribe |
 |---|---|---|---|
 | `"Trellis.Mediator"` | `TracingBehavior<,>.ActivitySourceName` | One span per mediator message | Always — this is the primary failure-localisation surface. |
-| `"Trellis.Primitives"` | (internal — use `AddPrimitiveValueObjectInstrumentation()`) | Exactly one span per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call is traced under `.TryCreate`) | When you need to see *why* input validation rejected a request at the edge. |
-| `"Trellis.Core"` | `RopTrace.ActivitySourceName` (= `"Trellis.Core"`) | One span per individual `Result` operation (`Bind`, `Map`, `Tap`, …) | Only for break-glass diagnostics — high cardinality, high volume. |
+| `"Trellis.Primitives"` | (internal — use `AddTrellisPrimitivesInstrumentation()`) | Exactly one span per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call is traced under `.TryCreate`) | When you need to see *why* input validation rejected a request at the edge. |
+| `"Trellis.Results"` | `RopTrace.ActivitySourceName` (= `"Trellis.Results"`) | One span per individual `Result` operation (`Bind`, `Map`, `Tap`, …) | Only for break-glass diagnostics — high cardinality, high volume. |
 
 `TracingBehavior<,>` writes the following on every dispatched message:
 
@@ -140,27 +140,27 @@ builder.Services.AddOpenTelemetry()
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddTrellisMediatorInstrumentation()
-        .AddPrimitiveValueObjectInstrumentation()
+        .AddTrellisPrimitivesInstrumentation()
         .AddOtlpExporter());
 ```
 
-To enable ROP forensics during an investigation, add `.AddResultsInstrumentation()` on top — and remove it again when the investigation is over.
+To enable ROP forensics during an investigation, add `.AddTrellisResultsInstrumentation()` on top — and remove it again when the investigation is over.
 
 When ROP instrumentation is not enabled, `Result` operators do not mutate the ambient ASP.NET request span
 or the `Trellis.Mediator` pipeline span. Those outer spans keep their own status semantics; only ROP spans
-created by the `"Trellis.Core"` source receive per-step `Ok` / `Error` status and `result.error.code` / `result.error.type` tags.
+created by the `"Trellis.Results"` source receive per-step `Ok` / `Error` status and `result.error.code` / `result.error.type` tags.
 
 ```csharp
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
         .AddTrellisMediatorInstrumentation()
-        .AddPrimitiveValueObjectInstrumentation()
-        .AddResultsInstrumentation()
+        .AddTrellisPrimitivesInstrumentation()
+        .AddTrellisResultsInstrumentation()
         .AddConsoleExporter());
 ```
 
 > [!WARNING]
-> `AddResultsInstrumentation()` is a debugging tool. It traces every `Bind`, `Map`, and `Tap` and can flood your collector. Keep it off in production unless you have an active incident.
+> `AddTrellisResultsInstrumentation()` is a debugging tool. It traces every `Bind`, `Map`, and `Tap` and can flood your collector. Keep it off in production unless you have an active incident.
 
 ## Logging
 
@@ -314,8 +314,8 @@ tracing.AddSource("Acme.Billing");
 ## Practical guidance
 
 - **Subscribe to `Trellis.Mediator` always.** It is one span per message and is the cheapest lever for failure localisation.
-- **Add `AddPrimitiveValueObjectInstrumentation()` early.** Validation traces are the clearest signal for "why is this request being rejected at the edge?".
-- **Treat `AddResultsInstrumentation()` as break-glass.** Turn it on for an incident, turn it off afterwards.
+- **Add `AddTrellisPrimitivesInstrumentation()` early.** Validation traces are the clearest signal for "why is this request being rejected at the edge?".
+- **Treat `AddTrellisResultsInstrumentation()` as break-glass.** Turn it on for an incident, turn it off afterwards.
 - **Keep `IncludeErrorDetail = false` in production.** Code + type are sufficient for dashboards and alerts; flip it on per-environment only when you have audited every `Error.Detail` write site.
 - **Sample at the collector or via OTel.** Trellis does not sample. Set `SetSampler(new TraceIdRatioBasedSampler(0.1))` on the `TracerProvider` if you need to throttle.
 - **Use `error.code` for grouping.** It is stable across releases (e.g. `validation.error`, `not.found.error`, `forbidden.error`) and far better than free-form messages.
@@ -324,7 +324,7 @@ tracing.AddSource("Acme.Billing");
 
 - Composition-root API: [`trellis-api-servicedefaults.md`](../api_reference/trellis-api-servicedefaults.md)
 - Mediator behaviors, redaction options, pipeline order: [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md)
-- ROP `ActivitySource` and `AddResultsInstrumentation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
+- ROP `ActivitySource` and `AddTrellisResultsInstrumentation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
 - Primitive value-object instrumentation: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
 - Mediator integration article: [`integration-mediator.md`](integration-mediator.md)
 - HTTP-client integration article: [`integration-http.md`](integration-http.md)

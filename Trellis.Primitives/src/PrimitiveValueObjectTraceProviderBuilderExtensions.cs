@@ -54,7 +54,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     /// builder.Services.AddOpenTelemetry()
     ///     .WithTracing(tracerProviderBuilder =>
     ///         tracerProviderBuilder
-    ///             .AddPrimitiveValueObjectInstrumentation()  // Enable Trellis primitive tracing
+    ///             .AddTrellisPrimitivesInstrumentation()  // Enable Trellis primitive tracing
     ///             .AddAspNetCoreInstrumentation()         // Add ASP.NET Core tracing
     ///             .AddHttpClientInstrumentation()         // Add HTTP client tracing
     ///             .AddConsoleExporter());                 // Export to console
@@ -69,7 +69,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     /// builder.Services.AddOpenTelemetry()
     ///     .WithTracing(tracerProviderBuilder =>
     ///         tracerProviderBuilder
-    ///             .AddPrimitiveValueObjectInstrumentation()
+    ///             .AddTrellisPrimitivesInstrumentation()
     ///             .AddAspNetCoreInstrumentation()
     ///             .AddAzureMonitorTraceExporter(options =>
     ///             {
@@ -121,7 +121,7 @@ public static class PrimitiveValueObjectTraceProviderBuilderExtensions
     /// </example>
     /// <seealso cref="PrimitiveValueObjectTrace"/>
     /// <seealso cref="TracerProviderBuilder"/>
-    public static TracerProviderBuilder AddPrimitiveValueObjectInstrumentation(this TracerProviderBuilder builder)
+    public static TracerProviderBuilder AddTrellisPrimitivesInstrumentation(this TracerProviderBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         return builder.AddSource(PrimitiveValueObjectTrace.ActivitySourceName);

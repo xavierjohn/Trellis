@@ -25,9 +25,9 @@ public static class ResultsTraceProviderBuilderExtensions
     /// </para>
     /// <para>
     /// <strong>Performance characteristics.</strong> Trellis is designed so the per-operation tracing
-    /// is essentially free when no listener is registered. <c>AddResultsInstrumentation</c> is the
-    /// Trellis-provided helper for registering the <c>"Trellis.Core"</c> source with OpenTelemetry;
-    /// consumers may also call <c>AddSource("Trellis.Core")</c> directly or attach an
+    /// is essentially free when no listener is registered. <c>AddTrellisResultsInstrumentation</c> is the
+    /// Trellis-provided helper for registering the <c>"Trellis.Results"</c> source with OpenTelemetry;
+    /// consumers may also call <c>AddSource("Trellis.Results")</c> directly or attach an
     /// <c>ActivityListener</c>.
     /// Measured on .NET 10 / x64 with an ambient ASP.NET request activity present:
     /// </para>
@@ -40,7 +40,7 @@ public static class ResultsTraceProviderBuilderExtensions
     /// that activity was started by the Trellis ROP <c>ActivitySource</c>.
     ///   </description></item>
     ///   <item><description>
-    /// <b>With listener registered</b> via <c>AddResultsInstrumentation</c> and
+    /// <b>With listener registered</b> via <c>AddTrellisResultsInstrumentation</c> and
     /// <c>AllDataAndRecorded</c> sampling: each <c>Bind</c>/<c>Map</c>/<c>Tap</c> call costs
     /// ~200 ns and allocates ~400 B (the Activity object + name + tags). A 10-step chain
     /// costs ~2.3 μs and ~4 KB. At 10 000 RPS with a 10-step pipeline this adds up to
@@ -53,7 +53,7 @@ public static class ResultsTraceProviderBuilderExtensions
     /// They appear as a deeply nested tree under the outer span with no business context — most
     /// observability backends collapse or charge per span. For high-throughput services prefer
     /// instrumenting at the pipeline-behavior or HTTP-boundary altitude and reserve
-    /// <c>AddResultsInstrumentation</c> for development/debugging or low-rate request paths where
+    /// <c>AddTrellisResultsInstrumentation</c> for development/debugging or low-rate request paths where
     /// step-by-step ROP visibility is the diagnostic goal.
     /// </para>
     /// <para>
@@ -65,12 +65,12 @@ public static class ResultsTraceProviderBuilderExtensions
     /// <code>
     /// services.AddOpenTelemetry()
     ///     .WithTracing(builder => builder
-    ///         .AddResultsInstrumentation()
+    ///         .AddTrellisResultsInstrumentation()
     ///         .AddAspNetCoreInstrumentation()
     ///         .AddConsoleExporter());
     /// </code>
     /// </example>
-    public static TracerProviderBuilder AddResultsInstrumentation(this TracerProviderBuilder builder)
+    public static TracerProviderBuilder AddTrellisResultsInstrumentation(this TracerProviderBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         return builder.AddSource(RopTrace.ActivitySourceName);

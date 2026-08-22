@@ -428,7 +428,7 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 ```
 
-`AddSource("Trellis.Mediator")` is equivalent — the helper exists so the name is not repeated as a string literal, and so this package matches `AddResultsInstrumentation()` in Trellis.Core and `AddPrimitiveValueObjectInstrumentation()` in Trellis.Primitives.
+`AddSource("Trellis.Mediator")` is equivalent — the helper exists so the name is not repeated as a string literal, and so this package matches `AddTrellisResultsInstrumentation()` in Trellis.Core and `AddTrellisPrimitivesInstrumentation()` in Trellis.Primitives.
 
 > **This gap is silent.** A service that never registers the source looks exactly like a service in which nothing failed: there is no warning, no startup error, and no empty-result signal — the spans are simply never collected. Because this span carries `error.code` and `error.type`, the gap is normally discovered *during* an incident, at the moment those tags were wanted.
 

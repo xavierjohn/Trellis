@@ -33,8 +33,8 @@ public static class MediatorTraceProviderBuilderExtensions
     /// The registered source is <see cref="TracingBehavior{TMessage, TResponse}.ActivitySourceName"/>
     /// (<c>"Trellis.Mediator"</c>). Consumers may equivalently call <c>AddSource("Trellis.Mediator")</c>;
     /// this helper exists so the name does not have to be repeated as a string literal, matching
-    /// <c>AddResultsInstrumentation()</c> in Trellis.Core and
-    /// <c>AddPrimitiveValueObjectInstrumentation()</c> in Trellis.Primitives. The method is named for
+    /// <c>AddTrellisResultsInstrumentation()</c> in Trellis.Core and
+    /// <c>AddTrellisPrimitivesInstrumentation()</c> in Trellis.Primitives. The method is named for
     /// the Trellis pipeline specifically because it instruments Trellis behaviors rather than the
     /// underlying Mediator library.
     /// </para>

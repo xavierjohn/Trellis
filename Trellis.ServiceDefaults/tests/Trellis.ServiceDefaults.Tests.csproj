@@ -1,6 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\src\Trellis.ServiceDefaults.csproj" />
+    <!-- Not part of the composition root; referenced so InstrumentationNamingTests can verify
+         the instrumentation helper Trellis.Primitives ships. -->
+    <ProjectReference Include="..\..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />

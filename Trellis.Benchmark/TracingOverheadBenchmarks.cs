@@ -76,7 +76,7 @@ public class TracingOverheadBenchmarks
         {
             _trellisListener = new ActivityListener
             {
-                ShouldListenTo = src => src.Name == "Trellis.Core",
+                ShouldListenTo = src => src.Name == "Trellis.Results",
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
                 ActivityStarted = _ => { },
                 ActivityStopped = _ => { },
