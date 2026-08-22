@@ -1,14 +1,14 @@
 ﻿---
 title: Observability and Monitoring
 package: Trellis.ServiceDefaults
-topics: [observability, opentelemetry, tracing, logging, redaction, mediator, primitives]
+topics: [observability, opentelemetry, tracing, metrics, logging, redaction, mediator, primitives]
 related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-core.md]
 last_verified: 2026-05-01
 audience: [developer]
 ---
 # Observability and Monitoring
 
-Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `ActivitySource`s — `Trellis.Mediator`, `Trellis.Primitives`, and `Trellis.Core` — wired through the canonical `AddTrellis(...)` composition root.
+Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `ActivitySource`s — `Trellis.Mediator`, `Trellis.Primitives`, and `Trellis.Core` — wired through the canonical `AddTrellis(...)` composition root, plus validation counters from one `Meter`, `Trellis.Validation`.
 
 ## Patterns Index
 
@@ -22,6 +22,7 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 | Allow `Error.Detail` into telemetry (non-PII environments only) | `o.UseMediator(t => t.IncludeErrorDetail = true)` | [Redaction](#redaction) |
 | Add business tags to the mediator span from a handler | `Activity.Current?.SetTag(...)` | [Custom enrichment](#custom-enrichment) |
 | Get HTTP / DB / runtime metrics | Standard OTel instrumentation packages | [Metrics](#metrics) |
+| Find out whether a validation rule ever actually fires | `metrics.AddTrellisValidationInstrumentation()` | [Metrics](#metrics) |
 
 ## Use this guide when
 
@@ -39,6 +40,7 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 | Redaction | `TrellisMediatorTelemetryOptions` (`Trellis.Mediator`) | Controls whether `Error.Detail` flows into the activity status description and log message | DI singleton, configured via `o.UseMediator(t => ...)` or `AddTrellisBehaviors(t => ...)` |
 | Primitive value-object tracing | `Trellis.Primitives` `ActivitySource` | Exactly one `Activity` per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call delegates to and is traced under `.TryCreate`), named after the factory (e.g. `EmailAddress.TryCreate`), with `Ok` / `Error` status on both success and failure | `tracing.AddPrimitiveValueObjectInstrumentation()` |
 | Result / ROP tracing | `Trellis.Core` `ActivitySource` (`RopTrace.ActivitySourceName`) | Spans for individual `Result` operations — verbose; intended for diagnostics | `tracing.AddResultsInstrumentation()` |
+| Validation metrics | `ValidationMetrics` (`Trellis.Core`) | `trellis.validation.failures`, one increment per violation as a `FieldViolation` or `RuleViolation` is created; tags `validation.code`, `validation.violation` | `metrics.AddTrellisValidationInstrumentation()` (meter name: `"Trellis.Validation"`) |
 | Composition root | `TrellisServiceBuilder.UseMediator(Action<TrellisMediatorTelemetryOptions>?)` | Registers the five canonical behaviors and the telemetry options | `services.AddTrellis(o => o.UseMediator(...))` |
 
 Full signatures: [`trellis-api-servicedefaults.md`](../api_reference/trellis-api-servicedefaults.md), [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md), [`trellis-api-core.md`](../api_reference/trellis-api-core.md).
@@ -211,16 +213,33 @@ services.AddTrellisBehaviors(telemetry => telemetry.IncludeErrorDetail = false);
 
 ## Metrics
 
-Trellis does not register an OpenTelemetry `Meter` and emits no framework counters or histograms. Use the standard OpenTelemetry instrumentation packages for runtime, ASP.NET Core, and HTTP-client metrics:
+Trellis publishes one `Meter`, `Trellis.Validation`, carrying a single counter: `trellis.validation.failures`, incremented once per violation as a validation failure is created. Subscribe with `AddTrellisValidationInstrumentation()`, alongside the standard OpenTelemetry instrumentation packages for runtime, ASP.NET Core, and HTTP-client metrics:
 
 ```csharp
+using OpenTelemetry.Metrics;
+using Trellis;
+
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics
+        .AddTrellisValidationInstrumentation()
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation()
         .AddOtlpExporter());
 ```
+
+The counter carries two tags: `validation.code` (a `ValidationCodes` constant, or `other`) and `validation.violation` (`field` or `rule`).
+
+### What the counter is for
+
+It answers "is this rule dead?" — whether a reason code the framework can emit is ever actually emitted. Nothing else answers it. A trace answers it only for sampled requests, so a code with zero volume is indistinguishable from one whose traces were all sampled away.
+
+Two properties are worth knowing before you build a dashboard on it:
+
+- **Violations are counted where the violation is created** — the `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode` initializers — not at a reporting boundary and not on the `Error.InvalidInput` that carries them. A failure can surface at the HTTP boundary, at the mediator pipeline, at both, or — in a worker — at neither, so no reporting site sees each failure exactly once. The carrying failure is no better: it is rebuilt during pointer rebasing and error aggregation, so counting there counts one rule firing several times. The violation is created once when a rule fires and only copied afterwards. A consequence worth knowing: the counter measures rules firing, not responses sent — a violation created and then discarded is still counted.
+- **Codes outside the framework vocabulary are bucketed as `other`.** An application code reaches the wire verbatim, so tagging it verbatim would let an application minting a code per entity or per tenant create unbounded time series. The total stays exact; only the breakdown is bucketed.
+
+> **This gap is silent.** Until `AddTrellisValidationInstrumentation()` is called the counter is inert, and nothing reports the omission — a metric that never appears looks exactly like a rule that never fires.
 
 For per-message latency dashboards, derive metrics from the mediator activity (`Trellis.Mediator`) or from the `Handled {MessageName} in {ElapsedMs:0.00}ms` log entries — both already carry the elapsed time.
 
