@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the cookbook recipes now compile under Trellis's own analyzers
+
+`Examples/CookbookSnippets` mirrors the code fences in the cookbook and is compiled by CI, which is what lets a
+recipe promise it is safe to lift. It referenced the Trellis source generators but never `Trellis.Analyzers`, so the
+`TRLSxxx` rules — the ones a reader's own build will apply the moment they paste a recipe in — were the one thing
+never checked against the most-copied code in the documentation.
+
+The project now references `Trellis.Analyzers` as an analyzer. Adoption cost exactly one fix across all 36 recipes:
+a `Maybe<T>` probe in Recipe 8 built the expression `c => c.Email.Value` with no presence check and tripped `TRLS003`.
+The analyzer was right on both paths that expression can take. `MaybeExpressionRewriter` does translate the bare form
+in EF, stripping the accessor to `EF.Property`, but the storage member is nullable, so a row with no value yields
+`NULL` for a non-nullable target — which is why the EF reference already called projecting `.Value` before a presence
+filter unsafe. The same expression is also compiled and run in-process by `Specification` and `FakeRepository`, where
+the bare form throws outright. The probe now guards the access.
+
+No analyzer behaviour changed, and no documented shape was affected: the only `.Value` accesses in the reference are
+the labelled `WRONG`/`FIX` pair in the anti-patterns file. This closes a gap the docs had already claimed was closed —
+the lint reference stated that CI compiles every snippet under the repository's full analyzer settings, which was true
+of the compiler's rules and not of Trellis's.
+
 ### Added — a documentation gate that makes fenced code name real members
 
 Two documentation audits already ran in CI, and a made-up API walked through both. While `TRLS064` was being
