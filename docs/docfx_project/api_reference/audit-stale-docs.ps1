@@ -51,7 +51,7 @@ try {
         @{ Pattern = '^\s*///,'; Message = 'Fix XML doc punctuation after line wrapping.' },
         @{ Pattern = '\bvoid/No-payload\b'; Message = 'Use no-payload wording without mixed casing/slashes.' },
         @{ Pattern = 'Error\.Equals\(\.\.\.\) compares \*\*only the error code\*\*'; Message = 'Error equality is value-based; compare Code for category-only checks.' },
-        @{ Pattern = '\bTrellis\.Results\b'; Message = 'Trellis.Results is not a current package; use Trellis.Core unless this is historical migration content.' },
+        @{ Pattern = '(?<!")\bTrellis\.Results\b(?!")'; Message = 'Trellis.Results is not a current package; use Trellis.Core unless this is historical migration content. (The ActivitySource of the same name is current — write it double-quoted, as "Trellis.Results", so it is distinguishable from the dead package id.)' },
         @{ Pattern = '\bTrellis\.DomainDrivenDesign\b'; Message = 'Trellis.DomainDrivenDesign is not a current package; use Trellis.Core unless this is historical migration content.' },
         @{ Pattern = '\b(ToActionResult|ToActionResultAsync|ToHttpResult|ToHttpResultAsync|ToCreatedAtActionResult|ToCreatedAtRouteHttpResult|ToCreatedHttpResult|ToUpdatedActionResult|ToUpdatedHttpResult|ToPagedActionResult|ToPagedHttpResult)\b'; Message = 'Use ToHttpResponse(Async) and AsActionResult<T>(Async) for current ASP response mapping.' },
         @{ Pattern = '\bResult\.Success\s*[(<]'; Message = 'Result.Success is removed; use Result.Ok(...).' },
