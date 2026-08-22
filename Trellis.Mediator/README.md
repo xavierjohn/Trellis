@@ -32,6 +32,7 @@ builder.Services.AddTrellisBehaviors();
 
 ## Key Features
 - Adds validation, authorization, tracing, logging, and exception behaviors that understand `Result<T>`.
+- Tracing is registered but not *collected* until you call `AddTrellisMediatorInstrumentation()` on your `TracerProviderBuilder`; without it the handler span is silently never recorded.
 - Short-circuits failures before handlers do unnecessary work.
 - Unified `ValidationBehavior` composes `IValidate` + every `IMessageValidator<TMessage>` (e.g., the `Trellis.FluentValidation` adapter) and aggregates failures into one response.
 - Supports resource authorization with explicit or assembly-scanned registration.

@@ -17,7 +17,7 @@ public sealed class TracingBehavior<TMessage, TResponse>
     /// <summary>
     /// The name used for the <see cref="ActivitySource"/> that traces mediator pipeline operations.
     /// </summary>
-    public const string ActivitySourceName = "Trellis.Mediator";
+    public const string ActivitySourceName = MediatorTrace.ActivitySourceName;
     internal static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
     private readonly TrellisMediatorTelemetryOptions _options;

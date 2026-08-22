@@ -772,9 +772,10 @@ The generated `"N"`-format Guid becomes `Error.Code` today, so operators can joi
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Trace;
+using Trellis.Mediator;
 
 builder.Services.AddOpenTelemetry().WithTracing(tracing =>
-    tracing.AddSource("Trellis.Mediator"));
+    tracing.AddTrellisMediatorInstrumentation());
 ```
 
 On a failed result, both `LoggingBehavior` and `TracingBehavior` always emit:

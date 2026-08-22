@@ -15,7 +15,7 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 | Goal | Use | See |
 |---|---|---|
 | Wire mediator tracing + logging via the composition root | `services.AddTrellis(o => o.UseMediator())` | [Default registration](#default-registration) |
-| Subscribe an OTel `TracerProvider` to mediator spans | `tracing.AddSource("Trellis.Mediator")` | [Tracing](#tracing) |
+| Subscribe an OTel `TracerProvider` to mediator spans | `tracing.AddTrellisMediatorInstrumentation()` | [Tracing](#tracing) |
 | Subscribe to value-object spans (validation/parsing) | `tracing.AddPrimitiveValueObjectInstrumentation()` | [Tracing](#tracing) |
 | Subscribe to ROP spans (deep `Bind` / `Map` debugging) | `tracing.AddResultsInstrumentation()` | [Tracing](#tracing) |
 | Read structured per-message logs with elapsed-ms outcomes | Built in via `LoggingBehavior<,>` | [Logging](#logging) |
@@ -34,7 +34,7 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 
 | Surface | Type / API | Emits | Subscribed via |
 |---|---|---|---|
-| Mediator tracing | `TracingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | One `Activity` per mediator message; tags `error.code`, `error.type`; `ActivityStatusCode.Ok` / `Error` (request cancellations stay `Unset`) | Registered by `AddTrellisBehaviors()`; subscribe with `tracing.AddSource(TracingBehavior<,>.ActivitySourceName)` (value: `"Trellis.Mediator"`) |
+| Mediator tracing | `TracingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | One `Activity` per mediator message; tags `error.code`, `error.type`; `ActivityStatusCode.Ok` / `Error` (request cancellations stay `Unset`) | Registered by `AddTrellisBehaviors()`; subscribe with `tracing.AddTrellisMediatorInstrumentation()` (source name: `"Trellis.Mediator"`) |
 | Mediator logging | `LoggingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | `Debug` start, `Debug` end (with elapsed ms), `Warning` on failure (with `Error.Code`) | Registered by `AddTrellisBehaviors()`; consumed by any `ILogger` provider. Per-call timing is at Debug so production at the default `Information` minimum is quiet; raise via `"Trellis.Mediator": "Debug"` in logging configuration to opt back in. |
 | Redaction | `TrellisMediatorTelemetryOptions` (`Trellis.Mediator`) | Controls whether `Error.Detail` flows into the activity status description and log message | DI singleton, configured via `o.UseMediator(t => ...)` or `AddTrellisBehaviors(t => ...)` |
 | Primitive value-object tracing | `Trellis.Primitives` `ActivitySource` | Exactly one `Activity` per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call delegates to and is traced under `.TryCreate`), named after the factory (e.g. `EmailAddress.TryCreate`), with `Ok` / `Error` status on both success and failure | `tracing.AddPrimitiveValueObjectInstrumentation()` |
@@ -77,7 +77,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddSource(TracingBehavior<IMessage, IResult>.ActivitySourceName)
+        .AddTrellisMediatorInstrumentation()
         .AddPrimitiveValueObjectInstrumentation()
         .AddOtlpExporter());
 
@@ -137,7 +137,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddSource(TracingBehavior<IMessage, IResult>.ActivitySourceName)
+        .AddTrellisMediatorInstrumentation()
         .AddPrimitiveValueObjectInstrumentation()
         .AddOtlpExporter());
 ```
@@ -151,7 +151,7 @@ created by the `"Trellis.Core"` source receive per-step `Ok` / `Error` status an
 ```csharp
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
-        .AddSource(TracingBehavior<IMessage, IResult>.ActivitySourceName)
+        .AddTrellisMediatorInstrumentation()
         .AddPrimitiveValueObjectInstrumentation()
         .AddResultsInstrumentation()
         .AddConsoleExporter());

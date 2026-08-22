@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `AddTrellisMediatorInstrumentation()`, so mediator spans are actually collected
+
+`AddTrellisBehaviors()` registers `TracingBehavior`, so every command and query already calls `StartActivity` — but that returns a live activity only if a `TracerProvider` listens to the `"Trellis.Mediator"` source. Trellis.Core ships `AddResultsInstrumentation()` and Trellis.Primitives ships `AddPrimitiveValueObjectInstrumentation()`; Trellis.Mediator shipped no equivalent, so the handler span was collected only by consumers who knew to type `AddSource("Trellis.Mediator")` as a raw string.
+
+The gap is silent, which is what makes it worth closing rather than documenting. A service that never registers the source looks exactly like a service in which nothing failed: no warning, no startup error, no empty-result signal. And this is the span carrying `error.code` and `error.type` — the same values the HTTP body reports — so the missing configuration is normally discovered *during* an incident, at the moment those tags were wanted. It is also the altitude the Trellis.Core tracing guidance recommends in preference to per-`Result`-operator spans, so the package was steering people to a span it did not help them collect.
+
+Measured before the change with an OpenTelemetry SDK exporting to Jaeger: a provider configured with both shipped helpers collected the `Trellis.Core` span and **zero** mediator spans; adding the source collected two. The Core span in the first run is the control — the pipeline was live and exporting, and the handler span alone was absent.
+
+`TracingBehavior<TMessage, TResponse>.ActivitySourceName` keeps its value and its place in the public API. Both it and the new helper now read from one internal constant, so a helper that listens to a name nothing emits from cannot be introduced by editing one of the two — the same silent failure, one level up.
+
 ### Added — TRLDOC015, ambiguous member names must name their receiver
 
 The `Error.Code` collapse below left ten references telling readers to use `Error`'s `ReasonCode`, a member it no longer has. All four existing doc gates passed them, and the reason is worth recording because it will recur: `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode` still exist, so TRLDOC005 saw a name that resolves, TRLDOC008 saw a documented member, and TRLDOC014 saw no receiver to check — a bare name in prose carries none. Deleting a member while a same-named member survives elsewhere is precisely the move that makes every unqualified mention unverifiable.
