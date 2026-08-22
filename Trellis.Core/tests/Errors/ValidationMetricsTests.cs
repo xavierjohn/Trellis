@@ -34,6 +34,9 @@ public class ValidationMetricsTests
         probe.ViolationKindFor(ValidationCodes.FieldsExactlyOne).Should().Be("rule");
     }
 
+    /// <summary>
+    /// Re-packing existing violations into a newly constructed failure records no new measurement.
+    /// </summary>
     /// <remarks>
     /// The guarantee that makes violation-site counting correct, and the defect this design was
     /// moved to avoid. The ASP layer rebuilds an <see cref="Error.InvalidInput"/> during pointer
@@ -56,6 +59,9 @@ public class ValidationMetricsTests
         probe.Total.Should().Be(0);
     }
 
+    /// <summary>
+    /// Rewriting a violation's pointer with a <c>with</c>-expression records no new measurement.
+    /// </summary>
     /// <remarks>
     /// The rebase path rewrites a violation's pointer with a <c>with</c>-expression. That must not
     /// recount, and does not, because the synthesized copy constructor copies backing fields
@@ -73,6 +79,9 @@ public class ValidationMetricsTests
         probe.Total.Should().Be(0);
     }
 
+    /// <summary>
+    /// A code outside the framework vocabulary is counted, but tagged as <c>other</c>.
+    /// </summary>
     /// <remarks>
     /// An application code reaches the wire verbatim, so tagging it verbatim would let a caller
     /// mint unbounded time series. The total must stay exact while the breakdown is bucketed.
@@ -90,6 +99,10 @@ public class ValidationMetricsTests
         probe.CountFor(ValidationMetrics.OtherCode).Should().Be(1);
     }
 
+    /// <summary>
+    /// A code belonging to the framework vocabulary is tagged under its own name, and a
+    /// <see langword="null"/> code falls back to <c>other</c>.
+    /// </summary>
     /// <remarks>
     /// The bucket is derived from the constants themselves, so a code added to the vocabulary is
     /// counted under its own name without anyone updating a second list. A hand-maintained copy
@@ -115,6 +128,9 @@ public class ValidationMetricsTests
         act.Should().Throw<ArgumentNullException>();
     }
 
+    /// <summary>
+    /// Collects <see cref="ValidationMetrics"/> measurements recorded by the calling test only.
+    /// </summary>
     /// <remarks>
     /// A <see cref="MeterListener"/> is process-wide, so it observes every concurrently running
     /// test that creates a validation failure — and in this assembly that is hundreds of them.

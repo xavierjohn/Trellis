@@ -33,6 +33,10 @@ public class ValidationMetricsReprojectionTests
         probe.Total.Should().Be(0);
     }
 
+    /// <summary>
+    /// The shared status-lookup probe carries no violations, so resolving a scalar validation
+    /// status records no measurement.
+    /// </summary>
     /// <remarks>
     /// A validation *probe* is not a validation *failure*. <c>ScalarValidationStatus</c> holds a
     /// shared <see cref="Error.InvalidInput"/> purely so the error map can be keyed on its runtime
