@@ -35,7 +35,7 @@ public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
         actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden(
-                PolicyId: "tenant.isolation",
+                Code: "tenant.isolation",
                 Resource: ResourceRef.For<TenantDocument>(resource.Id)));
 }
 

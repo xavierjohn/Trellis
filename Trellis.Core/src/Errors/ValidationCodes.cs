@@ -86,21 +86,6 @@ public static class ValidationCodes
     /// </summary>
     public const string LegacyUnspecified = "validation.error";
 
-    /// <summary>
-    /// Maps <see cref="LegacyUnspecified"/> onto <see cref="Unspecified"/>, leaving every other code
-    /// untouched.
-    /// </summary>
-    /// <remarks>
-    /// Lives here rather than in a boundary package because more than one boundary applies it, and a
-    /// second copy is how two altitudes come to disagree about the spelling of "no reason available".
-    /// A consumer that reads a code from an HTTP body and pastes it into a trace query is relying on
-    /// exactly this being one function.
-    /// </remarks>
-    /// <param name="code">The producer-supplied code.</param>
-    /// <returns>The code a consumer should see.</returns>
-    public static string Normalize(string code) =>
-        string.Equals(code, LegacyUnspecified, StringComparison.Ordinal) ? Unspecified : code;
-
     // ---- format.* — a CLR scalar could not be constructed from the text ----
 
     /// <summary>Not a valid integer. Covers <c>byte</c>, <c>short</c>, <c>int</c> and <c>long</c>, including out-of-range-for-type.</summary>

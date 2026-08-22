@@ -18,9 +18,10 @@ using System.Text.Json.Serialization;
 /// </para>
 /// <para>
 /// <b>Identity.</b> <see cref="Kind"/> is a stable domain slug suitable for telemetry and wire
-/// serialization (e.g. <c>"not-found"</c>). <see cref="Code"/> defaults to <see cref="Kind"/> and
-/// is overridden by cases whose payload carries a per-instance reason code (for example
-/// <see cref="Conflict"/> returns its <c>ReasonCode</c>).
+/// serialization (e.g. <c>"not-found"</c>), fixed by the case. <see cref="Code"/> is the
+/// per-instance reason the producer names, and lives on the base so that every case carries it
+/// the same way: <c>new Error.NotFound(resource) { Code = "account.closed" }</c>. Cases whose
+/// reason is required take it as their first positional parameter instead.
 /// </para>
 /// <para>
 /// <b>Detail.</b> Every case inherits an optional <c>Detail</c> property from the base. Callers
@@ -49,6 +50,8 @@ public abstract record Error
 
     private Error() { }
 
+    private Error(string code) => Code = code;
+
     /// <summary>
     /// Gets the stable domain slug for this case (e.g. <c>"not-found"</c>,
     /// <c>"invalid-input"</c>). Suitable for telemetry, observability dimensions, and as
@@ -58,53 +61,32 @@ public abstract record Error
     public abstract string Kind { get; }
 
     /// <summary>
-    /// Gets the per-instance machine-readable code. Defaults to <see cref="Kind"/>; cases
-    /// whose payload carries a per-instance <c>ReasonCode</c> override this.
-    /// </summary>
-    public virtual string Code => Kind;
-
-    /// <summary>
-    /// Gets a value indicating whether this instance carries a machine-readable code of its
-    /// own, as opposed to <see cref="Code"/> merely restating <see cref="Kind"/>.
+    /// Gets the machine-readable reason for this failure — the value a consumer sees, switches on,
+    /// and carries from a bug report into a trace query. Defaults to
+    /// <see cref="ValidationCodes.Unspecified"/> when the producer names no reason.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This is a <em>presence</em> test and never a value comparison: a payload whose code
-    /// happens to equal its own <see cref="Kind"/> still carries an explicit code and reports
-    /// <see langword="true"/>. Boundary renderers use this to decide whether to emit
-    /// <see cref="Code"/> or a sentinel meaning "no finer reason available", so that a kind
-    /// restated as a code is never mistaken for a reason.
+    /// The default is the sentinel meaning "no finer reason available", never <see cref="Kind"/>.
+    /// A code that fell back to the kind could not be told apart from a producer that deliberately
+    /// chose that string, and publishing it invited a consumer to branch on <c>"not-found"</c> as
+    /// though someone had meant it. Defaulting to the sentinel makes that mistake unreachable rather
+    /// than merely discouraged: the kind is not in this member for any boundary to leak.
     /// </para>
     /// <para>
-    /// Declared <see langword="abstract"/> rather than <see langword="virtual"/> deliberately.
-    /// <see cref="Error"/> is a closed union — its constructor is private and no external code
-    /// can extend the catalog — so requiring every case to answer costs nothing and turns
-    /// "a new case carries a code and forgets to say so" from a silent wire defect into a
-    /// compile error.
+    /// This is the only code member, and it is storage rather than a per-case computed property.
+    /// Two members is how an HTTP body and a span tag come to disagree about the same failure; two
+    /// spellings of one member — a per-case <c>ReasonCode</c> payload behind a virtual <c>Code</c> —
+    /// is how three cases came to have no way of carrying a reason at all.
+    /// </para>
+    /// <para>
+    /// Cases whose reason is required (<see cref="InvariantViolation"/>, <see cref="Conflict"/>,
+    /// <see cref="Unexpected"/>) take it as a positional parameter, so the compiler still refuses to
+    /// build one that says nothing. Every other case leaves it optional through an object
+    /// initializer.
     /// </para>
     /// </remarks>
-    public abstract bool HasExplicitCode { get; }
-
-    /// <summary>
-    /// Gets the code a consumer sees: <see cref="Code"/> when this instance carries one of its own,
-    /// and <see cref="ValidationCodes.Unspecified"/> when it does not.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <see cref="Code"/> defaults to <see cref="Kind"/>, so reading it directly at a boundary
-    /// publishes a kind restated as a reason — a consumer switching on it would branch on
-    /// <c>"not-found"</c> as though a producer had chosen it. This property applies
-    /// <see cref="HasExplicitCode"/> and <see cref="ValidationCodes.Normalize"/> once, so every
-    /// boundary answers the question the same way.
-    /// </para>
-    /// <para>
-    /// <b>Read this, not <see cref="Code"/>, anywhere the value leaves the process</b> — an HTTP
-    /// body, a span tag, a metric dimension, a log field. The value of a code is that an operator
-    /// can carry it from a bug report into a trace query, and that only holds while the two agree.
-    /// <see cref="Code"/> remains the in-process value for a producer that needs the raw decision.
-    /// </para>
-    /// </remarks>
-    public virtual string WireCode => HasExplicitCode ? ValidationCodes.Normalize(Code) : ValidationCodes.Unspecified;
+    public string Code { get; init; } = ValidationCodes.Unspecified;
 
     /// <summary>
     /// Gets the optional human-readable detail. When non-null the boundary renderer prefers
@@ -186,13 +168,13 @@ public abstract record Error
             }
         }
 
-        return Code;
+        return Code == ValidationCodes.Unspecified ? Kind : Code;
     }
 
     /// <summary>
-    /// Value equality over the discriminator (<see cref="EqualityContract"/>) and <see cref="Detail"/>,
-    /// plus each derived case's positional payload. <see cref="Cause"/> is intentionally
-    /// <b>excluded</b> from equality and hashing — two errors with identical kind, payload,
+    /// Value equality over the discriminator (<see cref="EqualityContract"/>), <see cref="Code"/>,
+    /// and <see cref="Detail"/>, plus each derived case's positional payload. <see cref="Cause"/> is
+    /// intentionally <b>excluded</b> from equality and hashing — two errors with identical kind, payload,
     /// and detail represent the same logical failure regardless of how deeply they were
     /// wrapped. This mirrors <see cref="System.Exception"/>, whose equality does not recurse
     /// into <c>InnerException</c>, and keeps test assertions ergonomic (callers assert on
@@ -201,19 +183,23 @@ public abstract record Error
     /// <remarks>
     /// <para>
     /// <b>How per-derived payload comparison works:</b> this override deliberately checks
-    /// only <c>EqualityContract</c> and <see cref="Detail"/>. Each derived <c>sealed record</c>
+    /// only the members declared on the base — <c>EqualityContract</c>, <see cref="Code"/>, and
+    /// <see cref="Detail"/>. Each derived <c>sealed record</c>
     /// (e.g., <see cref="NotFound"/>, <see cref="InvalidInput"/>) gets a compiler-generated
     /// <c>Equals(Derived?)</c> of the form
     /// <c>base.Equals(other) &amp;&amp; Field1 == other.Field1 &amp;&amp; ...</c>.
     /// The <c>base.Equals(other)</c> call dispatches virtually to this override, contributing
-    /// the kind+detail check; the derived method then ANDs in its per-property comparison.
+    /// the kind+code+detail check; the derived method then ANDs in its per-property comparison.
     /// The net effect is element-wise equality across both base and derived fields, without
-    /// any per-derived override needed.
+    /// any per-derived override needed. <see cref="Code"/> must be named here precisely because it
+    /// is declared on the base: a derived record's generated <c>Equals</c> compares only its own
+    /// members, so a code omitted from this override would let two errors with different reasons
+    /// compare equal — and therefore collide in a cache key or a deduplicated log.
     /// </para>
     /// <para>
     /// <see cref="GetHashCode"/> uses the same compose-with-derived pattern: the override
-    /// hashes <c>EqualityContract</c> and <see cref="Detail"/>, and each derived record's
-    /// auto-generated <c>GetHashCode</c> combines <c>base.GetHashCode()</c> with hashes of
+    /// hashes <c>EqualityContract</c>, <see cref="Code"/>, and <see cref="Detail"/>, and each derived
+    /// record's auto-generated <c>GetHashCode</c> combines <c>base.GetHashCode()</c> with hashes of
     /// its own properties.
     /// </para>
     /// </remarks>
@@ -222,11 +208,12 @@ public abstract record Error
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
         if (EqualityContract != other.EqualityContract) return false;
-        return string.Equals(Detail, other.Detail, StringComparison.Ordinal);
+        return string.Equals(Code, other.Code, StringComparison.Ordinal)
+            && string.Equals(Detail, other.Detail, StringComparison.Ordinal);
     }
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(EqualityContract, Detail);
+    public override int GetHashCode() => HashCode.Combine(EqualityContract, Code, Detail);
 
     // ───────────────────────────────────────────────────────────────────────────
     // Validation and invariants
@@ -244,10 +231,6 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "invalid-input";
-
-        /// <inheritdoc />
-        /// <remarks>Per-violation codes live on the individual field and rule violations, not on the error itself.</remarks>
-        public override bool HasExplicitCode => false;
 
         /// <summary>
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
@@ -329,18 +312,12 @@ public abstract record Error
     /// Global or multi-field business invariant was violated (e.g. cross-field rule,
     /// computed constraint) outside the inbound-validation pipeline.
     /// </summary>
-    /// <param name="ReasonCode">Stable machine-readable code identifying the violated invariant.</param>
+    /// <param name="Code">Stable machine-readable code identifying the violated invariant.</param>
     /// <param name="Resource">Optional resource the invariant was evaluated against.</param>
-    public sealed record InvariantViolation(string ReasonCode, ResourceRef? Resource = null) : Error
+    public sealed record InvariantViolation(string Code, ResourceRef? Resource = null) : Error(Code)
     {
         /// <inheritdoc />
         public override string Kind => "invariant-violation";
-
-        /// <inheritdoc />
-        public override bool HasExplicitCode => true;
-
-        /// <inheritdoc />
-        public override string Code => ReasonCode;
 
         /// <summary>
         /// Convenience factory that builds an <see cref="InvariantViolation"/> against the resource
@@ -391,9 +368,6 @@ public abstract record Error
         /// <inheritdoc />
         public override string Kind => "not-found";
 
-        /// <inheritdoc />
-        public override bool HasExplicitCode => false;
-
         /// <summary>
         /// Convenience factory that builds a <see cref="NotFound"/> for the resource type
         /// <typeparamref name="TResource"/> (its CLR name becomes the resource name).
@@ -424,9 +398,6 @@ public abstract record Error
         /// <inheritdoc />
         public override string Kind => "gone";
 
-        /// <inheritdoc />
-        public override bool HasExplicitCode => false;
-
         /// <summary>
         /// Convenience factory that builds a <see cref="Gone"/> for the resource type
         /// <typeparamref name="TResource"/> (its CLR name becomes the resource name).
@@ -456,17 +427,11 @@ public abstract record Error
     /// stateless conflicts (e.g. workflow / state-machine guards, library code with no aggregate
     /// context).
     /// </param>
-    /// <param name="ReasonCode">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate-key"</c>, <c>"invalid-state"</c>).</param>
-    public sealed record Conflict(ResourceRef? Resource, string ReasonCode) : Error
+    /// <param name="Code">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate-key"</c>, <c>"invalid-state"</c>).</param>
+    public sealed record Conflict(ResourceRef? Resource, string Code) : Error(Code)
     {
         /// <inheritdoc />
         public override string Kind => "conflict";
-
-        /// <inheritdoc />
-        public override bool HasExplicitCode => true;
-
-        /// <inheritdoc />
-        public override string Code => ReasonCode;
 
         /// <summary>
         /// Optional provider-reported constraint name when the conflict came from a database
@@ -528,7 +493,7 @@ public abstract record Error
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A resourceless <see cref="Conflict"/>.</returns>
         public static Conflict ForReason(string reasonCode, string? detail = null) =>
-            new(Resource: null, ReasonCode: reasonCode) { Detail = detail };
+            new(Resource: null, Code: reasonCode) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -537,38 +502,32 @@ public abstract record Error
 
     /// <summary>The operation requires authentication that was not supplied or could not be validated.</summary>
     /// <param name="Scheme">Optional authentication scheme name (e.g. <c>"Bearer"</c>) when the producer knows which scheme is expected.</param>
-    /// <param name="ReasonCode">
-    /// Optional machine-readable code distinguishing causes that share the 401 surface
+    /// <remarks>
+    /// Set <see cref="Error.Code"/> to distinguish causes that share the 401 surface
     /// (e.g. <c>"Authentication.InvalidCredentials"</c>, <c>"Authentication.MissingCredentials"</c>,
-    /// <c>"Authentication.TokenExpired"</c>). When supplied, <see cref="Code"/> returns this value
-    /// instead of <see cref="Kind"/> so telemetry, dashboards, and client branching can distinguish
-    /// the cases without parsing <see cref="Error.Detail"/>.
-    /// </param>
-    public sealed record AuthenticationRequired(string? Scheme = null, string? ReasonCode = null) : Error
+    /// <c>"Authentication.TokenExpired"</c>) so telemetry, dashboards, and client branching can tell
+    /// them apart without parsing <see cref="Error.Detail"/>.
+    /// </remarks>
+    public sealed record AuthenticationRequired(string? Scheme = null) : Error
     {
         /// <inheritdoc />
         public override string Kind => "authentication-required";
-
-        /// <inheritdoc />
-        public override bool HasExplicitCode => ReasonCode is not null;
-
-        /// <inheritdoc />
-        public override string Code => ReasonCode ?? Kind;
     }
 
     /// <summary>Authorization policy refused the request.</summary>
-    /// <param name="PolicyId">Identifier of the policy that denied access.</param>
+    /// <param name="Code">Identifier of the policy that denied access; also the machine-readable code a client sees.</param>
     /// <param name="Resource">Optional resource the policy was evaluated against.</param>
-    public sealed record Forbidden(string PolicyId, ResourceRef? Resource = null) : Error
+    public sealed record Forbidden(string Code, ResourceRef? Resource = null) : Error(Code)
     {
         /// <inheritdoc />
         public override string Kind => "forbidden";
 
-        /// <inheritdoc />
-        public override bool HasExplicitCode => true;
-
-        /// <inheritdoc />
-        public override string Code => PolicyId;
+        /// <summary>
+        /// Gets the identifier of the policy that denied access. A reading alias over
+        /// <see cref="Error.Code"/> rather than a second field, so the policy that refused the
+        /// request and the code the client is told cannot drift apart.
+        /// </summary>
+        public string PolicyId => Code;
 
         /// <summary>
         /// Convenience factory that builds a <see cref="Forbidden"/> for <paramref name="policyId"/>
@@ -602,27 +561,18 @@ public abstract record Error
     {
         /// <inheritdoc />
         public override string Kind => "rate-limited";
-
-        /// <inheritdoc />
-        public override bool HasExplicitCode => false;
     }
 
     /// <summary>
     /// The system is temporarily unable to complete the operation; the caller should retry
     /// per <paramref name="Retry"/>.
     /// </summary>
-    /// <param name="ReasonCode">Optional machine-readable code identifying the kind of unavailability.</param>
     /// <param name="Retry">Optional retry hint describing when the caller may try again.</param>
-    public sealed record Unavailable(string? ReasonCode = null, RetryAdvice? Retry = null) : Error
+    /// <remarks>Set <see cref="Error.Code"/> to identify the kind of unavailability.</remarks>
+    public sealed record Unavailable(RetryAdvice? Retry = null) : Error
     {
         /// <inheritdoc />
         public override string Kind => "unavailable";
-
-        /// <inheritdoc />
-        public override bool HasExplicitCode => ReasonCode is not null;
-
-        /// <inheritdoc />
-        public override string Code => ReasonCode ?? Kind;
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -630,21 +580,15 @@ public abstract record Error
     // ───────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// An unhandled internal failure occurred. <paramref name="ReasonCode"/> identifies the
+    /// An unhandled internal failure occurred. <paramref name="Code"/> identifies the
     /// kind of failure; <paramref name="FaultId"/> optionally correlates to deeper diagnostics.
     /// </summary>
-    /// <param name="ReasonCode">Stable machine-readable code identifying the kind of unexpected condition. Pass a <see cref="FaultCodes"/> constant rather than a literal — <see cref="FaultCodes.UnhandledException"/> (<c>"unhandled-exception"</c>), <see cref="FaultCodes.DefaultInitialized"/> (<c>"default-initialized"</c>), or <see cref="FaultCodes.NotImplemented"/> (<c>"not-implemented"</c>), which the ASP boundary maps to HTTP 501.</param>
+    /// <param name="Code">Stable machine-readable code identifying the kind of unexpected condition. Pass a <see cref="FaultCodes"/> constant rather than a literal — <see cref="FaultCodes.UnhandledException"/> (<c>"unhandled-exception"</c>), <see cref="FaultCodes.DefaultInitialized"/> (<c>"default-initialized"</c>), or <see cref="FaultCodes.NotImplemented"/> (<c>"not-implemented"</c>), which the ASP boundary maps to HTTP 501.</param>
     /// <param name="FaultId">Optional opaque per-incident identifier correlating to richer diagnostics in the logging/telemetry layer.</param>
-    public sealed record Unexpected(string ReasonCode, string? FaultId = null) : Error
+    public sealed record Unexpected(string Code, string? FaultId = null) : Error(Code)
     {
         /// <inheritdoc />
         public override string Kind => "unexpected";
-
-        /// <inheritdoc />
-        public override bool HasExplicitCode => true;
-
-        /// <inheritdoc />
-        public override string Code => ReasonCode;
     }
 
     /// <summary>
@@ -654,30 +598,17 @@ public abstract record Error
     /// implement <see cref="ITransportFault"/>.
     /// </summary>
     /// <param name="Fault">Transport-layer fault payload defined in a transport-specific package.</param>
-    public sealed record TransportFault(ITransportFault Fault) : Error
+    /// <remarks>
+    /// A bare <see cref="ITransportFault"/> is opaque and contributes no code; only an
+    /// <see cref="ICodedTransportFault"/> can say what its code is, and it is read once at
+    /// construction. Replacing <see cref="Fault"/> through a <c>with</c> expression therefore does
+    /// not re-derive <see cref="Error.Code"/> — build a new <see cref="TransportFault"/> instead.
+    /// </remarks>
+    public sealed record TransportFault(ITransportFault Fault)
+        : Error((Fault as ICodedTransportFault)?.Code ?? ValidationCodes.Unspecified)
     {
         /// <inheritdoc />
         public override string Kind => "transport-fault";
-
-        /// <inheritdoc />
-        /// <remarks>
-        /// True when the wrapped fault is an <see cref="ICodedTransportFault"/> and can say what its
-        /// code is. A bare <see cref="ITransportFault"/> is opaque and contributes none.
-        /// </remarks>
-        public override bool HasExplicitCode => Fault is ICodedTransportFault;
-
-        /// <inheritdoc />
-        public override string Code => Fault is ICodedTransportFault coded ? coded.Code : Kind;
-
-        /// <inheritdoc />
-        /// <remarks>
-        /// Overridden to skip normalization. A transport code comes from another system and is not a
-        /// <see cref="ValidationCodes"/> entry — an upstream service that happens to send
-        /// <c>validation.error</c> means its own thing by it, and rewriting that into Trellis's
-        /// sentinel would misreport a foreign vocabulary as this one.
-        /// </remarks>
-        public override string WireCode =>
-            Fault is ICodedTransportFault coded ? coded.Code : ValidationCodes.Unspecified;
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -713,10 +644,6 @@ public abstract record Error
 
         /// <inheritdoc />
         public override string Kind => "aggregate";
-
-        /// <inheritdoc />
-        /// <remarks>Codes belong to the individual children, not to the aggregate.</remarks>
-        public override bool HasExplicitCode => false;
 
         private static EquatableArray<Error> Flatten(EquatableArray<Error> input)
         {

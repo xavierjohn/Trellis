@@ -379,7 +379,7 @@ public sealed class DispatchLogger(DispatchLogDbContext db, TimeProvider time)
         if (result.IsSuccess)
             return Result.Ok(DeliveryOutcome.Recorded);
 
-        if (result.Error is Error.Conflict { ReasonCode: "duplicate.key" })
+        if (result.Error is Error.Conflict { Code: "duplicate.key" })
             return Result.Ok(DeliveryOutcome.AlreadyRecorded);
 
         return Result.Fail<DeliveryOutcome>(result.Error!);

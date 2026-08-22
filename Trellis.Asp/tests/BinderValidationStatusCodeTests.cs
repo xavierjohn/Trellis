@@ -324,11 +324,11 @@ public sealed class StatusCodeAddress : ValueObject
     {
         var violations = new System.Collections.Generic.List<FieldViolation>();
         if (string.IsNullOrWhiteSpace(street))
-            violations.Add(new FieldViolation(InputPointer.ForProperty("street"), "validation.error") { Detail = "Street is required." });
+            violations.Add(new FieldViolation(InputPointer.ForProperty("street"), ValidationCodes.Unspecified) { Detail = "Street is required." });
         if (string.IsNullOrWhiteSpace(city))
-            violations.Add(new FieldViolation(InputPointer.ForProperty("city"), "validation.error") { Detail = "City is required." });
+            violations.Add(new FieldViolation(InputPointer.ForProperty("city"), ValidationCodes.Unspecified) { Detail = "City is required." });
         if (string.IsNullOrWhiteSpace(state))
-            violations.Add(new FieldViolation(InputPointer.ForProperty("state"), "validation.error") { Detail = "State is required." });
+            violations.Add(new FieldViolation(InputPointer.ForProperty("state"), ValidationCodes.Unspecified) { Detail = "State is required." });
 
         return violations.Count > 0
             ? Result.Fail<StatusCodeAddress>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())))
@@ -358,7 +358,7 @@ public sealed class StatusCodeScalar : ScalarValueObject<StatusCodeScalar, strin
         if (string.IsNullOrWhiteSpace(value))
         {
             return Result.Fail<StatusCodeScalar>(new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = $"{field} is required." })));
+                new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = $"{field} is required." })));
         }
 
         // Sentinel that lets tests force a TryCreate rejection even when the raw input is
@@ -367,7 +367,7 @@ public sealed class StatusCodeScalar : ScalarValueObject<StatusCodeScalar, strin
         if (value == "bad")
         {
             return Result.Fail<StatusCodeScalar>(new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(field), "validation.error") { Detail = $"{field} cannot be 'bad'." })));
+                new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.Unspecified) { Detail = $"{field} cannot be 'bad'." })));
         }
 
         return Result.Ok(new StatusCodeScalar(value));

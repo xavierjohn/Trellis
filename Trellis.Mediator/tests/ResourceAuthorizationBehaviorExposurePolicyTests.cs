@@ -78,7 +78,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
     [InlineData("service.degraded")]
     public async Task Handle_HideExistenceConfigured_LoadFailureUnavailablePassesThrough(string reason)
     {
-        var loaderUnavailable = new Error.Unavailable(reason);
+        var loaderUnavailable = new Error.Unavailable { Code = reason };
         var options = new ResourceAuthorizationOptions().HideExistence<HiddenResource>();
         var behavior = CreateBehaviorWithLoaderError(actorId: "owner-1", loaderUnavailable, options);
         var command = new HideExistenceCommand("res-1");

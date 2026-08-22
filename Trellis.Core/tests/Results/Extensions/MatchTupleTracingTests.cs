@@ -61,7 +61,7 @@ public class MatchTupleTracingTests : TestBase
         // Act
         var output = result.Match(
             onSuccess: (email, name) => "Success",
-            onFailure: err => err.Code
+            onFailure: err => err.Kind
         );
 
         // Assert

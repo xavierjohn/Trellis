@@ -126,6 +126,8 @@ public sealed class IdempotencyMiddlewareTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().Contain("idempotency.key_required");
+        body.Should().Contain("\"kind\":\"bad-request\"",
+            "every failure response carries a top-level kind, whichever layer wrote it");
     }
 
     [Fact]
@@ -184,6 +186,8 @@ public sealed class IdempotencyMiddlewareTests
         resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         var body = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().Contain("idempotency.key_reused_with_different_body");
+        body.Should().Contain("\"kind\":\"unprocessable-content\"",
+            "every failure response carries a top-level kind, whichever layer wrote it");
     }
 
     [Fact]

@@ -208,10 +208,10 @@ public sealed class TrellisAspOptions
         if (error is Error.Aggregate agg)
             return ComputeWorstStatus(agg, this);
 
-        // Error.Unexpected carries an open-ended ReasonCode; FaultCodes.NotImplemented is the one
+        // Error.Unexpected carries an open-ended Code; FaultCodes.NotImplemented is the one
         // legacy code that historically mapped to 501 rather than 500. Checked before the
         // type-based lookup so an Unexpected mapping override doesn't shadow it.
-        if (error is Error.Unexpected { ReasonCode: FaultCodes.NotImplemented })
+        if (error is Error.Unexpected { Code: FaultCodes.NotImplemented })
             return StatusCodes.Status501NotImplemented;
 
         var mappedStatus = TryResolveMapping(_errorMappings, error.GetType());

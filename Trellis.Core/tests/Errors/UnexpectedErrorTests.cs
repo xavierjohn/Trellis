@@ -23,7 +23,7 @@ public class UnexpectedErrorTests
     {
         var error = new Error.Unexpected("default-initialized");
 
-        error.ReasonCode.Should().Be("default-initialized");
+        error.Code.Should().Be("default-initialized");
         error.FaultId.Should().BeNull();
     }
 
@@ -32,7 +32,7 @@ public class UnexpectedErrorTests
     {
         var error = new Error.Unexpected("unhandled-exception", "fault-7");
 
-        error.ReasonCode.Should().Be("unhandled-exception");
+        error.Code.Should().Be("unhandled-exception");
         error.FaultId.Should().Be("fault-7");
     }
 
@@ -109,7 +109,7 @@ public class UnexpectedErrorTests
 
         var matched = error switch
         {
-            Error.Unexpected u => $"unexpected:{u.ReasonCode}",
+            Error.Unexpected u => $"unexpected:{u.Code}",
             _ => "other",
         };
 

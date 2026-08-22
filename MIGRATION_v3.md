@@ -75,8 +75,7 @@ return new NotFoundError("User", userId);
 return new ValidationError(new[] { new FieldError("email", "invalid format") });
 
 // v3
-return new Error.AuthenticationRequired(Scheme: "Bearer", ReasonCode: "Authentication.InvalidCredentials")
-    { Detail = "Invalid credentials." };
+return new Error.AuthenticationRequired(Scheme: "Bearer") { Code = "Authentication.InvalidCredentials", Detail = "Invalid credentials." };
 return new Error.Conflict(ResourceRef.For<User>(userId), "duplicate_email")
     { Detail = "Email already in use." };
 return new Error.NotFound(ResourceRef.For<User>(userId));
@@ -201,15 +200,15 @@ return new Error.AuthenticationRequired(Scheme: "Bearer");
 
 The boundary still emits `WWW-Authenticate` (from `Error.AuthenticationRequired.Scheme` or the registered `IAuthenticationSchemeProvider` fallback).
 
-**Preserving v2 `UnauthorizedError(message, code)` semantics.** FunctionalDdd v2 callers that distinguished invalid-credentials from missing-credentials via the `code` argument (`new UnauthorizedError("Invalid credentials.", "Authentication.InvalidCredentials")`) should carry the machine-readable code forward via the optional `ReasonCode` parameter on `Error.AuthenticationRequired`:
+**Preserving v2 `UnauthorizedError(message, code)` semantics.** FunctionalDdd v2 callers that distinguished invalid-credentials from missing-credentials via the `code` argument (`new UnauthorizedError("Invalid credentials.", "Authentication.InvalidCredentials")`) should carry the machine-readable code forward via the inherited `Code` initializer on `Error.AuthenticationRequired`:
 
 ```csharp
 // V2
 return new UnauthorizedError("Invalid credentials.", "Authentication.InvalidCredentials");
 
-// V3 — ReasonCode preserves the per-cause machine code; Code returns it instead of Kind.
-return new Error.AuthenticationRequired(Scheme: "Bearer", ReasonCode: "Authentication.InvalidCredentials")
-    { Detail = "Invalid credentials." };
+// V3 — Code preserves the per-cause machine code; it is what the boundary publishes, never the Kind.
+return new Error.AuthenticationRequired(Scheme: "Bearer")
+    { Code = "Authentication.InvalidCredentials", Detail = "Invalid credentials." };
 ```
 
 The boundary renderer (`Trellis.Asp.ResponseFailureWriter`) projects `Code` into `ProblemDetails.Extensions["code"]`, which ASP.NET Core serializes as the top-level Problem Details extension member `code` (alongside `type`, `title`, `status`, `detail`, and `instance` — RFC 9457 §3.2). Dashboards and client-side branching that previously keyed off the v2 `code` argument can continue to key off the same top-level field:
@@ -233,7 +232,7 @@ return new Error.ServiceUnavailable();
 
 // After
 return new Error.RateLimited(new RetryAdvice(After: TimeSpan.FromSeconds(30)));
-return new Error.Unavailable("payment_gateway_offline", new RetryAdvice(After: TimeSpan.FromSeconds(120)));
+return new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(120))) { Code = "payment_gateway_offline" };
 ```
 
 `RetryAdvice(TimeSpan? After, DateTimeOffset? At)` is a new transport-neutral type in `Trellis.Core`. The boundary translates it to the `Retry-After` header.
@@ -248,7 +247,7 @@ return new Error.InternalServerError(faultId) { Detail = "DB write failed." };
 return new Error.Unexpected("db_write_failed", faultId) { Detail = "DB write failed." };
 ```
 
-The required `ReasonCode` makes the failure addressable in telemetry. `Error.Unexpected { ReasonCode == FaultCodes.NotImplemented }` is special-cased at the boundary to `501 Not Implemented`.
+The required `Code` makes the failure addressable in telemetry. `Error.Unexpected { Code == FaultCodes.NotImplemented }` is special-cased at the boundary to `501 Not Implemented`.
 
 ### Aggregate of multiple errors
 

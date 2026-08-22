@@ -73,7 +73,7 @@ See the [API reference](https://xavierjohn.github.io/Trellis/api_reference/trell
 
 ## Exception propagation
 
-`HttpRequestException`, `OperationCanceledException` / `TaskCanceledException`, and `JsonException` (from `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` on a 2xx invalid body) propagate through the chain rather than being mapped to `Result.Fail`. `ReadJsonAsync<T>` catches `JsonException` and returns `Fail<Error.Unexpected>` (`ReasonCode = "invalid_response_body"`) with structured position diagnostics (line / byte offset only — never response body content or `JsonException.Path`).
+`HttpRequestException`, `OperationCanceledException` / `TaskCanceledException`, and `JsonException` (from `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` on a 2xx invalid body) propagate through the chain rather than being mapped to `Result.Fail`. `ReadJsonAsync<T>` catches `JsonException` and returns `Fail<Error.Unexpected>` (`Code = "invalid_response_body"`) with structured position diagnostics (line / byte offset only — never response body content or `JsonException.Path`).
 
 ## Breaking changes from v1
 

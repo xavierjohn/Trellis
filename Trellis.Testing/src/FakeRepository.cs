@@ -202,7 +202,7 @@ public class FakeRepository<TAggregate, TId>
 
             if (conflict is not null)
                 return Task.FromResult(Result.Fail(
-                    new Error.Conflict(Resource: ResourceRef.For<TAggregate>(id), ReasonCode: "duplicate.key") { Detail = $"A {ResourceRef.FormatTypeName(typeof(TAggregate))} with the same value already exists." }));
+                    new Error.Conflict(Resource: ResourceRef.For<TAggregate>(id), Code: "duplicate.key") { Detail = $"A {ResourceRef.FormatTypeName(typeof(TAggregate))} with the same value already exists." }));
         }
 
         _store[id] = aggregate;

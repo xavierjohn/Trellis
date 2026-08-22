@@ -27,7 +27,7 @@ public sealed record UpdateOrderCommand(OrderId OrderId, decimal NewAmount)
         resource.OwnerId == actor.Id || actor.Permissions.Contains("orders:write")
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden(
-                PolicyId: "orders.owner",
+                Code: "orders.owner",
                 Resource: ResourceRef.For<Order>(OrderId)));
 }
 

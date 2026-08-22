@@ -579,7 +579,7 @@ Error.InvalidInput.ForField("token", "session.expired");
 Error.InvalidInput.ForField("total", "budget.exceeded");
 ```
 
-The same three findings apply wherever a reason code is written, not only to a `reasonCode` argument. FluentValidation's `WithErrorCode` and the `Code` property on the Trellis primitive attributes both reach the wire the same way:
+The same three findings apply wherever a reason code is written, not only to a `reasonCode` or `Code` argument. FluentValidation's `WithErrorCode` and the `Code` property on the Trellis primitive attributes both reach the wire the same way:
 
 ```csharp
 // WRONG

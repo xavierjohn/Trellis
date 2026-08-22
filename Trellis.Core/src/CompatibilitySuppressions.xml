@@ -1,31 +1,121 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
-<!--
-  CP0005 (added abstract member) on Error.HasExplicitCode.
-
-  Adding an abstract member is normally a binary break: an existing external subclass would no
-  longer satisfy the base type. Here it provably cannot be, because Error is a closed union - its
-  only constructor is private, so no assembly outside Trellis.Core can derive from it and there is
-  no external subclass to break. APICompat cannot see that constraint, so the break is recorded
-  here rather than dodged by declaring the member virtual.
-
-  Declaring it virtual would have satisfied APICompat honestly, and was rejected: a virtual member
-  with a default lets a newly added Error case silently inherit the wrong answer and emit a wrong
-  machine-readable code on the wire. Abstract turns that into a compile error at the point the case
-  is added. The compile-time guarantee is worth more than a suppression entry for a break that
-  cannot occur.
--->
 <Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <Suppression>
-    <DiagnosticId>CP0005</DiagnosticId>
-    <Target>M:Trellis.Error.get_HasExplicitCode</Target>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.AuthenticationRequired.#ctor(System.String,System.String)</Target>
     <Left>lib/net10.0/Trellis.Core.dll</Left>
     <Right>lib/net10.0/Trellis.Core.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0005</DiagnosticId>
-    <Target>P:Trellis.Error.HasExplicitCode</Target>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.AuthenticationRequired.Deconstruct(System.String@,System.String@)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.AuthenticationRequired.get_ReasonCode</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.AuthenticationRequired.set_ReasonCode(System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Conflict.get_ReasonCode</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Conflict.set_ReasonCode(System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Forbidden.set_PolicyId(System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvariantViolation.get_ReasonCode</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvariantViolation.set_ReasonCode(System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Unavailable.#ctor(System.String,System.Nullable{Trellis.RetryAdvice})</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Unavailable.Deconstruct(System.String@,System.Nullable{Trellis.RetryAdvice}@)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Unavailable.get_ReasonCode</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Unavailable.set_ReasonCode(System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Unexpected.get_ReasonCode</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Unexpected.set_ReasonCode(System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0012</DiagnosticId>
+    <Target>M:Trellis.Error.get_Code</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0012</DiagnosticId>
+    <Target>P:Trellis.Error.Code</Target>
     <Left>lib/net10.0/Trellis.Core.dll</Left>
     <Right>lib/net10.0/Trellis.Core.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>

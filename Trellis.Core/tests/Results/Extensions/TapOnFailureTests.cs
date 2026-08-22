@@ -401,7 +401,7 @@ public class TapOnFailureTests : TestBase
 #pragma warning disable IDE0053 // Multi-statement lambda cannot use expression body
         var actual = result.TapOnFailure(error =>
         {
-            loggedMessage = $"Error: {error.Code} - {error.Detail}";
+            loggedMessage = $"Error: {error.Kind} - {error.Detail}";
         });
 #pragma warning restore IDE0053
 

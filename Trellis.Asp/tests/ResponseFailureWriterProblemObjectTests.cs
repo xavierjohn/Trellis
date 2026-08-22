@@ -239,7 +239,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
 
     /// <summary>
     /// The wire and the span have to spell a code identically, or an operator cannot carry one from
-    /// a bug report into a trace query. Both now read <see cref="Error.WireCode"/>; this asserts the
+    /// a bug report into a trace query. Both now read <see cref="Error.Code"/>; this asserts the
     /// HTTP end of that contract, and <c>TracingBehaviorTests</c> asserts the other.
     /// </summary>
     [Theory]
@@ -248,7 +248,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
     {
         using var body = await WriteAsync(error);
 
-        body.RootElement.GetProperty("code").GetString().Should().Be(error.WireCode);
+        body.RootElement.GetProperty("code").GetString().Should().Be(error.Code);
     }
 
     public static TheoryData<Error> EveryCodeBearingCase()
@@ -266,7 +266,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
             new Error.Forbidden("orders.write", resource),
             new Error.RateLimited(),
             new Error.Unavailable(),
-            new Error.Unavailable("maintenance-window"),
+            new Error.Unavailable { Code = "maintenance-window" },
             new Error.Unexpected("boom"),
         ];
     }
@@ -277,38 +277,39 @@ public sealed class ResponseFailureWriterProblemObjectTests
         using var absent = await WriteAsync(new Error.Unavailable());
         absent.RootElement.GetProperty("code").GetString().Should().Be(Sentinel);
 
-        using var present = await WriteAsync(new Error.Unavailable("maintenance-window"));
+        using var present = await WriteAsync(new Error.Unavailable { Code = "maintenance-window" });
         present.RootElement.GetProperty("code").GetString().Should().Be("maintenance-window");
     }
 
-    // ----------------- legacy alias normalization -----------------
+    // ----------------- application codes pass through verbatim -----------------
 
     [Fact]
-    public async Task Legacy_alias_is_normalized_at_the_root_code()
+    public async Task An_application_supplied_code_is_not_rewritten_at_the_root()
     {
+        // The vocabulary freeze constrains Trellis, not the application. A code the framework did
+        // not choose reaches the client exactly as its producer spelled it -- including the legacy
+        // placeholder, which an application is free to keep using.
         using var body = await WriteAsync(new Error.InvariantViolation(LegacyAlias));
 
-        body.RootElement.GetProperty("code").GetString().Should().Be(Sentinel);
+        body.RootElement.GetProperty("code").GetString().Should().Be(LegacyAlias);
     }
 
     [Fact]
-    public async Task Legacy_alias_is_normalized_in_a_problems_child_code()
+    public async Task An_application_supplied_code_is_not_rewritten_in_a_problems_child()
     {
         using var body = await WriteAsync(new Error.Aggregate(new Error.InvariantViolation(LegacyAlias)));
 
-        body.RootElement.GetProperty("problems")[0].GetProperty("code").GetString().Should().Be(Sentinel);
+        body.RootElement.GetProperty("problems")[0].GetProperty("code").GetString().Should().Be(LegacyAlias);
     }
 
     [Fact]
-    public async Task Legacy_alias_is_normalized_in_a_rule_violation_code()
+    public async Task An_application_supplied_code_is_not_rewritten_in_a_rule_violation()
     {
-        // Without this, one payload could carry root error.unspecified beside rules[].code
-        // validation.error - two live sentinels, which invariant 4 forbids.
         var rules = EquatableArray.Create(new RuleViolation(LegacyAlias, Detail: "Something is wrong."));
 
         using var body = await WriteAsync(new Error.InvalidInput(default, rules));
 
-        body.RootElement.GetProperty("ruleViolations")[0].GetProperty("code").GetString().Should().Be(Sentinel);
+        body.RootElement.GetProperty("ruleViolations")[0].GetProperty("code").GetString().Should().Be(LegacyAlias);
     }
 
     [Fact]
@@ -337,16 +338,14 @@ public sealed class ResponseFailureWriterProblemObjectTests
     }
 
     [Fact]
-    public void TransportFault_WireCode_agrees_with_the_body_for_a_real_HttpError()
+    public void TransportFault_Code_agrees_with_the_body_for_a_real_HttpError()
     {
-        // The span tag reads Error.WireCode while the body goes through the writer. This pins the
-        // two together for the one case that bypasses the sentinel, and in doing so asserts that
-        // HttpError really does implement ICodedTransportFault — if it regressed to a bare
-        // ITransportFault the wire code would silently fall back to the sentinel.
+        // The span tag and the body both read Error.Code. This asserts that HttpError really does
+        // implement ICodedTransportFault — if it regressed to a bare ITransportFault the code would
+        // silently fall back to the sentinel.
         var fault = new Error.TransportFault(
             new HttpError.PreconditionFailed(ResourceRef.For("Item", "42"), PreconditionKind.IfMatch));
 
-        fault.WireCode.Should().Be("IfMatch");
-        fault.HasExplicitCode.Should().BeTrue();
+        fault.Code.Should().Be("IfMatch");
     }
 }

@@ -360,9 +360,10 @@ public sealed class ResponseFailureWriterPhase3Tests
         // parsing Detail. Error.Code overrides to ReasonCode; ResponseFailureWriter
         // projects Error.Code into the ProblemDetails `code` extension verbatim.
         var ctx = NewContext();
-        var r = Result.Fail<T>(new Error.AuthenticationRequired(
-            Scheme: "Bearer",
-            ReasonCode: "Authentication.InvalidCredentials"));
+        var r = Result.Fail<T>(new Error.AuthenticationRequired(Scheme: "Bearer")
+        {
+            Code = "Authentication.InvalidCredentials",
+        });
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 

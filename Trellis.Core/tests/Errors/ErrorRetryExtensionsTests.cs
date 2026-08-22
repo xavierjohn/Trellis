@@ -148,7 +148,7 @@ public class ErrorRetryExtensionsTests
         var at = DateTimeOffset.UtcNow.AddSeconds(15);
         var advice = new RetryAdvice(At: at);
 
-        var error = new Error.Unavailable(ReasonCode: "db_unreachable", Retry: advice);
+        var error = new Error.Unavailable(Retry: advice) { Code = "db_unreachable" };
 
         error.GetRetryAdvice().Should().Be(advice);
     }

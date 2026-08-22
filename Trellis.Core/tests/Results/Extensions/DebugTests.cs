@@ -394,7 +394,7 @@ public class DebugTests : TestBase
         var activity = activityTest.AssertActivityCaptured("Debug: Error test");
         activity.DisplayName.Should().Be("Debug: Error test");
         activity.Tags.Should().Contain(t => t.Key == "debug.result.status" && t.Value == "Failure");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.kind" && t.Value == "not-found");
         activity.Tags.Should().Contain(t => t.Key == "debug.error.detail" && t.Value == "User not found");
         activity.Status.Should().Be(ActivityStatusCode.Error);
     }
@@ -442,8 +442,8 @@ public class DebugTests : TestBase
 
         var activity = activityTest.AssertActivityCaptured("Debug: Aggregate error test (Detailed)");
         activity.Tags.Should().Contain(t => t.Key == "debug.error.type" && t.Value == "Aggregate");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].code" && t.Value == "not-found");
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].code" && t.Value == "authentication-required");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[0].kind" && t.Value == "not-found");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].kind" && t.Value == "authentication-required");
     }
 
     [Fact]
@@ -492,7 +492,7 @@ public class DebugTests : TestBase
         result.DebugOnFailure(_ => { });
 
         var activity = activityTest.AssertActivityCapturedWithStatus("Debug: OnFailure", ActivityStatusCode.Error);
-        activity.Tags.Should().Contain(t => t.Key == "debug.error.code" && t.Value == "invalid-input");
+        activity.Tags.Should().Contain(t => t.Key == "debug.error.kind" && t.Value == "invalid-input");
     }
 
     [Fact]

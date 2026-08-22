@@ -224,6 +224,10 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
         AttachViolations(context, problemDetails, structuredError);
+
+        // A TrellisJsonValidationException means a value object rejected a value, so this is an
+        // Error.InvalidInput even on the unstructured branch where no violations survived.
+        AttachEnvelope(problemDetails, structuredError ?? EmptyInvalidInput, statusCode);
         context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
         return true;
     }
@@ -262,10 +266,14 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
         AttachViolations(context, problemDetails, validationError);
+        AttachEnvelope(problemDetails, validationError, statusCode);
         context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
 
-    private static ObjectResult CreateValidationProblemResult(ActionExecutingContext context, int statusCode)
+    private static ObjectResult CreateValidationProblemResult(
+        ActionExecutingContext context,
+        int statusCode,
+        Error.InvalidInput? rejectedValue = null)
     {
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(
@@ -274,8 +282,35 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
         AttachViolations(context, problemDetails, null);
+        AttachEnvelope(problemDetails, rejectedValue, statusCode);
         return new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
+
+    /// <summary>
+    /// Adds the <c>code</c> / <c>kind</c> members every failure response carries, whichever
+    /// layer wrote it.
+    /// </summary>
+    /// <remarks>
+    /// A rejected value is an <see cref="Error.InvalidInput"/> and names its own kind, so a
+    /// remapped status does not change it. A failure with no error behind it — a request whose
+    /// bytes never parsed, or a parameter MVC itself could not bind — has nothing finer to
+    /// report than the HTTP condition.
+    /// </remarks>
+    private static void AttachEnvelope(ProblemDetails problemDetails, Error.InvalidInput? rejectedValue, int statusCode)
+    {
+        var envelope = rejectedValue is null
+            ? ProblemEnvelope.ForStatus(statusCode)
+            : ProblemEnvelope.ForError(rejectedValue);
+
+        foreach (var member in envelope)
+            problemDetails.Extensions[member.Key] = member.Value;
+    }
+
+    /// <summary>
+    /// The envelope source for a rejected value the seam did not express as a populated error:
+    /// the wire members depend only on the case, so an empty one answers for all of them.
+    /// </summary>
+    private static readonly Error.InvalidInput EmptyInvalidInput = new(default);
 
     /// <summary>
     /// Adds the structured violations to the problem, merging the ones carried by
@@ -307,7 +342,6 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         if (error is { Rules.Items.Length: > 0 })
             problemDetails.Extensions["ruleViolations"] = ViolationProjection.ToRuleViolations(error.Rules);
     }
-
     [UnconditionalSuppressMessage("Trimming", "IL2072:Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The return value of the source method does not have matching annotations.",
         Justification = "The type check for IScalarValue interfaces is safe - we only check interface implementation, not instantiate or invoke members.")]
     private static void ValidateScalarValueParameters(ActionExecutingContext context)
@@ -435,7 +469,10 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                 context,
                 statusCode: hasPlainJsonException
                     ? StatusCodes.Status400BadRequest
-                    : ScalarValidationStatus.Resolve(context.HttpContext));
+                    : ScalarValidationStatus.Resolve(context.HttpContext),
+                // A scalar value object rejected the bound value, unless the body also failed to
+                // parse -- in which case nothing was ever rejected and 400 wins for the kind too.
+                rejectedValue: hasPlainJsonException ? null : EmptyInvalidInput);
         }
         else if (!context.ModelState.IsValid)
         {

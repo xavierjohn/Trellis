@@ -50,7 +50,7 @@ audience: [developer]
 Every case carries a strongly-typed payload, an init-only `Detail` property, and a structured (never `Exception`) `Cause` chain. Full per-case constructor signatures, payload notes, and the supporting types (`ResourceRef`, `InputPointer`, `FieldViolation`, `RuleViolation`, `RetryAdvice`, `ITransportFault`, `EquatableArray<T>`) live in [`trellis-api-core.md` → `Error`](../api_reference/trellis-api-core.md#public-abstract-record-error).
 
 > [!NOTE]
-> `Unexpected(reasonCode, faultId?)` covers both unhandled faults (set `FaultId` to correlate with telemetry) and internal invariant violations ("shouldn't happen"). The optional `FaultId` surfaces as a `faultId` problem-details extension at the ASP boundary when set. Use the `ReasonCode == FaultCodes.NotImplemented` convention if you need the boundary to map to HTTP 501; the default maps to 500.
+> `Unexpected(code, faultId?)` covers both unhandled faults (set `FaultId` to correlate with telemetry) and internal invariant violations ("shouldn't happen"). The optional `FaultId` surfaces as a `faultId` problem-details extension at the ASP boundary when set. Use the `ReasonCode == FaultCodes.NotImplemented` convention if you need the boundary to map to HTTP 501; the default maps to 500.
 
 ## Installation
 
@@ -117,7 +117,7 @@ Error.InvalidInput.ForField("email", "invalid", "Bad email")// or ForRule(code, 
 | Body too large | `new Error.TransportFault(new HttpError.ContentTooLarge(10 * 1024 * 1024))` |
 | Method not supported | `new Error.TransportFault(new HttpError.MethodNotAllowed(EquatableArray.Create("GET", "POST")))` |
 | Rate limited | `new Error.RateLimited(new RetryAdvice(After: TimeSpan.FromSeconds(30)))` |
-| Dependency unavailable | `new Error.Unavailable("payment_gateway_offline", new RetryAdvice(After: TimeSpan.FromSeconds(120)))` |
+| Dependency unavailable | `new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(120))) { Code = "payment_gateway_offline" }` |
 | Unhandled fault | `new Error.Unexpected("crm.timeout", faultId)` |
 | Aggregate invariant | `new Error.InvariantViolation("cross_aggregate_rule", ResourceRef.For<Order>(orderId))` |
 
@@ -179,7 +179,7 @@ var message = LoadUser("42").Match(
 ### `Kind` vs `Code`
 
 - `Kind` is the **stable, low-cardinality domain slug** used for telemetry (e.g. `"invalid-input"`, `"invariant-violation"`, `"not-found"`). It is unaffected by payload values.
-- `Code` defaults to `Kind` and is overridden when the payload carries a per-instance identifier — `Conflict`, `Forbidden`, and `InvariantViolation` return their `ReasonCode`/`PolicyId`/`ReasonCode`; `Unexpected` returns its `ReasonCode` (and surfaces `FaultId` separately as a problem-details extension when set).
+- `Code` defaults to the sentinel `ValidationCodes.Unspecified` (`"error.unspecified"`) — never to `Kind`. It is stored once on the base with an `init` accessor, so any case can name a reason the same way: `new Error.NotFound(resource) { Code = "order.archived" }`. Cases whose reason is required — `Conflict`, `Forbidden` (where `PolicyId` reads the same value), `InvariantViolation`, and `Unexpected` (which surfaces `FaultId` separately as a problem-details extension when set) — take it as a positional constructor parameter, so the compiler refuses one that says nothing. `Code` is what every boundary publishes, so a kind never reaches a consumer disguised as a reason.
 
 At the ASP boundary, the wire `kind` can differ from the domain `Kind` for backward compatibility — most notably `Error.InvalidInput` / `Error.InvariantViolation` map to on-wire `kind = "unprocessable-content"`.
 
@@ -196,8 +196,8 @@ var result = LoadFromCrm(id)
     .TapOnFailure(error => logger.LogWarning("CRM call failed: {Kind} {Code}", error.Kind, error.Code))
     .MapOnFailure(error => error switch
     {
-        Error.Unexpected => new Error.Unavailable("crm_offline", new RetryAdvice(After: TimeSpan.FromSeconds(60)))
-            { Detail = "Customer service is temporarily unavailable" },
+        Error.Unexpected => new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(60)))
+            { Code = "crm_offline", Detail = "Customer service is temporarily unavailable" },
         _ => error,
     });
 
@@ -285,7 +285,7 @@ Full mapping rules and per-case behaviour live in:
 ## Practical guidance
 
 - **Pick the case the caller can act on.** `InvalidInput` when the request data can be fixed; `Conflict` when state or a business rule blocks an otherwise-valid request; `InvariantViolation` when the rule is real but not bound to a request field; `NotFound` when the resource does not exist; `Gone` for soft-deleted resources.
-- **Use `Unexpected(reasonCode, faultId?)` for true surprises.** Set `FaultId` when you need telemetry correlation; use `ReasonCode == FaultCodes.NotImplemented` only when you intentionally want HTTP 501 at the boundary.
+- **Use `Unexpected(code, faultId?)` for true surprises.** Set `FaultId` when you need telemetry correlation; use `Code == FaultCodes.NotImplemented` only when you intentionally want HTTP 501 at the boundary.
 - **Set `Detail` only when it adds information.** Boundary renderers compute a usable default from `Kind`/`Code` and the typed payload; override `Detail` only when you have something more specific to say.
 - **Prefer `Match` (or a property pattern on `result.Error`) at boundaries.** Inside pipelines, prefer `Bind`/`Map`/`Ensure` over inspecting `Error` directly.
 - **Use `TapOnFailure` for logging and metrics.** It does not mutate the result.
@@ -295,7 +295,7 @@ Full mapping rules and per-case behaviour live in:
 
 ### InvalidInput vs InvariantViolation
 
-`InvalidInput` carries field/rule violations bound to inbound request fields (per-field validation). `InvariantViolation` carries `(ReasonCode, ResourceRef?)` for domain rules that aren't tied to a request field — for example a cross-aggregate invariant or an internal precondition. Both map to HTTP 422 at the ASP boundary, but the wire `code` differs so consumers can tell domain-rule failures apart from field-validation failures.
+`InvalidInput` carries field/rule violations bound to inbound request fields (per-field validation). `InvariantViolation` carries `(Code, ResourceRef?)` for domain rules that aren't tied to a request field — for example a cross-aggregate invariant or an internal precondition. Both map to HTTP 422 at the ASP boundary, but the wire `code` differs so consumers can tell domain-rule failures apart from field-validation failures.
 
 ## Migration from v2.x
 
@@ -307,7 +307,7 @@ Full mapping rules and per-case behaviour live in:
 | `Error.TooManyRequests` | `Error.RateLimited` |
 | `Error.ServiceUnavailable` | `Error.Unavailable` |
 | `Error.InternalServerError` | `Error.Unexpected` |
-| `Error.NotImplemented` | `Error.Unexpected` with `ReasonCode == FaultCodes.NotImplemented` |
+| `Error.NotImplemented` | `Error.Unexpected` with `Code == FaultCodes.NotImplemented` |
 | `Error.MethodNotAllowed` / `NotAcceptable` / `UnsupportedMediaType` / `RangeNotSatisfiable` / `ContentTooLarge` / `PreconditionFailed` / `PreconditionRequired` | `Error.TransportFault(new HttpError.X(...))` |
 
 For the full upgrade narrative, including telemetry-slug changes and `AuthChallenge` removal, see the project CHANGELOG.

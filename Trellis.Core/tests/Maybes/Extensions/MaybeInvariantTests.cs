@@ -630,7 +630,7 @@ public class MaybeInvariantTests
     #region Error Code Validation
 
     [Fact]
-    public void AllOrNone_failure_uses_standard_validation_error_code()
+    public void AllOrNone_failure_produces_an_invalid_input_error()
     {
         // Arrange
         var first = Maybe.From("hello");
@@ -640,11 +640,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AllOrNone(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("invalid-input");
+        result.Should().BeFailure().Which.Kind.Should().Be("invalid-input");
     }
 
     [Fact]
-    public void Requires_failure_uses_standard_validation_error_code()
+    public void Requires_failure_produces_an_invalid_input_error()
     {
         // Arrange
         var source = Maybe.From("hello");
@@ -654,11 +654,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.Requires(source, required, "source", "required");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("invalid-input");
+        result.Should().BeFailure().Which.Kind.Should().Be("invalid-input");
     }
 
     [Fact]
-    public void MutuallyExclusive_failure_uses_standard_validation_error_code()
+    public void MutuallyExclusive_failure_produces_an_invalid_input_error()
     {
         // Arrange
         var first = Maybe.From("hello");
@@ -668,11 +668,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.MutuallyExclusive(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("invalid-input");
+        result.Should().BeFailure().Which.Kind.Should().Be("invalid-input");
     }
 
     [Fact]
-    public void ExactlyOne_failure_uses_standard_validation_error_code()
+    public void ExactlyOne_failure_produces_an_invalid_input_error()
     {
         // Arrange
         var first = Maybe<string>.None;
@@ -682,11 +682,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("invalid-input");
+        result.Should().BeFailure().Which.Kind.Should().Be("invalid-input");
     }
 
     [Fact]
-    public void AtLeastOne_failure_uses_standard_validation_error_code()
+    public void AtLeastOne_failure_produces_an_invalid_input_error()
     {
         // Arrange
         var first = Maybe<string>.None;
@@ -696,7 +696,7 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AtLeastOne(first, second, "first", "second");
 
         // Assert
-        result.Should().BeFailure().Which.Code.Should().Be("invalid-input");
+        result.Should().BeFailure().Which.Kind.Should().Be("invalid-input");
     }
 
     #endregion

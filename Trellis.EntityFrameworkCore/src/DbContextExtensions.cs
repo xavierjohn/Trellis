@@ -69,7 +69,7 @@ public static class DbContextExtensions
         {
             return Result.Fail<int>(new Error.Conflict(
                 Resource: null,
-                ReasonCode: FaultCodes.ConcurrentModification)
+                Code: FaultCodes.ConcurrentModification)
             { Detail = $"One or more entities were modified by another process. {ex.Entries.Count} entities affected." });
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
@@ -78,7 +78,7 @@ public static class DbContextExtensions
             // ConstraintName / ConstraintTableName are [JsonIgnore]'d telemetry fields,
             // populated on a best-effort basis for structured logging.
             var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-            return Result.Fail<int>(new Error.Conflict(Resource: null, ReasonCode: "duplicate.key")
+            return Result.Fail<int>(new Error.Conflict(Resource: null, Code: "duplicate.key")
             {
                 Detail = "A record with the same unique value already exists.",
                 ConstraintName = constraintName,
@@ -91,7 +91,7 @@ public static class DbContextExtensions
             // ConstraintName / ConstraintTableName are [JsonIgnore]'d telemetry fields,
             // populated on a best-effort basis for structured logging.
             var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-            return Result.Fail<int>(new Error.Conflict(Resource: null, ReasonCode: "referential.integrity")
+            return Result.Fail<int>(new Error.Conflict(Resource: null, Code: "referential.integrity")
             {
                 Detail = "Operation violates a referential integrity constraint.",
                 ConstraintName = constraintName,

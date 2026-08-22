@@ -272,6 +272,11 @@ public sealed partial class IdempotencyMiddleware
             writer.WriteString("detail", detail);
             writer.WriteString("instance", instance);
             writer.WriteString("code", code);
+
+            // This middleware answers before routing, so its failures never pass through
+            // ResponseFailureWriter. A client cannot tell which layer replied, so it carries the
+            // same envelope: the condition is all this seam knows beyond the code it just wrote.
+            writer.WriteString("kind", ProblemEnvelope.KindForStatus(status));
             writer.WriteEndObject();
         }
 

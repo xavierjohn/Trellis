@@ -61,7 +61,7 @@ internal static class Recipe9StateMachineSurface
         Result<DocumentState> invalid = machine.FireResult(DocumentTrigger.Approve);
         Error? error = invalid.Error;
         Error.InvariantViolation? invariant = error as Error.InvariantViolation;
-        string reasonCode = invariant?.ReasonCode ?? string.Empty;
+        string reasonCode = invariant?.Code ?? string.Empty;
 
         _ = reasonCode;
     }

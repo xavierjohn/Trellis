@@ -42,7 +42,7 @@ public sealed record CancelOrderCommand(OrderId OrderId)
         resource.OwnerId == actor.Id || actor.HasPermission("orders:admin")
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden(
-                PolicyId: "orders.owner",
+                Code: "orders.owner",
                 Resource: ResourceRef.For<Order>(OrderId)));
 }
 

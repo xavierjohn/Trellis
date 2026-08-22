@@ -191,7 +191,7 @@ public class InboxMessageHandlerTests
     [Fact]
     public void EveryEnvelopeFailure_CarriesAnExplicitCode_SoTheDeadLetterReasonIsNeverTheSentinel()
     {
-        // The handler dead-letters with Error.WireCode, which narrows to the sentinel for any error
+        // The handler dead-letters with Error.Code, which narrows to the sentinel for any error
         // that carries no code of its own. That is correct at the boundary, but it would make every
         // unreadable message land in the DLQ under one indistinguishable reason. These errors must
         // therefore keep naming themselves — this is the guard for a future case that forgets to.
@@ -203,8 +203,8 @@ public class InboxMessageHandlerTests
             ServiceBusConsumerErrors.MalformedBody(OrderPlaced.WireName, "unexpected token"),
         ];
 
-        envelopeFailures.Should().OnlyContain(e => e.HasExplicitCode);
-        envelopeFailures.Select(e => e.WireCode).Should().Equal(
+        envelopeFailures.Should().OnlyContain(e => e.Code != ValidationCodes.Unspecified);
+        envelopeFailures.Select(e => e.Code).Should().Equal(
             ServiceBusConsumerErrors.UnusableMessageIdCode,
             ServiceBusConsumerErrors.MissingSubjectCode,
             ServiceBusConsumerErrors.UnknownContractCode,

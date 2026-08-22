@@ -61,7 +61,7 @@ public sealed class DispatchLogger(
         if (result.IsSuccess)
             return Result.Ok(DeliveryOutcome.Recorded);
 
-        if (result.Error is Error.Conflict conflict && conflict.ReasonCode == "duplicate.key")
+        if (result.Error is Error.Conflict conflict && conflict.Code == "duplicate.key")
         {
             // The second delivery — exactly what idempotency promises. No-op, do not fail.
 #pragma warning disable CA1848, CA1873 // Cookbook snippet mirrors the recipe text; LoggerMessage delegates would obscure the point.

@@ -135,7 +135,7 @@ public static class DbContextRetryExtensions
             {
                 return Result.Fail<Unit>(new Error.Conflict(
                     Resource: null,
-                    ReasonCode: FaultCodes.ConcurrentModification)
+                    Code: FaultCodes.ConcurrentModification)
                 {
                     Detail = $"One or more entities were modified by another process. {ex.Entries.Count} entities affected."
                 });
@@ -147,7 +147,7 @@ public static class DbContextRetryExtensions
                     if (DbExceptionClassifier.IsDuplicateKey(ex))
                     {
                         var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-                        return Result.Fail<Unit>(new Error.Conflict(Resource: null, ReasonCode: "duplicate.key")
+                        return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "duplicate.key")
                         {
                             Detail = "A record with the same unique value already exists.",
                             ConstraintName = constraintName,
@@ -158,7 +158,7 @@ public static class DbContextRetryExtensions
                     if (DbExceptionClassifier.IsForeignKeyViolation(ex))
                     {
                         var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-                        return Result.Fail<Unit>(new Error.Conflict(Resource: null, ReasonCode: "referential.integrity")
+                        return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "referential.integrity")
                         {
                             Detail = "Operation violates a referential integrity constraint.",
                             ConstraintName = constraintName,
@@ -170,7 +170,7 @@ public static class DbContextRetryExtensions
                 }
 
                 if (attempt >= maxAttempts)
-                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, ReasonCode: "retry.exhausted")
+                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "retry.exhausted")
                     { Detail = $"Maximum retry attempts ({maxAttempts}) exhausted; the caller-supplied classifier kept reporting the save failure as retryable." });
 
                 ValidateAllEntriesAreAdded(ex.Entries);
@@ -188,7 +188,7 @@ public static class DbContextRetryExtensions
 
                 var keepGoing = await regenerate(entriesForCallback, attempt, cancellationToken).ConfigureAwait(false);
                 if (!keepGoing)
-                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, ReasonCode: "retry.aborted")
+                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "retry.aborted")
                     { Detail = $"Retry aborted by regenerate callback after attempt {attempt}." });
 
                 foreach (var s in snapshot)

@@ -17,13 +17,12 @@ using System.Diagnostics;
 /// Debug activities appear as child spans in distributed traces, making it easy to filter them out in production.
 /// 
 /// <para>
-/// <b>These tags publish the raw <see cref="Error.Code"/>, not <c>Error.WireCode</c>, and that is deliberate.</b>
-/// Every other tag Trellis emits is operator-facing and uses <c>WireCode</c> so a code can be carried from a
+/// <b>These tags publish <see cref="Error.Kind"/>, not <see cref="Error.Code"/>, and that is deliberate.</b>
+/// Every other tag Trellis emits is operator-facing and uses <c>Code</c> so a code can be carried from a
 /// response body into a trace query. This facility is not that: it compiles away outside DEBUG, it emits the
 /// unredacted <c>Error.Detail</c>, and its tags are namespaced <c>debug.*</c> precisely so nothing joins them to
-/// the operator-facing <c>error.code</c>. A developer stepping through a railway wants the producer's actual
-/// decision, including a kind that no boundary would publish — narrowing it to the sentinel here would hide the
-/// only thing being inspected.
+/// the operator-facing <c>error.code</c>. A developer stepping through a railway wants to see which case was
+/// constructed, including for the cases that name no reason and whose <c>Code</c> is therefore the sentinel.
 /// </para>
 /// </remarks>
 public static class ResultDebugExtensions
@@ -75,7 +74,7 @@ public static class ResultDebugExtensions
             }
             else
             {
-                activity.SetTag("debug.error.code", result.Error.Code);
+                activity.SetTag("debug.error.kind", result.Error.Kind);
                 activity.SetTag("debug.error.detail", result.Error.Detail);
                 activity.SetStatus(ActivityStatusCode.Error, result.Error.Detail);
             }
@@ -123,7 +122,7 @@ public static class ResultDebugExtensions
             {
                 var error = result.Error;
                 activity.SetTag("debug.error.type", error.GetType().Name);
-                activity.SetTag("debug.error.code", error.Code);
+                activity.SetTag("debug.error.kind", error.Kind);
                 activity.SetTag("debug.error.detail", error.Detail);
                 activity.SetTag("debug.error.kind", error.Kind);
 
@@ -143,7 +142,7 @@ public static class ResultDebugExtensions
                     for (int i = 0; i < Math.Min(aggregated.Errors.Length, 10); i++)
                     {
                         var err = aggregated.Errors[i];
-                        activity.SetTag($"debug.error.aggregate[{i}].code", err.Code);
+                        activity.SetTag($"debug.error.aggregate[{i}].kind", err.Kind);
                         activity.SetTag($"debug.error.aggregate[{i}].detail", err.Detail);
                     }
                 }
@@ -187,7 +186,7 @@ public static class ResultDebugExtensions
             }
             else
             {
-                activity.SetTag("debug.error.code", result.Error.Code);
+                activity.SetTag("debug.error.kind", result.Error.Kind);
                 activity.SetTag("debug.error.detail", result.Error.Detail);
                 activity.SetStatus(ActivityStatusCode.Error, result.Error.Detail);
             }
@@ -293,7 +292,7 @@ public static class ResultDebugExtensions
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnFailure", ActivityKind.Internal);
             if (activity != null)
             {
-                activity.SetTag("debug.error.code", result.Error.Code);
+                activity.SetTag("debug.error.kind", result.Error.Kind);
                 activity.SetStatus(ActivityStatusCode.Error, result.Error.Detail);
             }
 
@@ -436,7 +435,7 @@ public static class ResultDebugExtensionsAsync
             using var activity = RopTrace.ActivitySource.StartActivity("Debug: OnFailure", ActivityKind.Internal);
             if (activity != null)
             {
-                activity.SetTag("debug.error.code", result.Error.Code);
+                activity.SetTag("debug.error.kind", result.Error.Kind);
                 activity.SetStatus(ActivityStatusCode.Error, result.Error.Detail);
             }
 

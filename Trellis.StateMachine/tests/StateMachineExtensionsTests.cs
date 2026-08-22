@@ -121,7 +121,7 @@ public class StateMachineExtensionsTests
         result.TryGetError(out var err).Should().BeTrue();
         err!.Code.Should().Be(FaultCodes.StateMachineInvalidTransition);
         var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
-        invariant.ReasonCode.Should().Be(FaultCodes.StateMachineInvalidTransition);
+        invariant.Code.Should().Be(FaultCodes.StateMachineInvalidTransition);
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public class StateMachineExtensionsTests
         err!.Should().BeOfType<Error.InvariantViolation>();
         err!.Detail.Should().Be("guard blocked");
         var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
-        invariant.ReasonCode.Should().Be(FaultCodes.StateMachineInvalidTransition);
+        invariant.Code.Should().Be(FaultCodes.StateMachineInvalidTransition);
         machine.State.Should().Be(State.Idle);
     }
 

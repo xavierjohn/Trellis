@@ -33,7 +33,7 @@ Trellis models **expected failures as values, not exceptions.** Anything a calle
 | Expected domain failure (validation, not-found, conflict, forbidden) | `Result.Fail<T>(new Error.X(...))` | `throw` |
 | Expected absence of a value | `Maybe<T>` | `null` / `throw` |
 | Truly exceptional / unrecoverable (bug, broken environment, violated precondition) | `throw` | wrap a normal outcome in a Result just to avoid throwing |
-| Internal "shouldn't happen" you still want to flow as a value | return `new Error.Unexpected(reasonCode, faultId?)` (renders 500 at the boundary, no exception) | `throw new Exception(...)` inside a Result chain |
+| Internal "shouldn't happen" you still want to flow as a value | return `new Error.Unexpected(code, faultId?)` (renders 500 at the boundary, no exception) | `throw new Exception(...)` inside a Result chain |
 
 Analyzer **TRLS010** flags `throw` inside Result chains (`Bind`/`Map`/`Tap`/`Ensure`); reading `result.Error` never throws. Never use `try`/`catch` in Domain or Application layers to drive an *expected* outcome — use `Result.Try(...)` only to convert a genuinely unexpected exception at an integration seam into a typed `Error`.
 
@@ -514,9 +514,7 @@ Closed discriminated union of domain error values. Each case is a nested `sealed
 | Name | Type | Notes |
 | --- | --- | --- |
 | `Kind` | `string` | Stable domain slug (e.g. `"not-found"`, `"invalid-input"`). Survives CLR renames. Suitable for telemetry. Wire-format mapping for HTTP problem-details `type` is the boundary's responsibility — see `trellis-api-asp.md`. |
-| `Code` | `string` | Per-instance machine-readable code. Defaults to `Kind`; cases whose payload carries a per-instance reason (for example `Conflict`, `Forbidden`, `InvariantViolation`, `Unexpected`) override it. **In-process value only** — anywhere the code leaves the process, read `WireCode` instead. |
-| `WireCode` | `string` | The code a consumer sees: `Code` when `HasExplicitCode` is `true` (normalized, so the legacy `validation.error` becomes `error.unspecified`), and the sentinel `error.unspecified` when it is `false`. **Read this, not `Code`, at every boundary** — an HTTP body, a span tag, a metric dimension, a log field. `Code` defaults to `Kind`, so publishing it directly would present a kind restated as a reason, and a consumer switching on it would branch on `"not-found"` as though a producer had chosen it. Applying the rule once here is what lets an operator carry a code out of a response body and into a trace query: `ResponseFailureWriter` and `Trellis.Mediator.TracingBehavior` both read this property, and tests on both sides assert against it so the two altitudes cannot drift. |
-| `HasExplicitCode` | `bool` | `true` when this instance carries a machine-readable code of its own, rather than `Code` merely restating `Kind`. **A presence test, never a value comparison:** an instance whose reason code happens to equal its own `Kind` still reports `true` and is emitted verbatim. Boundary renderers use this to decide between emitting `Code` and emitting the sentinel `error.unspecified` (see `trellis-api-asp.md`), so a kind restated as a code is never mistaken for a reason. `false` for `InvalidInput` (codes live on the individual violations), `NotFound`, `Gone`, `RateLimited`, `TransportFault` (the wrapped `HttpError` supplies the code), and `Aggregate` (codes belong to the children); `true` for `InvariantViolation`, `Conflict`, `Forbidden`, `Unexpected`; and `ReasonCode is not null` for `AuthenticationRequired` and `Unavailable`. Declared `abstract` rather than `virtual`: `Error` is a closed union, so every case must answer, which turns "a new case carries a code and forgets to say so" from a silent wire defect into a compile error. |
+| `Code` | `string` | The machine-readable reason a consumer sees — in an HTTP body, a span tag, a metric dimension, a log field. Storage on the base with an `init` accessor, so every case names a reason the same way: `new Error.NotFound(resource) { Code = "account.closed" }`. Defaults to the sentinel `error.unspecified`, **never to `Kind`**. Cases whose reason is required (`Conflict`, `InvariantViolation`, `Unexpected`, `Forbidden`) take it as a positional parameter instead, so the compiler refuses one that says nothing. There is deliberately no second raw-versus-wire code member: two of them is how an HTTP body and a span tag come to disagree about the same failure, which is a bug this framework has already shipped once. `ResponseFailureWriter` and `Trellis.Mediator.TracingBehavior` both read this one property. |
 | `Detail` | `string?` | Human-readable detail. Init-only (`Detail = "..."`). Boundary renderers prefer it when non-null; otherwise they compute a message from `Kind`/`Code` plus the typed payload. |
 | `Cause` | `Error?` | Structured cause chain. **Never holds a live `System.Exception`** — wrap context as a child `Error`. Cycles are detected at `init` and throw `InvalidOperationException`. |
 
@@ -532,7 +530,7 @@ Closed discriminated union of domain error values. Each case is a nested `sealed
 
 Construct cases directly: `new Error.NotFound(payload) { Detail = "..." }`. The base `Error` type intentionally exposes no static `Error.Validation(...)` / `Error.NotFound(...)` helpers — every call site names the case it produces. <!-- v1-stale-ok: explanatory note about removed v1 factory helpers --> For the common single-payload shapes, the resource-bearing cases (`NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`) and `InvalidInput` expose **case-scoped** convenience factories (e.g. `Error.NotFound.For<Order>(id, detail)`) that bundle the typed payload and an optional trailing `detail` argument while still naming the case — see each case row below.
 
-> **Why only some cases have factories.** The case-scoped factories exist to remove the one piece of construction ceremony these cases share: wrapping an id into a `ResourceRef` (and, for `InvalidInput`, a field into an `InputPointer`). So **every case that carries a `ResourceRef` provides a `For<TResource>(...)` factory** — `NotFound`, `Gone`, `Conflict`, `Forbidden`, and `InvariantViolation`. The exact companions vary with each case's shape: the resource-subject cases (`NotFound`, `Gone`, `Conflict`, `InvariantViolation`) also expose a `For(type, …)` overload that names the resource type as a string; cases whose resource is *optional* add a resourceless companion (`Conflict.ForReason` / `InvariantViolation.ForReason` / `Forbidden.ForPolicy`); `Forbidden` leads with its `policyId` (`For<TResource>(policyId, id)` / `ForPolicy`) rather than a `For(type, …)` overload. The remaining single-error cases (`AuthenticationRequired`, `RateLimited`, `Unavailable`, `Unexpected`, `TransportFault`) carry no resource, so their primary constructors are already minimal (e.g. `new Error.Unexpected("db.timeout")`) and deliberately have no factory — the constructor *is* the idiomatic path. (`Aggregate` is the composition case — a collection of errors built from its own multi-error constructor, not a single-payload shape.) This is the rule that makes the surface consistent: factory ⇔ resource ceremony, not factory-on-everything.
+> **Why only some cases have factories.** A case-scoped factory exists to remove construction ceremony, and there is essentially one kind of it: wrapping an id into a `ResourceRef` (and, for `InvalidInput`, a field into an `InputPointer`), so **every case that carries a `ResourceRef` provides a `For<TResource>(...)` factory** — `NotFound`, `Gone`, `Conflict`, `Forbidden`, and `InvariantViolation`. The exact companions vary with each case's shape: the resource-subject cases (`NotFound`, `Gone`, `Conflict`, `InvariantViolation`) also expose a `For(type, …)` overload that names the resource type as a string; `Forbidden` leads with its `policyId` (`For<TResource>(policyId, id)` / `ForPolicy`) rather than a `For(type, …)` overload. `Conflict.ForReason` and `InvariantViolation.ForReason` are the *resourceless* companions for cases whose reason is mandatory — `ForReason` is the overload that takes a reason code and no positional resource. Naming a reason needs no factory of its own, because `Code` is an inherited `init` property every case shares: `new Error.NotFound(resource) { Code = "order.archived" }`. The remaining cases (`AuthenticationRequired`, `Unavailable`, `RateLimited`, `TransportFault`) carry no resource, so the constructor plus an initializer *is* the idiomatic path (e.g. `new Error.Unexpected("db.timeout")`). (`Aggregate` is the composition case — a collection of errors built from its own multi-error constructor, not a single-payload shape.)
 
 ---
 
@@ -542,18 +540,18 @@ Nested `sealed record` cases under `Error`. The base constructor is `private`, s
 
 | Case | Constructor | Domain semantics |
 | --- | --- | --- |
-| `Error.InvalidInput` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | Request input failed semantic validation. Use `ForField(...)` / `ForRule(...)` for the common single-violation shapes. |
-| `Error.InvariantViolation` | `(string ReasonCode, ResourceRef? Resource = null)` | Domain rule failed outside field-bound request validation; use for cross-aggregate invariants or internal preconditions. Use `For<TResource>(reasonCode, id, detail)` / `For(type, reasonCode, id, detail)` / `ForReason(reasonCode, detail)` (resourceless). `reasonCode` leads (it is the invariant's required identity; the resource id is optional). |
-| `Error.NotFound` | `(ResourceRef Resource)` | The addressed resource does not exist. Use `For<TResource>(id, detail)` / `For(type, id, detail)` for the common shape. |
-| `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | The caller is authenticated but not allowed by the named policy. Use `For<TResource>(policyId, id, detail)` or `ForPolicy(policyId, detail)` (resourceless). |
-| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` | The request collides with current state (for example duplicate keys or concurrent modification). Use `For<TResource>(id, reasonCode, detail)` / `For(type, id, reasonCode, detail)` / `ForReason(reasonCode, detail)` (resourceless). |
-| `Error.Gone` | `(ResourceRef Resource)` | The resource previously existed but has been permanently removed (tombstone). Use `For<TResource>(id, detail)` / `For(type, id, detail)` for the common shape. |
-| `Error.AuthenticationRequired` | `(string? Scheme = null, string? ReasonCode = null)` | Authentication is missing or could not be established. `ReasonCode` (when supplied) distinguishes causes that share the 401 surface — e.g. `"Authentication.InvalidCredentials"` vs `"Authentication.MissingCredentials"` vs `"Authentication.TokenExpired"` — so telemetry, dashboards, and client branching don't have to parse `Detail`. |
-| `Error.Unavailable` | `(string? ReasonCode = null, RetryAdvice? Retry = null)` | A dependency or subsystem is temporarily unavailable; retry may succeed later. |
-| `Error.RateLimited` | `(RetryAdvice? Retry = null)` | The caller exceeded a quota or rate limit. |
-| `Error.Unexpected` | `(string ReasonCode, string? FaultId = null)` | Unhandled internal failure or “shouldn't happen” condition. `FaultId`, when supplied, correlates to telemetry. |
-| `Error.Aggregate` | `(EquatableArray<Error> Errors)` <br> `(IEnumerable<Error> errors)` <br> `(params Error[] errors)` | Composition node that flattens nested aggregates and preserves every inner error. |
-| `Error.TransportFault` | `(ITransportFault Fault)` | Opaque envelope for lower-layer, transport-specific faults produced outside the domain model. |
+| `Error.InvalidInput` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | Request input failed semantic validation. Use `ForField(...)` / `ForRule(...)` for the common single-violation shapes. Reasons belong to the individual violations, so the root `Code` stays `error.unspecified`. |
+| `Error.InvariantViolation` | `(string Code, ResourceRef? Resource = null)` | Domain rule failed outside field-bound request validation; use for cross-aggregate invariants or internal preconditions. Use `For<TResource>(reasonCode, id, detail)` / `For(type, reasonCode, id, detail)` / `ForReason(reasonCode, detail)` (resourceless). `Code` leads (it is the invariant's required identity; the resource id is optional). |
+| `Error.NotFound` | `(ResourceRef Resource)` | The addressed resource does not exist. Use `For<TResource>(id, detail)` / `For(type, id, detail)` for the common shape. Name a reason with `{ Code = ... }` when the producer can say *why* — `"order.not-found"` (no such row) and `"order.archived"` (deliberately withheld) share the 404 surface but are not the same answer to a client. Absent one, the case reports the `error.unspecified` sentinel. |
+| `Error.Forbidden` | `(string Code, ResourceRef? Resource = null)` | The caller is authenticated but not allowed by the named policy. `PolicyId` reads the same value as `Code`, so the policy that refused and the code the client sees cannot drift. Use `For<TResource>(policyId, id, detail)` or `ForPolicy(policyId, detail)` (resourceless). |
+| `Error.Conflict` | `(ResourceRef? Resource, string Code)` | The request collides with current state (for example duplicate keys or concurrent modification). Use `For<TResource>(id, reasonCode, detail)` / `For(type, id, reasonCode, detail)` / `ForReason(reasonCode, detail)` (resourceless). |
+| `Error.Gone` | `(ResourceRef Resource)` | The resource previously existed but has been permanently removed (tombstone). Use `For<TResource>(id, detail)` / `For(type, id, detail)` for the common shape, and `{ Code = ... }` to name why it is gone (e.g. `"order.purged"`). |
+| `Error.AuthenticationRequired` | `(string? Scheme = null)` | Authentication is missing or could not be established. Set `{ Code = ... }` to distinguish causes that share the 401 surface — e.g. `"Authentication.InvalidCredentials"` vs `"Authentication.MissingCredentials"` vs `"Authentication.TokenExpired"` — so telemetry, dashboards, and client branching don't have to parse `Detail`. |
+| `Error.Unavailable` | `(RetryAdvice? Retry = null)` | A dependency or subsystem is temporarily unavailable; retry may succeed later. Set `{ Code = ... }` to identify the kind of unavailability. |
+| `Error.RateLimited` | `(RetryAdvice? Retry = null)` | The caller exceeded a quota or rate limit. Set `{ Code = ... }` to name *which* quota (e.g. `"quota.daily-transfers"`) — a caller subject to several limits cannot back off intelligently while every one of them reports the same thing. |
+| `Error.Unexpected` | `(string Code, string? FaultId = null)` | Unhandled internal failure or “shouldn't happen” condition. `FaultId`, when supplied, correlates to telemetry. |
+| `Error.Aggregate` | `(EquatableArray<Error> Errors)` <br> `(IEnumerable<Error> errors)` <br> `(params Error[] errors)` | Composition node that flattens nested aggregates and preserves every inner error. Reasons belong to the children, so the root `Code` stays `error.unspecified`. |
+| `Error.TransportFault` | `(ITransportFault Fault)` | Opaque envelope for lower-layer, transport-specific faults produced outside the domain model. `Code` is the wrapped fault's own code when it implements `ICodedTransportFault`, read once at construction. |
 
 #### Closed union — exhaustive matching
 
@@ -617,7 +615,7 @@ HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterVa
 
 #### `ICodedTransportFault` — a fault that names itself
 
-`ITransportFault` is a marker: `Trellis.Core` knows nothing about HTTP, gRPC, or a message bus, so it cannot ask an arbitrary payload what went wrong. That leaves `Error.TransportFault` with no code of its own, and its `WireCode` falls back to the sentinel — which is correct for a payload Core genuinely cannot read.
+`ITransportFault` is a marker: `Trellis.Core` knows nothing about HTTP, gRPC, or a message bus, so it cannot ask an arbitrary payload what went wrong. That leaves `Error.TransportFault` with no code of its own, and its `Code` is the sentinel — which is correct for a payload Core genuinely cannot read.
 
 `ICodedTransportFault` is how a transport package opts out of that fallback:
 
@@ -629,7 +627,7 @@ public interface ICodedTransportFault : ITransportFault
 }
 ```
 
-When `Error.TransportFault` wraps one, the error's `HasExplicitCode` is `true`, its `Code` is the fault's `Code`, and its `WireCode` is that same value **passed through unnormalized**. That last part is deliberate and is the one place `WireCode` departs from the vocabulary rules: a transport fault's code is the transport's word, not a Trellis reason code. `HttpError.PreconditionFailed(..., PreconditionKind.IfMatch)` codes as `IfMatch` — an HTTP precondition name — and rewriting it into `error.*` shape would misrepresent a value the caller has to match against the HTTP spec, not against this vocabulary.
+When `Error.TransportFault` wraps one, the error's `Code` is the fault's `Code`, **passed through verbatim**. A transport fault's code is the transport's word, not a Trellis reason code. `HttpError.PreconditionFailed(..., PreconditionKind.IfMatch)` codes as `IfMatch` — an HTTP precondition name — and rewriting it into `error.*` shape would misrepresent a value the caller has to match against the HTTP spec, not against this vocabulary.
 
 `HttpError` in `Trellis.Http.Abstractions` implements this interface; its existing `Kind` and `Code` members satisfy it unchanged. Faults that stay bare `ITransportFault` implementations keep the sentinel behavior and continue to compile.
 
@@ -679,7 +677,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | Constant | Wire value | Emitted when |
 | --- | --- | --- |
 | `Unspecified` | `error.unspecified` | The producer has no code to report. |
-| `LegacyUnspecified` | `validation.error` | Pre-vocabulary placeholder; recognised and normalised at the boundary by `ValidationCodes.Normalize`. **Do not emit.** |
+| `LegacyUnspecified` | `validation.error` | Pre-vocabulary placeholder; flagged by `ReasonCodeVocabularyAnalyzer` at the producer. **Do not emit.** |
 | `FormatInteger` | `format.integer` | Not parseable as `int`/`long`/`short`/`byte`, including out of range for the type. |
 | `FormatNumber` | `format.number` | Not parseable as `double`/`float`. |
 | `FormatDecimal` | `format.decimal` | Not parseable as `decimal`. |
@@ -763,7 +761,7 @@ Three distinctions are easy to get wrong and are worth stating outright:
 - **`value.not-empty` vs `value.not-default`** — an empty string is empty; `Guid.Empty` and `0` are *default*, not empty.
 - **`enum.name-undefined` vs `enum.undefined`** — the name was not a member at all, versus a numeric value that parsed into an undefined member. A "did you mean?" affordance needs the first.
 
-`ValidationCodes.Unspecified` (`error.unspecified`) is the neutral sentinel, emitted when a producer genuinely has no code to report — a `Must(...)` predicate, or a message-only API. `ValidationCodes.LegacyUnspecified` (`validation.error`) is the pre-vocabulary placeholder, retained only so the boundary can recognise and normalise it; do not emit it. `ValidationCodes.Normalize(code)` performs that mapping and leaves every other code untouched. It lives in Core rather than in a boundary package because more than one boundary applies it — the HTTP writer and the mediator's tracing behavior both do — and a second copy is how two altitudes come to disagree about the spelling of "no reason available". For an `Error` rather than a bare code, prefer `Error.WireCode`, which applies both this and `HasExplicitCode`.
+`ValidationCodes.Unspecified` (`error.unspecified`) is the neutral sentinel, emitted when a producer genuinely has no code to report — a `Must(...)` predicate, or a message-only API. `ValidationCodes.LegacyUnspecified` (`validation.error`) is the pre-vocabulary placeholder, retained so the string is documented and not reused; do not emit it. `ReasonCodeVocabularyAnalyzer` flags it at the producer, which is where it is worth catching — no boundary rewrites it, because a code Trellis did not choose reaches a consumer exactly as its producer spelled it.
 
 **Producer independence.** The same failure reports the same code regardless of which part of the framework noticed it. A malformed integer is `format.integer` whether it arrived through query-string binding, a JSON body, or a generated `TryCreate`. This is what makes a single client branch sufficient, and it is enforced by `ProducerIndependenceTests`.
 
@@ -883,7 +881,7 @@ The per-operation tracing is essentially free when no listener is registered. `A
 | 10-step `Map` chain | ~115 ns, 0 B | ~2,227 ns, 4,000 B |
 | 10-step `Tap` chain | ~176 ns, 0 B | ~2,281 ns, 4,096 B |
 
-**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source. Trellis does not set status or `result.error.code` on an ambient ASP.NET or Mediator activity from ROP operators unless that activity was started by the Trellis ROP `ActivitySource`. On a failure the tags are `result.error.code` (`Error.WireCode`, so it spells the code the way the HTTP boundary does) and `result.error.type` (the error class name, which keeps the cases whose wire code is the sentinel distinguishable).
+**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source. Trellis does not set status or `result.error.code` on an ambient ASP.NET or Mediator activity from ROP operators unless that activity was started by the Trellis ROP `ActivitySource`. On a failure the tags are `result.error.code` (`Error.Code`, the same string the HTTP boundary writes) and `result.error.type` (the error class name, which keeps the cases whose wire code is the sentinel distinguishable).
 
 **With `AddResultsInstrumentation` registered:** each combinator costs ~200 ns and allocates ~400 B (the Activity object + name + tags). At 10 000 RPS with a 10-step pipeline that's ~22 ms/sec of CPU and ~40 MB/sec of GC pressure — material at high throughput.
 
@@ -1684,20 +1682,20 @@ public async Task<Result<Page<OrderListItem>>> Handle(ListOrdersQuery query, Can
 
 ## Error Cases (closed ADT)
 
-| Case | Constructor | Default Code | Kind slug |
+| Case | Constructor | Code | Kind slug |
 | --- | --- | --- | --- |
-| `Error.InvalidInput` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | `invalid-input` | `invalid-input` |
-| `Error.InvariantViolation` | `(string ReasonCode, ResourceRef? Resource = null)` | `ReasonCode` | `invariant-violation` |
-| `Error.NotFound` | `(ResourceRef Resource)` | `not-found` | `not-found` |
-| `Error.Forbidden` | `(string PolicyId, ResourceRef? Resource = null)` | `PolicyId` | `forbidden` |
-| `Error.Conflict` | `(ResourceRef? Resource, string ReasonCode)` — plus `[JsonIgnore]` init-only `ConstraintName`/`ConstraintTableName` (telemetry-only, set by EF Core helpers such as `TryInsertUniqueAsync`) | `ReasonCode` | `conflict` |
-| `Error.Gone` | `(ResourceRef Resource)` | `gone` | `gone` |
-| `Error.AuthenticationRequired` | `(string? Scheme = null, string? ReasonCode = null)` | `ReasonCode ?? "authentication-required"` | `authentication-required` |
-| `Error.Unavailable` | `(string? ReasonCode = null, RetryAdvice? Retry = null)` | `ReasonCode ?? "unavailable"` | `unavailable` |
-| `Error.RateLimited` | `(RetryAdvice? Retry = null)` | `rate-limited` | `rate-limited` |
-| `Error.Unexpected` | `(string ReasonCode, string? FaultId = null)` | `ReasonCode` | `unexpected` |
-| `Error.Aggregate` | `(EquatableArray<Error> Errors)` <br> `(IEnumerable<Error> errors)` <br> `(params Error[] errors)` | `aggregate` | `aggregate` |
-| `Error.TransportFault` | `(ITransportFault Fault)` | `transport-fault` | `transport-fault` |
+| `Error.InvalidInput` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | `error.unspecified` (reasons live on the violations) | `invalid-input` |
+| `Error.InvariantViolation` | `(string Code, ResourceRef? Resource = null)` | required, positional | `invariant-violation` |
+| `Error.NotFound` | `(ResourceRef Resource)` | optional, `{ Code = ... }` | `not-found` |
+| `Error.Forbidden` | `(string Code, ResourceRef? Resource = null)` | required, positional; also readable as `PolicyId` | `forbidden` |
+| `Error.Conflict` | `(ResourceRef? Resource, string Code)` — plus `[JsonIgnore]` init-only `ConstraintName`/`ConstraintTableName` (telemetry-only, set by EF Core helpers such as `TryInsertUniqueAsync`) | required, positional | `conflict` |
+| `Error.Gone` | `(ResourceRef Resource)` | optional, `{ Code = ... }` | `gone` |
+| `Error.AuthenticationRequired` | `(string? Scheme = null)` | optional, `{ Code = ... }` | `authentication-required` |
+| `Error.Unavailable` | `(RetryAdvice? Retry = null)` | optional, `{ Code = ... }` | `unavailable` |
+| `Error.RateLimited` | `(RetryAdvice? Retry = null)` | optional, `{ Code = ... }` | `rate-limited` |
+| `Error.Unexpected` | `(string Code, string? FaultId = null)` | required, positional | `unexpected` |
+| `Error.Aggregate` | `(EquatableArray<Error> Errors)` <br> `(IEnumerable<Error> errors)` <br> `(params Error[] errors)` | `error.unspecified` (reasons live on the children) | `aggregate` |
+| `Error.TransportFault` | `(ITransportFault Fault)` | the wrapped `ICodedTransportFault`'s code, else `error.unspecified` | `transport-fault` |
 
 ---
 
@@ -1738,7 +1736,7 @@ if (!result.TryGetValue(out var order, out var error))
     {
         Error.NotFound nf            => NotFound(nf.Resource.Id),
         Error.InvalidInput uc => UnprocessableEntity(uc.Fields),
-        Error.Conflict c             => Conflict(c.ReasonCode),
+        Error.Conflict c             => Conflict(c.Code),
         _                            => Problem(error.GetDisplayMessage()),
     };
 }

@@ -521,7 +521,7 @@ public class TapOnFailureTupleTests : TestBase
             .TapOnFailureAsync(async error =>
             {
                 await Task.Delay(10);
-                notificationsSent.Add($"Error notification: {error.Code}");
+                notificationsSent.Add($"Error notification: {error.Kind}");
             });
 
         // Assert
@@ -538,13 +538,13 @@ public class TapOnFailureTupleTests : TestBase
 
         // Act - Test different error types
         Result.Fail<(int, string)>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid" })
-            .TapOnFailure(error => errorCounts[error.Code] = errorCounts.GetValueOrDefault(error.Code) + 1);
+            .TapOnFailure(error => errorCounts[error.Kind] = errorCounts.GetValueOrDefault(error.Kind) + 1);
 
         Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" })
-            .TapOnFailure(error => errorCounts[error.Code] = errorCounts.GetValueOrDefault(error.Code) + 1);
+            .TapOnFailure(error => errorCounts[error.Kind] = errorCounts.GetValueOrDefault(error.Kind) + 1);
 
         Result.Fail<(int, string)>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Another invalid" })
-            .TapOnFailure(error => errorCounts[error.Code] = errorCounts.GetValueOrDefault(error.Code) + 1);
+            .TapOnFailure(error => errorCounts[error.Kind] = errorCounts.GetValueOrDefault(error.Kind) + 1);
 
         // Assert
         errorCounts.Should().ContainKey("invalid-input");

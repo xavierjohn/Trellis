@@ -59,7 +59,7 @@ public sealed class DbContextIdempotencyExtensionsTests : IDisposable
 
         result.IsSuccess.Should().BeFalse();
         var conflict = result.UnwrapError().Should().BeOfType<Error.Conflict>().Which;
-        conflict.ReasonCode.Should().Be("duplicate.key");
+        conflict.Code.Should().Be("duplicate.key");
         conflict.Detail.Should().Be("A record with the same unique value already exists.");
     }
 

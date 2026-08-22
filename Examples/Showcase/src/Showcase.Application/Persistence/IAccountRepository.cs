@@ -41,7 +41,11 @@ public sealed class InMemoryAccountRepository : IAccountRepository
         {
             return _accounts.TryGetValue(id, out var account)
                 ? Result.Ok(account)
-                : Result.Fail<BankAccount>(new Error.NotFound(ResourceRef.For<BankAccount>(id)));
+                : Result.Fail<BankAccount>(new Error.NotFound(ResourceRef.For<BankAccount>(id))
+                {
+                    Code = "account.not-found",
+                    Detail = $"No account exists with id '{id.Value}'.",
+                });
         }
     }
 
