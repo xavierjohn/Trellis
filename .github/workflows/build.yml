@@ -64,7 +64,7 @@ jobs:
       #     process exit code now covers both audits, not just TRLDOC005.
       #   TRLDOC014 — every receiver-qualified member access in a C# fence resolves on the type
       #     it is written against. TRLDOC005 validates each dotted segment independently and
-      #     only reads backticked prose, so Error.Validation.ForField passed it on the strength
+      #     only reads backticked prose, so Error.Validation.ForField passed it on the strength  # v1-stale-ok: cites a made-up API as the motivating defect
       #     of an unrelated Validation and a real ForField — inside a fence it never looked at
       #     all. Fenced code is what readers copy, so it is held to binding-like resolution.
       run: |

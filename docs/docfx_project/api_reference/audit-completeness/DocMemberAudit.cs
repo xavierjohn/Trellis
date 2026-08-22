@@ -12,7 +12,7 @@ using System.Text.RegularExpressions;
 /// The completeness audit (TRLDOC008) asks "is every public API documented?". The
 /// documented-symbol audit (TRLDOC005) asks "does every backticked name exist somewhere?".
 /// Neither can catch a name that exists on the wrong type, because TRLDOC005 validates each
-/// dotted segment independently: <c>Error.Validation.ForField</c> passes it because some
+/// dotted segment independently: <c>Error.Validation.ForField</c> passes it because some <!-- v1-stale-ok: names a nonexistent API as the motivating defect -->
 /// <c>Validation</c> and some <c>ForField</c> exist, even though <c>Error</c> has no
 /// <c>Validation</c> member. Neither looks inside fenced code blocks at all, which is where
 /// most API usage in these docs actually lives.
