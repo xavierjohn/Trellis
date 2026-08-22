@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 
 /// <summary>
@@ -22,10 +23,19 @@ using System.Text.RegularExpressions;
 /// </summary>
 internal static class DocMemberAudit
 {
-    // A dotted chain of identifiers. Generic argument lists and call parentheses are excluded
-    // from the match and handled by the caller, so Maybe<T>.Map stops the chain at Maybe.
+    // A dotted chain of identifiers, where any identifier may carry a generic argument list.
+    // Without the argument list a static access on a generic type is invisible to this gate --
+    // Maybe<string>.None simply never matches -- and an invented static on a generic type is
+    // exactly the kind of name that must not slip through. Arguments are stripped by
+    // StripGenericArguments before the chain is split, because they contain dots of their own.
+    //
+    // The argument list admits only what a type argument can contain. Allowing operators would
+    // let a comparison pair pose as one: in x < y.Count && z > w.Value the span from < to > is
+    // shaped like a generic argument list, and reading it as one would attribute Value to x.
+    private const string GenericArgs = @"(?:<(?:[A-Za-z0-9_,\.\?\[\]\s]|<[A-Za-z0-9_,\.\?\[\]\s]*>)*>)?";
+
     private static readonly Regex s_chain =
-        new(@"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+", RegexOptions.Compiled);
+        new(@"[A-Za-z_][A-Za-z0-9_]*" + GenericArgs + @"(?:\.[A-Za-z_][A-Za-z0-9_]*" + GenericArgs + @")+", RegexOptions.Compiled);
 
     private static readonly Regex s_csharpFence =
         new(@"^```\s*(?:csharp|c#|cs)\b(?<body>.*?)^```", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.Singleline);
@@ -107,7 +117,7 @@ internal static class DocMemberAudit
             {
                 foreach (Match chain in s_chain.Matches(region.Text))
                 {
-                    var segments = chain.Value.Split('.');
+                    var segments = StripGenericArguments(chain.Value).Split('.');
 
                     // A trailing file extension means this is a path, not a member access
                     // (Directory.Build.props, CosmosIdempotencyContainer.cs).
@@ -560,6 +570,32 @@ internal static class DocMemberAudit
                 names.Add(method.Name);
             }
         }
+    }
+
+    /// <summary>
+    /// Removes generic argument lists from a matched chain, leaving only the dotted identifiers.
+    /// The arguments contain dots of their own -- <c>Maybe&lt;Order.Id&gt;.None</c> -- so splitting
+    /// before removing them would take <c>Order</c> for the member of <c>Maybe</c>.
+    /// </summary>
+    private static string StripGenericArguments(string chain)
+    {
+        if (!chain.Contains('<', StringComparison.Ordinal))
+            return chain;
+
+        var builder = new StringBuilder(chain.Length);
+        int depth = 0;
+
+        foreach (char c in chain)
+        {
+            if (c == '<')
+                depth++;
+            else if (c == '>')
+                depth--;
+            else if (depth == 0)
+                builder.Append(c);
+        }
+
+        return builder.ToString();
     }
 
     private static string SimpleName(Type type)

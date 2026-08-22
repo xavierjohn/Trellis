@@ -126,6 +126,8 @@ It exists because the other two gates share two blind spots, and a defect walked
 
 Resolution is deliberately restricted to the **head** of a chain, because only the head can be resolved without binding. An interior segment is usually a value rather than a type: in `order.Id.Value`, `Id` is a property that happens to share a type's simple name, and judging it against that type would report correct documentation as broken.
 
+A head may carry a **generic argument list**, which is stripped before the chain is split. Without that, a static access on a generic type never matches the chain pattern at all, so `Maybe<string>.None` — and any invented sibling of it — would be invisible to the gate. The argument list admits only what a type argument can contain, and notably no operators: in `x < y.Count && z > w.Value` the span from `<` to `>` is shaped like a generic argument list, and reading it as one would attribute `Value` to `x`.
+
 Four rules keep the gate quiet on correct docs:
 
 - **Inline backticks are out of scope.** Prose shorthand like `DbSet.Include` or `Value.Length` names a member against the type the reader is thinking about rather than the type that declares it. That is legitimate writing. It also matters for accuracy: `trellis-api-core.md` deliberately cites the removed v1 factories `Error.Validation(...)` in its migration table, and a prose-scanning gate would demand that real history be deleted. <!-- v1-stale-ok: names a removed v1 factory in order to explain why citing it is legitimate -->
