@@ -216,9 +216,21 @@ function Start-ShowcaseHost {
     $projectPath = Join-Path $scriptRoot $hostProjects[$Environment]
     Write-Host "Starting $Environment host from $projectPath ..." -ForegroundColor DarkGray
 
-    $process = Start-Process -FilePath 'dotnet' `
-        -ArgumentList @('run', '-c', 'Release', '--project', $projectPath) `
-        -PassThru -WindowStyle Hidden
+    $startArgs = @{
+        FilePath     = 'dotnet'
+        ArgumentList = @('run', '-c', 'Release', '--project', $projectPath)
+        PassThru     = $true
+    }
+
+    # -WindowStyle throws a terminating NotSupportedException off Windows, so it
+    # can only be passed conditionally. $IsWindows is very slightly wider than the
+    # check Start-Process applies (!IsNanoServer && !IsIoT), so Nano Server and
+    # Windows IoT would still throw -- neither ships the .NET SDK this needs.
+    if ($IsWindows) {
+        $startArgs.WindowStyle = 'Hidden'
+    }
+
+    $process = Start-Process @startArgs
 
     $deadline = (Get-Date).AddSeconds(180)
 
@@ -372,7 +384,7 @@ try {
             $null = $transcript.AppendLine('--- request body ---')
             $null = $transcript.AppendLine((Format-Body $body 'json'))
         }
-        $null = $transcript.AppendLine("--- response: expected $expectedText, got $(if ($null -ne $status) { $status } else { 'transport error' }) $(if ($matched) { 'OK' } else { 'MISMATCH' }) ---")
+        $null = $transcript.AppendLine("--- response: expected $expectedText, got $(if ($null -ne $status) { $status } else { 'transport error' }) $(if ($matched) { '[match]' } else { '[MISMATCH]' }) ---")
         if ($transportError) {
             $null = $transcript.AppendLine($transportError)
         }
