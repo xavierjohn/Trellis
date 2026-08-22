@@ -8,6 +8,22 @@ using OpenTelemetry.Trace;
 public static class ResultsTraceProviderBuilderExtensions
 {
     /// <summary>
+    /// The name of the <see cref="System.Diagnostics.ActivitySource"/> that traces Railway Oriented
+    /// Programming operations. Value: <c>"Trellis.Results"</c>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AddTrellisResultsInstrumentation"/> is the recommended way to subscribe. Use this
+    /// constant when composing a source list by hand, filtering in a processor, or configuring a
+    /// backend from code, so the name is never duplicated as a literal.
+    /// <para>
+    /// The source is named for what it traces — <c>Result</c> operations — rather than for the
+    /// package that ships it. <c>Trellis.Core</c> also emits the <c>Trellis.Primitives</c> source
+    /// and the <c>Trellis.Validation</c> meter.
+    /// </para>
+    /// </remarks>
+    public const string ActivitySourceName = RopTrace.ActivitySourceName;
+
+    /// <summary>
     /// Adds Trellis Railway Oriented Programming instrumentation to the OpenTelemetry tracer provider.
     /// This enables distributed tracing and observability for Result operations.
     /// </summary>
