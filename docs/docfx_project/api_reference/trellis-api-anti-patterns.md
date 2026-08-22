@@ -556,7 +556,7 @@ The analyzer reports only where it can prove no code applies. It stays silent wh
 Trellis freezes a small set of reason codes and dispatches on their exact wire spelling. Restating one as a literal works right up until the day it doesn't: a typo in a literal is a silent wire break, whereas a typo in a constant name does not compile.
 
 ```csharp
-// WRONG — the literal is unchecked, and there are usually dozens of it
+// WRONG — the literal is unchecked, and there are usually dozens of them
 Error.InvalidInput.ForField("email", "value.not-null");        // TRLS064
 Error.InvalidInput.ForField("name", "string.max-length");      // TRLS064
 

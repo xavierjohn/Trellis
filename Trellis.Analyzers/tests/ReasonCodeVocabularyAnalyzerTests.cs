@@ -307,4 +307,44 @@ public class ReasonCodeVocabularyAnalyzerTests
             [NotTrellis.Foreign(Code = "value.not-null")]
             public class Name { }
             """);
+
+    [Fact]
+    public async Task Duplicate_wire_value_reports_the_first_declaring_class()
+    {        // The reflection guard in Trellis.Core already forbids a duplicate wire value, so this is
+        // defensive — but "keep the first" was a claim in a comment with nothing holding it, and the
+        // code did the opposite until a reviewer noticed. Pinning it makes the tie deterministic:
+        // types are walked ValidationCodes then FaultCodes, so the ValidationCodes spelling wins.
+        const string duplicateVocabulary = """
+            namespace Trellis
+            {
+                public static class ValidationCodes
+                {
+                    public const string ValueNotNull = "value.not-null";
+                }
+
+                public static class FaultCodes
+                {
+                    public const string AlsoValueNotNull = "value.not-null";
+                }
+
+                public static class Failure
+                {
+                    public static object ForRule(string reasonCode) => null!;
+                }
+            }
+            """;
+
+        var test = AnalyzerTestHelper.CreateDiagnosticTest<ReasonCodeVocabularyAnalyzer>(
+            """
+            public class Codes
+            {
+                public void Emit() => Failure.ForRule({|#0:"value.not-null"|});
+            }
+            """,
+            [ExpectFrozen(0, "value.not-null", "ValidationCodes.ValueNotNull")]);
+
+        test.TestState.Sources.Add(("DuplicateVocabulary.cs", duplicateVocabulary));
+
+        await test.RunAsync();
+    }
 }

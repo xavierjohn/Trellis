@@ -358,8 +358,10 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
                 foreach (var value in StringConstants(type))
                 {
                     // A duplicate value would already have failed ValidationCodesTests; keep the first
-                    // so the analyzer stays deterministic rather than throwing during a build.
-                    constants[value.Value] = $"{type.Name}.{value.Name}";
+                    // so the analyzer stays deterministic rather than throwing during a build. Types are
+                    // walked in a fixed order, so "first" means the ValidationCodes spelling wins.
+                    if (!constants.ContainsKey(value.Value))
+                        constants[value.Value] = $"{type.Name}.{value.Name}";
 
                     // The legacy placeholder's namespace is an artifact rather than a published one:
                     // reserving `validation.*` against applications on its account would flag codes the
