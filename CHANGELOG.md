@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — instrumentation helpers are named for the telemetry they register
+
+The OpenTelemetry registration helpers were spelled four different ways: `AddResultsInstrumentation`, `AddPrimitiveValueObjectInstrumentation`, `AddTrellisMediatorInstrumentation`, and `AddTrellisValidationInstrumentation`. They now all follow `AddTrellis{Segment}Instrumentation`, where `{Segment}` is exactly the text after `Trellis.` in the source or meter the helper registers:
+
+| Before | After | Registers |
+| --- | --- | --- |
+| `AddResultsInstrumentation()` | `AddTrellisResultsInstrumentation()` | `"Trellis.Results"` |
+| `AddPrimitiveValueObjectInstrumentation()` | `AddTrellisPrimitivesInstrumentation()` | `"Trellis.Primitives"` |
+
+The value is a two-way mapping: someone looking at a span tagged `Trellis.Mediator` can derive the call, and someone reading the call can derive what will appear in their backend. `AddPrimitiveValueObjectInstrumentation` broke that by naming a concept — `PrimitiveValueObject` — that appears nowhere in the emitted telemetry.
+
+The ROP `ActivitySource` is renamed `"Trellis.Core"` → `"Trellis.Results"` to complete the mapping. The previous name was collateral from the v1 package rename (ADR-002 §2 renamed the *package* `Trellis.Results` → `Trellis.Core`, and the source silently followed) rather than a decision about the source itself. It had become actively misleading: the `Trellis.Core` package emits three telemetry names, and naming one of them after the package read as though it covered all three — while the rule would otherwise have forced `AddTrellisCoreInstrumentation()` on the deliberately high-volume, break-glass ROP source that the docs tell you to reserve for debugging. The three are now `"Trellis.Results"`, `"Trellis.Primitives"` and `"Trellis.Validation"`, each named for its role rather than for the package that ships it. As a side effect the source returns to its v1 name, so a v1 `AddSource("Trellis.Results")` subscription is correct again.
+
+`RopTrace.ActivitySourceName` continues to expose the name programmatically. Update any dashboard or `AddSource` call pinned to the literal `"Trellis.Core"`.
+
+The rule is enforced by `InstrumentationNamingTests`, which invokes every helper against a recording builder and derives the expected method name from the source actually registered — so the telemetry name is the single source of truth rather than an approved-names table that a maintainer has to remember to update. A companion test cross-checks reflection against a repository source scan, so a helper in a package the test does not reference fails the build asking for a `ProjectReference` instead of silently escaping enforcement.
+
 ### Added — `AddTrellisValidationInstrumentation()` and the `trellis.validation.failures` counter
 
 Trellis now publishes one `Meter`, `Trellis.Validation`, with a counter incremented once per violation as a `FieldViolation` or `RuleViolation` is created, tagged `validation.code` and `validation.violation`.
@@ -25,7 +42,7 @@ As with the mediator source, the counter is inert until the helper is called and
 
 ### Added — `AddTrellisMediatorInstrumentation()`, so mediator spans are actually collected
 
-`AddTrellisBehaviors()` registers `TracingBehavior`, so every command and query already calls `StartActivity` — but that returns a live activity only if a `TracerProvider` listens to the `"Trellis.Mediator"` source. Trellis.Core ships `AddResultsInstrumentation()` and Trellis.Primitives ships `AddPrimitiveValueObjectInstrumentation()`; Trellis.Mediator shipped no equivalent, so the handler span was collected only by consumers who knew to type `AddSource("Trellis.Mediator")` as a raw string.
+`AddTrellisBehaviors()` registers `TracingBehavior`, so every command and query already calls `StartActivity` — but that returns a live activity only if a `TracerProvider` listens to the `"Trellis.Mediator"` source. Trellis.Core ships `AddTrellisResultsInstrumentation()` and Trellis.Primitives ships `AddTrellisPrimitivesInstrumentation()`; Trellis.Mediator shipped no equivalent, so the handler span was collected only by consumers who knew to type `AddSource("Trellis.Mediator")` as a raw string.
 
 The gap is silent, which is what makes it worth closing rather than documenting. A service that never registers the source looks exactly like a service in which nothing failed: no warning, no startup error, no empty-result signal. And this is the span carrying `error.code` and `error.type` — the same values the HTTP body reports — so the missing configuration is normally discovered *during* an incident, at the moment those tags were wanted. It is also the altitude the Trellis.Core tracing guidance recommends in preference to per-`Result`-operator spans, so the package was steering people to a span it did not help them collect.
 

@@ -145,7 +145,7 @@ Migration notes for users moving from the previous `Trellis.Core` API surface.
 | Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). The throwing `result.Value` getter was removed entirely because it was the primary cause of unsafe value access. | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Extract success values with `result.TryGetValue(out var v)`, `result.TryGetValue(out var v, out var err)`, `result.Match(...)`, or `var (ok, v, err) = result;` (Deconstruct). | <!-- stale-doc-ok: migration-comparison row intentionally cites removed value accessor -->
 | HTTP transport abstractions package | `Trellis.Core` | `Trellis.Http.Abstractions` | Add a PackageReference to `Trellis.Http.Abstractions` for code that names `WriteOutcome<T>`, `RepresentationMetadata`, `EntityTagValue`, `RetryAfterValue`, `PreconditionKind`, `AuthChallenge`, or `AggregateETagExtensions`. The CLR namespace stays `Trellis`, so most source files only need the package-reference change. |
 | Package id | `Trellis.Results` | `Trellis.Core` | Replace `<PackageReference Include="Trellis.Results" ... />` with `<PackageReference Include="Trellis.Core" ... />`. The CLR namespace stays `Trellis` — no `using` changes are needed. The legacy `Trellis.Results` package is unlisted with a redirect notice; there is no metapackage shim. | <!-- stale-doc-ok: migration-comparison row intentionally cites previous package id -->
-| OpenTelemetry `ActivitySource` name | `"Trellis.Results"` | `"Trellis.Core"` | Update OTel subscriptions: `builder.AddSource("Trellis.Results")` → `builder.AddSource("Trellis.Core")`. The `RopTrace.ActivitySourceName` constant exposes the name programmatically. | <!-- stale-doc-ok: migration-comparison row intentionally cites previous activity source name -->
+| OpenTelemetry `ActivitySource` name | `"Trellis.Results"` | `"Trellis.Results"` (unchanged) | No change needed. The source is named for the operations it traces, not for the package that ships it, so the v1 name carried over. The `RopTrace.ActivitySourceName` constant exposes it programmatically. | <!-- stale-doc-ok: migration-comparison row intentionally cites the v1 activity source name -->
 | Test helper namespace | `Trellis.Results.Tests.*` | `Trellis.Core.Tests.*` | Internal change only — affects users who took an InternalsVisibleTo dependency on the test assembly (none expected). | <!-- stale-doc-ok: migration-comparison row intentionally cites previous test namespace -->
 | Package merge: DDD | <PackageReference Include="Trellis.DomainDrivenDesign" .../> | *(removed)* | All DDD types (`Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, etc.) moved into `Trellis.Core`. Drop the `Trellis.DomainDrivenDesign` PackageReference; the types are still in `namespace Trellis;` so no using changes are needed. | <!-- stale-doc-ok: migration-comparison row intentionally cites previous package id -->
 | Package merge: Primitives generator | <PackageReference Include="Trellis.Primitives.Generator" .../> | *(removed)* | The Required* source generator is now bundled inside `Trellis.Core.nupkg` (`analyzers/dotnet/cs/Trellis.Core.Generator.dll`). Installing `Trellis.Core` (or any package depending on it) attaches the analyzer automatically. Drop the standalone PackageReference. |
@@ -867,11 +867,11 @@ OpenTelemetry helper for Trellis result instrumentation. Lives in `Trellis.Core\
 
 | Signature | Notes |
 | --- | --- |
-| `public static TracerProviderBuilder AddResultsInstrumentation(this TracerProviderBuilder builder)` | Registers the Trellis ROP `ActivitySource` (named `"Trellis.Core"`, exposed as `RopTrace.ActivitySourceName`) with the supplied OpenTelemetry tracer-provider builder. Returns the same builder for chaining. |
+| `public static TracerProviderBuilder AddTrellisResultsInstrumentation(this TracerProviderBuilder builder)` | Registers the Trellis ROP `ActivitySource` (named `"Trellis.Results"`, exposed as `RopTrace.ActivitySourceName`) with the supplied OpenTelemetry tracer-provider builder. Returns the same builder for chaining. |
 
 #### Performance characteristics
 
-The per-operation tracing is essentially free when no listener is registered. `AddResultsInstrumentation` is the Trellis-provided helper for registering the `"Trellis.Core"` source with OpenTelemetry; consumers may also call `AddSource("Trellis.Core")` directly or attach an `ActivityListener`. Measured on .NET 10 / x64 with an ambient ASP.NET request activity present (benchmark in `Trellis.Benchmark/TracingOverheadBenchmarks.cs`):
+The per-operation tracing is essentially free when no listener is registered. `AddTrellisResultsInstrumentation` is the Trellis-provided helper for registering the `"Trellis.Results"` source with OpenTelemetry; consumers may also call `AddSource("Trellis.Results")` directly or attach an `ActivityListener`. Measured on .NET 10 / x64 with an ambient ASP.NET request activity present (benchmark in `Trellis.Benchmark/TracingOverheadBenchmarks.cs`):
 
 | Pipeline depth | No listener | Listener attached (`AllDataAndRecorded` sampling) |
 |---|---|---|
@@ -881,18 +881,18 @@ The per-operation tracing is essentially free when no listener is registered. `A
 | 10-step `Map` chain | ~115 ns, 0 B | ~2,227 ns, 4,000 B |
 | 10-step `Tap` chain | ~176 ns, 0 B | ~2,281 ns, 4,096 B |
 
-**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Core"` source. Trellis does not set status or `result.error.code` on an ambient ASP.NET or Mediator activity from ROP operators unless that activity was started by the Trellis ROP `ActivitySource`. On a failure the tags are `result.error.code` (`Error.Code`, the same string the HTTP boundary writes) and `result.error.type` (the error class name, which keeps the cases whose wire code is the sentinel distinguishable).
+**No listener registered (default):** ~14–20 ns per `Bind`/`Map`/`Tap`, **0 bytes allocated**. The per-extension `using var activity = ActivitySource.StartActivity(...)` returns null almost immediately when no consumer has registered the `"Trellis.Results"` source. Trellis does not set status or `result.error.code` on an ambient ASP.NET or Mediator activity from ROP operators unless that activity was started by the Trellis ROP `ActivitySource`. On a failure the tags are `result.error.code` (`Error.Code`, the same string the HTTP boundary writes) and `result.error.type` (the error class name, which keeps the cases whose wire code is the sentinel distinguishable).
 
-**With `AddResultsInstrumentation` registered:** each combinator costs ~200 ns and allocates ~400 B (the Activity object + name + tags). At 10 000 RPS with a 10-step pipeline that's ~22 ms/sec of CPU and ~40 MB/sec of GC pressure — material at high throughput.
+**With `AddTrellisResultsInstrumentation` registered:** each combinator costs ~200 ns and allocates ~400 B (the Activity object + name + tags). At 10 000 RPS with a 10-step pipeline that's ~22 ms/sec of CPU and ~40 MB/sec of GC pressure — material at high throughput.
 
 #### Granularity guidance
 
 Per-Result-extension spans add limited signal beyond the outer pipeline span (`Trellis.Mediator.TracingBehavior`) or the ASP.NET request span. They appear as a deeply nested tree under the outer span with no business context — most observability backends collapse or charge per span.
 
-- **Production / high-throughput services**: instrument at the pipeline-behavior altitude (already covered by `Trellis.Mediator.TracingBehavior`) and the HTTP-boundary altitude (`AddAspNetCoreInstrumentation`); skip `AddResultsInstrumentation`.
-- **Development / debugging / low-rate paths**: register `AddResultsInstrumentation` to get step-by-step ROP visibility. The cost is intentional — you opted in.
+- **Production / high-throughput services**: instrument at the pipeline-behavior altitude (already covered by `Trellis.Mediator.TracingBehavior`) and the HTTP-boundary altitude (`AddAspNetCoreInstrumentation`); skip `AddTrellisResultsInstrumentation`.
+- **Development / debugging / low-rate paths**: register `AddTrellisResultsInstrumentation` to get step-by-step ROP visibility. The cost is intentional — you opted in.
 
-The cost is bounded by the consumer's choice; the framework does not gate it further. If `AddResultsInstrumentation` is registered, the spans appear; if not, they don't, and the cost is noise-floor.
+The cost is bounded by the consumer's choice; the framework does not gate it further. If `AddTrellisResultsInstrumentation` is registered, the spans appear; if not, they don't, and the cost is noise-floor.
 
 ---
 
@@ -2590,7 +2590,7 @@ Core-owned JSON converter emitted by the `Required*<TSelf>` source generator for
 public static class PrimitiveValueObjectTrace
 ```
 
-Core-owned trace source used by generated `Required*<TSelf>` value objects and concrete primitives. The activity source name remains `"Trellis.Primitives"` for telemetry compatibility and is exposed as `PrimitiveValueObjectTrace.ActivitySourceName`; register it with `AddPrimitiveValueObjectInstrumentation()` from `Trellis.Primitives` when using the primitives package, or call `TracerProviderBuilder.AddSource(PrimitiveValueObjectTrace.ActivitySourceName)` directly for Core-only generated primitives.
+Core-owned trace source used by generated `Required*<TSelf>` value objects and concrete primitives. The activity source name remains `"Trellis.Primitives"` for telemetry compatibility and is exposed as `PrimitiveValueObjectTrace.ActivitySourceName`; register it with `AddTrellisPrimitivesInstrumentation()` from `Trellis.Primitives` when using the primitives package, or call `TracerProviderBuilder.AddSource(PrimitiveValueObjectTrace.ActivitySourceName)` directly for Core-only generated primitives.
 
 > **Versioning:** the OpenTelemetry activity source `Version` is stamped from the assembly that physically contains this type — `Trellis.Core` — even when consumers depend on `Trellis.Primitives`. The two packages ship lockstep from a single `version.json`, so the version reported in spans is the version of both packages.
 

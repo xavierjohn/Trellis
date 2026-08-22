@@ -26,7 +26,7 @@ using System.Reflection;
 /// </para>
 /// <para>
 /// To enable tracing in your application, register the activity source with your
-/// OpenTelemetry configuration using <see cref="ResultsTraceProviderBuilderExtensions.AddResultsInstrumentation"/>.
+/// OpenTelemetry configuration using <see cref="ResultsTraceProviderBuilderExtensions.AddTrellisResultsInstrumentation"/>.
 /// </para>
 /// </remarks>
 /// <example>
@@ -37,7 +37,7 @@ using System.Reflection;
 /// builder.Services.AddOpenTelemetry()
 ///     .WithTracing(tracerProviderBuilder =>
 ///         tracerProviderBuilder
-///             .AddResultsInstrumentation()  // Adds ROP activity source
+///             .AddTrellisResultsInstrumentation()  // Adds ROP activity source
 ///             .AddAspNetCoreInstrumentation()
 ///             .AddHttpClientInstrumentation()
 ///             .AddConsoleExporter());
@@ -63,14 +63,21 @@ internal static class RopTrace
 
     /// <summary>
     /// Gets the name of the activity source used for ROP tracing.
-    /// Value: "Trellis.Core"
+    /// Value: "Trellis.Results"
     /// </summary>
     /// <remarks>
     /// This name is used to identify traces from this library in observability platforms.
     /// Register this name when configuring OpenTelemetry tracing using
-    /// <see cref="ResultsTraceProviderBuilderExtensions.AddResultsInstrumentation"/>.
+    /// <see cref="ResultsTraceProviderBuilderExtensions.AddTrellisResultsInstrumentation"/>.
+    /// <para>
+    /// The source is named for what it traces — <c>Result</c> operations — rather than for the
+    /// package that ships it. <c>Trellis.Core</c> also emits the <c>Trellis.Primitives</c> source
+    /// and the <c>Trellis.Validation</c> meter, so a source named after the package would suggest
+    /// it carried all three and would invite subscribing to this deliberately high-volume,
+    /// break-glass source by accident.
+    /// </para>
     /// </remarks>
-    internal static readonly string ActivitySourceName = "Trellis.Core";
+    internal static readonly string ActivitySourceName = "Trellis.Results";
 
     /// <summary>
     /// Gets the version of the ROP library.
@@ -97,7 +104,7 @@ internal static class RopTrace
     /// To enable tracing, add this source to your OpenTelemetry configuration:
     /// <code>
     /// builder.Services.AddOpenTelemetry()
-    ///     .WithTracing(b => b.AddResultsInstrumentation());
+    ///     .WithTracing(b => b.AddTrellisResultsInstrumentation());
     /// </code>
     /// </para>
     /// <para>
