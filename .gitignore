@@ -358,3 +358,7 @@ MigrationBackup/
 /CoverageReport
 /coverage
 /.claude
+
+# Showcase api.http replay transcripts. Each run carries fresh account ids and
+# trace ids, so a transcript is a local artifact for diffing, not a baseline.
+Examples/Showcase/replay-*.txt

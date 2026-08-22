@@ -16,6 +16,10 @@
 #   dotnet run --project Examples/Showcase/src/Showcase.Mvc
 #   dotnet run --project Examples/Showcase/src/Showcase.MinimalApi
 #
+# Or replay this whole file and check every response against the `@expect`
+# directives below, starting and stopping the host for you:
+#   ./replay-api-http.ps1 -Environment mvc -StartHost
+#
 # Open <host>/scalar/v1 for the interactive API explorer.
 #
 # Seed accounts created on startup:

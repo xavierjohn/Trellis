@@ -100,6 +100,43 @@ Seed accounts (created on startup):
 | Alice    | aaaaaaa2-0000-0000-0000-000000000000    | Savings  | $5,000  |
 | Bob      | bbbbbbb1-0000-0000-0000-000000000000    | Checking | $250    |
 
+### Replaying `api.http`
+
+`api.http` states the status code each request should produce and names the error behind it.
+[`replay-api-http.ps1`](./replay-api-http.ps1) executes those claims, so they can be checked
+instead of trusted:
+
+```pwsh
+cd Examples/Showcase
+./replay-api-http.ps1 -Environment mvc -StartHost
+```
+
+`-StartHost` starts the host, waits for it to answer, replays, and stops it; omit it to run
+against a host you started yourself. Every request is sent in file order and checked against its
+`# @expect status:` and `# @expect header:` directives, and the script exits non-zero if any
+request no longer does what the file says it does.
+
+The transcript it writes is the more useful half. It records each response in full — status,
+headers, and pretty-printed body — so that when the `Error` ADT or the ProblemDetails mapping
+changes, a diff of two transcripts shows exactly what a client will see across every error path
+the sample exercises, rather than leaving it to be inferred from unit tests:
+
+```pwsh
+./replay-api-http.ps1 -Environment mvc        -StartHost -TranscriptPath before.txt
+# ... make the change ...
+./replay-api-http.ps1 -Environment mvc        -StartHost -TranscriptPath after.txt
+git diff --no-index before.txt after.txt
+```
+
+The same diff between the two hosts turns the file's parity claim into something falsifiable.
+Running it that way today reports the two body differences that `api.http` already marks
+`@parity: status-only` on the invalid-`Money` request: the MVC host sends
+`application/problem+json; charset=utf-8` and includes `traceId`, and the Minimal API host sends
+neither. Transcripts are git-ignored, because each run mints fresh account ids and trace ids.
+
+A replay assumes a freshly started host: the expectations encode the seeded balances and account
+statuses, and the idempotent-transfer block expects an empty idempotency store.
+
 ## How to test
 
 ```pwsh
