@@ -107,6 +107,13 @@
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.ResultsTraceProviderBuilderExtensions.AddResultsInstrumentation(OpenTelemetry.Trace.TracerProviderBuilder)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
     <DiagnosticId>CP0012</DiagnosticId>
     <Target>M:Trellis.Error.get_Code</Target>
     <Left>lib/net10.0/Trellis.Core.dll</Left>
