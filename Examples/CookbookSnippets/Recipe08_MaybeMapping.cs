@@ -66,7 +66,15 @@ internal static class Recipe8MaybeMappingSurface
     public static void MaybeExpressionShapes(EmailAddress fallback)
     {
         System.Linq.Expressions.Expression<Func<Customer, bool>> hasValue = c => c.Email.HasValue;
-        System.Linq.Expressions.Expression<Func<Customer, EmailAddress>> value = c => c.Email.Value;
+
+        // Guarded rather than a bare c.Email.Value. MaybeExpressionRewriter does translate the
+        // bare form -- it strips the accessor to EF.Property -- but the storage member is
+        // nullable, so a row with no e-mail yields NULL for a non-nullable EmailAddress. The
+        // same expression is also compiled and run in-process by Specification/FakeRepository,
+        // where the bare form throws outright. TRLS003 flags it in both cases, correctly.
+        System.Linq.Expressions.Expression<Func<Customer, EmailAddress>> value =
+            c => c.Email.HasValue ? c.Email.Value : fallback;
+
         System.Linq.Expressions.Expression<Func<Customer, EmailAddress>> defaulted = c => c.Email.GetValueOrDefault(fallback);
         System.Linq.Expressions.Expression<Func<Customer, bool>> noneComparison = c => c.Email == Maybe<EmailAddress>.None;
 

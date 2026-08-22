@@ -25,6 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The analyzers run over the cookbook snippets for the same reason they run over consumer
+         code: this is the most-copied code in the documentation, so a snippet the analyzers would
+         reject is a snippet that hands the reader a diagnostic on their first build. -->
+    <ProjectReference Include="..\..\Trellis.Analyzers\src\Trellis.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\..\Trellis.Core\generator\Trellis.Core.Generator.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
