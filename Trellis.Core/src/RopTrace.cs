@@ -77,7 +77,7 @@ internal static class RopTrace
     /// break-glass source by accident.
     /// </para>
     /// </remarks>
-    internal static readonly string ActivitySourceName = "Trellis.Results";
+    internal const string ActivitySourceName = "Trellis.Results";
 
     /// <summary>
     /// Gets the version of the ROP library.

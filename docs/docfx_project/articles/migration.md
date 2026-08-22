@@ -273,7 +273,7 @@ The ROP `ActivitySource` is still named `"Trellis.Results"`, so existing subscri
 ```csharp
 builder.AddSource("Trellis.Results");
 // or, programmatically:
-builder.AddSource(RopTrace.ActivitySourceName);
+builder.AddSource(Trellis.ResultsTraceProviderBuilderExtensions.ActivitySourceName);
 ```
 
 The source is named for what it traces rather than for the package that ships it — `Trellis.Core` also emits the `"Trellis.Primitives"` source and the `"Trellis.Validation"` meter.
@@ -309,7 +309,7 @@ Recommended order — each step is small enough that the build should succeed be
 6. **Replace `result.Value` reads.** Use `TryGetValue`, `Match`, or deconstruction. Replace `result.Error` reads with `if (result.Error is { } e)` or `result.TryGetError(out var e)`.
 7. **Remove `MatchError` / `FlattenValidationErrors` calls.** `MatchError` → `Match` + `switch`. `FlattenValidationErrors` is no-op — `Combine` already merges field/rule violations.
 8. **Audit HTTP call sites.** Replace `EnsureSuccess*` / `HandleClientError*` / `HandleServerError*` / `HandleForbidden*` / `HandleFailureAsync<TContext>` with `ToResultAsync(statusMap)` or body-aware `ToResultAsync(mapper, ct)`. Rename `ReadResultFromJsonAsync` / `ReadResultMaybeFromJsonAsync` to `ReadJsonAsync` / `ReadJsonMaybeAsync`. Stop disposing `HttpResponseMessage` after the chain reaches `ReadJson*` — `Trellis.Http` owns it.
-9. **OTel sources are unchanged.** The ROP source is still `"Trellis.Results"` (or `RopTrace.ActivitySourceName`); only the registration helper was renamed, to `AddTrellisResultsInstrumentation()`.
+9. **OTel sources are unchanged.** The ROP source is still `"Trellis.Results"` (or `ResultsTraceProviderBuilderExtensions.ActivitySourceName`); only the registration helper was renamed, to `AddTrellisResultsInstrumentation()`.
 10. **Update analyzer suppressions.** Apply the `TRLSGEN*` → `TRLS0xx` map.
 11. **Build, run tests, and iterate.** The compiler errors (`CS0029`, `CS0117`, `CS1061`, `CS1593`) are deliberately the migration map — work through them top-down.
 12. **Add `Trellis.Analyzers`** if you want the compiler to enforce current patterns (notably `TRLS003` on `Maybe<T>.Value` and `TRLS019` on `default(Result<T>)`).

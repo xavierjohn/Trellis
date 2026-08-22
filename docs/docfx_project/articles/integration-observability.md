@@ -39,7 +39,7 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 | Mediator logging | `LoggingBehavior<TMessage, TResponse>` (`Trellis.Mediator`) | `Debug` start, `Debug` end (with elapsed ms), `Warning` on failure (with `Error.Code`) | Registered by `AddTrellisBehaviors()`; consumed by any `ILogger` provider. Per-call timing is at Debug so production at the default `Information` minimum is quiet; raise via `"Trellis.Mediator": "Debug"` in logging configuration to opt back in. |
 | Redaction | `TrellisMediatorTelemetryOptions` (`Trellis.Mediator`) | Controls whether `Error.Detail` flows into the activity status description and log message | DI singleton, configured via `o.UseMediator(t => ...)` or `AddTrellisBehaviors(t => ...)` |
 | Primitive value-object tracing | `"Trellis.Primitives"` `ActivitySource` | Exactly one `Activity` per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call delegates to and is traced under `.TryCreate`), named after the factory (e.g. `EmailAddress.TryCreate`), with `Ok` / `Error` status on both success and failure | `tracing.AddTrellisPrimitivesInstrumentation()` |
-| Result / ROP tracing | `"Trellis.Results"` `ActivitySource` (`RopTrace.ActivitySourceName`) | Spans for individual `Result` operations — verbose; intended for diagnostics | `tracing.AddTrellisResultsInstrumentation()` |
+| Result / ROP tracing | `"Trellis.Results"` `ActivitySource` (`ResultsTraceProviderBuilderExtensions.ActivitySourceName`) | Spans for individual `Result` operations — verbose; intended for diagnostics | `tracing.AddTrellisResultsInstrumentation()` |
 | Validation metrics | `ValidationMetrics` (`Trellis.Core`) | `trellis.validation.failures`, one increment per violation as a `FieldViolation` or `RuleViolation` is created; tags `validation.code`, `validation.violation` | `metrics.AddTrellisValidationInstrumentation()` (meter name: `"Trellis.Validation"`) |
 | Composition root | `TrellisServiceBuilder.UseMediator(Action<TrellisMediatorTelemetryOptions>?)` | Registers the five canonical behaviors and the telemetry options | `services.AddTrellis(o => o.UseMediator(...))` |
 
@@ -119,7 +119,7 @@ Trellis ships three independent `ActivitySource`s. Subscribe to each on its own 
 |---|---|---|---|
 | `"Trellis.Mediator"` | `TracingBehavior<,>.ActivitySourceName` | One span per mediator message | Always — this is the primary failure-localisation surface. |
 | `"Trellis.Primitives"` | (internal — use `AddTrellisPrimitivesInstrumentation()`) | Exactly one span per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call is traced under `.TryCreate`) | When you need to see *why* input validation rejected a request at the edge. |
-| `"Trellis.Results"` | `RopTrace.ActivitySourceName` (= `"Trellis.Results"`) | One span per individual `Result` operation (`Bind`, `Map`, `Tap`, …) | Only for break-glass diagnostics — high cardinality, high volume. |
+| `"Trellis.Results"` | `ResultsTraceProviderBuilderExtensions.ActivitySourceName` (= `"Trellis.Results"`) | One span per individual `Result` operation (`Bind`, `Map`, `Tap`, …) | Only for break-glass diagnostics — high cardinality, high volume. |
 
 `TracingBehavior<,>` writes the following on every dispatched message:
 

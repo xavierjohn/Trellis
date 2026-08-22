@@ -80,6 +80,100 @@ public class InstrumentationNamingTests
             + "is enforced rather than skipped");
     }
 
+    /// <summary>
+    /// Asserts that every registered telemetry name is also reachable as a public string member, so
+    /// a consumer wiring <c>AddSource</c>/<c>AddMeter</c> by hand can name it without hardcoding a
+    /// literal.
+    /// </summary>
+    /// <remarks>
+    /// The helper is the recommended path but not the only one: a consumer composing a source list
+    /// manually, or filtering in a processor, needs the name as a value. Leaving one name
+    /// internal while its three siblings are public is the kind of gap documentation papers over —
+    /// six doc sites cited an internal <c>RopTrace.ActivitySourceName</c>, one of them in a
+    /// copy-paste migration snippet that could not compile for the reader it was written for.
+    /// </remarks>
+    [Fact]
+    public void Every_registered_telemetry_name_is_exposed_as_a_public_constant()
+    {
+        var exposed = ReferencedTrellisAssemblies()
+            .Where(a => !a.GetName().Name!.EndsWith(".Tests", StringComparison.Ordinal))
+            .SelectMany(PublicTelemetryNameValues)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var hidden = DiscoverHelpers()
+            .Select(h => h.RegisteredName)
+            .Distinct(StringComparer.Ordinal)
+            .Where(name => !exposed.Contains(name))
+            .ToList();
+
+        hidden.Should().BeEmpty(
+            "a consumer who wires AddSource or AddMeter by hand must be able to name the telemetry "
+            + "without hardcoding a literal, so every registered name needs a public string member "
+            + "holding it");
+    }
+
+    /// <summary>
+    /// Every value held by a public static <c>ActivitySourceName</c> or <c>MeterName</c> string
+    /// member on a public type — a <see langword="const"/> field, a <see langword="static"/>
+    /// <see langword="readonly"/> field, or an expression-bodied property, which are the three
+    /// shapes the telemetry names use between them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Matching on the member name as well as the value keeps the check from being satisfied by an
+    /// unrelated constant that happens to hold the same string — an assembly name or package id, for
+    /// instance — which would let the intended constant be deleted while the test stayed green.
+    /// </para>
+    /// <para>
+    /// The exposing member deliberately does not have to live in the same assembly as the helper
+    /// that registers it: <c>AddTrellisPrimitivesInstrumentation</c> ships in
+    /// <c>Trellis.Primitives</c> while <c>PrimitiveValueObjectTrace</c> holds the name in
+    /// <c>Trellis.Core</c>, and that split is legitimate.
+    /// </para>
+    /// <para>
+    /// A <see langword="const"/> is read with <see cref="FieldInfo.GetRawConstantValue"/> rather
+    /// than <see cref="FieldInfo.GetValue"/> so it is still found on an open generic type.
+    /// <c>TracingBehavior&lt;TMessage, TResponse&gt;</c> holds the mediator source name and would
+    /// otherwise be skipped, leaving a name unenforced because of where it happens to live.
+    /// </para>
+    /// </remarks>
+    private static IEnumerable<string> PublicTelemetryNameValues(Assembly assembly)
+    {
+        static bool IsTelemetryNameMember(string name) =>
+            name is "ActivitySourceName" or "MeterName";
+
+        foreach (var type in assembly.GetExportedTypes())
+        {
+            foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (field.FieldType != typeof(string) || !IsTelemetryNameMember(field.Name))
+                    continue;
+
+                if (field.IsLiteral)
+                {
+                    if (field.GetRawConstantValue() is string literal)
+                        yield return literal;
+                }
+                else if (!type.ContainsGenericParameters && field.GetValue(null) is string value)
+                {
+                    yield return value;
+                }
+            }
+
+            if (type.ContainsGenericParameters)
+                continue;
+
+            foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (property.PropertyType != typeof(string) || !IsTelemetryNameMember(property.Name))
+                    continue;
+
+                if (property.GetIndexParameters().Length == 0 && property.GetValue(null) is string value)
+                    yield return value;
+            }
+        }
+    }
+
     private static string ExpectedName(DiscoveredHelper helper)
     {
         const string prefix = "Trellis.";
