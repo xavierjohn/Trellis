@@ -69,8 +69,8 @@ Accept: application/json
 ### Get account by id.
 ### The response carries a `Link: </openapi/v1.json>; rel="service-desc"` header — the
 ### RFC 8631 relation for an API description document, emitted by `opts.WithLink(...)`.
-### It is advertised only where the document is actually mapped (Development), because a
-### relation a client can follow to a 404 is worse than no relation at all. The request
+### The document is mapped in every environment precisely so this link is always honest:
+### a relation a client can follow to a 404 is worse than no relation at all. The request
 ### immediately below dereferences it, so this file proves the link *resolves* rather
 ### than merely that it was emitted.
 # @expect header: Link

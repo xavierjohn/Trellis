@@ -14,23 +14,20 @@ using Trellis.Showcase.Domain.ValueObjects;
 /// </summary>
 public static class AccountEndpoints
 {
-    /// <param name="apiDescriptionUrl">
-    /// Where this API's OpenAPI description is served, or <see langword="null"/> when it is not
-    /// served at all. Passed in rather than hardcoded because the link is only advertised when the
-    /// document actually exists: a <c>service-desc</c> relation pointing at a route that is not
-    /// mapped is worse than no link, since a client follows it and gets a 404.
-    /// </param>
-    public static IEndpointRouteBuilder MapAccountEndpoints(
-        this IEndpointRouteBuilder routes,
-        string? apiDescriptionUrl = null)
+    /// <summary>
+    /// Where this API's OpenAPI description is served. <c>Program.cs</c> maps it in every
+    /// environment, which is what makes advertising it unconditionally honest: a
+    /// <c>service-desc</c> relation pointing at a route that is not mapped would send clients
+    /// to a 404, which is worse than emitting no link at all.
+    /// </summary>
+    private const string ApiDescriptionUrl = "/openapi/v1.json";
+
+    public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/accounts").WithTags("Accounts");
 
-        void AdvertiseDescription<T>(HttpResponseOptionsBuilder<T> opts)
-        {
-            if (apiDescriptionUrl is not null)
-                opts.WithLink("service-desc", apiDescriptionUrl);
-        }
+        static void AdvertiseDescription<T>(HttpResponseOptionsBuilder<T> opts) =>
+            opts.WithLink("service-desc", ApiDescriptionUrl);
 
         group.MapGet("/", (
             int? limit,

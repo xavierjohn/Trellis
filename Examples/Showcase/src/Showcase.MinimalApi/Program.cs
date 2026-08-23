@@ -68,14 +68,14 @@ using (var scope = app.Services.CreateScope())
     ShowcaseSeed.Apply(repo, timeProvider);
 }
 
-// The description link is advertised only where the document is actually mapped. Advertising a
-// service-desc relation that resolves to 404 would be worse than omitting it, so the URL and the
-// route that serves it are turned on by the same condition.
-var apiDescriptionUrl = app.Environment.IsDevelopment() ? "/openapi/v1.json" : null;
+// The API description is served in every environment, which is what lets the accounts
+// endpoints advertise it unconditionally via `service-desc`: a relation is a promise a
+// client can follow, so the document has to exist wherever the link is emitted. The
+// interactive UI stays development-only — that is a convenience, not part of the contract.
+app.MapOpenApi();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
     app.MapScalarApiReference();
 }
 
@@ -83,7 +83,7 @@ app.UseScalarValueValidation();
 app.UseAuthorization();
 app.UseTrellisIdempotency();
 
-app.MapAccountEndpoints(apiDescriptionUrl);
+app.MapAccountEndpoints();
 app.MapTransferEndpoints();
 app.MapBatchTransferEndpoints();
 app.MapInterestEndpoints();

@@ -12,29 +12,25 @@ using Trellis.Showcase.Domain.ValueObjects;
 [Route("api/accounts")]
 public class AccountsController : ControllerBase
 {
+    /// <summary>
+    /// Where this API's OpenAPI description is served. <c>Program.cs</c> maps it in every
+    /// environment, which is what makes advertising it unconditionally honest: a
+    /// <c>service-desc</c> relation pointing at a route that is not mapped would send clients
+    /// to a 404, which is worse than emitting no link at all.
+    /// </summary>
+    private const string ApiDescriptionUrl = "/openapi/v1.json";
+
     private readonly IAccountRepository _repository;
     private readonly BankingWorkflow _workflow;
-    private readonly string? _apiDescriptionUrl;
 
-    public AccountsController(
-        IAccountRepository repository,
-        BankingWorkflow workflow,
-        Microsoft.AspNetCore.Hosting.IWebHostEnvironment environment)
+    public AccountsController(IAccountRepository repository, BankingWorkflow workflow)
     {
         _repository = repository;
         _workflow = workflow;
-
-        // Advertised only where the document is actually mapped: Program.cs serves the OpenAPI
-        // description in Development only, and a service-desc relation resolving to 404 would be
-        // worse than no link at all.
-        _apiDescriptionUrl = environment.IsDevelopment() ? "/openapi/v1.json" : null;
     }
 
-    private void AdvertiseDescription<T>(HttpResponseOptionsBuilder<T> opts)
-    {
-        if (_apiDescriptionUrl is not null)
-            opts.WithLink("service-desc", _apiDescriptionUrl);
-    }
+    private static void AdvertiseDescription<T>(HttpResponseOptionsBuilder<T> opts) =>
+        opts.WithLink("service-desc", ApiDescriptionUrl);
 
     [HttpGet(Name = "Showcase_GetAccounts")]
     public ActionResult<PagedResponse<AccountResponse>> List(
