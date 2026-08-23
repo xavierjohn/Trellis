@@ -357,8 +357,8 @@ public sealed class FailureEnvelopeParityTests
 
     private static ProblemDetails ShouldBeProblem(ActionExecutingContext context, int expectedStatus)
     {
-        context.Result.Should().BeOfType<ObjectResult>();
-        var objectResult = (ObjectResult)context.Result!;
+        context.Result.Should().BeOfType<ProblemDetailsActionResult>();
+        var objectResult = (ProblemDetailsActionResult)context.Result!;
         objectResult.StatusCode.Should().Be(expectedStatus);
         objectResult.Value.Should().BeAssignableTo<ProblemDetails>();
         return (ProblemDetails)objectResult.Value!;

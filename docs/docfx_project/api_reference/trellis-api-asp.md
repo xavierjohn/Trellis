@@ -1498,6 +1498,21 @@ app.MapGet("/widgets", async (string? cursor, int? limit, IWidgetReader reader, 
 
 This is the single end-to-end controller idiom for every verb: send the message, project the domain value to a response DTO with `ToHttpResponseAsync(map, opts => …)`, then adapt to a typed `ActionResult<T>` with `AsActionResultAsync<T>()`. The options builder is the one place HTTP metadata is attached (`WithETag` / `WithLastModified` / `CreatedAtRoute` / `HonorPrefer`); `ETagHelper.ParseIfMatch(Request)` flows the precondition into the command. There is no manual status-code branching — a failure `Error` maps to the correct status at the boundary.
 
+> [!WARNING]
+> Do not put `[Produces("application/json")]` on the controller. `ProducesAttribute` is a result
+> filter that rewrites `ObjectResult.ContentTypes` **wholesale**. Trellis' own failures are immune
+> — `ToHttpResponse` returns an `IResult` that writes its own media type, `AsActionResult<T>` wraps
+> it in a plain `ActionResult` rather than an `ObjectResult`, and the scalar-validation filter uses
+> an internal problem result for the same reason — but MVC's *automatic* model-validation response
+> is a plain `ObjectResult`, so it silently degrades from `application/problem+json` to
+> `application/json`. Its status code and its ProblemDetails body are both unchanged, so the
+> response stops conforming to RFC 9457 while every status-and-body assertion still passes.
+>
+> Listing `application/problem+json` alongside `application/json` does **not** repair it: selection
+> follows list order, so problem+json is inert anywhere but first. Putting it first does repair the
+> failure but rewrites plain `ObjectResult` success responses to `application/problem+json`, which
+> is worse. There are exactly two safe remedies — remove the attribute, or trim the formatters via
+> `PostConfigure<MvcOptions>`. Assert content type, not just status and body.
 ```csharp
 using System.Collections.Generic;
 using System.Linq;
@@ -1508,7 +1523,6 @@ using Trellis;
 using Trellis.Asp;
 
 [ApiController]
-[Produces("application/json")]
 [Route("api/[controller]")]
 public sealed class WidgetsController(ISender sender) : ControllerBase
 {
