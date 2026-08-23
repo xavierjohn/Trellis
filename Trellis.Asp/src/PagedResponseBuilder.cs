@@ -40,58 +40,12 @@ internal static class PagedResponseBuilder
             WasCapped: page.WasCapped);
 
         var links = new List<string>(2);
-        if (nextHref is not null) links.Add($"<{SanitizeLinkTarget(nextHref)}>; rel=\"next\"");
-        if (prevHref is not null) links.Add($"<{SanitizeLinkTarget(prevHref)}>; rel=\"prev\"");
+        if (nextHref is not null) links.Add(LinkHeader.Format("next", nextHref));
+        if (prevHref is not null) links.Add(LinkHeader.Format("prev", prevHref));
         var linkHeader = links.Count > 0 ? string.Join(", ", links) : null;
 
         return (envelope, linkHeader);
     }
-
-    /// <summary>
-    /// Percent-encodes the characters that may not appear literally in the
-    /// <c>URI-Reference</c> of an RFC 8288 <c>Link</c> field value.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <paramref name="href"/> comes from a caller-supplied <c>nextUrlBuilder</c> and normally
-    /// embeds an opaque, server-defined cursor token. A token containing <c>&gt;</c> would close
-    /// the <c>&lt;URI-Reference&gt;</c> early and let the remainder of the token forge additional
-    /// link-params; control characters would corrupt the header frame outright. Encoding only the
-    /// characters RFC 3986 already forbids in a URI leaves every well-formed URL byte-identical.
-    /// </para>
-    /// </remarks>
-    private static string SanitizeLinkTarget(string href)
-    {
-        var needsEncoding = false;
-        foreach (var c in href)
-        {
-            if (IsForbiddenInUriReference(c))
-            {
-                needsEncoding = true;
-                break;
-            }
-        }
-
-        if (!needsEncoding)
-            return href;
-
-        var sb = new System.Text.StringBuilder(href.Length + 8);
-        foreach (var c in href)
-        {
-            if (IsForbiddenInUriReference(c))
-                sb.Append('%').Append(((int)c).ToString("X2", System.Globalization.CultureInfo.InvariantCulture));
-            else
-                sb.Append(c);
-        }
-
-        return sb.ToString();
-    }
-
-    // RFC 3986 §2: excluded US-ASCII characters — controls, space, and the "delims"/"unwise" set.
-    // Non-ASCII is left alone: an IRI-style href is already the caller's encoding decision, and
-    // rewriting it here would corrupt legitimately percent-encoded UTF-8.
-    private static bool IsForbiddenInUriReference(char c) =>
-        c is <= '\u0020' or '\u007F' or '<' or '>' or '"' or '\\' or '^' or '`' or '{' or '}' or '|';
 }
 
 /// <summary>JSON envelope wrapping a single page of items and its cursor links.</summary>

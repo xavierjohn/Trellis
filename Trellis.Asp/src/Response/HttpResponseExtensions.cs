@@ -223,6 +223,7 @@ public static class HttpResponseExtensions
         var hasOptionalHeaders =
             (opts.Vary is { Count: > 0 })
             || (opts.ContentLanguage is { Count: > 0 })
+            || (opts.Links is { Count: > 0 })
             || opts.ETagSelector is not null
             || opts.LastModifiedSelector is not null
             || opts.ContentLocationSelector is not null
@@ -266,6 +267,7 @@ public static class HttpResponseExtensions
                 resolveCacheControlSelector,
                 opts.Vary,
                 opts.ContentLanguage,
+                opts.Links,
                 resolveETag,
                 resolveLastModified,
                 resolveContentLocation,
@@ -394,6 +396,7 @@ internal sealed class PagedSuccessHeaderWrapper(
     Func<System.Net.Http.Headers.CacheControlHeaderValue?>? resolveCacheControlSelector,
     IReadOnlyList<string>? vary,
     IReadOnlyList<string>? contentLanguage,
+    IReadOnlyList<string>? links,
     Func<EntityTagValue?>? resolveETag,
     Func<DateTimeOffset?>? resolveLastModified,
     Func<string?>? resolveContentLocation,
@@ -423,6 +426,8 @@ internal sealed class PagedSuccessHeaderWrapper(
 
         if (contentLanguage is { Count: > 0 })
             response.Headers.ContentLanguage = string.Join(", ", contentLanguage);
+
+        LinkHeader.Append(response, links);
 
         // Resolve ETag and Last-Modified once per execution; the cached values are reused
         // for header emission AND precondition evaluation so non-deterministic selectors
