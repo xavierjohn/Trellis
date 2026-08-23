@@ -16,6 +16,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     private List<string>? _vary;
     private bool _varyForActor;
     private List<string>? _contentLanguage;
+    private List<string>? _links;
     private Func<TDomain, string?>? _contentLocationSelector;
     private System.Net.Http.Headers.CacheControlHeaderValue? _cacheControl;
     private Func<TDomain, System.Net.Http.Headers.CacheControlHeaderValue?>? _cacheControlSelector;
@@ -100,6 +101,33 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
         foreach (var l in languages)
             if (!string.IsNullOrWhiteSpace(l))
                 _contentLanguage.Add(l);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds an RFC 8288 <c>Link</c> relation to the response.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Use <c>describedby</c> to point at a schema describing this resource, or
+    /// <c>service-desc</c> (RFC 8631) to point at an API description document such as an
+    /// OpenAPI file. Both are IANA-registered. <c>schema</c> is <b>not</b> a registered
+    /// relation type, and RFC 8288 §3.3 admits only a registered token or an absolute URI —
+    /// so a bare <c>rel="schema"</c> is non-conformant and generic clients ignore it. Register
+    /// your own extension relation as an absolute URI if neither registered relation fits.
+    /// </para>
+    /// <para>
+    /// Call this more than once to advertise several relations. Configured relations are
+    /// additive to the <c>next</c>/<c>prev</c> links emitted for a paginated response.
+    /// </para>
+    /// </remarks>
+    /// <param name="rel">A registered relation token (for example <c>describedby</c>) or an absolute URI.</param>
+    /// <param name="href">The link target.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="rel"/> or <paramref name="href"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="rel"/> is neither a valid relation token nor an absolute URI, or when <paramref name="href"/> is blank.</exception>
+    public HttpResponseOptionsBuilder<TDomain> WithLink(string rel, string href)
+    {
+        (_links ??= new()).Add(LinkHeader.Format(rel, href));
         return this;
     }
 
@@ -363,6 +391,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
         Vary = _vary,
         VaryForActor = _varyForActor,
         ContentLanguage = _contentLanguage,
+        Links = _links,
         ContentLocationSelector = _contentLocationSelector,
         CacheControl = _cacheControl,
         CacheControlSelector = _cacheControlSelector,
@@ -391,6 +420,7 @@ internal sealed class HttpResponseOptions<TDomain>
     public List<string>? Vary { get; init; }
     public bool VaryForActor { get; init; }
     public List<string>? ContentLanguage { get; init; }
+    public List<string>? Links { get; init; }
     public Func<TDomain, string?>? ContentLocationSelector { get; init; }
     public System.Net.Http.Headers.CacheControlHeaderValue? CacheControl { get; init; }
     public Func<TDomain, System.Net.Http.Headers.CacheControlHeaderValue?>? CacheControlSelector { get; init; }

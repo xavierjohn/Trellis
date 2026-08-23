@@ -149,7 +149,9 @@ public static class HttpFileParser
 | `public static IReadOnlyList<HttpFileRequest> Parse(string content, IReadOnlyDictionary<string, string>? vars = null)` | `IReadOnlyList<HttpFileRequest>` | Parses raw `.http` content. File-level `@var = value` entries and supplied `vars` are substituted immediately; response placeholders are left for the runner. |
 | `public static IReadOnlyList<HttpFileRequest> ParseFile(string path, IReadOnlyDictionary<string, string>? vars = null)` | `IReadOnlyList<HttpFileRequest>` | Reads and parses a `.http` file from disk. |
 
-Supported syntax: `###` request separators, `# @name`, `# @expect status: 201`, `# @expect status: 2xx`, `# @expect status: 200-299`, `# @expect header: ETag`, `# @parity: status-only`, file variables, `{{var}}`, `{{name.response.body.path}}`, `{{name.response.headers.Header-Name}}`, and `{{name.response.status}}`.
+Supported syntax: `###` request separators, `# @name`, `# @expect status: 201`, `# @expect status: 2xx`, `# @expect status: 200-299`, `# @expect header: ETag`, `# @expect content-type: application/problem+json`, `# @parity: status-only`, file variables, `{{var}}`, `{{name.response.body.path}}`, `{{name.response.headers.Header-Name}}`, and `{{name.response.status}}`.
+
+A separator line consisting of nothing but `#` characters is a divider rather than a title, and it discards any directives accumulated above it. That is what lets a file header *document* a directive by quoting it without thereby imposing it on the first request below.
 
 ### `HttpFileRunner`
 
@@ -170,13 +172,17 @@ public static class HttpFileAssertions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static void AssertExpectationsMet(HttpFileResult result)` | `void` | Enforces the request's `ExpectedOutcome`. If no expectations were declared, asserts the status is in the non-error range `100`-`399`. Throws `HttpFileAssertionException` on failure. |
+| `public static void AssertExpectationsMet(HttpFileResult result)` | `void` | Enforces the request's `ExpectedOutcome`: status range, required header presence, and — when `ContentType` is set — the response media type. If no expectations were declared, asserts the status is in the non-error range `100`-`399`. Throws `HttpFileAssertionException` on failure. |
+
+`# @expect content-type:` compares the **media type only**, case-insensitively, ignoring parameters on both sides — so `application/problem+json` matches an actual `application/problem+json; charset=utf-8`. Assert it on error responses to pin RFC 9457 behaviour: `[Produces("application/json")]` on an MVC controller silently rewrites the `[ApiController]` automatic-validation 422 from `application/problem+json` to `application/json` while leaving the status and the problem body intact, so a status-only assertion passes straight through the regression.
+
+Do not assert a content type on a failure produced *before* the endpoint runs. A route-constraint rejection (for example a `{id:AccountId}` template refusing a malformed id) returns an empty 404 with no media type at all, because Trellis' error mapping never executes.
 
 ### Data records and support types
 
 | Type | Declaration | Description |
 | --- | --- | --- |
-| `ExpectedOutcome` | `public sealed record ExpectedOutcome(int? StatusMin, int? StatusMax, IReadOnlyList<string> RequiredHeaders)` | Parsed `# @expect` status/header assertions. |
+| `ExpectedOutcome` | `public sealed record ExpectedOutcome(int? StatusMin, int? StatusMax, IReadOnlyList<string> RequiredHeaders, string? ContentType = null)` | Parsed `# @expect` status, header, and content-type assertions. `ContentType` is the expected content-type value exactly as written in the file; it is not normalized on write, and parameters such as `charset` are ignored when matching. |
 | `HttpFileRequest` | `public sealed record HttpFileRequest(string Title, string Method, string Url, IReadOnlyDictionary<string, string> Headers, string? Body, string? Name, ExpectedOutcome? Expected, string? ParityMode = null)` | One parsed request. `Url` and `Body` may contain deferred response placeholders. |
 | `HttpFileResult` | `public sealed record HttpFileResult(HttpFileRequest Request, HttpResponseMessage Response, string? Body, ExpectedOutcome? Expected)` | One executed request and response. Caller owns `Response` disposal. |
 | `HttpFileTheoryData` | `public static class HttpFileTheoryData` | Provides `FromFile(string path, IReadOnlyDictionary<string,string>? vars = null) : IEnumerable<object[]>` for xUnit-style member data without taking an xUnit dependency. |

@@ -20,7 +20,7 @@ public class TraceFixture : IDisposable
     public TraceFixture()
     {
         var builder = Sdk.CreateTracerProviderBuilder()
-            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("FunctionDddExample"))
+            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(ActivitySourceName, serviceVersion: Version.ToString()))
             .AddTrellisResultsInstrumentation()
             .AddSource(ActivitySourceName)
             .AddOtlpExporter();

@@ -113,8 +113,14 @@ cd Examples/Showcase
 
 `-StartHost` starts the host, waits for it to answer, replays, and stops it; omit it to run
 against a host you started yourself. Every request is sent in file order and checked against its
-`# @expect status:` and `# @expect header:` directives, and the script exits non-zero if any
-request no longer does what the file says it does.
+`# @expect status:`, `# @expect header:`, and `# @expect content-type:` directives, and the
+script exits non-zero if any request no longer does what the file says it does.
+
+The content-type directive is on every error response for a specific reason. Applying
+`[Produces("application/json")]` to a controller rewrites the automatic model-validation 422
+from `application/problem+json` to `application/json` while leaving its status *and* its
+ProblemDetails body intact — so the response stops conforming to RFC 9457 and every
+status-and-body assertion still passes. Content type is the only observable that moves.
 
 The transcript it writes is the more useful half. It records each response in full — status,
 headers, and pretty-printed body — so that when the `Error` ADT or the ProblemDetails mapping
@@ -136,6 +142,38 @@ neither. Transcripts are git-ignored, because each run mints fresh account ids a
 
 A replay assumes a freshly started host: the expectations encode the seeded balances and account
 statuses, and the idempotent-transfer block expects an empty idempotency store.
+
+### Telemetry
+
+Both hosts export OpenTelemetry traces and metrics over OTLP, including Trellis' own
+instrumentation — so a replay is not just a pass/fail line, it is a trace you can open and read.
+
+| Registration | Signal | What it shows |
+|---|---|---|
+| `AddTrellisMediatorInstrumentation()` | traces | one span per command/query dispatch (Minimal API host only — the MVC host calls `BankingWorkflow` directly) |
+| `AddTrellisPrimitivesInstrumentation()` | traces | value-object construction and parse failures |
+| `AddTrellisResultsInstrumentation()` | traces | ROP forensics: every `Bind`, `Map`, and `Tap` |
+| `AddTrellisValidationInstrumentation()` | metrics | validation failure counts tagged by reason code |
+
+ROP instrumentation is registered only in Development. It spans every railway step and will
+flood a collector, which is why [the observability guide](../../docs/docfx_project/articles/integration-observability.md)
+treats it as an incident tool rather than a default.
+
+No endpoint is configured in code. The exporter defaults to `http://localhost:4317` and honours
+`OTEL_EXPORTER_OTLP_ENDPOINT`, which Aspire sets for you when it launches the host — so pointing
+at a dashboard is a matter of starting one:
+
+```pwsh
+docker run --rm -it -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard:latest
+```
+
+Note the port mapping rather than the ports the dashboard prints on startup: its banner
+advertises the OTLP listener as `18889`, but that is the port *inside* the container. What the
+exporter can reach is whatever the host publishes.
+
+When `-StartHost` is used, the script stops the host with a kill rather than a shutdown, so it
+shortens the export interval and pauses to let the batch drain first. Without that, a replay
+finishes and exits before anything is ever sent.
 
 ## How to test
 

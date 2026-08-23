@@ -12,6 +12,14 @@ using Trellis.Showcase.Domain.ValueObjects;
 [Route("api/accounts")]
 public class AccountsController : ControllerBase
 {
+    /// <summary>
+    /// Where this API's OpenAPI description is served. <c>Program.cs</c> maps it in every
+    /// environment, which is what makes advertising it unconditionally honest: a
+    /// <c>service-desc</c> relation pointing at a route that is not mapped would send clients
+    /// to a 404, which is worse than emitting no link at all.
+    /// </summary>
+    private const string ApiDescriptionUrl = "/openapi/v1.json";
+
     private readonly IAccountRepository _repository;
     private readonly BankingWorkflow _workflow;
 
@@ -20,6 +28,9 @@ public class AccountsController : ControllerBase
         _repository = repository;
         _workflow = workflow;
     }
+
+    private static void AdvertiseDescription<T>(HttpResponseOptionsBuilder<T> opts) =>
+        opts.WithLink("service-desc", ApiDescriptionUrl);
 
     [HttpGet(Name = "Showcase_GetAccounts")]
     public ActionResult<PagedResponse<AccountResponse>> List(
@@ -36,17 +47,19 @@ public class AccountsController : ControllerBase
                     links.GetUriByName(HttpContext, "Showcase_GetAccounts",
                         values: new { limit = applied, cursor = c.Token })
                     ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
-                body: AccountResponse.From)
+                body: AccountResponse.From,
+                configure: AdvertiseDescription)
             .AsActionResult<PagedResponse<AccountResponse>>();
     }
 
     [HttpGet("{id:AccountId}", Name = "Showcase_GetAccount")]
     public ActionResult<AccountResponse> Get(AccountId id) =>
         _repository.GetById(id)
-            .ToHttpResponse(AccountResponse.From)
+            .ToHttpResponse(AccountResponse.From, AdvertiseDescription)
             .AsActionResult<AccountResponse>();
 
     [HttpPost]
+    [ProducesResponseType<AccountResponse>(StatusCodes.Status201Created)]
     public Task<ActionResult<AccountResponse>> Open([FromBody] OpenAccountRequest request, CancellationToken cancellationToken) =>
         _workflow.OpenAccountAsync(request.CustomerId, request.AccountType, request.InitialDeposit, request.DailyWithdrawalLimit, request.OverdraftLimit, cancellationToken)
             .ToHttpResponseAsync(

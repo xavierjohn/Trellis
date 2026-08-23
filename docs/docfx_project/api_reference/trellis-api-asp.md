@@ -106,6 +106,7 @@ Fluent options builder used by every generic `ToHttpResponse` overload. Selector
 | `VaryForActor()` | `HttpResponseOptionsBuilder<TDomain>` | Appends the request header(s) that contribute to actor identity for the registered `IActorProvider` to the response `Vary` header and returns the builder; See *Behavioral notes: VaryForActor* below. |
 | `WithContentLanguage(params string[] languages)` | `HttpResponseOptionsBuilder<TDomain>` | Joins values into `Content-Language`. |
 | `WithContentLocation(Func<TDomain, string> selector)` | `HttpResponseOptionsBuilder<TDomain>` | Sets the `Content-Location` header. |
+| `WithLink(string rel, string href)` | `HttpResponseOptionsBuilder<TDomain>` | Adds an RFC 8288 `Link` relation to the response. Call repeatedly to advertise several relations; they are emitted as one `Link` field and are **additive** to the `next` / `prev` links on a paginated response rather than replacing them. **Success path only** — like `Vary` and `Content-Language` (and unlike static `WithCacheControl`), configured links are not emitted on failure responses. Covers plain success, the no-payload `204`, paged success, and `WriteOutcome`. See *Behavioral notes: link relations* below for the accepted relation types and for why `"schema"`, though accepted, is a poor choice. Throws `ArgumentNullException` on a null `rel` / `href`, and `ArgumentException` when `rel` is neither a valid relation token nor an absolute URI, or when `href` is blank. |
 | `WithCacheControl(CacheControlHeaderValue value)` | `HttpResponseOptionsBuilder<TDomain>` | Sets the `Cache-Control` response header to the supplied directive. Applies to success responses (200 / 201 / 204 / 304), `WriteOutcome` (Created / Updated / Accepted), paged responses, AND failure responses — so `WithCacheControl(CacheControl.NoStore())` protects 404 / 403 / 412 / 422 from intermediate-cache leakage just as much as the 200. Throws `ArgumentNullException` on null. Use the [`CacheControl`](#cachecontrol) presets (`NoStore()`, `NoCache()`, `Public(TimeSpan)`, `Private(TimeSpan)`, `Immutable(TimeSpan)`) for common shapes; each call returns a fresh `CacheControlHeaderValue` so mutation cannot leak across responses. |
 | `WithCacheControl(Func<TDomain, CacheControlHeaderValue?> selector)` | `HttpResponseOptionsBuilder<TDomain>` | Sets `Cache-Control` from a selector run against the success-path domain value. Applies to the success path only (failures carry no domain value). Returning `null` from the selector omits the header on that response (falls back to the static-value overload if both are configured; otherwise no header is emitted). |
 | `Created(string locationLiteral)` | `HttpResponseOptionsBuilder<TDomain>` | Returns `201 Created` with a literal `Location` header. |
@@ -126,6 +127,34 @@ Fluent options builder used by every generic `ToHttpResponse` overload. Selector
 The provider must implement `IProvideActorVaryHeaders`; the bundled `ClaimsActorProvider` returns `["Authorization"]`, `DevelopmentActorProvider` returns `[X-Test-Actor]`, and `CachingActorProvider` delegates to its inner provider. `VaryForActor()` throws `InvalidOperationException` at apply time when no provider is registered, the registered provider does not implement the capability, or the implementation returns an empty collection, failing closed against silent cache-poisoning across actors. Decorating providers such as `CachingActorProvider` are unwrapped via the internal `IDecoratingActorProvider` so diagnostics name the underlying provider that needs the implementation. The behavior applies uniformly to success, failure, `WriteOutcome`, and paginated paths.
 
 > **Byte ranges are not in Trellis's scope.** Trellis does not expose `WithRange` / `WithAcceptRanges`. For binary downloads with RFC 9110 §14 byte-range semantics, call `Microsoft.AspNetCore.Http.Results.File(stream, enableRangeProcessing: true)` from ASP.NET Core directly; for custom advisory headers like `Accept-Ranges: none`, write the header on `HttpContext.Response.Headers` from middleware or the endpoint handler. The client-side typed-error vocabulary still surfaces inbound 416 as `Error.TransportFault(new HttpError.RangeNotSatisfiable(...))` with the upstream `Content-Range` companion header preserved.
+
+### Behavioral notes: link relations
+
+`WithLink(rel, href)` validates the relation at configuration time, so a malformed relation throws when the endpoint is wired rather than on every request. RFC 8288 §3.3 admits exactly two forms, and `WithLink` accepts both:
+
+- a **registered relation token** — ASCII letters, digits, `.` and `-`, starting with a letter (for example `describedby`, `service-desc`). Registered tokens are case-insensitive per RFC 8288 §2.1 and are lowercased on the wire, so `WithLink("DescribedBy", …)` emits `rel="describedby"`.
+- an **extension relation URI** — any absolute URI, emitted verbatim (URI paths are case-sensitive, so it is not lowercased).
+
+Only the *shape* is validated. Trellis does **not** check the token against the IANA link-relation registry, because that registry changes independently of the framework — an allow-list would reject a newly registered relation until Trellis shipped again. So `WithLink("schema", …)` succeeds and emits `rel="schema"`, and it is still the wrong choice: `schema` is not registered, so RFC 8288 gives it no agreed meaning and generic clients ignore it. Picking a relation clients will actually understand is your decision; the table below covers the registered options.
+
+**On a paginated response, configured links are emitted as a second `Link` field line** rather than being merged into the pagination one. RFC 9110 §5.3 makes repeated field lines of a list-typed header equivalent to a single comma-joined line, so this is on the wire what a client should already handle — but it means **a client must read every value**. Taking only the first, or calling something like `response.Headers.GetValues("Link").Single()`, silently drops half the relations (and `Single()` throws outright). The `Examples/Showcase` accounts endpoints demonstrate the two-line shape end to end.
+
+**Advertise only what you serve.** A relation is a promise a client can follow, so pointing `service-desc` at a description document that is not mapped in the current environment is worse than emitting no link — the client gets a 404 instead of an absence it could have handled. There are two ways to keep that promise, and the simpler one is usually right: serve the document unconditionally, rather than making the advertisement conditional on the environment. The showcase maps its OpenAPI description in every environment for exactly this reason (keeping only the interactive UI development-only), and its executable `api.http` dereferences the advertised URL so a dangling link fails the build.
+
+**`"schema"` is not a registered link relation.** It does not appear in the IANA link-relation registry, and a bare unregistered token is not a conformant relation type — generic clients ignore it. Use the registered spellings instead:
+
+| Goal | Relation | Reference |
+| --- | --- | --- |
+| Point at a schema describing *this resource* | `describedby` | W3C POWDER (Protocol for Web Description Resources) |
+| Point at an API description document (OpenAPI, etc.) | `service-desc` | RFC 8631 |
+
+If neither fits, mint your own extension relation as an absolute URI (`WithLink("https://example.com/rels/my-rel", …)`).
+
+Rejecting the relation is a security boundary, not only a conformance one: the relation is emitted inside a quoted string, so an unvalidated relation containing a double quote would close it early and append attacker-chosen link-params. That is a distinct surface from the link *target*, which is separately percent-encoded for the characters RFC 3986 forbids in a URI (`>`, `"`, control characters, and the rest of the "delims"/"unwise" set) — the same encoding already applied to pagination cursors.
+
+Trellis does **not** generate schema documents, and does not map an `OPTIONS` endpoint; `href` is whatever URL your application serves the document from.
+
+`WithLink` is deliberately **not** offered on the non-generic `HttpResponseOptionsBuilder`. That builder is consumed only by `Error.ToHttpResponse(...)`, which produces a pure failure response, and configured links are success-path headers — so the overload could never emit anything.
 
 ### `HttpResponseOptionsBuilder`
 
@@ -1469,6 +1498,35 @@ app.MapGet("/widgets", async (string? cursor, int? limit, IWidgetReader reader, 
 
 This is the single end-to-end controller idiom for every verb: send the message, project the domain value to a response DTO with `ToHttpResponseAsync(map, opts => …)`, then adapt to a typed `ActionResult<T>` with `AsActionResultAsync<T>()`. The options builder is the one place HTTP metadata is attached (`WithETag` / `WithLastModified` / `CreatedAtRoute` / `HonorPrefer`); `ETagHelper.ParseIfMatch(Request)` flows the precondition into the command. There is no manual status-code branching — a failure `Error` maps to the correct status at the boundary.
 
+> [!WARNING]
+> Do not put `[Produces("application/json")]` on the controller — at class or action level; it is
+> the same result filter either way. `ProducesAttribute` rewrites `ObjectResult.ContentTypes`
+> **wholesale**, so any failure written as a plain `ObjectResult` silently degrades from
+> `application/problem+json` to `application/json`. Its status code and its ProblemDetails body are
+> both unchanged, so the response stops conforming to RFC 9457 while every status-and-body
+> assertion still passes. Assert content type, not just status and body.
+>
+> Trellis' own failures are immune: `ToHttpResponse` returns an `IResult` that writes its own media
+> type, `AsActionResult<T>` wraps it in a plain `ActionResult` rather than an `ObjectResult`, and
+> `ScalarValueValidationFilter` uses an internal problem result for the same reason. Because that
+> filter takes over *every* invalid `ModelState` — plain `[Required]`/DataAnnotations failures
+> included, and bodies that fail to deserialize at all, not only value-object ones — an app that
+> registers it via `AddTrellisAspWithScalarValidation` has no exposed model-validation seam. A body
+> whose JSON fails to parse or convert is worth calling out: nothing was semantically rejected, so
+> the problem carries **no** `fieldViolations` and reports 400 rather than 422. That absence makes it
+> look like a response the filter never touched, but the media type is still Trellis-owned.
+> Stock MVC's automatic model-validation response, in an app
+> that does **not** register the filter, is a plain `ObjectResult` and is exposed.
+>
+> Listing `application/problem+json` alongside `application/json` does **not** repair it: selection
+> follows list order, so problem+json is inert anywhere but first. Putting it first does repair the
+> failure but rewrites plain `ObjectResult` success responses to `application/problem+json`, which
+> is worse. There are exactly two safe remedies — remove the attribute, or trim the formatters via
+> `PostConfigure<MvcOptions>`.
+>
+> Before reaching for it at all, note that `[Produces]` earns its keep only when something consumes
+> the description it produces. If the app publishes no OpenAPI document, the attribute is pure
+> downside.
 ```csharp
 using System.Collections.Generic;
 using System.Linq;
@@ -1479,7 +1537,6 @@ using Trellis;
 using Trellis.Asp;
 
 [ApiController]
-[Produces("application/json")]
 [Route("api/[controller]")]
 public sealed class WidgetsController(ISender sender) : ControllerBase
 {

@@ -176,6 +176,10 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
                 TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, v);
         }
 
+        // Configured links carry no domain dependency, so they must be emitted before the
+        // no-payload short-circuit below — otherwise a 204 UpdatedNoContent silently drops them.
+        LinkHeader.Append(response, _options.Links);
+
         // Reference-type TDomain with a runtime-null Value / StatusBody: WriteOutcome's
         // sealed records carry no null guard on construction, so a misbehaving caller can
         // pass null. Domain-dependent selectors must not run against null — they'd NPE on

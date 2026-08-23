@@ -14,6 +14,7 @@ using System.Linq;
 /// <item><description>If <see cref="HttpFileResult.Expected"/> is <see langword="null"/>, a status-range sanity check (100-399) is applied — this catches endpoints that suddenly 500 without forcing authors to annotate every happy-path request.</description></item>
 /// <item><description>If <see cref="ExpectedOutcome.StatusMin"/> / <see cref="ExpectedOutcome.StatusMax"/> are set, status must be in the inclusive range.</description></item>
 /// <item><description>Every entry in <see cref="ExpectedOutcome.RequiredHeaders"/> must be present on the response with a non-empty value.</description></item>
+/// <item><description>If <see cref="ExpectedOutcome.ContentType"/> is set, the response media type must match it, ignoring parameters such as <c>charset</c> on both sides.</description></item>
 /// </list>
 /// </remarks>
 public static class HttpFileAssertions
@@ -68,6 +69,35 @@ public static class HttpFileAssertions
                 }
             }
         }
+
+        if (result.Expected.ContentType is { Length: > 0 } expectedContentType)
+        {
+            var actual = MediaTypeOf(result.Response.Content?.Headers.ContentType?.MediaType);
+            var wanted = MediaTypeOf(expectedContentType);
+
+            if (!string.Equals(actual, wanted, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new HttpFileAssertionException(
+                    $"[{title}] expected content type '{wanted}', got '{actual ?? "<none>"}'. Body: {Truncate(result.Body)}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reduces a content-type value to its media type, discarding parameters such as
+    /// <c>charset</c>. Responses almost always carry <c>; charset=utf-8</c>, so comparing raw
+    /// header values would make the expectation unusable in practice.
+    /// </summary>
+    private static string? MediaTypeOf(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var semicolon = value.IndexOf(';', StringComparison.Ordinal);
+        var mediaType = semicolon < 0 ? value : value[..semicolon];
+        return mediaType.Trim();
     }
 
     private static bool TryGetHeaderValue(HttpFileResult result, string name, out string? value)

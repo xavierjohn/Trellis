@@ -122,14 +122,31 @@ class HttpRequestBlock {
     [string]$Url
     [hashtable]$Headers = @{}
     [string]$Body
-    [nullable[int]]$ExpectedStatus
+    [nullable[int]]$ExpectedStatusMin
+    [nullable[int]]$ExpectedStatusMax
+    [string]$ExpectedStatusText
     [string[]]$ExpectedHeaders = @()
+    [string]$ExpectedContentType
+
+    # Mirrors HttpFileParser's rule for materializing an ExpectedOutcome: once the author
+    # declares anything, the harness asserts exactly what was declared and stops applying
+    # its own default. The two parsers read the same file, so they must agree on this.
+    [bool] HasExpectations() {
+        return $null -ne $this.ExpectedStatusMin -or
+               $this.ExpectedHeaders.Count -gt 0 -or
+               [bool]$this.ExpectedContentType
+    }
 }
 
 function Read-HttpFile([string]$path) {
     $blocks = [System.Collections.Generic.List[HttpRequestBlock]]::new()
     $current = $null
     $state = 'none'
+
+    # Mirrors HttpFileParser's directive test: strip the leading '#' run, then the remainder
+    # must BEGIN with @expect. Anchoring here is what keeps the two parsers agreeing on
+    # absence as well as presence.
+    $directive = '^\s*#+\s*@expect\s+'
 
     foreach ($line in [System.IO.File]::ReadAllLines($path)) {
         # A ### line both separates requests and titles the one that follows. A request
@@ -140,6 +157,12 @@ function Read-HttpFile([string]$path) {
         if ($line -match '^###') {
             if ($null -ne $current -and $current.Method) {
                 $blocks.Add($current)
+                $current = $null
+            }
+            # A rule of nothing but hashes is a visual divider, not a request title. Reset
+            # hard so prose above it -- including a file header that *documents* a directive
+            # by quoting it -- cannot leak expectations onto the first real request below.
+            if ($line -match '^#+$') {
                 $current = $null
             }
             if ($null -eq $current) {
@@ -156,10 +179,36 @@ function Read-HttpFile([string]$path) {
         if ($null -eq $current) { continue }
 
         if ($state -ne 'body' -and $line -match '^\s*#') {
-            if ($line -match '@expect\s+status:\s*(\d+)') {
-                $current.ExpectedStatus = [int]$Matches[1]
+            # Accept every status form HttpFileParser accepts. Matching only \d+ here would
+            # let `2xx` and `200-299` parse as "no expectation" and quietly fall through to
+            # the default -- an assertion the author wrote but never got.
+            #
+            # Unanchored, prose such as `# use @expect status: 404 to assert` and
+            # commented-out `# # @expect ...` lines would become live assertions here while
+            # staying inert in the C# parser.
+            if ($line -match "${directive}status:\s*(\d{3})\s*-\s*(\d{3})") {
+                $current.ExpectedStatusMin = [int]$Matches[1]
+                $current.ExpectedStatusMax = [int]$Matches[2]
+                $current.ExpectedStatusText = "$($Matches[1])-$($Matches[2])"
             }
-            elseif ($line -match '@expect\s+header:\s*(\S+)') {
+            elseif ($line -match "${directive}status:\s*(\d)xx") {
+                $current.ExpectedStatusMin = [int]$Matches[1] * 100
+                $current.ExpectedStatusMax = $current.ExpectedStatusMin + 99
+                $current.ExpectedStatusText = "$($Matches[1])xx"
+            }
+            elseif ($line -match "${directive}status:\s*(\d+)") {
+                $current.ExpectedStatusMin = [int]$Matches[1]
+                $current.ExpectedStatusMax = [int]$Matches[1]
+                $current.ExpectedStatusText = $Matches[1]
+            }
+            elseif ($line -match "${directive}content-type:\s*(.+)$") {
+                # Capture the rest of the line, not just the first token: a directive may carry
+                # parameters (`application/problem+json; charset=utf-8`). Matching ignores them,
+                # but the C# parser stores the full value and these two must not diverge.
+                $contentType = $Matches[1].Trim()
+                if ($contentType) { $current.ExpectedContentType = $contentType }
+            }
+            elseif ($line -match "${directive}header:\s*(\S+)") {
                 $current.ExpectedHeaders += $Matches[1]
             }
             continue
@@ -217,6 +266,12 @@ function Start-ShowcaseHost {
 
     $projectPath = Join-Path $scriptRoot $hostProjects[$Environment]
     Write-Host "Starting $Environment host from $projectPath ..." -ForegroundColor DarkGray
+
+    # The batch processors only export on a scheduled tick, and the defaults (5s for spans,
+    # 60s for metrics) are both longer than a replay lasts -- so a run would end having sent
+    # nothing. The child process inherits these.
+    $env:OTEL_BSP_SCHEDULE_DELAY = '1000'
+    $env:OTEL_METRIC_EXPORT_INTERVAL = '1000'
 
     $startArgs = @{
         FilePath     = 'dotnet'
@@ -357,15 +412,44 @@ try {
             $responseType = ''
         }
 
-        $expectedText = if ($null -ne $request.ExpectedStatus) { [string]$request.ExpectedStatus } else { '2xx' }
-        $matched = if ($null -eq $status) { $false }
-        elseif ($null -ne $request.ExpectedStatus) { $status -eq $request.ExpectedStatus }
-        else { $status -ge 200 -and $status -lt 300 }
+        # With no expectations declared at all, fall back to the same non-error net the C#
+        # runner uses (100-399) rather than a stricter 2xx, so the two disagree about
+        # nothing. Once anything is declared, assert that and only that.
+        $expectedText = if ($request.ExpectedStatusText) { $request.ExpectedStatusText }
+        elseif ($request.HasExpectations()) { '-' }
+        else { '1xx-3xx' }
 
+        $matched = if ($null -eq $status) { $false }
+        elseif ($null -ne $request.ExpectedStatusMin) {
+            $status -ge $request.ExpectedStatusMin -and $status -le $request.ExpectedStatusMax
+        }
+        elseif ($request.HasExpectations()) { $true }
+        else { $status -ge 100 -and $status -lt 400 }
+
+        # Match HttpFileAssertions: a required header must be present *and non-empty*.
+        # Presence alone would let an empty ETag pass here while the shipped C# runner
+        # rejects it -- the same file, two verdicts.
         $missingHeaders = @()
         foreach ($expectedHeader in $request.ExpectedHeaders) {
-            $present = $responseHeaders.Keys | Where-Object { $_ -ieq $expectedHeader }
-            if (-not $present) { $missingHeaders += $expectedHeader; $matched = $false }
+            $key = $responseHeaders.Keys | Where-Object { $_ -ieq $expectedHeader } | Select-Object -First 1
+            $value = if ($key) { ($responseHeaders[$key] -join ', ') } else { $null }
+            if ([string]::IsNullOrEmpty($value)) {
+                $missingHeaders += $expectedHeader
+                $matched = $false
+            }
+        }
+
+        # Compare media type only: responses carry `; charset=utf-8`, and a directive that
+        # forced authors to spell that out would go unused. This assertion exists because
+        # [Produces("application/json")] rewrites a problem document's media type while
+        # leaving status and body correct -- invisible to every other check here.
+        if ($request.ExpectedContentType) {
+            $actualMediaType = ($responseType -split ';')[0].Trim()
+            $wantedMediaType = ($request.ExpectedContentType -split ';')[0].Trim()
+            if ($actualMediaType -ine $wantedMediaType) {
+                $missingHeaders += "content-type=$(if ($actualMediaType) { $actualMediaType } else { '<none>' })"
+                $matched = $false
+            }
         }
 
         $results.Add([pscustomobject]@{
@@ -420,6 +504,12 @@ try {
 }
 finally {
     if ($null -ne $hostProcess -and -not $hostProcess.HasExited) {
+        # Stop-Process is a kill, not a shutdown: the host never runs its shutdown path, so
+        # OpenTelemetry never flushes and the telemetry this replay just produced is thrown
+        # away. Leave a window wider than the export interval set in Start-ShowcaseHost.
+        Write-Host "Draining telemetry ..." -ForegroundColor DarkGray
+        Start-Sleep -Seconds 3
+
         Write-Host "Stopping $Environment host (pid $($hostProcess.Id)) ..." -ForegroundColor DarkGray
         Stop-Process -Id $hostProcess.Id -Force -ErrorAction SilentlyContinue
     }

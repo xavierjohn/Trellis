@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `WithLink(rel, href)` for RFC 8288 `Link` relations
+
+`HttpResponseOptionsBuilder<TDomain>.WithLink(rel, href)` advertises a link relation on a response — most usefully a schema for the resource, so a client can validate before it sends rather than only learning what went wrong afterwards. Trellis previously had no way to emit a `Link` header at all: the only one was the hardcoded `next`/`prev` pair inside the pagination path.
+
+```csharp
+await result.ToHttpResponse(t => t,
+    o => o.WithLink("describedby", "https://api.example.com/schemas/todo.json"));
+// Link: <https://api.example.com/schemas/todo.json>; rel="describedby"
+```
+
+**`"schema"` is not a registered link relation**, so it is not what this ships. It does not appear in the IANA link-relation registry, and RFC 8288 §3.3 admits only a registered token or an absolute URI — a bare `rel="schema"` is non-conformant and generic clients ignore it. The registered spellings are `describedby` (a schema describing this resource) and `service-desc` (an API description document, RFC 8631); anything else must be an absolute URI. `WithLink` validates this at configuration time, so a malformed relation throws when the endpoint is wired rather than silently emitting a header no client honours.
+
+The validation is also a security boundary. The relation is emitted inside a quoted string, so an unvalidated relation containing a double quote would close it early and append attacker-chosen link-params — a distinct surface from the link *target*, which is separately percent-encoded. Both now run through one `LinkHeader` helper, so consumer-configured relations and pagination cursors are escaped identically instead of the escaping living privately in the paging code.
+
+Configured links follow the `Vary` / `Content-Language` contract rather than the `Cache-Control` one: they are **success-path only**, covering plain success, the no-payload 204, paged success (additive to `next`/`prev`, not replacing them), and `WriteOutcome`. For the same reason `WithLink` is deliberately absent from the non-generic `HttpResponseOptionsBuilder`, whose sole consumer produces a pure failure response — a test pins that absence so it is not "fixed" into an overload that could never emit.
+
+Trellis does not generate schema documents and does not map an `OPTIONS` endpoint; `href` is whatever URL your application serves the document from.
+
 ### Changed — instrumentation helpers are named for the telemetry they register
 
 The OpenTelemetry registration helpers were spelled four different ways: `AddResultsInstrumentation`, `AddPrimitiveValueObjectInstrumentation`, `AddTrellisMediatorInstrumentation`, and `AddTrellisValidationInstrumentation`. They now all follow `AddTrellis{Segment}Instrumentation`, where `{Segment}` is exactly the text after `Trellis.` in the source or meter the helper registers:
@@ -87,6 +105,16 @@ Storing the code once also removes the per-case `ReasonCode` property that a fir
 | `new Error.Forbidden(PolicyId: p)` | `new Error.Forbidden(Code: p)` — reading `.PolicyId` is unchanged |
 
 Code that read `error.Code` expecting the kind slug — in a log line, an exception message, or a debug span tag — should read `error.Kind`, which is what it meant. Trellis's own diagnostic surfaces were updated accordingly: `UnwrapFailedException` and `Result<T>.ToString()` now name the kind, and the DEBUG-only `debug.error.code` span tag is now `debug.error.kind` on the terse `Debug` overloads, whose single error tag was always naming the case. `DebugDetailed` emits both: `debug.error.kind` for the case and `debug.error.code` for the reason the producer named. `Trellis.Core`'s `CompatibilitySuppressions.xml` returns to the repository covering the 17 intended removals above.
+
+### Fixed — validation problems stay `application/problem+json` under `[Produces]`
+
+A controller carrying `[Produces("application/json")]` silently downgraded Trellis validation failures from `application/problem+json` to `application/json`. `ProducesAttribute` is a result filter that rewrites `ObjectResult.ContentTypes` **wholesale**, and `ScalarValueValidationFilter` returned its problem as a plain `ObjectResult`, so the filter overwrote it. The status code and the ProblemDetails body were both unchanged, which is what made this survive: the response stopped conforming to RFC 9457 while every status-and-body assertion still passed. It was reported by a consuming team, not caught here — and the reason our suite missed it is that it asserted exactly those two invariants.
+
+The three problem-producing sites in `ScalarValueValidationFilter` now return an internal `ProblemDetailsActionResult`, a plain `ActionResult` that executes an inner `ObjectResult`. Setting `ContentTypes` would not have helped — the result filter overwrites it — so the defence is *not being an `ObjectResult`*, which is the same reason `AsActionResult<T>` was already immune. Bodies are byte-identical, and the wrapper declares both `problem+json` and `problem+xml`, precisely the pair MVC infers for a `ProblemDetails` with an empty content-type list, so negotiation is unchanged.
+
+Because the filter takes over **every** invalid `ModelState` — plain DataAnnotations failures, and bodies that fail to parse or convert, not only value-object rejections — an app registering it via `AddTrellisAspWithScalarValidation` now has no exposed model-validation seam. A body that never deserialized is worth calling out: nothing was semantically rejected, so it reports 400 rather than 422 and carries **no** `fieldViolations`, which makes it look untouched by Trellis when it is not.
+
+Two things not to do about the general problem. Listing `application/problem+json` *alongside* `application/json` does not repair it — selection follows list order, so problem+json is inert anywhere but first, and any analyzer keyed on "omits problem+json" would go green on a still-broken configuration. Putting it first does repair the failure, but rewrites plain `ObjectResult` success responses to `application/problem+json`. The two safe remedies are to remove the attribute or to trim formatters via `PostConfigure<MvcOptions>`.
 
 ### Fixed — a 404 can now say what was not found, and why
 

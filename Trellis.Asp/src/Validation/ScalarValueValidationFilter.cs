@@ -228,7 +228,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         // A TrellisJsonValidationException means a value object rejected a value, so this is an
         // Error.InvalidInput even on the unstructured branch where no violations survived.
         AttachEnvelope(problemDetails, structuredError ?? EmptyInvalidInput, statusCode);
-        context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
+        context.Result = new ProblemDetailsActionResult(problemDetails, statusCode);
         return true;
     }
 
@@ -267,10 +267,10 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
         AttachViolations(context, problemDetails, validationError);
         AttachEnvelope(problemDetails, validationError, statusCode);
-        context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
+        context.Result = new ProblemDetailsActionResult(problemDetails, statusCode);
     }
 
-    private static ObjectResult CreateValidationProblemResult(
+    private static ProblemDetailsActionResult CreateValidationProblemResult(
         ActionExecutingContext context,
         int statusCode,
         Error.InvalidInput? rejectedValue = null)
@@ -283,7 +283,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
         AttachViolations(context, problemDetails, null);
         AttachEnvelope(problemDetails, rejectedValue, statusCode);
-        return new ObjectResult(problemDetails) { StatusCode = statusCode };
+        return new ProblemDetailsActionResult(problemDetails, statusCode);
     }
 
     /// <summary>

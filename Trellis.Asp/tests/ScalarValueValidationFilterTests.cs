@@ -75,9 +75,9 @@ public class ScalarValueValidationFilterTests
 
             // Assert
             context.Result.Should().NotBeNull();
-            context.Result.Should().BeOfType<ObjectResult>();
+            context.Result.Should().BeOfType<ProblemDetailsActionResult>();
 
-            var unprocessableResult = (ObjectResult)context.Result!;
+            var unprocessableResult = (ProblemDetailsActionResult)context.Result!;
             unprocessableResult.StatusCode.Should().Be(422);
             unprocessableResult.Value.Should().BeOfType<ValidationProblemDetails>();
 
@@ -109,7 +109,7 @@ public class ScalarValueValidationFilterTests
             filter.OnActionExecuting(context);
 
             // Malformed bytes win: the filter emits 400, not the semantic Error.InvalidInput status.
-            context.Result.Should().BeOfType<ObjectResult>()
+            context.Result.Should().BeOfType<ProblemDetailsActionResult>()
                 .Which.StatusCode.Should().Be(400);
         }
     }
@@ -286,7 +286,7 @@ public class ScalarValueValidationFilterTests
             filter.OnActionExecuting(context);
 
             // Assert
-            var unprocessableResult = context.Result as ObjectResult;
+            var unprocessableResult = context.Result as ProblemDetailsActionResult;
             unprocessableResult.Should().NotBeNull();
 
             var problemDetails = unprocessableResult!.Value as ValidationProblemDetails;
@@ -317,7 +317,7 @@ public class ScalarValueValidationFilterTests
         filter.OnActionExecuting(context);
 
         // Assert - should get rich error from TryCreate
-        context.Result.Should().NotBeNull().And.BeOfType<ObjectResult>();
+        context.Result.Should().NotBeNull().And.BeOfType<ProblemDetailsActionResult>();
         var problemDetails = GetValidationProblemDetails(context);
         problemDetails.Errors.Should().ContainKey("code");
         problemDetails.Errors["code"].Should().Contain(e => e.Contains("ORD-"));
@@ -339,7 +339,7 @@ public class ScalarValueValidationFilterTests
         filter.OnActionExecuting(context);
 
         // Assert
-        context.Result.Should().NotBeNull().And.BeOfType<ObjectResult>();
+        context.Result.Should().NotBeNull().And.BeOfType<ProblemDetailsActionResult>();
         var problemDetails = GetValidationProblemDetails(context);
         problemDetails.Errors.Should().ContainKey("code");
         problemDetails.Errors["code"].Should().Contain(e => e.Contains("ORD-"));
@@ -418,7 +418,7 @@ public class ScalarValueValidationFilterTests
         filter.OnActionExecuting(context);
 
         // Assert
-        context.Result.Should().NotBeNull().And.BeOfType<ObjectResult>();
+        context.Result.Should().NotBeNull().And.BeOfType<ProblemDetailsActionResult>();
         var problemDetails = GetValidationProblemDetails(context);
         problemDetails.Errors.Should().ContainKey("code");
     }
@@ -439,7 +439,7 @@ public class ScalarValueValidationFilterTests
         filter.OnActionExecuting(context);
 
         // Assert - only the IScalarValue param should have an error
-        context.Result.Should().NotBeNull().And.BeOfType<ObjectResult>();
+        context.Result.Should().NotBeNull().And.BeOfType<ProblemDetailsActionResult>();
         var problemDetails = GetValidationProblemDetails(context);
         problemDetails.Errors.Should().ContainKey("code");
         problemDetails.Errors.Keys.Should().NotContain("id");
@@ -562,8 +562,8 @@ public class ScalarValueValidationFilterTests
 
     private static ValidationProblemDetails GetValidationProblemDetails(ActionExecutingContext context)
     {
-        context.Result.Should().NotBeNull().And.BeOfType<ObjectResult>();
-        var result = (ObjectResult)context.Result!;
+        context.Result.Should().NotBeNull().And.BeOfType<ProblemDetailsActionResult>();
+        var result = (ProblemDetailsActionResult)context.Result!;
         result.Value.Should().NotBeNull().And.BeOfType<ValidationProblemDetails>();
         return (ValidationProblemDetails)result.Value!;
     }

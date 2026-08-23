@@ -255,6 +255,8 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         if (_options.ContentLanguage is { Count: > 0 })
             response.Headers.ContentLanguage = string.Join(", ", _options.ContentLanguage);
 
+        LinkHeader.Append(response, _options.Links);
+
         if (hasDomain && _options.ContentLocationSelector is { } cls)
         {
             var v = cls(domain);

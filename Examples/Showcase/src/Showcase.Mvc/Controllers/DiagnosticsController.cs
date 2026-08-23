@@ -13,6 +13,7 @@ using Trellis.Asp;
 public class DiagnosticsController : ControllerBase
 {
     [HttpGet("fault")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
     public Microsoft.AspNetCore.Http.IResult Fault() =>
         new Error.Unexpected("diagnostics-fault", "DIAG-FAULT-001")
         {
