@@ -164,6 +164,48 @@ public sealed class ProducesAttributeContentTypeTests
             .Should().Be("application/problem+json",
                 "a Trellis-owned RFC 9457 response must keep its media type even when the controller carries [Produces]");
 
+    private static async Task<string?> RouteScalarFailureMediaTypeAsync(string prefix)
+    {
+        using var host = CreateScalarValidationHost();
+        using var client = host.GetTestClient();
+        // A route parameter binds through a different value provider than a query parameter,
+        // so it is asserted separately rather than assumed to share the query seam's fate.
+        // "bad" is StatusCodeScalar's sentinel: a non-empty value TryCreate still rejects.
+        var resp = await client.GetAsync($"/{prefix}/route/bad", TestContext.Current.CancellationToken);
+        return resp.Content.Headers.ContentType?.MediaType;
+    }
+
+    [Theory]
+    [InlineData("noproduces-scalar")]
+    [InlineData("produces-scalar")]
+    [InlineData("produces-action-scalar")]
+    public async Task Trellis_route_parameter_validation_failure_keeps_problem_json(string prefix) =>
+        (await RouteScalarFailureMediaTypeAsync(prefix))
+            .Should().Be("application/problem+json");
+
+    [Fact]
+    public async Task Trellis_scalar_validation_filter_keeps_problem_json_under_action_level_Produces() =>
+        (await ScalarFailureMediaTypeAsync("produces-action-scalar"))
+            .Should().Be("application/problem+json",
+                "[Produces] is a result filter wherever it is declared, so action-level must behave as class-level does");
+
+    [Fact]
+    public async Task Action_level_Produces_clobbers_the_stock_seam_exactly_as_class_level_does() =>
+        (await MediaTypeOfEmptyPostAsync("/produces-action-scalar/binder"))
+            .Should().Be("application/json",
+                "[Produces] is the same result filter wherever it is declared, so action-level clobbers an unowned ObjectResult exactly as class-level does");
+
+    // When ScalarValueValidationFilter is registered, it takes over EVERY invalid ModelState --
+    // not just value-object failures but plain DataAnnotations ones too (its final
+    // `else if (!ModelState.IsValid)` branch). So in a Trellis-configured app that seam is
+    // Trellis-owned and the fix covers it; the clobbering above is stock MVC with no filter.
+    [Theory]
+    [InlineData("produces-action-scalar")]
+    [InlineData("produces-scalar")]
+    public async Task DataAnnotations_failure_keeps_problem_json_once_the_scalar_filter_is_registered(string prefix) =>
+        (await PostMediaTypeAsync(prefix, "binder", """{}"""))
+            .Should().Be("application/problem+json");
+
     private static async Task<string?> PostMediaTypeAsync(string prefix, string path, string json)
     {
         using var host = CreateScalarValidationHost();
@@ -176,6 +218,7 @@ public sealed class ProducesAttributeContentTypeTests
     [Theory]
     [InlineData("noproduces-scalar")]
     [InlineData("produces-scalar")]
+    [InlineData("produces-action-scalar")]
     public async Task Trellis_composite_validation_failure_keeps_problem_json(string prefix) =>
         (await PostMediaTypeAsync(prefix, "composite", """{"address":{"street":"","city":"","state":""}}"""))
             .Should().Be("application/problem+json");
@@ -269,6 +312,9 @@ public sealed class NoProducesScalarController : ControllerBase
     [HttpGet("scalar")]
     public IActionResult GetScalar([FromQuery] StatusCodeScalar value) => Ok();
 
+    [HttpGet("route/{value}")]
+    public IActionResult GetRouteScalar([FromRoute] StatusCodeScalar value) => Ok();
+
     [HttpPost("composite")]
     public IActionResult PostComposite([FromBody] StatusCodeRequest request) => Ok();
 }
@@ -281,7 +327,40 @@ public sealed class ProducesScalarController : ControllerBase
     [HttpGet("scalar")]
     public IActionResult GetScalar([FromQuery] StatusCodeScalar value) => Ok();
 
+    [HttpGet("route/{value}")]
+    public IActionResult GetRouteScalar([FromRoute] StatusCodeScalar value) => Ok();
+
     [HttpPost("composite")]
     public IActionResult PostComposite([FromBody] StatusCodeRequest request) => Ok();
+
+    [HttpPost("binder")]
+    public IActionResult Binder([FromBody] ThingRequest request) => Ok(new { request.Name!.Length });
+}
+
+// Class-level [Produces] is what both this framework and the reporting consumer had measured;
+// action-level was an open question on both sides. It resolves the same way: ProducesAttribute
+// is a result filter regardless of where it is declared, so the seam's fate is unchanged.
+[ApiController]
+[Route("produces-action-scalar")]
+public sealed class ProducesActionScalarController : ControllerBase
+{
+    [HttpGet("scalar")]
+    [Produces("application/json")]
+    public IActionResult GetScalar([FromQuery] StatusCodeScalar value) => Ok();
+
+    [HttpGet("route/{value}")]
+    [Produces("application/json")]
+    public IActionResult GetRouteScalar([FromRoute] StatusCodeScalar value) => Ok();
+
+    [HttpPost("composite")]
+    [Produces("application/json")]
+    public IActionResult PostComposite([FromBody] StatusCodeRequest request) => Ok();
+
+    // Stock DataAnnotations seam, which Trellis does not own. Asserting that this IS clobbered
+    // at action level is what establishes action-level and class-level behave alike; the
+    // Trellis rows above cannot show it, since they are immune either way.
+    [HttpPost("binder")]
+    [Produces("application/json")]
+    public IActionResult Binder([FromBody] ThingRequest request) => Ok(new { request.Name!.Length });
 }
 #pragma warning restore CA1822
