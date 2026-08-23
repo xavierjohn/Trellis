@@ -85,7 +85,7 @@ The single Trellis verb for converting `Result` / `Result<T>` / `Result<WriteOut
 | `public static IResult ToHttpResponse<TDomain, TBody>(this Result<WriteOutcome<TDomain>> result, Func<TDomain, TBody> body, Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)` | `IResult` | `WriteOutcome` overload with body projection. |
 | `public static IResult ToHttpResponse<T, TBody>(this Result<Page<T>> result, Func<Cursor, int, string> nextUrlBuilder, Func<T, TBody> body, Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)` | `IResult` | Maps `Result<Page<T>>` to a paginated JSON envelope (`PagedResponse<TBody>`) plus an RFC 8288 `Link` header. `nextUrlBuilder(cursor, appliedLimit)` builds the absolute URL for next/previous links. |
 
-Each overload also exposes `Task<...>` and `ValueTask<...>` async variants named `ToHttpResponseAsync` with identical signatures.
+Each overload above **except** `Error.ToHttpResponse(...)` also exposes async variants named `ToHttpResponseAsync`. The signatures are not identical: the *receiver* is wrapped, so `this Result<T>` becomes `this Task<Result<T>>` or `this ValueTask<Result<T>>`. The remaining parameters are unchanged. `Error` has no async variant, because an `Error` is already a materialised value with nothing to await.
 
 ### `HttpResponseOptionsBuilder<TDomain>`
 
@@ -150,7 +150,7 @@ Only the *shape* is validated. Trellis does **not** check the token against the 
 
 If neither fits, mint your own extension relation as an absolute URI (`WithLink("https://example.com/rels/my-rel", …)`).
 
-Rejecting the relation is a security boundary, not only a conformance one: the relation is emitted inside a quoted string, so an unvalidated relation containing a double quote would close it early and append attacker-chosen link-params. That is a distinct surface from the link *target*, which is separately percent-encoded for the characters RFC 3986 forbids in a URI (`>`, `"`, control characters, and the rest of the "delims"/"unwise" set) — the same encoding already applied to pagination cursors.
+Rejecting the relation is a security boundary, not only a conformance one: the relation is emitted inside a quoted string, so an unvalidated relation containing a double quote would close it early and append attacker-chosen link-params. That is a distinct surface from the link *target*, which is separately percent-encoded for the US-ASCII characters RFC 3986 §2 excludes — controls and space (`<= U+0020`), `DEL` (`U+007F`), and the "delims"/"unwise" set ``< > " \ ^ ` { } |``. Non-ASCII is deliberately left alone, because an IRI-style `href` is already the caller's encoding decision and rewriting it would corrupt legitimately percent-encoded UTF-8. This is the same encoding already applied to pagination cursors.
 
 Trellis does **not** generate schema documents, and does not map an `OPTIONS` endpoint; `href` is whatever URL your application serves the document from.
 
@@ -239,8 +239,11 @@ Trellis.Core.Error is transport-neutral. The ASP boundary translates domain fail
 | `RateLimited` | 429 | `too-many-requests` | `Retry-After` from `RetryAdvice` |
 | `Unexpected` (default) | 500 | `internal-server-error` | `faultId` extension when set |
 | `Unexpected` (`Code==FaultCodes.NotImplemented`) | 501 | `not-implemented` | — |
-| `Aggregate` | worst-status of children | `multi` | per-child |
+| `Aggregate` | worst-status of children | `multi` | none — see below |
 | `TransportFault` | per inner `HttpError` (405/406/412/413/415/416/428) | inner wire kind | inner-specific |
+
+> [!IMPORTANT]
+> Companion headers are emitted for the **root** error only. `Error.Aggregate` matches none of the header-emitting cases, so an aggregate whose children include a `RateLimited`, `Unavailable`, `MethodNotAllowed` or `RangeNotSatisfiable` error emits **no** `Retry-After`, `Allow` or `Content-Range`. The children still render into the `problems` extension; only their headers are dropped. If a header matters to the caller, return that error as the root rather than nesting it in an aggregate.
 
 The wire token shown above is emitted as the top-level Problem Details extension member `kind` (populated via `ProblemDetails.Extensions["kind"]`, which ASP.NET Core serializes alongside `type`, `title`, `status`, `detail`, and `instance` — RFC 9457 §3.2). The top-level Problem Details `type` field continues to default to the ASP.NET status-code URL (e.g. `https://tools.ietf.org/html/rfc4918#section-11.2` for 422); the top-level `kind` member is the durable identifier consumers should key on. Domain `Kind` and wire `kind` are intentionally distinct for `InvalidInput` and `InvariantViolation`: the domain slugs remain `invalid-input` / `invariant-violation`, while the on-wire `kind` stays `unprocessable-content` for backward compatibility.
 
@@ -265,6 +268,17 @@ Codes Trellis did not choose are never rewritten — an `Error.TransportFault` p
 
 > **Naming the reason.** Every error case carries an inherited `Code` (see [`Error` cases](trellis-api-core.md#concrete-error-cases)), so `error.unspecified` on a response means the producer named no reason — not that the case is incapable of carrying one. `new Error.NotFound(ResourceRef.For<Account>(id)) { Code = "account.not-found" }` puts `account.not-found` on the wire, which is what lets a client tell "no such row" from "withheld from you" without parsing `detail`.
 
+#### Reading the reason from a response
+
+Everything above is written from the producing side. A client reads the same document in a specific order, and the order matters because **the root `code` is not always where the reason lives**:
+
+1. **Read the top-level `code`. If it is not `error.unspecified`, that is the reason** — use it and stop.
+2. **If it is the sentinel, descend before concluding there is no reason.** `InvalidInput` and `Aggregate` leave the root at the sentinel *by default*, because their reasons are per-violation and per-child: look in `fieldViolations[n].code` and `ruleViolations[n].code`, or `problems[n].code` for an aggregate. A response can carry `"code": "error.unspecified"` at the root and `"code": "value.not-empty"` one level down, and only the second is actionable. (`Code` is an inherited `init` property, so a producer *may* set a root code on these cases too — which is why step 1 comes first.)
+3. **Do not assume `fieldViolations` exists.** A request whose body never parsed or never converted has nothing semantically rejected, so it reports 400 with no `fieldViolations` key at all. Treat its absence as "no per-field reason available", not as a malformed response.
+4. **Branch on `kind` or `status`, never on `code`, when you need the HTTP condition.** `code` answers only "is there a finer reason than the condition?" — a client that branches on it for control flow will find the sentinel on every unnamed failure.
+
+A catalog or localization lookup keyed on `code` should therefore guard the sentinel *before* the lookup rather than after: `error.unspecified` is a valid, expected value that no catalog should have an entry for, and a lookup miss is not the same signal as a producer declining to name a reason.
+
 ### Aggregate rendering
 
 `Error.Aggregate` renders as one outer Problem Details object whose status is the worst status of the children. Child problems are projected into the `problems[]` extension, one object per inner error.
@@ -273,7 +287,7 @@ Each child is a complete Problem Details object in its own right, not a fixed fi
 
 - `type` is a **URI reference** per RFC 9457 §3.1.1 — ASP.NET Core's default problem type for the child's own resolved status, the same URI that status yields at the root. It is *not* the `kind` slug. Several statuses Trellis emits have no framework default (notably `429`, and `428`/`451`/`431`/`423`/`424`); for those the root omits `type` and so does the child, which RFC 9457 §3.1.1 defines as equivalent to `about:blank`. The child never falls back to the `kind` slug. If the application registers `AddProblemDetails(o => o.CustomizeProblemDetails = ...)` and rewrites the root `type`, that customization is **not** replayed per child: `ProblemDetailsContext` describes the *response* (it carries the `HttpContext`, the triggering exception, and endpoint metadata), so running it once per nested child would stamp children with root-scoped values and let it overwrite each child's own `status` and `instance`.
 - `status`, `code`, `kind`, and `detail` carry the same values the child would carry at the root, including 5xx detail redaction keyed off the child's own resolved status.
-- Child-specific extensions survive: a nested `Error.InvalidInput` keeps its `errors` map and its `rules` array, and an `Error.Unexpected` keeps its `faultId`. A validation-shaped child carries `errors` even when it is empty (a rules-only violation), matching the standalone `ValidationProblem` shape.
+- Child-specific extensions survive: a nested `Error.InvalidInput` keeps its `errors` map and its `ruleViolations` array, and an `Error.Unexpected` keeps its `faultId`. A validation-shaped child carries `errors` even when it is empty (a rules-only violation), matching the standalone `ValidationProblem` shape.
 
 > **Breaking change.** This extension was previously named `errors`, which collided with the flat field-violation `errors` map that a validation problem emits, making the two indistinguishable by name for typed clients. It is now `problems`.
 
@@ -296,7 +310,7 @@ The synthesised value is `/{collection}/{escapedId}` (no `/api/` prefix, no api-
 
 The original request URI is preserved under `ProblemDetails.Extensions["request"]` so callers needing both have it. When synthesis is suppressed (toggle off, URL already identifies the resource, or `ResourceRef` is malformed), `Instance` falls back to the request URL and no `request` extension is emitted. `Error.Aggregate` never promotes a child's `ResourceRef`; the envelope itself carries no resource identity.
 
-Synthesis is defensive: any failure during URI construction (malformed `ResourceRef`, name not a safe URL path segment, registry not registered) is swallowed silently and the request URL is used. The synthesis path can never turn a domain 404/409 into a 500.
+Synthesis is defensive, but not silent about everything. A malformed `ResourceRef` or a collection name that is not a safe URL path segment falls back to the request URL without comment. A registry that was never registered is not a failure at all — an internal default registry is used. A registry that *throws* (a DI activation fault, or a resolver that faults on misconfigured overrides) is caught and logged via `LogInstanceSynthesisFailure` before falling back. In every case the synthesis path can never turn a domain 404/409 into a 500.
 
 ### `ResourceCollectionNameRegistry`
 
@@ -375,7 +389,7 @@ So `POST /api/accounts/{id}/deposit`, which binds `{id}` from the route and a `D
 
 The last row is what makes the body row safe. `POST /api/accounts/{id}/close` takes no body, so there is nothing to attribute a residual to and `unknown` remains the honest answer.
 
-ApiExplorer reports the same binding map for a controller action and a minimal API endpoint, so the two hosting models cannot disagree about the same request. An application that never registered ApiExplorer derives nothing and falls back to whatever the endpoint declared.
+ApiExplorer reports the same binding map for a controller action and a minimal API endpoint, so the two hosting models cannot disagree about the same request. An application that never registered ApiExplorer loses only the query and header evidence — route parameters still resolve, because they come from the endpoint's own route pattern rather than the API description. What remains is the endpoint's declared residual, which is not applied uniformly: `Body` rebases any unlocated pointer, including a nested one; `Query` applies only to a pointer naming a single top-level member, since a nested pointer addresses a document no URL can carry; and a declaration of `Unspecified` — or none at all — leaves the pointer projecting as `unknown`.
 
 #### Why the body is a residual rather than a lookup
 
@@ -607,11 +621,11 @@ The main DI surface for `Trellis.Asp` (in folder `Extensions/`).
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IMvcBuilder AddScalarValueValidation(this IMvcBuilder builder)` | `IMvcBuilder` | Configures MVC JSON options + the `ScalarValueValidationFilter` + a `ScalarValueModelBinderProvider`. Suppresses MVC validation recursion into `Maybe<T>`. |
-| `public static IServiceCollection AddScalarValueValidation(this IServiceCollection services)` | `IServiceCollection` | Configures both MVC (`MvcJsonOptions`) and Minimal API (`HttpJsonOptions`) JSON pipelines for scalar-value/`Maybe<T>` support. Idempotent. |
+| `public static IServiceCollection AddScalarValueValidation(this IServiceCollection services)` | `IServiceCollection` | Configures both MVC (`MvcJsonOptions`) and Minimal API (`HttpJsonOptions`) JSON pipelines for scalar-value/`Maybe<T>` support. **Not idempotent.** MVC filters and model-binder providers are de-duplicated, but the JSON registrations are not: the type-info modifier is appended via `WithAddedModifier` on **every** call, and the converter factories (`ValidatingJsonConverterFactory`, `MaybeScalarValueJsonConverterFactory`, `MaybePrimitiveJsonConverterFactory`) are appended on every call **when `JsonSerializer.IsReflectionEnabledByDefault` is `true`** — they are skipped entirely in reflection-disabled/Native AOT builds, where scalar roots must instead be reachable through your `JsonSerializerContext`. So calling this twice (or alongside `AddScalarValueValidationForMinimalApi()`) double-applies the modifier in every build, and the factories too in reflection mode. Call it exactly once. |
 | `public static IApplicationBuilder UseScalarValueValidation(this IApplicationBuilder app)` | `IApplicationBuilder` | Adds `ScalarValueValidationMiddleware` so `ValidatingJsonConverter<TValue,TPrimitive>` can collect errors per request. |
 | `public static IServiceCollection AddScalarValueValidationForMinimalApi(this IServiceCollection services)` | `IServiceCollection` | Configures only the Minimal API JSON pipeline. A strict subset of `AddScalarValueValidation()`, which already configures it — call **one or the other**, never both, or the JSON type-info modifier and converter factories are applied twice. Prefer `AddScalarValueValidation()` (surfaced as `UseScalarValueValidation()`) unless you want to avoid the inert `MvcOptions` / `MvcJsonOptions` callbacks in a controller-less host. |
 | `public static RouteHandlerBuilder WithScalarValueValidation(this RouteHandlerBuilder builder)` | `RouteHandlerBuilder` | Adds `ScalarValueValidationEndpointFilter` to the route handler. |
-| `public static TBuilder WithInputOrigin<TBuilder>(this TBuilder builder, InputLocation location) where TBuilder : IEndpointConventionBuilder` | `TBuilder` | Declares where validation failures reaching this endpoint without a location of their own came from, so they project as that location rather than `unknown`. Adds `InputOriginAttribute` to the endpoint; the MVC equivalent is `[InputOrigin(...)]` on the action or controller. Accepts `Body`, `Query`, or `Unspecified` to opt out of a route group's declaration; throws `ArgumentOutOfRangeException` otherwise. See *The endpoint-declared input origin* below. |
+| `public static TBuilder WithInputOrigin<TBuilder>(this TBuilder builder, InputLocation location) where TBuilder : IEndpointConventionBuilder` | `TBuilder` | Declares where validation failures reaching this endpoint without a location of their own came from, so they project as that location rather than `unknown`. Adds `InputOriginAttribute` to the endpoint; the MVC equivalent is `[InputOrigin(...)]` on the action or controller. Accepts `Body`, `Query`, or `Unspecified` to opt out of a route group's declaration; throws `ArgumentOutOfRangeException` otherwise. See [`InputOriginAttribute`](#inputoriginattribute) above. |
 | `public static IServiceCollection AddTrellisAsp(this IServiceCollection services)` | `IServiceCollection` | Registers `TrellisAspOptions` with default error mappings and `ResourceCollectionNameRegistry`. **Does NOT register scalar-value validation** — see `AddTrellisAspWithScalarValidation` or call `AddScalarValueValidation()` explicitly. The split exists so the global `MvcOptions`/`JsonOptions` mutation that scalar validation performs is opt-in instead of silent. |
 | `public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action<TrellisAspOptions> configure)` | `IServiceCollection` | Same as above, with a `MapError<TError>(...)` callback for overrides. **Calls compose** — when `AddTrellisAsp(o => ...)` is invoked more than once (e.g. by a library and the application), every `configure` delegate runs in registration order against the same `TrellisAspOptions` instance built lazily by `OptionsFactory<TrellisAspOptions>`. Same-`TError` mappings still follow last-wins, but mappings for different error types from earlier calls are preserved. |
 | `public static IServiceCollection AddTrellisAspWithScalarValidation(this IServiceCollection services)` | `IServiceCollection` | Convenience composition of `AddTrellisAsp()` and `AddScalarValueValidation()` for greenfield projects that want error mapping plus scalar-value model binding / JSON converters in a single call. |
@@ -630,9 +644,9 @@ Registers `ResourceCollectionNameOverride` entries and the consuming `ResourceCo
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddResourceCollectionName<T>(this IServiceCollection services, string collectionName)` | `IServiceCollection` | Maps the simple type name of `T` (as produced by `ResourceRef.For<T>()`) to a URL collection segment used when synthesising `ProblemDetails.Instance` from a `ResourceRef`. AOT- and trim-friendly: performs no assembly scanning. Registers `ResourceCollectionNameRegistry` via `TryAddSingleton` so callers can use this extension without first calling `AddTrellisAsp`. |
+| `public static IServiceCollection AddResourceCollectionName<TResource>(this IServiceCollection services, string collectionName)` | `IServiceCollection` | Maps the simple type name of `TResource` (as produced by `ResourceRef.For<TResource>()`) to a URL collection segment used when synthesising `ProblemDetails.Instance` from a `ResourceRef`. AOT- and trim-friendly: performs no assembly scanning. Registers `ResourceCollectionNameRegistry` via `TryAddSingleton` so callers can use this extension without first calling `AddTrellisAsp`. |
 | `public static IServiceCollection AddResourceCollectionName(this IServiceCollection services, string resourceType, string collectionName)` | `IServiceCollection` | Same as the typed overload but takes the `ResourceRef.Type` string directly — for cases where the consumer wants to bind a type name that does not exist as a CLR type, or to keep registration centralised. Validates the `collectionName` is a safe single URL path segment. |
-| `public static IServiceCollection AddResourceCollectionNames(this IServiceCollection services, Assembly assembly)` | `IServiceCollection` | Scans the supplied assembly for types decorated with `[ResourceCollectionName]` and registers one `ResourceCollectionNameOverride` per type. Marked `[RequiresUnreferencedCode]` because it uses reflection over the assembly's types; AOT/trim-published apps should prefer the explicit `AddResourceCollectionName<T>(...)` overload. Conflicting registrations (same type name → different collection names) throw at registry activation, **not** at registration, so a misconfiguration surfaces at startup rather than at the call site; identical registrations coalesce silently. |
+| `public static IServiceCollection AddResourceCollectionNames(this IServiceCollection services, Assembly assembly)` | `IServiceCollection` | Scans the supplied assembly for types decorated with `[ResourceCollectionName]` and registers one `ResourceCollectionNameOverride` per type. Marked `[RequiresUnreferencedCode]` because it uses reflection over the assembly's types; AOT/trim-published apps should prefer the explicit `AddResourceCollectionName<T>(...)` overload. Conflicting registrations (same type name → different collection names) throw when `ResourceCollectionNameRegistry` is **activated**, not when they are registered. On the `ResponseFailureWriter` path activation happens while writing a failure response — not at startup — and the exception is caught and logged there, so a conflict degrades `Instance` synthesis to the request URL rather than failing the request or the application. Identical registrations coalesce silently. |
 | `public static IServiceCollection AddResourceCollectionNames(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Convenience overload that scans each supplied assembly in order via the single-`Assembly` overload. Identical overrides across assemblies coalesce silently when the registry is activated; conflicting overrides throw. |
 
 ### `IdempotencyServiceCollectionExtensions`
@@ -730,9 +744,9 @@ public interface IIdempotencyStore
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask<IdempotencyReservationOutcome> TryReserveAsync(string scope, string key, string fingerprint, CancellationToken ct)` | one of `Reserved(reservationId)`, `AlreadyInFlight(retryAfter)`, `Replay(snapshot)`, `BodyHashMismatch(storedFingerprint)` | CAS reservation. The reservation token is an opaque `string`; pass it back to `CompleteAsync` / `AbandonAsync`. |
-| `ValueTask CompleteAsync(string scope, string key, string reservationId, IdempotencyResponseSnapshot snapshot, CancellationToken ct)` | `ValueTask` | Records the response snapshot under the reservation. Conditional on the reservation token (CAS) so a slow original handler whose reservation has been atomically taken over by a same-key retry cannot finalise the entry under the now-invalid token. |
-| `ValueTask AbandonAsync(string scope, string key, string reservationId, CancellationToken ct)` | `ValueTask` | Releases a reservation without a snapshot so the next retry can re-reserve. Called on any failure path (exception, response-too-large, `SendFileAsync`, abort, **5xx response status**, **response trailers**). |
+| `ValueTask<IdempotencyReservationOutcome> TryReserveAsync(string scope, string key, string fingerprint, CancellationToken cancellationToken)` | one of `Reserved(reservationId)`, `AlreadyInFlight(retryAfter)`, `Replay(snapshot)`, `BodyHashMismatch(storedFingerprint)` | CAS reservation. The reservation token is an opaque `string`; pass it back to `CompleteAsync` / `AbandonAsync`. |
+| `ValueTask CompleteAsync(string scope, string key, string reservationId, IdempotencyResponseSnapshot snapshot, CancellationToken cancellationToken)` | `ValueTask` | Records the response snapshot under the reservation. Conditional on the reservation token (CAS) so a slow original handler whose reservation has been atomically taken over by a same-key retry cannot finalise the entry under the now-invalid token. |
+| `ValueTask AbandonAsync(string scope, string key, string reservationId, CancellationToken cancellationToken)` | `ValueTask` | Releases a reservation without a snapshot so the next retry can re-reserve. Called on any failure path (exception, response-too-large, `SendFileAsync`, abort, **5xx response status**, **response trailers**). |
 
 > **Writing your own store?** Inherit `IdempotencyStoreConformance` from the
 > `Trellis.Testing.Idempotency` package to run the full contract — atomic reserve, replay,
@@ -761,13 +775,13 @@ public interface IIdempotencyScopeResolver
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask<string> ResolveAsync(HttpContext context, CancellationToken ct)` | `ValueTask<string>` | Returns an isolation scope (tenant id, actor id, anonymous). Two requests carrying the same key under different scopes never collide. Default registration is `DefaultIdempotencyScopeResolver`, which resolves `IActorProvider` from request services and uses the current actor's id (falling back to anonymous when no provider is registered or no actor is resolved). `ActorIdempotencyScopeResolver` is also shipped for hosts that want a hard dependency on `IActorProvider`. Replace with a custom implementation for multi-tenant hosts. |
+| `ValueTask<string> ResolveAsync(HttpContext context, CancellationToken cancellationToken)` | `ValueTask<string>` | Returns an isolation scope (tenant id, actor id, anonymous). Two requests carrying the same key under different scopes never collide. Default registration is `DefaultIdempotencyScopeResolver`, which resolves `IActorProvider` from request services and uses the current actor's id (falling back to anonymous when no provider is registered or no actor is resolved). `ActorIdempotencyScopeResolver` is also shipped for hosts that want a hard dependency on `IActorProvider`. Replace with a custom implementation for multi-tenant hosts. |
 
 `AnonymousIdempotencyScopeResolver` is the third shipped implementation: it always returns the shared constant `AnonymousIdempotencyScopeResolver.AnonymousScope`, which is also the value the actor-based resolvers fall back to when no actor can be resolved. Because that scope is shared across all unauthenticated callers, two different clients that pick the same `Idempotency-Key` will collide under it — use it only for genuinely public endpoints, and mount `UseTrellisIdempotency()` after authentication so authenticated requests do not silently land here.
 
 ### `CapturingResponseBodyFeature`
 
-Internal implementation detail of `IdempotencyMiddleware`, documented only so its failure modes are legible when a replay unexpectedly does not happen. Consumers never construct or reference this type.
+A **public** support type used by `IdempotencyMiddleware` (`public sealed class CapturingResponseBodyFeature : IHttpResponseBodyFeature, IDisposable`, with a public `(IHttpResponseBodyFeature inner, long maxBytes)` constructor). Most consumers never construct or reference it directly — it is documented mainly so its failure modes are legible when a replay unexpectedly does not happen — but it is part of the shipped surface and can be constructed if you are wrapping the response body yourself.
 
 It replaces `IHttpResponseBodyFeature` for the duration of an opted-in request, tee-ing writes to both the original client stream and an in-memory buffer so the middleware can persist an `IdempotencyResponseSnapshot`. **Capture is best-effort and never degrades the live response** — every abort path below leaves the bytes already sent to the client untouched, and simply causes the middleware to record no snapshot, so a subsequent retry re-executes the handler instead of replaying.
 
@@ -809,6 +823,9 @@ The bundled providers implement this:
 Custom providers that derive actor identity from request data that cannot be cleanly named by an HTTP header (mTLS, IP-based, etc.) should NOT implement this interface; consumers using such providers must mark cache-eligible endpoints with `Cache-Control: private, no-store` instead of calling `VaryForActor()`.
 
 ### `CacheControl`
+
+> [!NOTE]
+> Despite appearing under the `Trellis.Asp.Authorization` heading above (it is grouped here because it pairs with `VaryForActor`), `CacheControl` lives in the root **`Trellis.Asp`** namespace. Import `Trellis.Asp`, not `Trellis.Asp.Authorization`.
 
 **Declaration**
 
@@ -982,22 +999,24 @@ For apps behind Azure App Service / Container Apps built-in authentication ("Eas
 | `public EasyAuthAuthenticationHandler(IOptionsMonitor<EasyAuthAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder)` | — | Standard `AuthenticationHandler` constructor. |
 | `protected override Task<AuthenticateResult> HandleAuthenticateAsync()` | `Task<AuthenticateResult>` | Decodes the principal header (or `-ID` / `-NAME` fallback) into an authenticated `ClaimsPrincipal`. `NoResult` when no Easy Auth header is present; `Fail` on invalid base64/JSON or a payload without a usable `claims` array. |
 | `public sealed class EasyAuthClaimsActorProvider : ClaimsActorProvider` | — | Inherits actor resolution from `ClaimsActorProvider`; overrides `VaryByHeaders` to return `EasyAuthDefaults.PrincipalHeaders`. |
-| `public static AuthenticationBuilder AddEasyAuth(this AuthenticationBuilder builder, ...)` | `AuthenticationBuilder` | Defined on `EasyAuthAuthenticationExtensions`. Registers the `EasyAuthAuthenticationHandler` scheme (default name `EasyAuthDefaults.AuthenticationScheme = "EasyAuth"`). Overloads: `()`, `(Action<EasyAuthAuthenticationOptions>)`, and `(string authenticationScheme, Action<EasyAuthAuthenticationOptions>)`. |
+| `public static AuthenticationBuilder AddEasyAuth(this AuthenticationBuilder builder)` | `AuthenticationBuilder` | Defined on `EasyAuthAuthenticationExtensions`. Registers the `EasyAuthAuthenticationHandler` scheme under the default name `EasyAuthDefaults.AuthenticationScheme` (`"EasyAuth"`) with no extra configuration. |
+| `public static AuthenticationBuilder AddEasyAuth(this AuthenticationBuilder builder, Action<EasyAuthAuthenticationOptions> configureOptions)` | `AuthenticationBuilder` | Same, with an options callback. |
+| `public static AuthenticationBuilder AddEasyAuth(this AuthenticationBuilder builder, string authenticationScheme, Action<EasyAuthAuthenticationOptions> configureOptions)` | `AuthenticationBuilder` | Same, under an explicit scheme name. The other two overloads delegate to this one. |
 
 `EasyAuthAuthenticationOptions` carries only the standard `AuthenticationSchemeOptions` surface (events, forwarding); the Easy Auth principal header names are fixed by the Azure platform contract (`EasyAuthDefaults`), so the handler and `EasyAuthClaimsActorProvider.VaryByHeaders` always agree.
 
 #### `EasyAuthDefaults`
 
-Constants for the platform contract. Do not hard-code these header names — the platform strips client-supplied copies of exactly these headers at the boundary, so the names are the security contract.
+Constants for the platform contract, plus one static property. Do not hard-code these header names — the platform strips client-supplied copies of exactly these headers at the boundary, so the names are the security contract.
 
-| Constant | Value |
+| Member | Value |
 | --- | --- |
 | `AuthenticationScheme` | `"EasyAuth"` — the default scheme name registered by `AddEasyAuth`. |
 | `PrincipalHeaderName` | `"X-MS-CLIENT-PRINCIPAL"` — the base64-encoded JSON client principal. |
 | `PrincipalIdHeaderName` | `"X-MS-CLIENT-PRINCIPAL-ID"` |
 | `PrincipalNameHeaderName` | `"X-MS-CLIENT-PRINCIPAL-NAME"` |
 | `PrincipalIdpHeaderName` | `"X-MS-CLIENT-PRINCIPAL-IDP"` — the identity provider name. |
-| `PrincipalHeaders` | The set above, returned by `EasyAuthClaimsActorProvider.VaryByHeaders`. |
+| `PrincipalHeaders` | `public static IReadOnlyCollection<string> PrincipalHeaders { get; }` — a static **property**, not a constant, holding the four header names above. Returned by `EasyAuthClaimsActorProvider.VaryByHeaders`. |
 
 
 ```csharp
@@ -1017,8 +1036,8 @@ Static helper (namespace `Trellis.Asp.Authorization`) that flattens coarse role 
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `static IReadOnlySet<string> ExpandRoles(IEnumerable<string> roles, IReadOnlyDictionary<string, IReadOnlyCollection<string>> rolePermissions)` | `IReadOnlySet<string>` | Provider-agnostic core: expands role names into a flattened, ordinal-deduplicated permission set. Roles absent from the map are skipped (no throw); null/whitespace role names and permission values are ignored. Lookups use the map's own key comparer, so a case-insensitive map matches case-variant roles. Throws `ArgumentNullException` when either argument is null. |
-| `static Func<IEnumerable<Claim>, IReadOnlySet<string>> ForRoleClaims(IReadOnlyDictionary<string, IReadOnlyCollection<string>> rolePermissions, string? roleClaimType = null, bool keepRolesAsPermissions = false)` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Builds an `EntraActorOptions.MapPermissions`-compatible delegate that reads role claims and expands them via the map. `roleClaimType` null (default) matches both the short `roles` claim and `ClaimTypes.Role` (case-insensitive), tolerating `JwtBearerOptions.MapInboundClaims` either way; pass a type to match only that. `keepRolesAsPermissions = true` also adds each matched role name to the result. Throws `ArgumentNullException` when the map is null, `ArgumentException` when `roleClaimType` is non-null but blank. |
+| `public static IReadOnlySet<string> ExpandRoles(IEnumerable<string> roles, IReadOnlyDictionary<string, IReadOnlyCollection<string>> rolePermissions)` | `IReadOnlySet<string>` | Provider-agnostic core: expands role names into a flattened, ordinal-deduplicated permission set. Roles absent from the map are skipped (no throw); null/whitespace role names and permission values are ignored. Lookups use the map's own key comparer, so a case-insensitive map matches case-variant roles. Throws `ArgumentNullException` when either argument is null. |
+| `public static Func<IEnumerable<Claim>, IReadOnlySet<string>> ForRoleClaims(IReadOnlyDictionary<string, IReadOnlyCollection<string>> rolePermissions, string? roleClaimType = null, bool keepRolesAsPermissions = false)` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Builds an `EntraActorOptions.MapPermissions`-compatible delegate that reads role claims and expands them via the map. `roleClaimType` null (default) matches both the short `roles` claim and `ClaimTypes.Role` (case-insensitive), tolerating `JwtBearerOptions.MapInboundClaims` either way; pass a type to match only that. `keepRolesAsPermissions = true` also adds each matched role name to the result. Throws `ArgumentNullException` when the map is null, `ArgumentException` when `roleClaimType` is non-null but blank. |
 
 The map is application-owned data captured by reference — supply a stable, effectively-immutable map (it is read once per request, concurrently). Roles the map does not contain are silently skipped, so a token carrying a role the service does not recognize yields the recognized permissions rather than a 500.
 
@@ -1090,7 +1109,7 @@ Decorator that caches the inner provider's resolution task per request scope usi
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public CachingActorProvider(IActorProvider inner, IHttpContextAccessor httpContextAccessor)` | — | `inner` cannot be null. |
-| `public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Returns the cached task — including a cached `Maybe<Actor>.None` when the inner provider resolved no authenticated actor — so the inner provider runs once per request scope. If `cancellationToken` differs from `RequestAborted`, applies it via `Task.WaitAsync`. |
+| `public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Returns the cached task — including a cached `Maybe<Actor>.None` when the inner provider resolved no authenticated actor — so the inner provider runs once per request scope. If `cancellationToken` is cancelable (`CanBeCanceled`) **and** differs from `RequestAborted`, applies it to the await via `Task.WaitAsync`; otherwise the cached task is returned as-is. |
 
 ### Namespace `Trellis.Asp.ModelBinding`
 
@@ -1118,6 +1137,8 @@ public abstract class ScalarValueModelBinderBase<TResult, TValue, TPrimitive> : 
 ```csharp
 public class ScalarValueModelBinder<TValue, TPrimitive>
     : ScalarValueModelBinderBase<TValue, TValue, TPrimitive>
+    where TValue : IScalarValue<TValue, TPrimitive>
+    where TPrimitive : IComparable
 ```
 
 | Signature | Returns | Description |
@@ -1132,6 +1153,8 @@ public class ScalarValueModelBinder<TValue, TPrimitive>
 ```csharp
 public class MaybeModelBinder<TValue, TPrimitive>
     : ScalarValueModelBinderBase<Maybe<TValue>, TValue, TPrimitive>
+    where TValue : IScalarValue<TValue, TPrimitive>
+    where TPrimitive : IComparable
 ```
 
 | Signature | Returns | Description |
@@ -1158,6 +1181,9 @@ Binds `Maybe<T>` parameters where `T` is a primitive in the closed allowed list 
 <a id="maybeprimitives"></a>
 
 ### `MaybePrimitives`
+
+> [!NOTE]
+> `MaybePrimitives` lives in **`Trellis.Asp.Validation`**, not `Trellis.Asp.ModelBinding` — it is documented here because `MaybePrimitiveModelBinder<T>` above is its main consumer.
 
 **Declaration**
 
@@ -1196,7 +1222,7 @@ public sealed class TrellisValueObjectRouteConstraint<T> : IRouteConstraint
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public bool Match(HttpContext?, IRouter?, string routeKey, RouteValueDictionary values, RouteDirection routeDirection)` | `bool` | Delegates to `T.TryParse(..., CultureInfo.InvariantCulture, out _)`. Returns `false` when the route value is missing, null, or fails to parse. |
+| `public bool Match(HttpContext? httpContext, IRouter? route, string routeKey, RouteValueDictionary values, RouteDirection routeDirection)` | `bool` | Delegates to `T.TryParse(..., CultureInfo.InvariantCulture, out _)`. Returns `false` when the route value is missing, null, or fails to parse. |
 
 ### `RouteConstraintRegistrationExtensions`
 
@@ -1245,6 +1271,8 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive>
 ```csharp
 public sealed class ValidatingJsonConverter<TValue, TPrimitive>
     : ScalarValueJsonConverterBase<TValue?, TValue, TPrimitive>
+    where TValue : class, IScalarValue<TValue, TPrimitive>
+    where TPrimitive : IComparable
 ```
 
 | Signature | Returns | Description |
@@ -1274,6 +1302,8 @@ public sealed class ValidatingJsonConverterFactory : JsonConverterFactory
 ```csharp
 public sealed class MaybeScalarValueJsonConverter<TValue, TPrimitive>
     : ScalarValueJsonConverterBase<Maybe<TValue>, TValue, TPrimitive>
+    where TValue : class, IScalarValue<TValue, TPrimitive>
+    where TPrimitive : IComparable
 ```
 
 | Signature | Returns | Description |
@@ -1309,7 +1339,7 @@ JSON converter for `Maybe<T>` where `T` is an STJ-native primitive in the closed
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public override Maybe<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `Maybe<T>` | Reads JSON `null` as `Maybe<T>.None`; otherwise dispatches on the closed primitive allowed list. Wrong JSON shape throws the standard `JsonException`. |
+| `public override Maybe<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `Maybe<T>` | Reads JSON `null` as `Maybe<T>.None`; otherwise dispatches on the closed primitive allowed list. A wrong JSON shape is **not** normalized by this converter — the exception from the underlying `Utf8JsonReader` typed accessor (`GetString()`, `GetInt32()`, `GetGuid()`, …) propagates as-is. The converter's own explicit `JsonException` is reserved for the unreachable unsupported-`T` guard. |
 | `public override void Write(Utf8JsonWriter writer, Maybe<T> value, JsonSerializerOptions options)` | `void` | `Maybe.None` writes JSON `null`; otherwise switches on the unwrapped value and writes via the matching typed `Utf8JsonWriter` method. |
 
 ### `MaybePrimitiveJsonConverterFactory`
@@ -1331,6 +1361,9 @@ Supported primitives: `string`, `decimal`, `int`, `long`, `short`, `byte`, `doub
 
 ### `ScalarValueValidationFilter`
 
+> [!IMPORTANT]
+> `ScalarValueValidationFilter`, `ScalarValueValidationEndpointFilter`, `ScalarValueValidationMiddleware` and `ValidationErrorsContext` live in the **root `Trellis.Asp`** namespace, not `Trellis.Asp.Validation`, despite appearing under that heading. Only `ScalarValuePathTracking` (below) is actually in `Trellis.Asp.Validation`. Import `Trellis.Asp` to reference the four types above.
+
 **Declaration**
 
 ```csharp
@@ -1343,7 +1376,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public void OnActionExecuting(ActionExecutingContext context)` | `void` | Short-circuits with a validation problem result for collected JSON validation errors or invalid scalar route/query parameters. |
+| `public void OnActionExecuting(ActionExecutingContext context)` | `void` | Short-circuits with a validation problem result for collected JSON validation errors, structured `TrellisJsonValidationException` entries in `ModelState`, invalid scalar route/query parameters, **or any remaining invalid `ModelState` entry** (the final `else if (!ModelState.IsValid)` fallback — this is the path a plain type-conversion failure takes). A plain `JsonException` in `ModelState` takes precedence and forces the 400 path rather than 422. |
 | `public void OnActionExecuted(ActionExecutedContext context)` | `void` | No-op. |
 
 ### `ScalarValueValidationEndpointFilter`
@@ -1368,7 +1401,7 @@ public sealed class ScalarValueValidationMiddleware
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public ScalarValueValidationMiddleware(RequestDelegate next)` | — | Wraps each request in `ValidationErrorsContext.BeginScope()`. |
+| `public ScalarValueValidationMiddleware(RequestDelegate next)` | — | Stores the next `RequestDelegate`. The scope itself is opened in `InvokeAsync`, which wraps each request in `ValidationErrorsContext.BeginScope()`. |
 | `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope, invokes the next middleware, and converts scalar-value `BadHttpRequestException` binding failures into validation problem responses using endpoint parameter metadata plus route/query raw values. |
 
 ### `ScalarValuePathTracking`
@@ -1406,17 +1439,21 @@ public static class ValidationErrorsContext
 | `public static void AddError(Error.InvalidInput unprocessableContent)` | `void` | Merges every `FieldViolation` and `RuleViolation` in the supplied error into the current scope, preserving each violation's reason code, args, and detail. No-op when no scope is active. Called by both reflection-mode and AOT-generated converters when `TryCreate` returns an `Error.InvalidInput` failure. |
 | `public static void AddBodyError(string fieldName, string errorMessage)` | `void` | As `AddError(string, string)` — including the `error.unspecified` reason code — but locates the violation at `InputLocation.Body`. |
 | `public static void AddBodyError(string fieldName, string code, string message, IReadOnlyDictionary<string, string>? args = null)` | `void` | A coded body violation with optional renderer arguments. No-op when no scope is active. |
-| `public static void AddBodyError(Error.InvalidInput unprocessableContent)` | `void` | As `AddError(Error.InvalidInput)`, but promotes every merged violation to `InputLocation.Body` when the producer left the location unspecified. The JSON pipeline is the one caller that knows by construction that everything it collects came out of the request document — a converter cannot state that itself, since the same converter runs for a body property and for a query-bound scalar. Violations that already carry a location are left alone. |
+| `public static void AddBodyError(Error.InvalidInput unprocessableContent)` | `void` | As `AddError(Error.InvalidInput)`, but promotes every merged violation to `InputLocation.Body` when the producer left the location unspecified. The JSON pipeline is the one caller that knows by construction that everything it collects came out of the request document — a converter cannot state that itself, since the same converter runs for a body property and for a query-bound scalar. Violations carrying an explicit `Query`, `Path` or `Header` location pass through untouched. A violation already located in the body is prefixed with the current ancestor path but keeps its location; one with an unspecified location is prefixed **and** promoted to `InputLocation.Body`. |
 | `public static Error.InvalidInput? GetUnprocessableContent()` | `Error.InvalidInput?` | Returns the aggregated `Error.InvalidInput` for the current scope (with `Fields` / `Rules` populated from collected `FieldViolation`s) or `null` when no errors were collected. |
 
 ## Behavioral notes
 
-- **One verb, every shape.** `ToHttpResponse` is the only supported response mapper. The generic result types it constructs (`TrellisHttpResult<TDomain, TBody>`, `TrellisWriteOutcomeResult<TDomain, TBody>`, and the paged success wrapper) implement `IResult`; the non-paged generic result types also implement the `IStatusCodeHttpResult` / `IValueHttpResult<T>` / `IContentTypeHttpResult` metadata interfaces and `IEndpointMetadataProvider` so OpenAPI/ApiExplorer surfaces the success status, body type, and the union of error envelopes the writer can emit (`200`, `201`, `304`, `400`, `404`, `412`, `500`). Standalone `Error.ToHttpResponse(...)` uses `TrellisErrorOnlyResult`, an `IResult` failure writer. Layer your own `[ProducesResponseType]` / `Produces<T>` on top.
-- **Failures use Problem Details.** A failure runs through `ResponseFailureWriter` (internal). `Error.InvalidInput` with field violations uses `Results.ValidationProblem(...)`; everything else uses `Results.Problem(...)`. The `errors` dictionary keys are the violation `Field.Path` translated from RFC 6901 JSON Pointer to ASP.NET Core MVC dot+bracket convention, and the RFC 6901 pointers are preserved losslessly beside that map — per field under the top-level `problems` array's `location` member, and per rule under the `rules` array's `locations[]` entries (populated via `ProblemDetails.Extensions["problems"]` / `["rules"]`). Companion headers are emitted automatically: `Allow` for `Error.TransportFault(new HttpError.MethodNotAllowed(...))`, `Content-Range: {Unit} */{CompleteLength}` for `Error.TransportFault(new HttpError.RangeNotSatisfiable(...))`, `Retry-After` from `RetryAdvice` on `Error.RateLimited` / `Error.Unavailable`, and `WWW-Authenticate` from `Error.AuthenticationRequired.Scheme` or the registered `IAuthenticationSchemeProvider` fallback when the resolved status is `401`. For `Error.TransportFault`, the top-level Problem Details extension members `code` and `kind` come from the wrapped `HttpError`, not the outer `transport-fault` envelope. Every failure response carries top-level `code` and `kind` (RFC 9457 §3.2 extension members, populated via `ProblemDetails.Extensions["code"]` / `["kind"]` and serialized at the JSON root, not nested under an `extensions` object); `Error.Unexpected` adds top-level `faultId` when set; rule violations are surfaced under the top-level `rules` array; `Error.Aggregate` adds top-level `problems`; every response also carries top-level `instance`. For `5xx` responses the public `detail` is always `"An internal error occurred."`, and the same redaction is applied per child inside `Error.Aggregate`'s top-level `problems` array — a child whose own mapped status is `5xx` reports the redacted detail even when the envelope status is not.
+- **One verb, every shape.** `ToHttpResponse` is the only supported response mapper. The generic result types it constructs (`TrellisHttpResult<TDomain, TBody>`, `TrellisWriteOutcomeResult<TDomain, TBody>`, and the paged success wrapper) implement `IResult`. Beyond that the two differ, and OpenAPI/ApiExplorer output differs with them:
+  - `TrellisHttpResult<TDomain, TBody>` also implements `IStatusCodeHttpResult`, `IValueHttpResult`, `IValueHttpResult<TBody>`, `IContentTypeHttpResult` and `IEndpointMetadataProvider`. It emits `200`, `201`, `304`, `400`, `404`, `412`, `500` metadata — or, for the `Result<Unit>`/no-body shape, `204`, `400`, `404`, `500`.
+  - `TrellisWriteOutcomeResult<TDomain, TBody>` implements only `IStatusCodeHttpResult` and `IEndpointMetadataProvider` — **not** `IValueHttpResult<T>` or `IContentTypeHttpResult`. It emits `200`, `201`, `204`, `202`, `400`, `412` metadata.
+  
+  Standalone `Error.ToHttpResponse(...)` uses `TrellisErrorOnlyResult`, an `IResult` failure writer. Layer your own `[ProducesResponseType]` / `Produces<T>` on top.
+- **Failures use Problem Details.** A failure runs through `ResponseFailureWriter` (internal). `Error.InvalidInput` with field violations uses `Results.ValidationProblem(...)`; everything else uses `Results.Problem(...)`. The `errors` dictionary keys are the violation `Field.Path` translated from RFC 6901 JSON Pointer to ASP.NET Core MVC dot+bracket convention, and the RFC 6901 pointers are preserved losslessly beside that map — per field under the top-level `fieldViolations` array's `location` member, and per rule under the `ruleViolations` array's `locations[]` entries (populated via `ProblemDetails.Extensions["fieldViolations"]` / `["ruleViolations"]`). Companion headers are emitted automatically: `Allow` for `Error.TransportFault(new HttpError.MethodNotAllowed(...))`, `Content-Range: {Unit} */{CompleteLength}` for `Error.TransportFault(new HttpError.RangeNotSatisfiable(...))`, `Retry-After` from `RetryAdvice` on `Error.RateLimited` / `Error.Unavailable`, and `WWW-Authenticate` from `Error.AuthenticationRequired.Scheme` or the registered `IAuthenticationSchemeProvider` fallback when the resolved status is `401`. For `Error.TransportFault`, the top-level Problem Details extension members `code` and `kind` come from the wrapped `HttpError`, not the outer `transport-fault` envelope. Every failure response carries top-level `code` and `kind` (RFC 9457 §3.2 extension members, populated via `ProblemDetails.Extensions["code"]` / `["kind"]` and serialized at the JSON root, not nested under an `extensions` object); `Error.Unexpected` adds top-level `faultId` when set; rule violations are surfaced under the top-level `ruleViolations` array; `Error.Aggregate` adds top-level `problems`; every response also carries top-level `instance`. For `5xx` responses the public `detail` is always `"An internal error occurred."`, and the same redaction is applied per child inside `Error.Aggregate`'s top-level `problems` array — a child whose own mapped status is `5xx` reports the redacted detail even when the envelope status is not.
 - **The `code`/`kind` envelope holds for every failure, not just handler failures.** A request can fail before it ever reaches a handler, and those seams write their own Problem Details: `ScalarValueValidationFilter` (MVC), `ScalarValueValidationEndpointFilter` (Minimal API), `ScalarValueValidationMiddleware`, and `IdempotencyMiddleware`. `AddTrellisProblemDetails()` covers the last gap, seeding the envelope on documents ASP.NET Core itself produced — the exception handler and status-code pages under `UseTrellisProblemDetails()`; it seeds each member independently, so a document that already carries one of them still gains the other. All of them emit the same top-level `code` and `kind` members as `ResponseFailureWriter`, so a client can read the envelope without first knowing which layer answered. `type` is resolved the same way everywhere too — see the rule below. Two rules decide what `code` and `kind` carry:
   - **When an `Error` exists, the envelope comes from the error.** A rejected scalar value is an `Error.InvalidInput`, so it reports `kind: unprocessable-content` even when `MapError<Error.InvalidInput>(400)` on `TrellisAspOptions` has remapped the response to `400`. `kind` names *what failed*, and remapping a status does not change that — otherwise the same rejection would describe itself differently depending on where it was caught.
   - **When no `Error` was ever constructed, the envelope falls back to the status.** A request body whose bytes never parsed, a parameter the binder could not bind at all, and a missing idempotency key have no domain error behind them; there is nothing finer to report than the HTTP condition, so `kind` is the slug for the status (`400` → `bad-request`, `409` → `conflict`, `413` → `content-too-large`, `422` → `unprocessable-content`, `5xx` → `internal-server-error`), and `code` is `error.unspecified`.
-  - **The invariant covers responses Trellis writes.** A request that matches no route is answered by ASP.NET Core's terminal middleware with a bodiless `404` — no Problem Details, so no envelope. That includes a route whose constraint rejected the value (for example a `Guid`-constrained segment given `not-a-guid`): constraint failure means "no route matched", not "the handler said not found", and nothing in the pipeline ever constructs an `Error`.
+  - **The invariant covers responses Trellis writes — and, with `UseTrellisProblemDetails()`, route misses too.** Without that middleware a request matching no route is answered by ASP.NET Core's terminal middleware with a bodiless `404`: no Problem Details, so no envelope. `UseTrellisProblemDetails()` calls `UseStatusCodePages()`, which rewrites that bare `404` into Problem Details carrying the full Trellis envelope (`application/problem+json`, `status`, `traceId`, `code`, `kind`) — pinned by `Pipeline_returns_404_problem_details_with_trace_id_when_route_missing`. Either way no `Error` is ever constructed, so the envelope comes from the status-fallback rule above and `code` is `error.unspecified`. That includes a route whose constraint rejected the value (for example a `Guid`-constrained segment given `not-a-guid`): constraint failure means "no route matched", not "the handler said not found".
 - **`type` is resolved from the status, never hard-coded.** Every seam takes it from `ProblemEnvelope.ProblemTypeForStatus(status)`, which asks ASP.NET Core for the default problem type it would assign that status — so a `422` written by `IdempotencyMiddleware` carries the same `type` as a `422` written by `ResponseFailureWriter`, and the same status cannot describe itself two ways depending on which layer answered. Where the framework has no default (`429`, `428`, `451`, `431`, `423`, `424`), `type` is **omitted**: RFC 9457 §3.1.1 makes an absent `type` equivalent to `about:blank`, whereas writing a kind slug would put a bare non-URI token in a member declared to be a URI reference.
 - **Status code resolution precedence.** `WithErrorMapping(Func<Error, int>)` (per call) → `WithErrorMapping<TError>(int)` (per call, walks the type hierarchy) → `TrellisAspOptions` resolved from `HttpContext.RequestServices` (or `TrellisAspOptions.SystemDefault` if none registered) → `500 Internal Server Error`. A `Func<Error, int>` mapper opts out of a given error by returning any value outside `100`–`599` (`default`/`0` is the idiomatic choice); resolution then continues at the next step in the chain instead of writing an invalid status.
 - **Conditional requests.** `EvaluatePreconditions()` runs only on `GET` / `HEAD` and only when at least one of `WithETag` / `WithLastModified` is configured. The internal `ConditionalRequestEvaluator` evaluates RFC 9110 preconditions in this order: `If-Match` (strong); else `If-Unmodified-Since`; then `If-None-Match` (weak); else `If-Modified-Since` for safe methods. Failed `If-Match` / `If-Unmodified-Since` → `412`; failed `If-None-Match` / `If-Modified-Since` on `GET`/`HEAD` → `304`.
@@ -1425,7 +1462,7 @@ public static class ValidationErrorsContext
 - **`CreatedAtAction` is not AOT-safe.** It depends on MVC's `ControllerLinkGeneratorExtensions`. The builder method, the writer's `ResolveActionLocation` private, and the `LocationKind.Action` branch are annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]`. Use `CreatedAtRoute` with a named route for trim/AOT scenarios; `ResolveActionLocation` throws `NotSupportedException` when `RuntimeFeature.IsDynamicCodeSupported` is `false`.
 - **Pagination.** The `Result<Page<T>>` overload always emits the `PagedResponse<TBody>` envelope; the RFC 8288 `Link` header is added only when `Page.Next` and/or `Page.Previous` cursors are present. Failure on the page result short-circuits through the standard error pipeline. Each `nextUrlBuilder` result is percent-encoded for the characters RFC 3986 excludes from a URI (controls, space, `<`, `>`, `"`, `\`, `^`, `` ` ``, `{`, `}`, `|`) before it is embedded between the `Link` field's angle brackets, so an opaque cursor token cannot terminate the `URI-Reference` early or forge extra link-params. Well-formed URLs pass through byte-identical.
 - **Validation collection scope.** `ScalarValueValidationMiddleware` opens a `ValidationErrorsContext` scope per request. Both `ValidatingJsonConverter<,>` and `MaybeScalarValueJsonConverter<,>` collect errors into this scope; `ScalarValueValidationFilter` (MVC) and `ScalarValueValidationEndpointFilter` (Minimal API) short-circuit with a validation problem when the scope is non-empty at action/handler entry.
-- **AOT-generated converters participate in the same scope.** When an assembly opts into the source generator (a partial `JsonSerializerContext` decorated with `[GenerateScalarValueConverters]` or any other `JsonSerializerContext` in a project that references the generator), the emitted `JsonConverter<TValue>`s mirror `ScalarValueJsonConverterBase<,,>` bit-for-bit — they read `ValidationErrorsContext.CurrentPropertyName` for the field name (falling back to the camel-cased type name when the AOT path has no `PropertyNameAwareConverter<T>` setting it), call `TryCreate(primitive, fieldName)`, and on failure call `ValidationErrorsContext.AddError(...)` (forwarding `Error.InvalidInput` directly to preserve each violation's reason code and args, otherwise recording the `Detail` string under `fieldName`). Without this, AOT consumers got `null` on validation failure while reflection-mode consumers got a 422 — a divergence that broke "one programming model" between the two modes. The factory `Trellis.Generated.GeneratedValueObjectConverterFactory` is emitted by the generator alongside the per-type converters; consumers wire it in by adding it to their `JsonSerializerOptions.Converters` collection (e.g. inside `AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new GeneratedValueObjectConverterFactory()))`). The generator does not auto-register the factory.
+- **AOT-generated converters participate in the same scope.** When an assembly opts into the source generator (a partial `JsonSerializerContext` decorated with `[GenerateScalarValueConverters]` — the attribute is required; merely referencing the generator from the project is not enough, and an undecorated `JsonSerializerContext` is skipped), the emitted `JsonConverter<TValue>`s mirror `ScalarValueJsonConverterBase<,,>` bit-for-bit — they read `ValidationErrorsContext.CurrentPropertyName` for the field name (falling back to the camel-cased type name when the AOT path has no `PropertyNameAwareConverter<T>` setting it), call `TryCreate(primitive, fieldName)`, and on failure call `ValidationErrorsContext.AddError(...)` (forwarding `Error.InvalidInput` directly to preserve each violation's reason code and args, otherwise recording the `Detail` string under `fieldName`). Without this, AOT consumers got `null` on validation failure while reflection-mode consumers got a 422 — a divergence that broke "one programming model" between the two modes. The factory `Trellis.Generated.GeneratedValueObjectConverterFactory` is emitted by the generator alongside the per-type converters; consumers wire it in by adding it to their `JsonSerializerOptions.Converters` collection (e.g. inside `AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new GeneratedValueObjectConverterFactory()))`). The generator does not auto-register the factory.
 - **`[GenerateScalarValueConverters]` cannot annotate your types for System.Text.Json.** Roslyn source generators all analyze the same original compilation and cannot observe one another's output, so any attribute Trellis emits is invisible to System.Text.Json's generator. Two attributes must therefore be written by hand:
   - The context needs at least one `[JsonSerializable]`. Without it STJ skips the context entirely and never emits the abstract members the base class requires, failing the build with two CS0534 errors that say nothing about the cause. Trellis reports **TRLS059** to explain it.
   - Every value object reachable from a serialized type needs `[JsonConverter]` on the value object itself, for example `[JsonConverter(typeof(ParsableJsonConverter<OrderId>))]`. Otherwise STJ reaches the type transitively, treats it as a POCO, and emits `ObjectCreator = () => new OrderId()` — a constructor that does not exist on a Trellis value object, failing with CS1729 inside STJ's own generated file. When you declare it, the Trellis primitive generator detects the attribute and steps aside rather than emitting a duplicate (which would be CS0579).
@@ -1474,11 +1511,13 @@ app.MapPost("/widgets", async (CreateWidget cmd, IWidgetWriter writer, Cancellat
     return result.ToHttpResponse(
         body: w => new WidgetResponse(w.Id, w.Name),
         configure: opts => opts
-            .CreatedAtRoute("widgets.get", w => new RouteValueDictionary { ["id"] = w.Id })
             .WithETag(w => w.ETag)
             .HonorPrefer());
 });
 ```
+
+> [!WARNING]
+> Do **not** reach for `CreatedAtRoute(...)` / `CreatedAtAction(...)` on a `Result<WriteOutcome<T>>`. `HttpResponseOptionsBuilder<TDomain>` is shared by both response paths, so the call compiles — but only `TrellisHttpResult<TDomain, TBody>` (the `Result<T>` path) consumes it. `TrellisWriteOutcomeResult<TDomain, TBody>` calls `Results.Created(created.Location, …)`, taking the `Location` header **exclusively** from `WriteOutcome<T>.Created.Location`. On a `WriteOutcome` the builder call is silently inert: no error, no warning, and the `Location` you configured is simply absent. Set the location on the `WriteOutcome.Created` your domain returns instead.
 
 ### Paginated `Result<Page<T>>`
 
@@ -1517,6 +1556,13 @@ This is the single end-to-end controller idiom for every verb: send the message,
 > look like a response the filter never touched, but the media type is still Trellis-owned.
 > Stock MVC's automatic model-validation response, in an app
 > that does **not** register the filter, is a plain `ObjectResult` and is exposed.
+>
+> Do not try to identify the producing component from the response body — **there is no body-shape
+> discriminator between these seams.** `code` and `kind` are seeded on every problem ≥ 400 by
+> `AddTrellisProblemDetails`, and `fieldViolations` is written by four different sites including the
+> `AsActionResult` path that never enters the filter, so neither presence nor absence identifies a
+> producer. Whether the filter owns a response is decided by configuration — whether
+> `AddTrellisAspWithScalarValidation` is registered — and nothing else.
 >
 > Listing `application/problem+json` alongside `application/json` does **not** repair it: selection
 > follows list order, so problem+json is inert anywhere but first. Putting it first does repair the
@@ -1613,11 +1659,16 @@ What this canonicalizes (the same shape the Todo sample and generated services u
 
 ```csharp
 return result.ToHttpResponse(opts => opts
-    .WithErrorMapping<DomainConflict>(StatusCodes.Status409Conflict)
-    .WithErrorMapping(err => err is OutOfStockError ? 410 : default));
+    .WithErrorMapping<Error.Conflict>(StatusCodes.Status409Conflict)
+    .WithErrorMapping(err => err is Error.Conflict { Code: "inventory.out-of-stock" }
+        ? StatusCodes.Status410Gone
+        : default));
 ```
 
-The delegate runs first for **every** failure, so it needs a way to say "not mine". Returning `default` (or any value outside `100`–`599`) declines the error and resolution continues down the chain — here to the `DomainConflict` → `409` mapping, then to `TrellisAspOptions`, then to `500`. Aggregate children in the `problems[]` extension are resolved through the same per-call overrides as the top-level status.
+> [!NOTE]
+> `Error` is a **closed** hierarchy — `public abstract record Error` with `private` constructors — so you cannot declare your own `DomainConflict` or `OutOfStockError` subclass. Discriminate your domain conditions with `Error.Code` on the built-in cases, as above, rather than by CLR type.
+
+The delegate runs first for **every** failure, so it needs a way to say "not mine". Returning `default` (or any value outside `100`–`599`) declines the error and resolution continues down the chain — here to the `Error.Conflict` → `409` mapping, then to `TrellisAspOptions`, then to `500`. Aggregate children in the `problems[]` extension are resolved through the same per-call overrides as the top-level status.
 
 ### Actor providers
 
@@ -1678,8 +1729,9 @@ app.MapGet("/products/{id:ProductId}", (ProductId id) => Results.Ok(id));
 
 ## Cross-references
 
-- [trellis-api-core.md](trellis-api-core.md#types) — `Result`, `Result<T>`, `Error`, `WriteOutcome<T>`, `Page<T>`, `RepresentationMetadata`, `EntityTagValue`, `Cursor`, `PreconditionKind`, `ResourceRef`.
+- [trellis-api-core.md](trellis-api-core.md#types) — `Result`, `Result<T>`, `Error`, `Page<T>`, `Cursor`, `ResourceRef`.
+- [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md#use-this-file-when) — the HTTP value objects shared between hosts and clients: `WriteOutcome<T>`, `RepresentationMetadata`, `EntityTagValue`, `PreconditionKind`, `HttpError`, `RetryAfterValue`.
 - [trellis-api-authorization.md](trellis-api-authorization.md#types) — `Actor`, `IActorProvider`, `IAuthorize`, `IAuthorizeResource<TResource>`, resource loaders.
 - [trellis-api-primitives.md](trellis-api-primitives.md#types) — `IScalarValue<TSelf, TPrimitive>`, `Maybe<T>`.
-- [trellis-api-http.md](trellis-api-http.md#type) — Pure HTTP value objects shared between hosts.
+- [trellis-api-http.md](trellis-api-http.md#type) — `HttpClient` result extensions (the client side).
 - [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#webapplicationfactoryextensions) — `WebApplicationFactoryExtensions.CreateClientWithActor` (writes the `X-Test-Actor` header consumed by `DevelopmentActorProvider`).
