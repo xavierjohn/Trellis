@@ -141,7 +141,7 @@ Only the *shape* is validated. Trellis does **not** check the token against the 
 
 | Goal | Relation | Reference |
 | --- | --- | --- |
-| Point at a schema describing *this resource* | `describedby` | POWDER |
+| Point at a schema describing *this resource* | `describedby` | W3C POWDER (Protocol for Web Description Resources) |
 | Point at an API description document (OpenAPI, etc.) | `service-desc` | RFC 8631 |
 
 If neither fits, mint your own extension relation as an absolute URI (`WithLink("https://example.com/rels/my-rel", …)`).

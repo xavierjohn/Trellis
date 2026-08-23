@@ -43,7 +43,9 @@ internal static class LinkHeader
     /// (<c>reg-rel-type = LOALPHA *( LOALPHA | DIGIT | "." | "-" )</c>) or an extension relation
     /// expressed as an absolute URI. Anything else is rejected here rather than at emit time,
     /// so a malformed relation surfaces when the endpoint is configured instead of on every
-    /// request.
+    /// request. The ABNF is written with <c>LOALPHA</c>, but uppercase input is accepted rather
+    /// than rejected: §2.1 makes registered relations case-insensitive, so the token is
+    /// normalized to lowercase instead (see below).
     /// </para>
     /// <para>
     /// The rejection is a security boundary, not only a conformance one. The relation is emitted
@@ -85,6 +87,9 @@ internal static class LinkHeader
             paramName);
     }
 
+    // Accepts either case even though reg-rel-type is defined with LOALPHA: RFC 8288 section 2.1
+    // makes registered relations case-insensitive, so uppercase is valid input that the caller
+    // lowercases for the wire rather than invalid input to reject.
     private static bool IsRegisteredRelationToken(string rel)
     {
         if (!char.IsAsciiLetter(rel[0]))
