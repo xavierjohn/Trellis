@@ -122,8 +122,20 @@ class HttpRequestBlock {
     [string]$Url
     [hashtable]$Headers = @{}
     [string]$Body
-    [nullable[int]]$ExpectedStatus
+    [nullable[int]]$ExpectedStatusMin
+    [nullable[int]]$ExpectedStatusMax
+    [string]$ExpectedStatusText
     [string[]]$ExpectedHeaders = @()
+    [string]$ExpectedContentType
+
+    # Mirrors HttpFileParser's rule for materializing an ExpectedOutcome: once the author
+    # declares anything, the harness asserts exactly what was declared and stops applying
+    # its own default. The two parsers read the same file, so they must agree on this.
+    [bool] HasExpectations() {
+        return $null -ne $this.ExpectedStatusMin -or
+               $this.ExpectedHeaders.Count -gt 0 -or
+               [bool]$this.ExpectedContentType
+    }
 }
 
 function Read-HttpFile([string]$path) {
@@ -142,6 +154,12 @@ function Read-HttpFile([string]$path) {
                 $blocks.Add($current)
                 $current = $null
             }
+            # A rule of nothing but hashes is a visual divider, not a request title. Reset
+            # hard so prose above it -- including a file header that *documents* a directive
+            # by quoting it -- cannot leak expectations onto the first real request below.
+            if ($line -match '^#+$') {
+                $current = $null
+            }
             if ($null -eq $current) {
                 $current = [HttpRequestBlock]::new()
                 $state = 'none'
@@ -156,8 +174,26 @@ function Read-HttpFile([string]$path) {
         if ($null -eq $current) { continue }
 
         if ($state -ne 'body' -and $line -match '^\s*#') {
-            if ($line -match '@expect\s+status:\s*(\d+)') {
-                $current.ExpectedStatus = [int]$Matches[1]
+            # Accept every status form HttpFileParser accepts. Matching only \d+ here would
+            # let `2xx` and `200-299` parse as "no expectation" and quietly fall through to
+            # the default -- an assertion the author wrote but never got.
+            if ($line -match '@expect\s+status:\s*(\d{3})\s*-\s*(\d{3})') {
+                $current.ExpectedStatusMin = [int]$Matches[1]
+                $current.ExpectedStatusMax = [int]$Matches[2]
+                $current.ExpectedStatusText = "$($Matches[1])-$($Matches[2])"
+            }
+            elseif ($line -match '@expect\s+status:\s*(\d)xx') {
+                $current.ExpectedStatusMin = [int]$Matches[1] * 100
+                $current.ExpectedStatusMax = $current.ExpectedStatusMin + 99
+                $current.ExpectedStatusText = "$($Matches[1])xx"
+            }
+            elseif ($line -match '@expect\s+status:\s*(\d+)') {
+                $current.ExpectedStatusMin = [int]$Matches[1]
+                $current.ExpectedStatusMax = [int]$Matches[1]
+                $current.ExpectedStatusText = $Matches[1]
+            }
+            elseif ($line -match '@expect\s+content-type:\s*(\S+)') {
+                $current.ExpectedContentType = $Matches[1]
             }
             elseif ($line -match '@expect\s+header:\s*(\S+)') {
                 $current.ExpectedHeaders += $Matches[1]
@@ -357,15 +393,44 @@ try {
             $responseType = ''
         }
 
-        $expectedText = if ($null -ne $request.ExpectedStatus) { [string]$request.ExpectedStatus } else { '2xx' }
-        $matched = if ($null -eq $status) { $false }
-        elseif ($null -ne $request.ExpectedStatus) { $status -eq $request.ExpectedStatus }
-        else { $status -ge 200 -and $status -lt 300 }
+        # With no expectations declared at all, fall back to the same non-error net the C#
+        # runner uses (100-399) rather than a stricter 2xx, so the two disagree about
+        # nothing. Once anything is declared, assert that and only that.
+        $expectedText = if ($request.ExpectedStatusText) { $request.ExpectedStatusText }
+        elseif ($request.HasExpectations()) { '-' }
+        else { '1xx-3xx' }
 
+        $matched = if ($null -eq $status) { $false }
+        elseif ($null -ne $request.ExpectedStatusMin) {
+            $status -ge $request.ExpectedStatusMin -and $status -le $request.ExpectedStatusMax
+        }
+        elseif ($request.HasExpectations()) { $true }
+        else { $status -ge 100 -and $status -lt 400 }
+
+        # Match HttpFileAssertions: a required header must be present *and non-empty*.
+        # Presence alone would let an empty ETag pass here while the shipped C# runner
+        # rejects it -- the same file, two verdicts.
         $missingHeaders = @()
         foreach ($expectedHeader in $request.ExpectedHeaders) {
-            $present = $responseHeaders.Keys | Where-Object { $_ -ieq $expectedHeader }
-            if (-not $present) { $missingHeaders += $expectedHeader; $matched = $false }
+            $key = $responseHeaders.Keys | Where-Object { $_ -ieq $expectedHeader } | Select-Object -First 1
+            $value = if ($key) { ($responseHeaders[$key] -join ', ') } else { $null }
+            if ([string]::IsNullOrEmpty($value)) {
+                $missingHeaders += $expectedHeader
+                $matched = $false
+            }
+        }
+
+        # Compare media type only: responses carry `; charset=utf-8`, and a directive that
+        # forced authors to spell that out would go unused. This assertion exists because
+        # [Produces("application/json")] rewrites a problem document's media type while
+        # leaving status and body correct -- invisible to every other check here.
+        if ($request.ExpectedContentType) {
+            $actualMediaType = ($responseType -split ';')[0].Trim()
+            $wantedMediaType = ($request.ExpectedContentType -split ';')[0].Trim()
+            if ($actualMediaType -ine $wantedMediaType) {
+                $missingHeaders += "content-type=$(if ($actualMediaType) { $actualMediaType } else { '<none>' })"
+                $matched = $false
+            }
         }
 
         $results.Add([pscustomobject]@{

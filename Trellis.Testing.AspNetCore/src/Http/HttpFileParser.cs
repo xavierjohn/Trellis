@@ -18,6 +18,7 @@ using System.Text.RegularExpressions;
 /// <item><description><c># @name foo</c> metadata line — binds this request's response under key <c>foo</c> for later <c>{{foo.response.*}}</c> substitution.</description></item>
 /// <item><description><c># @expect status: 201</c> / <c>2xx</c> / <c>200-299</c> — optional status assertion.</description></item>
 /// <item><description><c># @expect header: ETag</c> — required response header (must be present and non-empty).</description></item>
+/// <item><description><c># @expect content-type: application/problem+json</c> — required response media type (parameters such as <c>charset</c> are ignored).</description></item>
 /// <item><description><c># @parity: status-only</c> — cross-host parity directive.</description></item>
 /// <item><description><c>@variable = value</c> — file-level variables usable via <c>{{variable}}</c>.</description></item>
 /// <item><description><c>{{named.response.body.jsonPath}}</c> — dotted-path substitution against a prior captured response body (JSON).</description></item>
@@ -75,6 +76,7 @@ public static class HttpFileParser
         string? parity = null;
         int? statusMin = null;
         int? statusMax = null;
+        string? contentType = null;
         var requiredHeaders = new List<string>();
         string? method = null;
         string? url = null;
@@ -89,6 +91,7 @@ public static class HttpFileParser
             parity = null;
             statusMin = null;
             statusMax = null;
+            contentType = null;
             requiredHeaders = [];
             method = null;
             url = null;
@@ -112,9 +115,9 @@ public static class HttpFileParser
             }
 
             ExpectedOutcome? expected = null;
-            if (statusMin.HasValue || requiredHeaders.Count > 0)
+            if (statusMin.HasValue || requiredHeaders.Count > 0 || contentType is not null)
             {
-                expected = new ExpectedOutcome(statusMin, statusMax, requiredHeaders);
+                expected = new ExpectedOutcome(statusMin, statusMax, requiredHeaders, contentType);
             }
 
             // Substitute only file-level vars at parse time. Response placeholders
@@ -168,6 +171,14 @@ public static class HttpFileParser
                 {
                     FlushCurrent();
                 }
+                else if (IsRule(line))
+                {
+                    // A line of nothing but '#' is a divider, not a title, and it closes
+                    // whatever came before it. Without this, prose above the first request
+                    // -- notably a file header that documents a directive by quoting it --
+                    // is parsed as directives and silently imposed on that first request.
+                    ResetCurrent();
+                }
 
                 HandleSeparator(line, ref title, ref parity);
                 continue;
@@ -216,7 +227,7 @@ public static class HttpFileParser
 
                 if (after.StartsWith("@expect", StringComparison.OrdinalIgnoreCase))
                 {
-                    ParseExpect(after.Substring("@expect".Length).Trim(), ref statusMin, ref statusMax, requiredHeaders);
+                    ParseExpect(after.Substring("@expect".Length).Trim(), ref statusMin, ref statusMax, ref contentType, requiredHeaders);
                     continue;
                 }
 
@@ -328,6 +339,19 @@ public static class HttpFileParser
         return sb.ToString();
     }
 
+    private static bool IsRule(string line)
+    {
+        foreach (var c in line)
+        {
+            if (c != '#')
+            {
+                return false;
+            }
+        }
+
+        return line.Length > 0;
+    }
+
     private static void HandleSeparator(string line, ref string? title, ref string? parity)
     {
         // Take everything after leading '#' characters as the title (trimmed).
@@ -387,9 +411,10 @@ public static class HttpFileParser
         return (parts[0].ToUpperInvariant(), parts[1]);
     }
 
-    private static void ParseExpect(string payload, ref int? statusMin, ref int? statusMax, List<string> requiredHeaders)
+    private static void ParseExpect(string payload, ref int? statusMin, ref int? statusMax, ref string? contentType, List<string> requiredHeaders)
     {
         // payload like "status: 201" or "header: ETag" or "status: 2xx"
+        // or "content-type: application/problem+json"
         var colon = payload.IndexOf(':');
         if (colon < 0)
         {
@@ -405,6 +430,13 @@ public static class HttpFileParser
             {
                 statusMin = min;
                 statusMax = max;
+            }
+        }
+        else if (string.Equals(key, "content-type", StringComparison.OrdinalIgnoreCase))
+        {
+            if (value.Length > 0)
+            {
+                contentType = value;
             }
         }
         else if (string.Equals(key, "header", StringComparison.OrdinalIgnoreCase))

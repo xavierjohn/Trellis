@@ -113,8 +113,14 @@ cd Examples/Showcase
 
 `-StartHost` starts the host, waits for it to answer, replays, and stops it; omit it to run
 against a host you started yourself. Every request is sent in file order and checked against its
-`# @expect status:` and `# @expect header:` directives, and the script exits non-zero if any
-request no longer does what the file says it does.
+`# @expect status:`, `# @expect header:`, and `# @expect content-type:` directives, and the
+script exits non-zero if any request no longer does what the file says it does.
+
+The content-type directive is on every error response for a specific reason. Applying
+`[Produces("application/json")]` to a controller rewrites the automatic model-validation 422
+from `application/problem+json` to `application/json` while leaving its status *and* its
+ProblemDetails body intact — so the response stops conforming to RFC 9457 and every
+status-and-body assertion still passes. Content type is the only observable that moves.
 
 The transcript it writes is the more useful half. It records each response in full — status,
 headers, and pretty-printed body — so that when the `Error` ADT or the ProblemDetails mapping

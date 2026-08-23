@@ -20,6 +20,12 @@
 # directives below, starting and stopping the host for you:
 #   ./replay-api-http.ps1 -Environment mvc -StartHost
 #
+# Every failure response asserts `# @expect content-type: application/problem+json`.
+# That is not decoration. `[Produces("application/json")]` on a controller silently
+# rewrites a problem document's media type while leaving its status and body intact,
+# so a suite that checks only status and body passes while the response has stopped
+# conforming to RFC 9457. Content type is the only observable that moves.
+#
 # Open <host>/scalar/v1 for the interactive API explorer.
 #
 # Seed accounts created on startup:
@@ -58,11 +64,13 @@ Accept: application/json
 ### rejected as 422 from Error.InvalidInput.ForField("cursor", "cursor.malformed") —
 ### same code path as the dedicated malformed-cursor case below.)
 # @expect status: 422
+# @expect content-type: application/problem+json
 GET {{host}}/api/accounts?limit=5&cursor=REPLACE_WITH_NEXT_CURSOR
 Accept: application/json
 
 ### List accounts — malformed cursor (422 from Error.InvalidInput.ForField("cursor", "cursor.malformed"))
 # @expect status: 422
+# @expect content-type: application/problem+json
 GET {{host}}/api/accounts?cursor=not-a-real-cursor
 Accept: application/json
 
@@ -89,6 +97,7 @@ Accept: application/json
 
 ### Get account — not found (404 from Error.NotFound)
 # @expect status: 404
+# @expect content-type: application/problem+json
 GET {{host}}/api/accounts/00000000-0000-0000-0000-000000000099
 Accept: application/json
 
@@ -97,6 +106,11 @@ Accept: application/json
 ### `{id:AccountId}` template rejects any value that fails AccountId.TryParse
 ### before the request ever reaches the endpoint. The response is a routing
 ### 404 — no handler is invoked, no model-binding error is produced.
+### Note the deliberate absence of a `content-type` expectation here: routing
+### rejects the request before Trellis' error mapping runs, so this 404 has an
+### empty body and no media type at all — unlike the application 404 above,
+### which is a problem document. The two are different failures wearing the
+### same status code.
 # @expect status: 404
 GET {{host}}/api/accounts/not-a-guid
 Accept: application/json
@@ -117,6 +131,7 @@ Accept: application/json
 ### Open account — invalid Money (negative amount fails value-level validation → 422)
 ### @parity: status-only
 # @expect status: 422
+# @expect content-type: application/problem+json
 POST {{host}}/api/accounts
 Content-Type: application/json
 Accept: application/json
@@ -142,12 +157,14 @@ POST {{host}}/api/accounts/{{aliceChecking}}/unfreeze
 
 ### Unfreeze an Active account (422 from Error.InvariantViolation — invalid state transition)
 # @expect status: 422
+# @expect content-type: application/problem+json
 POST {{host}}/api/accounts/{{bobChecking}}/unfreeze
 
 ### Close account — fails (409 from Error.Conflict) because balance is non-zero.
 ### Close requires the balance to be exactly zero; withdraw or transfer the
 ### remaining funds first, then retry.
 # @expect status: 409
+# @expect content-type: application/problem+json
 POST {{host}}/api/accounts/{{bobChecking}}/close
 
 ###############################################################################
@@ -165,6 +182,7 @@ Content-Type: application/json
 
 ### Deposit — zero amount (422 from BankAccount.Deposit domain rule)
 # @expect status: 422
+# @expect content-type: application/problem+json
 POST {{host}}/api/accounts/{{aliceChecking}}/deposit
 Content-Type: application/json
 
@@ -183,6 +201,7 @@ Content-Type: application/json
 
 ### Withdraw above daily limit (409 from Error.Conflict)
 # @expect status: 409
+# @expect content-type: application/problem+json
 POST {{host}}/api/accounts/{{aliceChecking}}/withdraw
 Content-Type: application/json
 
@@ -196,6 +215,7 @@ Content-Type: application/json
 ###   * 422 Error.InvalidInput            when the code is not exactly six digits
 ### Use a six-digit code other than "000000" (e.g. "123456") for the happy path.
 # @expect status: 401
+# @expect content-type: application/problem+json
 POST {{host}}/api/accounts/{{aliceChecking}}/secure-withdraw
 Content-Type: application/json
 
@@ -251,6 +271,7 @@ Idempotency-Key: {{transferIdempotencyKey}}
 ### Sending a different body under the same key is treated as accidental reuse rather
 ### than a replay. The middleware refuses to silently overwrite the captured snapshot.
 # @expect status: 422
+# @expect content-type: application/problem+json
 POST {{host}}/api/transfers/{{aliceChecking}}
 Content-Type: application/json
 Idempotency-Key: {{transferIdempotencyKey}}
@@ -266,6 +287,7 @@ Idempotency-Key: {{transferIdempotencyKey}}
 ### without an `Idempotency-Key` header fails fast at the middleware boundary
 ### rather than executing the transfer without a retry-safe contract.
 # @expect status: 400
+# @expect content-type: application/problem+json
 POST {{host}}/api/transfers/{{aliceChecking}}
 Content-Type: application/json
 
@@ -281,5 +303,6 @@ Content-Type: application/json
 
 ### Trigger fault (500 with stable faultId in Problem Details)
 # @expect status: 500
+# @expect content-type: application/problem+json
 GET {{host}}/api/diagnostics/fault
 Accept: application/json
