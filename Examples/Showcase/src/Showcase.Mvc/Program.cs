@@ -1,7 +1,12 @@
 ﻿using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
+using Trellis;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
 using Trellis.Asp.Idempotency;
@@ -78,6 +83,38 @@ builder.Services.AddAuthorization();
 // samples — production hosts would register a distributed store implementation.
 builder.Services.AddTrellisIdempotency();
 builder.Services.AddInMemoryIdempotencyStore();
+
+// Telemetry. The showcase is the only place Trellis' own instrumentation can be watched
+// end to end, so both hosts export it and the api.http replay becomes a trace you can read.
+//
+// The endpoint is deliberately not set here. The OTLP exporter already defaults to
+// http://localhost:4317 and honours OTEL_EXPORTER_OTLP_ENDPOINT, which is what Aspire sets
+// when it launches a resource -- so this works both under Aspire and hand-started against a
+// standalone dashboard. Hardcoding a port would break the second case: a dashboard running
+// in a container publishes whatever its host maps, not the ports printed in its banner.
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddTrellisPrimitivesInstrumentation();
+
+        // ROP forensics spans every Bind/Map/Tap and will flood a collector, so it stays a
+        // development affordance -- the same advice integration-observability.md gives.
+        // This host has no mediator pipeline (controllers call BankingWorkflow directly),
+        // so there is no Trellis.Mediator source to subscribe to.
+        if (builder.Environment.IsDevelopment())
+            tracing.AddTrellisResultsInstrumentation();
+        tracing.AddOtlpExporter();
+    })
+    .WithMetrics(metrics => metrics
+        .AddTrellisValidationInstrumentation()
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddOtlpExporter());
 
 var app = builder.Build();
 

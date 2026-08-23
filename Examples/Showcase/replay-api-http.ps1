@@ -254,6 +254,12 @@ function Start-ShowcaseHost {
     $projectPath = Join-Path $scriptRoot $hostProjects[$Environment]
     Write-Host "Starting $Environment host from $projectPath ..." -ForegroundColor DarkGray
 
+    # The batch processors only export on a scheduled tick, and the defaults (5s for spans,
+    # 60s for metrics) are both longer than a replay lasts -- so a run would end having sent
+    # nothing. The child process inherits these.
+    $env:OTEL_BSP_SCHEDULE_DELAY = '1000'
+    $env:OTEL_METRIC_EXPORT_INTERVAL = '1000'
+
     $startArgs = @{
         FilePath     = 'dotnet'
         ArgumentList = @('run', '-c', 'Release', '--project', $projectPath)
@@ -485,6 +491,12 @@ try {
 }
 finally {
     if ($null -ne $hostProcess -and -not $hostProcess.HasExited) {
+        # Stop-Process is a kill, not a shutdown: the host never runs its shutdown path, so
+        # OpenTelemetry never flushes and the telemetry this replay just produced is thrown
+        # away. Leave a window wider than the export interval set in Start-ShowcaseHost.
+        Write-Host "Draining telemetry ..." -ForegroundColor DarkGray
+        Start-Sleep -Seconds 3
+
         Write-Host "Stopping $Environment host (pid $($hostProcess.Id)) ..." -ForegroundColor DarkGray
         Stop-Process -Id $hostProcess.Id -Force -ErrorAction SilentlyContinue
     }

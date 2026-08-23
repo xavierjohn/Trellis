@@ -143,6 +143,38 @@ neither. Transcripts are git-ignored, because each run mints fresh account ids a
 A replay assumes a freshly started host: the expectations encode the seeded balances and account
 statuses, and the idempotent-transfer block expects an empty idempotency store.
 
+### Telemetry
+
+Both hosts export OpenTelemetry traces and metrics over OTLP, including Trellis' own
+instrumentation — so a replay is not just a pass/fail line, it is a trace you can open and read.
+
+| Registration | Signal | What it shows |
+|---|---|---|
+| `AddTrellisMediatorInstrumentation()` | traces | one span per command/query dispatch (Minimal API host only — the MVC host calls `BankingWorkflow` directly) |
+| `AddTrellisPrimitivesInstrumentation()` | traces | value-object construction and parse failures |
+| `AddTrellisResultsInstrumentation()` | traces | ROP forensics: every `Bind`, `Map`, and `Tap` |
+| `AddTrellisValidationInstrumentation()` | metrics | validation failure counts tagged by reason code |
+
+ROP instrumentation is registered only in Development. It spans every railway step and will
+flood a collector, which is why [the observability guide](../../docs/docfx_project/articles/integration-observability.md)
+treats it as an incident tool rather than a default.
+
+No endpoint is configured in code. The exporter defaults to `http://localhost:4317` and honours
+`OTEL_EXPORTER_OTLP_ENDPOINT`, which Aspire sets for you when it launches the host — so pointing
+at a dashboard is a matter of starting one:
+
+```pwsh
+docker run --rm -it -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard:latest
+```
+
+Note the port mapping rather than the ports the dashboard prints on startup: its banner
+advertises the OTLP listener as `18889`, but that is the port *inside* the container. What the
+exporter can reach is whatever the host publishes.
+
+When `-StartHost` is used, the script stops the host with a kill rather than a shutdown, so it
+shortens the export interval and pauses to let the batch drain first. Without that, a replay
+finishes and exits before anything is ever sent.
+
 ## How to test
 
 ```pwsh
