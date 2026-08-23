@@ -143,6 +143,11 @@ function Read-HttpFile([string]$path) {
     $current = $null
     $state = 'none'
 
+    # Mirrors HttpFileParser's directive test: strip the leading '#' run, then the remainder
+    # must BEGIN with @expect. Anchoring here is what keeps the two parsers agreeing on
+    # absence as well as presence.
+    $directive = '^\s*#+\s*@expect\s+'
+
     foreach ($line in [System.IO.File]::ReadAllLines($path)) {
         # A ### line both separates requests and titles the one that follows. A request
         # is often preceded by several ### commentary lines, so only the first one
@@ -177,25 +182,33 @@ function Read-HttpFile([string]$path) {
             # Accept every status form HttpFileParser accepts. Matching only \d+ here would
             # let `2xx` and `200-299` parse as "no expectation" and quietly fall through to
             # the default -- an assertion the author wrote but never got.
-            if ($line -match '@expect\s+status:\s*(\d{3})\s*-\s*(\d{3})') {
+            #
+            # Unanchored, prose such as `# use @expect status: 404 to assert` and
+            # commented-out `# # @expect ...` lines would become live assertions here while
+            # staying inert in the C# parser.
+            if ($line -match "${directive}status:\s*(\d{3})\s*-\s*(\d{3})") {
                 $current.ExpectedStatusMin = [int]$Matches[1]
                 $current.ExpectedStatusMax = [int]$Matches[2]
                 $current.ExpectedStatusText = "$($Matches[1])-$($Matches[2])"
             }
-            elseif ($line -match '@expect\s+status:\s*(\d)xx') {
+            elseif ($line -match "${directive}status:\s*(\d)xx") {
                 $current.ExpectedStatusMin = [int]$Matches[1] * 100
                 $current.ExpectedStatusMax = $current.ExpectedStatusMin + 99
                 $current.ExpectedStatusText = "$($Matches[1])xx"
             }
-            elseif ($line -match '@expect\s+status:\s*(\d+)') {
+            elseif ($line -match "${directive}status:\s*(\d+)") {
                 $current.ExpectedStatusMin = [int]$Matches[1]
                 $current.ExpectedStatusMax = [int]$Matches[1]
                 $current.ExpectedStatusText = $Matches[1]
             }
-            elseif ($line -match '@expect\s+content-type:\s*(\S+)') {
-                $current.ExpectedContentType = $Matches[1]
+            elseif ($line -match "${directive}content-type:\s*(.+)$") {
+                # Capture the rest of the line, not just the first token: a directive may carry
+                # parameters (`application/problem+json; charset=utf-8`). Matching ignores them,
+                # but the C# parser stores the full value and these two must not diverge.
+                $contentType = $Matches[1].Trim()
+                if ($contentType) { $current.ExpectedContentType = $contentType }
             }
-            elseif ($line -match '@expect\s+header:\s*(\S+)') {
+            elseif ($line -match "${directive}header:\s*(\S+)") {
                 $current.ExpectedHeaders += $Matches[1]
             }
             continue

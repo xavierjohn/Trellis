@@ -182,7 +182,7 @@ Do not assert a content type on a failure produced *before* the endpoint runs. A
 
 | Type | Declaration | Description |
 | --- | --- | --- |
-| `ExpectedOutcome` | `public sealed record ExpectedOutcome(int? StatusMin, int? StatusMax, IReadOnlyList<string> RequiredHeaders, string? ContentType = null)` | Parsed `# @expect` status, header, and content-type assertions. `ContentType` holds a bare media type; parameters such as `charset` are ignored when matching. |
+| `ExpectedOutcome` | `public sealed record ExpectedOutcome(int? StatusMin, int? StatusMax, IReadOnlyList<string> RequiredHeaders, string? ContentType = null)` | Parsed `# @expect` status, header, and content-type assertions. `ContentType` is the expected content-type value exactly as written in the file; it is not normalized on write, and parameters such as `charset` are ignored when matching. |
 | `HttpFileRequest` | `public sealed record HttpFileRequest(string Title, string Method, string Url, IReadOnlyDictionary<string, string> Headers, string? Body, string? Name, ExpectedOutcome? Expected, string? ParityMode = null)` | One parsed request. `Url` and `Body` may contain deferred response placeholders. |
 | `HttpFileResult` | `public sealed record HttpFileResult(HttpFileRequest Request, HttpResponseMessage Response, string? Body, ExpectedOutcome? Expected)` | One executed request and response. Caller owns `Response` disposal. |
 | `HttpFileTheoryData` | `public static class HttpFileTheoryData` | Provides `FromFile(string path, IReadOnlyDictionary<string,string>? vars = null) : IEnumerable<object[]>` for xUnit-style member data without taking an xUnit dependency. |

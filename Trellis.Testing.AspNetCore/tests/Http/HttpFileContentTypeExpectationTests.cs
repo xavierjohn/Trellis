@@ -65,6 +65,24 @@ public class HttpFileContentTypeExpectationTests
     }
 
     [Fact]
+    public void Parser_keeps_content_type_parameters_verbatim()
+    {
+        // The value is stored exactly as written -- not normalized down to a bare media type --
+        // so the PowerShell replay parser must capture the rest of the line rather than the first
+        // whitespace-delimited token. Matching still ignores the parameters.
+        const string file = """
+            ### Fetch a thing
+            # @expect content-type: application/problem+json; charset=utf-8
+            GET {{host}}/thing
+            """;
+
+        var requests = HttpFileParser.Parse(file);
+
+        requests.Should().ContainSingle();
+        requests[0].Expected!.ContentType.Should().Be("application/problem+json; charset=utf-8");
+    }
+
+    [Fact]
     public void Parser_creates_an_expectation_when_content_type_is_the_only_directive()
     {
         const string file = """
