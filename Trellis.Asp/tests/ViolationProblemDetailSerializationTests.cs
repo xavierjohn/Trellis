@@ -40,10 +40,10 @@ public class ViolationProblemDetailSerializationTests
             ValidationCodes.Unspecified,
             "Email address is not valid.",
             new ViolationLocation("body", "/email", null),
-            new Dictionary<string, string> { ["min"] = "3" }));
+            new Dictionary<string, ValidationArgValue> { ["min"] = 3 }));
 
         json.GetProperty("detail").GetString().Should().Be("Email address is not valid.");
-        json.GetProperty("args").GetProperty("min").GetString().Should().Be("3");
+        json.GetProperty("args").GetProperty("min").GetInt32().Should().Be(3);
     }
 
     [Fact]

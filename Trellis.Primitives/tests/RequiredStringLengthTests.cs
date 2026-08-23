@@ -269,7 +269,7 @@ public class RequiredStringLengthTests
         // A client rendering "must be at most 10 characters" in its own locale needs the bound as
         // data; recovering it by parsing the English message is the failure mode args exist to end.
         violation.ReasonCode.Should().Be(ValidationCodes.StringMaxLength);
-        violation.Args.Should().Contain(new KeyValuePair<string, string>("maxLength", "10"));
+        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("maxLength", 10));
     }
 
     [Fact]
@@ -278,6 +278,6 @@ public class RequiredStringLengthTests
         var violation = ((Error.InvalidInput)UserName.TryCreate("ab").UnwrapError()).Fields[0];
 
         violation.ReasonCode.Should().Be(ValidationCodes.StringMinLength);
-        violation.Args.Should().Contain(new KeyValuePair<string, string>("minLength", "3"));
+        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("minLength", 3));
     }
 }

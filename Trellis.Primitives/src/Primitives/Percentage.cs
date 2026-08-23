@@ -85,12 +85,12 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     public static Percentage Full => _full;
 
     // Field-normalization + InvalidInput failure in one place (default field name: "percentage").
-    private static Result<Percentage> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
+    private static Result<Percentage> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<Percentage>(
             Error.InvalidInput.ForField(fieldName.NormalizeFieldName("percentage"), reasonCode, args, message));
 
     // Field-normalization + InvalidInput failure in one place (default field name: "fraction").
-    private static Result<Percentage> InvalidFraction(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
+    private static Result<Percentage> InvalidFraction(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<Percentage>(
             Error.InvalidInput.ForField(fieldName.NormalizeFieldName("fraction"), reasonCode, args, message));
 
@@ -98,13 +98,13 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     // code: a client that cannot tell which end failed cannot say "over 100%" versus "negative", and
     // the generator's range checks are directional, so collapsing them here would make Percentage
     // disagree with a generated primitive on the same input.
-    private static ImmutableDictionary<string, string> PercentMinArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
+    private static ImmutableDictionary<string, ValidationArgValue> PercentMinArgs { get; } = ValidationArgs.Of("comparisonValue", 0);
 
-    private static ImmutableDictionary<string, string> PercentMaxArgs { get; } = ValidationArgs.Of("comparisonValue", "100");
+    private static ImmutableDictionary<string, ValidationArgValue> PercentMaxArgs { get; } = ValidationArgs.Of("comparisonValue", 100);
 
-    private static ImmutableDictionary<string, string> FractionMinArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
+    private static ImmutableDictionary<string, ValidationArgValue> FractionMinArgs { get; } = ValidationArgs.Of("comparisonValue", 0);
 
-    private static ImmutableDictionary<string, string> FractionMaxArgs { get; } = ValidationArgs.Of("comparisonValue", "1");
+    private static ImmutableDictionary<string, ValidationArgValue> FractionMaxArgs { get; } = ValidationArgs.Of("comparisonValue", 1);
 
     // No-span validation core. Every public factory opens exactly one span, then delegates here.
     private static Result<Percentage> Validate(decimal value, string? fieldName) => value switch

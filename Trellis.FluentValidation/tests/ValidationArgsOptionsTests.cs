@@ -39,7 +39,7 @@ public class ValidationArgsOptionsTests
 
         var violation = Violate(MinimumAgeRule, new Subject(N: 12), options);
 
-        violation.Args!["minAge"].Should().Be("18");
+        violation.Args!["minAge"].Should().Be(new ValidationArgValue.Number(18));
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class ValidationArgsOptionsTests
             new Subject(N: 1),
             options);
 
-        violation.Args!["comparisonValue"].Should().Be("5");
+        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Number(5));
         violation.Args.Should().NotContainKey("propertyName",
             "PropertyName is on the universal denylist, so widening cannot reintroduce it");
     }
@@ -145,7 +145,7 @@ public class ValidationArgsOptionsTests
 
         var violation = Violate(v => v.RuleFor(x => x.N).GreaterThan(5), new Subject(N: 1), options);
 
-        violation.Args!["comparisonValue"].Should().Be("5");
+        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Number(5));
     }
 
     [Fact]

@@ -34,11 +34,11 @@ public class Money : ValueObject
 
     // The comparison operand shared by every "must not be negative" / "must be positive" check here.
     // Hoisted so the bound reaches the client structurally rather than only inside English prose.
-    private static ImmutableDictionary<string, string> ZeroArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
+    private static ImmutableDictionary<string, ValidationArgValue> ZeroArgs { get; } = ValidationArgs.Of("comparisonValue", 0);
 
     // The two currencies that failed to match. A client rendering its own message needs both, and
     // ISO 4217 codes are validated symbols rather than free text, so they are safe to echo.
-    private static ImmutableDictionary<string, string> MismatchArgs(CurrencyCode expected, CurrencyCode actual) =>
+    private static ImmutableDictionary<string, ValidationArgValue> MismatchArgs(CurrencyCode expected, CurrencyCode actual) =>
         ValidationArgs.Of("expected", expected.Value, "actual", actual.Value);
 
     private Money(decimal amount, CurrencyCode currency)

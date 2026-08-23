@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — **BREAKING**: violation args are a closed union, so numbers reach the wire as numbers
+
+`FieldViolation.Args` and `RuleViolation.Args` change from `ImmutableDictionary<string, string>` to `ImmutableDictionary<string, ValidationArgValue>`, a closed union of `Text`, `Number`, `Bool`, and `List`. A numeric operand is now emitted as a JSON number rather than a quoted string:
+
+```jsonc
+// before
+"args": { "minLength": "3", "maxLength": "50" }
+// after
+"args": { "minLength": 3, "maxLength": 50 }
+```
+
+Args exist so a client can render its own localized message instead of parsing the server's English prose. Quoting every operand undercut that: a client comparing a bound against a length had to parse it back out of a string and guess at the format, which is the same recovery-by-parsing the args were introduced to end. The union keeps the property that motivated `string` in the first place — a producer still cannot hand over an arbitrary `object` and let culture-sensitive formatting leak onto the wire — because `Number` holds a `decimal` and is written invariantly.
+
+`Number` is backed by `decimal` alone rather than one case per CLR numeric type: JSON has a single number type, so a client could not observe the distinction, and `decimal` is the widest choice that keeps integers exact. `List` is what lets a violation name a set without a producer inventing a delimiter a client would then have to know to split on.
+
+The cases are JSON's self-describing values — its three scalars, plus a list of them. `null` and objects are deliberately absent: an arg with no value is an arg that is simply not there, so `null` would give the dictionary two spellings of one thing, and an object would require a schema per reason code to interpret, giving up the property that makes a closed union worth having and turning args into an open-ended payload to echo back to a caller. `Bool` earns its place on the same principle even though a boolean is rarely interpolated into a message: without it a producer would write `Text("true")`, reintroducing the quoted-primitive problem this change removes, and a boolean from a non-.NET producer would fail the whole payload rather than one arg.
+
+**Migrating.** Most call sites need no change — `string`, `int`, `long`, and `decimal` all convert implicitly, so `ValidationArgs.Of("max", 255)` compiles as it did. Two things do change:
+
+- **A numeric operand written as a quoted string keeps compiling and stays quoted.** `ValidationArgs.Of("comparisonValue", "0")` is now `Text("0")`, not a number. Drop the quotes to get the new shape. Every framework producer has been de-quoted, including the code emitted by the `Required*` source generator, so generated value objects and the built-in primitives emit numbers without any consumer action.
+- **The `IFormattable` overloads are removed.** Keeping them would have made every numeric call *ambiguous*: an `int` converts to `IFormattable` by boxing and to `ValidationArgValue` by a user-defined conversion, neither target is better than the other, and `Of("max", 255)` fails to compile with `CS0121`. Their absence is what lets the implicit conversions bind. Format a value with no numeric or textual meaning of its own — a timestamp, say — explicitly and invariantly at the call site.
+
+`ValidationArgs.Of` also gains a `params` overload taking name/value pairs, retiring the previous ceiling of two. A rule with more operands is ordinary — a scale-and-precision failure carries four — and previously had to abandon `ValidationArgs` and assemble the dictionary by hand.
+
+**Deserializing a number rejects what it cannot hold exactly.** `Utf8JsonReader.GetDecimal()` rounds silently — `1E-100` reads back as `0`, and `0.00000000000000000000000000009` as `0.0000000000000000000000000001` — and it raises `FormatException` on overflow, which is not the exception a converter is expected to surface. Since an arg is the operand a client renders a bound from, a rounded value states a limit the producer never wrote; `ValidationArgValueJsonConverter` throws `JsonException` for such tokens instead. Exactness is judged on significant digits rather than on text, so `1e2`, `1.50` and `-0` are accepted normally. The same rule governs `Trellis.FluentValidation`'s promotion of an approved string arg to `Number`, which now requires an exact invariant round-trip before promoting.
+
+Assertions comparing an arg to a bare string need updating: `Args["max"].Should().Be("255")` becomes `Args["max"].Should().Be(new ValidationArgValue.Number(255))`.
+
+The FluentValidation projection's disclosure gate is **unchanged**. It still decides on the rendered string, because it decides by comparing against the message FluentValidation produced and that message is text; an arg is lifted onto the union only after it has already passed. The lift cannot admit anything the gate rejected. Enums remain `Text` — they are encoded by name, and a client matching on the name would otherwise be handed an ordinal it cannot interpret.
+
+`ValidationArgValueJsonConverter` is public and applied to the union by attribute, so no registration is needed. It cannot be internal: the `System.Text.Json` source generator fails with `SYSLIB1220` when a trimmed or AOT-published `JsonSerializerContext` roots a violation payload whose converter it cannot access.
+
 ### Added — `WithLink(rel, href)` for RFC 8288 `Link` relations
 
 `HttpResponseOptionsBuilder<TDomain>.WithLink(rel, href)` advertises a link relation on a response — most usefully a schema for the resource, so a client can validate before it sends rather than only learning what went wrong afterwards. Trellis previously had no way to emit a `Link` header at all: the only one was the hardcoded `next`/`prev` pair inside the pagination path.

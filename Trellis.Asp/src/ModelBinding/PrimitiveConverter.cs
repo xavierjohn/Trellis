@@ -38,14 +38,14 @@ internal static class PrimitiveConverter
     /// <c>args</c>, where it survives structurally instead of only inside the English message.
     /// </para>
     /// </remarks>
-    private static Error.InvalidInput Invalid(string reasonCode, string detail, ImmutableDictionary<string, string>? args = null) =>
+    private static Error.InvalidInput Invalid(string reasonCode, string detail, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         new(EquatableArray.Create(
             new FieldViolation(InputPointer.Root, reasonCode, args, detail)))
         {
             Detail = detail,
         };
 
-    private static ImmutableDictionary<string, string> ByteRangeArgs { get; } = ValidationArgs.Of("min", "0", "max", "255");
+    private static ImmutableDictionary<string, ValidationArgValue> ByteRangeArgs { get; } = ValidationArgs.Of("min", 0, "max", 255);
 
     /// <summary>
     /// Converts a string value to the specified primitive type.

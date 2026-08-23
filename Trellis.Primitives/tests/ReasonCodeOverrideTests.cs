@@ -114,8 +114,8 @@ public class ReasonCodeOverrideTests
     {
         var violation = FirstViolation(AccountReference.TryCreate("ab").UnwrapError());
 
-        violation.Args.Should().Contain("minLength", "3");
-        violation.Args.Should().Contain("totalLength", "2");
+        violation.Args.Should().Contain("minLength", new ValidationArgValue.Number(3));
+        violation.Args.Should().Contain("totalLength", new ValidationArgValue.Number(2));
     }
 
     [Fact]
@@ -123,8 +123,8 @@ public class ReasonCodeOverrideTests
     {
         var violation = FirstViolation(AccountReference.TryCreate("abcdefghi").UnwrapError());
 
-        violation.Args.Should().Contain("maxLength", "8");
-        violation.Args.Should().Contain("totalLength", "9");
+        violation.Args.Should().Contain("maxLength", new ValidationArgValue.Number(8));
+        violation.Args.Should().Contain("totalLength", new ValidationArgValue.Number(9));
     }
 
     [Fact]

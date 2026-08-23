@@ -1,5 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  CP0002 on FieldViolation and RuleViolation (constructor, Deconstruct, and get_Args): the Args
+  member changed from ImmutableDictionary<string, string> to
+  ImmutableDictionary<string, ValidationArgValue>, a closed union of Text, Number, Bool and List.
+
+  Args exist so a client can render its own localized message rather than parse the server's
+  prose, and a string-valued dictionary forced every numeric operand onto the wire quoted -
+  "maxLength": "50" - so a client comparing a bound against a length had to parse it back out and
+  guess at the format. That is the recovery-by-parsing the args were introduced to end.
+
+  Deliberate wire-shape and source break, called out in the breaking-changes section of the
+  release notes. Regenerating this file drops hand-written comments; restore them when it is
+  regenerated, because the rationale is the point of recording the break here.
+-->
 <Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <Suppression>
     <DiagnosticId>CP0002</DiagnosticId>
@@ -108,7 +122,49 @@
   </Suppression>
   <Suppression>
     <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.FieldViolation.#ctor(Trellis.InputPointer,System.String,System.Collections.Immutable.ImmutableDictionary{System.String,System.String},System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.FieldViolation.Deconstruct(Trellis.InputPointer@,System.String@,System.Collections.Immutable.ImmutableDictionary{System.String,System.String}@,System.String@)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.FieldViolation.get_Args</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
     <Target>M:Trellis.ResultsTraceProviderBuilderExtensions.AddResultsInstrumentation(OpenTelemetry.Trace.TracerProviderBuilder)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.RuleViolation.#ctor(System.String,Trellis.EquatableArray{Trellis.InputPointer},System.Collections.Immutable.ImmutableDictionary{System.String,System.String},System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.RuleViolation.Deconstruct(System.String@,Trellis.EquatableArray{Trellis.InputPointer}@,System.Collections.Immutable.ImmutableDictionary{System.String,System.String}@,System.String@)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.RuleViolation.get_Args</Target>
     <Left>lib/net10.0/Trellis.Core.dll</Left>
     <Right>lib/net10.0/Trellis.Core.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>

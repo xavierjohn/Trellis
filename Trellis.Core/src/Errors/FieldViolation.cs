@@ -15,8 +15,9 @@ using System.Collections.Immutable;
 /// dot-separated namespaces with <c>kebab-case</c> inside a segment.
 /// </param>
 /// <param name="Args">
-/// Optional structured arguments for the renderer (e.g. <c>{ "min": "3", "max": "50" }</c>
-/// for a length-range violation). Compared by value contents.
+/// Optional structured arguments for the renderer (e.g. <c>{ "min": 3, "max": 50 }</c>
+/// for a length-range violation). Build them with <see cref="ValidationArgs"/>. Compared by
+/// value contents.
 /// </param>
 /// <param name="Detail">
 /// Optional caller-supplied detail string. When non-null the boundary renderer prefers
@@ -25,7 +26,7 @@ using System.Collections.Immutable;
 public sealed record FieldViolation(
     InputPointer Field,
     string ReasonCode,
-    ImmutableDictionary<string, string>? Args = null,
+    ImmutableDictionary<string, ValidationArgValue>? Args = null,
     string? Detail = null)
 {
     /// <summary>
@@ -55,7 +56,7 @@ public sealed record FieldViolation(
     public override int GetHashCode() =>
         HashCode.Combine(Field, ReasonCode, Detail, ArgsHash(Args));
 
-    internal static bool DictionaryEquals(ImmutableDictionary<string, string>? a, ImmutableDictionary<string, string>? b)
+    internal static bool DictionaryEquals(ImmutableDictionary<string, ValidationArgValue>? a, ImmutableDictionary<string, ValidationArgValue>? b)
     {
         if (ReferenceEquals(a, b)) return true;
         var ca = a?.Count ?? 0;
@@ -63,12 +64,12 @@ public sealed record FieldViolation(
         if (ca != cb) return false;
         if (ca == 0) return true;
         foreach (var kv in a!)
-            if (!b!.TryGetValue(kv.Key, out var v) || !string.Equals(v, kv.Value, StringComparison.Ordinal))
+            if (!b!.TryGetValue(kv.Key, out var v) || !Equals(v, kv.Value))
                 return false;
         return true;
     }
 
-    internal static int ArgsHash(ImmutableDictionary<string, string>? p)
+    internal static int ArgsHash(ImmutableDictionary<string, ValidationArgValue>? p)
     {
         if (p is null || p.Count == 0) return 0;
         var hc = 0;

@@ -201,7 +201,7 @@ public static class ValidationErrorsContext
         string fieldName,
         string code,
         string message,
-        IReadOnlyDictionary<string, string>? args = null)
+        IReadOnlyDictionary<string, ValidationArgValue>? args = null)
     {
         var collector = s_current.Value;
         if (collector is null)

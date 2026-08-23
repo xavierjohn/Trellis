@@ -79,7 +79,7 @@ public class ValidationErrorsContextRebaseTests
             "displayName",
             UnspecifiedCode,
             "too short",
-            new Dictionary<string, string> { ["min"] = "3" });
+            new Dictionary<string, ValidationArgValue> { ["min"] = 3 });
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
@@ -87,7 +87,7 @@ public class ValidationErrorsContextRebaseTests
         violation.Field.In.Should().Be(InputLocation.Body);
         violation.ReasonCode.Should().Be(UnspecifiedCode);
         violation.Detail.Should().Be("too short");
-        violation.Args.Should().Contain(new KeyValuePair<string, string>("min", "3"));
+        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("min", 3));
     }
 
     // --- explicit non-body locations survive unprefixed and unpromoted ---

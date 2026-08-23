@@ -30,10 +30,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     public static MonetaryAmount Zero => s_zero;
 
     // The comparison operand shared by every "must not be negative" check here.
-    private static ImmutableDictionary<string, string> ZeroArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
+    private static ImmutableDictionary<string, ValidationArgValue> ZeroArgs { get; } = ValidationArgs.Of("comparisonValue", 0);
 
     // Field-normalization + InvalidInput failure in one place (default field name: "amount").
-    private static Result<MonetaryAmount> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
+    private static Result<MonetaryAmount> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<MonetaryAmount>(
             Error.InvalidInput.ForField(fieldName.NormalizeFieldName("amount"), reasonCode, args, message));
 
