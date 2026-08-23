@@ -48,7 +48,6 @@ WrongHandler
 Recipe1InheritedSurface
 CanReserve
 ApprovedAt
-DomainConflict
 TryCreateWithValidation
 HandleNotFound
 HandleFailureAsync

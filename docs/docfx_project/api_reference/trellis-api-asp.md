@@ -1666,7 +1666,7 @@ return result.ToHttpResponse(opts => opts
 ```
 
 > [!NOTE]
-> `Error` is a **closed** hierarchy — `public abstract record Error` with `private` constructors — so you cannot declare your own `DomainConflict` or `OutOfStockError` subclass. Discriminate your domain conditions with `Error.Code` on the built-in cases, as above, rather than by CLR type.
+> `Error` is a **closed** hierarchy — `public abstract record Error` with `private` constructors — so you cannot declare your own subclass of it. Discriminate your domain conditions with `Error.Code` on the built-in cases, as above, rather than by CLR type.
 
 The delegate runs first for **every** failure, so it needs a way to say "not mine". Returning `default` (or any value outside `100`–`599`) declines the error and resolution continues down the chain — here to the `Error.Conflict` → `409` mapping, then to `TrellisAspOptions`, then to `500`. Aggregate children in the `problems[]` extension are resolved through the same per-call overrides as the top-level status.
 
