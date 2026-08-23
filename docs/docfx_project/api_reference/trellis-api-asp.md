@@ -1510,8 +1510,12 @@ This is the single end-to-end controller idiom for every verb: send the message,
 > type, `AsActionResult<T>` wraps it in a plain `ActionResult` rather than an `ObjectResult`, and
 > `ScalarValueValidationFilter` uses an internal problem result for the same reason. Because that
 > filter takes over *every* invalid `ModelState` — plain `[Required]`/DataAnnotations failures
-> included, not only value-object ones — an app that registers it via `AddTrellisAspWithScalarValidation`
-> has no exposed model-validation seam. Stock MVC's automatic model-validation response, in an app
+> included, and bodies that fail to deserialize at all, not only value-object ones — an app that
+> registers it via `AddTrellisAspWithScalarValidation` has no exposed model-validation seam. A body
+> whose JSON fails to parse or convert is worth calling out: nothing was semantically rejected, so
+> the problem carries **no** `fieldViolations` and reports 400 rather than 422. That absence makes it
+> look like a response the filter never touched, but the media type is still Trellis-owned.
+> Stock MVC's automatic model-validation response, in an app
 > that does **not** register the filter, is a plain `ObjectResult` and is exposed.
 >
 > Listing `application/problem+json` alongside `application/json` does **not** repair it: selection

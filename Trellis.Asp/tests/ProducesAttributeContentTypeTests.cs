@@ -206,13 +206,15 @@ public sealed class ProducesAttributeContentTypeTests
         (await PostMediaTypeAsync(prefix, "binder", """{}"""))
             .Should().Be("application/problem+json");
 
-    private static async Task<string?> PostMediaTypeAsync(string prefix, string path, string json)
+    private static async Task<string?> PostMediaTypeAsync(string prefix, string path, string json) =>
+        (await PostAsync(prefix, path, json)).Content.Headers.ContentType?.MediaType;
+
+    private static async Task<HttpResponseMessage> PostAsync(string prefix, string path, string json)
     {
         using var host = CreateScalarValidationHost();
         using var client = host.GetTestClient();
         using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-        var resp = await client.PostAsync($"/{prefix}/{path}", content, TestContext.Current.CancellationToken);
-        return resp.Content.Headers.ContentType?.MediaType;
+        return await client.PostAsync($"/{prefix}/{path}", content, TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -229,6 +231,43 @@ public sealed class ProducesAttributeContentTypeTests
     public async Task Trellis_malformed_json_failure_keeps_problem_json(string prefix) =>
         (await PostMediaTypeAsync(prefix, "composite", "{ not json"))
             .Should().Be("application/problem+json");
+
+    // A body that is well-formed JSON but fails to CONVERT a plain, non-value-object property is
+    // a third shape, distinct from both rows above: no value object rejects anything, so
+    // `addedScalarValueFailure` stays false and the response is produced by the filter's final
+    // `else if (!ModelState.IsValid)` branch. Deserialization aborts before the action's model is
+    // built, so the parameter binds null and the problem carries no `fieldViolations` -- which is
+    // why it looks, from outside, like a response the filter never touched.
+    private const string BodyFailingConversion = """{"visitedOn":"not-a-date"}""";
+
+    [Fact]
+    public async Task Body_conversion_failure_is_clobbered_by_Produces_when_no_filter_is_registered()
+    {
+        using var host = CreateHost();
+        using var client = host.GetTestClient();
+        using var content = new StringContent(BodyFailingConversion, System.Text.Encoding.UTF8, "application/json");
+        var resp = await client.PostAsync("/produces-json/bad-date", content, TestContext.Current.CancellationToken);
+
+        resp.Content.Headers.ContentType?.MediaType.Should().Be("application/json",
+            "the stock response is an ObjectResult, so [Produces] rewrites it -- this row is what makes the Trellis row below non-vacuous");
+    }
+
+    [Theory]
+    [InlineData("noproduces-scalar")]
+    [InlineData("produces-scalar")]
+    [InlineData("produces-action-scalar")]
+    public async Task Body_conversion_failure_keeps_problem_json_once_the_scalar_filter_is_registered(string prefix)
+    {
+        var resp = await PostAsync(prefix, "bad-date", BodyFailingConversion);
+
+        resp.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest,
+            "a body that never parsed had nothing semantically rejected, so 400 wins over the value-object 422");
+
+        var body = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain("fieldViolations",
+            "nothing was projected, so absence of fieldViolations does NOT mean the filter was bypassed");
+    }
 
     // Negotiation must behave exactly as it did when this was a bare ObjectResult. The wrapper
     // declares problem+json and problem+xml because those are precisely the two media types MVC
@@ -254,6 +293,15 @@ public sealed class ThingRequest
 {
     [Required]
     public string? Name { get; set; }
+}
+
+/// <summary>
+/// Carries a plain, non-value-object property whose JSON conversion can fail, so a bad value
+/// aborts body deserialization without any value object being consulted.
+/// </summary>
+public sealed class DateRequest
+{
+    public DateOnly VisitedOn { get; set; }
 }
 
 #pragma warning disable CA1822
@@ -284,6 +332,9 @@ public abstract class ProducesProbeControllerBase : ControllerBase
 
     [HttpPost("binder")]
     public ActionResult<T> Binder([FromBody] ThingRequest request) => Ok(new T(request.Name!.Length));
+
+    [HttpPost("bad-date")]
+    public ActionResult<T> BadDate([FromBody] DateRequest request) => Ok(new T(request.VisitedOn.Day));
 }
 
 [ApiController]
@@ -317,6 +368,9 @@ public sealed class NoProducesScalarController : ControllerBase
 
     [HttpPost("composite")]
     public IActionResult PostComposite([FromBody] StatusCodeRequest request) => Ok();
+
+    [HttpPost("bad-date")]
+    public IActionResult PostBadDate([FromBody] DateRequest request) => Ok();
 }
 
 [ApiController]
@@ -332,6 +386,9 @@ public sealed class ProducesScalarController : ControllerBase
 
     [HttpPost("composite")]
     public IActionResult PostComposite([FromBody] StatusCodeRequest request) => Ok();
+
+    [HttpPost("bad-date")]
+    public IActionResult PostBadDate([FromBody] DateRequest request) => Ok();
 
     [HttpPost("binder")]
     public IActionResult Binder([FromBody] ThingRequest request) => Ok(new { request.Name!.Length });
@@ -355,6 +412,10 @@ public sealed class ProducesActionScalarController : ControllerBase
     [HttpPost("composite")]
     [Produces("application/json")]
     public IActionResult PostComposite([FromBody] StatusCodeRequest request) => Ok();
+
+    [HttpPost("bad-date")]
+    [Produces("application/json")]
+    public IActionResult PostBadDate([FromBody] DateRequest request) => Ok();
 
     // Stock DataAnnotations seam, which Trellis does not own. Asserting that this IS clobbered
     // at action level is what establishes action-level and class-level behave alike; the
