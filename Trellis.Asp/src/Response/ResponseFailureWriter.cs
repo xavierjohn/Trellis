@@ -615,7 +615,7 @@ public sealed record FieldViolationProblemDetail(
     string Code,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Detail,
     ViolationLocation Location,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, string>? Args);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, ValidationArgValue>? Args);
 
 /// <summary>JSON shape used for rule violations in ProblemDetails extensions.</summary>
 /// <param name="Code">The machine-readable reason code.</param>
@@ -629,4 +629,4 @@ public sealed record RuleViolationProblemDetail(
     string Code,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Detail,
     IReadOnlyList<ViolationLocation> Locations,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, string>? Args);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyDictionary<string, ValidationArgValue>? Args);

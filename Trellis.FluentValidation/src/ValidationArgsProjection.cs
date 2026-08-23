@@ -121,7 +121,7 @@ public static class ValidationArgsProjection
     /// The application's widening of the default allowlist, or <see langword="null"/> to apply the
     /// framework default alone.
     /// </param>
-    public static ImmutableDictionary<string, string>? Project(
+    public static ImmutableDictionary<string, ValidationArgValue>? Project(
         ValidationFailure failure,
         ValidationArgsOptions? options = null)
     {
@@ -137,7 +137,7 @@ public static class ValidationArgsProjection
             return null;
 
         var template = ResolveTemplate(failure.ErrorCode);
-        ImmutableDictionary<string, string>.Builder? builder = null;
+        ImmutableDictionary<string, ValidationArgValue>.Builder? builder = null;
 
         foreach (var name in allowed)
         {
@@ -158,12 +158,52 @@ public static class ValidationArgsProjection
             if (!IsReconciled(encoded, rendered, failure.ErrorMessage))
                 continue;
 
-            (builder ??= ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal))
-                [ToCamelCase(name)] = encoded;
+            (builder ??= ImmutableDictionary.CreateBuilder<string, ValidationArgValue>(StringComparer.Ordinal))
+                [ToCamelCase(name)] = Lift(raw, encoded);
         }
 
         return builder?.ToImmutable();
     }
+
+    /// <summary>
+    /// Lifts the gated encoding onto the wire union without revisiting the gate's decision.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The gate above runs on strings and must keep doing so: it decides by comparing against the
+    /// message FluentValidation rendered, and that message is text. Nothing here can admit an arg
+    /// the gate rejected, because this runs only on values that already passed it.
+    /// </para>
+    /// <para>
+    /// What changes is representation, and only for a value whose CLR type is numeric to begin
+    /// with — so a threshold reaches the client as <c>50</c> rather than <c>"50"</c>, and a client
+    /// comparing it against a length no longer has to parse it back out.
+    /// </para>
+    /// <para>
+    /// The lift is applied only when the decimal round-trips to the very text the gate approved.
+    /// That is stricter than "parses", deliberately: <c>decimal.TryParse</c> <em>succeeds</em> on
+    /// <c>1E-100</c> and yields zero, so a bound the client was shown as <c>1E-100</c> would be
+    /// published as <c>0</c> — an operand no producer wrote, and one the gate never saw. Requiring
+    /// the round-trip also disposes of the overflow case, where the parse simply fails. Such a
+    /// value stays text, which is exactly what it was before this union existed.
+    /// </para>
+    /// </remarks>
+    private static ValidationArgValue Lift(object raw, string encoded) =>
+        IsNumeric(raw)
+        && decimal.TryParse(encoded, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
+        && string.Equals(number.ToString(CultureInfo.InvariantCulture), encoded, StringComparison.Ordinal)
+            ? new ValidationArgValue.Number(number)
+            : new ValidationArgValue.Text(encoded);
+
+    /// <summary>
+    /// True for the CLR numeric types, which are the only ones whose args become JSON numbers.
+    /// </summary>
+    /// <remarks>
+    /// An <see cref="Enum"/> is deliberately excluded despite its numeric backing: it is encoded by
+    /// name, and a client matching on the name would be handed an ordinal it cannot interpret.
+    /// </remarks>
+    private static bool IsNumeric(object value) =>
+        value is byte or sbyte or short or ushort or int or uint or long or ulong or decimal or float or double;
 
     /// <summary>
     /// The containment gate: an arg is emitted only when the active message template named that

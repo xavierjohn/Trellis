@@ -22,7 +22,7 @@ public class ValidationErrorsContextPreservationTests
     {
         using (ValidationErrorsContext.BeginScope())
         {
-            var args = ImmutableDictionary<string, string>.Empty.Add("min", "3").Add("max", "50");
+            var args = ValidationArgs.Of("min", 3, "max", 50);
             var source = new Error.InvalidInput(EquatableArray.Create(
                 new FieldViolation(InputPointer.ForProperty("name"), "length_out_of_range", args, "Name length out of range.")));
 
@@ -35,8 +35,8 @@ public class ValidationErrorsContextPreservationTests
             violation.ReasonCode.Should().Be("length_out_of_range");
             violation.Detail.Should().Be("Name length out of range.");
             violation.Args.Should().NotBeNull();
-            violation.Args!["min"].Should().Be("3");
-            violation.Args!["max"].Should().Be("50");
+            violation.Args!["min"].Should().Be(new ValidationArgValue.Number(3));
+            violation.Args!["max"].Should().Be(new ValidationArgValue.Number(50));
         }
     }
 

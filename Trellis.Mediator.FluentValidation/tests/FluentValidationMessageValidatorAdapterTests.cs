@@ -58,7 +58,7 @@ public class FluentValidationMessageValidatorAdapterTests
         var result = await adapter.ValidateAsync(new CreateUserCommand("Al", "alice@example.com"), CancellationToken.None);
 
         var violation = ((Error.InvalidInput)result.Error!).Fields[0];
-        violation.Args!["minNameLength"].Should().Be("3",
+        violation.Args!["minNameLength"].Should().Be(new ValidationArgValue.Number(3),
             "the adapter must read the same options the standalone helpers take as a parameter");
     }
 

@@ -11,7 +11,7 @@ using Trellis.FluentValidation;
 /// </summary>
 public class ValidationArgsProjectionTests
 {
-    private sealed record Subject(string A = "", string B = "", decimal D = 0m, int N = 0, DateTime When = default);
+    private sealed record Subject(string A = "", string B = "", decimal D = 0m, int N = 0, DateTime When = default, double F = 0d);
 
     private static FieldViolation Violate(Action<InlineValidator<Subject>> configure, Subject subject)
     {
@@ -25,14 +25,32 @@ public class ValidationArgsProjectionTests
     }
 
     [Fact]
+    public void A_double_bound_a_decimal_cannot_represent_stays_text_rather_than_becoming_zero()
+    {
+        // Lifting this to a decimal underflows it to 0, publishing a bound of zero that the gate
+        // never approved — the client was shown 1E-100.
+        var violation = Violate(v => v.RuleFor(x => x.F).GreaterThan(1E-100), new Subject(F: 0d));
+
+        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Text("1E-100"));
+    }
+
+    [Fact]
+    public void A_double_bound_a_decimal_represents_exactly_is_still_lifted_to_a_number()
+    {
+        var violation = Violate(v => v.RuleFor(x => x.F).GreaterThan(1.5), new Subject(F: 0d));
+
+        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Number(1.5m));
+    }
+
+    [Fact]
     public void Length_emits_both_bounds_and_the_submitted_length()
     {
         var violation = Violate(v => v.RuleFor(x => x.A).Length(2, 4), new Subject(A: "abcdefgh"));
 
         violation.Args.Should().NotBeNull();
-        violation.Args!["minLength"].Should().Be("2");
-        violation.Args["maxLength"].Should().Be("4");
-        violation.Args["totalLength"].Should().Be("8");
+        violation.Args!["minLength"].Should().Be(new ValidationArgValue.Number(2));
+        violation.Args["maxLength"].Should().Be(new ValidationArgValue.Number(4));
+        violation.Args["totalLength"].Should().Be(new ValidationArgValue.Number(8));
     }
 
     [Fact]
@@ -42,7 +60,7 @@ public class ValidationArgsProjectionTests
 
         violation.Args!.Should().NotContainKey("minLength",
             "FluentValidation populates MinLength = 0 on a MaximumLength failure, and a client rendering 'between 0 and 3' from it would be wrong");
-        violation.Args["maxLength"].Should().Be("3");
+        violation.Args["maxLength"].Should().Be(new ValidationArgValue.Number(3));
     }
 
     [Fact]
@@ -52,7 +70,7 @@ public class ValidationArgsProjectionTests
 
         violation.Args!.Should().NotContainKey("maxLength",
             "MaxLength is -1 here, which is meaningless rather than merely unhelpful");
-        violation.Args["minLength"].Should().Be("50");
+        violation.Args["minLength"].Should().Be(new ValidationArgValue.Number(50));
     }
 
     [Fact]
@@ -62,8 +80,8 @@ public class ValidationArgsProjectionTests
 
         violation.Args.Should().NotBeNull(
             "ExactLengthValidator derives from LengthValidator with base(n, n) so both bounds carry the right value, but only MaxLength is named by its template - allowlisting MinLength instead would gate every arg out and leave the client a length with no bound to compare it against");
-        violation.Args!["maxLength"].Should().Be("4");
-        violation.Args["totalLength"].Should().Be("8");
+        violation.Args!["maxLength"].Should().Be(new ValidationArgValue.Number(4));
+        violation.Args["totalLength"].Should().Be(new ValidationArgValue.Number(8));
     }
 
     [Fact]
@@ -104,7 +122,7 @@ public class ValidationArgsProjectionTests
             v => v.RuleFor(x => x.A).Equal("expected-literal"),
             new Subject(A: "other"));
 
-        violation.Args!["comparisonValue"].Should().Be("expected-literal");
+        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Text("expected-literal"));
     }
 
     [Fact]
@@ -115,9 +133,12 @@ public class ValidationArgsProjectionTests
             v => v.RuleFor(x => x.A).Equal(x => x.B),
             new Subject(A: "other", B: long_));
 
-        violation.Args!["comparisonValue"].Length.Should().BeLessThan(80,
+        var comparison = violation.Args!["comparisonValue"]
+            .Should().BeOfType<ValidationArgValue.Text>().Subject.Value;
+
+        comparison.Length.Should().BeLessThan(80,
             "no structural rule identifies which string args carry submitted input, so the bound is universal");
-        violation.Args["comparisonValue"].Should().EndWith("...");
+        comparison.Should().EndWith("...");
     }
 
     [Fact]
@@ -127,7 +148,7 @@ public class ValidationArgsProjectionTests
             v => v.RuleFor(x => x.A).Equal(x => x.B),
             new Subject(A: "other", B: "foo\0bar"));
 
-        violation.Args!["comparisonValue"].Should().Be("foo\\u0000bar",
+        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Text("foo\\u0000bar"),
             "escaping re-encodes a character the message already carried rather than revealing a new one, "
             + "so reconciliation must not demand that the escaped form appear in the message verbatim");
     }
@@ -176,8 +197,8 @@ public class ValidationArgsProjectionTests
             v => v.RuleFor(x => x.N).InclusiveBetween(1, 10),
             new Subject(N: 42));
 
-        violation.Args!["from"].Should().Be("1");
-        violation.Args["to"].Should().Be("10");
+        violation.Args!["from"].Should().Be(new ValidationArgValue.Number(1));
+        violation.Args["to"].Should().Be(new ValidationArgValue.Number(10));
     }
 
     [Fact]
@@ -187,8 +208,8 @@ public class ValidationArgsProjectionTests
             v => v.RuleFor(x => x.D).PrecisionScale(3, 1, ignoreTrailingZeros: true),
             new Subject(D: 123.45m));
 
-        violation.Args!["expectedPrecision"].Should().Be("3");
-        violation.Args["expectedScale"].Should().Be("1");
+        violation.Args!["expectedPrecision"].Should().Be(new ValidationArgValue.Number(3));
+        violation.Args["expectedScale"].Should().Be(new ValidationArgValue.Number(1));
     }
 
     [Fact]
@@ -222,7 +243,7 @@ public class ValidationArgsProjectionTests
             v => v.RuleFor(x => x.N).GreaterThan(10),
             new Subject(N: 3));
 
-        violation.Args!["comparisonValue"].Should().Be("10",
+        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Number(10),
             "a numeric value encodes to exactly what FluentValidation rendered, so nothing is suppressed");
     }
 }

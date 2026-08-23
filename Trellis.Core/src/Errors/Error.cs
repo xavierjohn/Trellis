@@ -265,7 +265,7 @@ public abstract record Error
         /// <param name="args">Operands of the rule (e.g. <c>maxLength</c>, <c>comparisonValue</c>), built with <see cref="ValidationArgs"/>. Never put the rejected value itself here.</param>
         /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
         /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
-        public static InvalidInput ForField(string propertyName, string reasonCode, ImmutableDictionary<string, string>? args, string? detail = null) =>
+        public static InvalidInput ForField(string propertyName, string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args, string? detail = null) =>
             ForField(InputPointer.ForProperty(propertyName), reasonCode, args, detail);
 
         /// <summary>
@@ -277,7 +277,7 @@ public abstract record Error
         /// <param name="args">Operands of the rule (e.g. <c>maxLength</c>, <c>comparisonValue</c>), built with <see cref="ValidationArgs"/>. Never put the rejected value itself here.</param>
         /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
         /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
-        public static InvalidInput ForField(InputPointer field, string reasonCode, ImmutableDictionary<string, string>? args, string? detail = null) =>
+        public static InvalidInput ForField(InputPointer field, string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args, string? detail = null) =>
             new(EquatableArray.Create(new FieldViolation(field, reasonCode, args, detail)));
 
         /// <summary>
@@ -302,7 +302,7 @@ public abstract record Error
         /// <param name="args">Operands of the rule, built with <see cref="ValidationArgs"/>. Never put a rejected value itself here.</param>
         /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
         /// <returns>An <see cref="InvalidInput"/> wrapping the single rule violation.</returns>
-        public static InvalidInput ForRule(string reasonCode, ImmutableDictionary<string, string>? args, string? detail = null) =>
+        public static InvalidInput ForRule(string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args, string? detail = null) =>
             new(EquatableArray<FieldViolation>.Empty,
                 EquatableArray.Create(new RuleViolation(reasonCode, Args: args, Detail: detail)))
             { Detail = detail };

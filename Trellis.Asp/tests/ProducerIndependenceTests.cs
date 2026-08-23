@@ -145,8 +145,8 @@ public class ProducerIndependenceTests
         var violation = ((Error.InvalidInput)result.Error!).Fields.Items[0];
         violation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
         violation.Args.Should().NotBeNull();
-        violation.Args!["min"].Should().Be("0");
-        violation.Args["max"].Should().Be("255");
+        violation.Args!["min"].Should().Be(new ValidationArgValue.Number(0));
+        violation.Args["max"].Should().Be(new ValidationArgValue.Number(255));
     }
 
     [Fact]

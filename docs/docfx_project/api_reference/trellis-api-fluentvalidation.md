@@ -169,7 +169,7 @@ public static class ValidationArgsProjection
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static ImmutableDictionary<string, string>? Project(ValidationFailure failure, ValidationArgsOptions? options = null)` | `ImmutableDictionary<string,string>?` | Projects a failure's `FormattedMessagePlaceholderValues` onto the `Args` carried by `FieldViolation`, applying the allowlist, the containment gate and the encoding rules below. Returns `null` when nothing survives. Both adapters call this — `FluentValidationResultExtensions.ToResult` and, in `Trellis.Mediator.FluentValidation`, `FluentValidationMessageValidatorAdapter`. |
+| `public static ImmutableDictionary<string, ValidationArgValue>? Project(ValidationFailure failure, ValidationArgsOptions? options = null)` | `ImmutableDictionary<string,ValidationArgValue>?` | Projects a failure's `FormattedMessagePlaceholderValues` onto the `Args` carried by `FieldViolation`, applying the allowlist, the containment gate and the encoding rules below. Returns `null` when nothing survives. Both adapters call this — `FluentValidationResultExtensions.ToResult` and, in `Trellis.Mediator.FluentValidation`, `FluentValidationMessageValidatorAdapter`. |
 
 `Args` is what lets a client render its own localized message instead of displaying the server's English prose. Blanket camelCase pass-through of FluentValidation's placeholders is unsafe on two independent counts, so two controls apply.
 
@@ -223,6 +223,13 @@ Naive conversion is not acceptable: `Convert.ToString(dateTime, InvariantCulture
 The gate compares FluentValidation's **rendered** form, because that is what the message contains — but what Trellis publishes is the **encoded** form, and the two differ for dates. So an arg is emitted only when the encoded value is *also* reconcilable with the message: identical to the rendered form, identical to it after bounding, or present in the message verbatim. Otherwise it is **suppressed**.
 
 In practice that makes temporal args a standing false negative, since a culture-rendered date and a round-trip one essentially never coincide. That direction is deliberate — a false negative hides a safe arg and stays recoverable through an explicit opt-in, while a false positive discloses and cannot be taken back. Bounding and escaping are reconciled rather than treated as a mismatch: `Sanitize` derives every character it emits from a character of the value the gate already accepted — truncation omits, escaping re-encodes — so it cannot introduce content the message lacked, even though its output is not byte-for-byte present there. Demanding verbatim presence would suppress exactly the long and control-bearing values the bound exists to serve.
+
+**Wire representation.** The gate above runs entirely on strings and still does, because it decides by comparing against the message FluentValidation rendered, and that message is text. Only after an arg has passed is it lifted onto [`ValidationArgValue`](trellis-api-core.md#validationargs-and-validationargvalue): a placeholder whose CLR type is numeric becomes `ValidationArgValue.Number` and reaches the client as a JSON number, everything else becomes `ValidationArgValue.Text`.
+
+> [!NOTE]
+> The lift cannot admit an arg the gate rejected — it runs only on values that already passed. What changes is representation, not eligibility. `maxLength` now arrives as `4`, not `"4"`.
+
+An enum is deliberately **not** numeric for this purpose: it is encoded by name, and a client matching on the name would otherwise be handed an ordinal it cannot interpret. A numeric value whose invariant encoding will not round-trip through `decimal` — a `double` beyond decimal's range, or one rendered in exponent form — stays text rather than losing precision or throwing.
 
 ### `ValidationArgsOptions`
 

@@ -13,11 +13,20 @@ using System.Collections.Immutable;
 /// own localized message; a client that has only the English detail string cannot.
 /// </para>
 /// <para>
-/// The values are <see cref="string"/> rather than <see cref="object"/> deliberately: they cross a
-/// JSON boundary, and letting a producer hand over an arbitrary object invites culture-sensitive
-/// formatting to leak into the wire. Callers format with
-/// <see cref="System.Globalization.CultureInfo.InvariantCulture"/> — see <see cref="Of(string, IFormattable)"/>,
-/// which does it for them.
+/// The values are <see cref="ValidationArgValue"/> — a closed union of text, number, and list —
+/// rather than <see cref="object"/>. A number therefore reaches the wire as a number, so a client
+/// can compare it without parsing, while the union still denies a producer the chance to hand over
+/// an arbitrary object and let culture-sensitive formatting leak into the payload. The numeric
+/// conversions are implicit, so <c>ValidationArgs.Of("max", 255)</c> needs no ceremony.
+/// </para>
+/// <para>
+/// There is deliberately no <see cref="IFormattable"/> overload. Adding one would make
+/// <c>ValidationArgs.Of("max", 255)</c> <em>ambiguous</em> — an <see cref="int"/> converts to
+/// <see cref="IFormattable"/> by boxing and to <see cref="ValidationArgValue"/> by a user-defined
+/// conversion, and neither target is better than the other — so every numeric call site would stop
+/// compiling. Its absence is what lets the implicit conversions bind. A value with no numeric or
+/// textual meaning of its own, such as a timestamp, must therefore be formatted explicitly and
+/// invariantly by the caller.
 /// </para>
 /// <para>
 /// Args are for operands, not for echoing what the caller sent. Never put the rejected value itself
@@ -30,29 +39,40 @@ public static class ValidationArgs
     /// <summary>Builds a single-entry args dictionary.</summary>
     /// <param name="name">The operand name, in <c>camelCase</c>.</param>
     /// <param name="value">The operand value.</param>
-    public static ImmutableDictionary<string, string> Of(string name, string value) =>
-        ImmutableDictionary<string, string>.Empty.Add(name, value);
-
-    /// <summary>
-    /// Builds a single-entry args dictionary, formatting <paramref name="value"/> with the invariant
-    /// culture so the wire representation does not vary by server locale.
-    /// </summary>
-    /// <param name="name">The operand name, in <c>camelCase</c>.</param>
-    /// <param name="value">The operand value.</param>
-    public static ImmutableDictionary<string, string> Of(string name, IFormattable value) =>
-        Of(name, value.ToString(null, System.Globalization.CultureInfo.InvariantCulture));
+    public static ImmutableDictionary<string, ValidationArgValue> Of(string name, ValidationArgValue value) =>
+        ImmutableDictionary<string, ValidationArgValue>.Empty.Add(name, value);
 
     /// <summary>Builds a two-entry args dictionary.</summary>
-    public static ImmutableDictionary<string, string> Of(string name1, string value1, string name2, string value2) =>
-        ImmutableDictionary<string, string>.Empty.Add(name1, value1).Add(name2, value2);
+    /// <param name="name1">The first operand name, in <c>camelCase</c>.</param>
+    /// <param name="value1">The first operand value.</param>
+    /// <param name="name2">The second operand name, in <c>camelCase</c>.</param>
+    /// <param name="value2">The second operand value.</param>
+    public static ImmutableDictionary<string, ValidationArgValue> Of(
+        string name1,
+        ValidationArgValue value1,
+        string name2,
+        ValidationArgValue value2) =>
+        ImmutableDictionary<string, ValidationArgValue>.Empty.Add(name1, value1).Add(name2, value2);
 
     /// <summary>
-    /// Builds a two-entry args dictionary, formatting both values with the invariant culture.
+    /// Builds an args dictionary of any size.
     /// </summary>
-    public static ImmutableDictionary<string, string> Of(string name1, IFormattable value1, string name2, IFormattable value2) =>
-        Of(
-            name1,
-            value1.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
-            name2,
-            value2.ToString(null, System.Globalization.CultureInfo.InvariantCulture));
+    /// <remarks>
+    /// A rule with three or more operands is ordinary — a scale-and-precision failure carries four —
+    /// and without this overload a producer that needed one had to abandon <see cref="ValidationArgs"/>
+    /// and assemble the dictionary by hand.
+    /// </remarks>
+    /// <param name="pairs">The operand names, in <c>camelCase</c>, paired with their values.</param>
+    public static ImmutableDictionary<string, ValidationArgValue> Of(
+        params (string Name, ValidationArgValue Value)[] pairs)
+    {
+        if (pairs is null || pairs.Length == 0)
+            return ImmutableDictionary<string, ValidationArgValue>.Empty;
+
+        var builder = ImmutableDictionary.CreateBuilder<string, ValidationArgValue>();
+        foreach (var (name, value) in pairs)
+            builder[name] = value;
+
+        return builder.ToImmutable();
+    }
 }

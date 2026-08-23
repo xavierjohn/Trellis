@@ -144,9 +144,9 @@ var single = Error.InvalidInput.ForField("email", "required", "Email is required
 var multiField = new Error.InvalidInput(EquatableArray.Create(
     new FieldViolation(InputPointer.ForProperty("email"),    "required") { Detail = "Email is required" },
     new FieldViolation(InputPointer.ForProperty("password"), "min_length",
-        ImmutableDictionary<string, string>.Empty.Add("min", "8")) { Detail = "Password must be at least 8 characters" },
+        ValidationArgs.Of("min", 8)) { Detail = "Password must be at least 8 characters" },
     new FieldViolation(InputPointer.ForProperty("age"),      "min",
-        ImmutableDictionary<string, string>.Empty.Add("min", "18")) { Detail = "Must be 18 or older" }));
+        ValidationArgs.Of("min", 18)) { Detail = "Must be 18 or older" }));
 
 var crossField = new Error.InvalidInput(
     Fields: EquatableArray<FieldViolation>.Empty,

@@ -20,7 +20,8 @@ using System.Collections.Immutable;
 /// in a UI when no single field carries the violation).
 /// </param>
 /// <param name="Args">
-/// Optional structured arguments for the renderer. Compared by value contents.
+/// Optional structured arguments for the renderer. Build them with <see cref="ValidationArgs"/>.
+/// Compared by value contents.
 /// </param>
 /// <param name="Detail">
 /// Optional caller-supplied detail string. When non-null the boundary renderer prefers
@@ -29,7 +30,7 @@ using System.Collections.Immutable;
 public sealed record RuleViolation(
     string ReasonCode,
     EquatableArray<InputPointer> Fields = default,
-    ImmutableDictionary<string, string>? Args = null,
+    ImmutableDictionary<string, ValidationArgValue>? Args = null,
     string? Detail = null)
 {
     /// <summary>

@@ -606,8 +606,8 @@ HTTP-specific supporting types (`AuthChallenge`, `EntityTagValue`, `RetryAfterVa
 | `ResourceRef` | `readonly record struct (string Type, string? Id = null)` plus `ResourceRef.For(string type, object? id = null)` and `ResourceRef.For<TResource>(object? id = null)` | Aggregate identity. The `For(...)` helpers convert IDs with invariant formatting when possible. `For<TResource>` peels `Maybe<T>` wrappers and strips generic arity. `ResourceRef.FormatTypeName(Type)` exposes just the arity-stripping step — `typeof(List<int>)` → `"List"` — **without** the `Maybe<T>` peeling, which stays scoped to `For<TResource>` because that method owns the resource-naming contract. Use it when a component needs a type-derived identifier on the wire (AOT-generated converter fallback messages, for example). Throws `ArgumentNullException` for a null type. |
 | `InputPointer` | `readonly record struct` with `InputPointer(string Path)` and `InputPointer(string Path, InputLocation In)` | RFC 6901 JSON Pointer (for example `/email`) plus the part of the input it addresses. Construct simple property names via `InputPointer.ForProperty("email")`, or use `InputPointer.Root` for the document root. See [`InputPointer` locations](#inputpointer-locations) for the location-stamping factories. |
 | `InputLocation` | `enum { Unspecified = 0, Body, Query, Path, Header }` | Which part of the input an offending value came from — the `in` discriminator of a violation's wire location. `Unspecified` projects as `"unknown"`. |
-| `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Single per-field violation inside `InvalidInput.Fields`. `Equals` / `GetHashCode` compare `Args` by content. |
-| `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,string>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `InvalidInput.Rules`. `Equals` / `GetHashCode` compare `Args` by content. |
+| `FieldViolation` | `sealed record (InputPointer Field, string ReasonCode, ImmutableDictionary<string,ValidationArgValue>? Args = null, string? Detail = null)` | Single per-field violation inside `InvalidInput.Fields`. `Equals` / `GetHashCode` compare `Args` by content. |
+| `RuleViolation` | `sealed record (string ReasonCode, EquatableArray<InputPointer> Fields = default, ImmutableDictionary<string,ValidationArgValue>? Args = null, string? Detail = null)` | Multi-field invariant or object-level rule inside `InvalidInput.Rules`. `Equals` / `GetHashCode` compare `Args` by content. |
 | `ITransportFault` | marker interface | Transport-specific payload contract used by `Error.TransportFault`. HTTP-aware code uses `HttpError` from `Trellis.Http.Abstractions`; other transports can define their own implementations. |
 | `ICodedTransportFault` | `ITransportFault` plus `string Kind { get; }` and `string Code { get; }` | Opt-in sub-interface for a fault that names its own failure. See [Coded transport faults](#icodedtransportfault--a-fault-that-names-itself) below. |
 | `RetryAdvice` | `readonly record struct (TimeSpan? After = null, DateTimeOffset? At = null)` | Transport-neutral retry hint carried by `Error.RateLimited` and `Error.Unavailable`. Boundary layers translate it to headers such as `Retry-After`. |
@@ -765,16 +765,55 @@ Three distinctions are easy to get wrong and are worth stating outright:
 
 **Producer independence.** The same failure reports the same code regardless of which part of the framework noticed it. A malformed integer is `format.integer` whether it arrived through query-string binding, a JSON body, or a generated `TryCreate`. This is what makes a single client branch sufficient, and it is enforced by `ProducerIndependenceTests`.
 
-#### `ValidationArgs`
+#### `ValidationArgs` and `ValidationArgValue`
 
 `ValidationArgs.Of(...)` builds the `Args` dictionary carried by a violation — the machine-readable operands of the rule, such as the `50` in "must be at most 50" or the `0`/`255` bounds on a byte.
 
 ```csharp
 Error.InvalidInput.ForField("age", ValidationCodes.ValueBetweenInclusive,
-    ValidationArgs.Of("from", "0", "to", "150"), "Age is unrealistically high.");
+    ValidationArgs.Of("from", 0, "to", 150), "Age is unrealistically high.");
 ```
 
-Values are `string`, and the `IFormattable` overloads format with the invariant culture, so a server's locale never leaks onto the wire. **Never put the rejected value itself in `Args`** — it would be reflected back in the error response and into anything that logs it.
+Values are `ValidationArgValue`, a **closed union** with three cases. Because it is closed, a client can switch over it exhaustively, and the JSON shape of an arg follows from its case rather than from whatever a producer happened to pass:
+
+| Case | Declaration | JSON |
+|---|---|---|
+| `ValidationArgValue.Text` | `sealed record Text(string Value)` | `"red"` |
+| `ValidationArgValue.Number` | `sealed record Number(decimal Value)` | `50` |
+| `ValidationArgValue.List` | `sealed record List(EquatableArray<ValidationArgValue> Items)` | `["red","green"]` |
+
+> [!IMPORTANT]
+> A numeric operand reaches the wire as a **JSON number**, not a quoted string: `{"maxLength": 50}`, not `{"maxLength": "50"}`. A client comparing a bound against a length no longer has to parse it back out and guess at the format.
+
+`Number` holds a `decimal` — one case rather than one per CLR numeric type, because JSON has a single number type and a client could not observe the distinction. It is written invariantly, so a German server and an American one emit the same bytes.
+
+Build values implicitly. `string`, `int`, `long`, and `decimal` all convert on their own, so ordinary calls need no ceremony; use `ValidationArgValue.ListOf(...)` (or `ListFrom(...)` for a sequence) for the list case:
+
+```csharp
+ValidationArgs.Of("maxLength", 50);                         // {"maxLength": 50}
+ValidationArgs.Of("expected", "USD", "actual", "EUR");      // both text
+ValidationArgs.Of("allowed", ValidationArgValue.ListOf("red", "green"));
+```
+
+For three or more operands — a scale-and-precision failure carries four — use the `params` overload, which takes name/value pairs:
+
+```csharp
+ValidationArgs.Of(
+    ("expectedPrecision", 3),
+    ("expectedScale", 1),
+    ("actualScale", 4),
+    ("digits", 5));
+```
+
+> [!NOTE]
+> There is deliberately **no `IFormattable` overload**. Adding one would make `ValidationArgs.Of("max", 255)` *ambiguous* — an `int` converts to `IFormattable` by boxing and to `ValidationArgValue` by a user-defined conversion, and neither target is better than the other, so the call fails with `CS0121`. Its absence is what lets the implicit conversions bind. Format a value with no numeric or textual meaning of its own, such as a timestamp, explicitly and invariantly at the call site.
+
+`ValidationArgValueJsonConverter` is applied to the union by attribute, so serialization needs no registration. It is public because the `System.Text.Json` source generator cannot resolve an internal converter: a trimmed or AOT-published application whose `JsonSerializerContext` roots a violation payload fails at compile time with `SYSLIB1220` otherwise.
+
+> [!IMPORTANT]
+> **Reading a number a `decimal` cannot hold exactly throws `JsonException`.** `Utf8JsonReader.GetDecimal()` rounds silently — `1E-100` arrives as `0`, and `0.00000000000000000000000000009` arrives as `0.0000000000000000000000000001` — and an arg is an operand a client renders a bound from, so a rounded value states a limit the producer never wrote. The converter refuses such tokens instead. Exactness is judged on significant digits rather than on text, so the ordinary spellings a non-.NET producer may emit (`1e2`, `1.50`, `-0`) are all accepted and compare equal to their plain forms.
+
+**Never put the rejected value itself in `Args`** — it would be reflected back in the error response and into anything that logs it.
 
 `Error.InvalidInput.ForField` and `ForRule` each have an overload taking `args` directly.
 

@@ -23,7 +23,7 @@ public class PrimitiveReasonCodeTests
         var violation = FirstViolation(Age.TryCreate(-1));
 
         violation.ReasonCode.Should().Be(ValidationCodes.ValueGreaterThanOrEqual);
-        violation.Args.Should().Contain(new KeyValuePair<string, string>("comparisonValue", "0"));
+        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("comparisonValue", 0));
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class PrimitiveReasonCodeTests
         var violation = FirstViolation(Age.TryCreate(151));
 
         violation.ReasonCode.Should().Be(ValidationCodes.ValueLessThanOrEqual);
-        violation.Args.Should().Contain(new KeyValuePair<string, string>("comparisonValue", "150"));
+        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("comparisonValue", 150));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class PrimitiveReasonCodeTests
         // The caller passed a fraction, so `comparisonValue: 100` would name a bound they never
         // supplied a value against.
         FirstViolation(Percentage.FromFraction(1.5m)).Args
-            .Should().Contain(new KeyValuePair<string, string>("comparisonValue", "1"));
+            .Should().Contain(new KeyValuePair<string, ValidationArgValue>("comparisonValue", 1));
 
     [Theory]
     [InlineData(null, "value.not-null")]
@@ -76,7 +76,7 @@ public class PrimitiveReasonCodeTests
         var violation = FirstViolation(usd.Add(eur));
 
         violation.ReasonCode.Should().Be(ValidationCodes.MoneyCurrencyMismatch);
-        violation.Args.Should().Contain(new KeyValuePair<string, string>("expected", "USD"));
-        violation.Args.Should().Contain(new KeyValuePair<string, string>("actual", "EUR"));
+        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("expected", "USD"));
+        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("actual", "EUR"));
     }
 }

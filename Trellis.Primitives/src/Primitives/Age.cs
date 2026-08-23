@@ -28,7 +28,7 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     private Age(int value) : base(value) { }
 
     // Field-normalization + InvalidInput failure in one place (default field name: "age").
-    private static Result<Age> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, string>? args = null) =>
+    private static Result<Age> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<Age>(
             Error.InvalidInput.ForField(fieldName.NormalizeFieldName("age"), reasonCode, args, message));
 
@@ -36,9 +36,9 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     // Directional codes rather than one `between` code: a client that cannot tell which end failed
     // cannot say "too old" versus "not yet born", and the generator's range checks are directional,
     // so collapsing them here would make Age disagree with a generated primitive on the same input.
-    private static ImmutableDictionary<string, string> MinArgs { get; } = ValidationArgs.Of("comparisonValue", "0");
+    private static ImmutableDictionary<string, ValidationArgValue> MinArgs { get; } = ValidationArgs.Of("comparisonValue", 0);
 
-    private static ImmutableDictionary<string, string> MaxArgs { get; } = ValidationArgs.Of("comparisonValue", "150");
+    private static ImmutableDictionary<string, ValidationArgValue> MaxArgs { get; } = ValidationArgs.Of("comparisonValue", 150);
 
     // No-span validation core. Every public factory opens exactly one span, then delegates here.
     private static Result<Age> Validate(int value, string? fieldName)

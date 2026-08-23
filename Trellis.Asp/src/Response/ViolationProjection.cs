@@ -103,6 +103,6 @@ internal static class ViolationProjection
         return extensions;
     }
 
-    private static ImmutableDictionary<string, string>? ToArgs(ImmutableDictionary<string, string>? args) =>
+    private static ImmutableDictionary<string, ValidationArgValue>? ToArgs(ImmutableDictionary<string, ValidationArgValue>? args) =>
         args is { Count: > 0 } ? args : null;
 }

@@ -268,7 +268,7 @@ T> : JsonConverter<T>
     private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode) =>
         Invalid(message, pointer, reasonCode, null);
 
-    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode, ImmutableDictionary<string, string>? args) =>
+    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args) =>
         new(message)
         {
             InvalidInput = Error.InvalidInput.ForField(pointer, reasonCode, args, message) with
@@ -281,9 +281,9 @@ T> : JsonConverter<T>
     // model binder already reports them for the same failure. Without this the same out-of-range
     // value would carry the bounds when it arrived as a query parameter and lose them when it
     // arrived nested in a JSON object.
-    private static ImmutableDictionary<string, string> ByteRangeArgs { get; } = ValidationArgs.Of("min", "0", "max", "255");
+    private static ImmutableDictionary<string, ValidationArgValue> ByteRangeArgs { get; } = ValidationArgs.Of("min", 0, "max", 255);
 
-    private static ImmutableDictionary<string, string>? FormatArgsFor(Type primitiveType) =>
+    private static ImmutableDictionary<string, ValidationArgValue>? FormatArgsFor(Type primitiveType) =>
         primitiveType == typeof(byte) ? ByteRangeArgs : null;
 
     /// <summary>
