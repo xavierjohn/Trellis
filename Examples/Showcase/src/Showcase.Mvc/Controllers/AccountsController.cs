@@ -59,6 +59,7 @@ public class AccountsController : ControllerBase
             .AsActionResult<AccountResponse>();
 
     [HttpPost]
+    [ProducesResponseType<AccountResponse>(StatusCodes.Status201Created)]
     public Task<ActionResult<AccountResponse>> Open([FromBody] OpenAccountRequest request, CancellationToken cancellationToken) =>
         _workflow.OpenAccountAsync(request.CustomerId, request.AccountType, request.InitialDeposit, request.DailyWithdrawalLimit, request.OverdraftLimit, cancellationToken)
             .ToHttpResponseAsync(

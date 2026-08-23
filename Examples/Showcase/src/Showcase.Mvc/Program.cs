@@ -1,4 +1,6 @@
 ﻿using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Scalar.AspNetCore;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
@@ -32,6 +34,31 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 });
 
 builder.Services.AddTrellisRouteConstraint<AccountId>();
+
+// ApiExplorer derives each operation's media types from the configured formatters, so MVC
+// described every response as also available in text/plain and text/json, and every request body
+// as also accepting text/json and application/*+json. This API produces and accepts none of
+// those: Trellis' ToHttpResponse() writes JSON through IResult, so the description was
+// advertising formatter capability rather than actual behaviour, and it disagreed with the
+// Minimal API document for no real reason.
+//
+// Trim the formatters rather than applying [Produces("application/json")]. [Produces] is a result
+// filter that overwrites ObjectResult.ContentTypes wholesale, which also rewrites the automatic
+// model-validation 422 from application/problem+json to application/json -- silently breaking
+// RFC 9457 for the one response that still goes through MVC's formatter pipeline.
+builder.Services.PostConfigure<MvcOptions>(o =>
+{
+    o.OutputFormatters.RemoveType<StringOutputFormatter>();
+
+    foreach (var formatter in o.OutputFormatters.OfType<SystemTextJsonOutputFormatter>())
+        formatter.SupportedMediaTypes.Remove("text/json");
+
+    foreach (var formatter in o.InputFormatters.OfType<SystemTextJsonInputFormatter>())
+    {
+        formatter.SupportedMediaTypes.Remove("text/json");
+        formatter.SupportedMediaTypes.Remove("application/*+json");
+    }
+});
 
 builder.Services.AddOpenApi();
 

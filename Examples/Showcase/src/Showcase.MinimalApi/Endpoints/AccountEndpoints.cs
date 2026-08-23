@@ -12,6 +12,16 @@ using Trellis.Showcase.Domain.ValueObjects;
 /// JSON DTOs, repository, and <see cref="BankingWorkflow"/> are reused — only the hosting style
 /// differs.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Every endpoint declares its success body with <c>.Produces&lt;T&gt;()</c>. This is not
+/// decoration: <c>ToHttpResponse()</c> returns <see cref="IResult"/>, which is opaque to the
+/// OpenAPI generator, so without these calls each operation is described as a bare
+/// <c>"description": "OK"</c> with no schema at all — a document that tells a client nothing
+/// about what it will receive. The MVC mirror gets this for free because its actions return
+/// <c>ActionResult&lt;T&gt;</c>, which names the type in the signature.
+/// </para>
+/// </remarks>
 public static class AccountEndpoints
 {
     /// <summary>
@@ -51,53 +61,62 @@ public static class AccountEndpoints
                         body: AccountResponse.From,
                         configure: AdvertiseDescription);
             })
-            .WithName("Showcase_GetAccounts");
+            .WithName("Showcase_GetAccounts")
+            .Produces<PagedResponse<AccountResponse>>();
 
         group.MapGet("/{id:AccountId}", (AccountId id, IAccountRepository repo) =>
             repo.GetById(id)
                 .ToHttpResponse(AccountResponse.From, AdvertiseDescription))
-            .WithName("Showcase_GetAccount");
+            .WithName("Showcase_GetAccount")
+            .Produces<AccountResponse>();
 
         group.MapPost("/", (OpenAccountRequest request, BankingWorkflow workflow, CancellationToken ct) =>
             workflow.OpenAccountAsync(request.CustomerId, request.AccountType, request.InitialDeposit, request.DailyWithdrawalLimit, request.OverdraftLimit, ct)
                 .ToHttpResponseAsync(
                     AccountResponse.From,
                     opts => opts.CreatedAtRoute("Showcase_GetAccount", account => new Microsoft.AspNetCore.Routing.RouteValueDictionary { ["id"] = account.Id.Value })))
-            .WithScalarValueValidation();
+            .WithScalarValueValidation()
+            .Produces<AccountResponse>(StatusCodes.Status201Created);
 
         group.MapPost("/{id:AccountId}/deposit", (AccountId id, DepositRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.DepositAsync(account, request.Amount, request.Description, ct))
                 .ToHttpResponseAsync(AccountResponse.From))
-            .WithScalarValueValidation();
+            .WithScalarValueValidation()
+            .Produces<AccountResponse>();
 
         group.MapPost("/{id:AccountId}/withdraw", (AccountId id, WithdrawRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.WithdrawAsync(account, request.Amount, request.Description, ct))
                 .ToHttpResponseAsync(AccountResponse.From))
-            .WithScalarValueValidation();
+            .WithScalarValueValidation()
+            .Produces<AccountResponse>();
 
         group.MapPost("/{id:AccountId}/secure-withdraw", (AccountId id, SecureWithdrawRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.SecureWithdrawAsync(account, request.Amount, request.VerificationCode, ct))
                 .ToHttpResponseAsync(AccountResponse.From))
-            .WithScalarValueValidation();
+            .WithScalarValueValidation()
+            .Produces<AccountResponse>();
 
         group.MapPost("/{id:AccountId}/freeze", (AccountId id, FreezeRequest request, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.FreezeAsync(account, request.Reason, ct))
                 .ToHttpResponseAsync(AccountResponse.From))
-            .WithScalarValueValidation();
+            .WithScalarValueValidation()
+            .Produces<AccountResponse>();
 
         group.MapPost("/{id:AccountId}/unfreeze", (AccountId id, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.UnfreezeAsync(account, ct))
-                .ToHttpResponseAsync(AccountResponse.From));
+                .ToHttpResponseAsync(AccountResponse.From))
+            .Produces<AccountResponse>();
 
         group.MapPost("/{id:AccountId}/close", (AccountId id, IAccountRepository repo, BankingWorkflow workflow, CancellationToken ct) =>
             repo.GetById(id)
                 .BindAsync(account => workflow.CloseAsync(account, ct))
-                .ToHttpResponseAsync(AccountResponse.From));
+                .ToHttpResponseAsync(AccountResponse.From))
+            .Produces<AccountResponse>();
 
         return routes;
     }

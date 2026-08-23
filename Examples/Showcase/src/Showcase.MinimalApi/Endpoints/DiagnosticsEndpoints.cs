@@ -17,7 +17,8 @@ public static class DiagnosticsEndpoints
             new Error.Unexpected("diagnostics-fault", "DIAG-FAULT-001")
             {
                 Detail = "Deterministic fault path used to demonstrate Error.Unexpected mapping.",
-            }.ToHttpResponse());
+            }.ToHttpResponse())
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return routes;
     }
