@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed — **BREAKING**: violation args are a closed union, so numbers reach the wire as numbers
 
-`FieldViolation.Args` and `RuleViolation.Args` change from `ImmutableDictionary<string, string>` to `ImmutableDictionary<string, ValidationArgValue>`, a closed union of `Text`, `Number`, and `List`. A numeric operand is now emitted as a JSON number rather than a quoted string:
+`FieldViolation.Args` and `RuleViolation.Args` change from `ImmutableDictionary<string, string>` to `ImmutableDictionary<string, ValidationArgValue>`, a closed union of `Text`, `Number`, `Bool`, and `List`. A numeric operand is now emitted as a JSON number rather than a quoted string:
 
 ```jsonc
 // before
@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Args exist so a client can render its own localized message instead of parsing the server's English prose. Quoting every operand undercut that: a client comparing a bound against a length had to parse it back out of a string and guess at the format, which is the same recovery-by-parsing the args were introduced to end. The union keeps the property that motivated `string` in the first place — a producer still cannot hand over an arbitrary `object` and let culture-sensitive formatting leak onto the wire — because `Number` holds a `decimal` and is written invariantly.
 
 `Number` is backed by `decimal` alone rather than one case per CLR numeric type: JSON has a single number type, so a client could not observe the distinction, and `decimal` is the widest choice that keeps integers exact. `List` is what lets a violation name a set without a producer inventing a delimiter a client would then have to know to split on.
+
+The cases are JSON's self-describing values — its three scalars, plus a list of them. `null` and objects are deliberately absent: an arg with no value is an arg that is simply not there, so `null` would give the dictionary two spellings of one thing, and an object would require a schema per reason code to interpret, giving up the property that makes a closed union worth having and turning args into an open-ended payload to echo back to a caller. `Bool` earns its place on the same principle even though a boolean is rarely interpolated into a message: without it a producer would write `Text("true")`, reintroducing the quoted-primitive problem this change removes, and a boolean from a non-.NET producer would fail the whole payload rather than one arg.
 
 **Migrating.** Most call sites need no change — `string`, `int`, `long`, and `decimal` all convert implicitly, so `ValidationArgs.Of("max", 255)` compiles as it did. Two things do change:
 

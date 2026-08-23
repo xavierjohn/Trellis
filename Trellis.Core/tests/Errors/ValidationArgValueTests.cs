@@ -21,6 +21,27 @@ public class ValidationArgValueTests
     public void Number_preserves_the_scale_it_was_given() =>
         Serialize(new ValidationArgValue.Number(1.50m)).Should().Be("1.50");
 
+    [Theory]
+    [InlineData(true, "true")]
+    [InlineData(false, "false")]
+    public void Bool_serializes_as_a_json_boolean_not_a_string(bool value, string expected) =>
+        Serialize(new ValidationArgValue.Bool(value)).Should().Be(expected);
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    public void Bool_reads_back_from_a_json_boolean(string json, bool expected) =>
+        JsonSerializer.Deserialize<ValidationArgValue>(json)
+            .Should().BeOfType<ValidationArgValue.Bool>()
+            .Which.Value.Should().Be(expected);
+
+    [Fact]
+    public void Bool_converts_implicitly_so_a_flag_need_not_be_quoted()
+    {
+        ValidationArgValue value = true;
+        value.Should().Be(new ValidationArgValue.Bool(true));
+    }
+
     [Fact]
     public void Number_is_written_invariantly_under_a_comma_decimal_culture()
     {
@@ -58,7 +79,9 @@ public class ValidationArgValueTests
     [InlineData("\"abc\"")]
     [InlineData("255")]
     [InlineData("1.50")]
-    [InlineData("[\"a\",1]")]
+    [InlineData("true")]
+    [InlineData("false")]
+    [InlineData("[\"a\",1,true]")]
     [InlineData("[]")]
     public void Round_trips_through_json(string json)
     {
@@ -67,10 +90,14 @@ public class ValidationArgValueTests
         Serialize(value!).Should().Be(json);
     }
 
-    [Fact]
-    public void Reading_an_unsupported_token_fails_rather_than_inventing_a_case()
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"nested\":1}")]
+    public void Reading_an_unsupported_token_fails_rather_than_inventing_a_case(string json)
     {
-        var read = () => JsonSerializer.Deserialize<ValidationArgValue>("true");
+        // An object would need a schema per reason code to interpret, which is exactly the
+        // knowable-from-the-type property the union exists to keep.
+        var read = () => JsonSerializer.Deserialize<ValidationArgValue>(json);
         read.Should().Throw<JsonException>();
     }
 

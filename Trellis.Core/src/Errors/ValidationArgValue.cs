@@ -13,10 +13,18 @@ using System.Text.Json.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is a closed union — <see cref="Text"/>, <see cref="Number"/>, or <see cref="List"/> — and
-/// the constructor is private so it stays closed. A client can therefore switch over it
-/// exhaustively, and the JSON shape of an arg is knowable from the type alone rather than from
-/// whatever a producer happened to pass.
+/// This is a closed union — <see cref="Text"/>, <see cref="Number"/>, <see cref="Bool"/>, or
+/// <see cref="List"/> — and the constructor is private so it stays closed. A client can therefore
+/// switch over it exhaustively, and the JSON shape of an arg is knowable from the type alone rather
+/// than from whatever a producer happened to pass.
+/// </para>
+/// <para>
+/// The cases are JSON's self-describing values: its three scalars, plus a list of them. JSON's
+/// other two constructs are deliberately absent. <c>null</c> would give a dictionary two spellings
+/// of the same thing, since an arg with no value is an arg that is simply not there. An object
+/// would mean a client needs a schema per reason code to know what it is looking at, which gives up
+/// the property that makes this union worth having — that the shape follows from the type — and
+/// turns args into an open-ended payload, which is a poor thing to echo back to a caller.
 /// </para>
 /// <para>
 /// The predecessor of this type was <see cref="string"/>, which forced every operand onto the wire
@@ -64,6 +72,20 @@ public abstract record ValidationArgValue
     public sealed record Number(decimal Value) : ValidationArgValue;
 
     /// <summary>
+    /// A boolean operand, written to JSON as <c>true</c> or <c>false</c>.
+    /// </summary>
+    /// <remarks>
+    /// A boolean is rarely interpolated into a rendered message — you cannot put <c>true</c> into a
+    /// localized sentence — and a flag that selects <em>which</em> message to render usually belongs
+    /// in the reason code, which is the branch point a client is meant to switch on. The case exists
+    /// nonetheless because this union models JSON: without it a producer with a boolean operand has
+    /// to write <c>Text("true")</c>, which is the quoted-primitive problem this type was introduced
+    /// to remove, and a boolean arriving from a non-.NET producer would fail the whole payload.
+    /// </remarks>
+    /// <param name="Value">The flag.</param>
+    public sealed record Bool(bool Value) : ValidationArgValue;
+
+    /// <summary>
     /// An ordered list of operands, written to JSON as an array.
     /// </summary>
     /// <remarks>
@@ -99,6 +121,10 @@ public abstract record ValidationArgValue
     /// <summary>Wraps a decimal as <see cref="Number"/>.</summary>
     /// <param name="value">The number.</param>
     public static implicit operator ValidationArgValue(decimal value) => new Number(value);
+
+    /// <summary>Wraps a boolean as <see cref="Bool"/>.</summary>
+    /// <param name="value">The flag.</param>
+    public static implicit operator ValidationArgValue(bool value) => new Bool(value);
 }
 
 /// <summary>
@@ -123,9 +149,10 @@ public sealed class ValidationArgValueJsonConverter : JsonConverter<ValidationAr
     {
         JsonTokenType.String => new ValidationArgValue.Text(reader.GetString()!),
         JsonTokenType.Number => ReadNumber(ref reader),
+        JsonTokenType.True or JsonTokenType.False => new ValidationArgValue.Bool(reader.GetBoolean()),
         JsonTokenType.StartArray => ReadList(ref reader),
         _ => throw new JsonException(
-            $"A validation arg must be a string, a number, or an array of those; found {reader.TokenType}."),
+            $"A validation arg must be a string, a number, a boolean, or an array of those; found {reader.TokenType}."),
     };
 
     /// <summary>
@@ -224,6 +251,9 @@ public sealed class ValidationArgValueJsonConverter : JsonConverter<ValidationAr
                 break;
             case ValidationArgValue.Number number:
                 writer.WriteNumberValue(number.Value);
+                break;
+            case ValidationArgValue.Bool flag:
+                writer.WriteBooleanValue(flag.Value);
                 break;
             case ValidationArgValue.List list:
                 writer.WriteStartArray();

@@ -13,7 +13,8 @@ using System.Collections.Immutable;
 /// own localized message; a client that has only the English detail string cannot.
 /// </para>
 /// <para>
-/// The values are <see cref="ValidationArgValue"/> — a closed union of text, number, and list —
+/// The values are <see cref="ValidationArgValue"/> — a closed union of text, number, boolean, and
+/// list —
 /// rather than <see cref="object"/>. A number therefore reaches the wire as a number, so a client
 /// can compare it without parsing, while the union still denies a producer the chance to hand over
 /// an arbitrary object and let culture-sensitive formatting leak into the payload. The numeric

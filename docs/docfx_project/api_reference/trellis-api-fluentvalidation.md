@@ -229,7 +229,7 @@ In practice that makes temporal args a standing false negative, since a culture-
 > [!NOTE]
 > The lift cannot admit an arg the gate rejected — it runs only on values that already passed. What changes is representation, not eligibility. `maxLength` now arrives as `4`, not `"4"`.
 
-An enum is deliberately **not** numeric for this purpose: it is encoded by name, and a client matching on the name would otherwise be handed an ordinal it cannot interpret. A numeric value whose invariant encoding will not round-trip through `decimal` — a `double` beyond decimal's range, or one rendered in exponent form — stays text rather than losing precision or throwing.
+An enum is deliberately **not** numeric for this purpose: it is encoded by name, and a client matching on the name would otherwise be handed an ordinal it cannot interpret. A boolean placeholder is likewise left as text: FluentValidation renders one as `True`/`False`, so lifting it would put a value on the wire spelled differently from the message it was reconciled against, and no validator in the allowlist carries one. A numeric value whose invariant encoding will not round-trip through `decimal` — a `double` beyond decimal's range, or one rendered in exponent form — stays text rather than losing precision or throwing.
 
 ### `ValidationArgsOptions`
 

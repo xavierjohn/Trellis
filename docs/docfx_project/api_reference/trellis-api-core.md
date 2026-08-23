@@ -774,20 +774,26 @@ Error.InvalidInput.ForField("age", ValidationCodes.ValueBetweenInclusive,
     ValidationArgs.Of("from", 0, "to", 150), "Age is unrealistically high.");
 ```
 
-Values are `ValidationArgValue`, a **closed union** with three cases. Because it is closed, a client can switch over it exhaustively, and the JSON shape of an arg follows from its case rather than from whatever a producer happened to pass:
+Values are `ValidationArgValue`, a **closed union** with four cases. Because it is closed, a client can switch over it exhaustively, and the JSON shape of an arg follows from its case rather than from whatever a producer happened to pass:
 
 | Case | Declaration | JSON |
 |---|---|---|
 | `ValidationArgValue.Text` | `sealed record Text(string Value)` | `"red"` |
 | `ValidationArgValue.Number` | `sealed record Number(decimal Value)` | `50` |
+| `ValidationArgValue.Bool` | `sealed record Bool(bool Value)` | `true` |
 | `ValidationArgValue.List` | `sealed record List(EquatableArray<ValidationArgValue> Items)` | `["red","green"]` |
+
+The cases are JSON's self-describing values: its three scalars, plus a list of them. JSON's other two constructs are deliberately absent. `null` would give the dictionary two spellings of the same thing, because an arg with no value is an arg that is simply not there — omit the key. An object would mean a client needs a schema per reason code to know what it is looking at, which gives up the property that makes the union worth having (the shape follows from the case) and turns args into an open-ended payload, which is a poor thing to echo back to a caller. Both are rejected with `JsonException` on read.
 
 > [!IMPORTANT]
 > A numeric operand reaches the wire as a **JSON number**, not a quoted string: `{"maxLength": 50}`, not `{"maxLength": "50"}`. A client comparing a bound against a length no longer has to parse it back out and guess at the format.
 
 `Number` holds a `decimal` — one case rather than one per CLR numeric type, because JSON has a single number type and a client could not observe the distinction. It is written invariantly, so a German server and an American one emit the same bytes.
 
-Build values implicitly. `string`, `int`, `long`, and `decimal` all convert on their own, so ordinary calls need no ceremony; use `ValidationArgValue.ListOf(...)` (or `ListFrom(...)` for a sequence) for the list case:
+> [!NOTE]
+> **`Bool` exists to model the format, not to encourage boolean args.** A boolean is rarely interpolated into a rendered message — you cannot put `true` into a localized sentence — and a flag that selects *which* message to render usually belongs in the reason code, which is the branch point a client is meant to switch on. But without the case, a producer with a boolean operand would write `Text("true")`, reintroducing the quoted-primitive problem the union removes, and a boolean sent by a non-.NET producer would fail the entire error payload rather than one arg.
+
+Build values implicitly. `string`, `int`, `long`, `decimal`, and `bool` all convert on their own, so ordinary calls need no ceremony; use `ValidationArgValue.ListOf(...)` (or `ListFrom(...)` for a sequence) for the list case:
 
 ```csharp
 ValidationArgs.Of("maxLength", 50);                         // {"maxLength": 50}
