@@ -166,7 +166,7 @@ var result = Result.Try(
     {
         FileNotFoundException => new Error.NotFound(ResourceRef.For("File", "settings.json")) { Detail = "settings.json was not found" },
         UnauthorizedAccessException => new Error.Forbidden("policy.id") { Detail = "Access denied" },
-        _ => new Error.Unexpected("unexpected_fault", "fault-id") { Detail = "An unexpected error occurred while loading settings." }
+        _ => new Error.Unexpected(FaultCodes.UnhandledException, "fault-id") { Detail = "An unexpected error occurred while loading settings." }
     });
 ```
 

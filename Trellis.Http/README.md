@@ -22,7 +22,7 @@ A single static class `Trellis.Http.HttpResponseExtensions` with the canonical H
 | `HandleConflictAsync(this Task<HttpResponseMessage>, Error.Conflict)` | Map 409 to `Fail`; pass through otherwise. |
 | `HandleUnauthorizedAsync(this Task<HttpResponseMessage>, Error.AuthenticationRequired)` | Map 401 to `Fail`; pass through otherwise. |
 | `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken = default)` | Read and deserialize the body into `T`. Invalid JSON becomes `Fail<Error.Unexpected>`. |
-| `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken = default)` | Read into `Maybe<T>`. `204`, `205`, empty body, JSON `null` map to `Maybe.None`. Invalid JSON throws `JsonException` (intentional). |
+| `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken = default)` | Read into `Maybe<T>`. `204`, `205`, empty body, JSON `null` map to `Maybe.None`. Invalid JSON becomes `Fail<Error.Unexpected>`. |
 | `ReadJsonOrNoneOn404Async<T>(this Task<HttpResponseMessage>, JsonTypeInfo<T>, CancellationToken = default)` | Terminal optional-resource helper: `404` maps to `Ok(Maybe.None)`; other non-2xx statuses use strict status mapping. |
 
 ## Quick example
@@ -48,7 +48,7 @@ var result = await httpClient.GetAsync("/profile", cancellationToken)
 The library owns the `HttpResponseMessage` lifecycle on terminal or transformative paths:
 
 - `ToResultAsync` and `Handle*Async` dispose the response on the `Fail` path.
-- `ReadJsonAsync`, `ReadJsonMaybeAsync`, and `ReadJsonOrNoneOn404Async` always dispose after reading, success or failure (including when `JsonException` propagates from the `Maybe` overload).
+- `ReadJsonAsync`, `ReadJsonMaybeAsync`, and `ReadJsonOrNoneOn404Async` always dispose after reading, success or failure (including when the body fails to deserialize).
 - Pass-through paths (success from bare `ToResultAsync`, non-matching `Handle*Async`) leave the response with the caller until a downstream `ReadJson*` consumes it.
 - Programmer-error null-argument paths (e.g. `client.GetAsync(...).HandleNotFoundAsync(null!)`) await the in-flight response first, then dispose it before throwing `ArgumentNullException` — so the disposal contract holds even when the caller passes `null!`.
 
@@ -73,7 +73,7 @@ See the [API reference](https://xavierjohn.github.io/Trellis/api_reference/trell
 
 ## Exception propagation
 
-`HttpRequestException`, `OperationCanceledException` / `TaskCanceledException`, and `JsonException` (from `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` on a 2xx invalid body) propagate through the chain rather than being mapped to `Result.Fail`. `ReadJsonAsync<T>` catches `JsonException` and returns `Fail<Error.Unexpected>` (`Code = "invalid_response_body"`) with structured position diagnostics (line / byte offset only — never response body content or `JsonException.Path`).
+`HttpRequestException` and `OperationCanceledException` / `TaskCanceledException` propagate through the chain rather than being mapped to `Result.Fail`. `JsonException` does **not**: every JSON helper — `ReadJsonAsync<T>`, `ReadJsonMaybeAsync<T>`, and `ReadJsonOrNoneOn404Async<T>` (which delegates to the `Maybe` overload) — catches it and returns `Fail<Error.Unexpected>` (`Code = FaultCodes.HttpResponseInvalidBody`, `"http.response-invalid-body"`) with structured position diagnostics (line / byte offset only — never response body content or `JsonException.Path`). The per-incident identifier is carried in `FaultId`, not in `Code`, so telemetry can group these failures.
 
 ## Breaking changes from v1
 

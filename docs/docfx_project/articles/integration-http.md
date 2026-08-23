@@ -40,7 +40,7 @@ audience: [developer]
 | `HandleUnauthorizedAsync(error)` | `Task<HttpResponseMessage>` | `Task<Result<HttpResponseMessage>>` | Map `401` to a typed `Fail`. |
 | `HandleConflictAsync(error)` | `Task<HttpResponseMessage>` | `Task<Result<HttpResponseMessage>>` | Map `409` to a typed `Fail`. |
 | `ReadJsonAsync<T>(jsonTypeInfo, ct)` | `Task<Result<HttpResponseMessage>>` | `Task<Result<T>>` | Required-payload deserialization. Empty / `null` / invalid JSON / `204` / `205` → `Fail`. `T : notnull`. |
-| `ReadJsonMaybeAsync<T>(jsonTypeInfo, ct)` | `Task<Result<HttpResponseMessage>>` | `Task<Result<Maybe<T>>>` | Optional-payload deserialization. `204` / `205` / empty / JSON `null` → `Ok(Maybe.None)`. Invalid JSON throws `JsonException` (intentional). `T : notnull`. |
+| `ReadJsonMaybeAsync<T>(jsonTypeInfo, ct)` | `Task<Result<HttpResponseMessage>>` | `Task<Result<Maybe<T>>>` | Optional-payload deserialization. `204` / `205` / empty / JSON `null` → `Ok(Maybe.None)`. Invalid JSON → `Fail<Error.Unexpected>` (`http.response-invalid-body`). `T : notnull`. |
 | `ReadJsonOrNoneOn404Async<T>(jsonTypeInfo, ct)` | `Task<HttpResponseMessage>` | `Task<Result<Maybe<T>>>` | Terminal optional-resource read. `404` → `Ok(Maybe.None)`; other non-2xx use strict mapping. `T : notnull`. |
 
 Full signatures: [`trellis-api-http.md`](../api_reference/trellis-api-http.md).
@@ -92,7 +92,7 @@ Bare `ToResultAsync()` uses the built-in mapper from `Trellis.Http/src/HttpRespo
 | `403` | `new Error.Forbidden("http.forbidden")` |
 | `404` | `new Error.NotFound(ResourceRef.For("HttpResponse"))` |
 | `405` with `Allow` | `new Error.TransportFault(new HttpError.MethodNotAllowed(allow))` |
-| `405` without `Allow` | `new Error.Unexpected(Guid.NewGuid().ToString("N"))` |
+| `405` without `Allow` | `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)` |
 | `406` | `new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty))` |
 | `409` | `new Error.Conflict(null, "http.conflict")` |
 | `410` | `new Error.Gone(ResourceRef.For("HttpResponse"))` |
@@ -105,15 +105,15 @@ Bare `ToResultAsync()` uses the built-in mapper from `Trellis.Http/src/HttpRespo
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | `501` | `new Error.Unexpected(FaultCodes.NotImplemented)` |
 | `503` | `new Error.Unavailable(Retry: retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
-| other / default | `new Error.Unexpected(Guid.NewGuid().ToString("N"))` |
+| other / default | `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)` |
 
-A `405` without `Allow`, a `416` without a known `Content-Range` length, and all unmapped 3xx/5xx statuses fall through to `new Error.Unexpected(Guid.NewGuid().ToString("N"))`. The strict default parses `Retry-After` into `RetryAdvice` on `Error.RateLimited` and `Error.Unavailable` (delta-seconds → `After`, HTTP-date → `At`), but it does **not** parse `WWW-Authenticate` into `Error.AuthenticationRequired`. Use a custom status map or the body-aware overload when an endpoint-specific contract needs richer header detail.
+A `405` without `Allow`, a `416` without a known `Content-Range` length, and all unmapped 3xx/5xx statuses fall through to `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)`, where `faultId` is a freshly generated per-incident identifier. The `Code` is a stable constant so telemetry can aggregate these; the GUID goes to `FaultId`. The strict default parses `Retry-After` into `RetryAdvice` on `Error.RateLimited` and `Error.Unavailable` (delta-seconds → `After`, HTTP-date → `At`), but it does **not** parse `WWW-Authenticate` into `Error.AuthenticationRequired`. Use a custom status map or the body-aware overload when an endpoint-specific contract needs richer header detail.
 
 > [!IMPORTANT]
 > **3xx redirects under the strict default fold into `Error.Unexpected`.** `HttpClient` follows redirects automatically by default, so this is mostly relevant only when `AllowAutoRedirect = false` (for example, SSO landing-page detection).
 
 > [!NOTE]
-> **Exception propagation.** `Trellis.Http` does not swallow non-Result-shaped exceptions. `HttpRequestException` and `OperationCanceledException` / `TaskCanceledException` propagate. `ReadJsonAsync<T>` is the only JSON helper that catches `JsonException`; it converts it to `new Error.Unexpected(Guid.NewGuid().ToString("N"))` with sanitized line/byte detail only. `ReadJsonMaybeAsync<T>` and `ReadJsonOrNoneOn404Async<T>` let `JsonException` propagate after disposing the response.
+> **Exception propagation.** `Trellis.Http` does not swallow non-Result-shaped exceptions. `HttpRequestException` and `OperationCanceledException` / `TaskCanceledException` propagate. `JsonException` does not: `ReadJsonAsync<T>`, `ReadJsonMaybeAsync<T>`, and `ReadJsonOrNoneOn404Async<T>` all catch it and convert it to `new Error.Unexpected(FaultCodes.HttpResponseInvalidBody, faultId)` with sanitized line/byte detail only, disposing the response either way.
 
 ### Single-status handlers
 
@@ -179,8 +179,8 @@ public sealed class ProductsClient(HttpClient httpClient)
             {
                 HttpStatusCode.NotFound  => new Error.NotFound(ResourceRef.For<ProductDto>(productId)),
                 HttpStatusCode.Forbidden => new Error.Forbidden("products.read"),
-                _ when (int)status >= 500 => new Error.Unexpected("unexpected_fault", Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
-                _ when (int)status >= 400 => new Error.Unexpected("unexpected_fault", Guid.NewGuid().ToString("N")) { Detail = $"client error {status}" },
+                _ when (int)status >= 500 => new Error.Unexpected("products.upstream-fault", Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
+                _ when (int)status >= 400 => new Error.Unexpected("products.upstream-rejected", Guid.NewGuid().ToString("N")) { Detail = $"client error {status}" },
                 _ => null,
             })
             .ReadJsonAsync(ProductsJsonContext.Default.ProductDto, ct);
@@ -217,9 +217,9 @@ public sealed class InvoicesClient(HttpClient httpClient)
                 var body = await response.Content.ReadAsStringAsync(token);
                 return response.StatusCode switch
                 {
-                    HttpStatusCode.Conflict   => new Error.Conflict(null, "conflict") { Detail = body },
-                    HttpStatusCode.BadRequest => Error.InvalidInput.ForRule("bad-req", body),
-                    _ => new Error.Unexpected("unexpected_fault", "upstream") { Detail = $"Invoice request failed with {(int)response.StatusCode}: {body}" },
+                    HttpStatusCode.Conflict   => new Error.Conflict(null, "invoices.conflict") { Detail = body },
+                    HttpStatusCode.BadRequest => Error.InvalidInput.ForRule("invoices.invalid-request", body),
+                    _ => new Error.Unexpected("invoices.upstream-fault", "upstream") { Detail = $"Invoice request failed with {(int)response.StatusCode}: {body}" },
                 };
             }, ct)
             .ReadJsonAsync(InvoicesJsonContext.Default.InvoiceDto, ct);
@@ -246,7 +246,7 @@ Three read modes, distinguished by what "no payload" means.
 |---|---|
 | 2xx + valid JSON | `Ok(Maybe.From(value))` |
 | 2xx + `204` / `205` / empty / JSON `null` | `Ok(Maybe.None)` |
-| 2xx + invalid JSON | **throws** `JsonException` (response disposed first) |
+| 2xx + invalid JSON | `Fail<Error.Unexpected>` (`http.response-invalid-body`; response disposed first) |
 | Non-2xx | `Fail` |
 
 ### `ReadJsonOrNoneOn404Async<T>` — optional resource

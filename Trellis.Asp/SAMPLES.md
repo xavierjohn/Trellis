@@ -823,7 +823,7 @@ public class UserRepository : IUserRepository
         }
         catch (DbUpdateException ex)
         {
-            return new Error.Unexpected("unexpected_failure", "fault-id") { Detail = "Failed to add user" };
+            return new Error.Unexpected(FaultCodes.UnhandledException, "fault-id") { Detail = "Failed to add user" };
         }
     }
 }
@@ -857,7 +857,7 @@ public class UnitOfWork : IUnitOfWork
         }
         catch (DbUpdateException ex)
         {
-            return new Error.Unexpected("unexpected_failure", "fault-id") { Detail = "Database update failed" };
+            return new Error.Unexpected(FaultCodes.UnhandledException, "fault-id") { Detail = "Database update failed" };
         }
     }
 

@@ -468,7 +468,7 @@ IResult httpResult = result.Match(
 Use `TapOnFailure`.
 
 ```csharp
-Result<string> result = new Error.Unexpected("unexpected_fault", "fault-id") { Detail = "Email service offline." }
+Result<string> result = new Error.Unexpected(FaultCodes.UnhandledException, "fault-id") { Detail = "Email service offline." }
     .TapOnFailure(error => Console.WriteLine($"Failure: {error.Code}"));
 ```
 

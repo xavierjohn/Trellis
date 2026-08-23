@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — HTTP and ASP faults now carry a stable `Code` instead of a random GUID
+
+Ten call sites in `Trellis.Http` and `Trellis.Asp` built their failure as `new Error.Unexpected(Guid.NewGuid().ToString("N"))`. Because the signature is `Error.Unexpected(string Code, string? FaultId = null)`, the GUID landed in **`Code`** and `FaultId` was left null — so every individual incident published a different `code` on the wire, which no dashboard can group, while the field that exists for a per-incident value went unused.
+
+The identifier now goes to `FaultId` and the code is a stable constant. Five constants are added to `FaultCodes`:
+
+| Constant | Wire value | Emitted when |
+| --- | --- | --- |
+| `HttpResponseNotSuccess` | `http.response-not-success` | Non-success status on a path that needed the body. |
+| `HttpResponseNoBody` | `http.response-no-body` | `204`/`205`, absent content, or a zero-length payload. |
+| `HttpResponseInvalidBody` | `http.response-invalid-body` | Body would not deserialize, or deserialized to `null`. |
+| `HttpResponseFault` | `http.response-fault` | Status has no more specific mapping. |
+| `ResponseLocationUnresolved` | `response.location-unresolved` | A `Location` URI could not be resolved. |
+
+This changes the `code` value observed on the wire for these failures. Nothing could have depended on the previous values, since they were random per call. `Trellis.Http/README.md` had also documented this code as `"invalid_response_body"`, which the source never emitted.
+
+### Changed — reason codes in documentation now follow the published vocabulary
+
+Example code across the articles, `MIGRATION_v3.md`, and the package `SAMPLES.md` files taught reason codes the vocabulary forbids — `snake_case` spellings such as `passwords_must_match`, `invalid_format`, `payment_gateway_offline`, and `unexpected_fault` — or restated a frozen code as a bare literal (`"required"`, `"invalid"`) where a `ValidationCodes` constant exists. Examples now use the constants, and application-owned codes are namespaced.
+
+The migration guide's concurrency example was the load-bearing case: it taught the literal `"concurrency_conflict"`, but `Trellis.Asp` maps an `Error.Conflict` to **412** only when its code is `FaultCodes.ConcurrentModification` and the request carried `If-Match`, and `ErrorRetryExtensions` classifies only that code as transient. The literal silently opted out of both.
+
 ### Changed — **BREAKING**: violation args are a closed union, so numbers reach the wire as numbers
 
 `FieldViolation.Args` and `RuleViolation.Args` change from `ImmutableDictionary<string, string>` to `ImmutableDictionary<string, ValidationArgValue>`, a closed union of `Text`, `Number`, `Bool`, and `List`. A numeric operand is now emitted as a JSON number rather than a quoted string:

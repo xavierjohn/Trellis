@@ -1159,7 +1159,7 @@ public class UserRepository : IUserRepository
                     }
                     catch (DbUpdateException ex)
                     {
-                        return new Error.Unexpected("unexpected_failure", "fault-id") { Detail = "Failed to save user" };
+                        return new Error.Unexpected(FaultCodes.UnhandledException, "fault-id") { Detail = "Failed to save user" };
                     }
                 },
                 cancellationToken);

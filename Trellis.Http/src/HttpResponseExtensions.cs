@@ -200,7 +200,7 @@ public static class HttpResponseExtensions
             (HttpStatusCode)429 => new Error.RateLimited(ExtractRetryAdvice(response)),
             HttpStatusCode.NotImplemented => new Error.Unexpected(FaultCodes.NotImplemented),
             HttpStatusCode.ServiceUnavailable => new Error.Unavailable(Retry: ExtractRetryAdvice(response)),
-            _ => new Error.Unexpected(Guid.NewGuid().ToString("N")),
+            _ => new Error.Unexpected(FaultCodes.HttpResponseFault, Guid.NewGuid().ToString("N")),
         };
 
         return error with { Detail = detail };
@@ -447,26 +447,26 @@ public static class HttpResponseExtensions
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(FaultCodes.HttpResponseNotSuccess, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}.",
                 });
 
             if (message.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(FaultCodes.HttpResponseNoBody, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response had no body for value {typeof(T).Name}.",
                 });
 
             if (message.Content is null)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(FaultCodes.HttpResponseNoBody, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response body was null for value {typeof(T).Name}.",
                 });
 
             var bytes = await message.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             if (bytes.Length == 0)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(FaultCodes.HttpResponseNoBody, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response body was empty for value {typeof(T).Name}.",
                 });
@@ -487,14 +487,14 @@ public static class HttpResponseExtensions
                     ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
                     : string.Empty;
 
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(FaultCodes.HttpResponseInvalidBody, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
                 });
             }
 
             return value is null
-                ? Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                ? Result.Fail<T>(new Error.Unexpected(FaultCodes.HttpResponseInvalidBody, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response deserialized to null for value {typeof(T).Name}.",
                 })
@@ -549,7 +549,7 @@ public static class HttpResponseExtensions
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)
-                return Result.Fail<Maybe<T>>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<Maybe<T>>(new Error.Unexpected(FaultCodes.HttpResponseNotSuccess, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}.",
                 });
@@ -575,7 +575,7 @@ public static class HttpResponseExtensions
                     ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
                     : string.Empty;
 
-                return Result.Fail<Maybe<T>>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<Maybe<T>>(new Error.Unexpected(FaultCodes.HttpResponseInvalidBody, Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
                 });
