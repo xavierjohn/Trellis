@@ -82,8 +82,9 @@ internal static class LinkHeader
 
         throw new ArgumentException(
             $"'{rel}' is not a valid RFC 8288 link relation. Use a registered relation token " +
-            "(lowercase letters, digits, '.' and '-', starting with a letter — for example " +
-            "\"describedby\" or \"service-desc\") or an absolute URI for an extension relation.",
+            "(ASCII letters, digits, '.' and '-', starting with a letter, normalized to lowercase " +
+            "on the wire — for example \"describedby\" or \"service-desc\") or an absolute URI for " +
+            "an extension relation.",
             paramName);
     }
 
