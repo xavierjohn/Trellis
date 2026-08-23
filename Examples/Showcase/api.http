@@ -1,4 +1,4 @@
-###############################################################################
+﻿###############################################################################
 # Showcase Banking API — works against BOTH the MVC host and the Minimal API host
 #
 # Same domain, same DTOs, same JSON payloads — only the hosting style differs.
@@ -42,7 +42,12 @@
 ### List accounts — paginated (server hard-cap = 5)
 ### Body envelope (`items`, `next`, `previous`, `requestedLimit`, `appliedLimit`,
 ### `deliveredCount`, `wasCapped`) is co-emitted with an RFC 8288 `Link` header.
+### Two `Link` field lines are returned here: the pagination `next` relation, and the
+### `service-desc` relation advertising this API's OpenAPI description. RFC 9110 §5.3
+### makes repeated field lines of a list-typed header equivalent to one comma-joined
+### line, so a client must read *every* value — reading only the first drops half.
 ### Behaviour is identical on both hosts (MVC and Minimal API).
+# @expect header: Link
 GET {{host}}/api/accounts?limit=10
 Accept: application/json
 
@@ -61,8 +66,25 @@ Accept: application/json
 GET {{host}}/api/accounts?cursor=not-a-real-cursor
 Accept: application/json
 
-### Get account by id
+### Get account by id.
+### The response carries a `Link: </openapi/v1.json>; rel="service-desc"` header — the
+### RFC 8631 relation for an API description document, emitted by `opts.WithLink(...)`.
+### It is advertised only where the document is actually mapped (Development), because a
+### relation a client can follow to a 404 is worse than no relation at all. The request
+### immediately below dereferences it, so this file proves the link *resolves* rather
+### than merely that it was emitted.
+# @expect header: Link
 GET {{host}}/api/accounts/{{aliceChecking}}
+Accept: application/json
+
+### Dereference the advertised `service-desc` link — the OpenAPI description document.
+### Kept in lockstep with the `Link` header above: if the description stops being served,
+### this request fails and the advertisement above is revealed as dangling.
+### Parity is status-only: both hosts serve a description, but MVC and Minimal API
+### legitimately describe themselves differently, so the bodies are not comparable.
+### @parity: status-only
+# @expect status: 200
+GET {{host}}/openapi/v1.json
 Accept: application/json
 
 ### Get account — not found (404 from Error.NotFound)

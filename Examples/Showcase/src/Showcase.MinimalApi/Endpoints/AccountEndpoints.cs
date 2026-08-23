@@ -14,9 +14,23 @@ using Trellis.Showcase.Domain.ValueObjects;
 /// </summary>
 public static class AccountEndpoints
 {
-    public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder routes)
+    /// <param name="apiDescriptionUrl">
+    /// Where this API's OpenAPI description is served, or <see langword="null"/> when it is not
+    /// served at all. Passed in rather than hardcoded because the link is only advertised when the
+    /// document actually exists: a <c>service-desc</c> relation pointing at a route that is not
+    /// mapped is worse than no link, since a client follows it and gets a 404.
+    /// </param>
+    public static IEndpointRouteBuilder MapAccountEndpoints(
+        this IEndpointRouteBuilder routes,
+        string? apiDescriptionUrl = null)
     {
         var group = routes.MapGroup("/api/accounts").WithTags("Accounts");
+
+        void AdvertiseDescription<T>(HttpResponseOptionsBuilder<T> opts)
+        {
+            if (apiDescriptionUrl is not null)
+                opts.WithLink("service-desc", apiDescriptionUrl);
+        }
 
         group.MapGet("/", (
             int? limit,
@@ -37,13 +51,14 @@ public static class AccountEndpoints
                                     ["cursor"] = c.Token,
                                 })
                             ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
-                        body: AccountResponse.From);
+                        body: AccountResponse.From,
+                        configure: AdvertiseDescription);
             })
             .WithName("Showcase_GetAccounts");
 
         group.MapGet("/{id:AccountId}", (AccountId id, IAccountRepository repo) =>
             repo.GetById(id)
-                .ToHttpResponse(AccountResponse.From))
+                .ToHttpResponse(AccountResponse.From, AdvertiseDescription))
             .WithName("Showcase_GetAccount");
 
         group.MapPost("/", (OpenAccountRequest request, BankingWorkflow workflow, CancellationToken ct) =>

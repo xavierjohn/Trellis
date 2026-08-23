@@ -137,6 +137,10 @@ The provider must implement `IProvideActorVaryHeaders`; the bundled `ClaimsActor
 
 Only the *shape* is validated. Trellis does **not** check the token against the IANA link-relation registry, because that registry changes independently of the framework — an allow-list would reject a newly registered relation until Trellis shipped again. So `WithLink("schema", …)` succeeds and emits `rel="schema"`, and it is still the wrong choice: `schema` is not registered, so RFC 8288 gives it no agreed meaning and generic clients ignore it. Picking a relation clients will actually understand is your decision; the table below covers the registered options.
 
+**On a paginated response, configured links are emitted as a second `Link` field line** rather than being merged into the pagination one. RFC 9110 §5.3 makes repeated field lines of a list-typed header equivalent to a single comma-joined line, so this is on the wire what a client should already handle — but it means **a client must read every value**. Taking only the first, or calling something like `response.Headers.GetValues("Link").Single()`, silently drops half the relations (and `Single()` throws outright). The `Examples/Showcase` accounts endpoints demonstrate the two-line shape end to end.
+
+**Advertise only what you serve.** A relation is a promise a client can follow, so pointing `service-desc` at a description document that is not mapped in the current environment is worse than emitting no link — the client gets a 404 instead of an absence it could have handled. The showcase gates the advertisement on the same condition that maps the document, and its executable `api.http` dereferences the advertised URL so a dangling link fails the build.
+
 **`"schema"` is not a registered link relation.** It does not appear in the IANA link-relation registry, and a bare unregistered token is not a conformant relation type — generic clients ignore it. Use the registered spellings instead:
 
 | Goal | Relation | Reference |

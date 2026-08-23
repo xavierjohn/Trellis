@@ -246,6 +246,11 @@ public sealed class WithLinkTests
         link.Should().Contain("rel=\"next\"");
         link.Should().Contain("rel=\"prev\"");
         link.Should().Contain("rel=\"describedby\"");
+
+        ctx.Response.Headers["Link"].Count.Should().Be(2,
+            "the paged next/prev pair and the configured links are emitted as two field lines, "
+            + "which RFC 9110 section 5.3 makes equivalent to one comma-joined line for a list-typed "
+            + "field — pinned because a client that reads a single value would otherwise see only half");
     }
 
     [Fact]

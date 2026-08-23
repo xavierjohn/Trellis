@@ -180,9 +180,18 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         page.Next!.Cursor.Should().NotBeNullOrEmpty();
 
         response.Headers.Should().ContainKey("Link");
-        var link = response.Headers.GetValues("Link").Single();
+
+        // Two field lines now: the pagination next/prev pair and the configured service-desc
+        // relation. RFC 9110 section 5.3 makes repeated field lines of a list-typed header
+        // equivalent to one comma-joined line, so a client must read every value — taking only
+        // the first (or calling Single()) silently drops half the links.
+        var linkValues = response.Headers.GetValues("Link").ToList();
+        linkValues.Should().HaveCount(2);
+
+        var link = string.Join(", ", linkValues);
         link.Should().Contain("rel=\"next\"");
         link.Should().Contain($"cursor={page.Next.Cursor}");
+        link.Should().Contain("rel=\"service-desc\"");
     }
 
     [Fact]
@@ -220,7 +229,15 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         }
 
         page!.Next.Should().BeNull("after draining all pages, next must be absent");
-        lastResp!.Headers.Contains("Link").Should().BeFalse("last page must not emit a Link header");
+
+        // The last page emits no pagination relations, but the service-desc link is not
+        // pagination and is still advertised — so assert on the relations, not on the header's
+        // mere presence.
+        var lastLinks = lastResp!.Headers.Contains("Link")
+            ? string.Join(", ", lastResp.Headers.GetValues("Link"))
+            : string.Empty;
+        lastLinks.Should().NotContain("rel=\"next\"", "last page must not offer a next relation");
+        lastLinks.Should().NotContain("rel=\"prev\"", "the showcase page builder emits no prev relation");
     }
 
     [Fact]

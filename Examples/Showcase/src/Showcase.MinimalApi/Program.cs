@@ -68,6 +68,11 @@ using (var scope = app.Services.CreateScope())
     ShowcaseSeed.Apply(repo, timeProvider);
 }
 
+// The description link is advertised only where the document is actually mapped. Advertising a
+// service-desc relation that resolves to 404 would be worse than omitting it, so the URL and the
+// route that serves it are turned on by the same condition.
+var apiDescriptionUrl = app.Environment.IsDevelopment() ? "/openapi/v1.json" : null;
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -78,7 +83,7 @@ app.UseScalarValueValidation();
 app.UseAuthorization();
 app.UseTrellisIdempotency();
 
-app.MapAccountEndpoints();
+app.MapAccountEndpoints(apiDescriptionUrl);
 app.MapTransferEndpoints();
 app.MapBatchTransferEndpoints();
 app.MapInterestEndpoints();

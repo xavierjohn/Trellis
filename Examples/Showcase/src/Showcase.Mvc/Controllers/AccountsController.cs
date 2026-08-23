@@ -14,11 +14,26 @@ public class AccountsController : ControllerBase
 {
     private readonly IAccountRepository _repository;
     private readonly BankingWorkflow _workflow;
+    private readonly string? _apiDescriptionUrl;
 
-    public AccountsController(IAccountRepository repository, BankingWorkflow workflow)
+    public AccountsController(
+        IAccountRepository repository,
+        BankingWorkflow workflow,
+        Microsoft.AspNetCore.Hosting.IWebHostEnvironment environment)
     {
         _repository = repository;
         _workflow = workflow;
+
+        // Advertised only where the document is actually mapped: Program.cs serves the OpenAPI
+        // description in Development only, and a service-desc relation resolving to 404 would be
+        // worse than no link at all.
+        _apiDescriptionUrl = environment.IsDevelopment() ? "/openapi/v1.json" : null;
+    }
+
+    private void AdvertiseDescription<T>(HttpResponseOptionsBuilder<T> opts)
+    {
+        if (_apiDescriptionUrl is not null)
+            opts.WithLink("service-desc", _apiDescriptionUrl);
     }
 
     [HttpGet(Name = "Showcase_GetAccounts")]
@@ -36,14 +51,15 @@ public class AccountsController : ControllerBase
                     links.GetUriByName(HttpContext, "Showcase_GetAccounts",
                         values: new { limit = applied, cursor = c.Token })
                     ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
-                body: AccountResponse.From)
+                body: AccountResponse.From,
+                configure: AdvertiseDescription)
             .AsActionResult<PagedResponse<AccountResponse>>();
     }
 
     [HttpGet("{id:AccountId}", Name = "Showcase_GetAccount")]
     public ActionResult<AccountResponse> Get(AccountId id) =>
         _repository.GetById(id)
-            .ToHttpResponse(AccountResponse.From)
+            .ToHttpResponse(AccountResponse.From, AdvertiseDescription)
             .AsActionResult<AccountResponse>();
 
     [HttpPost]
