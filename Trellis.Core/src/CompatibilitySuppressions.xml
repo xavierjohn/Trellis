@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  Each entry below is a deliberate, reviewed break. Regenerating this file with
+  /p:ApiCompatGenerateSuppressionFile=true drops these comments, so re-add them.
+
+  CP0002 x4, Error.NotFound.For / Error.Gone.For (3.0.0-alpha.496):
+  a trailing optional `code` parameter was added to all four factories, so the
+  two-parameter signatures no longer exist. Source-compatible - every existing
+  call site still compiles unchanged - but binary-breaking, so a consumer
+  compiled against 3.0.0-alpha.495 must rebuild rather than drop in the new
+  assembly.
+
+  Adding the parameter rather than overloading is forced: an overload leading
+  with `code` would make the existing `For<T>("some-id")` bind to the new method,
+  silently turning an id into a reason code. A signature change fails loudly at
+  compile time instead.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Gone.For(System.String,System.Object,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Gone.For``1(System.Object,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.NotFound.For(System.String,System.Object,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.NotFound.For``1(System.Object,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>
