@@ -298,6 +298,29 @@ recommended shape, so matching on constant value rather than syntax would flag t
 
 WRONG/FIX shapes: [`trellis-api-anti-patterns.md` → TRLS064](docs/docfx_project/api_reference/trellis-api-anti-patterns.md#trls064--reason-code-literal-that-collides-with-the-frozen-vocabulary).
 
+### Changed — **BREAKING**: a rule violation reports locations, not a bare array of pointers
+
+`RuleViolationProblemDetail`'s third positional member changes from `string[] Fields` — a bare array of JSON Pointer
+strings — to `IReadOnlyList<ViolationLocation> Locations`, and `FieldViolationProblemDetail` gains a
+`ViolationLocation Location` member in place of its pointer string. `ViolationLocation` is `(string In, string?
+Pointer, string? Name)`, where `In` is `body`, `query`, `path`, `header`, or `unknown`.
+
+The old shape could only ever assert *these are pointers into the body*, which is false for a rule spanning a query
+parameter or a header, and it had no member in which to say otherwise. A JSON Pointer addresses a location in a JSON
+document; a query parameter is not in one, so `/pageSize` was a well-formed pointer naming something that does not
+exist at that path. Because a pointer is structurally valid whether or not the body contains it, a client could not
+detect the mismatch — it would resolve the pointer against the body, find nothing, and report the wrong field or none.
+`Pointer` and `Name` are therefore mutually exclusive: body violations carry a pointer, everything else carries the
+parameter's name, with RFC 6901 escaping reversed so `Name` is the name the caller actually sent.
+
+`Locations` is always serialized, including when empty. An empty array is a positive statement that the rule is
+form-level rather than bound to any field — a distinction an omitted member could not express, since absent would be
+ambiguous between *no location* and *not computed*.
+
+This is the wire-shape change that makes the request-origin feature below observable; that entry describes how the
+origin is derived, while this one describes the shape it is reported in.
+
+Clients reading `fields[i]` must read `locations[i].pointer` (body) or `locations[i].name` (query, path, header).
 ### Added — validation failures now say which part of the request they came from
 
 A violation raised in the domain names the field that failed but cannot know where the value arrived from, so it
