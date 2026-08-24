@@ -227,26 +227,18 @@ internal static class ResponseFailureWriter
         HttpContext httpContext,
         Microsoft.AspNetCore.Http.IResult inner)
     {
-        var problem = inner switch
-        {
-            ProblemHttpResult p => p.ProblemDetails,
-            Microsoft.AspNetCore.Http.HttpResults.ValidationProblem v => v.ProblemDetails,
-            _ => null,
-        };
+        // Every construction site above goes through Results.Problem or Results.ValidationProblem,
+        // and both return a ProblemHttpResult — ValidationProblem differs only in carrying the
+        // derived HttpValidationProblemDetails, which the runtime-typed serialization below keeps
+        // intact. A cast rather than a fallback is deliberate: silently deferring to
+        // inner.ExecuteAsync would put the response back on the negotiating path this method
+        // exists to avoid, so a future framework change should surface here rather than reopen
+        // the vulnerability.
+        var problem = ((ProblemHttpResult)inner).ProblemDetails;
 
         var serializerOptions = httpContext.RequestServices
-            .GetService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>()
-            ?.Value.SerializerOptions;
-
-        // Without a configured resolver there is no trim-safe contract to serialize against, so
-        // defer to the framework rather than reach for reflection. Bailing out here — before the
-        // status is committed and before the customization hook runs — is what keeps that hook
-        // from running twice when the framework goes on to write the body itself.
-        if (problem is null || serializerOptions is null)
-        {
-            await inner.ExecuteAsync(httpContext).ConfigureAwait(false);
-            return;
-        }
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>()
+            .Value.SerializerOptions;
 
         // Status is committed before customization, mirroring ProblemHttpResult.ExecuteAsync:
         // a customization that rewrites ProblemDetails.Status changes the body only, never the
@@ -254,8 +246,8 @@ internal static class ResponseFailureWriter
         httpContext.Response.StatusCode = problem.Status ?? httpContext.Response.StatusCode;
 
         var customize = httpContext.RequestServices
-            .GetService<Microsoft.Extensions.Options.IOptions<ProblemDetailsOptions>>()
-            ?.Value.CustomizeProblemDetails;
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<ProblemDetailsOptions>>()
+            .Value.CustomizeProblemDetails;
 
         customize?.Invoke(new ProblemDetailsContext
         {
