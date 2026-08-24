@@ -18,11 +18,16 @@ using Trellis.Asp;
 ///   enum.name-undefined       = "Choose one of: {allowed}."
 ///   enum.name-undefined.count = "That is not one of the {allowedCount} permitted values."
 ///   enum.name-undefined.bare  = "That is not a permitted value."
+///   enum.undefined            = "Choose one of: {allowed}."
+///   enum.undefined.count      = "That is not one of the {allowedCount} permitted values."
+///   enum.undefined.bare       = "That is not a permitted value."
 ///   value.not-empty           = "This field cannot be blank."
 ///   error.unspecified         = "That value is not valid."
 /// </code>
 /// Two further keys are <em>not</em> reason codes: <c>bool.true</c> and <c>bool.false</c>
 /// render boolean args, because a raw "True" is not a sentence in any language.
+/// The rows above are illustrative: a real table carries one row per code the API can
+/// emit, and a row per <c>.count</c>/<c>.bare</c> variant of the two enum codes.
 /// </summary>
 public sealed class ViolationMessages;
 
