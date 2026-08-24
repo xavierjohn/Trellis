@@ -30,7 +30,7 @@ audience: [llm]
 ## How to read these recipes
 
 **Hold this routing head resident; read recipe bodies on demand.** Everything above the first
-`## Recipe` heading is ~4K tokens and routes every task. The 35 recipe bodies below are another
+`## Recipe` heading is ~4K tokens and routes every task. The 36 recipe bodies below are another
 ~57K, and a typical task needs one to three of them — so open a body when the [task lookup
 table](#task---recipe-lookup) sends you to one, rather than loading all of them up front. Every
 live recipe is reachable from that table (enforced by the repository's TRLDOC007 lint gate), so if
@@ -116,6 +116,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Make domain events survive a crash (transactional outbox) | [Recipe 35](#recipe-35--transactional-outbox-for-crash-safe-domain-events) |
 | Publish a stable external contract (integration events) translated from domain events | [Recipe 36](#recipe-36--translating-a-domain-event-into-an-integration-event) |
+| Show a validation failure in the user's language, or render your own message from a 422 instead of showing the server's English | [Recipe 39](#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args) |
 | Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
 | Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 | Rehydrate an entity from a database row (fail-loud vs Result-track) | [Recipe 30](#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
@@ -138,6 +139,7 @@ These rows route recurring LLM lab mistakes to the most relevant reference befor
 | Single-loop mutate-as-you-validate over a collection of related aggregates (reserve stock per line item, etc.) | [Recipe 25](#recipe-25--two-pass-validate-then-mutate-over-a-collection-of-related-aggregates) | A later element's validation failure leaves earlier elements partially mutated in memory. Validate every fallible domain check across every participating aggregate before the first state-changing call. |
 | Result-returning ASP endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult), then [trellis-api-asp.md](trellis-api-asp.md#patterns-index) | `AddTrellisAsp()` is required for Result-to-HTTP mapping; exception middleware is not the mapper. |
 | Failure-code OpenAPI metadata or `.http` examples | [trellis-api-asp.md](trellis-api-asp.md#endpoint-checklist-for-generated-apis), [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#api-failure-path-test-checklist) | Generated APIs need failure paths, not happy-path-only docs/tests. |
+| Reading operands out of a failure's `detail` text — splitting `"Valid values: "`, parsing bounds out of a sentence | [Recipe 39](#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args) | Prose belongs to whichever producer noticed the failure, and one failure can have several producers wording it differently. `Code` is stable and `Args` carries the operands as typed values. |
 | Resource authorization guards | [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth), then [trellis-api-authorization.md](trellis-api-authorization.md#patterns-index) | Use `Result.Ensure` for owner/admin boolean guards. |
 
 ---
@@ -1337,7 +1339,7 @@ o => o.Status == OrderStatus.Submitted
 
 is now both readable AND analyzer-clean inside any expression tree (specifications, FluentValidation, EF). The residual EF-Core/`FakeRepository` parity guidance — `AddTrellisInterceptors()`, `ApplyTrellisConventions`, and "share the same `Specification<T>` between EF and `FakeRepository` — never duplicate the predicate" — has moved into [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects). Ad-hoc query operators (`WhereLessThan`, `WhereHasValue`, etc.) live in [trellis-api-efcore.md](trellis-api-efcore.md#maybequeryableextensions).
 
-The recipe number is preserved as a stub so existing bookmark and search-index entries remain stable; future content should renumber from Recipe 39 rather than reusing 15.
+The recipe number is preserved as a stub so existing bookmark and search-index entries remain stable; future content should renumber from Recipe 40 rather than reusing 15.
 
 ---
 
@@ -3198,6 +3200,160 @@ Result<TenantId> tenant = actor.GetRequiredAttribute<TenantId>(ActorAttributes.T
 **What it shows.** `Actor.GetRequiredAttribute<TVo>(key)` and `Actor.TryGetAttribute<TVo>(key, out vo)` parse an actor attribute (an ABAC claim) into a Trellis value object through its `IParsable` implementation — the same validation that guards request input now guards claim-sourced values, with no `GetAttribute(...)` + `TryCreate(...)` boilerplate and no magic strings. `TryGetAttribute` is the natural fit for an authorization gate (deny-close on `false`); `GetRequiredAttribute` returns `Result<TVo>` for railway composition in a handler, failing with an `Error.InvalidInput` whose field is the attribute key when the claim is absent or invalid. The value object can be any source-generated `Required*` VO — `string`-, `Guid`-, or `int`-backed — since the generator makes each one `IParsable`, so a Guid-backed tenant id works as naturally as a string claim. Wiring is identical to [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth); the tenant check lives in `Authorize(actor, resource)`, which the resource-authorization pipeline runs after the loader produces the resource.
 
 **Why no `TenantScopedCommand` base type.** The variable part of a tenant guard — what "scope" means, which resources are scoped, how the resource exposes its tenant — is domain policy. A reusable base class is either too rigid or needs enough hooks to beat the three explicit lines it replaces, and inheritance hides a security decision. The typed accessor removes the *ceremony* (parsing) while leaving the *policy* (the comparison) visible and per-command.
+
+## Recipe 39 — Rendering a validation failure in the caller's language (`code` + `args`)
+
+**Problem.** A 422 arrives carrying `detail` in English, and the UI must show the message in the user's language. The tempting shortcut is to scrape the sentence — read the numbers out of `"must be between 0 and 150"`, or split `"Valid values: Checking, MoneyMarket, Savings"` on `", "` — and that shortcut is what `code` and `args` exist to retire. Prose belongs to whichever producer noticed the failure, and two producers may notice the same failure: an unknown enum name is worded `'Platinum' is not a valid AccountType. Valid values: …` by `RequiredEnum.TryCreate` and `Invalid AccountType value: 'Platinum'. Valid values are: …` by `RequiredEnumJsonConverter`, depending on how the value reached the model. A scraper built against one wording silently mis-renders the other. `Code` is stable, and `Args` carries the operands as typed values — so render from those and treat `Detail` only as a fallback.
+
+```csharp
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using Trellis;
+using Trellis.Asp;
+
+// Resource keys are reason codes, so the .resx *is* the vocabulary:
+//   value.between-inclusive   = "Must be between {from} and {to}."
+//   string.max-length         = "Use at most {maxLength} characters."
+//   enum.name-undefined       = "Choose one of: {allowed}."
+//   enum.name-undefined.count = "That is not one of the {allowedCount} permitted values."
+//   enum.name-undefined.bare  = "That is not a permitted value."
+//   value.not-empty           = "This field cannot be blank."
+//   error.unspecified         = "That value is not valid."
+public sealed class ViolationMessages;
+
+public sealed class ViolationMessageRenderer(IStringLocalizer<ViolationMessages> localizer)
+{
+    public string Render(FieldViolationProblemDetail violation, CultureInfo culture)
+    {
+        var template = localizer[TemplateKey(violation)];
+
+        // An unknown code is not a bug to hide: a server may add a code before this client
+        // learns it. The server's own sentence is the best available answer, and only when
+        // it is absent too does the caller get a generic one -- which is why
+        // error.unspecified is the one row the table must carry.
+        return template.ResourceNotFound
+            ? violation.Detail ?? localizer[ValidationCodes.Unspecified].Value
+            : Expand(template.Value, violation.Args, culture);
+    }
+
+    // `allowed` is dropped whole past ValidationArgs.MaxAllowedMembers and replaced by
+    // `allowedCount`, so an enum rejection has three renderings, not one. A missing `allowed`
+    // means "not supplied" — never "nothing is permitted".
+    private static string TemplateKey(FieldViolationProblemDetail violation)
+    {
+        if (violation.Code is not (ValidationCodes.EnumNameUndefined or ValidationCodes.EnumUndefined))
+            return violation.Code;
+        if (violation.Args?.ContainsKey("allowed") == true) return violation.Code;
+
+        return violation.Args?.ContainsKey("allowedCount") == true
+            ? violation.Code + ".count"
+            : violation.Code + ".bare";
+    }
+
+    private string Expand(
+        string template,
+        IReadOnlyDictionary<string, ValidationArgValue>? args,
+        CultureInfo culture)
+    {
+        if (args is null || !template.Contains('{')) return template;
+
+        var rendered = new StringBuilder(template.Length);
+        var rest = template.AsSpan();
+        while (true)
+        {
+            var open = rest.IndexOf('{');
+            var close = open < 0 ? -1 : rest[open..].IndexOf('}');
+            if (open < 0 || close < 0)
+            {
+                rendered.Append(rest);
+                return rendered.ToString();
+            }
+
+            rendered.Append(rest[..open]);
+            var name = rest.Slice(open + 1, close - 1).ToString();
+            rendered.Append(args.TryGetValue(name, out var value)
+                ? Format(value, culture)
+                : rest.Slice(open, close + 1));   // leave an unmatched placeholder visible
+            rest = rest[(open + close + 1)..];
+        }
+    }
+
+    // The union is closed, so this switch covers every shape an arg can take: a new case
+    // cannot appear without this method needing an arm for it.
+    private string Format(ValidationArgValue value, CultureInfo culture) => value switch
+    {
+        ValidationArgValue.Text text => text.Value,
+
+        // Invariant on the wire, cultural on screen — a German user reads "1,5", not "1.5".
+        ValidationArgValue.Number number => number.Value.ToString("G29", culture),
+
+        // A raw "True" is not a sentence in any language, so booleans go through the table too.
+        ValidationArgValue.Bool flag => localizer[flag.Value ? "bool.true" : "bool.false"].Value,
+
+        ValidationArgValue.List list => FormatList(list, culture),
+        _ => string.Empty,
+    };
+
+    // Projected with a loop rather than LINQ: `Items` is an ImmutableArray, and with `using
+    // Trellis;` in scope a `.Select(...)` on it binds ambiguously against MaybeLinqExtensions.
+    private string FormatList(ValidationArgValue.List list, CultureInfo culture)
+    {
+        var parts = new string[list.Items.Length];
+        for (var i = 0; i < parts.Length; i++)
+            parts[i] = Format(list.Items[i], culture);
+
+        return string.Join(culture.TextInfo.ListSeparator + " ", parts);
+    }
+}
+```
+
+Read the violations off the response, not the root, and do not assume they are there:
+
+```csharp
+public static class ViolationReader
+{
+    /// <summary>
+    /// The root <c>code</c> on a validation failure is the <c>error.unspecified</c> sentinel by
+    /// design — the reasons are per-violation. And a body that never parsed reports 400 with no
+    /// <c>fieldViolations</c> member at all, which is "no per-field reason available", not a
+    /// malformed response.
+    /// </summary>
+    public static FieldViolationProblemDetail[] ReadFieldViolations(
+        ProblemDetails problem,
+        JsonSerializerOptions options) =>
+        problem.Extensions.TryGetValue("fieldViolations", out var raw) && raw is JsonElement element
+            ? element.Deserialize<FieldViolationProblemDetail[]>(options) ?? []
+            : [];
+
+    public static IEnumerable<(string? Pointer, string Message)> Localize(
+        ProblemDetails problem,
+        ViolationMessageRenderer renderer,
+        JsonSerializerOptions options,
+        CultureInfo culture) =>
+        ReadFieldViolations(problem, options)
+            .Select(violation => (violation.Location.Pointer, renderer.Render(violation, culture)));
+}
+```
+
+`FieldViolationProblemDetail` and `ValidationArgValue` are declared in `Trellis.Asp` and `Trellis.Core`, which a Trellis-based caller already references — but nothing here depends on that. The contract is the JSON, so a client on another stack declares its own equivalent record and the recipe is unchanged; these are response-shape metadata, not a domain model to share.
+
+**What it shows.** A localized message is a function of `Code`, `Args`, and a resource table — never of `Detail`. Keying the `.resx` on the reason code makes the [`ValidationCodes`](trellis-api-core.md#validationcodes--the-reason-code-vocabulary) vocabulary the translation vocabulary, so a missing translation is a missing row rather than a parsing bug, and a translator sees the whole surface in one file. Because `ValidationArgValue` is a closed union of JSON's self-describing values, formatting is total and exhaustive: `Number` is a `decimal` written invariantly on the wire and formatted *culturally* for display, which is the one conversion a scraper cannot do correctly because it never recovers the type. `Location.Pointer` (RFC 6901) is what binds the message back to a form control.
+
+The same renderer works server-side when an API must localize on behalf of thin clients — resolve the culture from `Accept-Language` and render before writing the response. Prefer the client doing it: the server cannot know the user's locale better than the client, and a localized `detail` is not cacheable across languages.
+
+**Anti-pattern → fix.**
+
+| Anti-pattern | Why it breaks | Fix |
+|---|---|---|
+| Parsing operands out of `Detail` (`"Valid values: "`, `"between 0 and 150"`) | Prose belongs to the producer, and one failure has several producers with different wording. It is also English-only, which is the problem being solved. | Read `Args["from"]`, `Args["allowed"]`. |
+| Treating a missing `allowed` as "nothing is permitted" | Past `ValidationArgs.MaxAllowedMembers` the list is omitted deliberately and `allowedCount` sent instead. Rendering "choose one of: (none)" tells the user the field is unusable. | Branch on `allowed` / `allowedCount` / neither. |
+| Switching on the root `code` | `Error.InvalidInput` leaves the root at `error.unspecified`; the actionable codes are per violation. | Descend into `fieldViolations[n].code`. |
+| Assuming `fieldViolations` exists | A body that never parsed reports 400 with no such member. | Treat absence as "no per-field reason available". |
+| Formatting a `Number` with `InvariantCulture` for display, or echoing the raw JSON text | Shows `1.5` to a user whose locale writes `1,5`. | Format with the UI culture; the wire stays invariant. |
+| Falling back to a generic string for an unrecognized code | Discards the server's own explanation, which is usually better than "Invalid input". | Fall back to `Detail` first, generic prose last. |
 
 ## Cross-references
 

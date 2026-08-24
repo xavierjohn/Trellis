@@ -23,7 +23,7 @@ to skim all of it wastes the budget you need for the task. The cookbook exists t
 its [preflight table](trellis-api-cookbook.md#llm-preflight-load-the-smallest-correct-reference-set)
 names exactly which package references that task needs.
 
-That routing head is only ~4K tokens. The 35 recipe bodies beneath it are another ~57K, and a
+That routing head is only ~4K tokens. The 36 recipe bodies beneath it are another ~57K, and a
 typical task opens one to three of them — so **hold the head, and read recipe bodies on demand**
 rather than paying ~57K tokens up front to keep bodies you will never open. Every live recipe is
 reachable from the index (a repository lint gate enforces this), so trust the index rows: if a task
