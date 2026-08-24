@@ -362,3 +362,9 @@ MigrationBackup/
 # Showcase api.http replay transcripts. Each run carries fresh account ids and
 # trace ids, so a transcript is a local artifact for diffing, not a baseline.
 Examples/Showcase/replay-*.txt
+
+# Local release rehearsal output. `publish-nuget-org.yml` packs into `nupkgs/`
+# and writes SBOM manifests to `sbom/` at the repository root; CI always runs
+# from a fresh checkout, so these only ever appear when rehearsing locally.
+/nupkgs/
+/sbom/
