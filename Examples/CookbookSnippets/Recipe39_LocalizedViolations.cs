@@ -21,6 +21,8 @@ using Trellis.Asp;
 ///   value.not-empty           = "This field cannot be blank."
 ///   error.unspecified         = "That value is not valid."
 /// </code>
+/// Two further keys are <em>not</em> reason codes: <c>bool.true</c> and <c>bool.false</c>
+/// render boolean args, because a raw "True" is not a sentence in any language.
 /// </summary>
 public sealed class ViolationMessages;
 
@@ -94,11 +96,16 @@ public sealed class ViolationMessageRenderer(IStringLocalizer<ViolationMessages>
         ValidationArgValue.Bool flag => localizer[flag.Value ? "bool.true" : "bool.false"].Value,
 
         ValidationArgValue.List list => FormatList(list, culture),
-        _ => string.Empty,
+
+        // Unreachable while the union stays closed. Throwing rather than returning "" is what
+        // makes the exhaustiveness real: a case added by a future upgrade surfaces here instead
+        // of silently deleting an operand from a translated sentence.
+        _ => throw new NotSupportedException($"Unhandled arg value: {value.GetType().Name}."),
     };
 
-    // Projected with a loop rather than LINQ: `Items` is an ImmutableArray, and with `using
-    // Trellis;` in scope a `.Select(...)` on it binds ambiguously against MaybeLinqExtensions.
+    // Projected with a loop rather than LINQ: `Items` is an EquatableArray, which deliberately
+    // does not implement IEnumerable<T>, so Enumerable.Select never applies. The only `Select`
+    // in scope is then MaybeLinqExtensions', and inference fails with CS0411.
     private string FormatList(ValidationArgValue.List list, CultureInfo culture)
     {
         var parts = new string[list.Items.Length];
