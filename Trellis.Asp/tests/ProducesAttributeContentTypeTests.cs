@@ -378,8 +378,8 @@ public sealed class ProducesAttributeContentTypeTests
 }
 
 /// <summary>
-/// A minimal non-JSON formatter, standing in for the CSV/PDF/XML exports a real service exposes.
-/// Its <see cref="CanWriteResult"/> accepts only <c>string[]</c>, which is the whole point: it
+/// A minimal non-JSON formatter, standing in for the CSV/PDF exports a real service exposes.
+/// Its <see cref="CanWriteType"/> accepts only <c>string[]</c>, which is the whole point: it
 /// declines <c>ProblemDetails</c>, so MVC falls back and the problem keeps its own media type.
 /// </summary>
 public sealed class CsvOutputFormatter : TextOutputFormatter
