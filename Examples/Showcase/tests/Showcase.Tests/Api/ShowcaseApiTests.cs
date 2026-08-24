@@ -107,6 +107,10 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
                 "the products are ordinally sorted so a client can compare or cache the list across producers");
 
         // The English sentence is kept alongside the machine-readable list, not replaced by it.
+        // This exact wording belongs to the RequiredEnum.TryCreate producer, which is the path
+        // this in-process host takes; RequiredEnumJsonConverter words the same rejection
+        // differently, so only `code`, `location` and `args` are asserted cross-host in
+        // ApiHttpFileParityTests.
         violation.GetProperty("detail").GetString()
             .Should().Be("'Platinum' is not a valid AccountType. Valid values: Checking, MoneyMarket, Savings");
     }
