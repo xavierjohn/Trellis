@@ -4,6 +4,8 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 /// <summary>
 /// An <see cref="ActionResult"/> that writes an RFC 9457 problem document and pins its media type
@@ -19,25 +21,26 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 /// because the filter overwrites it; only not being an <see cref="ObjectResult"/> is.
 /// </para>
 /// <para>
-/// Execution still goes through MVC's own formatter pipeline via an inner
-/// <see cref="ObjectResult"/>, so the serialized body is identical to what the bare
-/// <see cref="ObjectResult"/> produced.
+/// It no longer executes an inner <see cref="ObjectResult"/>. Doing so put the document through
+/// MVC's formatter pipeline, and MVC would select an XML formatter for a request whose
+/// <c>Accept</c> asked for one -- even when the inner result declared <c>problem+json</c> as its
+/// only content type. That was fatal rather than merely surprising: this result carries
+/// <c>fieldViolations</c> / <c>ruleViolations</c> entries in <c>ProblemDetails.Extensions</c>,
+/// which is typed <c>object?</c>, and <c>XmlDataContractSerializerOutputFormatter</c> throws
+/// <see cref="InvalidCastException"/> on values <c>DataContractSerializer</c> was not given via
+/// <c>KnownTypeAttribute</c> -- which no application can supply for an <c>object?</c> member. Any
+/// client could therefore turn every scalar-validation failure into an unhandled exception with a
+/// single request header.
 /// </para>
 /// <para>
-/// The inner result declares <c>application/problem+json</c> and <c>application/problem+xml</c>,
-/// in that order, because those are precisely the two media types MVC's own
-/// <c>ObjectResultExecutor</c> infers for a <see cref="Microsoft.AspNetCore.Mvc.ProblemDetails"/>
-/// value whose content-type list is empty. Declaring them explicitly keeps content negotiation --
-/// including XML problem documents and <c>ReturnHttpNotAcceptable</c> behaviour -- identical to the
-/// bare <see cref="ObjectResult"/> this replaced. The only thing that changes is that
-/// <c>[Produces]</c> can no longer overwrite the list.
+/// The body is written directly instead, through <see cref="ProblemJsonWriter"/> and using MVC's
+/// own <see cref="JsonOptions"/>, so it stays byte-identical to what the JSON output formatter
+/// produced for the same document -- including any <c>AddJsonOptions(...)</c> the application
+/// configured. Only the possibility of negotiating away from JSON is removed.
 /// </para>
 /// </remarks>
 internal sealed class ProblemDetailsActionResult : ActionResult, IStatusCodeActionResult
 {
-    private const string ProblemJsonMediaType = "application/problem+json";
-    private const string ProblemXmlMediaType = "application/problem+xml";
-
     private readonly object _problemDetails;
     private readonly int _statusCode;
 
@@ -61,12 +64,13 @@ internal sealed class ProblemDetailsActionResult : ActionResult, IStatusCodeActi
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var inner = new ObjectResult(_problemDetails)
-        {
-            StatusCode = _statusCode,
-            ContentTypes = { ProblemJsonMediaType, ProblemXmlMediaType },
-        };
+        var httpContext = context.HttpContext;
+        httpContext.Response.StatusCode = _statusCode;
 
-        return inner.ExecuteResultAsync(context);
+        var serializerOptions = httpContext.RequestServices
+            .GetRequiredService<IOptions<JsonOptions>>()
+            .Value.JsonSerializerOptions;
+
+        return ProblemJsonWriter.WriteAsync(httpContext, _problemDetails, serializerOptions);
     }
 }

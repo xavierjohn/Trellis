@@ -660,7 +660,7 @@ If `[Produces]` is there to drive OpenAPI rather than negotiation, use the shape
 public ActionResult<string[]> Export() => Ok(rows);
 ```
 
-XML is a separate matter and is deliberately not listed as a safe example: `XmlSerializerOutputFormatter` declines `ProblemDetails` and is harmless, but `AddXmlDataContractSerializerFormatters()` attempts the write and throws a `SerializationException`, yielding a 500 instead of the problem document. That failure has nothing to do with `[Produces]` and TRLS065 neither reports nor prevents it — see the XML limitation in `trellis-api-asp.md`.
+XML is a separate matter and is deliberately not listed as a safe example, though not because it is dangerous: Trellis failure responses ignore output formatters entirely and always write `application/problem+json`, so neither `AddXmlSerializerFormatters()` nor `AddXmlDataContractSerializerFormatters()` can change a Trellis problem document — and neither one can be *repaired* by `[Produces]` either, since TRLS065 is about which media type a formatter claims and no formatter is consulted here. See the JSON-only note in `trellis-api-asp.md`.
 
 > Severity: Warning, rather than the Info used for TRLS063/TRLS064. Those rules report a legal shape that a codebase may reasonably be full of; this one reports a wire-format defect whose symptom — a failure body that parses fine but arrives under the wrong media type — is invisible in the response the developer eyeballs. Trellis's own responses are already immune (`AsActionResult<T>()` returns a plain `ActionResult`, and `ScalarValueValidationFilter` owns every invalid `ModelState`), so what this rule protects is the `ObjectResult`s your application builds itself.
 

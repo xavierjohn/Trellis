@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — an `Accept: application/xml` header can no longer break every failure response
+
+`ResponseFailureWriter` now writes `application/problem+json` directly instead of handing its result to `IProblemDetailsService`. Under MVC that service negotiates on `Accept`, so an application that registered `AddXmlDataContractSerializerFormatters()` would try to render a Trellis problem document as XML — and throw. `ProblemDetails.Extensions` is typed `object?` and Trellis fills it with `FieldViolationProblemDetail` and `RuleViolationProblemDetail` values; `DataContractSerializer` refuses runtime types it was never given via `KnownTypeAttribute`, and because the member is `object?` no application could supply one. Any client could therefore turn every failure on the service into an unhandled `InvalidCastException` by setting one request header.
+
+There were **two independent doors** into that crash, and both are closed:
+
+- `ResponseFailureWriter` (handler failures) executed its `IResult`, which routes through `IProblemDetailsService`; under MVC that writer negotiates. It now writes the body itself.
+- `ScalarValueValidationFilter` (binder and JSON-body failures, which answer *before* the handler runs and never touch `ResponseFailureWriter`) returned a `ProblemDetailsActionResult` that executed an inner `ObjectResult` through MVC's formatter pipeline. Pinning that inner result's declared content types to `problem+json` alone is **not** a defence — MVC still selects an XML formatter for an XML `Accept` — so the result now writes its body directly too, using MVC's own `JsonOptions` so the bytes are unchanged.
+
+The Minimal API seams (`ScalarValueValidationEndpointFilter`, `ScalarValueValidationMiddleware`) were measured and are unaffected: they resolve the non-MVC problem-details writer, which never negotiates. They are pinned by a test so a future change cannot reopen the hole quietly on a path nothing else covers.
+
+This removes an asymmetry rather than adding a restriction. Success responses never consulted a formatter — `ToHttpResponse` returns an `IResult` that writes its own body — so failures were the only Trellis responses that content negotiation could reach, and the only ones it could break.
+
+Handler failure documents are still **constructed** through `Results.Problem(...)` / `Results.ValidationProblem(...)`, so ASP.NET Core's `title` and `type` defaulting is unchanged, and `ProblemDetailsOptions.CustomizeProblemDetails` is invoked explicitly — exactly once, with `AdditionalMetadata` from the endpoint — so `traceId`, the `code`/`kind` envelope seeded by `AddTrellisProblemDetails()`, and any consumer customization layered after them all still reach failure output. That last part is the reason the fix is not simply "stop calling the service": no existing test covered `traceId` on failure-writer output, so dropping the hook would have silently emptied every customized problem document.
+
+Documents are serialized by their **runtime** type through `JsonSerializerOptions.GetTypeInfo`, which keeps the path trim- and AOT-clean without a suppression and preserves the `errors` member that only the derived validation type declares. `ResponseFailureWriter` resolves `Microsoft.AspNetCore.Http.Json.JsonOptions`; an application that customized *MVC's* `JsonOptions` and relied on those settings shaping handler-failure documents should mirror them onto `ConfigureHttpJsonOptions`. When no JSON options are registered at all the writer defers to the framework result unchanged, before touching the status or the customization hook.
+
 ### Added — enum rejections name the members they would have accepted
 
 A violation carrying `enum.name-undefined` or `enum.undefined` now includes an `allowed` arg listing the permitted member names as a JSON array of strings:
@@ -186,7 +203,7 @@ Code that read `error.Code` expecting the kind slug — in a log line, an except
 
 A controller carrying `[Produces("application/json")]` silently downgraded Trellis validation failures from `application/problem+json` to `application/json`. `ProducesAttribute` is a result filter that rewrites `ObjectResult.ContentTypes` **wholesale**, and `ScalarValueValidationFilter` returned its problem as a plain `ObjectResult`, so the filter overwrote it. The status code and the ProblemDetails body were both unchanged, which is what made this survive: the response stopped conforming to RFC 9457 while every status-and-body assertion still passed. It was reported by a consuming team, not caught here — and the reason our suite missed it is that it asserted exactly those two invariants.
 
-The three problem-producing sites in `ScalarValueValidationFilter` now return an internal `ProblemDetailsActionResult`, a plain `ActionResult` that executes an inner `ObjectResult`. Setting `ContentTypes` would not have helped — the result filter overwrites it — so the defence is *not being an `ObjectResult`*, which is the same reason `AsActionResult<T>` was already immune. Bodies are byte-identical, and the wrapper declares both `problem+json` and `problem+xml`, precisely the pair MVC infers for a `ProblemDetails` with an empty content-type list, so negotiation is unchanged.
+The three problem-producing sites in `ScalarValueValidationFilter` now return an internal `ProblemDetailsActionResult`, a plain `ActionResult`. Setting `ContentTypes` would not have helped — the result filter overwrites it — so the defence is *not being an `ObjectResult`*, which is the same reason `AsActionResult<T>` was already immune. Bodies are byte-identical, and the result writes `application/problem+json` itself rather than executing an inner `ObjectResult` through MVC's formatter pipeline (see the XML entry above for why it must).
 
 Because the filter takes over **every** invalid `ModelState` — plain DataAnnotations failures, and bodies that fail to parse or convert, not only value-object rejections — an app registering it via `AddTrellisAspWithScalarValidation` now has no exposed model-validation seam. A body that never deserialized is worth calling out: nothing was semantically rejected, so it reports 400 rather than 422 and carries **no** `fieldViolations`, which makes it look untouched by Trellis when it is not.
 
