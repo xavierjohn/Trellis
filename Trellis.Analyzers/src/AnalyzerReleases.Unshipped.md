@@ -28,3 +28,4 @@ TRLS054  | Trellis  | Warning  | Maybe<T>.Equals or object.Equals over Maybe<T> 
 TRLS055  | Trellis  | Warning  | HasValueWhere inside an IQueryable expression requires an inline lambda predicate.
 TRLS063  | Trellis  | Info     | FluentValidation Must/MustAsync rule has no WithErrorCode; its failure maps to error.unspecified.
 TRLS064  | Trellis  | Info     | Reason-code literal restates a frozen framework code, or claims a namespace the framework owns.
+TRLS065  | Trellis  | Warning  | [Produces] lists a JSON-family media type, which rewrites RFC 9457 problem responses; trim MvcOptions formatters instead.

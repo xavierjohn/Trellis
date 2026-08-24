@@ -176,4 +176,7 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS064 — a reason-code string literal restates a frozen framework code, or claims a namespace the framework owns.</summary>
     public const string ReasonCodeVocabulary = "TRLS064";
+
+    /// <summary>TRLS065 — <c>[Produces]</c> lists a JSON-family media type, which rewrites RFC 9457 problem responses.</summary>
+    public const string ProducesClobbersProblemDetails = "TRLS065";
 }

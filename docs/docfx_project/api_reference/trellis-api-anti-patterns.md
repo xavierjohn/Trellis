@@ -601,6 +601,69 @@ Setting `Code` to a name of your own is the documented reason the property exist
 
 > Severity: Info. **This rule does not check vocabulary membership**, and that boundary is deliberate: the freeze constrains Trellis, not your application, and `trellis-api-primitives.md` promises that no analyzer pressures the choice to override a framework code or keep it. A novel, well-formed code of your own — `order.cancel-after-ship`, or a bare `required` — is silent, including where it is a synonym for a code Trellis also has. Only restating a frozen code, or claiming a namespace whose meaning Trellis has published, is reported. Note also that only *literals* are reported: `ValidationCodes.ValueNotNull` is the recommended shape, so matching on constant value rather than syntax would flag the fix itself.
 
+## TRLS065 — `[Produces]` that lists a JSON media type
+
+`ProducesAttribute` is a result filter that replaces `ObjectResult.ContentTypes` wholesale. The JSON output formatter advertises `application/json`, `text/json` and `application/*+json`, so it can serialise a `ProblemDetails` as any of them — and an RFC 9457 failure quietly ships as `application/json`, breaking clients that content-negotiate or branch on the media type.
+
+```csharp
+// WRONG — every problem response from this controller loses application/problem+json
+[ApiController]
+[Produces("application/json")]                                  // TRLS065
+public sealed class OrdersController : ControllerBase
+{
+    [HttpPost]
+    public ActionResult Create(CreateOrder command) =>
+        ModelState.IsValid ? Ok() : ValidationProblem(ModelState);
+}
+```
+
+The obvious repair — adding `application/problem+json` to the list — does not work, in any order:
+
+```csharp
+// WRONG — trailing problem+json is inert: the JSON formatter matches the earlier
+// application/json entry, so the problem is still written as application/json
+[Produces("application/json", "application/problem+json")]      // TRLS065
+
+// WRONG — leading problem+json repairs the failure but rewrites SUCCESSFUL
+// ObjectResult responses to application/problem+json
+[Produces("application/problem+json", "application/json")]      // TRLS065
+
+// WRONG — and this is the one that surprises people. MVC's SelectFormatterUsingAnyAcceptableContentType
+// loops over FORMATTERS in the outer loop and media types in the inner one, so registration order
+// beats list order: the JSON formatter is consulted before an appended CSV formatter, matches the
+// problem+json entry, and writes the SUCCESS response as problem+json.
+[Produces("text/csv", "application/problem+json")]              // TRLS065
+```
+
+No ordering of the list is reliably correct — for JSON-family types alone none works, and for a mixed list the outcome turns on formatter registration order — which is why the rule reports every JSON-family list rather than an "omits `problem+json`" shape. Remove the attribute and constrain the *formatters* instead, at the composition root:
+
+```csharp
+// FIX — trim the formatters rather than narrowing with [Produces]
+builder.Services.AddControllers(options =>
+{
+    options.OutputFormatters.RemoveType<StringOutputFormatter>();
+    options.OutputFormatters.RemoveType<HttpNoContentOutputFormatter>();
+});
+
+[ApiController]                                                 // no [Produces]
+public sealed class OrdersController : ControllerBase { ... }
+```
+
+If `[Produces]` is there to drive OpenAPI rather than negotiation, use the shapes that document without rewriting: `[ProducesResponseType(...)]`, or the `[Produces(typeof(T))]` overload, which sets a declared response type and leaves `ContentTypes` empty. Neither is reported.
+
+**Serving a non-JSON payload is safe and is not reported**, as long as the list names no JSON-family type at all. Clobbering needs a registered formatter that can write a `ProblemDetails` *as a listed media type*; a `text/csv` or `application/pdf` formatter declines it in `CanWriteType`, so MVC falls back and the failure keeps `application/problem+json`. `FileResult` is not an `ObjectResult` at all, so it is unaffected either way.
+
+```csharp
+// FINE — the CSV formatter declines ProblemDetails, so the 422 below is still problem+json
+[HttpGet("export")]
+[Produces("text/csv")]
+public ActionResult<string[]> Export() => Ok(rows);
+```
+
+XML is a separate matter and is deliberately not listed as a safe example: `XmlSerializerOutputFormatter` declines `ProblemDetails` and is harmless, but `AddXmlDataContractSerializerFormatters()` attempts the write and throws a `SerializationException`, yielding a 500 instead of the problem document. That failure has nothing to do with `[Produces]` and TRLS065 neither reports nor prevents it — see the XML limitation in `trellis-api-asp.md`.
+
+> Severity: Warning, rather than the Info used for TRLS063/TRLS064. Those rules report a legal shape that a codebase may reasonably be full of; this one reports a wire-format defect whose symptom — a failure body that parses fine but arrives under the wrong media type — is invisible in the response the developer eyeballs. Trellis's own responses are already immune (`AsActionResult<T>()` returns a plain `ActionResult`, and `ScalarValueValidationFilter` owns every invalid `ModelState`), so what this rule protects is the `ObjectResult`s your application builds itself.
+
 ## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. `Result.FailAfterCommit<TValue>(error)` is a **leaf** worker-handler operation: it converts a single aggregate's transient external rejection into a persisted `permanently_failed` state and returns. Threading that result through `Combine` / `TraverseAll` / `SequenceAll` / `WhenAllAsync` OR-accumulates the `PersistOnFailure` flag onto the aggregated failure — `TransactionalCommandBehavior` then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.
 
