@@ -99,8 +99,13 @@
 
       Bump this in the same commit that publishes a release. Leaving it behind means comparing
       against an ever-older surface and re-reporting breaks that were already accepted.
+
+      This must name a version published to nuget.org, not merely one present in the local
+      package cache. Packing locally leaves builds like 3.0.0-alpha.484 in ~/.nuget/packages,
+      so a baseline pointing at one restores here and fails restore on CI, where the only feed
+      is nuget.org.
     -->
-    <PackageValidationBaselineVersion>3.0.0-alpha.455</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>3.0.0-alpha.458</PackageValidationBaselineVersion>
 
     <!-- Release hygiene (ga-07) -->
     <!-- DotNet.ReproducibleBuilds bundles Microsoft.SourceLink.GitHub and sets
