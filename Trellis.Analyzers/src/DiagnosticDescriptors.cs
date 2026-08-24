@@ -393,4 +393,30 @@ public static class DiagnosticDescriptors
                      "which makes an application failure read as a framework one. It does not check membership: the freeze " +
                      "constrains Trellis, not the application, and an application is free to mint its own codes.",
         helpLinkUri: HelpLinkBase);
+
+    /// <summary>
+    /// TRLS065: A <c>[Produces]</c> media-type list contains a JSON-family type, so it rewrites
+    /// problem responses (or, when problem+json leads, success responses).
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProducesClobbersProblemDetails = new(
+        id: TrellisDiagnosticIds.ProducesClobbersProblemDetails,
+        title: "[Produces] media type overrides RFC 9457 problem responses",
+        messageFormat: "[Produces] lists \"{0}\", so {1}; trim the output formatters in MvcOptions instead of narrowing with [Produces]",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "ProducesAttribute replaces ObjectResult.ContentTypes wholesale, and the JSON output formatter " +
+                     "advertises application/json, text/json and application/*+json — so it will happily serialise a " +
+                     "ProblemDetails as whichever of those the attribute names, and the response loses the " +
+                     "application/problem+json media type that RFC 9457 clients content-negotiate on. Listing " +
+                     "application/problem+json does not repair this in any position: MVC selects a formatter by " +
+                     "looping over formatters in the outer loop and acceptable media types in the inner one, so the " +
+                     "JSON formatter claims whichever of its media types the list names — a trailing problem+json sits " +
+                     "inert behind an earlier application/json, and one the JSON formatter reaches first rewrites " +
+                     "successful responses to problem+json. No ordering of the list is reliably correct — the outcome " +
+                     "turns on formatter registration order, which the analyzer cannot see — so the remedy is to " +
+                     "remove the unwanted formatters from MvcOptions rather than to edit the list. A list naming no " +
+                     "JSON-family type at all — text/csv, application/pdf — is not reported: those formatters decline " +
+                     "ProblemDetails in CanWriteType, so MVC falls back and the problem response keeps its media type.",
+        helpLinkUri: HelpLinkBase);
 }

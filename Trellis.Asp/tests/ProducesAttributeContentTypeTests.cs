@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Net.Http.Headers;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -287,8 +290,147 @@ public sealed class ProducesAttributeContentTypeTests
             "declaring the problem media types explicitly must not turn a validation failure into a 406");
         resp.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
+
+    private static async Task<string?> ScalarHostGetMediaTypeAsync(string path, System.Action<MvcOptions>? configureMvc = null)
+    {
+        using var host = CreateScalarValidationHost(configureMvc);
+        using var client = host.GetTestClient();
+        var resp = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        return resp.Content.Headers.ContentType?.MediaType;
+    }
+
+    // ---- Explicit Problem()/ValidationProblem(): the seam Trellis does NOT own ----
+    // These build a ProblemDetails ObjectResult directly, so no ModelState filter ever sees them.
+    // They remain exposed to [Produces] even in a fully-configured Trellis application, which is
+    // what stops TRLS065 from being vacuous for consumers who use AsActionResult everywhere.
+
+    [Theory]
+    [InlineData("explicit-problem")]
+    [InlineData("explicit-validation-problem")]
+    public async Task Explicit_problem_response_is_problem_json_when_no_Produces_is_applied(string action) =>
+        (await ScalarHostGetMediaTypeAsync($"/produces-none/{action}"))
+            .Should().Be("application/problem+json");
+
+    [Theory]
+    [InlineData("explicit-problem")]
+    [InlineData("explicit-validation-problem")]
+    public async Task Explicit_problem_response_is_clobbered_by_json_Produces_even_with_Trellis_configured(string action) =>
+        (await ScalarHostGetMediaTypeAsync($"/produces-json/{action}"))
+            .Should().Be("application/json",
+                "the scalar validation filter only owns invalid ModelState, so an explicitly constructed ProblemDetails stays exposed -- this is the case TRLS065 exists for");
+
+    // ---- Non-JSON [Produces] is safe, which is why TRLS065 stays silent on it ----
+    // Harm needs a formatter that can write a ProblemDetails AS the listed media type. The JSON
+    // formatter can; a text/csv one declines in CanWriteType, so MVC falls back to problem+json.
+
+    private static void AddCsvFormatter(MvcOptions o) => o.OutputFormatters.Add(new CsvOutputFormatter());
+
+    private static void AddCsvFormatterFirst(MvcOptions o) => o.OutputFormatters.Insert(0, new CsvOutputFormatter());
+
+    [Fact]
+    public async Task Non_json_Produces_still_serves_its_own_success_payload() =>
+        (await ScalarHostGetMediaTypeAsync("/csv/rows", AddCsvFormatter))
+            .Should().Be("text/csv");
+
+    [Fact]
+    public async Task Non_json_Produces_does_not_clobber_problem_details() =>
+        (await ScalarHostGetMediaTypeAsync("/csv/rows-fail", AddCsvFormatter))
+            .Should().Be("application/problem+json",
+                "the CSV formatter declines ProblemDetails, so MVC falls back -- serving CSV or PDF is safe and TRLS065 must not report it");
+
+    [Fact]
+    public async Task FileResult_success_is_unaffected_by_content_negotiation() =>
+        (await ScalarHostGetMediaTypeAsync("/csv/file", AddCsvFormatter))
+            .Should().Be("text/csv",
+                "a FileResult is not an ObjectResult, so [Produces] could not rewrite it even if applied");
+
+    [Fact]
+    public async Task FileResult_controller_still_returns_problem_json_on_failure() =>
+        (await ScalarHostGetMediaTypeAsync("/csv/file-fail", AddCsvFormatter))
+            .Should().Be("application/problem+json");
+
+    // A non-JSON type followed by problem+json looks like it declares both outcomes correctly.
+    // It does not, and the reason is the single most counter-intuitive fact in this file:
+    // MVC's SelectFormatterUsingAnyAcceptableContentType iterates FORMATTERS in the outer loop
+    // and acceptable media types in the inner one. Registration order therefore beats list
+    // order. The JSON formatter is registered ahead of an appended CSV formatter and writes
+    // *any* type, so it matches the list's problem+json entry and claims the success response.
+    [Fact]
+    public async Task Non_json_type_followed_by_problem_json_still_rewrites_the_success_response() =>
+        (await ScalarHostGetMediaTypeAsync("/csv/both", AddCsvFormatter))
+            .Should().Be("application/problem+json",
+                "formatter order beats content-type list order, so the JSON formatter matches the problem+json entry first -- listing problem+json is unsafe in ANY position, not just first");
+
+    [Fact]
+    public async Task Non_json_type_followed_by_problem_json_keeps_problem_details() =>
+        (await ScalarHostGetMediaTypeAsync("/csv/both-fail", AddCsvFormatter))
+            .Should().Be("application/problem+json");
+
+    // Pins the mechanism above by inverting only the registration order: with the CSV formatter
+    // first, it is tried first, matches text/csv, and the success response is CSV after all. That
+    // the same [Produces] list yields two different outcomes is precisely why TRLS065 reports it
+    // rather than trying to model which formatter will win.
+    [Fact]
+    public async Task Formatter_registration_order_decides_the_success_media_type() =>
+        (await ScalarHostGetMediaTypeAsync("/csv/both", AddCsvFormatterFirst))
+            .Should().Be("text/csv",
+                "the outer loop is over formatters, so registering CSV first changes the outcome of an unchanged [Produces] list");
 }
 
+/// <summary>
+/// A minimal non-JSON formatter, standing in for the CSV/PDF exports a real service exposes.
+/// Its <see cref="CanWriteType"/> accepts only <c>string[]</c>, which is the whole point: it
+/// declines <c>ProblemDetails</c>, so MVC falls back and the problem keeps its own media type.
+/// </summary>
+public sealed class CsvOutputFormatter : TextOutputFormatter
+{
+    public CsvOutputFormatter()
+    {
+        SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("text/csv"));
+        SupportedEncodings.Add(System.Text.Encoding.UTF8);
+    }
+
+    protected override bool CanWriteType(System.Type? type) => type == typeof(string[]);
+
+    public override Task WriteResponseBodyAsync(OutputFormatterWriteContext context, System.Text.Encoding selectedEncoding) =>
+        context.HttpContext.Response.WriteAsync(string.Join(",", (string[])context.Object!), selectedEncoding);
+}
+
+#pragma warning disable CA1822
+[ApiController]
+[Route("csv")]
+public sealed class CsvProbeController : ControllerBase
+{
+    private static readonly string[] Rows = ["a", "b"];
+
+    [HttpGet("rows")]
+    [Produces("text/csv")]
+    public ActionResult<string[]> GetRows() => Ok(Rows);
+
+    [HttpGet("rows-fail")]
+    [Produces("text/csv")]
+    public ActionResult Fail() => Problem(detail: "boom", statusCode: 422);
+
+    [HttpGet("file")]
+    public ActionResult GetFile() => File(System.Text.Encoding.UTF8.GetBytes("a,b"), "text/csv", "r.csv");
+
+    [HttpGet("file-fail")]
+    public ActionResult FileFail() => Problem(detail: "boom", statusCode: 422);
+
+    // ["text/csv", "application/problem+json"] looks like it declares both outcomes correctly.
+    // Whether it does depends entirely on formatter registration order, which is why TRLS065
+    // reports it: with the CSV formatter appended (the usual shape) the JSON formatter is
+    // consulted first and claims the problem+json entry for the SUCCESS response; with CSV
+    // inserted first, the same list yields text/csv. Both outcomes are pinned below.
+    [HttpGet("both")]
+    [Produces("text/csv", "application/problem+json")]
+    public ActionResult<string[]> Both() => Ok(Rows);
+
+    [HttpGet("both-fail")]
+    [Produces("text/csv", "application/problem+json")]
+    public ActionResult BothFail() => Problem(detail: "boom", statusCode: 422);
+}
+#pragma warning restore CA1822
 public sealed class ThingRequest
 {
     [Required]
@@ -335,6 +477,19 @@ public abstract class ProducesProbeControllerBase : ControllerBase
 
     [HttpPost("bad-date")]
     public ActionResult<T> BadDate([FromBody] DateRequest request) => Ok(new T(request.VisitedOn.Day));
+
+    // Problem()/ValidationProblem() build a ProblemDetails ObjectResult directly. No ModelState
+    // filter is involved, so ScalarValueValidationFilter never sees them -- which is why these
+    // stay exposed to [Produces] even in a fully-configured Trellis application.
+    [HttpGet("explicit-problem")]
+    public ActionResult ExplicitProblem() => Problem(detail: "boom", statusCode: 422);
+
+    [HttpGet("explicit-validation-problem")]
+    public ActionResult ExplicitValidationProblem()
+    {
+        ModelState.AddModelError("name", "required");
+        return ValidationProblem(ModelState);
+    }
 }
 
 [ApiController]
