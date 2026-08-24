@@ -310,8 +310,11 @@ parameter or a header, and it had no member in which to say otherwise. A JSON Po
 document; a query parameter is not in one, so `/pageSize` was a well-formed pointer naming something that does not
 exist at that path. Because a pointer is structurally valid whether or not the body contains it, a client could not
 detect the mismatch — it would resolve the pointer against the body, find nothing, and report the wrong field or none.
-`Pointer` and `Name` are therefore mutually exclusive: body violations carry a pointer, everything else carries the
-parameter's name, with RFC 6901 escaping reversed so `Name` is the name the caller actually sent.
+`Pointer` and `Name` are therefore mutually exclusive, and which one is populated follows the *addressing scheme*, not
+merely "body versus everything else". `body` and `unknown` carry `Pointer`; `query`, `path`, and `header` carry `Name`,
+with RFC 6901 escaping reversed so `Name` is the name the caller actually sent. `unknown` keeps the pointer because it
+is the fallback for a violation raised in the domain, where the failing member is known as a path through the model
+even though the request part it arrived on is not — discarding it would lose the only locating information there is.
 
 `Locations` is always serialized, including when empty. An empty array is a positive statement that the rule is
 form-level rather than bound to any field — a distinction an omitted member could not express, since absent would be
@@ -320,8 +323,25 @@ ambiguous between *no location* and *not computed*.
 This is the wire-shape change that makes the request-origin feature below observable; that entry describes how the
 origin is derived, while this one describes the shape it is reported in.
 
-Clients reading `fields[i]` must read `locations[i].pointer` (body) or `locations[i].name` (query, path, header).
-### Added — validation failures now say which part of the request they came from
+Clients reading `fields[i]` must read `locations[i].pointer` when `in` is `body` or `unknown`, and `locations[i].name`
+when `in` is `query`, `path`, or `header`. Branch on `in` rather than testing which member is non-null: `unknown` is
+the common fallback for domain-raised violations, so a client that treats "not `body`" as "has a name" silently loses
+the location on exactly the failures it is most likely to receive.
+### Changed — **BREAKING**: `ExpectedOutcome` gains a positional `ContentType` member
+
+`Trellis.Testing.AspNetCore.Http.ExpectedOutcome` gains a fourth positional member, `string? ContentType`, changing its
+primary constructor and `Deconstruct` signatures.
+
+The addition exists because asserting only status and headers let a real RFC 9457 regression through: applying
+`[Produces("application/json")]` rewrites a problem response's media type while leaving its status code and body
+intact, so a harness that never looks at content type is structurally incapable of seeing it — which is precisely how
+the `[Produces]` defect recorded above reached a consuming team rather than this suite. Making it positional keeps
+`# @expect content-type:` a first-class part of the expectation rather than a bolt-on that a test can forget to opt
+into.
+
+Deliberate, and cheap here: this is a test-harness type in a `3.0.0-alpha` package.
+
+
 
 A violation raised in the domain names the field that failed but cannot know where the value arrived from, so it
 reached the wire as `location.in = "unknown"`. `Trellis.Asp` now resolves that at the response boundary from the
