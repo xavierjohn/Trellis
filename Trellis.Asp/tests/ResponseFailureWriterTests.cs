@@ -404,7 +404,7 @@ public sealed class ResponseFailureWriterTests
 
     /// <remarks>
     /// The other half of the same contract: the sentinel is a default, not a fixed value for the
-    /// case. Naming a reason is what makes the two responses tell apart, and it is available on
+    /// case. Naming a reason is what makes the two responses tell them apart, and it is available on
     /// every error case rather than only the validation ones.
     /// </remarks>
     [Fact]
