@@ -352,4 +352,76 @@ public sealed class ResponseFailureWriterTests
         var messages = errors.GetProperty("items[0].name").EnumerateArray();
         messages.Should().HaveCount(2);
     }
+
+    // ----------------- The sentinel is not a discriminator -----------------
+
+    /// <remarks>
+    /// <para>
+    /// <see cref="Error.Code"/> defaults to the <c>error.unspecified</c> sentinel, so an error
+    /// that named no reason puts the sentinel on the wire — the same value seeded onto a problem
+    /// that had no <c>Error</c> behind it at all. For 404 the collision reaches both envelope
+    /// members: <c>KindForStatus(404)</c> returns the same <c>not-found</c> slug that
+    /// <c>Error.NotFound.Kind</c> reports, so a handler's "no such row" and the framework's
+    /// "no such route" agree on <c>code</c> and <c>kind</c> alike.
+    /// </para>
+    /// <para>
+    /// The two documents are not byte-identical — <c>instance</c> is synthesized from the
+    /// <c>ResourceRef</c> by default, and is asserted here so that the one member which does
+    /// differ is pinned rather than merely implied. It is a URI reference identifying the
+    /// occurrence, though, not a member a client can dispatch on.
+    /// </para>
+    /// <para>
+    /// Pinned because <c>trellis-api-asp.md</c> now states this outright. A reader who instead
+    /// takes the sentinel as evidence that no <c>Error</c> existed will build a client that
+    /// branches on a distinction the envelope does not carry.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task NotFound_naming_no_reason_reports_the_same_code_and_kind_as_a_route_miss()
+    {
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.NotFound(ResourceRef.For<T>(42)));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(404);
+        ctx.Response.Body.Position = 0;
+        using var body = await JsonDocument.ParseAsync(ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);
+
+        body.RootElement.GetProperty("code").GetString().Should().Be(ValidationCodes.Unspecified);
+        body.RootElement.GetProperty("kind").GetString().Should().Be("not-found");
+
+        ProblemEnvelope.KindForStatus(404).Should().Be(
+            body.RootElement.GetProperty("kind").GetString(),
+            "a route miss seeds its kind from the status alone, and it must land on the same slug "
+            + "for the two responses to agree on the envelope");
+
+        body.RootElement.GetProperty("instance").GetString().Should().Be(
+            "/ts/42",
+            "instance is synthesized from the ResourceRef, so it is the member that does NOT "
+            + "collide with a route miss — the envelope claim is about code and kind only");
+    }
+
+    /// <remarks>
+    /// The other half of the same contract: the sentinel is a default, not a fixed value for the
+    /// case. Naming a reason is what makes the two responses tell them apart, and it is available on
+    /// every error case rather than only the validation ones.
+    /// </remarks>
+    [Fact]
+    public async Task NotFound_carries_the_reason_code_the_handler_named()
+    {
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.NotFound(ResourceRef.For<T>(42)) { Code = "account.not-found" });
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(404);
+        ctx.Response.Body.Position = 0;
+        using var body = await JsonDocument.ParseAsync(ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);
+
+        body.RootElement.GetProperty("code").GetString().Should().Be("account.not-found");
+        body.RootElement.GetProperty("kind").GetString().Should().Be(
+            "not-found",
+            "the reason names why within the case; it does not change which case answered");
+    }
 }
