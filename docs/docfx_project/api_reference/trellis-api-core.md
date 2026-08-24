@@ -758,7 +758,8 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 The `http.response-*` family and `ResponseLocationUnresolved` are *not* dispatch keys — nothing branches on
 them to pick a status code. They are constants for the other reason a code exists: they are what a caller
 groups on. Each of these previously passed `Guid.NewGuid().ToString("N")` as the `Code` positional argument
-of `Error.Unexpected(string Code, string? FaultId = null)`, which gave every single incident its own `code`
+of the `Error.Unexpected` constructor — `Unexpected(string Code, string? FaultId = null)` — which gave
+every single incident its own `code`
 on the wire — an unbounded cardinality that no dashboard can aggregate — while leaving `FaultId`, the field
 that exists for exactly that per-incident value, null. The identifier now goes to `FaultId` and the code
 stays stable.
