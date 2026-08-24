@@ -383,6 +383,49 @@ public class ValidatingJsonConverterEdgeCasesTests
         }
     }
 
+    /// <remarks>
+    /// The body converter is a distinct producer from query binding, and a client that reads
+    /// <c>allowed</c> must not have to know which one answered. Ordinal order, not the
+    /// declaration order <c>Unknown, Fast, Safe</c>.
+    /// </remarks>
+    [Fact]
+    public void Read_EnumNameUndefined_CarriesThePermittedMembersAsArgs()
+    {
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var reader = new Utf8JsonReader("\"Slow\""u8);
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            var violation = ValidationErrorsContext.GetUnprocessableContent()!.Fields.Items[0];
+            violation.ReasonCode.Should().Be(ValidationCodes.EnumNameUndefined);
+            violation.Args!["allowed"].Should().Be(ValidationArgValue.ListOf("Fast", "Safe", "Unknown"));
+        }
+    }
+
+    [Fact]
+    public void Read_EnumUndefinedNumericValue_CarriesThePermittedMembersAsArgs()
+    {
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var reader = new Utf8JsonReader("10"u8);
+        reader.Read();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            ValidationErrorsContext.CurrentPropertyName = "mode";
+
+            converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions());
+
+            var violation = ValidationErrorsContext.GetUnprocessableContent()!.Fields.Items[0];
+            violation.ReasonCode.Should().Be(ValidationCodes.EnumUndefined);
+            violation.Args!["allowed"].Should().Be(ValidationArgValue.ListOf("Fast", "Safe", "Unknown"));
+        }
+    }
+
     [Fact]
     public void Read_EnumNumericOverflow_CollectsValidationError()
     {

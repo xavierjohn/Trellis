@@ -83,6 +83,12 @@ public static class ValidationArgsProjection
     private const int MaxStringLength = 64;
 
     /// <summary>
+    /// FluentValidation's error code for <c>IsInEnum()</c>, which
+    /// <see cref="ValidationCodeProjection"/> maps to <see cref="ValidationCodes.EnumUndefined"/>.
+    /// </summary>
+    private const string EnumValidatorCode = "EnumValidator";
+
+    /// <summary>
     /// Combines the framework allowlist with the application's widening for one error code.
     /// </summary>
     /// <remarks>
@@ -124,6 +130,56 @@ public static class ValidationArgsProjection
     public static ImmutableDictionary<string, ValidationArgValue>? Project(
         ValidationFailure failure,
         ValidationArgsOptions? options = null)
+    {
+        var projected = ProjectPlaceholders(failure, options);
+        var allowedMembers = AllowedEnumMembers(failure);
+
+        if (allowedMembers is null)
+            return projected;
+
+        return projected is null ? allowedMembers : projected.SetItems(allowedMembers);
+    }
+
+    /// <summary>
+    /// Names the members an <c>EnumValidator</c> failure would have accepted.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the one arg that does not come from a placeholder, because FluentValidation has no
+    /// placeholder for it: the default message reports only the value it rejected. Deriving it
+    /// here is what lets a FluentValidation rule and a Trellis query binding answer the same
+    /// rejection identically — a client cannot render one localized message for
+    /// <c>enum.undefined</c> if the arg it needs is present from one producer and absent from
+    /// another.
+    /// </para>
+    /// <para>
+    /// It is therefore also the one arg the containment gate cannot judge, and must not. The gate
+    /// asks whether a value already reached the client in the message, which is the right question
+    /// for an operand the application chose — a bound, a regex, a compared property. Member names
+    /// are not that. They are the API's own contract, the very spellings a client has to send to
+    /// succeed, and every other producer of this code already publishes them in its detail prose.
+    /// Withholding them here would conceal nothing while breaking the agreement.
+    /// </para>
+    /// <para>
+    /// The members are read from the attempted value's own type rather than the rule's, because
+    /// FluentValidation reports no type. An error code an application borrowed for a rule over
+    /// some other type therefore names nothing, which is the fail-safe direction.
+    /// </para>
+    /// </remarks>
+    private static ImmutableDictionary<string, ValidationArgValue>? AllowedEnumMembers(ValidationFailure failure)
+    {
+        if (!string.Equals(failure.ErrorCode, EnumValidatorCode, StringComparison.Ordinal))
+            return null;
+
+        var attemptedType = failure.AttemptedValue?.GetType();
+        return attemptedType is { IsEnum: true }
+            ? ValidationArgs.Allowed(Enum.GetNames(attemptedType))
+            : null;
+    }
+
+    private static ImmutableDictionary<string, ValidationArgValue>? ProjectPlaceholders(
+        ValidationFailure failure,
+        ValidationArgsOptions? options)
     {
         var placeholders = failure.FormattedMessagePlaceholderValues;
         if (placeholders is null || placeholders.Count == 0)

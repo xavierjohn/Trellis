@@ -88,10 +88,12 @@ internal static class PrimitiveConverter
                 // Two distinct failures share one message but not one code: the name was not a
                 // member at all, versus a numeric value that parsed into an undefined member.
                 // A client offering "did you mean?" needs the first; one reporting a corrupt
-                // stored value needs the second.
+                // stored value needs the second. Both get the permitted set: the remedy is the
+                // same either way, and the detail here never named the members at all.
                 return Result.Fail<TPrimitive>(Invalid(
                     parsed ? ValidationCodes.EnumUndefined : ValidationCodes.EnumNameUndefined,
-                    "The value is not a recognized option."));
+                    "The value is not a recognized option.",
+                    ValidationArgs.Allowed(Enum.GetNames(underlyingType))));
             }
 
             if (underlyingType == typeof(Guid))
