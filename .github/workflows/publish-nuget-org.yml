@@ -75,7 +75,17 @@ jobs:
           Copy-Item -Path $packageFile.FullName -Destination $dropDirectory -Force
         }
 
-        $packageVersion = (dotnet msbuild .\Trellis.Core\src\Trellis.Core.csproj --getProperty:PackageVersion).Trim()
+        # Must come from nbgv, not `dotnet msbuild --getProperty:PackageVersion`.
+        # Nerdbank.GitVersioning computes the version inside the GetBuildVersion
+        # target, which --getProperty does not run, so it reports the static
+        # evaluation-time default (1.0.0) and stamps the SBOM with a version no
+        # package in the drop carries.
+        $packageVersion = (nbgv get-version -v NuGetPackageVersion).Trim()
+
+        $packagePattern = "Trellis.Core.$packageVersion.nupkg"
+        if (-not (Test-Path -LiteralPath (Join-Path $dropDirectory $packagePattern))) {
+          throw "SBOM version '$packageVersion' does not match the packed artifacts; expected $packagePattern in the drop."
+        }
 
         sbom-tool generate `
           -b $dropDirectory `
