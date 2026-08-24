@@ -144,7 +144,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             var location = ResolveLocation(httpContext, domain!);
             if (location is null)
             {
-                var error = new Error.Unexpected(FaultCodes.ResponseLocationUnresolved, Guid.NewGuid().ToString("N"))
+                var error = new Error.Unexpected(Code: FaultCodes.ResponseLocationUnresolved, FaultId: Guid.NewGuid().ToString("N"))
                 { Detail = "Could not generate Location URI for the response." };
 
                 return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, _options));

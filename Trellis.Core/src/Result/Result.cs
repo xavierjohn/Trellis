@@ -367,5 +367,5 @@ public static partial class Result
     /// indexed by <c>FaultId</c>.
     /// </summary>
     private static Error.Unexpected DefaultExceptionMapper(Exception _) =>
-        new(FaultCodes.UnhandledException, Guid.NewGuid().ToString("N")) { Detail = UnexpectedExceptionDetail };
+        new(Code: FaultCodes.UnhandledException, FaultId: Guid.NewGuid().ToString("N")) { Detail = UnexpectedExceptionDetail };
 }

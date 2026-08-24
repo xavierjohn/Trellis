@@ -16,7 +16,7 @@ The identifier now goes to `FaultId` and the code is a stable constant. Five con
 | Constant | Wire value | Emitted when |
 | --- | --- | --- |
 | `HttpResponseNotSuccess` | `http.response-not-success` | Non-success status on a path that needed the body. |
-| `HttpResponseNoBody` | `http.response-no-body` | `204`/`205`, absent content, or a zero-length payload. |
+| `HttpResponseNoBody` | `http.response-no-body` | `204`/`205`, or a zero-length payload. |
 | `HttpResponseInvalidBody` | `http.response-invalid-body` | Body would not deserialize, or deserialized to `null`. |
 | `HttpResponseFault` | `http.response-fault` | Status has no more specific mapping. |
 | `ResponseLocationUnresolved` | `response.location-unresolved` | A `Location` URI could not be resolved. |
