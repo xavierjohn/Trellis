@@ -11,7 +11,14 @@ using Trellis.FluentValidation;
 /// </summary>
 public class ValidationArgsProjectionTests
 {
-    private sealed record Subject(string A = "", string B = "", decimal D = 0m, int N = 0, DateTime When = default, double F = 0d);
+    private sealed record Subject(string A = "", string B = "", decimal D = 0m, int N = 0, DateTime When = default, double F = 0d, Shade Tone = default, Shade? MaybeTone = null, Shade[]? Tones = null);
+
+    /// <summary>Declares Zinc before Amber so ordinal ordering is distinguishable from declaration order.</summary>
+    internal enum Shade
+    {
+        Zinc = 1,
+        Amber = 2,
+    }
 
     private static FieldViolation Violate(Action<InlineValidator<Subject>> configure, Subject subject)
     {
@@ -246,4 +253,111 @@ public class ValidationArgsProjectionTests
         violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Number(10),
             "a numeric value encodes to exactly what FluentValidation rendered, so nothing is suppressed");
     }
+
+    [Fact]
+    public void An_enum_failure_names_the_members_it_would_have_accepted()
+    {
+        var violation = Violate(v => v.RuleFor(x => x.Tone).IsInEnum(), new Subject(Tone: (Shade)99));
+
+        violation.ReasonCode.Should().Be(ValidationCodes.EnumUndefined);
+        violation.Args.Should().NotBeNull();
+        violation.Args!["allowed"].Should().Be(
+            ValidationArgValue.ListOf(new ValidationArgValue.Text("Amber"), new ValidationArgValue.Text("Zinc")),
+            "the members are ordinally sorted, so Amber precedes Zinc even though Zinc is declared first");
+    }
+
+    [Fact]
+    public void An_enum_failure_agrees_with_every_other_producer_of_the_same_code()
+    {
+        var violation = Violate(v => v.RuleFor(x => x.Tone).IsInEnum(), new Subject(Tone: (Shade)99));
+
+        violation.Args!["allowed"].Should().Be(
+            ValidationArgs.Allowed(Enum.GetNames<Shade>())["allowed"],
+            "a client must not be able to tell which producer rejected the value");
+    }
+
+    [Fact]
+    public void A_nullable_enum_failure_names_its_members_too()
+    {
+        var violation = Violate(v => v.RuleFor(x => x.MaybeTone).IsInEnum(), new Subject(MaybeTone: (Shade)99));
+
+        violation.Args!["allowed"].Should().Be(
+            ValidationArgs.Allowed(Enum.GetNames<Shade>())["allowed"]);
+    }
+
+    [Fact]
+    public void The_enum_code_on_a_non_enum_rule_names_nothing()
+    {
+        var violation = Violate(
+            v => v.RuleFor(x => x.A).NotEmpty().WithErrorCode("EnumValidator"),
+            new Subject(A: ""));
+
+        violation.Args.Should().BeNull(
+            "the members are derived from the attempted value's own type, so an error code borrowed by a rule over a string has no member list to name");
+    }
+
+    [Fact]
+    public void An_enum_failure_names_its_members_even_when_the_application_replaced_the_message()
+    {
+        var violation = Violate(
+            v => v.RuleFor(x => x.Tone).IsInEnum().WithMessage("bad"),
+            new Subject(Tone: (Shade)99));
+
+        violation.Args!["allowed"].Should().Be(
+            ValidationArgs.Allowed(Enum.GetNames<Shade>())["allowed"],
+            "the member list is the API's own contract rather than an echo of the message, so it does not pass through the containment gate");
+    }
+
+    [Fact]
+    public void An_opted_in_placeholder_joins_the_member_list_rather_than_replacing_it()
+    {
+        var options = new ValidationArgsOptions().AllowArgs("EnumValidator", "CollectionIndex");
+        var validator = new InlineValidator<Subject>();
+        validator.RuleForEach(x => x.Tones).IsInEnum();
+        // Index 9 so its rendering appears in the message's own "99", which the containment gate
+        // requires of every placeholder arg; the member list below is exempt from that gate.
+        var subject = new Subject(Tones: [.. Enumerable.Repeat(Shade.Zinc, 9), (Shade)99]);
+
+        var result = validator.Validate(subject).ToResult(subject, argsOptions: options);
+
+        var violation = ((Error.InvalidInput)result.Error!).Fields[0];
+        violation.Args!["allowed"].Should().Be(ValidationArgs.Allowed(Enum.GetNames<Shade>())["allowed"]);
+        violation.Args.Should().ContainKey("collectionIndex",
+            "the member list is merged into the projected placeholders rather than substituted for them");
+    }
+
+    /// <remarks>
+    /// <c>RequiredEnum&lt;T&gt;</c> is a registry of declared statics, not a CLR enum, so
+    /// FluentValidation's <c>IsInEnum()</c> rejects <em>every</em> value of one — including a valid
+    /// member. That is FluentValidation's own behaviour and not something Trellis can correct from
+    /// here; what Trellis controls is that a violation it cannot substantiate names nothing, rather
+    /// than lending a spurious rejection the authority of a member list.
+    /// </remarks>
+    [Fact]
+    public void A_RequiredEnum_is_not_a_clr_enum_so_the_violation_names_nothing()
+    {
+        var validator = new InlineValidator<ToneHolder>();
+        validator.RuleFor(x => x.Tone).IsInEnum();
+        var holder = new ToneHolder { Tone = SmartTone.Zinc };
+
+        var result = validator.Validate(holder).ToResult(holder);
+
+        result.IsFailure.Should().BeTrue();
+        var violation = ((Error.InvalidInput)result.Error!).Fields[0];
+        violation.ReasonCode.Should().Be(ValidationCodes.EnumUndefined);
+        violation.Args.Should().BeNull(
+            "the members are read from the attempted value's own type, and a RequiredEnum has none to read");
+    }
+
+    private sealed class ToneHolder
+    {
+        public SmartTone? Tone { get; set; }
+    }
+}
+
+/// <summary>A registry-backed symbolic value, deliberately not a CLR enum.</summary>
+public sealed partial class SmartTone : RequiredEnum<SmartTone>, IScalarValue<SmartTone, string>
+{
+    public static readonly SmartTone Zinc = new();
+    public static readonly SmartTone Amber = new();
 }

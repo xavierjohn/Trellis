@@ -233,8 +233,14 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         if (cache.ByName.TryGetValue(value, out var member))
             return Result.Ok(member);
 
-        var validNames = string.Join(", ", cache.ByName.Keys.OrderBy(n => n, StringComparer.Ordinal));
-        return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, ValidationCodes.EnumNameUndefined, $"'{value}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
+        var validNames = EnumMemberProse.ListOrNull(cache.ByName.Keys);
+        return Result.Fail<TSelf>(Error.InvalidInput.ForField(
+            field,
+            ValidationCodes.EnumNameUndefined,
+            ValidationArgs.Allowed(cache.ByName.Keys),
+            validNames is null
+                ? $"'{value}' is not a valid {typeof(TSelf).Name}."
+                : $"'{value}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
     }
 
     /// <summary>

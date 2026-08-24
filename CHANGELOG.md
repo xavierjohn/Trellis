@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — enum rejections name the members they would have accepted
+
+A violation carrying `enum.name-undefined` or `enum.undefined` now includes an `allowed` arg listing the permitted member names as a JSON array of strings:
+
+```json
+{ "code": "enum.name-undefined", "args": { "allowed": ["Green", "Red"] } }
+```
+
+The members were not always dropped before, but they were never available as data. `RequiredEnum.TryCreate` joined them into the English detail (`"'X' is not a valid Y. Valid values: A, B, C"`), so a client that wanted to render "choose one of…" in the caller's language had to parse an English sentence. Query-string binding was worse: its detail is the generic `"The value is not a recognized option."`, so the permitted set was unavailable by any means at all. The detail keeps its list — this is additive, and a human reading the response still gets a complete sentence.
+
+All five producers that can reject an enum now agree: query binding (`PrimitiveConverter`), the body converter (`ScalarValueJsonConverterBase`), `RequiredEnum.TryCreate`, `RequiredEnumJsonConverter`, and a FluentValidation `IsInEnum()` rule. They route through a new `ValidationArgs.Allowed(names)` helper, which fixes both the entry name and its **ordinal** ordering in one place — the producers read their members from unrelated sources (`Enum.GetNames` versus a registry of declared statics), and nothing else would force those to line up for a client that compares or caches the list.
+
+`enum.undefined` (a numeric value that parsed but names no member) carries the same list as `enum.name-undefined`. The remedy is identical, and covering only the name case would tell a client its options when it sent `"mauve"` but not when it sent `99`.
+
+The arg rides on the reason code, not on the producer: a blank value reports `value.not-empty` and carries no `allowed`, since there the entry would degrade from "these are your options" into "an enum was involved somewhere".
+
+The list is bounded. `ValidationArgs.MaxAllowedMembers` is 64; beyond it the members are dropped whole and an `allowedCount` arg is sent in their place. The 248 ISO country names cost roughly 3 KB of args on *every* rejection, and a request carrying several invalid enum fields multiplies that — a small request provoking a large response is an amplification vector, not merely waste. Truncating instead was rejected because a client cannot distinguish a shortened list from a complete one: a truncated `allowed` states that a member it omitted is not permitted, so a chooser renders the wrong set and a client validating against it rejects valid input.
+
+The same bound now governs the prose. `RequiredEnum.TryCreate` and `RequiredEnumJsonConverter` spell every member into `Detail`, which for those 248 countries is a further 2.8 KB — more than the arg it accompanies — so above the bound the `"Valid values: …"` clause is dropped and the message reads `"'x' is not a valid Country."`, which is what the body converter already emitted. **This changes the message text for enums with more than 64 members**; narrower enums are unaffected.
+
+The FluentValidation path reaches the same list by a different route, because FluentValidation has no placeholder for it — its message reports only the value it rejected. `ValidationArgsProjection` therefore derives the members from the attempted value's own type, and this one arg does not pass through the containment gate that governs every other. That gate asks whether a value already reached the client in the rendered message, which is the right question for an operand the application chose — a bound, a regex, a compared property — and the wrong one for member names, which are the API's own contract and the very spellings a client must send to succeed. An error code borrowed for a rule over a non-enum names nothing.
+
 ### Fixed — HTTP and ASP faults now carry a stable `Code` instead of a random GUID
 
 Ten call sites in `Trellis.Http` and `Trellis.Asp` built their failure as `new Error.Unexpected(Guid.NewGuid().ToString("N"))`. Because the signature is `Error.Unexpected(string Code, string? FaultId = null)`, the GUID landed in **`Code`** and `FaultId` was left null — so every individual incident published a different `code` on the wire, which no dashboard can group, while the field that exists for a per-incident value went unused.

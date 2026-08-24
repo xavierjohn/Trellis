@@ -144,6 +144,49 @@ Accept: application/json
   "overdraftLimit":       { "amount":    0.00, "currency": "USD" }
 }
 
+### Open account — unknown product type (422 `enum.name-undefined`)
+### `AccountType` is a RequiredEnum, so an unrecognized name is rejected at the JSON
+### binding layer. The violation names the products it *would* have accepted as a
+### machine-readable `args.allowed` array — not only as English prose in `detail` —
+### which is what lets a client render "choose one of…" in the caller's language
+### instead of parsing an English sentence:
+###
+###   "fieldViolations": [{
+###     "code": "enum.name-undefined",
+###     "detail": "...",
+###     "location": { "in": "body", "pointer": "/accountType" },
+###     "args": { "allowed": ["Checking", "MoneyMarket", "Savings"] }
+###   }]
+###
+### `detail` is deliberately elided above, because it is not one sentence. This
+### rejection has two producers and they word it differently -- `RequiredEnum.TryCreate`
+### says "'Platinum' is not a valid AccountType. Valid values: ...", while
+### `RequiredEnumJsonConverter` says "Invalid AccountType value: 'Platinum'. Valid
+### values are: ...". Which one answers depends on how the value reached the model.
+###
+### That is the argument for `args.allowed` in one line: `code`, `location` and
+### `allowed` are identical across both producers and both hosts, so a client can
+### depend on them. The English cannot be depended on, and a client that scraped
+### "Valid values: " out of `detail` would break on the other producer.
+###
+### The names are sorted ordinally, not by declaration order, so a client may compare
+### or cache the list across producers. Enums wider than 64 members send an
+### `allowedCount` instead — a truncated list would read as exhaustive and tell a
+### client that a member it omitted is not permitted.
+### @parity: status-only
+# @expect status: 422
+# @expect content-type: application/problem+json
+POST {{host}}/api/accounts
+Content-Type: application/json
+Accept: application/json
+
+{
+  "customerId": "{{aliceCustomer}}",
+  "accountType": "Platinum",
+  "initialDeposit":       { "amount": 250.00, "currency": "USD" },
+  "dailyWithdrawalLimit": { "amount": 500.00, "currency": "USD" },
+  "overdraftLimit":       { "amount":   0.00, "currency": "USD" }
+}
 ### Freeze account
 POST {{host}}/api/accounts/{{aliceChecking}}/freeze
 Content-Type: application/json

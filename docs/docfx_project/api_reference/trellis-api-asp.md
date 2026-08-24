@@ -463,7 +463,7 @@ public sealed record FieldViolationProblemDetail(
 | `Code` | `string` | The machine-readable reason code. |
 | `Detail` | `string?` | Human-readable explanation. Omitted when absent. |
 | `Location` | `ViolationLocation` | Where the offending value came from. |
-| `Args` | `IReadOnlyDictionary<string, ValidationArgValue>?` | Arguments that parameterize the message, letting a client render its own localized prose. Omitted when absent. |
+| `Args` | `IReadOnlyDictionary<string, ValidationArgValue>?` | Arguments that parameterize the message, letting a client render its own localized prose. Omitted when absent. An enum rejection (`enum.name-undefined`, `enum.undefined`) carries `allowed` — the permitted member names, ordinally sorted — from every producer that can reject one: query binding, the body converter, `RequiredEnum.TryCreate`, its JSON converter, and a FluentValidation `IsInEnum()` rule. Beyond 64 members the list is dropped whole and `allowedCount` is sent instead, so a client must treat a missing `allowed` as "not supplied" rather than "nothing is permitted". |
 
 AOT-friendly JSON payload used inside Problem Details `extensions["fieldViolations"]` for `Error.InvalidInput` field violations. Application code should treat this as response shape metadata, not as a domain model.
 

@@ -725,8 +725,8 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `FieldsExactlyOne` | `fields.exactly-one` | Exactly one of a group was required. |
 | `FieldsOnlyOne` | `fields.only-one` | At most one of a group was allowed. |
 | `FieldsAtLeastOne` | `fields.at-least-one` | None of a group was supplied. |
-| `EnumNameUndefined` | `enum.name-undefined` | The supplied name is not a member of the enum. |
-| `EnumUndefined` | `enum.undefined` | A numeric value parsed but is not a defined member. |
+| `EnumNameUndefined` | `enum.name-undefined` | The supplied name is not a member of the enum. Args: `allowed`, the permitted member names as a JSON array of strings, ordinally sorted. |
+| `EnumUndefined` | `enum.undefined` | A numeric value parsed but is not a defined member. Args: `allowed`, the same list the name failure carries — the remedy is identical, so a client is told its options whichever form it sent. |
 | `MoneyCurrencyMismatch` | `money.currency-mismatch` | An operation combined two different currencies. Args: `expected`, `actual`. |
 | `MoneyNegativeResult` | `money.negative-result` | The operation would produce a negative amount. |
 | `PageSizeOutOfRange` | `page-size.out-of-range` | Page size not positive, or above the maximum. |
@@ -828,6 +828,32 @@ ValidationArgs.Of(
 
 > [!NOTE]
 > There is deliberately **no `IFormattable` overload**. Adding one would make `ValidationArgs.Of("max", 255)` *ambiguous* — an `int` converts to `IFormattable` by boxing and to `ValidationArgValue` by a user-defined conversion, and neither target is better than the other, so the call fails with `CS0121`. Its absence is what lets the implicit conversions bind. Format a value with no numeric or textual meaning of its own, such as a timestamp, explicitly and invariantly at the call site.
+
+##### `ValidationArgs.Allowed(...)` — the permitted-members entry
+
+`ValidationArgs.Allowed(names)` builds the `allowed` entry naming the members a symbolic value may take, and is what every producer that rejects a value for not being one of a fixed set calls:
+
+```csharp
+ValidationArgs.Allowed(Enum.GetNames(typeof(Colour)));   // {"allowed": ["Green", "Red"]}
+```
+
+It exists as a helper rather than as a convention because the producers derive their members from unrelated places — `Enum.GetNames` for query binding and the body converter, a registry of declared statics for `RequiredEnum` — and nothing else would force those to agree on either the entry's name or its order. The names are sorted **ordinally**, which makes the order total and culture-independent; sorting by the current culture would let the same enum serialize differently on two machines. A client may therefore compare or cache the list across producers.
+
+Passing no names yields an empty array rather than omitting the entry: "nothing is permitted" is a real answer, where a missing entry reads as "this violation forgot to say".
+
+**A list longer than `ValidationArgs.MaxAllowedMembers` (64) is dropped whole and replaced by `allowedCount`.**
+
+```csharp
+ValidationArgs.Allowed(isoCountryNames);   // {"allowedCount": 248}
+```
+
+The bound exists because a list a client cannot act on is not worth what it costs to send. The 248 ISO country names serialize to roughly 3 KB attached to *every* rejection, and a request carrying several invalid enum fields multiplies that — a small request provoking a large response is an amplification vector, not merely waste. Past a few dozen options a client is not rendering "choose one of…" from an error payload anyway; it wants a schema or an enumeration endpoint.
+
+The list is dropped rather than **truncated** because a client cannot distinguish a shortened list from a complete one. A truncated `allowed` is a false statement: it tells a client that a member it omitted is not permitted, so a client rendering a chooser shows a wrong set and a client validating against it rejects valid input. Omission is a case every client already handles, because a blank value carries no list either — `allowedCount` is what separates "too many to send" from "not applicable here".
+
+The bound counts members rather than serialized bytes because member names are identifiers in every producer — CLR enum names, or the static field names behind a `RequiredEnum` — so their length is already bounded in practice, and a count is something a client can be told and can predict.
+
+The same bound governs the human-readable `Detail`. `RequiredEnum.TryCreate` and `RequiredEnumJsonConverter` spell their members into prose (`"'x' is not a valid Colour. Valid values: Green, Red"`), which for 248 countries is another 2.8 KB — more than the arg it accompanies. Above the bound that clause is dropped too, leaving `"'x' is not a valid Country."`, which is the sentence the body converter already emits.
 
 `ValidationArgValueJsonConverter` is applied to the union by attribute, so serialization needs no registration. It is public because the `System.Text.Json` source generator cannot resolve an internal converter: a trimmed or AOT-published application whose `JsonSerializerContext` roots a violation payload fails at compile time with `SYSLIB1220` otherwise.
 

@@ -137,6 +137,46 @@ public class ProducerIndependenceTests
         CodeOf(undefinedNumeric.Error!).Should().Be(ValidationCodes.EnumUndefined);
     }
 
+    private static ValidationArgValue? AllowedOf(Error error) =>
+        ((Error.InvalidInput)error).Fields.Items[0].Args?["allowed"];
+
+    /// <remarks>
+    /// Query binding's detail is the generic "The value is not a recognized option." — it never
+    /// named the members at all, so before this the permitted set was unavailable to a client by
+    /// any means, localized or not.
+    /// </remarks>
+    [Fact]
+    public void Unknown_enum_name_carries_the_permitted_members_as_args()
+    {
+        var result = PrimitiveConverter.ConvertToPrimitive<ProducerIndependenceColor>("mauve");
+
+        AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Green", "Red"));
+    }
+
+    /// <remarks>
+    /// The two enum codes are chosen by a ternary inside one branch, so covering only the
+    /// name case would leave a client told which members exist when it sent <c>"mauve"</c> but
+    /// not when it sent <c>99</c> — an asymmetry with no defensible explanation. The remedy set
+    /// is the same either way: here are the members you may send.
+    /// </remarks>
+    [Fact]
+    public void An_undefined_numeric_enum_value_carries_the_permitted_members_too()
+    {
+        var result = PrimitiveConverter.ConvertToPrimitive<ProducerIndependenceColor>("99");
+
+        CodeOf(result.Error!).Should().Be(ValidationCodes.EnumUndefined);
+        AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Green", "Red"));
+    }
+
+    [Fact]
+    public void Both_enum_failures_report_the_same_permitted_members()
+    {
+        var byName = PrimitiveConverter.ConvertToPrimitive<ProducerIndependenceColor>("mauve");
+        var byNumber = PrimitiveConverter.ConvertToPrimitive<ProducerIndependenceColor>("99");
+
+        AllowedOf(byName.Error!).Should().Be(AllowedOf(byNumber.Error!));
+    }
+
     [Fact]
     public void Byte_out_of_range_carries_its_bounds_as_args()
     {

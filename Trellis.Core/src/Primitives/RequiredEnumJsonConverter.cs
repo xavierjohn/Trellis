@@ -1,5 +1,6 @@
 ﻿namespace Trellis;
 
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
@@ -67,18 +68,27 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
             onSuccess: value => value,
             onFailure: error =>
             {
-                var validValues = string.Join(", ", RequiredEnum<TRequiredEnum>.GetAll()
+                var memberNames = RequiredEnum<TRequiredEnum>.GetAll()
                     .Select(value => value.Value)
-                    .OrderBy(value => value, StringComparer.Ordinal));
+                    .ToArray();
+                var validValues = EnumMemberProse.ListOrNull(memberNames);
 
                 // The message is this converter's, but the code is the producer's: TryCreate already
                 // separates absent from blank from not-a-member, and overwriting all three with
                 // `enum.name-undefined` would make the same blank value report a different code
                 // through JSON than through query binding or a direct TryCreate.
+                var reasonCode = ReasonCodeOf(error, ValidationCodes.EnumNameUndefined);
+
+                // For the same reason the permitted set rides only on the not-a-member code. A
+                // blank value reports `value.not-empty`, where `allowed` would degrade from
+                // "these are your options" into "an enum was involved somewhere".
                 throw Invalid(
-                    ReasonCodeOf(error, ValidationCodes.EnumNameUndefined),
-                    $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'. " +
-                    $"Valid values are: {validValues}.");
+                    reasonCode,
+                    $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'." +
+                    (validValues is null ? string.Empty : $" Valid values are: {validValues}."),
+                    reasonCode == ValidationCodes.EnumNameUndefined
+                        ? ValidationArgs.Allowed(memberNames)
+                        : null);
             });
     }
 
@@ -106,10 +116,13 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     /// 422 through the composite converter, so the two producers now agree.
     /// </para>
     /// </remarks>
-    private static TrellisJsonValidationException Invalid(string reasonCode, string message) =>
+    private static TrellisJsonValidationException Invalid(
+        string reasonCode,
+        string message,
+        ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         new(message)
         {
-            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, reasonCode, message) with
+            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, reasonCode, args, message) with
             {
                 Detail = message,
             },

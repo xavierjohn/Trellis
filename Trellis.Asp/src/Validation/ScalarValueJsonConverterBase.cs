@@ -108,7 +108,11 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
                 return false;
             }
 
-            ValidationErrorsContext.AddBodyError(fieldName, ValidationCodes.EnumNameUndefined, $"'{rawValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+            ValidationErrorsContext.AddBodyError(
+                fieldName,
+                ValidationCodes.EnumNameUndefined,
+                $"'{rawValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.",
+                ValidationArgs.Allowed(Enum.GetNames(typeof(TPrimitive))));
             return false;
         }
 
@@ -119,7 +123,11 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
                 var enumValue = ReadNumericEnumValue(ref reader);
                 if (!IsValidEnumValue(enumValue))
                 {
-                    ValidationErrorsContext.AddBodyError(fieldName, ValidationCodes.EnumUndefined, $"'{enumValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
+                    ValidationErrorsContext.AddBodyError(
+                        fieldName,
+                        ValidationCodes.EnumUndefined,
+                        $"'{enumValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.",
+                        ValidationArgs.Allowed(Enum.GetNames(typeof(TPrimitive))));
                     return false;
                 }
 

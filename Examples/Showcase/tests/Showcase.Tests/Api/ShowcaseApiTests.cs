@@ -66,6 +66,54 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         location.GetProperty("pointer").GetString().Should().Be("/amount");
     }
 
+    /// <summary>
+    /// <c>AccountType</c> is a <c>RequiredEnum</c>, so an unrecognized product name is rejected at
+    /// the JSON binding layer. The violation names the products it *would* have accepted as a
+    /// machine-readable <c>args.allowed</c> array, not only as English prose inside <c>detail</c> —
+    /// which is what lets a client render "choose one of…" in the caller's own language.
+    /// </summary>
+    [Fact]
+    public async Task Open_account_with_unknown_account_type_names_the_products_it_accepts()
+    {
+        var client = _factory.CreateClient();
+        var payload = $$"""
+            {
+              "customerId": "{{ShowcaseSeed.AliceId}}",
+              "accountType": "Platinum",
+              "initialDeposit":       { "amount": 250.00, "currency": "USD" },
+              "dailyWithdrawalLimit": { "amount": 500.00, "currency": "USD" },
+              "overdraftLimit":       { "amount":   0.00, "currency": "USD" }
+            }
+            """;
+
+        var response = await client.PostAsync(
+            new Uri("/api/accounts", UriKind.Relative),
+            new StringContent(payload, System.Text.Encoding.UTF8, "application/json"),
+            Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableContent);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        var violation = problem.RootElement.GetProperty("fieldViolations")[0];
+
+        violation.GetProperty("code").GetString().Should().Be("enum.name-undefined");
+        violation.GetProperty("location").GetProperty("in").GetString().Should().Be("body");
+        violation.GetProperty("location").GetProperty("pointer").GetString().Should().Be("/accountType");
+
+        violation.GetProperty("args").GetProperty("allowed").EnumerateArray()
+            .Select(member => member.GetString())
+            .Should().Equal(["Checking", "MoneyMarket", "Savings"],
+                "the products are ordinally sorted so a client can compare or cache the list across producers");
+
+        // The English sentence is kept alongside the machine-readable list, not replaced by it.
+        // This exact wording belongs to the RequiredEnum.TryCreate producer, which is the path
+        // this in-process host takes; RequiredEnumJsonConverter words the same rejection
+        // differently, so only `code`, `location` and `args` are asserted cross-host in
+        // ApiHttpFileParityTests.
+        violation.GetProperty("detail").GetString()
+            .Should().Be("'Platinum' is not a valid AccountType. Valid values: Checking, MoneyMarket, Savings");
+    }
     [Fact]
     public async Task Secure_withdraw_with_invalid_code_returns_422()
     {

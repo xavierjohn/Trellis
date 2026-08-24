@@ -169,7 +169,7 @@ public static class ValidationArgsProjection
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static ImmutableDictionary<string, ValidationArgValue>? Project(ValidationFailure failure, ValidationArgsOptions? options = null)` | `ImmutableDictionary<string,ValidationArgValue>?` | Projects a failure's `FormattedMessagePlaceholderValues` onto the `Args` carried by `FieldViolation`, applying the allowlist, the containment gate and the encoding rules below. Returns `null` when nothing survives. Both adapters call this — `FluentValidationResultExtensions.ToResult` and, in `Trellis.Mediator.FluentValidation`, `FluentValidationMessageValidatorAdapter`. |
+| `public static ImmutableDictionary<string, ValidationArgValue>? Project(ValidationFailure failure, ValidationArgsOptions? options = null)` | `ImmutableDictionary<string,ValidationArgValue>?` | Projects a failure's `FormattedMessagePlaceholderValues` onto the `Args` carried by `FieldViolation`, applying the allowlist, the containment gate and the encoding rules below, and merges in the `allowed` member list for an `IsInEnum()` failure. Returns `null` when nothing survives. Both adapters call this — `FluentValidationResultExtensions.ToResult` and, in `Trellis.Mediator.FluentValidation`, `FluentValidationMessageValidatorAdapter`. |
 
 `Args` is what lets a client render its own localized message instead of displaying the server's English prose. Blanket camelCase pass-through of FluentValidation's placeholders is unsafe on two independent counts, so two controls apply.
 
@@ -185,6 +185,7 @@ public static class ValidationArgsProjection
 | `InclusiveBetween`, `ExclusiveBetween` | `from`, `to` |
 | `ScalePrecision` | `expectedPrecision`, `expectedScale`, `actualScale`, `digits` |
 | `RegularExpression` | `regularExpression` |
+| `IsInEnum` | `allowed` — derived rather than projected, and exempt from the gate below |
 | all others | none |
 
 `ExactLength` allows `maxLength` and **not** `minLength`, which looks arbitrary because `ExactLengthValidator(n)` calls `base(n, n)` and so populates both with the same correct value. The allowlist does not act alone — it composes with the gate below, and the pinned template names `{MaxLength}`. Allowlisting `minLength` would gate it out for being absent from the template while `maxLength` was dropped for not being allowlisted, and the expected length would vanish from the wire entirely, leaving a client with the length it sent and no bound to compare it against. **The allowlist tracks the template, not merely the populated fields.**
@@ -199,13 +200,31 @@ The consequences fall out uniformly, with no per-arg judgement:
 | Case | Result |
 | --- | --- |
 | default message | the templated args emit — they are already in today's `errors` string, so nothing new is disclosed |
-| `.WithMessage("bad")` | nothing emits — the app took the values out of its prose |
+| `.WithMessage("bad")` | nothing emits — the app took the values out of its prose. `allowed` is exempt and still emits |
 | `AppendArgument("Secret", …)` | nothing emits — in no template, and Trellis cannot classify it |
 | localized message (e.g. `culture es`) | the templated args emit, because `GetString` returns the *culture-active* template |
 | an app-supplied `ErrorCode` | nothing emits — an unrecognized code resolves to no template, which is fail-safe and consistent with a user-set code always winning |
+| the gate itself | never applies to `allowed`, which is derived rather than projected |
 | `Matches(...)`, any message | `regularExpression` never emits — it is in no default template, so emitting it would disclose an internal format |
 
 `PropertyValue`, `PropertyPath` and `PropertyName` are denied unconditionally, on app-authored placeholders too: `PropertyValue` carries the user's submitted input and *is* rendered into some default messages, so containment alone would let it through. `PropertyName` is redundant with the violation's own location.
+
+**Enum members — the one derived arg.** An `IsInEnum()` failure carries `allowed`, the permitted member names ordinally sorted, exactly as every other Trellis producer of `enum.undefined` does:
+
+```json
+{ "code": "enum.undefined", "args": { "allowed": ["Amber", "Zinc"] } }
+```
+
+It is derived rather than projected because FluentValidation has no placeholder for it — the default message reports only the value it rejected. The members are read from the **attempted value's own type**, since FluentValidation reports no type of its own. So an `ErrorCode` an application borrowed for a rule over something that is not an enum names nothing, which is the fail-safe direction, and a nullable enum works because a boxed `Shade?` is a `Shade`.
+
+This is the one arg the containment gate does not judge, and must not. The gate asks whether a value already reached the client in the rendered message — the right question for an operand the *application* chose, such as a bound, a regex or a compared property. Member names are not that: they are the API's own contract, the very spellings a client must send to succeed, and the other producers of this code publish them in their detail prose already. So `allowed` survives `.WithMessage(...)`, unlike every row in the table above. Withholding it would conceal nothing and would break the agreement the arg exists to create — a client cannot render one localized *"choose one of…"* for `enum.undefined` if the list is present from a query binding and absent from a validator.
+
+An application that widens the allowlist for `EnumValidator` through `ValidationArgsOptions` gets its placeholders **in addition to** `allowed`, not instead of it.
+
+An enum with more than `ValidationArgs.MaxAllowedMembers` (64) members sends `allowedCount` instead of the list, on this path as on every other — see `trellis-api-core.md`.
+
+> [!WARNING]
+> **`IsInEnum()` does not work on a `RequiredEnum<T>`, and fails open the wrong way.** `RequiredEnum<T>` is a registry of declared statics rather than a CLR enum, and FluentValidation's `EnumValidator` rejects any type that is not a CLR enum — so the rule fails **every** value, including a perfectly valid member, with `enum.undefined`. This is FluentValidation's own behaviour and predates the `allowed` arg. Validate a `RequiredEnum<T>` through its own `TryCreate` or the scalar-value binding pipeline, both of which do carry `allowed`; if you need a FluentValidation rule, write it against the underlying `string`. Such a violation carries no `allowed`, because the members are read from the attempted value's type and a `RequiredEnum<T>` has no CLR members to read — a spurious rejection is not given the authority of a member list.
 
 **Bounding.** Every string-valued arg is capped at 64 characters (with a `...` marker) and control characters are escaped as `\uXXXX`. The bound is universal rather than targeted because no structural rule identifies which args can carry submitted input: `Equal(x => x.Other + "!")` carries the full submitted value with an **empty** `ComparisonProperty`, byte-for-byte indistinguishable from a safe literal comparison.
 
