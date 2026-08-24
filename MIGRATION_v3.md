@@ -76,10 +76,10 @@ return new ValidationError(new[] { new FieldError("email", "invalid format") });
 
 // v3
 return new Error.AuthenticationRequired(Scheme: "Bearer") { Code = "Authentication.InvalidCredentials", Detail = "Invalid credentials." };
-return new Error.Conflict(ResourceRef.For<User>(userId), "duplicate_email")
+return new Error.Conflict(ResourceRef.For<User>(userId), "user.duplicate-email")
     { Detail = "Email already in use." };
 return new Error.NotFound(ResourceRef.For<User>(userId));
-return Error.InvalidInput.ForField("email", "invalid_format", "Email is not a valid address.");
+return Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email is not a valid address.");
 ```
 
 The full case set and slug-change table is in the [Error union DDD realignment](#error-union-ddd-realignment) section below. The pre-v3 `FieldError(name, [details])` shape now uses RFC 6901 JSON Pointers (`InputPointer`) for field paths. The shortcut `Error.InvalidInput.ForField("email", ...)` calls `InputPointer.ForProperty("email")` which produces `"/email"` (RFC 6901 escapes for `~` and `/` are applied, but `.` is preserved as-is — so `ForField("Address.City", ...)` produces `"/Address.City"`, a single token). For nested paths build the pointer explicitly via `new InputPointer("/Address/City")` or the `InputPointer` overload of `ForField`. FluentValidation member chains (`Address.City`, `Items[0].Sku`) ARE auto-normalized to JSON Pointers (`"/Address/City"`, `"/Items/0/Sku"`) by the `Trellis.Mediator.FluentValidation` adapter using `JsonPointerNormalizer` from `Trellis.FluentValidation`. Tests asserting on field-error shape need updating; see [`Trellis.Testing` `Error.InvalidInput` assertions](docs/docfx_project/api_reference/trellis-api-testing-reference.md#validationerrorassertions) (`HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`) for the v3 shape.
@@ -141,23 +141,23 @@ The [CHANGELOG entry](CHANGELOG.md#breaking-changes--trelliscoreerror-union-ddd-
 ```csharp
 // Before
 return new Error.UnprocessableContent(EquatableArray.Create(
-    new FieldViolation(InputPointer.ForProperty("email"), "invalid_format")
+    new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.StringEmail)
     {
         Detail = "Email is not a valid address.",
     }));
 
 // After
-return Error.InvalidInput.ForField("email", "invalid_format", "Email is not a valid address.");
+return Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email is not a valid address.");
 ```
 
 ### Rule (cross-field / object-level) violation
 
 ```csharp
 // Before
-return new Error.BadRequest("passwords_must_match") { Detail = "Password and confirmation differ." };
+return new Error.BadRequest("password.confirmation-mismatch") { Detail = "Password and confirmation differ." };
 
 // After
-return Error.InvalidInput.ForRule("passwords_must_match", "Password and confirmation differ.");
+return Error.InvalidInput.ForRule("password.confirmation-mismatch", "Password and confirmation differ.");
 ```
 
 ### Aggregate invariant violated outside the inbound-validation pipeline
@@ -165,7 +165,7 @@ return Error.InvalidInput.ForRule("passwords_must_match", "Password and confirma
 ```csharp
 // New case — was previously shoe-horned into UnprocessableContent or Conflict
 return new Error.InvariantViolation(
-    "cross_aggregate_uniqueness",
+    "order.cross-aggregate-uniqueness",
     ResourceRef.For<Order>(orderId))
 {
     Detail = "Order number is already in use by another tenant.",
@@ -181,12 +181,14 @@ return new Error.Conflict(ResourceRef.For<Order>(orderId), "concurrency_conflict
     Detail = "Order was modified by another request.",
 };
 
-// After — same call shape; Conflict is unchanged.
-return new Error.Conflict(ResourceRef.For<Order>(orderId), "concurrency_conflict")
+// After — same call shape, but use the framework constant so the boundary recognizes it.
+return new Error.Conflict(ResourceRef.For<Order>(orderId), FaultCodes.ConcurrentModification)
 {
     Detail = "Order was modified by another request.",
 };
 ```
+
+`FaultCodes.ConcurrentModification` (`"concurrent-modification"`) is load-bearing, not just a naming convention. `Trellis.Asp.ResponseFailureWriter` maps an `Error.Conflict` carrying that code to **412 Precondition Failed** when the request sent `If-Match` (falling back to 409 otherwise), `ErrorRetryExtensions` classifies it as `RetryClassification.Transient`, and the EF Core integration emits it for `DbUpdateConcurrencyException`. A hand-written literal such as `"concurrency_conflict"` silently opts out of all three.
 
 ### Authentication challenge
 
@@ -232,7 +234,7 @@ return new Error.ServiceUnavailable();
 
 // After
 return new Error.RateLimited(new RetryAdvice(After: TimeSpan.FromSeconds(30)));
-return new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(120))) { Code = "payment_gateway_offline" };
+return new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(120))) { Code = "payment-gateway.offline" };
 ```
 
 `RetryAdvice(TimeSpan? After, DateTimeOffset? At)` is a new transport-neutral type in `Trellis.Core`. The boundary translates it to the `Retry-After` header.
@@ -244,7 +246,7 @@ return new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(120))) 
 return new Error.InternalServerError(faultId) { Detail = "DB write failed." };
 
 // After
-return new Error.Unexpected("db_write_failed", faultId) { Detail = "DB write failed." };
+return new Error.Unexpected("db.write-failed", faultId) { Detail = "DB write failed." };
 ```
 
 The required `Code` makes the failure addressable in telemetry. `Error.Unexpected { Code == FaultCodes.NotImplemented }` is special-cased at the boundary to `501 Not Implemented`.
@@ -254,8 +256,8 @@ The required `Code` makes the failure addressable in telemetry. `Error.Unexpecte
 ```csharp
 // New first-class case (was previously a merged `UnprocessableContent`)
 return new Error.Aggregate(EquatableArray.Create<Error>(
-    Error.InvalidInput.ForField("email", "required"),
-    new Error.Conflict(ResourceRef.For<User>(userId), "duplicate_email")));
+    Error.InvalidInput.ForField("email", ValidationCodes.ValueNotEmpty),
+    new Error.Conflict(ResourceRef.For<User>(userId), "user.duplicate-email")));
 ```
 
 `Combine` still merges multiple `InvalidInput` failures into a single `InvalidInput`; mixed-type combinations now produce `Error.Aggregate`.
@@ -563,7 +565,7 @@ public async Task<IActionResult> ProcessOrder(CreateOrderRequest request)
             ? SuggestAlternativeProductsAsync(request.ProductId)
             : Result.Fail<Order>(err))
         
-        .MapOnFailure(err => new Error.Unexpected("order_processing_failed")        // ✅ Changed
+        .MapOnFailure(err => new Error.Unexpected("order.processing-failed")        // ✅ Changed
         {
             Detail = $"Order processing failed: {err.Detail}",
             Cause = err
@@ -603,7 +605,7 @@ public void TapError_WithAction_FailureResult_ExecutesAction()
 [Fact]
 public void TapOnFailure_WithAction_FailureResult_ExecutesAction()  // ✅ Test name changed
 {
-    var result = Result.Fail<int>(new Error.Unexpected("test_failure") { Detail = "Error" });
+    var result = Result.Fail<int>(new Error.Unexpected("test-failure") { Detail = "Error" });
     
     var actual = result.TapOnFailure(() => _actionExecuted = true);  // ✅ Method changed
     

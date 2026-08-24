@@ -16,8 +16,8 @@ audience: [developer]
 |---|---|---|
 | Return a typed failure from a function | `Result.Fail<T>(new Error.X(payload) { Detail = "..." })` | [Creating errors](#creating-errors) |
 | Fail but still persist staged work (worker handler) | `Result.FailAfterCommit<T>(error)` | [Persisting failure state from a worker handler](integration-mediator.md#persisting-failure-state-from-a-worker-handler) |
-| Build a single-violation 422 from a property name | `Error.InvalidInput.ForField("email", "required", "...")` | [Validation failures](#validation-failures) |
-| Build a single-violation 422 from an object-level rule | `Error.InvalidInput.ForRule("passwords_must_match", "...")` | [Validation failures](#validation-failures) |
+| Build a single-violation 422 from a property name | `Error.InvalidInput.ForField("email", ValidationCodes.ValueNotEmpty, "...")` | [Validation failures](#validation-failures) |
+| Build a single-violation 422 from an object-level rule | `Error.InvalidInput.ForRule("password.confirmation-mismatch", "...")` | [Validation failures](#validation-failures) |
 | Aggregate per-field and cross-field violations | `new Error.InvalidInput(Fields: ..., Rules: ...)` | [Validation failures](#validation-failures) |
 | Branch on the closed catalog at a boundary | `result.Match(value => ..., error => error switch { Error.NotFound nf => ..., ... })` | [Pattern matching](#pattern-matching) |
 | Log without changing the result | `result.TapOnFailure(error => logger.LogWarning(...))` | [Propagating errors](#propagating-errors) |
@@ -101,15 +101,15 @@ For the common single-payload shapes, the resource-bearing cases (`NotFound`, `G
 Error.NotFound.For<Order>(id, "Order not found")            // wraps id in ResourceRef.For<Order>(id)
 Error.Conflict.ForReason("duplicate.key", "Email in use")   // resourceless; ForReason leads with the reason code
 Error.Forbidden.ForPolicy("orders.write", "Admin required") // resourceless; or For<TResource>(policyId, id, detail)
-Error.InvariantViolation.ForReason("cross_aggregate_rule")  // resourceless; or For<TResource>(reasonCode, id, detail)
-Error.InvalidInput.ForField("email", "invalid", "Bad email")// or ForRule(code, detail)
+Error.InvariantViolation.ForReason("order.cross-aggregate-rule") // resourceless; or For<TResource>(reasonCode, id, detail)
+Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Bad email") // or ForRule(code, detail)
 ```
 
 | Pattern | Example |
 |---|---|
 | Resource not found | `new Error.NotFound(ResourceRef.For<Order>(id)) { Detail = $"Order {id} not found" }` |
 | State conflict | `new Error.Conflict(ResourceRef.For<User>(userId), "duplicate.key") { Detail = "Email is already in use" }` |
-| Domain rule conflict (no resource) | `new Error.Conflict(null, "cancel_after_ship") { Detail = "Cannot cancel after shipment" }` |
+| Domain rule conflict (no resource) | `new Error.Conflict(null, "order.cancel-after-ship") { Detail = "Cannot cancel after shipment" }` |
 | Authentication missing | `new Error.AuthenticationRequired()` |
 | Authenticated but not allowed | `new Error.Forbidden("orders.write") { Detail = "Administrator role required" }` |
 | Soft-deleted resource | `new Error.Gone(ResourceRef.For<Document>(id))` |
@@ -117,9 +117,9 @@ Error.InvalidInput.ForField("email", "invalid", "Bad email")// or ForRule(code, 
 | Body too large | `new Error.TransportFault(new HttpError.ContentTooLarge(10 * 1024 * 1024))` |
 | Method not supported | `new Error.TransportFault(new HttpError.MethodNotAllowed(EquatableArray.Create("GET", "POST")))` |
 | Rate limited | `new Error.RateLimited(new RetryAdvice(After: TimeSpan.FromSeconds(30)))` |
-| Dependency unavailable | `new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(120))) { Code = "payment_gateway_offline" }` |
+| Dependency unavailable | `new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(120))) { Code = "payment-gateway.offline" }` |
 | Unhandled fault | `new Error.Unexpected("crm.timeout", faultId)` |
-| Aggregate invariant | `new Error.InvariantViolation("cross_aggregate_rule", ResourceRef.For<Order>(orderId))` |
+| Aggregate invariant | `new Error.InvariantViolation("order.cross-aggregate-rule", ResourceRef.For<Order>(orderId))` |
 
 > [!TIP]
 > Reach for `new Error.Conflict(resource, "domain.violation")` when state blocks an otherwise-valid request. `Error.InvalidInput` is for input the caller can fix. `Error.InvariantViolation` is for domain rules that aren't bound to a specific request field (e.g. a cross-aggregate rule, an internal precondition).
@@ -139,19 +139,19 @@ Error.InvalidInput.ForField("email", "invalid", "Bad email")// or ForRule(code, 
 using System.Collections.Immutable;
 using Trellis;
 
-var single = Error.InvalidInput.ForField("email", "required", "Email is required");
+var single = Error.InvalidInput.ForField("email", ValidationCodes.ValueNotEmpty, "Email is required");
 
 var multiField = new Error.InvalidInput(EquatableArray.Create(
-    new FieldViolation(InputPointer.ForProperty("email"),    "required") { Detail = "Email is required" },
-    new FieldViolation(InputPointer.ForProperty("password"), "min_length",
-        ValidationArgs.Of("min", 8)) { Detail = "Password must be at least 8 characters" },
-    new FieldViolation(InputPointer.ForProperty("age"),      "min",
-        ValidationArgs.Of("min", 18)) { Detail = "Must be 18 or older" }));
+    new FieldViolation(InputPointer.ForProperty("email"),    ValidationCodes.ValueNotEmpty) { Detail = "Email is required" },
+    new FieldViolation(InputPointer.ForProperty("password"), ValidationCodes.StringMinLength,
+        ValidationArgs.Of("minLength", 8)) { Detail = "Password must be at least 8 characters" },
+    new FieldViolation(InputPointer.ForProperty("age"),      ValidationCodes.ValueGreaterThanOrEqual,
+        ValidationArgs.Of("comparisonValue", 18)) { Detail = "Must be 18 or older" }));
 
 var crossField = new Error.InvalidInput(
     Fields: EquatableArray<FieldViolation>.Empty,
     Rules:  EquatableArray.Create(new RuleViolation(
-        "passwords_must_match",
+        "password.confirmation-mismatch",
         Fields: EquatableArray.Create(
             InputPointer.ForProperty("password"),
             InputPointer.ForProperty("passwordConfirmation")))
@@ -197,7 +197,7 @@ var result = LoadFromCrm(id)
     .MapOnFailure(error => error switch
     {
         Error.Unexpected => new Error.Unavailable(new RetryAdvice(After: TimeSpan.FromSeconds(60)))
-            { Code = "crm_offline", Detail = "Customer service is temporarily unavailable" },
+            { Code = "crm.offline", Detail = "Customer service is temporarily unavailable" },
         _ => error,
     });
 
@@ -246,9 +246,9 @@ static Result<string> LoadConfig(string path) =>
 | Heterogeneous (mixed cases) | One `Error.Aggregate` wrapping the children. Nested aggregates are flattened at construction. |
 
 ```csharp
-var emailErr    = Result.Fail(Error.InvalidInput.ForField("email",    "required"));
-var passwordErr = Result.Fail(Error.InvalidInput.ForField("password", "required"));
-var ageErr      = Result.Fail(Error.InvalidInput.ForField("age",      "required"));
+var emailErr    = Result.Fail(Error.InvalidInput.ForField("email",    ValidationCodes.ValueNotEmpty));
+var passwordErr = Result.Fail(Error.InvalidInput.ForField("password", ValidationCodes.ValueNotEmpty));
+var ageErr      = Result.Fail(Error.InvalidInput.ForField("age",      ValidationCodes.ValueNotEmpty));
 
 var combined = Result.Combine(emailErr, passwordErr, ageErr);
 // combined.Error is one Error.InvalidInput with three Fields entries.

@@ -758,9 +758,9 @@ Guidance:
 `ExceptionBehavior` is the outermost behavior. It:
 
 - Catches every unhandled exception **except** `OperationCanceledException` (which propagates so cancellation flows correctly).
-- Logs the exception, then returns `TResponse.CreateFailure(new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = "An unexpected error occurred while processing the request." })`.
+- Logs the exception, then returns `TResponse.CreateFailure(new Error.Unexpected(FaultCodes.UnhandledException, faultId) { Detail = "An unexpected error occurred while processing the request." })`.
 
-The generated `"N"`-format Guid becomes `Error.Code` today, so operators can join the failed response to the logged stack trace.
+The generated `"N"`-format Guid is passed as `FaultId` (the `Code` stays the stable `unhandled-exception`), so operators can join the failed response to the logged stack trace without giving every incident its own code.
 
 > [!WARNING]
 > Don't use exceptions for expected business outcomes — return `Result<T>` failures instead and let `ExceptionBehavior` handle only true surprises.

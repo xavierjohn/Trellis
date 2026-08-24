@@ -72,7 +72,7 @@ When `statusMap` is omitted, the default mapper in `Trellis.Http/src/HttpRespons
 | `403` | `new Error.Forbidden("http.forbidden")` |
 | `404` | `new Error.NotFound(resource)` |
 | `405` (with `Allow`) | `new Error.TransportFault(new HttpError.MethodNotAllowed(allow))` |
-| `405` (no `Allow`) | `new Error.Unexpected(Guid.NewGuid().ToString("N"))` |
+| `405` (no `Allow`) | `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)` |
 | `406` | `new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty))` |
 | `409` | `new Error.Conflict(null, "http.conflict")` |
 | `410` | `new Error.Gone(resource)` |
@@ -85,9 +85,9 @@ When `statusMap` is omitted, the default mapper in `Trellis.Http/src/HttpRespons
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | `501` | `new Error.Unexpected(FaultCodes.NotImplemented)` |
 | `503` | `new Error.Unavailable(Retry: retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
-| other / `5xx` default | `new Error.Unexpected(Guid.NewGuid().ToString("N"))` |
+| other / `5xx` default | `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)` |
 
-A `416` without a known `Content-Range` length, or a `405` without `Allow`, also falls through to `new Error.Unexpected(Guid.NewGuid().ToString("N"))`. The strict default parses `Retry-After` into `RetryAdvice` for the core 429 / 503 cases (delta-seconds → `After`, HTTP-date → `At`); `WWW-Authenticate` on 401 is not parsed into `Error.AuthenticationRequired`. Use a custom status map or the body-aware overload when an endpoint-specific contract needs richer detail.
+A `416` without a known `Content-Range` length, or a `405` without `Allow`, also falls through to `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)`, where `faultId` is a freshly generated per-incident identifier carried in `FaultId` — the `Code` stays stable so telemetry can aggregate these. The JSON readers use the same shape with `FaultCodes.HttpResponseNotSuccess`, `FaultCodes.HttpResponseNoBody`, and `FaultCodes.HttpResponseInvalidBody`. The strict default parses `Retry-After` into `RetryAdvice` for the core 429 / 503 cases (delta-seconds → `After`, HTTP-date → `At`); `WWW-Authenticate` on 401 is not parsed into `Error.AuthenticationRequired`. Use a custom status map or the body-aware overload when an endpoint-specific contract needs richer detail.
 
 ## Exception propagation
 
@@ -143,7 +143,7 @@ public Task<Result<TodoDto>> GetTodoStrictAsync(HttpClient client, Guid id, Canc
         {
             HttpStatusCode.NotFound => new Error.NotFound(ResourceRef.For<TodoDto>(id)),
             HttpStatusCode.Forbidden => new Error.Forbidden("todo.read"),
-            _ when (int)status >= 500 => new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
+            _ when (int)status >= 500 => new Error.Unexpected("todo.upstream-fault", Guid.NewGuid().ToString("N")) { Detail = $"upstream {status}" },
             _ => null,
         })
         .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
@@ -161,7 +161,7 @@ public Task<Result<TodoDto>> GetTodoWithProblemDetailsAsync(HttpClient client, G
                 .ReadFromJsonAsync<ProblemDetails>(cancellationToken: token);
             return problem is null
                 ? null
-                : new Error.Unexpected(Guid.NewGuid().ToString("N")) { Detail = problem.Detail ?? "upstream error" };
+                : new Error.Unexpected("todo.upstream-fault", Guid.NewGuid().ToString("N")) { Detail = problem.Detail ?? "upstream error" };
         }, ct)
         .ReadJsonAsync(AppJsonContext.Default.TodoDto, ct);
 ```

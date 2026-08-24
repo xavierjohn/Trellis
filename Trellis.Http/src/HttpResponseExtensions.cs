@@ -198,9 +198,9 @@ public static class HttpResponseExtensions
             HttpStatusCode.UnprocessableEntity => Error.InvalidInput.ForRule(ValidationCodes.HttpUnprocessableContent),
             (HttpStatusCode)428 => new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch)),
             (HttpStatusCode)429 => new Error.RateLimited(ExtractRetryAdvice(response)),
-            HttpStatusCode.NotImplemented => new Error.Unexpected(FaultCodes.NotImplemented),
+            HttpStatusCode.NotImplemented => new Error.Unexpected(Code: FaultCodes.NotImplemented),
             HttpStatusCode.ServiceUnavailable => new Error.Unavailable(Retry: ExtractRetryAdvice(response)),
-            _ => new Error.Unexpected(Guid.NewGuid().ToString("N")),
+            _ => new Error.Unexpected(Code: FaultCodes.HttpResponseFault, FaultId: Guid.NewGuid().ToString("N")),
         };
 
         return error with { Detail = detail };
@@ -447,26 +447,24 @@ public static class HttpResponseExtensions
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseNotSuccess, FaultId: Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}.",
                 });
 
             if (message.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseNoBody, FaultId: Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response had no body for value {typeof(T).Name}.",
                 });
 
-            if (message.Content is null)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"HTTP response body was null for value {typeof(T).Name}.",
-                });
-
+            // No `Content is null` guard: HttpResponseMessage.Content's getter substitutes an
+            // EmptyContent when the backing field is null, so the property never observes null
+            // even after `Content = null`. The zero-length check below is what actually covers
+            // a bodiless response.
             var bytes = await message.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             if (bytes.Length == 0)
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseNoBody, FaultId: Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response body was empty for value {typeof(T).Name}.",
                 });
@@ -487,14 +485,14 @@ public static class HttpResponseExtensions
                     ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
                     : string.Empty;
 
-                return Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseInvalidBody, FaultId: Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
                 });
             }
 
             return value is null
-                ? Result.Fail<T>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                ? Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseInvalidBody, FaultId: Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response deserialized to null for value {typeof(T).Name}.",
                 })
@@ -549,7 +547,7 @@ public static class HttpResponseExtensions
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)
-                return Result.Fail<Maybe<T>>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<Maybe<T>>(new Error.Unexpected(Code: FaultCodes.HttpResponseNotSuccess, FaultId: Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}.",
                 });
@@ -557,9 +555,7 @@ public static class HttpResponseExtensions
             if (message.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
                 return Result.Ok(Maybe<T>.None);
 
-            if (message.Content is null)
-                return Result.Ok(Maybe<T>.None);
-
+            // See ReadJsonAsync: Content never observes null, so the zero-length check covers it.
             var bytes = await message.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             if (bytes.Length == 0)
                 return Result.Ok(Maybe<T>.None);
@@ -575,7 +571,7 @@ public static class HttpResponseExtensions
                     ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
                     : string.Empty;
 
-                return Result.Fail<Maybe<T>>(new Error.Unexpected(Guid.NewGuid().ToString("N"))
+                return Result.Fail<Maybe<T>>(new Error.Unexpected(Code: FaultCodes.HttpResponseInvalidBody, FaultId: Guid.NewGuid().ToString("N"))
                 {
                     Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
                 });

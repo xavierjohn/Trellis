@@ -45,6 +45,76 @@ jobs:
         dotnet tool install --global nbgv
         nbgv cloud
 
+    - name: Gate per-incident identifiers used as reason codes
+      shell: bash
+      run: |
+        set -o pipefail
+        # `Error.Unexpected`'s first parameter is `Code` — the stable, low-cardinality reason code
+        # projected onto the wire as ProblemDetails.Extensions["code"]. The second is `FaultId`,
+        # which exists to carry the per-incident value. Putting a fresh Guid in `Code` gives every
+        # incident its own code, so no dashboard can aggregate them — a defect that shipped in ten
+        # call sites before it was caught by hand.
+        #
+        # Three spellings can express it, so all three are matched:
+        #   1. explicit positional:  new Error.Unexpected(Guid.NewGuid().ToString(...))
+        #   2. target-typed:         new(Guid.NewGuid().ToString(...))   — as in Result.DefaultExceptionMapper
+        #   3. named:                new Error.Unexpected(Code: Guid.NewGuid().ToString(...))
+        #
+        # `.ToString(` is required, and that is what keeps form 2 usable. A target-typed `new(...)`
+        # cannot be attributed to a type by text alone, so matching it broadly would otherwise flag
+        # `public static CustomerId NewUnique() => new(Guid.NewGuid());` — the idiom this framework
+        # documents for RequiredGuid value objects. But `Code` is a `string`, so the defect must
+        # stringify the Guid, whereas a value-object factory passes it raw. Requiring `.ToString(`
+        # separates them exactly. Append  reason-code-ok  to allow a single deliberate line.
+        #
+        # The durable fix is a Roslyn analyzer over ObjectCreationExpression /
+        # ImplicitObjectCreationExpression, which can resolve the constructed type; this text gate
+        # is the cheap stand-in until then, and it does not attempt to catch a Guid that reaches the
+        # Code slot through a local variable.
+        GUID_AS_STRING='(Code[[:space:]]*:[[:space:]]*)?Guid\.[^,;]*\.ToString\('
+        EXPLICIT="new[[:space:]]+Error\.[A-Za-z]+\([[:space:]]*$GUID_AS_STRING"
+        TARGETED="(^|[^A-Za-z0-9_])new\([[:space:]]*$GUID_AS_STRING"
+
+        # git grep exits 1 for "no matches", which is expected. Any other non-zero status is a real
+        # failure (128 for a bad pattern or bad repo state) and must fail the gate rather than be
+        # swallowed into an empty result set, which would let the gate pass silently.
+        collect() {
+          local status=0
+          git grep -nE "$1" -- '*/src/*.cs' > "$2" || status=$?
+          if [ "$status" -gt 1 ]; then
+            echo "::error::git grep failed with exit $status for pattern: $1"
+            exit 1
+          fi
+        }
+        TMP="${RUNNER_TEMP:-/tmp}"
+
+        # A pathspec that matched nothing would make the checks below pass vacuously — the same
+        # fail-open shape as swallowing a git grep error. 543 files match today; the floor is set
+        # well below that so a reorganisation trips it rather than silently disarming the gate.
+        FILE_COUNT=$(git ls-files -- '*/src/*.cs' | wc -l)
+        if [ "$FILE_COUNT" -lt 100 ]; then
+          echo "::error::Pathspec '*/src/*.cs' matched only $FILE_COUNT files, so this gate would pass without checking anything. Has the repository layout changed?"
+          exit 1
+        fi
+
+        collect "$EXPLICIT" "$TMP/reason_code_explicit.txt"
+        collect "$TARGETED" "$TMP/reason_code_targeted.txt"
+
+        HITS=$(cat "$TMP/reason_code_explicit.txt" "$TMP/reason_code_targeted.txt" \
+          | grep -vE ':[0-9]+:[[:space:]]*///' \
+          | grep -v 'reason-code-ok' \
+          || true)
+        if [ -n "$HITS" ]; then
+          echo "::error::A per-incident identifier may be being passed as an Error reason code."
+          echo "Pass a stable code first (see FaultCodes) and the Guid as the fault id:"
+          echo "  new Error.Unexpected(Code: FaultCodes.X, FaultId: Guid.NewGuid().ToString(\"N\"))"
+          echo "If the line constructs something other than an Error, append:  reason-code-ok"
+          echo ""
+          echo "$HITS"
+          exit 1
+        fi
+        echo "No per-incident identifiers used as reason codes."
+
     - name: Restore dependencies
       run: dotnet restore
 

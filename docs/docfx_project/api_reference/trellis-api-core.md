@@ -657,8 +657,9 @@ Two conventions make the set predictable:
   Depth itself is not the rule — a genuinely nested namespace may go deeper, as
   `resource.authorization-via.load-failed` does, where `resource` → `authorization-via` → `load-failed` are
   three real levels rather than one idea chopped up. The frozen constants below happen to need at most two
-  segments: the `FaultCodes` are single-segment because they name a fault with no namespace, and every
-  `ValidationCodes` entry is `namespace.name`. `ValidationCodesTests` enforces that bound on the frozen set.
+  segments: some `FaultCodes` are single-segment because they name a fault with no namespace, the rest —
+  and every `ValidationCodes` entry — are `namespace.name`. `ValidationCodesTests` enforces that bound on
+  the frozen set.
 - **The namespace tells you what failed**, so a client can fall back on the prefix when it does not recognise the full code:
 
 | Namespace | Means | Example |
@@ -748,6 +749,20 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `NotImplemented` | `not-implemented` | A boundary reached a path the framework does not implement. Carried by `Error.Unexpected`; surfaces as HTTP 501. |
 | `ConcurrentModification` | `concurrent-modification` | A write lost a race — the row changed between read and save. Carried by `Error.Conflict`; surfaces as 412 when the request carried `If-Match`, otherwise 409. |
 | `StateMachineInvalidTransition` | `state-machine.invalid-transition` | A trigger was rejected because the aggregate's current state forbids it. Carried by `Error.InvariantViolation`; surfaces as 422. Emitted by `Trellis.StateMachine`'s `FireResult`. |
+| `HttpResponseNotSuccess` | `http.response-not-success` | A response carried a non-success status on a path that needed its body. Carried by `Error.Unexpected`; emitted by `Trellis.Http`'s `ReadJsonAsync` / `ReadJsonMaybeAsync`. |
+| `HttpResponseNoBody` | `http.response-no-body` | A response that had to carry a body did not — `204`/`205`, or a zero-length payload. Carried by `Error.Unexpected`; emitted by `Trellis.Http`. |
+| `HttpResponseInvalidBody` | `http.response-invalid-body` | A response body could not be deserialized, or deserialized to `null`. Carried by `Error.Unexpected`; emitted by `Trellis.Http`. `Detail` reports JSON line/byte position only, never body content. |
+| `HttpResponseFault` | `http.response-fault` | A response status has no more specific mapping in the status-to-error table. Carried by `Error.Unexpected`; emitted by `Trellis.Http`'s `ToResultAsync`. |
+| `ResponseLocationUnresolved` | `response.location-unresolved` | A response was configured to emit a `Location` header but the URI could not be resolved. Carried by `Error.Unexpected`; emitted by `Trellis.Asp`. |
+
+The `http.response-*` family and `ResponseLocationUnresolved` are *not* dispatch keys — nothing branches on
+them to pick a status code. They are constants for the other reason a code exists: they are what a caller
+groups on. Each of these previously passed `Guid.NewGuid().ToString("N")` as the `Code` positional argument
+of the `Error.Unexpected` constructor — `Unexpected(string Code, string? FaultId = null)` — which gave
+every single incident its own `code`
+on the wire — an unbounded cardinality that no dashboard can aggregate — while leaving `FaultId`, the field
+that exists for exactly that per-incident value, null. The identifier now goes to `FaultId` and the code
+stays stable.
 
 `NotImplemented` and `ConcurrentModification` are *control* values: the framework matches on them to select
 HTTP behaviour, so they are dispatch keys as well as presentation. That is exactly why they belong here as

@@ -48,7 +48,7 @@ The library owns `HttpResponseMessage` disposal on terminal/transformative paths
 
 ## Exception propagation
 
-`HttpRequestException`, `OperationCanceledException` / `TaskCanceledException`, and `JsonException` (from `ReadJsonMaybeAsync<T>` / `ReadJsonOrNoneOn404Async<T>` on a 2xx invalid body) propagate through the chain rather than being mapped to `Result.Fail`. `ReadJsonAsync<T>` catches `JsonException` and returns `Fail<Error.Unexpected>` with structured position diagnostics only (no response body, no `JsonException.Path`).
+`HttpRequestException` and `OperationCanceledException` / `TaskCanceledException` propagate through the chain rather than being mapped to `Result.Fail`. `JsonException` does **not**: `ReadJsonAsync<T>`, `ReadJsonMaybeAsync<T>`, and `ReadJsonOrNoneOn404Async<T>` all catch it and return `Fail<Error.Unexpected>` (`Code = FaultCodes.HttpResponseInvalidBody`) with structured position diagnostics only (no response body, no `JsonException.Path`).
 
 ## Breaking changes from v1
 

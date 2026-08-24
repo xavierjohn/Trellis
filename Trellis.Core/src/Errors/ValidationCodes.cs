@@ -349,9 +349,11 @@ public static class ValidationCodes
 /// mean the framework broke, prose about them is for an operator, and a client should never localize
 /// against them. <see cref="ConcurrentModification"/> is not that — it rides on <c>Error.Conflict</c>,
 /// it is the expected outcome of a lost write race rather than a defect, and a client may reasonably
-/// present it to a user ("someone else changed this"). What all of them share is that Trellis itself
-/// matches on the value to pick a status code, which is why they are constants: a literal here is a
-/// silent dispatch break, not merely a misspelt label.
+/// present it to a user ("someone else changed this"). What they share is that Trellis itself
+/// produces the value: some of them it also matches on to pick a status code, where a literal is a
+/// silent dispatch break rather than a misspelt label; the rest (the <c>http.response-*</c> family and
+/// <see cref="ResponseLocationUnresolved"/>) are emitted by the framework's own adapters, and they are
+/// constants so that a caller can branch on a stable, aggregatable code instead of parsing prose.
 /// </para>
 /// </remarks>
 public static class FaultCodes
@@ -382,4 +384,35 @@ public static class FaultCodes
     /// same punctuation guard as every other framework code.
     /// </summary>
     public const string StateMachineInvalidTransition = "state-machine.invalid-transition";
+
+    /// <summary>
+    /// An HTTP response carried a non-success status on a path that needed its body. Carried by
+    /// <c>Error.Unexpected</c> and emitted by <c>Trellis.Http</c>'s JSON readers.
+    /// </summary>
+    public const string HttpResponseNotSuccess = "http.response-not-success";
+
+    /// <summary>
+    /// An HTTP response that had to carry a body did not: <c>204</c>/<c>205</c>, absent content, or a
+    /// zero-length payload. Carried by <c>Error.Unexpected</c> and emitted by <c>Trellis.Http</c>.
+    /// </summary>
+    public const string HttpResponseNoBody = "http.response-no-body";
+
+    /// <summary>
+    /// An HTTP response body could not be deserialized, or deserialized to <see langword="null"/>.
+    /// Carried by <c>Error.Unexpected</c> and emitted by <c>Trellis.Http</c>. The accompanying
+    /// <c>Detail</c> reports JSON line/byte position only — never body content.
+    /// </summary>
+    public const string HttpResponseInvalidBody = "http.response-invalid-body";
+
+    /// <summary>
+    /// An HTTP response status has no more specific mapping in the status-to-error table. Carried by
+    /// <c>Error.Unexpected</c> and emitted by <c>Trellis.Http</c>'s <c>ToResultAsync</c>.
+    /// </summary>
+    public const string HttpResponseFault = "http.response-fault";
+
+    /// <summary>
+    /// A response was configured to emit a <c>Location</c> header but the URI could not be resolved.
+    /// Carried by <c>Error.Unexpected</c> and emitted by <c>Trellis.Asp</c>.
+    /// </summary>
+    public const string ResponseLocationUnresolved = "response.location-unresolved";
 }
