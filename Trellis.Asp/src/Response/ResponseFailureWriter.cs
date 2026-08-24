@@ -194,7 +194,71 @@ internal static class ResponseFailureWriter
                 extensions: extensions);
         }
 
-        await inner.ExecuteAsync(httpContext).ConfigureAwait(false);
+        await WriteProblemJsonAsync(httpContext, inner).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Writes a constructed problem document as <c>application/problem+json</c>, bypassing
+    /// <see cref="IProblemDetailsService"/> while still replaying its customization hook.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Executing the <see cref="Microsoft.AspNetCore.Http.IResult"/> instead would route the document through
+    /// <see cref="IProblemDetailsService"/>, and under MVC that writer negotiates on
+    /// <c>Accept</c>. Trellis problem documents carry structured extension values —
+    /// <see cref="FieldViolationProblemDetail"/> and <see cref="RuleViolationProblemDetail"/> —
+    /// which the XML formatters cannot render: <c>DataContractSerializer</c> throws because those
+    /// types were never declared to it, and no application can declare them because
+    /// <c>ProblemDetails.Extensions</c> is typed <c>object?</c>. A client sending
+    /// <c>Accept: application/xml</c> could therefore turn any failure into an unhandled
+    /// exception. Success responses already bypass negotiation — <c>ToHttpResponse</c> writes its
+    /// own body — so pinning failures to JSON removes an asymmetry rather than adding a
+    /// restriction.
+    /// </para>
+    /// <para>
+    /// The document is still constructed through <c>Results.Problem</c> /
+    /// <c>Results.ValidationProblem</c> so that ASP.NET's own <c>title</c> and <c>type</c>
+    /// defaulting applies, and <c>CustomizeProblemDetails</c> is invoked here so that
+    /// <c>traceId</c>, the Trellis defaults, and consumer customizations all survive. Because
+    /// nothing else writes the response afterwards, the hook runs exactly once.
+    /// </para>
+    /// </remarks>
+    private static async Task WriteProblemJsonAsync(
+        HttpContext httpContext,
+        Microsoft.AspNetCore.Http.IResult inner)
+    {
+        // Every construction site above goes through Results.Problem or Results.ValidationProblem,
+        // and both return a ProblemHttpResult — ValidationProblem differs only in carrying the
+        // derived HttpValidationProblemDetails, which the runtime-typed serialization below keeps
+        // intact. A cast rather than a fallback is deliberate: silently deferring to
+        // inner.ExecuteAsync would put the response back on the negotiating path this method
+        // exists to avoid, so a future framework change should surface here rather than reopen
+        // the vulnerability.
+        var problem = ((ProblemHttpResult)inner).ProblemDetails;
+
+        var serializerOptions = httpContext.RequestServices
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>()
+            .Value.SerializerOptions;
+
+        // Status is committed before customization, mirroring ProblemHttpResult.ExecuteAsync:
+        // a customization that rewrites ProblemDetails.Status changes the body only, never the
+        // status line the caller already resolved.
+        httpContext.Response.StatusCode = problem.Status ?? httpContext.Response.StatusCode;
+
+        var customize = httpContext.RequestServices
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<ProblemDetailsOptions>>()
+            .Value.CustomizeProblemDetails;
+
+        customize?.Invoke(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            ProblemDetails = problem,
+            AdditionalMetadata = httpContext.GetEndpoint()?.Metadata,
+        });
+
+        // The document is serialized by its runtime type, so a validation failure keeps the
+        // `errors` member that only the derived type declares.
+        await ProblemJsonWriter.WriteAsync(httpContext, problem, serializerOptions).ConfigureAwait(false);
     }
 
     /// <summary>
