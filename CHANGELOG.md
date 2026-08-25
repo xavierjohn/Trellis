@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `Error.NotFound.For` / `Error.Gone.For` accept a reason `code`
+
+All four factories — `NotFound.For<TResource>`, `NotFound.For(string, …)`, `Gone.For<TResource>`, `Gone.For(string, …)` — now take a trailing optional `string? code`:
+
+```csharp
+Result.Fail(Error.NotFound.For<Order>(id, "Order not found.", "order.archived"));
+```
+
+`"order.not-found"` (no such row) and `"order.archived"` (deliberately withheld) share the 404 surface but are not the same answer to a client, and the same holds for `Gone` (`"order.purged"` vs `"order.superseded"`). `Code` was always an inherited `init` property, so this was already expressible as `… with { Code = … }` — but a signature reading `For(id, detail)` tells a reader that reason codes are *impossible* on these cases, and that is the reading the docs kept having to correct. Passing `null`, `""`, or whitespace leaves the `error.unspecified` sentinel, matching the source generator's rule for optional runtime codes — a blank code names nothing, so it never reaches the wire.
+
+`code` **trails** `detail` here, where the resource cases whose code is required (`Conflict`, `InvariantViolation`, `Forbidden`) lead with it. That is now the family-wide rule — a required code leads, an optional code trails — and it is also the only safe option: an overload leading with `code` would make the existing `For<Order>("some-id")` bind to the new method and silently turn an id into a reason code.
+
+**Source-compatible, binary-breaking.** Every existing call site compiles unchanged, but the two-parameter signatures no longer exist, so an assembly compiled against `3.0.0-alpha.495` must be rebuilt rather than dropped in beside the new `Trellis.Core`. Recorded in `Trellis.Core/src/CompatibilitySuppressions.xml` (4 × `CP0002`) — the repository's first such entry.
+
 ### Fixed — an `Accept: application/xml` header can no longer break every failure response
 
 `ResponseFailureWriter` now writes `application/problem+json` directly instead of handing its result to `IProblemDetailsService`. Under MVC that service negotiates on `Accept`, so an application that registered `AddXmlDataContractSerializerFormatters()` would try to render a Trellis problem document as XML — and throw. `ProblemDetails.Extensions` is typed `object?` and Trellis fills it with `FieldViolationProblemDetail` and `RuleViolationProblemDetail` values; `DataContractSerializer` refuses runtime types it was never given via `KnownTypeAttribute`, and because the member is `object?` no application could supply one. Any client could therefore turn every failure on the service into an unhandled `InvalidCastException` by setting one request header.

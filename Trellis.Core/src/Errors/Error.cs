@@ -375,9 +375,22 @@ public abstract record Error
         /// <typeparam name="TResource">The resource type whose name identifies the resource.</typeparam>
         /// <param name="id">Optional identifier of the specific instance; omit for a collection-level lookup.</param>
         /// <param name="detail">Optional human-readable detail.</param>
+        /// <param name="code">
+        /// Optional stable reason code naming <em>why</em> the resource is absent — e.g.
+        /// <c>"order.not-found"</c> (no such row) versus <c>"order.archived"</c> (deliberately
+        /// withheld), which share the 404 surface but are not the same answer to a client.
+        /// Omitted, empty, or whitespace leaves the inherited <see cref="ValidationCodes.Unspecified"/>
+        /// sentinel, so an empty string never reaches the wire. The parameter trails
+        /// <paramref name="detail"/> because the code is optional here; cases whose code is
+        /// required (<see cref="Conflict"/>, <see cref="InvariantViolation"/>) lead with it.
+        /// </param>
         /// <returns>A <see cref="NotFound"/> wrapping the resource reference.</returns>
-        public static NotFound For<TResource>(object? id = null, string? detail = null) =>
-            new(ResourceRef.For<TResource>(id)) { Detail = detail };
+        public static NotFound For<TResource>(object? id = null, string? detail = null, string? code = null) =>
+            new(ResourceRef.For<TResource>(id))
+            {
+                Detail = detail,
+                Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
+            };
 
         /// <summary>
         /// Convenience factory that builds a <see cref="NotFound"/> from an explicit resource
@@ -386,9 +399,17 @@ public abstract record Error
         /// <param name="resourceType">The resource type name (e.g. <c>"Season"</c>).</param>
         /// <param name="id">Optional identifier of the specific instance.</param>
         /// <param name="detail">Optional human-readable detail.</param>
+        /// <param name="code">
+        /// Optional stable reason code naming <em>why</em> the resource is absent. Omitted,
+        /// empty, or whitespace leaves the inherited <see cref="ValidationCodes.Unspecified"/> sentinel.
+        /// </param>
         /// <returns>A <see cref="NotFound"/> wrapping the resource reference.</returns>
-        public static NotFound For(string resourceType, object? id = null, string? detail = null) =>
-            new(ResourceRef.For(resourceType, id)) { Detail = detail };
+        public static NotFound For(string resourceType, object? id = null, string? detail = null, string? code = null) =>
+            new(ResourceRef.For(resourceType, id))
+            {
+                Detail = detail,
+                Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
+            };
     }
 
     /// <summary>The resource was previously known but has been permanently removed (tombstone).</summary>
@@ -405,9 +426,22 @@ public abstract record Error
         /// <typeparam name="TResource">The resource type whose name identifies the resource.</typeparam>
         /// <param name="id">Optional identifier of the specific instance.</param>
         /// <param name="detail">Optional human-readable detail.</param>
+        /// <param name="code">
+        /// Optional stable reason code naming <em>why</em> the resource is gone — e.g.
+        /// <c>"order.purged"</c> versus <c>"order.superseded"</c>. Omitted, empty, or whitespace
+        /// leaves the
+        /// inherited <see cref="ValidationCodes.Unspecified"/> sentinel, so an empty string
+        /// never reaches the wire. The parameter trails <paramref name="detail"/> because the
+        /// code is optional here; cases whose code is required (<see cref="Conflict"/>,
+        /// <see cref="InvariantViolation"/>) lead with it.
+        /// </param>
         /// <returns>A <see cref="Gone"/> wrapping the resource reference.</returns>
-        public static Gone For<TResource>(object? id = null, string? detail = null) =>
-            new(ResourceRef.For<TResource>(id)) { Detail = detail };
+        public static Gone For<TResource>(object? id = null, string? detail = null, string? code = null) =>
+            new(ResourceRef.For<TResource>(id))
+            {
+                Detail = detail,
+                Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
+            };
 
         /// <summary>
         /// Convenience factory that builds a <see cref="Gone"/> from an explicit resource
@@ -416,9 +450,17 @@ public abstract record Error
         /// <param name="resourceType">The resource type name (e.g. <c>"Season"</c>).</param>
         /// <param name="id">Optional identifier of the specific instance.</param>
         /// <param name="detail">Optional human-readable detail.</param>
+        /// <param name="code">
+        /// Optional stable reason code naming <em>why</em> the resource is gone. Omitted,
+        /// empty, or whitespace leaves the inherited <see cref="ValidationCodes.Unspecified"/> sentinel.
+        /// </param>
         /// <returns>A <see cref="Gone"/> wrapping the resource reference.</returns>
-        public static Gone For(string resourceType, object? id = null, string? detail = null) =>
-            new(ResourceRef.For(resourceType, id)) { Detail = detail };
+        public static Gone For(string resourceType, object? id = null, string? detail = null, string? code = null) =>
+            new(ResourceRef.For(resourceType, id))
+            {
+                Detail = detail,
+                Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
+            };
     }
 
     /// <summary>The request conflicts with the current state of the resource.</summary>

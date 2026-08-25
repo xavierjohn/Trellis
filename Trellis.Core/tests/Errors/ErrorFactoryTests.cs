@@ -43,8 +43,64 @@ public class ErrorFactoryTests
         error.Detail.Should().Be("Season not found.");
     }
 
-    // ── Gone ───────────────────────────────────────────────────────────────
+    // ── Reason codes on the resource-only cases ────────────────────────────
+    //
+    // NotFound and Gone are the two cases whose Code is optional, so it trails
+    // `detail` rather than leading. These tests pin both halves of that: the code
+    // reaches Code when supplied, and the inherited sentinel survives when it is not.
 
+    [Fact]
+    public void NotFound_For_Generic_WithCode_SetsCode()
+    {
+        var error = Error.NotFound.For<Team>(42, "Team not found.", "team.archived");
+
+        error.Code.Should().Be("team.archived");
+        error.Detail.Should().Be("Team not found.");
+    }
+
+    [Fact]
+    public void NotFound_For_StringType_WithCode_SetsCode()
+    {
+        var error = Error.NotFound.For("Season", 7, code: "season.archived");
+
+        error.Code.Should().Be("season.archived");
+        error.Detail.Should().BeNull();
+    }
+
+    [Fact]
+    public void Gone_For_Generic_WithCode_SetsCode()
+    {
+        var error = Error.Gone.For<Team>(1, "gone", "team.purged");
+
+        error.Code.Should().Be("team.purged");
+        error.Detail.Should().Be("gone");
+    }
+
+    [Fact]
+    public void Gone_For_StringType_WithCode_SetsCode()
+    {
+        var error = Error.Gone.For("Season", 7, code: "season.purged");
+
+        error.Code.Should().Be("season.purged");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void NotFound_For_WithoutCode_KeepsUnspecifiedSentinel(string? code)
+    {
+        // An omitted code, an explicitly-empty one, and a whitespace-only one must all land the
+        // same way. A blank code names nothing, and assigning it would put a meaningless string
+        // on the wire where consumers branch on ValidationCodes.Unspecified — matching the
+        // generator's own rule for optional runtime codes (RequiredPartialClassGenerator).
+        Error.NotFound.For<Team>(42, code: code).Code.Should().Be(ValidationCodes.Unspecified);
+        Error.Gone.For<Team>(42, code: code).Code.Should().Be(ValidationCodes.Unspecified);
+        Error.NotFound.For("Season", 7, code: code).Code.Should().Be(ValidationCodes.Unspecified);
+        Error.Gone.For("Season", 7, code: code).Code.Should().Be(ValidationCodes.Unspecified);
+    }
+
+    // ── Gone ───────────────────────────────────────────────────────────────
     [Fact]
     public void Gone_For_Generic_BuildsResourceAndDetail()
     {
