@@ -1,4 +1,4 @@
-# Trellis.Authorization
+﻿# Trellis.Authorization
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Authorization.svg)](https://www.nuget.org/packages/Trellis.Authorization)
 
@@ -23,6 +23,8 @@ IResult result = actor.HasPermission("orders:read")
 ```
 
 ## Key Features
+- Explicit typed resource-authorization registration does not register loaders: register your `SharedResourceLoaderById<TResource,TId>` implementation and `AddSharedResourceLoader<TMessage,TResource,TId>()` bridge separately.
+- `ActorId` opts into `[Trim, NotDefault]`; trimming and blank rejection are not the unannotated `RequiredString<T>` defaults.
 - Defines `Actor`, `ActorId`, `IActorProvider`, `IAuthorize`, and resource authorization interfaces.
 - `Actor.Id` is the strongly-typed `ActorId` value object — reuse it on consumer aggregate boundaries (`Order.CreatedByActorId`, `Document.LastModifiedByActorId`) for type-checked principal-identity comparisons.
 - Works without ASP.NET Core, Mediator, or any web dependency.

@@ -15,9 +15,11 @@ The bug is invisible without integration tests that assert on the full Location 
 
 The resolver runs per request inside the `LinkGenerator` callback:
 
-1. **`HttpContext.RequestedApiVersion`** — primary signal; reflects whatever the configured `IApiVersionReader` parsed (query, header, media-type, URL segment, composite).
-2. **Endpoint metadata `ApiVersionMetadata.Map(ApiVersionMapping.Implicit).DeclaredApiVersions`** — fallback when (1) is null and exactly one declared version exists.
-3. **`ApiVersioningOptions.DefaultApiVersion`** — final fallback, configured via `services.AddApiVersioning(o => o.DefaultApiVersion = …)`.
+1. **`HttpContext.RequestedApiVersion`** — use the parsed version if the endpoint declares it.
+2. **Exactly one declared version** — use the distinct union of the endpoint's implicit and explicit `DeclaredApiVersions`.
+3. **`ApiVersioningOptions.DefaultApiVersion`** — use the configured host default only if the endpoint declares it; otherwise throw `InvalidOperationException`.
+
+`WithVersionedRoute` resolves versions and skip rules from the **current request endpoint**, not the `Location` target. Applications must verify cross-route target compatibility themselves, including with explicit version pins. `PageUrl`, by contrast, inspects its named target endpoint.
 
 The resolver short-circuits to a no-op (no `api-version` route value injected) when:
 

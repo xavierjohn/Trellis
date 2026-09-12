@@ -447,12 +447,11 @@ public sealed class HttpResponseOptionsBuilder
 {
     private List<string>? _vary;
     private bool _varyForActor;
-    private bool _honorPrefer;
     private System.Net.Http.Headers.CacheControlHeaderValue? _cacheControl;
     private Func<Error, int>? _errorMapper;
     private Dictionary<Type, int>? _errorOverrides;
 
-    /// <summary>Appends headers to the response <c>Vary</c> header.</summary>
+    /// <summary>Appends unique headers to the standalone error response <c>Vary</c> header, preserving existing values.</summary>
     public HttpResponseOptionsBuilder Vary(params string[] headers)
     {
         ArgumentNullException.ThrowIfNull(headers);
@@ -471,13 +470,6 @@ public sealed class HttpResponseOptionsBuilder
     public HttpResponseOptionsBuilder VaryForActor()
     {
         _varyForActor = true;
-        return this;
-    }
-
-    /// <summary>Honors <c>Prefer</c>; always emits <c>Vary: Prefer</c>.</summary>
-    public HttpResponseOptionsBuilder HonorPrefer()
-    {
-        _honorPrefer = true;
         return this;
     }
 
@@ -519,7 +511,6 @@ public sealed class HttpResponseOptionsBuilder
     {
         Vary = _vary,
         VaryForActor = _varyForActor,
-        HonorPrefer = _honorPrefer,
         CacheControl = _cacheControl,
         ErrorMapper = _errorMapper,
         ErrorOverrides = _errorOverrides,

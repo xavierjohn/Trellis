@@ -26,6 +26,7 @@ Result<int> saved = await dbContext.SaveChangesResultAsync(cancellationToken);
 ```
 
 ## Key Features
+- **Commit ownership:** `EfUnitOfWork.BeginScope()` returns `IUnitOfWorkScope`; `IsOwner` is true only for the outer scope. Nested commands defer persistence and event dispatch until the owning command succeeds; DTO/Unit outer responses retain nested aggregate events. Automatic event dispatch under a manually owned outer scope is rejected; use explicit post-commit dispatch instead.
 - Apply Trellis value converters and owned-type conventions with one registration point.
 - Owned-collection (`OwnsMany`) children that declare their own primary key are treated as **domain-assigned**: the key is marked `ValueGenerated.Never`, so an application-supplied `Guid`/`long`/`int` key persists on every provider (no SQL Server IDENTITY `544` error, no spurious 409 when adding a child to an already-loaded parent). Opt back into store generation with an explicit `ValueGeneratedOnAdd()` or `[DatabaseGenerated(DatabaseGeneratedOption.Identity)]`.
 - Query `Maybe<T>` naturally instead of dropping to storage-specific null handling.

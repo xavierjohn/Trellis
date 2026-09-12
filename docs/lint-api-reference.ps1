@@ -460,7 +460,7 @@ foreach ($packageProject in Get-ChildItem -Path $RepositoryRoot -Filter '*.cspro
     }
 }
 
-# TRLDOC012 - guardrail docs must say that their guardrails are opt-in.
+# TRLDOC012 - guardrail docs must say that standalone analyzer rules are opt-in.
 #
 # Trellis.Core delivers the whole reference set, which is safe for API docs because using an
 # API the consumer does not have is a compile error. It is NOT safe for analyzer docs: an
@@ -477,7 +477,7 @@ foreach ($guardrailDoc in $docManifest.GuardrailDocs) {
     }
 
     if ((Get-Content -LiteralPath $guardrailPath -Raw) -notmatch [regex]::Escape($docManifest.GuardrailBannerMarker)) {
-        Write-Host "$guardrailPath(1,1): error TRLDOC012: Missing the opt-in banner '$($docManifest.GuardrailBannerMarker)'. Trellis.Core ships this file to every consumer, so without the banner an agent will trust TRLS diagnostics in a project that never references Trellis.Analyzers. Add the banner directly beneath the H1."
+        Write-Host "$guardrailPath(1,1): error TRLDOC012: Missing the opt-in banner '$($docManifest.GuardrailBannerMarker)'. Trellis.Core ships this file to every consumer, so without the banner an agent may trust standalone analyzer diagnostics in a project that never references Trellis.Analyzers. Source-generator diagnostics are supplied by their hosting packages. Add the banner directly beneath the H1."
         $failed = $true
     }
 }

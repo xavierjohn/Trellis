@@ -33,9 +33,10 @@ takeover, TTL expiry, abandon semantics, and atomicity under concurrent load.
 ## Why
 
 `Trellis.Asp` ships only `InMemoryIdempotencyStore`, which is not safe across instances or process
-restarts, so production deployments write their own over Redis, Cosmos DB, or a database. A
-violation of the contract fails **silently** — a non-atomic reserve lets two racing callers both
-execute the handler, and an unconditional `AbandonAsync` destroys a response `CompleteAsync`
+restarts. The separate `Trellis.Asp.Idempotency.Cosmos` package supplies a distributed production
+store via `AddCosmosIdempotencyStore`; applications using Redis, a relational database, or another
+backend can implement their own. A violation of the contract fails **silently** — a non-atomic
+reserve lets two racing callers both execute the handler, and an unconditional `AbandonAsync` destroys a response `CompleteAsync`
 already persisted. Nothing throws. The symptom is a customer charged twice.
 
 ## Key Features

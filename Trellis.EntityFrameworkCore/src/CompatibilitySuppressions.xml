@@ -3,6 +3,14 @@
 <!-- Deliberate pagination break: Cursor? is now a nullable reference rather than Nullable<Cursor>.
      Consumers must rebuild against the typed-pagination Core and EF packages together. -->
 <Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <!-- Deliberate lifecycle break: BeginScope now returns IUnitOfWorkScope with commit ownership. -->
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.EntityFrameworkCore.EfUnitOfWork`1.BeginScope</Target>
+    <Left>lib/net10.0/Trellis.EntityFrameworkCore.dll</Left>
+    <Right>lib/net10.0/Trellis.EntityFrameworkCore.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
   <Suppression>
     <DiagnosticId>CP0002</DiagnosticId>
     <Target>M:Trellis.EntityFrameworkCore.PaginationQueryableExtensions.ToPageAsync``2(System.Linq.IQueryable{``0},Trellis.PageSize,System.Nullable{Trellis.Cursor},System.Linq.Expressions.Expression{System.Func{``0,``1}},System.String,System.Threading.CancellationToken)</Target>

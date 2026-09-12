@@ -80,6 +80,7 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         using var scope = _unitOfWork.BeginScope();
+        var dispatch = DomainEventDispatchScope.ObserveTransaction(_unitOfWork, scope.IsOwner);
 
         var result = await next(message, cancellationToken).ConfigureAwait(false);
 
@@ -88,6 +89,7 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
             var commitResult = await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             if (commitResult.TryGetError(out var error))
                 return TResponse.CreateFailure(error);
+            dispatch?.RecordCommit();
         }
 
         return result;

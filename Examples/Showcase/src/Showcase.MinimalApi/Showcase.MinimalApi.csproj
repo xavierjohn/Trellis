@@ -37,6 +37,7 @@
     <ProjectReference Include="..\Showcase.Domain\Showcase.Domain.csproj" />
     <ProjectReference Include="..\Showcase.Application\Showcase.Application.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
+    <ProjectReference Include="..\..\..\..\Trellis.Asp\generator\Trellis.AspSourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.FluentValidation\src\Trellis.FluentValidation.csproj" />
     <ProjectReference Include="..\..\..\..\Trellis.Mediator.FluentValidation\src\Trellis.Mediator.FluentValidation.csproj" />

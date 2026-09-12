@@ -156,7 +156,7 @@ For a `partial` `Required*<TSelf>` type the primitive generator emits the `IScal
 | `IpAddress` | Scalar | `Value : string` | JSON string | Domain string scalar. |
 | `LanguageCode` | Scalar | `Value : string` | JSON string | ISO alpha-2. |
 | `MonetaryAmount` | Scalar | `Value : decimal` | JSON number | Single-currency amount; no currency component. |
-| `Percentage` | Scalar | `Value : decimal` | JSON number | Supports fraction helpers and `%` parsing. |
+| `Percentage` | Scalar | `Value : decimal` | JSON string output, e.g. `"50%"`; number or string input | Supports fraction helpers and `%` parsing. |
 | `PhoneNumber` | Scalar | `Value : string` | JSON string | Normalized E.164. |
 | `Slug` | Scalar | `Value : string` | JSON string | URL-safe slug. |
 | `Url` | Scalar | `Value : string` | JSON string | Absolute HTTP/HTTPS URL. |
@@ -191,22 +191,25 @@ public partial class OrderStatus : RequiredEnum<OrderStatus>
 
 public static class Example
 {
-    public static void Run()
+    public static Result<Money> Run()
     {
         // Scalar
         var orderId = OrderId.NewUniqueV4();
-        var amount = MonetaryAmount.TryCreate("12.34", CultureInfo.InvariantCulture).Value;
+        var amountResult = MonetaryAmount.TryCreate("12.34", CultureInfo.InvariantCulture);
+        if (!amountResult.TryGetValue(out var amount, out var amountError))
+            return Result.Fail<Money>(amountError);
 
         // Symbolic
-        var status = OrderStatus.TryCreate("awaiting-payment").Value;
+        var statusResult = OrderStatus.TryCreate("awaiting-payment");
+        if (!statusResult.TryGetValue(out var status, out var statusError))
+            return Result.Fail<Money>(statusError);
         var isOpen = status.Is(OrderStatus.Draft, OrderStatus.AwaitingPayment);
 
         // Structured
         var subtotal = Money.Create(12.34m, "USD");
         var shipping = Money.Create(2.00m, "USD");
-        var total = subtotal.Add(shipping).Value;
-
-        _ = (orderId, amount, isOpen, total);
+        _ = (orderId, amount, isOpen);
+        return subtotal.Add(shipping);
     }
 }
 ```

@@ -47,6 +47,28 @@ public sealed class HttpResponseExtensionsExtraTests
     }
 
     [Fact]
+    public async Task Error_ToHttpResponse_Vary_PreservesExistingAndDeduplicatesHeaders()
+    {
+        var ctx = NewContext();
+        ctx.Response.Headers.Vary = "Accept-Encoding, Accept-Language";
+
+        await new Error.NotFound(new ResourceRef("X", "1"))
+            .ToHttpResponse(o => o.Vary("accept-language", "Origin", "origin"))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.Headers.Vary.ToString().Split(',', StringSplitOptions.TrimEntries)
+            .Should().Equal(["Accept-Encoding", "Accept-Language", "Origin"]);
+        ctx.Response.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public void ErrorOptions_HonorPrefer_IsNotExposed()
+    {
+        typeof(HttpResponseOptionsBuilder).GetMethod("HonorPrefer").Should().BeNull();
+        typeof(HttpResponseOptionsBuilder<Thing>).GetMethod("HonorPrefer").Should().NotBeNull();
+    }
+
+    [Fact]
     public void Error_ToHttpResponse_throws_on_null_error()
         => FluentActions.Invoking(() => Trellis.Asp.HttpResponseExtensions.ToHttpResponse((Error)null!))
             .Should().Throw<ArgumentNullException>();

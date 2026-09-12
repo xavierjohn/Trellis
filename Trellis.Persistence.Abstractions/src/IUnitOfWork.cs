@@ -34,7 +34,8 @@ public interface IUnitOfWork
     /// <c>TransactionalCommandBehavior</c> wraps every command in a scope so that a successful
     /// inner command does not commit a partially-completed outer command's staged changes.
     /// </summary>
-    /// <returns>A disposable handle. Dispose ends the scope by decrementing the depth counter;
+    /// <returns>A scope whose <see cref="IUnitOfWorkScope.IsOwner"/> identifies the outermost boundary.
+    /// Dispose ends the scope by decrementing the depth counter;
     /// disposal itself does not trigger a commit.</returns>
     /// <remarks>
     /// <para>
@@ -65,5 +66,5 @@ public interface IUnitOfWork
     /// (e.g. <c>IServiceScopeFactory</c>) so each resolves its own <see cref="IUnitOfWork"/>.
     /// </para>
     /// </remarks>
-    IDisposable BeginScope();
+    IUnitOfWorkScope BeginScope();
 }

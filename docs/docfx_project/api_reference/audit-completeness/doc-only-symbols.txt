@@ -36,6 +36,8 @@ OrderSubmitted
 OrderHeader
 LineItem
 IOrderRepository
+OrderResourceLoader
+IHealthProbe
 IRepository
 CreateCustomerRequest
 DepositRequest

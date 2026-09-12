@@ -91,18 +91,24 @@ public class EfUnitOfWork<TContext> : IUnitOfWork, ITrackedAggregateSource
     }
 
     /// <inheritdoc />
-    public IDisposable BeginScope()
+    public IUnitOfWorkScope BeginScope()
     {
-        Interlocked.Increment(ref _scopeDepth);
-        return new ScopeReleaser(this);
+        var depth = Interlocked.Increment(ref _scopeDepth);
+        return new ScopeReleaser(this, depth == 1);
     }
 
-    private sealed class ScopeReleaser : IDisposable
+    private sealed class ScopeReleaser : IUnitOfWorkScope
     {
         private readonly EfUnitOfWork<TContext> _owner;
         private bool _disposed;
 
-        public ScopeReleaser(EfUnitOfWork<TContext> owner) => _owner = owner;
+        public ScopeReleaser(EfUnitOfWork<TContext> owner, bool isOwner)
+        {
+            _owner = owner;
+            IsOwner = isOwner;
+        }
+
+        public bool IsOwner { get; }
 
         public void Dispose()
         {

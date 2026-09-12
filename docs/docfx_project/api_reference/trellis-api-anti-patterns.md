@@ -9,7 +9,7 @@ audience: [llm]
 ---
 # Trellis Anti-Pattern → Fix Gallery
 
-> **Requires `Trellis.Analyzers`.** This gallery is organised by `TRLS###` diagnostic, but those diagnostics only fire while the consuming project holds a `PackageReference` to `Trellis.Analyzers`. Referencing `Trellis.Core` alone leaves all of them silent, and this file is delivered by `Trellis.Core` — so its presence in `.github/` does **not** mean the analyzers are active. Check the `.csproj`. The FIX shapes below remain correct either way; what changes is whether anything tells you when you have drifted from them.
+> **Analyzer rules require `Trellis.Analyzers`; bundled generator diagnostics do not.** This gallery includes both. Standalone analyzer rules need a `PackageReference` to `Trellis.Analyzers`; source-generator diagnostics ship with their hosting packages (`Trellis.Core`, `Trellis.EntityFrameworkCore`, and `Trellis.Asp`) and can fire without it. This file is delivered by `Trellis.Core`, so its presence in `.github/` does **not** mean the standalone analyzers are active. Check the `.csproj` and the emitter table in the analyzer reference. The FIX shapes below remain correct either way.
 
 > A condensed atlas mapping each common Trellis analyzer trigger to its idiomatic fix. **Read this file alongside `trellis-api-cookbook.md` whenever you are touching a Trellis pipeline.** Each section's WRONG/FIX pair captures the canonical control-flow shape the analyzer expects — preserve that shape and adapt identifiers, types, and error values to your caller. The snippets are pattern examples, not drop-in replacements.
 
@@ -38,7 +38,7 @@ Jump straight to the section named by your diagnostic ID. If you have a symptom 
 | Reading `.Value` on a `Maybe<T>` inside a LINQ projection | TRLS013 | [Unsafe `Maybe<T>.Value` in LINQ projection](#trls013--unsafe-maybetvalue-in-linq-projection) |
 | Throwing to signal a business failure inside a Result chain | TRLS010 | [Throwing in a Result chain](#trls010--throwing-in-a-result-chain) |
 | Deconstructing a `Result<T>` without checking success first | TRLS018 | [Unsafe `Result<T>` deconstruction](#trls018--unsafe-resultt-deconstruction) |
-| Using `default(Result)` or `default(Maybe<T>)` as if it were success | TRLS019 | [`default(Result)` / `default(Maybe<T>)`](#trls019--defaultresult--defaultmaybet) |
+| Using `default(Result<Unit>)` / `default(Result<T>)` or `default(Maybe<T>)` as if it were success | TRLS019 | [`default(Result<Unit>)` / `default(Maybe<T>)`](#trls019--defaultresultunit--defaultmaybet) |
 | A `Combine` chain has grown past the largest supported tuple | TRLS014 | [Combine chain exceeds maximum supported tuple size](#trls014--combine-chain-exceeds-maximum-supported-tuple-size) |
 | Indexing or otherwise configuring a `Maybe<T>` property in EF Core | TRLS016 | [`HasIndex` on a `Maybe<T>` property](#trls016--hasindex-on-a-maybet-property) |
 | Hand-writing EF configuration that Trellis conventions already apply | TRLS021 | [EF configuration duplicates Trellis conventions](#trls021--ef-configuration-duplicates-trellis-conventions) |
@@ -96,7 +96,7 @@ Result<EmailAddress> r = customer.Email.ToResult(new Error.NotFound(ResourceRef.
 | Early-return guard | `if (m.HasNoValue) return …; … m.Value` |
 | Property pattern (incl. negated and ternary forms) | `if (m is { HasValue: true }) … m.Value` |
 | Short-circuiting `&&` | `if (m.HasValue && m.Value.IsActive) …` |
-| Prior assignment that cannot be `None` | `var x = Maybe<int>.From(n); … x.Value` — only when `T` is a non-nullable value type, where `From` can never yield `None` |
+| Prior assignment statement that cannot be `None` | `Maybe<int> x; x = Maybe<int>.From(n); … x.Value` — only when `T` is a non-nullable value type, where `From` can never yield `None`, and `x` is not subsequently reassigned. A declaration initializer (`var x = Maybe<int>.From(n);`) is not recognized by this exemption |
 | `TryGetValue` block | `if (m.TryGetValue(out var v)) …` |
 | Lambda body of a Trellis `Maybe` operator | the value-side lambda of `Bind` / `Map` / `Tap` / `Ensure` (and `*Async` forms), or the `onSome` argument of `Match` / `Switch` — it only runs when a value exists |
 
@@ -150,7 +150,7 @@ if (!ok) return err.ToHttpResponse();
 SendEmail(value);                                  // gated by !ok early-return
 ```
 
-## TRLS019 — `default(Result)` / `default(Maybe<T>)`
+## TRLS019 — `default(Result<Unit>)` / `default(Maybe<T>)`
 
 ```csharp
 // WRONG
@@ -166,17 +166,19 @@ return Maybe<Email>.None;
 
 Direct `.Value` access on `Maybe<T>` inside System.Linq `Enumerable` / `Queryable` Select-family LINQ projections throws for `None` elements unless an earlier `.Where(...)` lambda mentions `HasValue`.
 
-Pick FIX 1 for in-memory or analyzer-clean projection pipelines: filter first, then project.
+Pick FIX 1 for in-memory or analyzer-clean projection pipelines: filter first, then use a non-throwing extractor. A prior `Where(m => m.HasValue)` clears TRLS013 only; TRLS003 does not carry that proof into the separate `Select` lambda.
 
 ```csharp
 // WRONG — projection reads Maybe<T>.Value before proving every element has a value
 IEnumerable<int> numbers = values.Select(m => m.Value);
 
-// FIX 1 — prior Where lambda mentions HasValue before the Value projection
+// FIX 1 — clears both TRLS013 and TRLS003; None elements are filtered out
 IEnumerable<int> numbers = values
     .Where(m => m.HasValue)
-    .Select(m => m.Value);
+    .Select(m => m.GetValueOrDefault(0));
 ```
+
+The fallback is never selected for this filtered sequence; a present zero is still preserved.
 
 Pick FIX 2 for EF Core query composition over mapped `Maybe<T>` properties: register the interceptor and use the typed query helpers for predicates when they match the query.
 

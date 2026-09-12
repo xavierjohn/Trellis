@@ -11,6 +11,7 @@ audience: [llm]
 
 - **Audience:** AI coding agents (and humans) writing Trellis code from documentation alone.
 - **Purpose:** End-to-end recipes that cross package boundaries — DDD, Mediator, FluentValidation, EF Core, ASP.NET Core, Authorization, State Machine, Testing, Analyzers — using the *exact* public surface listed in the per-package API references.
+- **Executable checks:** `Examples/CookbookSnippets` compile-pins the recipes; `Examples/CookbookSnippets.Tests` exercises authorization, multi-aggregate failure atomicity, EF materialization, idempotent controller startup/replay, and worker timer ordering.
 - **Companion docs:**
   - [trellis-api-core.md](trellis-api-core.md#use-this-file-when) — `Result<T>`, `Maybe<T>`, errors, primitives, pagination
   - [trellis-api-primitives.md](trellis-api-primitives.md#use-this-file-when) — `RequiredString`, `RequiredGuid`, `[Range]`, `[StringLength]`
@@ -164,9 +165,10 @@ public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
 // Composite value object — must be a class (records can't inherit ValueObject).
 public sealed class Money : ValueObject
 {
+    private Money() { } // EF materialization without an EF package dependency.
     public Money(decimal amount, CurrencyCode currency) { Amount = amount; Currency = currency; }
-    public decimal Amount { get; }
-    public CurrencyCode Currency { get; }
+    public decimal Amount { get; private set; }
+    public CurrencyCode Currency { get; private set; } = null!;
     protected override void GetEqualityComponents(ref EqualityComponents components)
     {
         components.Add(Amount);
@@ -511,13 +513,13 @@ public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
     public OrderId GetResourceId() => OrderId;
 
     public Trellis.IResult Authorize(Actor actor, Order resource) =>
-        resource.OwnerId == actor.Id || actor.Permissions.Contains("orders:write")
+        resource.OwnerId == actor.Id || actor.HasPermission("orders:write")
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden(Code: "orders.owner", Resource: ResourceRef.For<Order>(OrderId)));
 }
 
 // Static permission gate (no resource load needed): every actor with the named permission
-// can run the command. Use IAuthorize when the authorization decision does not depend on
+// and no matching forbidden permission can run the command. Use IAuthorize when the decision does not depend on
 // any resource state.
 public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result<Unit>>, IAuthorize
 {
@@ -871,7 +873,7 @@ The anti-pattern catalog moved to its own file so that AI sessions and human rea
 
 If you are looking up a specific analyzer by ID, the standalone file is faster than scanning this cookbook. The cookbook recipes still link to the relevant sections of that file where they apply.
 
-> **Enabling these analyzers.** They are **opt-in**: the diagnostics ship in a separate `Trellis.Analyzers` package that `Trellis.Core` does not pull in. Add `<PackageReference Include="Trellis.Analyzers" PrivateAssets="all" />` to every project that uses Trellis `Result`/`Maybe`/value objects so the analyzer diagnostics (`TRLS###`) are enforced at build time. See [trellis-api-analyzers.md](trellis-api-analyzers.md#installation--the-analyzers-are-opt-in) for the install snippet and `.editorconfig` severity control.
+> **Enabling these analyzers.** Standalone analyzer rules are **opt-in**: they ship in a separate `Trellis.Analyzers` package that `Trellis.Core` does not pull in. Add `<PackageReference Include="Trellis.Analyzers" PrivateAssets="all" />` to every project that uses Trellis `Result`/`Maybe`/value objects to enable those analyzer-emitted diagnostics. The `TRLS###` prefix also includes source-generator diagnostics bundled with `Trellis.Core`, `Trellis.EntityFrameworkCore`, and `Trellis.Asp`; those do not require `Trellis.Analyzers`. See [trellis-api-analyzers.md](trellis-api-analyzers.md#installation--the-analyzers-are-opt-in) for the emitter table, install snippet, and `.editorconfig` severity control.
 
 ---
 
@@ -946,6 +948,7 @@ The unobvious bits this recipe pins down:
 
 - `ApplyTrellisConventions` already configures composite value objects as owned navigations — **you do not need `builder.OwnsOne(...)` in your `IEntityTypeConfiguration`** (the `CompositeValueObjectConvention` discovers them by **inheritance from `ValueObject`** when the assembly is passed to `ApplyTrellisConventions`). The `[OwnedEntity]` attribute is **not** the convention's discovery key — it drives the source generator (which emits the parameterless ctor EF Core's materializer needs) and the analyzers `TRLS036` / `TRLS037` / `TRLS038`. The convention maps any `ValueObject` subtype in the scanned assemblies as an owned type; without a parameterless constructor materialization fails — Trellis fails fast at model-build with an actionable `TrellisPersistenceMappingException` naming the value object (instead of EF Core's cryptic "No suitable constructor was found"). `[OwnedEntity]` generates the constructor for you. **Domain-purity note (axiom A8):** because `[OwnedEntity]` lives in `Trellis.EntityFrameworkCore`, annotating a domain value object with it references EF Core; to keep a domain value object EF-free, declare a private parameterless constructor yourself instead (as `Money` does) and the convention materializes via it — `[OwnedEntity]` is the convenient default, the hand-written ctor is the EF-free alternative. Referencing the package analyzer-only (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`) pulls in the generators but does **not** make the layer EF-free — see [trellis-api-efcore.md](trellis-api-efcore.md#maybet-storage-owned-types-and-migrations).
 - **With `[OwnedEntity]`,** the class **must** be `partial` (`TRLS036`), inherit `ValueObject` (`TRLS038`), and have **no** hand-written parameterless constructor (`TRLS037`) — the source generator emits one for EF Core's materialization path. (To keep the value object EF-free instead, omit `[OwnedEntity]` and hand-write a `private` parameterless constructor, as the previous bullet describes.)
+- Recipe 1's custom `Money` uses that EF-free alternative with private setters; the owning aggregate also needs a materialization constructor that does not take owned navigations. The `Customer(CustomerId id)` constructor below serves that purpose.
 - `[JsonConverter(typeof(CompositeValueObjectJsonConverter<TSelf>))]` routes JSON deserialization through the public `TryCreate`, so the API surface and the domain agree on what's valid. Without it, model binding produces a default-constructed VO that bypasses `TryCreate`.
 
 ```csharp
@@ -1007,6 +1010,8 @@ public sealed partial class Customer : Aggregate<CustomerId>
     public string Name { get; private set; } = null!;
     public ShippingAddress ShippingAddress { get; private set; } = null!;     // required composite owned VO
     public partial Maybe<ShippingAddress> BillingAddress { get; set; }        // optional composite owned VO
+
+    private Customer(CustomerId id) : base(id) { } // EF cannot bind an owned navigation in a constructor.
 
     private Customer(CustomerId id, string name, ShippingAddress shipping) : base(id)
     {
@@ -1837,22 +1842,32 @@ public sealed class ReturnOrderHandler(
         // A and then failing on Product B's release would leave A in a partially-
         // released state that TransactionalCommandBehavior cannot roll back from
         // the in-memory aggregate graph within the same request.
-        var preflight = order.LineItems
-            .Select(li => byId[li.ProductId].CanReleaseStock(li.Quantity))
+        var returnPreflight = order.CanReturn(command.Reason);
+        if (returnPreflight.IsFailure)
+            return Result.Fail<Order>(returnPreflight.Error);
+
+        var releasePlan = order.LineItems
+            .GroupBy(li => li.ProductId)
+            .Select(group => (Product: byId[group.Key], Quantity: group.Sum(li => (long)li.Quantity)))
+            .ToArray();
+        var preflight = releasePlan
+            .Select(item => item.Product.CanReleaseStock(item.Quantity))
             .SequenceAll();
         if (preflight.IsFailure)
             return Result.Fail<Order>(preflight.Error);
 
-        // Pass 1 succeeded for every line item — every Pass 2 mutation below has
+        // Pass 1 succeeded for every aggregate — every Pass 2 mutation below has
         // a matching Can* predicate that just returned Ok, so the mutation is
         // provably non-failing. Discard() marks the Result as consciously dropped.
-        foreach (var li in order.LineItems)
-            byId[li.ProductId].ReleaseStock(li.Quantity).Discard();
+        foreach (var item in releasePlan)
+            item.Product.ReleaseStock(item.Quantity).Discard();
 
         return order.Return(command.Reason, timeProvider.GetUtcNow()).Map(_ => order);
     }
 }
 ```
+
+`CanReturn(reason)` is an application-defined pure predicate, also called by `Return`: it checks the reason, eligible order state, and positive line quantities before inventory changes. The sample's `CanReleaseStock(long)` / `ReleaseStock(long)` accept the grouped total; summing into `long` prevents an `int` overflow before validation. Both passes use the same materialized plan, once per product, with no intervening awaits or mutations that invalidate the predicates. Checking two separate quantities of 3 against 5 reserved is not equivalent to checking their total of 6. Add regression cases for duplicate product ids, invalid reasons, and an already-returned order, asserting unchanged inventory and no new domain events on failure.
 
 **The test-design principle: Partial-Failure Atomicity.**
 
@@ -1886,7 +1901,7 @@ public async Task Return_with_missing_product_fails_atomically_and_does_not_rele
     r.Should().BeFailureOfType<Error.NotFound>();
     productA.StockQuantity.Should().Be(aStockBefore);  // A NOT partially released
     productB.StockQuantity.Should().Be(bStockBefore);  // B unmutated (the handler never reached it)
-    order.Status.Should().Be(OrderStatus.Delivered);    // Order NOT transitioned (UoW rolls back)
+    order.Status.Should().Be(OrderStatus.Delivered);    // Order NOT transitioned (preflight prevented mutation)
 }
 ```
 
@@ -1933,15 +1948,22 @@ if (missing.Length > 0)
 // Releasing stock on Product A then failing on Product B would leave A partially
 // released — TransactionalCommandBehavior cannot roll back the in-memory aggregate
 // graph within the request. Never mutate-and-bail in the loop.
-var preflight = order.LineItems
-    .Select(li => byId[li.ProductId].CanReleaseStock(li.Quantity))
+var returnPreflight = order.CanReturn(command.Reason);
+if (returnPreflight.IsFailure)
+    return Result.Fail<Order>(returnPreflight.Error);
+var releasePlan = order.LineItems
+    .GroupBy(li => li.ProductId)
+    .Select(group => (Product: byId[group.Key], Quantity: group.Sum(li => (long)li.Quantity)))
+    .ToArray();
+var preflight = releasePlan
+    .Select(item => item.Product.CanReleaseStock(item.Quantity))
     .SequenceAll();
 if (preflight.IsFailure)
     return Result.Fail<Order>(preflight.Error);
 
 // Pass 2: every mutation has a matching Can* that just returned Ok — provably non-failing.
-foreach (var li in order.LineItems)
-    byId[li.ProductId].ReleaseStock(li.Quantity).Discard();
+foreach (var item in releasePlan)
+    item.Product.ReleaseStock(item.Quantity).Discard();
 ```
 
 ---
@@ -2150,7 +2172,7 @@ For chains (`Match → Team → Tournament`) or fan-out (cricket `Match → {Hom
 
 ### TOCTOU note
 
-Resource authorization loads happen outside the handler's transaction. Multi-hop widens that window: ownership can change after auth but before handler state changes. If transactional consistency is required, drop to a custom `IResourceLoader<TMessage, TProjection>` that runs inside the handler's transaction or enforce ownership in the handler/repository layer.
+Resource authorization loads happen before the handler, including loads performed by a custom `IResourceLoader<TMessage, TProjection>`. `TransactionalCommandBehavior` does not open a database transaction around either the loader or the handler: its scope coordinates the eventual `SaveChanges` commit. Multi-hop widens the window in which ownership can change after authorization. Merely switching loader implementations does not close it. Enforce ownership in the repository's conditional mutation predicate (and reject a zero-row update), or explicitly establish an appropriate transaction/isolation strategy that covers both authorization reads and writes.
 
 ---
 
@@ -2633,6 +2655,7 @@ If the same error is raised on `GET /api/customers/abc-123`, the URL already ide
 
 ```csharp
 // Program.cs
+builder.Services.AddControllers();
 builder.Services.AddTrellis(t => t
     .UseAsp()
     .UseProblemDetails()
@@ -3075,10 +3098,10 @@ services.AddTrellis(trellis => trellis
 
 **Semantics to remember.**
 
-- The integration event is emitted **only after** its source domain event is durably committed and dispatched — never for state that rolled back. The relay stages it as an `OutboxMessageKind.Integration` row atomically with marking the domain row processed, then publishes it on a later drain.
+- The integration event is enrolled **only after** its source domain event is durably committed and dispatched by the relay — never for state that rolled back. The relay stages drained collector events as `OutboxMessageKind.Integration` rows atomically with the source row's saved handler progress (or overall completion), then publishes them on a later drain. There is no per-handler collector rollback: an event added by a translator that subsequently throws can still be enrolled, as can output from a successful translator whose sibling fails. The source row can remain pending while those integration rows are already eligible for publication; integration publication is not proof that the translator or every local handler completed.
 - The default `IIntegrationEventPublisher` fans out in-process to `IIntegrationEventHandler<T>` (great for a modular monolith and tests). Replace that one registration with a message-broker adapter to deliver to other services — the aggregate, translator, and outbox are unchanged.
-- Delivery is at-least-once and a retried domain event re-runs its translator, so a consumer may see the same integration event more than once (a new `OutboxMessage.Id` each time). **Dedupe on business identity, not the message id.**
-- Integration events require the outbox: the collector is only a hand-off buffer, so events added without `UseOutbox<TContext>()` are never delivered.
+- Delivery is at-least-once. Routine retries skip translators whose success was recorded, so a failed sibling does not by itself re-enroll their integration events. A translator that added an event and then failed is retried and can produce a new row with a new message id; crashes before progress is saved can also repeat translation. Delivery retries can redeliver an existing integration row. Dedupe repeated delivery by message id, and use business identity when semantic duplicates can have distinct message ids.
+- Integration events require the outbox. The collector accepts `Add` only inside an active outbox-relay translator invocation; calls from command handlers, direct translator calls, and ordinary in-process domain dispatch throw `InvalidOperationException`. Use the persistence/capture setup from Recipe 35 plus `UseOutbox<TContext>()`; the translator above is invoked by the relay, not by the command handler.
 
 See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#integration-events) for the routing contract.
 

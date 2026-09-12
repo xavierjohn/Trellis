@@ -356,6 +356,10 @@ internal sealed class TrellisErrorOnlyResult : Microsoft.AspNetCore.Http.IResult
 
     public Task ExecuteAsync(HttpContext httpContext)
     {
+        if (_options.Vary is { } vary)
+            foreach (var header in vary)
+                TrellisHttpResult<object, object>.AppendVaryUnique(httpContext.Response, header);
+
         // Apply actor-vary headers BEFORE WriteAsync so the failure response partitions
         // correctly across actors (e.g. cacheable 404/422). Same fail-closed semantics
         // as the success path.

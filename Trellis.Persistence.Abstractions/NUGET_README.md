@@ -7,6 +7,7 @@ Store-agnostic persistence contracts for Trellis.
 This package hosts the seams that let Trellis persist without committing to a specific store:
 
 - `IUnitOfWork` — the commit boundary the standard command pipeline drives.
+- `IUnitOfWorkScope` — the scope returned by `BeginScope()`. Its fixed `IsOwner` distinguishes the real outer commit from deferred inner commits, so nested event dispatch waits for durability. Adapter implementations must return this contract instead of plain `IDisposable`.
 - `IInboxStore` + `InboxRecord` — the idempotent-consumer dedup record store SPI.
 - `IConsumerCheckpointStore` — a pull consumer's durable resume cursor.
 

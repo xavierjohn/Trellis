@@ -34,7 +34,9 @@ builder.Services.AddTrellis(options => options
 
 `UseIdempotency(opt => ...)` wires the opt-in IETF `Idempotency-Key` middleware (options + scope resolver + marker). Composition is explicit — the slot does not register a store, so callers add `services.AddInMemoryIdempotencyStore()` (dev / tests) or an EF-backed store (production) and mount the middleware with `app.UseTrellisIdempotency()`. Endpoints opt in with `[Idempotent]`.
 
-`UseWorkerActor(systemActor)` composes the previously selected actor provider with a worker/system fallback for background scopes that have no `HttpContext`. It applies after the actor-provider selection and caching wrap, so HTTP requests still resolve through the inner provider (and its cache) and `BackgroundService` ticks short-circuit to the supplied system actor.
+`UseWorkerActor(systemActor)` wraps one compatible unkeyed actor provider, supplied either by a builder slot or a pre-existing service registration. It applies after actor-provider selection and caching, so HTTP requests use the inner provider and background scopes without `HttpContext` get the supplied system actor.
+
+Domain-event slots retain nested aggregate responses until the owning successful unit-of-work commit, including outer DTO/Unit responses. `UseOutbox<TContext>()` validates the reporting publisher at host startup; integration publisher validation is conditional on registered integration features, so domain-only hosts need none.
 
 ## AOT compatibility
 

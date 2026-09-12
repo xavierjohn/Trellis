@@ -16,10 +16,11 @@ using Microsoft.Extensions.Logging;
 /// aggregate types do not trigger dispatch.
 /// </para>
 /// <para>
-/// Dispatch only runs when the command response is a successful <c>IResult&lt;TAggregate&gt;</c>
-/// (typically <c>Result&lt;TAggregate&gt;</c>) where <c>TAggregate</c> implements <see cref="IAggregate"/>.
-/// Other shapes (<c>Result&lt;Unit&gt;</c>, <c>Result&lt;TDto&gt;</c>, <c>Result&lt;(A,B)&gt;</c>) are
-/// passed through untouched in v1; manual dispatch remains the option for those flows.
+/// A successful <c>IResult&lt;TAggregate&gt;</c> response contributes an <see cref="IAggregate"/>
+/// to the dispatch batch. Nested commands whose commits are deferred transfer their batches to the
+/// enclosing command for the same unit of work. An outer DTO, Unit, or tuple response contributes no
+/// aggregate itself but still releases nested batches after its owning successful commit.
+/// Failed responses and exceptions discard batches without clearing aggregate events.
 /// </para>
 /// <para>
 /// Events are dispatched sequentially from a defensive snapshot captured before the first
@@ -84,30 +85,17 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
         MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
+        using var dispatch = DomainEventDispatchScope.Enter();
         var response = await next(message, cancellationToken).ConfigureAwait(false);
 
         if (response.IsFailure)
             return response;
 
         var aggregate = ExtractAggregate(response);
-        if (aggregate is null)
-            return response;
+        if (aggregate is not null)
+            dispatch.Add(aggregate, _publisher);
 
-        var snapshot = aggregate.UncommittedEvents().ToArray();
-        foreach (var domainEvent in snapshot)
-        {
-            // Post-commit: TransactionalCommandBehavior is re-appended as the innermost behavior
-            // by AddDomainEventDispatch, so next() has already committed. Honoring the caller's
-            // token here — or handing it to a handler that honors it — would strand a durable
-            // write with only part of its fan-out published, which no retry can repair.
-            await _publisher.PublishAsync(domainEvent, CancellationToken.None).ConfigureAwait(false);
-        }
-
-        var offender = DomainEventCascadeDetector.Detect(aggregate, snapshot);
-        if (offender is { } cascadeOffender)
-            throw new DomainEventHandlerCascadedException([cascadeOffender]);
-
-        aggregate.AcceptChanges();
+        await dispatch.CompleteAsync().ConfigureAwait(false);
         return response;
     }
 

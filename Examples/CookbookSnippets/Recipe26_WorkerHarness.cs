@@ -1,4 +1,5 @@
 ﻿// Cookbook Recipe 26 — Test a BackgroundService with WorkerHarness<TWorker>.
+#pragma warning disable CA1822 // Compile-only Fact stand-in preserves the real xUnit example's instance methods.
 namespace CookbookSnippets.Recipe26;
 
 using System;
@@ -12,7 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Trellis;
 using Trellis.Mediator;
 using Trellis.Testing.Worker;
-using Xunit;
+using CookbookSnippets.Compilation;
 
 public sealed partial class ProbeId : RequiredGuid<ProbeId>;
 

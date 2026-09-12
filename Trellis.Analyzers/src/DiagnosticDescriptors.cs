@@ -245,16 +245,16 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase);
 
     /// <summary>
-    /// TRLS019: Explicit default(Result), default(Result&lt;T&gt;), or default(Maybe&lt;T&gt;) at a use site.
+    /// TRLS019: Explicit default(Result&lt;Unit&gt;), default(Result&lt;T&gt;), or default(Maybe&lt;T&gt;) at a use site.
     /// </summary>
     public static readonly DiagnosticDescriptor DefaultResultOrMaybe = new(
         id: TrellisDiagnosticIds.DefaultResultOrMaybe,
-        title: "Avoid default(Result), default(Result<T>), and default(Maybe<T>)",
+        title: "Avoid default(Result<Unit>), default(Result<T>), and default(Maybe<T>)",
         messageFormat: "Explicit 'default' of '{0}' is a known footgun. Use {1} instead.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "default(Result) and default(Result<T>) are typed failures carrying " +
+        description: "default(Result<Unit>) and default(Result<T>) are typed failures carrying " +
                      "the new Error.Unexpected(\"default-initialized\") sentinel — never a silent success. " +
                      "default(Maybe<T>) equals Maybe<T>.None but the explicit literal obscures intent. " +
                      "Always construct via Result.Ok(...)/Result.Fail(...) or Maybe<T>.None / Maybe.From(...). " +

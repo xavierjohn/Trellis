@@ -157,13 +157,13 @@ namespace Trellis.Asp;
 using System;
 
 /// <summary>
-/// Marks a JsonSerializerContext for generation of AOT-safe converters for all
-/// IScalarValue types in the assembly.
+/// Marks a JsonSerializerContext for diagnostics accompanying AOT-safe scalar converters.
 /// </summary>
 /// <remarks>
-/// Apply this attribute to a partial JsonSerializerContext class to have the source generator
-/// emit reflection-free JsonConverter&lt;T&gt; implementations for every value object, plus a
-/// GeneratedValueObjectConverterFactory that registers them.
+/// The source generator emits reflection-free JsonConverter&lt;T&gt; implementations and a
+/// GeneratedValueObjectConverterFactory for supported scalar declarations in the compilation,
+/// independently of this attribute. Apply it to a partial JsonSerializerContext to enable
+/// the context's missing-JsonSerializable diagnostic.
 ///
 /// Two things this attribute cannot do for you, because Roslyn source generators all analyze
 /// the same original compilation and cannot observe one another's output:
@@ -569,7 +569,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
     /// from the reflection-mode runtime: it consults <c>ValidationErrorsContext.CurrentPropertyName</c>
     /// for the property name, falls back to the camel-cased type name when no scope is active,
     /// passes the resolved field name to <c>TryCreate</c>, and reports validation failures via
-    /// <c>ValidationErrorsContext.AddError</c> instead of silently coercing them to <c>null</c>.
+    /// <c>ValidationErrorsContext.AddBodyError</c> instead of silently coercing them to <c>null</c>.
     /// Primitive-read failures (<c>FormatException</c>/<c>InvalidOperationException</c> from the
     /// typed <c>Utf8JsonReader</c> getters) are caught and recorded the same way reflection mode
     /// does via <c>PrimitiveJsonReader.TryRead</c>, so an invalid token like a non-Guid string for
@@ -607,7 +607,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine();
         sb.AppendLine("        if (reader.TokenType == JsonTokenType.Null)");
         sb.AppendLine("        {");
-        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, \"{vo.TypeName} cannot be null.\");");
+        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, global::Trellis.ValidationCodes.ValueNotNull, global::Trellis.ResourceRef.FormatTypeName(typeof({fullTypeName})) + \" cannot be null.\");");
         sb.AppendLine("            return null;");
         sb.AppendLine("        }");
         sb.AppendLine();
@@ -624,7 +624,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
             sb.AppendLine();
             sb.AppendLine("        if (primitiveValue is null)");
             sb.AppendLine("        {");
-            sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, \"Cannot deserialize null to {vo.TypeName}\");");
+            sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, global::Trellis.ValidationCodes.ValueNotNull, global::Trellis.ResourceRef.FormatTypeName(typeof({fullTypeName})) + \" cannot be null.\");");
             sb.AppendLine("            return null;");
             sb.AppendLine("        }");
         }
@@ -675,6 +675,17 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         // the public Read method to keep the hot path readable.
         sb.AppendLine($"    private static bool __TryReadPrimitive(ref Utf8JsonReader reader, string fieldName, out {GetPrimitiveCsName(primitiveType)} value)");
         sb.AppendLine("    {");
+        if (!PrimitiveCanBeNull(primitiveType))
+        {
+            sb.AppendLine("        if (reader.TokenType == JsonTokenType.String && string.IsNullOrWhiteSpace(reader.GetString()))");
+            sb.AppendLine("        {");
+            sb.AppendLine("            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, global::Trellis.ValidationCodes.ValueNotEmpty, $\"'{fieldName}' is required.\");");
+            sb.AppendLine("            value = default;");
+            sb.AppendLine("            return false;");
+            sb.AppendLine("        }");
+            sb.AppendLine();
+        }
+
         sb.AppendLine("        try");
         sb.AppendLine("        {");
         sb.AppendLine($"            value = {GetTypedReaderCall(primitiveType)};");
@@ -682,7 +693,7 @@ internal sealed class GenerateScalarValueConvertersAttribute : Attribute
         sb.AppendLine("        }");
         sb.AppendLine("        catch (global::System.Exception ex) when (ex is global::System.FormatException || ex is global::System.InvalidOperationException)");
         sb.AppendLine("        {");
-        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, $\"'{{fieldName}}' is not a valid {primitiveFriendlyName}.\");");
+        sb.AppendLine($"            global::Trellis.Asp.ValidationErrorsContext.AddBodyError(fieldName, global::Trellis.ValidationCodes.FormatCodeFor(typeof({GetPrimitiveCsName(primitiveType).TrimEnd('?')})), $\"'{{fieldName}}' is not a valid {primitiveFriendlyName}.\");");
         sb.AppendLine($"            value = default({GetPrimitiveCsName(primitiveType)});");
         sb.AppendLine("            return false;");
         sb.AppendLine("        }");

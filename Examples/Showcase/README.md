@@ -100,6 +100,24 @@ Seed accounts (created on startup):
 | Alice    | aaaaaaa2-0000-0000-0000-000000000000    | Savings  | $5,000  |
 | Bob      | bbbbbbb1-0000-0000-0000-000000000000    | Checking | $250    |
 
+### Scalar converter smoke
+
+The Minimal API executable also accepts `--scalar-converter-smoke`. This exits before starting
+the HTTP host and checks generated versus closed runtime scalar converters: null, blank,
+malformed and overflowing input, structured args/body locations, optional null, and successful
+primitive round-trips. It uses closed converter types and direct JSON readers/writers, not
+runtime compilation or reflection-based serializer metadata.
+
+```pwsh
+# Managed validation from the repository root; this is NOT a Native AOT run:
+dotnet run --project Examples\Showcase\src\Showcase.MinimalApi --no-launch-profile -- --scalar-converter-smoke
+```
+
+The Linux CI workflow invokes the same flag on the freshly published native executable after
+the Showcase AOT publish gate. Native correctness is only verified when that publish and
+execution succeed for the current changes; a managed smoke pass or an older CI run is not
+native validation. The separate `AotConsoleProbe` deliberately remains ASP-free.
+
 ### Replaying `api.http`
 
 `api.http` states the status code each request should produce and names the error behind it.

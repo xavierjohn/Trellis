@@ -37,9 +37,10 @@ bring in the executable test runner.
 ## Why this package exists
 
 `Trellis.Asp` ships exactly one `IIdempotencyStore`: `InMemoryIdempotencyStore`, which its own
-documentation describes as *"not safe across multiple instances or process restarts"*. Every
-production deployment therefore writes its own store over Redis, Cosmos DB, a relational database,
-or something bespoke.
+documentation describes as *"not safe across multiple instances or process restarts"*. For a
+distributed production store, Trellis ships `CosmosIdempotencyStore` in the separate
+`Trellis.Asp.Idempotency.Cosmos` package, registered with `AddCosmosIdempotencyStore`.
+Applications using Redis, a relational database, or another backend can implement their own store.
 
 The contract those stores must satisfy is subtle, and a violation fails **silently**. A store that
 reserves non-atomically lets two racing callers both execute the handler; a store whose
@@ -171,9 +172,15 @@ under load, executing the handler twice. Reserve with one atomic primitive:
 
 | Backing store | Atomic reserve |
 | --- | --- |
-| Redis | `SET key value NX PX <reservationTimeout>` (or a Lua script when takeover logic is needed) |
+| Redis | Atomic Lua script: create a non-expiring reservation containing the fingerprint and lease timestamp; for an existing reservation, compare the fingerprint before conditionally taking over an expired lease |
 | Cosmos DB | `CreateItemAsync` — a duplicate id in the same partition returns HTTP 409 |
 | Relational | `INSERT` against a unique index on `(scope, key)` — catch the duplicate-key violation |
+
+`ReservationTimeout` expires the reservation's **lease**, not its fingerprint metadata.
+Do not use `SET ... NX PX <reservationTimeout>` to expire the entire reservation: a different-body
+retry must still return `BodyHashMismatch` after that timeout. Retain the fingerprint and compare it
+before atomically granting a same-fingerprint takeover. Completed snapshots have a separate `Ttl`;
+apply response expiry when completing the entry, not when reserving it.
 
 `IDistributedCache` **cannot** back a conforming store: it has no atomic set-if-not-exists, so
 `TryReserveAsync` is not implementable on it. Use `StackExchange.Redis` directly.

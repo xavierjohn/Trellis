@@ -8,7 +8,7 @@ audience: [llm]
 ---
 # Trellis.Analyzers — API Reference
 
-> **Requires `Trellis.Analyzers`.** Every `TRLS###` rule below is enforced only while the consuming project holds a `PackageReference` to `Trellis.Analyzers`. Referencing `Trellis.Core` alone leaves all of them silent. This file is delivered by `Trellis.Core`, so its presence in `.github/` does **not** mean the analyzers are active — check the `.csproj`. Where the reference is absent, treat every rule here as advice you must apply by hand, because nothing will catch you.
+> **Analyzer rules require `Trellis.Analyzers`; bundled generator diagnostics do not.** Add a `PackageReference` to `Trellis.Analyzers` for the analyzer-emitted rules below. Source-generator diagnostics ship with their hosting packages (`Trellis.Core`, `Trellis.EntityFrameworkCore`, and `Trellis.Asp`) and can fire without that reference. This file is delivered by `Trellis.Core`, so its presence in `.github/` does **not** mean the standalone analyzers are active — check the `.csproj` and the emitter table below.
 
 - **Package:** `Trellis.Analyzers`
 - **Namespace:** `Trellis.Analyzers`
@@ -18,7 +18,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-11--anti-patt
 
 ## Installation — the analyzers are opt-in
 
-The analyzers ship as a **separate NuGet package, `Trellis.Analyzers`**. Installing `Trellis.Core` (or any other Trellis package) does **not** include them — every `TRLS###` diagnostic stays silent until you add this package. Enable it on each project that uses Trellis `Result<T>`, `Maybe<T>`, value objects, or the EF Core integration:
+The standalone analyzers ship as a **separate NuGet package, `Trellis.Analyzers`**. Installing `Trellis.Core` (or any other Trellis package) does **not** include that package. This is separate from the source generators bundled with Core, EF Core, and ASP: their `TRLS###` diagnostics are active with the hosting package alone. Enable the standalone analyzers on each project that uses Trellis `Result<T>`, `Maybe<T>`, value objects, or the EF Core integration:
 
 ```xml
 <PackageReference Include="Trellis.Analyzers" Version="...">
@@ -54,7 +54,7 @@ The analyzers ship as a **separate NuGet package, `Trellis.Analyzers`**. Install
 
 ## Suppression guidance
 
-Prefer fixing the code over suppressing diagnostics. When a suppression is genuinely intentional, use `TrellisDiagnosticIds` constants instead of string literals and include a justification.
+Prefer fixing the code over suppressing diagnostics. When a suppression is genuinely intentional, use the literal diagnostic ID (for example, `"TRLS003"`) and include a justification. The analyzer-only NuGet package does not expose `TrellisDiagnosticIds` as a compile-time type to application code.
 
 In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuning — intentional fire-and-forget calls in *arrange*, and `DbContext.SaveChangesAsync()` used for seeding. Idiomatic assertions and explicit discards (`_ = ...`) already satisfy `TRLS001`. To relax a rule across scattered test projects, apply a shared global analyzer config (`is_global = true`) to every `*.Tests` project from the root `Directory.Build.props` rather than a project-wide `<NoWarn>`. See [test-context guidance](trellis-api-testing-reference.md#common-traps).
 
@@ -76,10 +76,10 @@ In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuni
 | `TRLS015` | Warning | Use SaveChangesResultAsync instead of SaveChangesAsync | In non-UoW contexts, direct SaveChanges/SaveChangesAsync calls bypass the Result pipeline and turn database errors into unhandled exceptions; use `SaveChangesResultAsync` (returns `Result<int>`) or `SaveChangesResultUnitAsync` (returns `Result<Unit>`). Under `AddTrellisUnitOfWork<TContext>` the `TransactionalCommandBehavior` owns commit — repositories should stage changes via DbContext APIs (Add/Update/Remove) and not invoke SaveChanges at all. |
 | `TRLS016` | Warning | HasIndex references a Maybe<T> property | HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. If needed, you can also use string-based HasIndex with the storage member name directly. Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex("Status", "_submittedAt"). |
 | `TRLS018` | Warning | Result<T> deconstruction reads value without success gate | Reading the value position of a `Result<T>` deconstruction (`var (success, value, error) = result;`) without first checking `success`/`error` returns the default value when the result is in failure. Gate the read with the success bool, an `error is null` check, or an early return on failure. |
-| `TRLS019` | Warning | Avoid `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` | `default(Result)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default-initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", TrellisDiagnosticIds.DefaultResultOrMaybe)]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
+| `TRLS019` | Warning | Avoid `default(Result<Unit>)`, `default(Result<T>)`, and `default(Maybe<T>)` | `default(Result<Unit>)` and `default(Result<T>)` are typed failures carrying the `new Error.Unexpected("default-initialized")` sentinel — never silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` but the explicit literal obscures intent. Construct via `Result.Ok(...)` / `Result.Fail(...)` or `Maybe<T>.None` / `Maybe.From(...)`. Suppress with `[SuppressMessage("Trellis", "TRLS019", Justification = "...")]` or `#pragma warning disable TRLS019` for sanctioned sentinel/test-helper sites. |
 | `TRLS020` | Warning | Composite value object DTO property is not safely deserializable | Composite `[OwnedEntity]` value objects exposed through request/response DTO surfaces need a supported transport. Bare composite properties require `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` on the value-object type; `Maybe<TComposite>` DTO properties are not supported and should use a nullable transport (`TComposite?`) plus `Maybe.From(...)` at the endpoint/API seam. |
 | `TRLS021` | Warning | EF configuration duplicates Trellis conventions | Flags `HasConversion`, `OwnsOne`, and `Ignore` calls on `Maybe<T>` or `[OwnedEntity]` properties when the relevant `DbContext` wires `ApplyTrellisConventions(...)` / `ApplyTrellisConventionsFor<TContext>()`. Remove the manual mapping and let Trellis conventions own the property. |
-| `TRLS022` | Warning | `[OwnedEntity]` property uses init-only setter | Flags `{ get; init; }` properties on classes annotated with `[OwnedEntity]`. EF Core materializes owned entities through a generator-emitted private parameterless constructor; init-only setters are not covered by Trellis tests today and round-trip behavior is not guaranteed. Use `{ get; private set; }`. |
+| `TRLS022` | Warning | `[OwnedEntity]` property uses init-only setter | Flags visible, non-private instance `{ get; init; }` properties on classes annotated with `[OwnedEntity]`, including inherited properties from unannotated bases. Ignores static properties, indexers, explicit interface implementations, and base properties hidden by a nearer eligible property of the same name. EF Core materializes owned entities through a generator-emitted private parameterless constructor; use `{ get; private set; }`. |
 | `TRLS023` | Warning | Location route is missing the api-version route value | Flags `HttpResponseOptionsBuilder<T>.CreatedAtRoute(...)`, `HttpResponseOptionsBuilder<T>.CreatedAtAction(...)`, and `HttpResponseOptionsBuilder<T>.WithLocation(...)` calls inside `[ApiVersion]`-decorated controllers when the chain is not followed by `.WithVersionedRoute(...)` (or the underlying primitive `.WithRouteValueResolver("api-version", httpContext => ...)` on `HttpResponseOptionsBuilder<T>`, matched case-insensitively) and the route values dictionary literal does not include an `"api-version"` key. Without that key, the generated `Location` header omits the version under query/header API versioning and a follow-up `GET` to the dereferenced URL returns 404. The code fix appends `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning` and adds `using Trellis.Asp.ApiVersioning;` when missing. The analyzer matches `["api-version"]` keys case-insensitively (matching `RouteValueDictionary`'s runtime semantics) and resolves const-string identifiers via the semantic model. Recognises and warns on the anonymous-object ctor shape (`new RouteValueDictionary(new { id = ... })`) since C# property names cannot contain `"-"`, and on the single-id overloads (`CreatedAtRoute(routeName, idSelector)` / `WithLocation(routeName, idSelector)`) which construct a single-key dictionary internally. Does not walk attribute base-type chains (`[ApiVersion]` is `Inherited = false`). |
 | `TRLS054` | Warning | Use operators instead of Maybe.Equals/object.Equals in IQueryable expressions | Flags `Maybe<T>.Equals(...)` and `object.Equals(...)` over `Maybe<T>` values inside `System.Linq.Queryable` LINQ lambdas. `MaybeExpressionRewriter` supports `==` / `!=` operator comparisons but cannot translate these opaque method-call shapes, so use operators or `MaybeQueryableExtensions.WhereEquals(...)`. In-memory `IEnumerable<T>` LINQ is not flagged. |
 | `TRLS055` | Warning | Inline `HasValueWhere` predicates in `IQueryable` expressions | Flags `maybe.HasValueWhere(predicate)` inside `System.Linq.Queryable` LINQ lambdas when `predicate` is not an inline lambda expression. Captured `Func<T, bool>` variables, method groups, and member delegates are opaque to `MaybeExpressionRewriter`; inline the lambda (`maybe.HasValueWhere(x => ...)`) or materialize first. In-memory `IEnumerable<T>` LINQ is not flagged. |
@@ -109,19 +109,19 @@ In test projects, `TRLS001` and `TRLS015` are the rules most likely to need tuni
 
 ## Constants — `TrellisDiagnosticIds`
 
-The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzers` assembly) exposes every diagnostic ID above as a `public const string`. Use it from `[SuppressMessage]` attributes and rule sets to avoid magic strings:
+The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzers` assembly) exposes every diagnostic ID above as a `public const string` for tooling that explicitly references that assembly for compilation. The NuGet package ships the assembly as an analyzer asset, not a `lib`/`ref` compile asset, so ordinary package consumers must use literal IDs:
 
 ```csharp
-[SuppressMessage("Trellis", TrellisDiagnosticIds.UnsafeMaybeValueAccess,
+[SuppressMessage("Trellis", "TRLS003",
     Justification = "guarded by HasValue check earlier in the pipeline")]
 public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
-Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS062`), the LINQ-analyzer IDs (`TRLS054`–`TRLS055`), and `TRLS063`–`TRLS064` are also exposed as constants on the same class so consumers have a single canonical reference for the unified namespace.
+Import `System.Diagnostics.CodeAnalysis` for `SuppressMessageAttribute`. Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS062`), the LINQ-analyzer IDs (`TRLS054`–`TRLS055`), and `TRLS063`–`TRLS065` are also exposed as constants on the same class for tooling authors.
 
 ### Constant → diagnostic ID → emitter
 
-Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID it carries, and the analyzer (or generator) that emits it. Use the constant name in `[SuppressMessage]` and the diagnostic ID in `#pragma warning disable`.
+Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID it carries, and the analyzer (or generator) that emits it. Ordinary consumers use the diagnostic ID in `[SuppressMessage]`, `.editorconfig`, and `#pragma warning disable`; constants require an explicit compile reference to the analyzer assembly.
 
 | C# constant | Diagnostic ID | Emitted by |
 | --- | --- | --- |
@@ -204,7 +204,7 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 
 > **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
-> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058` and `TRLS060`–`TRLS062`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Use the `TrellisDiagnosticIds` constants instead for those IDs.
+> **Note:** Generator-emitted diagnostics (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058` and `TRLS060`–`TRLS062`) are constructed inline by the source generators and are *not* exposed as fields on `DiagnosticDescriptors`. Tooling with a compile reference can use `TrellisDiagnosticIds` for those IDs; ordinary consumers use literal IDs.
 
 ```csharp
 // Re-exporting an analyzer rule in a custom analyzer:
@@ -240,7 +240,7 @@ public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
   - early-return / guard-clause exits — `if (!maybe.HasValue) return;` (also `throw` / `break` / `continue`, and the `maybe.HasNoValue`, `maybe.HasValue == false`, and `maybe.HasValue != true` forms, with the literal on either side) followed by `maybe.Value` in a later statement, when the receiver is not reassigned between the guard and the access
   - property patterns over a single subpattern — `maybe is { HasValue: true }`, `maybe is { HasNoValue: false }`, and their negations `maybe is not { HasValue: true }` — in `if` branches, ternary arms, early-return guards, and `&&` short-circuits. Multi-subpattern forms such as `maybe is { HasValue: true, Value.Length: > 0 }` are deliberately not recognized, because negating a conjunction does not prove absence and both branches must be exact.
   - safe lambda parameters inside Trellis Maybe APIs such as `Bind`, `Map`, `Tap`, `Ensure`, `Match`
-  - prior assignment from `Maybe.From(...)` when `T` is a non-nullable value type and the variable is not reassigned
+  - a prior assignment statement such as `x = Maybe<int>.From(n);` when `T` is a non-nullable value type and the variable is not reassigned; a declaration initializer such as `var x = Maybe<int>.From(n);` is not recognized by this exemption
 - **Inside `Expression<Func<...>>` lambdas (EF Core, Specifications, FluentValidation):** the rule is *not* relaxed. The analyzer recognizes the immediate short-circuit shape `e.SubmittedAt.HasValue && e.SubmittedAt.Value < cutoff`; when the `Maybe<T>` check is part of a longer predicate, keep that pair parenthesized or prefer an analyzer-clean sentinel form such as `e.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < cutoff`. For ad-hoc EF `IQueryable<T>` queries, prefer the `MaybeQueryableExtensions.WhereXxx` helpers when one matches the predicate.
 - Code fix: `AddResultGuardCodeFixProvider`.
 
@@ -330,6 +330,7 @@ When the guarded statements end the method with a `return`, the wrapped code no 
   - `ThenByDescending`
 - Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed along with `Result<T>.Value`.
 - Suppresses the diagnostic when an earlier `.Where(...)` clause **mentions** `HasValue` anywhere in its lambda body. This is **keyword-presence detection**, not predicate-shape verification: `.Where(x => !x.HasValue).Select(x => x.Value)` (filtering down to None elements before reading their value) silences the diagnostic but still throws at runtime. Tightening the suppression to only honor `Where(x => x.HasValue)`-shaped predicates is a known limitation tracked separately.
+- That suppression applies only to TRLS013. TRLS003 does not infer safety from a separate `Where` lambda; use `.Where(x => x.HasValue).Select(x => x.GetValueOrDefault(0))` for an in-memory `Maybe<int>` sequence to satisfy both rules without including `None` elements.
 - For EF Core IQueryable predicates over a `Maybe<T>` property, either register `AddTrellisInterceptors()` (which rewrites `.HasValue`/`.Value`/`GetValueOrDefault(d)` into `EF.Property`/null-checks/`COALESCE`) or use `Trellis.EntityFrameworkCore.MaybeQueryableExtensions` (`WhereHasValue`/`WhereNone`/`WhereEquals`/`WhereLessThan`/`WhereLessThanOrEqual`/`WhereGreaterThan`/`WhereGreaterThanOrEqual`) explicitly. Note: this analyzer only fires on Select-family methods today; coverage of `.Where`/`.Any`/`.First` etc. is tracked as a follow-up.
 - `TRLS054`: inside `System.Linq.Queryable` lambdas, flags `Maybe<T>.Equals(...)` and `object.Equals(...)` when a `Maybe<T>` operand is involved. Use the natural `==` / `!=` operators (which `MaybeExpressionRewriter` understands) or `MaybeQueryableExtensions.WhereEquals(...)`.
 - `TRLS055`: inside `System.Linq.Queryable` lambdas, flags `HasValueWhere(...)` when the predicate argument is not an inline lambda. Captured `Func<T, bool>` variables, method groups, and member delegates cannot be inspected by the EF Core rewriter.
@@ -370,14 +371,14 @@ When the guarded statements end the method with a `return`, the wrapped code no 
 - No code fix.
 
 #### `DefaultResultOrMaybeAnalyzer` — `TRLS019`
-- Flags explicit `default(Result)`, `default(Result<T>)`, and `default(Maybe<T>)` expressions at use sites.
+- Flags explicit `default(Result<T>)` (including `default(Result<Unit>)`) and `default(Maybe<T>)` expressions at use sites.
 - Uses `IDefaultValueOperation` (operation-based, not syntax-based) so it covers all surface forms equivalently:
   - `default(T)` typeof-style: `return default(Result<int>);`
   - Target-typed `default`: `return default;` in a `Result<T>`-returning method, parameter defaults, etc.
   - Null-suppressed `default!`: `return default!;` is treated identically — the null-suppressing operator does not change the underlying value.
-- `default(Result)`/`default(Result<T>)` represent typed failures carrying the shared `new Error.Unexpected("default-initialized")` sentinel — *never* silent successes. `default(Maybe<T>)` equals `Maybe<T>.None` (semantically correct) but the explicit literal obscures intent.
+- `default(Result<Unit>)`/`default(Result<T>)` represent typed failures carrying the shared `new Error.Unexpected("default-initialized")` sentinel — *never* silent successes. `Result` itself is a static factory class, not a value type. `default(Maybe<T>)` equals `Maybe<T>.None` (semantically correct) but the explicit literal obscures intent.
 - Suggested replacements:
-  - `Result` → `Result.Ok()` or `Result.Fail(error)`
+  - `Result<Unit>` → `Result.Ok()` or `Result.Fail(error)`
   - `Result<T>` → `Result.Ok(value)` or `Result.Fail<T>(error)`
   - `Maybe<T>` → `Maybe<T>.None` or `Maybe.From(value)`
 - For sanctioned sentinel/test-helper sites, suppress with `[SuppressMessage("Trellis", "TRLS019", Justification = "...")]` on the enclosing member or `#pragma warning disable TRLS019` around the offending span.
@@ -405,8 +406,9 @@ When the guarded statements end the method with a `return`, the wrapped code no 
 
 #### `OwnedEntityInitOnlyPropertyAnalyzer` — `TRLS022`
 - Activates only when the compilation references `Trellis.EntityFrameworkCore.OwnedEntityAttribute`.
-- Flags property declarations with an `init` accessor whose containing class is annotated with `[OwnedEntity]`.
-- Diagnostic anchors at the `init` keyword and includes the property name and class name.
+- Walks each `[OwnedEntity]` class and its base types, flagging non-private instance properties with an `init` accessor even when the declaring base is not annotated.
+- Ignores static properties, indexers, explicit interface implementations, and private properties. A nearer eligible property of the same name hides the inherited property, even when the nearer property's setter is not init-only.
+- Diagnostic anchors at the `init` keyword when available (otherwise the property/type location) and includes the property name and owned class name.
 - Recommends `{ get; private set; }`, the supported and tested shape for owned-entity properties materialized through the generator-emitted parameterless constructor.
 - No code fix.
 

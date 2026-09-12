@@ -94,6 +94,7 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
         MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
+        using var dispatch = DomainEventDispatchScope.Enter();
         var response = await next(message, cancellationToken).ConfigureAwait(false);
 
         if (response.IsFailure)
@@ -111,18 +112,14 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
 
         // Copy by reference into a local so a nested command's commit, which writes to
         // ITrackedAggregateSource.CommittedAggregates, cannot mutate this iteration's set.
-        var committed = _trackedAggregateSource.CommittedAggregates;
-        if (committed.Count == 0)
-            return response;
-
-        var aggregates = new IAggregate[committed.Count];
-        for (var i = 0; i < committed.Count; i++)
-            aggregates[i] = committed[i];
+        if (dispatch.CanReadCommittedAggregates)
+            foreach (var aggregate in _trackedAggregateSource.CommittedAggregates)
+                dispatch.Add(aggregate, _publisher);
 
         TrackedAggregateDispatchReentrancyGuard.IsInDispatch = true;
         try
         {
-            await DispatchAllAsync(aggregates).ConfigureAwait(false);
+            await dispatch.CompleteAsync().ConfigureAwait(false);
         }
         finally
         {
@@ -130,41 +127,6 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
         }
 
         return response;
-    }
-
-    private async Task DispatchAllAsync(IAggregate[] aggregates)
-    {
-        var snapshots = new (IAggregate Aggregate, IDomainEvent[] Events)[aggregates.Length];
-        for (var i = 0; i < aggregates.Length; i++)
-            snapshots[i] = (aggregates[i], aggregates[i].UncommittedEvents().ToArray());
-
-        foreach (var (_, events) in snapshots)
-        {
-            foreach (var domainEvent in events)
-            {
-                // Post-commit: the registration re-appends TransactionalCommandBehavior as the
-                // innermost behavior, so these aggregates are already durable. Passing the
-                // caller's token would let a client disconnect abandon part of the fan-out.
-                await _publisher.PublishAsync(domainEvent, CancellationToken.None).ConfigureAwait(false);
-            }
-        }
-
-        List<CascadeOffender>? offenders = null;
-        foreach (var (aggregate, events) in snapshots)
-        {
-            var offender = DomainEventCascadeDetector.Detect(aggregate, events);
-            if (offender is not { } cascadeOffender)
-                continue;
-
-            offenders ??= [];
-            offenders.Add(cascadeOffender);
-        }
-
-        if (offenders is not null)
-            throw new DomainEventHandlerCascadedException(offenders);
-
-        foreach (var (aggregate, _) in snapshots)
-            aggregate.AcceptChanges();
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Skipping nested tracked-aggregate domain event dispatch (re-entrant invocation). Outer dispatch retains ownership of the snapshot; nested commands must dispatch manually if their aggregates raise events.")]

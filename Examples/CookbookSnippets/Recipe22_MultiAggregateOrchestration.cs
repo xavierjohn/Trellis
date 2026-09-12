@@ -30,15 +30,15 @@ public sealed class Product : Aggregate<ProductId>
 
     public static Product ForTesting(ProductId id, int reserved) => new(id, reserved);
 
-    public Result<Trellis.Unit> CanReleaseStock(int quantity) =>
+    public Result<Trellis.Unit> CanReleaseStock(long quantity) =>
         Result.Ensure(
             quantity > 0 && quantity <= Reserved,
             Error.InvalidInput.ForRule(
                 "stock.release-exceeds-reserved",
                 $"Cannot release {quantity} against {Reserved} reserved."));
 
-    public Result<Trellis.Unit> ReleaseStock(int quantity) =>
-        CanReleaseStock(quantity).Tap(() => Reserved -= quantity);
+    public Result<Trellis.Unit> ReleaseStock(long quantity) =>
+        CanReleaseStock(quantity).Tap(() => Reserved -= (int)quantity);
 }
 
 public sealed class Order : Aggregate<OrderId>
@@ -51,8 +51,13 @@ public sealed class Order : Aggregate<OrderId>
 
     public static Order ForTesting(OrderId id, IReadOnlyList<LineItem> lineItems) => new(id, lineItems);
 
-    public Result<Trellis.Unit> Return(string reason, System.DateTimeOffset occurredAt) =>
+    public Result<Trellis.Unit> CanReturn(string reason) =>
         Result.Ensure(!string.IsNullOrWhiteSpace(reason), Error.InvalidInput.ForField("reason", ValidationCodes.ValueNotEmpty))
+            .Ensure(_ => !IsReturned, Error.InvalidInput.ForRule("order.already-returned"))
+            .Ensure(_ => LineItems.All(li => li.Quantity > 0), Error.InvalidInput.ForRule("order.quantity-positive"));
+
+    public Result<Trellis.Unit> Return(string reason, System.DateTimeOffset occurredAt) =>
+        CanReturn(reason)
             .Tap(() =>
             {
                 IsReturned = true;
@@ -111,16 +116,24 @@ public sealed class ReturnOrderHandler(
         // (Recipe 25) before any mutation. Releasing stock on Product A and then failing on
         // Product B's release would leave A in a partially-released state that
         // TransactionalCommandBehavior cannot roll back from the in-memory aggregate graph.
-        var preflight = order.LineItems
-            .Select(li => byId[li.ProductId].CanReleaseStock(li.Quantity))
+        var returnPreflight = order.CanReturn(command.Reason);
+        if (returnPreflight.IsFailure)
+            return Result.Fail<Order>(returnPreflight.Error);
+
+        var releasePlan = order.LineItems
+            .GroupBy(li => li.ProductId)
+            .Select(group => (Product: byId[group.Key], Quantity: group.Sum(li => (long)li.Quantity)))
+            .ToArray();
+        var preflight = releasePlan
+            .Select(item => item.Product.CanReleaseStock(item.Quantity))
             .SequenceAll();
         if (preflight.IsFailure)
             return Result.Fail<Order>(preflight.Error);
 
-        // Pass 1 succeeded for every line item — every Pass 2 mutation below has a matching
+        // Pass 1 succeeded for every aggregate — every Pass 2 mutation below has a matching
         // Can* predicate that just returned Ok, so the mutation is provably non-failing.
-        foreach (var li in order.LineItems)
-            byId[li.ProductId].ReleaseStock(li.Quantity).Discard();
+        foreach (var item in releasePlan)
+            item.Product.ReleaseStock(item.Quantity).Discard();
 
         return order.Return(command.Reason, timeProvider.GetUtcNow()).Map(_ => order);
     }

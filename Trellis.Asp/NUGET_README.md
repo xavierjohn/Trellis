@@ -36,6 +36,12 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Map Azure App Service / Container Apps built-in authentication ("Easy Auth") principal headers to an `Actor`: `AddAuthentication(...).AddEasyAuth()` decodes `X-MS-CLIENT-PRINCIPAL` (with `-ID` / `-NAME` fallback) onto `HttpContext.User`, then `services.AddEasyAuthActorProvider(...)` maps its claims and varies the response cache by the platform principal headers instead of `Authorization`. Trust precondition: enable only when the app is reachable exclusively through the Easy Auth front end.
 - For microservices that consume gateway-minted internal JWTs, use the separately-packaged [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` + `AddTrellisInternalJwtActorProvider` extension that previously lived under `Trellis.Asp.Authorization` moved to that repo, along with `Trellis.Yarp`).
 
+## Response and converter compatibility
+
+`Error.ToHttpResponse(o => o.Vary("Accept-Language"))` appends case-insensitively unique `Vary` values without overwriting existing middleware headers. The non-generic error-only builder no longer exposes the previously ineffective `HonorPrefer()` method; remove that call when upgrading. Generic success builders retain `HonorPrefer()`.
+
+Generated scalar converters now report the same null, blank and primitive-format reason codes as the reflection-mode converters for supported primitives. Structured validation failures retain their codes, args and locations through `AddBodyError`. JSON null remains valid for optional scalars using `MaybeScalarValueJsonConverter<TValue, TPrimitive>`.
+
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-aspnet.html)
 - [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)

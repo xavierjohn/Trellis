@@ -14,11 +14,18 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 [StringLength(3, MinimumLength = 3)]
 public sealed partial class CurrencyCode : RequiredString<CurrencyCode>;
 
-// Composite value object via primary-constructor class.
-public sealed class Money(decimal amount, CurrencyCode currency) : ValueObject
+public sealed class Money : ValueObject
 {
-    public decimal Amount { get; } = amount;
-    public CurrencyCode Currency { get; } = currency;
+    private Money() { }
+
+    public Money(decimal amount, CurrencyCode currency)
+    {
+        Amount = amount;
+        Currency = currency;
+    }
+
+    public decimal Amount { get; private set; }
+    public CurrencyCode Currency { get; private set; } = null!;
 
     protected override void GetEqualityComponents(ref EqualityComponents components)
     {

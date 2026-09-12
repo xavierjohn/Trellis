@@ -35,6 +35,7 @@
   <Folder Name="/Examples/">
     <Project Path="Examples/AotConsoleProbe/AotConsoleProbe.csproj" />
     <Project Path="Examples/CookbookSnippets/CookbookSnippets.csproj" />
+    <Project Path="Examples/CookbookSnippets.Tests/CookbookSnippets.Tests.csproj" />
     <Project Path="Examples/EfCoreExample/EfCoreExample.csproj" />
     <Project Path="Examples/EfCoreExample.Tests/EfCoreExample.Tests.csproj" />
     <Project Path="Examples/ConditionalRequestExample/ConditionalRequestExample.csproj" />

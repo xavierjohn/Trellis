@@ -190,19 +190,30 @@ it with `GetService<IWorkerTickSignal>()` rather than constructor-injecting `IWo
 because .NET DI does not treat nullable annotations as optional dependencies; constructor
 injection of an unregistered service fails activation in production.
 
+The worker below arms the first delay before `"ready"` and the next delay before each `"probe"` signal. Waiting for either signal therefore makes it safe to advance fake time immediately, without racing timer registration. `IHealthProbe` is the application's probe service; register it in both the production host and the harness.
+
 ```csharp
+public interface IHealthProbe
+{
+    Task ProbeAsync(CancellationToken cancellationToken);
+}
+
 public sealed class HealthProbeWorker(IServiceProvider services, TimeProvider time) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Resolved once at start-up; null in production (not registered), non-null in tests.
         var ticks = services.GetService<IWorkerTickSignal>();
+        var probe = services.GetRequiredService<IHealthProbe>();
+        var delay = Task.Delay(TimeSpan.FromSeconds(30), time, stoppingToken);
+        if (ticks is not null) await ticks.SignalAsync("ready", stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await ProbeAsync(stoppingToken);
+            await delay;
+            await probe.ProbeAsync(stoppingToken);
+            delay = Task.Delay(TimeSpan.FromSeconds(30), time, stoppingToken);
             if (ticks is not null) await ticks.SignalAsync("probe", stoppingToken);
-            await Task.Delay(TimeSpan.FromSeconds(30), time, stoppingToken);
         }
     }
 }
@@ -211,6 +222,8 @@ public sealed class HealthProbeWorker(IServiceProvider services, TimeProvider ti
 // re-match the previous "probe" tick (HealthProbeWorker emits the same name on every
 // iteration). LastTickIndexOf(name) returns the global signal index of the most recent
 // matching tick (or -1), which remains correct even when other tick names interleave.
+await harness.StartAsync(cancellationToken);
+await harness.WaitForTickAsync("ready", timeout: TimeSpan.FromSeconds(5), cancellationToken: cancellationToken);
 var cursor = harness.LastTickIndexOf("probe");
 harness.Time.Advance(TimeSpan.FromSeconds(30));
 cursor = await harness.WaitForTickAsync("probe", after: cursor, TimeSpan.FromSeconds(5), cancellationToken);
@@ -218,6 +231,8 @@ cursor = await harness.WaitForTickAsync("probe", after: cursor, TimeSpan.FromSec
 harness.Time.Advance(TimeSpan.FromSeconds(30));
 cursor = await harness.WaitForTickAsync("probe", after: cursor, TimeSpan.FromSeconds(5), cancellationToken);
 ```
+
+This example is compiled in `Examples/CookbookSnippets/Recipe26_NamedTickWorker.cs` and behaviorally checked by `Examples/CookbookSnippets.Tests/WorkerExampleTests.cs`: the test advances fake time synchronously inside the signal callback and asserts that each signal already has its next timer.
 
 `WaitForTickAsync(name, ...)` without `after:` returns immediately whenever a matching tick is anywhere in the history. That is the right shape for the deterministic-ready pattern (the worker signals once at startup, the test waits once). For periodic workers — where the same tick name is emitted every iteration — always thread the returned index back into the next call as `after:`, or capture `harness.LastTickIndexOf(name)` for a baseline cursor. Avoid `TickCountOf(name) - 1` as a cursor: it is a per-name count, not a global signal index, so with interleaved tick names it can fall below the global index of an already-recorded matching tick and produce a wait that completes immediately for that old tick.
 

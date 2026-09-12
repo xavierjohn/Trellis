@@ -74,6 +74,8 @@ public sealed partial class Customer : Aggregate<CustomerId>
 
     public partial Maybe<ShippingAddress> BillingAddress { get; set; }
 
+    private Customer(CustomerId id) : base(id) { }
+
     private Customer(CustomerId id, string name, ShippingAddress shipping)
         : base(id)
     {

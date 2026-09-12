@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- Suppress xUnit1051 for now - these are informational about cancellation tokens -->
@@ -13,6 +13,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\Trellis.Analyzers.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\docs\docfx_project\api_reference\trellis-api-anti-patterns.md"
+          Link="ApiReference\trellis-api-anti-patterns.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\docfx_project\api_reference\trellis-api-analyzers.md"
+          Link="ApiReference\trellis-api-analyzers.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

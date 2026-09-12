@@ -35,6 +35,8 @@ The middle row is load-bearing. `OutboxRelay` delivery is at-least-once — a cr
 
 This collapses redeliveries of a *single* outbox row. It does not collapse the other duplicate the outbox can produce — a retried domain row re-running its translator stages a genuinely new row with a new id — which still needs business-identity deduplication. See [the outbox reference](trellis-api-efcore-outbox.md#two-different-duplicates--only-one-is-the-message-ids-job) for the distinction.
 
+Successful translators recorded in `CompletedHandlers` are skipped on ordinary sibling retries. A translator can rerun when it failed after adding events or its progress was not durably saved; the new integration row then has its own transport identity. The relay validates the registered integration publisher at host startup when integration features are enabled; this validates DI construction, not Service Bus connectivity.
+
 ## Wire format
 
 `ServiceBusMessageFormat` names the members Trellis assigns meaning to.

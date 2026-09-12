@@ -21,9 +21,9 @@ using Trellis.Asp;
 /// Resolution order (per request, inside the <c>LinkGenerator</c> callback):
 /// </para>
 /// <list type="number">
-///   <item><description><c>HttpContext.RequestedApiVersion</c> — primary signal; reflects whatever the configured <c>IApiVersionReader</c> parsed (query, header, media-type, URL segment, composite).</description></item>
-///   <item><description>Endpoint metadata <c>ApiVersionMetadata.Map(ApiVersionMapping.Implicit).DeclaredApiVersions</c> — fallback when (1) is null and exactly one declared version exists.</description></item>
-///   <item><description><c>ApiVersioningOptions.DefaultApiVersion</c> — final fallback, configured via <c>services.AddApiVersioning(o =&gt; o.DefaultApiVersion = ...)</c>.</description></item>
+///   <item><description><c>HttpContext.RequestedApiVersion</c>, if declared by the current request endpoint.</description></item>
+///   <item><description>Exactly one version in the distinct union of the endpoint's implicit and explicit declared versions.</description></item>
+///   <item><description><c>ApiVersioningOptions.DefaultApiVersion</c>, only if declared by the endpoint; otherwise throw <see cref="InvalidOperationException"/>.</description></item>
 /// </list>
 /// <para>
 /// The route-value key is fixed at <c>"api-version"</c>, matching the default for
@@ -32,6 +32,8 @@ using Trellis.Asp;
 /// <see cref="HttpResponseOptionsBuilder{TDomain}.WithRouteValueResolver"/> directly.
 /// </para>
 /// <para>
+/// Both overloads inspect the current request endpoint, not the target of the Location link.
+/// Applications must verify target compatibility for cross-route links.
 /// Cases that skip injection (resolver returns <c>null</c>, applies to both the per-request
 /// and explicit-version overloads): version-neutral endpoints
 /// (<c>ApiVersionMetadata.IsApiVersionNeutral</c> or <c>[ApiVersionNeutral]</c>),
@@ -40,7 +42,7 @@ using Trellis.Asp;
 /// attached (hosts that never called <c>AddApiVersioning(...)</c>, or endpoints sitting
 /// outside its surface — the helpers compose cleanly in unversioned and mixed-versioned
 /// hosts by dropping injection rather than emitting a stale URL artefact). Multi-version
-/// actions with no client-requested version AND no <c>DefaultApiVersion</c> throw
+/// actions with neither a declared client-requested version nor a declared <c>DefaultApiVersion</c> throw
 /// <see cref="InvalidOperationException"/> rather than silently picking — silent picking
 /// would resurrect the original 404 bug.
 /// </para>
@@ -97,19 +99,16 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// </summary>
     /// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c>.</typeparam>
     /// <param name="builder">The builder to configure.</param>
-    /// <param name="explicitVersion">The version to inject, regardless of client request or endpoint metadata.</param>
+    /// <param name="explicitVersion">The version to inject regardless of the requested version, subject to the current endpoint's skip rules.</param>
     /// <remarks>
     /// Explicit pinning overrides the per-request resolution order (requested / declared /
     /// default), but the skip rules still apply: on a version-neutral endpoint
     /// (<c>ApiVersionMetadata.IsApiVersionNeutral</c> or <c>[ApiVersionNeutral]</c>), on
     /// URL-segment-versioned routes (route template contains <c>:apiVersion</c>), and on
-    /// targets with no <see cref="ApiVersionMetadata"/> attached (the host did not call
+    /// current endpoints with no <see cref="ApiVersionMetadata"/> attached (the host did not call
     /// <c>AddApiVersioning(...)</c>) the resolver returns <c>null</c> and no
-    /// <c>api-version</c> route value is injected. Injecting a pinned version into a
-    /// Location that targets a neutral or unversioned endpoint would mislead clients or be
-    /// a stale URL artefact; injecting it as a query parameter alongside a path segment
-    /// would create a redundant / conflicting value. All three bugs are silent without
-    /// this guard.
+    /// <c>api-version</c> route value is injected. The target route's metadata and declared
+    /// versions are not inspected; the application must ensure the pin is valid for that target.
     /// </remarks>
     public static HttpResponseOptionsBuilder<TDomain> WithVersionedRoute<TDomain>(
         this HttpResponseOptionsBuilder<TDomain> builder,
