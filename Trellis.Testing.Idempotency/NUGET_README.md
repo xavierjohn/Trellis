@@ -1,4 +1,4 @@
-# Trellis.Testing.Idempotency
+﻿# Trellis.Testing.Idempotency
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Testing.Idempotency.svg)](https://www.nuget.org/packages/Trellis.Testing.Idempotency)
 
@@ -8,6 +8,9 @@ Executable conformance suite for Trellis `IIdempotencyStore` implementations.
 ```bash
 dotnet add package Trellis.Testing.Idempotency
 ```
+
+Use `xunit.v3` 4.0.1 or later in the consuming test project (Microsoft.Testing.Platform 2).
+The conformance library itself references only `xunit.v3.extensibility.core`, not the runner.
 
 ## Quick Example
 ```csharp
