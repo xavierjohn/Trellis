@@ -69,7 +69,7 @@ public sealed class HttpContextPageUrlExtensionsTests
     public void PageUrl_null_routeValues_throws()
     {
         var context = new DefaultHttpContext();
-        Action act = () => context.PageUrl("X", null!);
+        Action act = () => context.PageUrl("X", (Func<Cursor, int, RouteValueDictionary>)null!);
         act.Should().Throw<ArgumentNullException>().And.ParamName.Should().Be("routeValues");
     }
 
@@ -84,6 +84,55 @@ public sealed class HttpContextPageUrlExtensionsTests
     #endregion
 
     #region Implicit version — query/header versioning
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageUrl_Directional_BothCursors_PreservesVersionAndMatchingLinks(bool pinVersion)
+    {
+        using var host = CreateMultiVersionHost(new ApiVersion(new DateOnly(2026, 11, 12)));
+        using var client = host.GetTestClient();
+        using var response = await client.GetAsync(
+            $"/multi/widgets/directional?pinVersion={pinVersion}&api-version={ApiVersionV1}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var next = json.RootElement.GetProperty("next").GetProperty("href").GetString()!;
+        var previous = json.RootElement.GetProperty("previous").GetProperty("href").GetString()!;
+        var expectedVersion = pinVersion ? ApiVersionV2 : ApiVersionV1;
+        next.Should().Contain("after=next-token").And.NotContain("before=");
+        previous.Should().Contain("before=previous-token").And.NotContain("after=");
+        next.Should().Contain($"api-version={expectedVersion}").And.Contain("limit=2");
+        previous.Should().Contain($"api-version={expectedVersion}").And.Contain("limit=2");
+        response.Headers.GetValues("Link").Single().Should().Be(
+            $"<{next}>; rel=\"next\", <{previous}>; rel=\"prev\"");
+
+        using var nextResponse = await client.GetAsync(next, TestContext.Current.CancellationToken);
+        using var previousResponse = await client.GetAsync(previous, TestContext.Current.CancellationToken);
+        nextResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        previousResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await nextResponse.Content.ReadFromJsonAsync<string>(TestContext.Current.CancellationToken)).Should().Be("after:next-token");
+        (await previousResponse.Content.ReadFromJsonAsync<string>(TestContext.Current.CancellationToken)).Should().Be("before:previous-token");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PageUrl_Directional_NullRouteValues_Throws(bool pinVersion)
+    {
+        var context = new DefaultHttpContext();
+        Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues = null!;
+        Action action = () =>
+        {
+            if (pinVersion)
+                context.PageUrl("X", new ApiVersion(new DateOnly(2026, 11, 12)), routeValues);
+            else
+                context.PageUrl("X", routeValues);
+        };
+
+        action.Should().Throw<ArgumentNullException>().WithParameterName("routeValues");
+    }
 
     [Fact]
     public async Task Per_request_RequestedApiVersion_is_echoed_into_next_url()
@@ -1172,6 +1221,27 @@ public sealed class SingleVersionPagedController : ControllerBase
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "Test fixture controllers don't need to be static.")]
 public sealed class MultiVersionPagedController : ControllerBase
 {
+    [HttpGet("directional", Name = "Multi_Widgets_Directional")]
+    public HttpResult Directional([FromQuery] bool pinVersion, [FromQuery] string? after, [FromQuery] string? before)
+    {
+        if (after is not null)
+            return Results.Ok($"after:{after}");
+        if (before is not null)
+            return Results.Ok($"before:{before}");
+
+        var page = new Page<string>(["w1", "w2"], new Cursor("next-token"), new Cursor("previous-token"), 5, 2);
+        Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues = (cursor, direction, limit) => new()
+        {
+            [direction == PageDirection.Next ? "after" : "before"] = cursor.Token,
+            ["limit"] = limit
+        };
+        var urlBuilder = pinVersion
+            ? HttpContext.PageUrl("Multi_Widgets_Directional", new ApiVersion(new DateOnly(2026, 12, 1)), routeValues)
+            : HttpContext.PageUrl("Multi_Widgets_Directional", routeValues);
+
+        return Result.Ok(page).ToHttpResponse(urlBuilder, WidgetResponse.From);
+    }
+
     [HttpGet(Name = "Multi_Widgets_List")]
     public HttpResult List([FromQuery] string? cursor)
     {

@@ -81,11 +81,10 @@ public class PageTests
     }
 
     [Fact]
-    public void Default_struct_returns_zero_for_derived_properties()
+    public void Default_reference_is_absent_not_an_invalid_page()
     {
-        Page<int> def = default;
-        def.DeliveredCount.Should().Be(0);
-        def.WasCapped.Should().BeFalse();
+        Page<int>? def = default;
+        def.Should().BeNull();
     }
 
     [Fact]
@@ -121,17 +120,12 @@ public class PageTests
     }
 
     [Fact]
-    public void Default_struct_returns_empty_items_and_zero_delivered_count()
+    public void Empty_provider_page_preserves_continuation()
     {
-        // default(Page<T>) bypasses the public ctor; the defensive Items getter returns
-        // an empty list rather than null so consumers iterating directly don't NRE.
-        var defaulted = default(Page<int>);
-
-        defaulted.Items.Should().NotBeNull();
-        defaulted.Items.Should().BeEmpty();
-        defaulted.DeliveredCount.Should().Be(0);
-        defaulted.RequestedLimit.Should().Be(0);
-        defaulted.AppliedLimit.Should().Be(0);
-        defaulted.WasCapped.Should().BeFalse();
+        var next = new Cursor("provider-token");
+        var page = new Page<int>([], next, null, 10, 10);
+        page.Items.Should().BeEmpty();
+        page.Next.Should().Be(next);
+        page.Map(i => i + 1).Next.Should().Be(next);
     }
 }

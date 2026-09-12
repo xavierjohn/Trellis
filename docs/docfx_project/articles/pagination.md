@@ -1,305 +1,294 @@
 ﻿---
 title: Pagination
 package: Trellis.Core
-topics: [pagination, cursors, asp, results]
-related_api_reference: [trellis-api-core.md, trellis-api-asp.md]
-last_verified: 2026-05-22
+topics: [pagination, cursors, efcore, asp, results]
+related_api_reference: [trellis-api-core.md, trellis-api-efcore.md, trellis-api-asp.md]
+last_verified: 2026-09-12
 audience: [developer]
 ---
 # Pagination
 
-Trellis ships cursor-based pagination as a first-class primitive. The data model
-lives in `Trellis.Core` and is transport-agnostic; the HTTP projection lives in
-`Trellis.Asp` and co-emits a JSON body envelope together with an RFC 8288 `Link`
-header so both LLM consumers (which read the JSON they already parsed) and
-RFC-aware crawlers / gateways (which follow the `Link: <…>; rel="next"` header)
-are served from the same response.
+Trellis separates pagination into three responsibilities:
 
-This article walks through the building blocks, the canonical query-handler
-shape, and the trade-offs the design makes deliberately.
+1. **Validate request controls** with `PageRequest.TryCreate`.
+2. **Continue the query** using typed state: an EF `SeekDefinition`, an application-owned algorithm, or a provider's own continuation token.
+3. **Assemble and project the result** with `PageBuilder`, `Page<T>`, and `Page<T>.Map`.
 
-## Why cursor-based, not offset-based?
+Core has no storage or HTTP dependency. `Trellis.EntityFrameworkCore` supplies
+provider-translatable seek pagination. `Trellis.Asp` maps `Result<Page<T>>` to
+`200 OK`, a JSON envelope, and an RFC 8288 `Link` header. Collection pagination
+does not use `206 Partial Content`, which belongs to byte-range transfer.
 
-Offset pagination (`?page=3&pageSize=25`) re-counts the source on every request
-and breaks under inserts and deletes — the row that was at index 75 when the
-client fetched page 3 is at a different index by the time the client asks for
-page 4, producing skipped or duplicated items. Cursor-based pagination encodes a
-*position* (an Id, or a `(CreatedAt, Id)` pair) into an opaque token that the
-client echoes back. Each follow-up request is an O(log n) index seek, not an
-O(offset) scan; results are stable across concurrent writes.
+## Why use a cursor?
 
-Trellis follows the body-envelope-with-cursor convention used by Microsoft
-Graph, OData v4, GitHub, Stripe, and most other modern APIs.
+Offset pagination can skip or repeat rows when concurrent changes shift their
+positions. A seek cursor instead identifies a boundary in a deterministic
+ordering, such as `(CreatedAt descending, Id ascending)`. With suitable indexes,
+the database can avoid scanning a growing offset.
 
-## The building blocks
+This is not a universal performance or consistency guarantee. Provider support,
+indexes, filters, and comparison semantics determine the query plan. Mutable
+sort values and concurrent writes can still change results between pages.
+Trellis does not create a snapshot.
 
-The storage-agnostic primitives live in the `Trellis` namespace under
-`Trellis.Core`. The EF Core helper lives in `Trellis.EntityFrameworkCore`.
+## Building blocks
 
-| Type | Package | Purpose |
+| Type | Package | Responsibility |
 | --- | --- | --- |
-| `Cursor` | `Trellis.Core` | Opaque continuation token (a `readonly record struct` over a `string Token`). |
-| `Page<T>` | `Trellis.Core` | Validated `readonly record struct` carrying `Items`, `Next`, `Previous`, `RequestedLimit`, `AppliedLimit`. |
-| `PageSize` | `Trellis.Core` | Pair of `Requested` + `Applied` limits with `WasCapped`; canonical parser is `PageSize.FromRequested(int?, int max)`. |
-| `CursorCodec` | `Trellis.Core` | Static encoder/decoder for single-key (`Id`) and composite (`CreatedAt, Id`) cursors. |
-| `PageBuilder` | `Trellis.Core` | Storage-agnostic over-fetch slicer that turns `applied + 1` rows into a validated `Page<T>` with the correct `Next` cursor. |
-| `Page<T>.Map<TOut>` | `Trellis.Core` | Instance method that projects items while preserving cursors and limits. |
-| `IQueryable<T>.ToPageAsync` | `Trellis.EntityFrameworkCore` | EF Core extension that owns `OrderBy`, cursor decoding, the seek `WHERE`, the over-fetch, and the slice. Composes with `Page<T>.Map` for DTO projection. |
+| `Cursor` | Core | Opaque token; clients echo `Token` unchanged. |
+| `PageSize` | Core | Validated `Requested`, `Applied`, and `WasCapped`. |
+| `PageRequest` | Core | Validates raw cursor/limit; `Decode(codec)` produces `Result<Maybe<TState>>`. |
+| `ICursorCodec<TState>` / `CursorCodec` | Core | Typed encoding, parsing, and validation of continuation state. |
+| `PageBuilder` | Core | Pure assembly from an already ordered, sought, over-fetched batch. |
+| `Page<T>` | Core | Immutable item sequence, adjacent cursors, and observable limit metadata; `Map` preserves that metadata. |
+| `SeekDefinition<T,TState>` | EF Core | Owns ordering, state extraction, and the matching lexicographic seek predicate together. |
+| `ToPageAsync` | EF Core | Decode, seek, over-fetch, and assemble a forward page. |
 
-## The canonical query-handler shape
+`Cursor`, `PageSize`, `PageRequest`, and `Page<T>` are **sealed record classes**.
+Their default value is null, not an empty valid struct. Use `Page.Empty<T>(...)`
+for empty results and null only for an absent cursor.
 
-A query handler that takes a `Cursor?` and an `int?` limit, applies the server
-cap, decodes the cursor, executes the seek query, slices the over-fetched list,
-and projects to a DTO — all without leaking exceptions:
+## Validate raw input once
+
+Use the non-throwing factory at an untrusted boundary:
 
 ```csharp
+Result<PageRequest> request = PageRequest.TryCreate(
+    cursor, limit, max: 100, defaultSize: 50,
+    policy: PageSizeLimitPolicy.Clamp,
+    cursorFieldName: "cursor", limitFieldName: "limit");
+```
+
+| Input | Outcome |
+| --- | --- |
+| Missing cursor (`null`) | First page: no continuation boundary. |
+| Empty or whitespace-only cursor | Failed result, reason `cursor.malformed`. Never silently restarts at page one. |
+| Missing limit | Uses `defaultSize`, capped to `max` if necessary. |
+| Zero or negative limit | Failed result, reason `page-size.out-of-range`. |
+| Explicit limit above `max`, `Clamp` policy | Keeps the original requested limit; caps the applied limit. |
+| Explicit limit above `max`, `Reject` policy | Failed result, reason `page-size.out-of-range`. |
+
+`PageRequest` defaults field names to `"cursor"` and `"limit"`. A custom cursor
+field name must also be passed to `Decode` / `ToPageAsync`; it is not stored in
+the request.
+
+Preserve the distinction at the transport boundary too. MVC string binding can
+convert a present-but-empty query value to null before the factory sees it.
+When binding cursor input, preserve the raw query value (for example through
+`Request.Query`) and pass null only when the parameter is actually absent.
+Otherwise `?cursor=` can accidentally become a first-page request.
+
+`PageSize.TryCreate(limit, ...)` offers the same policy when only a size is
+needed (its default field name is `"pageSize"`). `PageSize.FromRequested`
+is a **trusted, throwing convenience**, not a lenient query-string parser:
+non-positive input throws. Missing input defaults; above-cap input clamps.
+
+Bad server configuration also throws: `max` must be positive and at most
+`PageSize.MaxApplied` (`int.MaxValue - 1`), `defaultSize` must be positive,
+and the policy must be defined. That bound makes `Applied + 1` safe.
+
+## EF Core: keep ordering and seek together
+
+The source must already carry the application's authorization, tenant, and
+business filters. This function assumes `authorizedOrders` is appropriately scoped:
+
+```csharp
+using Microsoft.EntityFrameworkCore;
 using Trellis;
 using Trellis.EntityFrameworkCore;
 
-public sealed record ListOrdersQuery(string? Cursor, int? Limit)
-    : IQuery<Result<Page<OrderListItem>>>;
-
-public sealed record OrderListItem(Guid Id, decimal Amount, string Currency);
-
-public sealed class ListOrdersHandler(AppDbContext db)
-    : IQueryHandler<ListOrdersQuery, Result<Page<OrderListItem>>>
+static Task<Result<Page<Order>>> ListOrders(
+    IQueryable<Order> authorizedOrders, string? cursor, int? limit,
+    CancellationToken ct)
 {
-    public async ValueTask<Result<Page<OrderListItem>>> Handle(
-        ListOrdersQuery query, CancellationToken ct)
-    {
-        var pageSize = PageSize.FromRequested(query.Limit);
-        var cursor = query.Cursor is { Length: > 0 } token ? new Cursor(token) : (Cursor?)null;
+    var seek = SeekDefinition.Descending<Order, DateTimeOffset>(o => o.CreatedAt)
+        .ThenAscending(o => o.Id.Value);
 
-        var page = await db.Orders.AsNoTracking()
-            .ToPageAsync(pageSize, cursor, o => o.Id.Value, cursorFieldName: "cursor", ct);
-
-        return page.Map(p => p.Map(o =>
-            new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value)));
-    }
+    return PageRequest.TryCreate(cursor, limit)
+        .BindAsync(request => authorizedOrders.AsNoTracking()
+            .ToPageAsync(request, seek, cursorFieldName: "cursor",
+                cancellationToken: ct));
 }
 ```
 
-`ToPageAsync` returns `Task<Result<Page<T>>>`; a malformed cursor surfaces as
-`Result.Fail<Page<T>>(Error.InvalidInput.ForField("cursor", "cursor.malformed", …))`
-without throwing. `Result<T>.Map(Func<T, TOut>)` then composes the
-`Page<Order> → Page<OrderListItem>` projection without unwrapping the railway.
+`BindAsync` prevents database execution when request validation fails. The
+helper decodes through `seek.Codec`, applies the matching order and boundary,
+fetches `Applied + 1` rows, and emits a next cursor from the last retained row
+only when another row exists.
 
-The endpoint then maps `Result<Page<T>>` to the HTTP wire:
+Boundary values are projected alongside the rows in the database query using
+the same key expressions as ordering and seeking. The helper does not compile
+selectors or recompute their values after materialization. Provider-translated
+functions such as `EF.Functions.Collate` can therefore participate when the
+provider translates the complete query; equivalent-looking C# recomputation
+is not assumed to match SQL semantics.
 
-```csharp
-app.MapGet("/orders", async (
-    string? cursor, int? limit, IMediator mediator, HttpContext http,
-    LinkGenerator links, CancellationToken ct) =>
-{
-    return (await mediator.Send(new ListOrdersQuery(cursor, limit), ct))
-        .ToHttpResponse(
-            nextUrlBuilder: (c, applied) =>
-                links.GetUriByName(http, "ListOrders",
-                    values: new { cursor = c.Token, limit = applied })
-                ?? throw new InvalidOperationException("Route 'ListOrders' not registered."),
-            body: page => new { items = page.Items, next = page.Next, previous = page.Previous,
-                                  requestedLimit = page.RequestedLimit, appliedLimit = page.AppliedLimit,
-                                  deliveredCount = page.DeliveredCount, wasCapped = page.WasCapped });
-}).WithName("ListOrders");
-```
-
-`Trellis.Asp` co-emits the `Link: <…>; rel="next"` header automatically from the
-`nextUrlBuilder` delegate, so both the JSON body and the header are sourced from
-a single function — there is no way for the two to drift.
-
-## `PageSize.FromRequested` — lenient by default, strict on demand
-
-Pagination parameters arrive at the transport seam; they are not domain
-invariants. `PageSize.FromRequested` is the lenient parser used in the example
-above:
-
-* `null` or a non-positive value collapses to `Requested = PageSize.Default`
-  (50). `Applied` is `min(Default, max)`, so when a custom `max < Default` is
-  supplied, `Applied` is clamped down further and `WasCapped` is observable.
-* Values larger than `max` (defaults to `PageSize.Max` = 100) are clamped:
-  `Applied` becomes `max`, but `Requested` is preserved **verbatim** so the
-  caller's `WasCapped` observation survives the round-trip.
-
-```csharp
-PageSize.FromRequested(null);            // (Default, Default)  — WasCapped = false
-PageSize.FromRequested(null, max: 5);    // (Default, 5)        — WasCapped = true
-PageSize.FromRequested(0);               // (Default, Default)  — WasCapped = false
-PageSize.FromRequested(20);              // (20, 20)            — WasCapped = false
-PageSize.FromRequested(1000);            // (1000, 100)         — WasCapped = true
-PageSize.FromRequested(20, max: 5);      // (20, 5)             — WasCapped = true
-```
-
-When a request must be **rejected** rather than silently clamped, use
-`PageSize.TryCreate`:
-
-```csharp
-PageSize.TryCreate(1000)
-    .Match(
-        onSuccess: size => /* ... */,
-        onFailure: err => Result.Fail<Page<Order>>(err));
-```
-
-`TryCreate` returns `Result.Fail<PageSize>` with `Error.InvalidInput` (field =
-`fieldName ?? "pageSize"`, reason code `"page-size.out-of-range"`) on any
-non-positive value or any value greater than `max`. Pick whichever fits your
-contract; both compose cleanly with `Page<T>`.
-
-## Cursors — opaque by design, not anti-tamper
-
-`Cursor` is just a wrapper over a string token. The encoding format is
-`CursorCodec`'s business: clients must treat the token as opaque and never
-parse it. The codec itself is part of the public API so services can wrap or
-replace it (for example, to add HMAC signing) without changing the wire
-shape clients echo back:
-
-* **Single-key:** URL-safe base64 of the key's invariant-culture string form.
-* **Composite:** URL-safe base64 of `"{createdAt:O}|{id}"` in invariant culture.
-  Decoding splits at the **first** `|`, so an Id that happens to contain a pipe
-  remains unambiguous.
-
-The codec is AOT-friendly: no JSON, no reflection, no `Expression.Compile`. It
-uses `Convert.ToBase64String`, URL-safe substitution (`+`→`-`, `/`→`_`, drop
-`=` padding), and `IParsable<TKey>.TryParse` with `CultureInfo.InvariantCulture`.
-
-**Cursors are opaque so that clients don't reverse-engineer the sort key, but
-the encoding is not signed.** Services that need to defend against tampering
-must wrap or replace the codec with a signed variant; authorization filtering
-must always apply to the underlying query.
-
-### Trellis value-object IDs
-
-The generic constraint accepts any `notnull` key, and decoding requires
-`IParsable<TKey>`. Trellis value-object IDs (e.g. `OrderId : RequiredGuid<OrderId>`)
-do not directly satisfy `IParsable<TSelf>` for their underlying primitive, so
-the canonical pattern is to project to `.Value` at the boundary:
-
-```csharp
-// encode
-CursorCodec.Encode(order.Id.Value)            // .Value : Guid
-
-// decode (and rewrap)
-var decoded = CursorCodec.TryDecode<Guid>(cursor);
-return decoded.Bind(g =>
-    OrderId.TryCreate(g)
-        .MapOnFailure(_ => Error.InvalidInput.ForField("cursor", "cursor.malformed",
-                                                    "Cursor payload is not a valid OrderId.")));
-```
-
-This keeps the wire format tight (raw Guid string) and the domain type-safe
-(`OrderId` everywhere on the inside).
-
-## `PageBuilder.FromOverFetch` — the over-fetch idiom
-
-The "ask for one more than you need" idiom is how seek-style pagination
-discovers whether another page exists:
+For descending time / ascending ID, the predicate is equivalent to:
 
 ```text
-applied = 25
-fetched = 26    →  page has Next     (kept = first 25; cursor from items[24])
-fetched = 25    →  page has no Next  (under-fill; this is the last page)
-fetched = 0     →  empty page        (under-fill; both cursors null)
+time < boundaryTime OR (time == boundaryTime AND id > boundaryId)
 ```
 
-`PageBuilder.FromOverFetch` encodes that logic once. EF Core consumers should
-reach for `IQueryable<T>.ToPageAsync` (in `Trellis.EntityFrameworkCore`) which
-wraps the over-fetch, the seek predicate, and the slice in one call. If you
-must work at the lower layer (a non-EF store, or a manual seek shape), the
-caller's responsibility is to fetch `pageSize.Applied + 1` rows ordered by the
-same key the selector returns:
+Use `ThenAscending` / `ThenDescending` for additional keys, ending with a
+**stable unique tie-breaker**. Tuple state nests as keys are added: `(time, id)`,
+then `((time, id), thirdKey)`. Null keys are unsupported. Do not add a competing
+`OrderBy` upstream; the definition owns the complete ordering.
+
+The single-key convenience remains:
 
 ```csharp
-var ordered = db.Orders.AsNoTracking().OrderBy(o => o.Amount);
-var filtered = afterAmount is { } cursorAmount
-    ? ordered.Where(o => o.Amount > cursorAmount)
-    : (IQueryable<Order>)ordered;
-
-var rows = await filtered.Take(pageSize.Applied + 1).ToListAsync(ct);
-
-var page = PageBuilder.FromOverFetch(rows, pageSize, o => o.Amount);
+await authorizedOrders.ToPageAsync(
+    pageSize, cursor, o => o.Id.Value, cancellationToken: ct);
 ```
 
-> **Guid / string keys.** `Guid` and `string` do not expose a C# `>` operator,
-> so a hand-rolled `Where(o => o.Id.Value > cursorId)` will not compile. Use
-> `ToPageAsync` (which routes through `IComparable<TKey>.CompareTo` for those
-> types and emits provider-translated SQL), or write the predicate as
-> `Where(o => o.Id.Value.CompareTo(cursorId) > 0)` in the manual shape.
+Here `cursor` is already a `Cursor?` and `pageSize` is validated. This overload
+wraps a single ascending definition, so the key must itself be unique.
 
-For stable time-ordered seek (rows with non-unique primary sort keys, e.g.
-events at the same millisecond), use the composite overload:
+### Provider comparison is part of correctness
+
+Numeric/date-like keys use relational expressions; other comparable keys,
+including GUID and string, use `CompareTo`. Verify provider translation and
+agreement between `ORDER BY`, equality, and the seek comparison. Database
+collations and GUID ordering need not match .NET in-memory ordering.
+
+There is **no automatic client-side fallback**. A value converter alone cannot
+guarantee translation of an arbitrary comparison method. Projections through
+Trellis value objects (`o.Id.Value`) require `AddTrellisInterceptors()` on the
+context options. Verify boundary projection as well as ordering and seek
+translation when using provider-specific expressions.
+
+`Ascending` / `Descending` and their `Then` counterparts accept an explicit
+key codec when the scalar codec is unsuitable. `seek.WithCodec(codec)` replaces
+the complete state codec without changing ordering or extraction; use it for
+context binding or a caller-owned protection wrapper.
+
+## Typed codecs: opaque, versioned, not signed
 
 ```csharp
-var rows = await db.Events.AsNoTracking()
-    .OrderBy(e => e.CreatedAt).ThenBy(e => e.Id)
-    .Where(e => /* cursor predicate on (CreatedAt, Id) */)
-    .Take(pageSize.Applied + 1)
-    .ToListAsync(ct);
+ICursorCodec<Guid> ids = CursorCodec.Scalar<Guid>();
+ICursorCodec<(DateTimeOffset Primary, Guid Secondary)> events =
+    CursorCodec.Composite<DateTimeOffset, Guid>();
 
-var page = PageBuilder.FromOverFetch(rows, pageSize,
-    createdAtSelector: e => e.CreatedAt,
-    idSelector: e => e.Id.Value);
+Cursor token = events.Encode((createdAt, id));
+Result<(DateTimeOffset Primary, Guid Secondary)> decoded = events.TryDecode(token);
 ```
 
-> **Selector contract.** The selectors passed to `FromOverFetch` must match the
-> sort keys used in the upstream query. Mismatched selectors produce
-> semantically wrong cursors — the boundary item the cursor points at will not
-> be the one the next query would seek past.
+Scalar codecs require `IParsable<T>` plus invariant `IFormattable` support (or
+`string`); unsupported formatting fails at factory creation. Generated scalar
+IDs satisfying both interfaces can be used directly. For other value objects,
+project their primitive or provide an explicit codec.
 
-### Forward-only by design
+Built-in frames are URL-safe base64 of `1:s:...` (scalar), `1:c:...`
+(composite), or `1:x-<schema>:...` (explicit codec). Composites length-prefix
+the first component token and can nest arbitrary codecs without delimiter
+ambiguity. The entire encoded token is limited to 1,024 characters on **both**
+encoding and decoding. **Old unversioned tokens are deliberately rejected.**
 
-`Page<T>.Previous` is always `null` from `PageBuilder`. Trellis does not yet
-ship a reverse-seek API, and re-running the `nextUrlBuilder` against an echoed
-"incoming" cursor would walk **forward** from that point — re-fetching the same
-page rather than the page before it. Until a real reverse-seek API exists,
-forward-only is the only correct behavior. Clients that need to go back navigate
-through their own request history.
+`CursorCodec.Create(schema, format, parse)` supplies an explicit serializer
+and validating parser. `CursorCodec.Map(wireCodec, toWire, fromWire)` instead
+maps a composed wire representation to named validated state. There is no
+implicit JSON fallback. Encode validates parsing and state equality, so a lossy
+formatter or invalid server boundary throws rather than issuing an unusable
+cursor. Floating-point state must be finite; dates use round-trip `"O"` format
+to preserve ticks and kind/offset.
 
-## `Page<T>.Map` — projecting to DTOs
+Built-in tokens are not encrypted or signed. Bind tenant/filter/origin/sort/
+algorithm context in the application codec when tokens must not be reused
+across different queries. A context hash is not authentication; use a
+caller-owned `ICursorCodec<TState>` protection wrapper for anti-tamper needs.
+Authorization must still filter every request.
 
-Repositories typically yield `Page<Entity>`; HTTP wire types are usually DTOs.
-`Page<T>.Map<TOut>` projects each item and preserves the cursors and limits in
-one call:
+## Computed distance or score
+
+For a computed order that cannot be translated, the application owns the
+algorithm and its candidate bounds. Use:
+
+1. An authorized, appropriately bounded candidate source.
+2. `PageRequest.Decode(codec)` to validate optional typed continuation state.
+3. A deterministic computed value plus a stable unique tie-breaker.
+4. The matching boundary predicate **before** `Take(Applied + 1)`.
+5. `PageBuilder.FromOverFetch` with a callback that encodes the last retained boundary.
+
+The [computed pagination recipe](../api_reference/trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state)
+shows finite, nonnegative distance state mapped from nested composite codecs,
+canonical query-context binding, and an in-memory GUID tie-breaker using
+`CompareTo`. It deliberately uses a complete bounded snapshot; it is not
+geospatial support or a reason to materialize an unbounded database table.
+
+## Pure page assembly and provider tokens
+
+`PageBuilder` has only one overload; the callback returns a `Cursor`, not a key:
 
 ```csharp
-Page<Order> entities = await repo.ListAsync(pageSize, cursor, ct);
-Page<OrderDto> response = entities.Map(o => new OrderDto(o.Id.Value, o.Total));
+var codec = CursorCodec.Composite<DateTimeOffset, Guid>();
+var page = PageBuilder.FromOverFetch(orderedAndSoughtRows, pageSize,
+    last => codec.Encode((last.CreatedAt, last.Id)));
 ```
 
-`Next`, `Previous`, `RequestedLimit`, `AppliedLimit`, and therefore `WasCapped`
-all survive the projection. Use it freely at the application/transport boundary.
+The caller has already sought and ordered the rows using those same keys.
+For an applied size of 25, 26 fetched rows means 25 retained rows and a next
+cursor from row 25; exactly 25, fewer rows, or no rows means no next cursor.
+The callback runs exactly once if there is more data, otherwise never.
 
-## ROP, not exceptions — what fails how
+For stores that supply opaque continuation tokens, construct `Page<T>` directly:
 
-| Failure | Result | Wire |
-| --- | --- | --- |
-| Malformed cursor token (bad base64, bad payload) | `Error.InvalidInput.ForField("cursor", "cursor.malformed", …)` | `422 Unprocessable Content` |
-| Out-of-range `limit` via `PageSize.TryCreate` | `Error.InvalidInput.ForField("pageSize", "page-size.out-of-range", …)` | `422 Unprocessable Content` |
-| Storage/timeout/connectivity | Whatever your repository chooses to surface (often `Error.Unavailable`) | `503` / `500` per `Trellis.Asp` mapping |
-| Success | `Result.Ok(page)` | `200 OK` + body envelope + `Link` header |
+```csharp
+var page = new Page<Order>(
+    providerItems,
+    providerNextToken is null ? null : new Cursor(providerNextToken),
+    providerPreviousToken is null ? null : new Cursor(providerPreviousToken),
+    pageSize.Requested, pageSize.Applied);
+```
 
-No throw on any cursor or limit input — every failure surfaces as
-`Result.Fail<Page<T>>` and is mapped to a Problem Details response by
-`Trellis.Asp`. There is no path from a malformed query string to a 500.
+Do not decode provider tokens with `CursorCodec` or infer completion solely
+from item count. Some providers return an empty batch with a continuation.
+The page constructor snapshots the item sequence; value equality includes
+sequence contents, both cursors, and both limits.
 
-## Anti-patterns to avoid
+`Page<T>.Map` preserves both cursors and limits while projecting items:
 
-* **Hand-rolling base64 + JSON cursors.** `CursorCodec` already exists and is
-  AOT-safe; rolling your own duplicates the codec, drifts on culture handling,
-  and makes mistakes around `+`/`-` / `/`/`_` substitution and padding. Use the
-  codec; if you need signing, wrap it.
-* **Throwing on a bad cursor.** A malformed cursor is invalid client input, not
-  an exceptional condition. Throw a 500 and you've lost the audit trail and the
-  Problem Details body. Always return `Result.Fail<Page<T>>`.
-* **Returning items larger than the cap without `WasCapped`.** Clients can't
-  tell when the server clamped if `Requested` is rewritten to `Applied`. Use
-  `PageSize.FromRequested` (which preserves `Requested` verbatim) so the cap is
-  observable.
-* **`Items.Take(applied)` after the fact.** That works but loses the chance to
-  detect under-fill cleanly. `PageBuilder.FromOverFetch` separates the
-  "over-fetch + slice" concern from the rest of the handler.
+```csharp
+Result<Page<OrderListItem>> response = result.Map(page => page.Map(order =>
+    new OrderListItem(order.Id.Value, order.Total.Amount, order.Total.Currency.Value)));
+```
+
+The EF helper and `PageBuilder` are forward-only (`Previous` is null).
+Descending ordering does not implement previous-page navigation. A direct
+`Page<T>` can carry a provider-supplied previous token when the provider really
+supports that operation.
+
+## What fails how?
+
+| Failure | Behavior |
+| --- | --- |
+| Missing/empty distinction, invalid raw limit | `PageRequest.TryCreate` returns a field-specific `Error.InvalidInput`. |
+| Bad token version/base64/UTF-8/framing, oversized or invalid state | Built-in codecs return `Error.InvalidInput` with reason `cursor.malformed`. |
+| Invalid server size configuration, null required arguments | Throws: a configuration/programming error, not invalid client input. |
+| Encoding invalid or non-round-tripping server state | Throws `ArgumentException`. |
+| A custom codec/parser returns successful null continuation state | Throws `InvalidOperationException`, including through `CursorCodec.TryDecodeOptional` / `PageRequest.Decode`; never restarts at the first page. |
+| Cancellation, query translation, database/connection failures | Propagate; pagination does not relabel infrastructure faults as malformed cursors. |
+
+Expected invalid input maps to HTTP 422 through Trellis ASP mapping; successful
+pages map to 200. See the [ASP reference](../api_reference/trellis-api-asp.md#use-this-file-when)
+for response-envelope and link-builder overloads. Do not serialize a raw
+`Result<Page<T>>` directly.
+
+## Upgrading existing pagination code
+
+- Replace manual string-to-cursor parsing and lenient limit handling with
+  `PageRequest.TryCreate`; do not treat empty cursors or non-positive limits as absence.
+- Replace raw-key / timestamp-selector `PageBuilder` lambdas with
+  `last => codec.Encode(state)`; there is no key-selector overload.
+- Replace separately maintained ordering and seek predicates with an EF
+  `SeekDefinition` where translation is supported.
+- Treat cursors as nullable references, not nullable structs (`cursor.Token`,
+  not `cursor.Value.Token` after a presence check).
+- Expect outstanding old unversioned tokens to fail validation; clients must
+  restart pagination. No legacy migration decoder is shipped.
 
 ## See also
 
-* API reference: [Trellis.Core pagination types](../api_reference/trellis-api-core.md#pagination)
-* API reference: [`PaginationQueryableExtensions.ToPageAsync` (Trellis.EntityFrameworkCore)](../api_reference/trellis-api-efcore.md#paginationqueryableextensions)
-* Cookbook: [Recipe 3 — Query handler returning Page<T>](../api_reference/trellis-api-cookbook.md#recipe-3--query-handler-returning-paget-paginated-list-with-cursor)
-* EF Core provider quirks: [Provider-specific column mapping](../api_reference/trellis-api-efcore.md#provider-specific-column-mapping)
+- [Core pagination API](../api_reference/trellis-api-core.md#pagination)
+- [EF pagination API](../api_reference/trellis-api-efcore.md#paginationqueryableextensions)
+- [Paginated query-handler recipe](../api_reference/trellis-api-cookbook.md#recipe-3--query-handler-returning-paget-paginated-list-with-cursor)
+- [Computed pagination recipe](../api_reference/trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state)

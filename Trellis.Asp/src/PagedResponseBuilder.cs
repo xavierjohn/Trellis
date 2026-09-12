@@ -17,16 +17,16 @@ internal static class PagedResponseBuilder
     /// Projects <paramref name="page"/> into a JSON envelope and the <c>Link</c> header value.
     /// </summary>
     /// <param name="page">The source page.</param>
-    /// <param name="nextUrlBuilder">Builds an absolute URL from a cursor and the applied limit.</param>
+    /// <param name="urlBuilder">Builds an absolute URL from a cursor, its direction, and the applied limit.</param>
     /// <param name="map">Projection from domain item to wire DTO.</param>
     /// <returns>The envelope and the <c>Link</c> header value (null when neither cursor is present).</returns>
     public static (PagedResponse<TResponse> Envelope, string? LinkHeader) Build<T, TResponse>(
         Page<T> page,
-        Func<Cursor, int, string> nextUrlBuilder,
+        Func<Cursor, PageDirection, int, string> urlBuilder,
         Func<T, TResponse> map)
     {
-        string? nextHref = page.Next is { } next ? nextUrlBuilder(next, page.AppliedLimit) : null;
-        string? prevHref = page.Previous is { } prev ? nextUrlBuilder(prev, page.AppliedLimit) : null;
+        string? nextHref = page.Next is { } next ? urlBuilder(next, PageDirection.Next, page.AppliedLimit) : null;
+        string? prevHref = page.Previous is { } prev ? urlBuilder(prev, PageDirection.Previous, page.AppliedLimit) : null;
 
         var items = page.Items ?? (IReadOnlyList<T>)Array.Empty<T>();
 
@@ -46,6 +46,16 @@ internal static class PagedResponseBuilder
 
         return (envelope, linkHeader);
     }
+}
+
+/// <summary>The direction of a cursor link relative to the current page.</summary>
+public enum PageDirection
+{
+    /// <summary>The next page.</summary>
+    Next,
+
+    /// <summary>The previous page.</summary>
+    Previous
 }
 
 /// <summary>JSON envelope wrapping a single page of items and its cursor links.</summary>

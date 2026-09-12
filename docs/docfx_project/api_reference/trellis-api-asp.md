@@ -37,7 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#task---recipe-lookup
 | Add ETag / conditional GET | `.WithETag(...)`, `.WithLastModified(...)`, `.EvaluatePreconditions()` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`ETagHelper`](#etaghelper) |
 | Add `Cache-Control` directive (per endpoint) | `.WithCacheControl(CacheControl.NoStore())` / `.WithCacheControl(CacheControl.Public(TimeSpan.FromMinutes(5)))` / `.WithCacheControl(t => …)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`CacheControl`](#cachecontrol) |
 | Honor `Prefer: return=minimal` | `.HonorPrefer()` on write responses | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
-| Return paginated list responses | `Result<Page<T>>.ToHttpResponse(nextUrlBuilder, bodySelector, ...)` | [`PagedResponse<TResponse>`](#pagedresponsetresponse) |
+| Return paginated list responses | `Result<Page<T>>.ToHttpResponse(urlBuilder, bodySelector, ...)` with `(cursor, PageDirection, appliedLimit)`; the two-argument `nextUrlBuilder` convenience remains available | [`PagedResponse<TResponse>`](#pagedresponsetresponse), [`PageDirection`](#pagedirection) |
 | Resolve actors from requests | `AddClaimsActorProvider`, `AddNestedJsonPathClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider`. For microservices consuming gateway-minted internal JWTs, see [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` types moved out of this repo in v3 cleanup). | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Compose a system actor for background workers | `AddTrellisWorkerActor` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Bind scalar value objects from routes/query/body | `AddTrellisAspWithScalarValidation()` (or `AddTrellisAsp()` + `AddScalarValueValidation()`), plus route constraints / validation middleware as needed | [`Trellis.Asp.ModelBinding`](#namespace-trellisaspmodelbinding), [`Trellis.Asp.Validation`](#namespace-trellisaspvalidation) |
@@ -83,9 +83,26 @@ The single Trellis verb for converting `Result` / `Result<T>` / `Result<WriteOut
 | `public static IResult ToHttpResponse<TDomain, TBody>(this Result<TDomain> result, Func<TDomain, TBody> body, Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)` | `IResult` | Same as the `Result<T>` overload, but projects the response body via `body`. Selectors in the options builder still run against the domain value. |
 | `public static IResult ToHttpResponse<T>(this Result<WriteOutcome<T>> result, Action<HttpResponseOptionsBuilder<T>>? configure = null)` | `IResult` | Maps `Result<WriteOutcome<T>>` per RFC 9110: `Created → 201 + Location`, `Updated → 200` (or `204` with `Prefer: return=minimal` **when `HonorPrefer()` is configured**), `UpdatedNoContent → 204`, `Accepted → 202` (+ `Retry-After` when `RetryAfter != null`, + `Location` when `MonitorUri != null`), `AcceptedNoContent → 202` (+ `Retry-After`/`Location` under the same conditions). |
 | `public static IResult ToHttpResponse<TDomain, TBody>(this Result<WriteOutcome<TDomain>> result, Func<TDomain, TBody> body, Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)` | `IResult` | `WriteOutcome` overload with body projection. |
-| `public static IResult ToHttpResponse<T, TBody>(this Result<Page<T>> result, Func<Cursor, int, string> nextUrlBuilder, Func<T, TBody> body, Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)` | `IResult` | Maps `Result<Page<T>>` to a paginated JSON envelope (`PagedResponse<TBody>`) plus an RFC 8288 `Link` header. `nextUrlBuilder(cursor, appliedLimit)` builds the absolute URL for next/previous links. |
+| `public static IResult ToHttpResponse<T, TBody>(this Result<Page<T>> result, Func<Cursor, int, string> nextUrlBuilder, Func<T, TBody> body, Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)` | `IResult` | Maps `Result<Page<T>>` to a paginated JSON envelope (`PagedResponse<TBody>`) plus an RFC 8288 `Link` header. Convenience overload: the same `nextUrlBuilder(cursor, appliedLimit)` callback builds both next and previous links, without direction information. |
+| `public static IResult ToHttpResponse<T, TBody>(this Result<Page<T>> result, Func<Cursor, PageDirection, int, string> urlBuilder, Func<T, TBody> body, Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)` | `IResult` | Direction-aware pagination. Calls `urlBuilder(cursor, PageDirection.Next, appliedLimit)` for `Next` and `urlBuilder(cursor, PageDirection.Previous, appliedLimit)` for `Previous`, only when the corresponding cursor exists. Each generated URL is shared by the envelope and `Link` header. |
 
 Each overload above **except** `Error.ToHttpResponse(...)` also exposes async variants named `ToHttpResponseAsync`. The signatures are not identical: the *receiver* is wrapped, so `this Result<T>` becomes `this Task<Result<T>>` or `this ValueTask<Result<T>>`. The remaining parameters are unchanged. `Error` has no async variant, because an `Error` is already a materialised value with nothing to await.
+
+Direction-aware asynchronous pagination signatures:
+
+```csharp
+public static Task<IResult> ToHttpResponseAsync<T, TBody>(
+    this Task<Result<Page<T>>> resultTask,
+    Func<Cursor, PageDirection, int, string> urlBuilder,
+    Func<T, TBody> body,
+    Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null);
+
+public static ValueTask<IResult> ToHttpResponseAsync<T, TBody>(
+    this ValueTask<Result<Page<T>>> resultTask,
+    Func<Cursor, PageDirection, int, string> urlBuilder,
+    Func<T, TBody> body,
+    Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null);
+```
 
 ### `HttpResponseOptionsBuilder<TDomain>`
 
@@ -597,6 +614,21 @@ public sealed record PagedResponse<TResponse>(
 ```
 
 JSON envelope returned by the `Result<Page<T>>` overload of `ToHttpResponse`.
+
+### `PageDirection`
+
+```csharp
+public enum PageDirection
+{
+    Next,
+    Previous
+}
+```
+
+Identifies which adjacent page a URL targets. `Next` maps to the envelope's `Next` and
+`rel="next"`; `Previous` maps to `Previous` and `rel="prev"`. This ASP-owned enum guides
+URL construction only: it does not add reverse-seek support to a data source. A missing
+cursor produces neither a callback invocation nor a link.
 
 ### `PageLink`
 
@@ -1461,7 +1493,7 @@ public static class ValidationErrorsContext
 - **`Vary` is append-only.** Both the `HonorPrefer()` switch and `Vary(...)` use `AppendVaryUnique` — they preserve any pre-existing `Vary` values added by other middleware and skip duplicates (case-insensitive).
 - **`HonorPrefer()` semantics on `WriteOutcome.Updated`.** `HonorPrefer()` is opt-in. Without it, `Prefer` request headers are ignored entirely: no `Vary: Prefer`, no `Preference-Applied`, and `return=minimal` does **not** suppress the body. When `HonorPrefer()` is configured, `Prefer: return=minimal` short-circuits to `204 No Content` and emits `Preference-Applied: return=minimal`; `return=representation` returns `200 OK` with the body and emits `Preference-Applied: return=representation`. `Vary: Prefer` is always emitted under `HonorPrefer()`, regardless of which preference was sent.
 - **`CreatedAtAction` is not AOT-safe.** It depends on MVC's `ControllerLinkGeneratorExtensions`. The builder method, the writer's `ResolveActionLocation` private, and the `LocationKind.Action` branch are annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]`. Use `CreatedAtRoute` with a named route for trim/AOT scenarios; `ResolveActionLocation` throws `NotSupportedException` when `RuntimeFeature.IsDynamicCodeSupported` is `false`.
-- **Pagination.** The `Result<Page<T>>` overload always emits the `PagedResponse<TBody>` envelope; the RFC 8288 `Link` header is added only when `Page.Next` and/or `Page.Previous` cursors are present. Failure on the page result short-circuits through the standard error pipeline. Each `nextUrlBuilder` result is percent-encoded for the characters RFC 3986 excludes from a URI (controls, space, `<`, `>`, `"`, `\`, `^`, `` ` ``, `{`, `}`, `|`) before it is embedded between the `Link` field's angle brackets, so an opaque cursor token cannot terminate the `URI-Reference` early or forge extra link-params. Well-formed URLs pass through byte-identical.
+- **Pagination.** The `Result<Page<T>>` overload always emits the `PagedResponse<TBody>` envelope; the RFC 8288 `Link` header is added only when `Page.Next` and/or `Page.Previous` cursors are present. The direction-aware `urlBuilder(cursor, direction, appliedLimit)` distinguishes `PageDirection.Next` from `PageDirection.Previous`; the legacy `nextUrlBuilder(cursor, appliedLimit)` intentionally uses the same callback for both directions. Failure on the page result short-circuits through the standard error pipeline without invoking the URL builder or body projector. Conditional `304` / `412` responses also skip those callbacks. Each URL builder result is percent-encoded for the characters RFC 3986 excludes from a URI (controls, space, `<`, `>`, `"`, `\`, `^`, `` ` ``, `{`, `}`, `|`) before it is embedded between the `Link` field's angle brackets, so an opaque cursor token cannot terminate the `URI-Reference` early or forge extra link-params. The envelope retains the original URL; well-formed URLs pass through byte-identical.
 - **Validation collection scope.** `ScalarValueValidationMiddleware` opens a `ValidationErrorsContext` scope per request. Both `ValidatingJsonConverter<,>` and `MaybeScalarValueJsonConverter<,>` collect errors into this scope; `ScalarValueValidationFilter` (MVC) and `ScalarValueValidationEndpointFilter` (Minimal API) short-circuit with a validation problem when the scope is non-empty at action/handler entry.
 - **AOT-generated converters participate in the same scope.** When an assembly opts into the source generator (a partial `JsonSerializerContext` decorated with `[GenerateScalarValueConverters]` — the attribute is required; merely referencing the generator from the project is not enough, and an undecorated `JsonSerializerContext` is skipped), the emitted `JsonConverter<TValue>`s mirror `ScalarValueJsonConverterBase<,,>` bit-for-bit — they read `ValidationErrorsContext.CurrentPropertyName` for the field name (falling back to the camel-cased type name when the AOT path has no `PropertyNameAwareConverter<T>` setting it), call `TryCreate(primitive, fieldName)`, and on failure call `ValidationErrorsContext.AddError(...)` (forwarding `Error.InvalidInput` directly to preserve each violation's reason code and args, otherwise recording the `Detail` string under `fieldName`). Without this, AOT consumers got `null` on validation failure while reflection-mode consumers got a 422 — a divergence that broke "one programming model" between the two modes. The factory `Trellis.Generated.GeneratedValueObjectConverterFactory` is emitted by the generator alongside the per-type converters; consumers wire it in by adding it to their `JsonSerializerOptions.Converters` collection (e.g. inside `AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new GeneratedValueObjectConverterFactory()))`). The generator does not auto-register the factory.
 - **`[GenerateScalarValueConverters]` cannot annotate your types for System.Text.Json.** Roslyn source generators all analyze the same original compilation and cannot observe one another's output, so any attribute Trellis emits is invisible to System.Text.Json's generator. Two attributes must therefore be written by hand:
@@ -1544,6 +1576,20 @@ app.MapGet("/widgets", async (string? cursor, int? limit, IWidgetReader reader, 
         body: w => new WidgetResponse(w.Id, w.Name));
 });
 ```
+
+When an endpoint supports distinct forward and backward query parameters, select the
+direction-aware overload instead. The endpoint must actually implement both directions;
+this callback only formats the links supplied by the page:
+
+```csharp
+return page.ToHttpResponse(
+    urlBuilder: (cursor, direction, applied) =>
+        $"https://api.example.com/widgets?{(direction == PageDirection.Next ? "after" : "before")}={Uri.EscapeDataString(cursor.Token)}&limit={applied}",
+    body: widget => new WidgetResponse(widget.Id, widget.Name));
+```
+
+Both overload shapes also support `Task<Result<Page<T>>>` and
+`ValueTask<Result<Page<T>>>` through `ToHttpResponseAsync`.
 
 ### Canonical MVC controller — `ToHttpResponseAsync(...).AsActionResultAsync<T>()`
 

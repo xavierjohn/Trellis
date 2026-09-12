@@ -60,6 +60,22 @@ public static class Program
                 throw new InvalidOperationException("null should not produce a valid value object");
         });
 
+        Check(failures, "typed pagination codecs round-trip without reflection", static () =>
+        {
+            var codec = CursorCodec.Composite(CursorCodec.Composite<double, Guid>(), CursorCodec.Scalar<DateTimeOffset>());
+            var state = ((Math.BitIncrement(1.0), Guid.Parse("11111111-1111-1111-1111-111111111111")),
+                new DateTimeOffset(2026, 9, 12, 0, 0, 0, TimeSpan.FromHours(5.5)).AddTicks(1234567));
+            var cursor = codec.Encode(state);
+            if (!codec.TryDecode(cursor).TryGetValue(out var restored) || restored != state)
+                throw new InvalidOperationException("Typed cursor lost precision or state under AOT.");
+            if (!PageRequest.TryCreate(cursor.Token, 200).TryGetValue(out var request)
+                || request.Size.Applied != 100 || !request.Decode(codec).IsSuccess)
+                throw new InvalidOperationException("Pagination request did not validate under AOT.");
+            var page = PageBuilder.FromOverFetch<int>([1, 2], new PageSize(1, 1), _ => cursor);
+            if (page.Next != cursor || page.Items.Count != 1)
+                throw new InvalidOperationException("Pagination boundary assembly failed under AOT.");
+        });
+
         Check(failures, "composite value object behaves predictably", static () =>
         {
             var money = Money.Create(19.99m, "USD");

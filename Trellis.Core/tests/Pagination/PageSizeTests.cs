@@ -68,14 +68,10 @@ public class PageSizeTests
         size.WasCapped.Should().BeFalse();
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(-1000)]
-    public void FromRequested_returns_default_when_requested_is_null_or_non_positive(int? requested)
+    [Fact]
+    public void FromRequested_returns_default_when_requested_is_null()
     {
-        var size = PageSize.FromRequested(requested);
+        var size = PageSize.FromRequested(null);
 
         size.Requested.Should().Be(PageSize.Default);
         size.Applied.Should().Be(PageSize.Default);
@@ -130,7 +126,7 @@ public class PageSizeTests
 
         result.IsSuccess.Should().BeTrue();
         result.TryGetValue(out var size).Should().BeTrue();
-        size.Requested.Should().Be(50);
+        size!.Requested.Should().Be(50);
         size.Applied.Should().Be(50);
     }
 
@@ -141,7 +137,7 @@ public class PageSizeTests
 
         result.IsSuccess.Should().BeTrue();
         result.TryGetValue(out var size).Should().BeTrue();
-        size.Requested.Should().Be(PageSize.Default);
+        size!.Requested.Should().Be(PageSize.Default);
         size.Applied.Should().Be(PageSize.Default);
     }
 
@@ -159,7 +155,7 @@ public class PageSizeTests
     [Fact]
     public void TryCreate_fails_when_requested_exceeds_max()
     {
-        var result = PageSize.TryCreate(101);
+        var result = PageSize.TryCreate(101, policy: PageSizeLimitPolicy.Reject);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<Error.InvalidInput>();
@@ -168,8 +164,7 @@ public class PageSizeTests
     [Fact]
     public void TryCreate_strict_does_not_clamp()
     {
-        // FromRequested clamps; TryCreate rejects. That distinction is the whole point.
-        var result = PageSize.TryCreate(1000);
+        var result = PageSize.TryCreate(1000, policy: PageSizeLimitPolicy.Reject);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -178,13 +173,13 @@ public class PageSizeTests
     public void TryCreate_respects_custom_max()
     {
         PageSize.TryCreate(5, max: 5).IsSuccess.Should().BeTrue();
-        PageSize.TryCreate(6, max: 5).IsFailure.Should().BeTrue();
+        PageSize.TryCreate(6, max: 5, policy: PageSizeLimitPolicy.Reject).IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void TryCreate_propagates_field_name_into_error()
     {
-        var result = PageSize.TryCreate(1000, fieldName: "limit");
+        var result = PageSize.TryCreate(1000, fieldName: "limit", policy: PageSizeLimitPolicy.Reject);
 
         result.IsFailure.Should().BeTrue();
         var invalid = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
@@ -254,7 +249,7 @@ public class PageSizeTests
 
         result.IsSuccess.Should().BeTrue();
         result.TryGetValue(out var size).Should().BeTrue();
-        size.Requested.Should().Be(PageSize.Default);
+        size!.Requested.Should().Be(PageSize.Default);
         size.Applied.Should().Be(10);
         size.WasCapped.Should().BeTrue();
     }

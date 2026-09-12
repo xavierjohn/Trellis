@@ -9,8 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// API-versioning extensions on <see cref="HttpContext"/> that build paginated-list URLs in the
 /// shape expected by <c>Trellis.Asp</c>'s paged <c>ToHttpResponse</c> overloads
-/// (the <c>nextUrlBuilder</c> parameter, a <see cref="Func{T1, T2, TResult}"/> taking
-/// (<see cref="Cursor"/>, <see cref="int"/>) and returning a URL string).
+/// (the <c>nextUrlBuilder</c> convenience parameter or the direction-aware <c>urlBuilder</c>
+/// parameter taking <see cref="Cursor"/>, <see cref="PageDirection"/>, and the applied limit).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -87,7 +87,35 @@ public static class HttpContextPageUrlExtensions
         ThrowIfRouteNameInvalid(routeName);
         ArgumentNullException.ThrowIfNull(routeValues);
 
-        return (cursor, appliedLimit) =>
+        var builder = httpContext.PageUrl(routeName, (cursor, _, limit) => routeValues(cursor, limit));
+        return (cursor, limit) => builder(cursor, PageDirection.Next, limit);
+    }
+
+    /// <summary>
+    /// Returns a direction-aware URL builder for paginated <c>ToHttpResponse</c> overloads,
+    /// resolving the API version from the request and target endpoint.
+    /// </summary>
+    /// <param name="httpContext">The current request context.</param>
+    /// <param name="routeName">The name of the target route.</param>
+    /// <param name="routeValues">
+    /// Maps the cursor, <see cref="PageDirection"/>, and applied limit to route values.
+    /// The dictionary is cloned before version injection; consumer-supplied version values win.
+    /// </param>
+    /// <returns>A direction-aware URL builder scoped to the current request.</returns>
+    /// <remarks>
+    /// Version resolution, target validation, URL-segment handling, and neutral/unversioned
+    /// endpoint skip rules match the two-argument callback overload.
+    /// </remarks>
+    public static Func<Cursor, PageDirection, int, string> PageUrl(
+        this HttpContext httpContext,
+        string routeName,
+        Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        ThrowIfRouteNameInvalid(routeName);
+        ArgumentNullException.ThrowIfNull(routeValues);
+
+        return (cursor, direction, appliedLimit) =>
         {
             var targetEndpoint = FindEndpointByRouteName(httpContext, routeName)
                 ?? throw new InvalidOperationException(
@@ -97,7 +125,7 @@ public static class HttpContextPageUrlExtensions
                     "registered with the routing pipeline (MapControllers(), MapGet(...), " +
                     "MapGroup(...), etc.).");
 
-            var consumerValues = routeValues(cursor, appliedLimit)
+            var consumerValues = routeValues(cursor, direction, appliedLimit)
                 ?? throw new InvalidOperationException(
                     "PageUrl: the routeValues callback returned null. Return a RouteValueDictionary " +
                     "(possibly empty) instead.");
@@ -199,11 +227,41 @@ public static class HttpContextPageUrlExtensions
         ArgumentNullException.ThrowIfNull(version);
         ArgumentNullException.ThrowIfNull(routeValues);
 
+        var builder = httpContext.PageUrl(routeName, version, (cursor, _, limit) => routeValues(cursor, limit));
+        return (cursor, limit) => builder(cursor, PageDirection.Next, limit);
+    }
+
+    /// <summary>
+    /// Returns a direction-aware pagination URL builder pinned to a specific API version.
+    /// </summary>
+    /// <param name="httpContext">The current request context.</param>
+    /// <param name="routeName">The name of the target route.</param>
+    /// <param name="version">The API version to pin on versioned targets.</param>
+    /// <param name="routeValues">
+    /// Maps the cursor, <see cref="PageDirection"/>, and applied limit to route values.
+    /// The dictionary is cloned before version injection; the explicit version wins.
+    /// </param>
+    /// <returns>A direction-aware URL builder scoped to the current request.</returns>
+    /// <remarks>
+    /// Neutral and unversioned targets skip version injection. URL-segment targets and targets
+    /// that do not declare the pinned version are rejected, matching the two-argument callback overload.
+    /// </remarks>
+    public static Func<Cursor, PageDirection, int, string> PageUrl(
+        this HttpContext httpContext,
+        string routeName,
+        ApiVersion version,
+        Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        ThrowIfRouteNameInvalid(routeName);
+        ArgumentNullException.ThrowIfNull(version);
+        ArgumentNullException.ThrowIfNull(routeValues);
+
         // Cache the stringified version outside the closure — matches the
         // WithVersionedRoute(ApiVersion) precedent and avoids re-allocating on every call.
         var pinnedValue = version.ToString();
 
-        return (cursor, appliedLimit) =>
+        return (cursor, direction, appliedLimit) =>
         {
             var targetEndpoint = FindEndpointByRouteName(httpContext, routeName)
                 ?? throw new InvalidOperationException(
@@ -231,7 +289,7 @@ public static class HttpContextPageUrlExtensions
                     "correctly for same-version targets and validates cross-route target-version support.");
             }
 
-            var consumerValues = routeValues(cursor, appliedLimit)
+            var consumerValues = routeValues(cursor, direction, appliedLimit)
                 ?? throw new InvalidOperationException(
                     "PageUrl: the routeValues callback returned null. Return a RouteValueDictionary " +
                     "(possibly empty) instead.");

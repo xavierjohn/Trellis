@@ -20,10 +20,8 @@ using System;
 /// — a constructed <see cref="Cursor"/> always carries a non-empty token.
 /// </para>
 /// </remarks>
-public readonly record struct Cursor
+public sealed record Cursor
 {
-    private readonly string? _token;
-
     /// <summary>
     /// Creates a cursor with the supplied opaque token.
     /// </summary>
@@ -33,15 +31,16 @@ public readonly record struct Cursor
     {
         if (string.IsNullOrEmpty(token))
             throw new ArgumentException("Cursor token must be a non-empty string.", nameof(token));
-        _token = token;
+        Token = token;
     }
 
     /// <summary>The opaque continuation token. Server-defined encoding; never parsed by the client.</summary>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when accessed on a <c>default(Cursor)</c> instance. Cursors must be constructed via
-    /// <see cref="Cursor(string)"/> with a non-empty token; default-construction bypasses validation
-    /// and reading the property surfaces the violation rather than returning a misleading empty string.
-    /// </exception>
-    public string Token => _token ?? throw new InvalidOperationException(
-        "Cursor was default-constructed. Use new Cursor(token) with a non-empty token; default(Cursor) is not a valid value.");
+    public string Token { get; }
+
+    /// <summary>Validates a supplied token without throwing for malformed client input.</summary>
+    public static Result<Cursor> TryCreate(string? token, string? fieldName = null) =>
+        string.IsNullOrWhiteSpace(token)
+            ? Result.Fail<Cursor>(Error.InvalidInput.ForField(
+                fieldName ?? "cursor", ValidationCodes.CursorMalformed, "Cursor must not be empty or whitespace."))
+            : Result.Ok(new Cursor(token));
 }

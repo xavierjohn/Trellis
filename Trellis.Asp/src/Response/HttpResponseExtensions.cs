@@ -188,9 +188,9 @@ public static class HttpResponseExtensions
 
     /// <summary>
     /// Maps a <see cref="Result{T}"/> of <see cref="Page{T}"/> to an HTTP response with the
-    /// paginated envelope and an RFC 8288 <c>Link</c> header. Delegates to the existing paginated
-    /// helper (which carries the RFC 8288 logic) and feeds the failure path through the unified
-    /// error mapping.
+    /// paginated envelope and an RFC 8288 <c>Link</c> header. Uses the same
+    /// <paramref name="nextUrlBuilder"/> for both next and previous cursors.
+    /// Use the direction-aware overload when the links require different query parameters.
     /// </summary>
     public static Microsoft.AspNetCore.Http.IResult ToHttpResponse<T, TBody>(
         this Result<Page<T>> result,
@@ -199,6 +199,25 @@ public static class HttpResponseExtensions
         Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(nextUrlBuilder);
+        return result.ToHttpResponse((cursor, _, limit) => nextUrlBuilder(cursor, limit), body, configure);
+    }
+
+    /// <summary>
+    /// Maps a <see cref="Result{T}"/> of <see cref="Page{T}"/> to a paginated envelope
+    /// and matching RFC 8288 <c>Link</c> header using direction-aware URLs.
+    /// </summary>
+    /// <param name="result">The page result to map.</param>
+    /// <param name="urlBuilder">Builds an absolute URL from the cursor, link direction, and applied limit.</param>
+    /// <param name="body">Projects each domain item to the response body.</param>
+    /// <param name="configure">Optional response configuration.</param>
+    /// <returns>The paginated response, or the mapped error response on failure.</returns>
+    public static Microsoft.AspNetCore.Http.IResult ToHttpResponse<T, TBody>(
+        this Result<Page<T>> result,
+        Func<Cursor, PageDirection, int, string> urlBuilder,
+        Func<T, TBody> body,
+        Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(urlBuilder);
         ArgumentNullException.ThrowIfNull(body);
 
         var builder = new HttpResponseOptionsBuilder<Page<T>>();
@@ -235,7 +254,7 @@ public static class HttpResponseExtensions
         // short-circuits to 304 or a precondition fails into 412.
         Microsoft.AspNetCore.Http.IResult BuildInner()
         {
-            var (envelope, linkHeader) = PagedResponseBuilder.Build(page, nextUrlBuilder, body);
+            var (envelope, linkHeader) = PagedResponseBuilder.Build(page, urlBuilder, body);
             var ok = Results.Ok(envelope);
             return linkHeader is null ? ok : new PagedHttpResult(ok, linkHeader);
         }
@@ -300,6 +319,25 @@ public static class HttpResponseExtensions
         Func<T, TBody> body,
         Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)
         => (await resultTask.ConfigureAwait(false)).ToHttpResponse(nextUrlBuilder, body, configure);
+
+    /// <summary>Async <see cref="Task"/> overload with direction-aware pagination URLs.</summary>
+    public static async Task<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<T, TBody>(
+        this Task<Result<Page<T>>> resultTask,
+        Func<Cursor, PageDirection, int, string> urlBuilder,
+        Func<T, TBody> body,
+        Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return (await resultTask.ConfigureAwait(false)).ToHttpResponse(urlBuilder, body, configure);
+    }
+
+    /// <summary>Async <see cref="ValueTask"/> overload with direction-aware pagination URLs.</summary>
+    public static async ValueTask<Microsoft.AspNetCore.Http.IResult> ToHttpResponseAsync<T, TBody>(
+        this ValueTask<Result<Page<T>>> resultTask,
+        Func<Cursor, PageDirection, int, string> urlBuilder,
+        Func<T, TBody> body,
+        Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null)
+        => (await resultTask.ConfigureAwait(false)).ToHttpResponse(urlBuilder, body, configure);
 
     #endregion
 }

@@ -297,16 +297,14 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
-    [Fact]
-    public async Task Limit_zero_defaults_to_ten_and_caps_to_five()
+    [Theory]
+    [InlineData("limit=0")]
+    [InlineData("limit=-1")]
+    [InlineData("cursor=")]
+    public async Task Invalid_pagination_input_returns_422(string query)
     {
         var client = _factory.CreateClient();
-        var response = await client.GetAsync(new Uri("/api/accounts?limit=0", UriKind.Relative), Ct);
-
-        response.EnsureSuccessStatusCode();
-        var page = await response.Content.ReadFromJsonAsync<PageEnvelope>(JsonOptions, Ct);
-        page!.RequestedLimit.Should().Be(10);
-        page.AppliedLimit.Should().Be(5);
-        page.Items.Should().HaveCount(5);
+        var response = await client.GetAsync(new Uri("/api/accounts?" + query, UriKind.Relative), Ct);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 }

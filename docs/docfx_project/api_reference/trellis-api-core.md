@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, ICodedTransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
+types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, ICodedTransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, PageSizeLimitPolicy, PageRequest, "ICursorCodec<TState>", CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-09-12
 audience: [llm]
 ---
 # Trellis.Core API Reference
@@ -56,7 +56,7 @@ Use this table before searching the long type catalog.
 | Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
 | Convert a nullable reference / value to a domain failure (sync or async) | `obj.ToResult(error)` / `task.ToResultAsync(error)` / `valueTask.ToResultAsync(errorFactory)` — works on `T?` for both `class` and `struct`, plus `Task<T?>` and `ValueTask<T?>` | [`Nullable to Result`](#nullable-to-result--nullableextensions-nullableextensionsasync) |
 | Create HTTP-oriented domain errors | Closed `Error` cases plus `ResourceRef.For<TResource>(id)` | [`Error`](#public-abstract-record-error), [`Error Cases`](#error-cases-closed-adt) |
-| Page list responses | `new Page<T>(items, next, previous, requestedLimit, appliedLimit)` (or `Page.Empty<T>(...)` when there are no items), `Cursor` | [`Pagination`](#pagination) |
+| Validate pagination controls and return a page | `PageRequest.TryCreate(cursor, limit)` → typed `Decode(codec)` or EF `ToPageAsync`; `PageBuilder.FromOverFetch(rows, size, row => codec.Encode(state))` or direct `new Page<T>(...)` for provider tokens | [`Pagination`](#pagination) |
 | Model aggregates/entities/events | `Aggregate<TId>`, `Entity<TId>`, `IDomainEvent` | [`Domain-Driven Design`](#domain-driven-design) |
 | Define a stable published integration contract | `IIntegrationEvent` | [`IIntegrationEvent`](#iintegrationevent) |
 | Name an integration contract for the wire (cross-service) | `[IntegrationEventName]` | [`IntegrationEventNameAttribute`](#integrationeventnameattribute) |
@@ -1650,195 +1650,216 @@ private ValueTask<Result<Order>> LoadOrderAsync(OrderId id, CancellationToken ct
 
 ## Pagination
 
-Cursor-based pagination primitives. `Cursor` is opaque to clients; servers choose the encoding. `Page<T>` couples items with adjacent cursors and observable server-side limit clamping.
+Storage-neutral request validation, typed continuation state, and page assembly. `Cursor`, `PageSize`, `PageRequest`, and `Page<T>` are **sealed record classes**, not structs: `default` is `null`, not a valid empty page or size. Use `Page.Empty<T>(...)` for an empty result. No pagination DI registration is required.
 
-### `public readonly record struct Cursor`
+### `public sealed record Cursor`
 
 ```csharp
-public readonly record struct Cursor
+public sealed record Cursor
 {
     public Cursor(string token);
     public string Token { get; }
+    public static Result<Cursor> TryCreate(string? token, string? fieldName = null);
 }
 ```
 
-| Member | Description |
-| --- | --- |
-| `Cursor(string token)` | Constructs a cursor; throws `ArgumentException` if `token` is null or empty. |
-| `Token` | The opaque continuation token. Server-defined encoding; clients must echo it back unchanged. |
+`Token` is opaque: clients echo it unchanged. The trusted constructor throws `ArgumentException` for null/empty strings; `TryCreate` additionally rejects whitespace-only input with `Error.InvalidInput`, field `fieldName ?? "cursor"`, reason `cursor.malformed`. Neither validates a codec-specific payload. Absence belongs to `Cursor?` / `PageRequest`; `Cursor.TryCreate(null)` is a failure.
 
-Absence of a cursor is represented by `null` (`Cursor?`). There is no "empty cursor" — a constructed `Cursor` always carries a non-empty token.
-
-### `public readonly record struct Page<T>`
+### `public sealed record PageRequest`
 
 ```csharp
-public readonly record struct Page<T>
+public sealed record PageRequest
 {
-    public Page(
-        IReadOnlyList<T> items,
-        Cursor? next,
-        Cursor? previous,
-        int requestedLimit,
-        int appliedLimit);
+    public PageSize Size { get; }
+    public Cursor? Cursor { get; }
 
-    public IReadOnlyList<T> Items { get; }
-    public Cursor?          Next { get; }
-    public Cursor?          Previous { get; }
-    public int              RequestedLimit { get; }
-    public int              AppliedLimit { get; }
-    public int              DeliveredCount { get; }
-    public bool             WasCapped { get; }
+    public static Result<PageRequest> TryCreate(
+        string? cursor, int? limit,
+        int max = PageSize.Max, int defaultSize = PageSize.Default,
+        PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp,
+        string? cursorFieldName = null, string? limitFieldName = null);
+
+    public Result<Maybe<TState>> Decode<TState>(
+        ICursorCodec<TState> codec, string? fieldName = null)
+        where TState : notnull;
 }
 ```
 
-| Member | Description |
-| --- | --- |
-| `Page(IReadOnlyList<T>, Cursor?, Cursor?, int, int)` | Validated constructor. Throws `ArgumentNullException` on null `Items`, `ArgumentException` when `Next`/`Previous` is `default(Cursor)` (use `null` to signal absence), `ArgumentOutOfRangeException` on a non-positive limit or `AppliedLimit > RequestedLimit`. Copies the input sequence so later caller-side list mutations cannot change the page. |
-| `Items` | The items returned for this page. Never null; `default(Page<T>)` observes an empty sequence. |
-| `Next` | Cursor for the next page, or `null` on the last page. |
-| `Previous` | Cursor for the previous page, or `null` on the first page (or when the source doesn't support reverse). |
-| `RequestedLimit` | The limit the client requested. |
-| `AppliedLimit` | The limit the server actually applied (after server-side cap). |
-| `DeliveredCount` | `Items.Count`, defensive against `default(Page<T>)` (returns 0 when `Items` is null). |
-| `WasCapped` | `true` when `AppliedLimit < RequestedLimit`. |
+There is no public constructor. `TryCreate` validates size first, then token presence/shape. Missing (`null`) cursor means the first page; an empty or whitespace cursor fails rather than restarting pagination. Missing limit uses the configured default; zero and negative limits fail. Explicit above-cap limits clamp by default; opt into `PageSizeLimitPolicy.Reject` to reject instead. Fields default to `"cursor"` and `"limit"` respectively.
 
-`Page<T>` equality and hash code include item sequence contents (not the caller's list reference) plus cursors and limits.
+`Decode(codec)` returns success with `Maybe<TState>.None` for the first page and decodes only supplied cursors through `CursorCodec.TryDecodeOptional`. It preserves codec failures; a codec returning successful null state violates its contract and throws `InvalidOperationException`, rather than silently becoming first-page absence. Pass `fieldName` again when decoding a differently named cursor field: field-name overrides are not stored in the request. A null codec throws `ArgumentNullException`.
 
-### `public static class Page`
-
-Non-generic factory companion (mirrors the `Result` / `Result<T>` split — keeps the generic surface minimal per CA1000).
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static Page<T> Empty<T>(int requestedLimit, int appliedLimit)` | `Page<T>` | An empty page (no items, no cursors) for the supplied limits. |
-
-### `Page<T>.Map<TOut>`
+### `public sealed record PageSize`
 
 ```csharp
-public Page<TOut> Map<TOut>(Func<T, TOut> selector);
-```
-
-| Member | Description |
-| --- | --- |
-| `Map<TOut>(Func<T, TOut>)` | Projects each item to a new type, preserving `Next`, `Previous`, `RequestedLimit`, and `AppliedLimit`. Throws `ArgumentNullException` when `selector` is null. Use to return `Page<Dto>` from a repository call that yielded `Page<Entity>` without re-running the cursor/limit ceremony. |
-
-### `public readonly record struct PageSize`
-
-```csharp
-public readonly record struct PageSize
+public sealed record PageSize
 {
     public const int Default = 50;
     public const int Max = 100;
+    public const int MaxApplied = int.MaxValue - 1;
 
-    public PageSize(int requested, int applied);   // validates: requested > 0, applied > 0, applied <= requested
-    public int  Requested { get; }
-    public int  Applied   { get; }
+    public PageSize(int requested, int applied);
+    public int Requested { get; }
+    public int Applied { get; }
     public bool WasCapped { get; }
 
     public static PageSize FromRequested(int? requested, int max = Max);
-    public static Result<PageSize> TryCreate(int? requested, int max = Max, string? fieldName = null);
+    public static Result<PageSize> TryCreate(
+        int? requested, int max = Max, string? fieldName = null,
+        PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp,
+        int defaultSize = Default);
+}
+
+public enum PageSizeLimitPolicy { Clamp, Reject }
+```
+
+| Input / member | Behavior |
+| --- | --- |
+| Missing requested size | `Requested = defaultSize`, `Applied = min(defaultSize, max)`, including under `Reject`. |
+| Explicit size `<= 0` | Failed result, `Error.InvalidInput`, reason `page-size.out-of-range`, field `fieldName ?? "pageSize"`. |
+| Explicit size above `max` | `Clamp` preserves `Requested` and caps `Applied`; `Reject` returns the same field-specific reason code. |
+| `WasCapped` | `Applied < Requested`; survives page assembly and DTO projection. |
+| `PageSize(int requested, int applied)` | Trusted constructor: `requested > 0`, `0 < applied <= requested`, and `applied <= MaxApplied`; otherwise `ArgumentOutOfRangeException`. |
+| `FromRequested(int?, int)` | Trusted, throwing convenience using the same default/clamp policy as `TryCreate`. **Non-positive input throws**, rather than becoming the default. Use `TryCreate` / `PageRequest.TryCreate` for request data. |
+| Server configuration | Invalid `max` (`<= 0` or `> MaxApplied`), non-positive `defaultSize`, or undefined policy throws `ArgumentOutOfRangeException`; these are not client failures. |
+
+The `MaxApplied` bound keeps `Applied + 1` safe for over-fetching. `Requested` may be larger than `MaxApplied` when the applied size is capped safely.
+
+### `public sealed record Page<T>`
+
+```csharp
+public sealed record Page<T>
+{
+    public Page(
+        IReadOnlyList<T> Items, Cursor? Next, Cursor? Previous,
+        int RequestedLimit, int AppliedLimit);
+
+    public IReadOnlyList<T> Items { get; }
+    public Cursor? Next { get; }
+    public Cursor? Previous { get; }
+    public int RequestedLimit { get; }
+    public int AppliedLimit { get; }
+    public int DeliveredCount { get; }
+    public bool WasCapped { get; }
+    public Page<TOut> Map<TOut>(Func<T, TOut> selector);
 }
 ```
 
-| Member | Description |
-| --- | --- |
-| `Default` / `Max` | Convention constants. `Default = 50` is used when the client doesn't supply a limit; `Max = 100` is the server-side ceiling. |
-| `PageSize(int, int)` | Validated constructor. Throws `ArgumentOutOfRangeException` when either limit is non-positive or when `applied > requested`. |
-| `Requested` / `Applied` | The pair the caller asked for and the value the server actually used. Composes directly with `Page<T>` so `WasCapped` round-trips through the wire envelope. |
-| `WasCapped` | `true` when `Applied < Requested`. |
-| `FromRequested(int?, int)` | Lenient parser. When `requested` is `null` or non-positive, returns `Requested = Default` and `Applied = min(Default, max)` (so a custom `max < Default` still clamps `Applied` and surfaces as `WasCapped`). When `requested` is positive, preserves it verbatim and clamps `Applied` to `max`. |
-| `TryCreate(int?, int, string?)` | Strict parser. A `null` `requested` returns `Result.Ok` with `Default` (like `FromRequested`); a non-positive or out-of-range value returns `Result.Fail<PageSize>` with `Error.InvalidInput` (uses `fieldName ?? "pageSize"` for the field violation). |
+The constructor snapshots items into immutable storage; equality/hash code use item sequence contents, both cursors, and both limits. Null `Items` throws `ArgumentNullException`. Limits must be positive, `AppliedLimit <= RequestedLimit`, and `AppliedLimit <= PageSize.MaxApplied`; violations throw `ArgumentOutOfRangeException`. `DeliveredCount` is `Items.Count`; `WasCapped` means `AppliedLimit < RequestedLimit`.
+
+`Next` and `Previous` are independently optional. Construct a page directly when a provider supplies continuation tokens — wrap each present provider token in `Cursor` and do not decode it with a Trellis codec or manufacture an over-fetch batch. A provider may supply a continuation even with no items; item count alone does not establish exhaustion for such stores.
+
+### `public static class Page`
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Page<T> Empty<T>(int requestedLimit, int appliedLimit)` | `Page<T>` | Validated empty page with neither cursor. |
+
+### `Page<T>.Map<TOut>`
+
+`public Page<TOut> Map<TOut>(Func<T, TOut> selector)` projects items while preserving `Next`, `Previous`, `RequestedLimit`, and `AppliedLimit`. A null selector throws `ArgumentNullException`. It does not encode new cursors from projected DTOs.
+
+### `ICursorCodec<TState>`
+
+```csharp
+public interface ICursorCodec<TState> where TState : notnull
+{
+    Cursor Encode(TState state);
+    Result<TState> TryDecode(Cursor? cursor, string? fieldName = null);
+}
+```
+
+The state is the **complete continuation boundary**, not necessarily an ID. Implementations own serialization, validation, and any query-context binding/protection. `TryDecode(null)` on a built-in codec is malformed; use `PageRequest.Decode` to model optional absence.
 
 ### `public static class CursorCodec`
 
 ```csharp
 public static class CursorCodec
 {
-    public static Cursor Encode<TKey>(TKey id)
-        where TKey : notnull;
+    public const int MaxEncodedTokenLength = 1024;
 
-    public static Result<TKey> TryDecode<TKey>(Cursor cursor, string? fieldName = null)
-        where TKey : IParsable<TKey>;
+    public static ICursorCodec<T> Scalar<T>() where T : notnull, IParsable<T>;
 
-    public static Cursor Encode<TKey>(DateTimeOffset createdAt, TKey id)
-        where TKey : notnull;
+    public static ICursorCodec<(TPrimary Primary, TSecondary Secondary)>
+        Composite<TPrimary, TSecondary>()
+        where TPrimary : notnull, IParsable<TPrimary>
+        where TSecondary : notnull, IParsable<TSecondary>;
 
+    public static ICursorCodec<(TPrimary Primary, TSecondary Secondary)>
+        Composite<TPrimary, TSecondary>(
+            ICursorCodec<TPrimary> primary, ICursorCodec<TSecondary> secondary)
+        where TPrimary : notnull where TSecondary : notnull;
+
+    public static ICursorCodec<TState> Create<TState>(
+        string schema, Func<TState, string> format,
+        Func<string, string?, Result<TState>> parse) where TState : notnull;
+
+    public static ICursorCodec<TState> Map<TWire, TState>(
+        ICursorCodec<TWire> wireCodec, Func<TState, TWire> toWire,
+        Func<TWire, string?, Result<TState>> fromWire)
+        where TWire : notnull where TState : notnull;
+
+    public static Cursor Encode<T>(T id) where T : notnull, IParsable<T>;
+    public static Cursor Encode<TPrimary, TSecondary>(TPrimary primary, TSecondary secondary)
+        where TPrimary : notnull, IParsable<TPrimary>
+        where TSecondary : notnull, IParsable<TSecondary>;
+    public static Result<T> TryDecode<T>(Cursor? cursor, string? fieldName = null)
+        where T : notnull, IParsable<T>;
+    public static Result<Maybe<TState>> TryDecodeOptional<TState>(
+        Cursor? cursor, ICursorCodec<TState> codec, string? fieldName = null)
+        where TState : notnull;
+    public static Result<(TPrimary Primary, TSecondary Secondary)>
+        TryDecodeComposite<TPrimary, TSecondary>(Cursor? cursor, string? fieldName = null)
+        where TPrimary : notnull, IParsable<TPrimary>
+        where TSecondary : notnull, IParsable<TSecondary>;
     public static Result<(DateTimeOffset CreatedAt, TKey Id)> TryDecodeComposite<TKey>(
-        Cursor cursor, string? fieldName = null)
-        where TKey : IParsable<TKey>;
+        Cursor? cursor, string? fieldName = null) where TKey : notnull, IParsable<TKey>;
 }
 ```
 
-| Member | Description |
+| Factory | Contract |
 | --- | --- |
-| `Encode<TKey>(TKey)` | Single-key cursor: URL-safe base64 of the key's invariant-culture string form. Supported keys include `Guid`, `long`, `int`, and `string`. Source-generated `Required*` value-object IDs round-trip directly (they inherit `IFormattable` and gain `IParsable<TSelf>` from the generator); only hand-written value objects lacking `IParsable<TSelf>` need projecting to their underlying primitive (`.Value`). |
-| `TryDecode<TKey>(Cursor, string?)` | Inverse of the single-key `Encode`. Returns `Error.InvalidInput` (reason code `cursor.malformed`, field `fieldName ?? "cursor"`) on malformed base64, oversized tokens, invalid UTF-8, or unparseable payload. |
-| `Encode<TKey>(DateTimeOffset, TKey)` | Composite cursor for stable time-ordered seek: URL-safe base64 of `"{createdAt:O}&#124;{id}"` in invariant culture. |
-| `TryDecodeComposite<TKey>` | Inverse of the composite `Encode`. Returns `Error.InvalidInput` (reason code `cursor.malformed`, field `fieldName ?? "cursor"`) on malformed base64, oversized tokens, invalid UTF-8, missing separator, or unparseable segments. Splits at the **first** `&#124;` only, so an Id that happens to contain a pipe is still unambiguous. |
+| `Scalar<T>()` | Invariant parsing/formatting. Requires `IParsable<T>` at compile time and `IFormattable` (or `string`) at factory creation; unsupported formatting throws `NotSupportedException` before a query runs. Generated scalar IDs satisfying both contracts work; otherwise project `.Value` or supply an explicit codec. |
+| `Composite<TPrimary,TSecondary>()` | Uses scalar codecs for any supported primary/secondary types, not only timestamps and IDs. |
+| `Composite(primary, secondary)` | Composes arbitrary codecs, including nested composites. Each component is encoded by its own codec; length-prefix framing keeps delimiters inside strings unambiguous. |
+| `Create(schema, format, parse)` | Explicit serializer/parser, not an implicit JSON fallback. Schema must be 1–64 ASCII letters, digits, or hyphens. The parser validates domain bounds/context and returns field-specific invalid-input errors for bad client state. |
+| `Map(wireCodec, toWire, fromWire)` | Maps a wire representation into named, validated domain state without rewriting serialization. `fromWire` runs on decode and during encode validation. See [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state). |
 
-**Opacity, not anti-tamper.** Cursors are server-opaque so that clients don't reverse-engineer the sort key, but the encoding is **not** signed. Services that need to defend against tampering must wrap or replace this codec with a signed variant; authorization filtering must always apply to the underlying query.
+`TryDecodeOptional(cursor, codec, fieldName)` is the shared optional-state adapter used by `PageRequest.Decode` and EF pagination: only a null cursor means `Maybe<TState>.None`; otherwise codec failures propagate and successful non-null state becomes present. A null codec throws `ArgumentNullException`; a codec returning successful null state throws `InvalidOperationException`. This is distinct from scalar `TryDecode`, which rejects an absent cursor.
 
-**AOT-friendly.** No JSON, no reflection. The codec only uses `Convert.ToBase64String`, URL-safe substitution, and `IParsable<TKey>.TryParse` with `CultureInfo.InvariantCulture`.
+**Wire contract.** The entire UTF-8 frame is URL-safe base64 without padding. Decoded frames start with `1:s:` (scalar), `1:c:` (composite), or `1:x-<schema>:` (explicit codec). Composite payloads contain the decimal length of the first component token, `:`, that token, and the second component token. Nesting is supported within the overall size limit. **Old unversioned tokens are intentionally rejected; no migration decoder is provided.**
+
+**Round-trip contract.** `Encode` parses the emitted state and verifies equality against the input; invalid server state or a lossy formatter throws `ArgumentException` instead of emitting a cursor that cannot continue correctly. Use state with appropriate value equality (for example a record). Scalar floating-point values must be finite; NaN and infinities are rejected. `DateTime` / `DateTimeOffset` use round-trip `"O"` formatting and parsing to preserve ticks and kind/offset, not a rounded display timestamp. Built-in codecs enforce `MaxEncodedTokenLength = 1024` on both encoding and decoding, including the outer frame of nested composites.
+
+**Failure boundary.** Malformed base64, invalid UTF-8/framing/version, oversized input, and unparseable scalar state return `Error.InvalidInput` with `cursor.malformed` on `fieldName ?? "cursor"`. Custom parsers must return failures for expected bad input; arbitrary parser/formatter and infrastructure exceptions are not silently converted to input errors. A parser, mapped-state converter, or component codec returning successful null state throws `InvalidOperationException` on decode or encode validation: this is a broken codec contract, not invalid client input or first-page absence. `Create`, `Map`, and composite decoding enforce that distinction.
+
+**Opacity is not protection.** Built-ins are AOT-friendly and require no JSON serializer, but do not sign or encrypt tokens. Context binding (tenant, filters, origin, sort direction, algorithm version) belongs to the application codec. Wrap/replace `ICursorCodec<TState>` for signing/protection; authorization filters still apply to every query.
 
 ### `public static class PageBuilder`
 
 ```csharp
 public static class PageBuilder
 {
-    public static Page<T> FromOverFetch<T, TKey>(
-        IReadOnlyList<T> overFetched,
-        PageSize pageSize,
-        Func<T, TKey> idSelector)
-        where TKey : notnull;
-
-    public static Page<T> FromOverFetch<T, TKey>(
-        IReadOnlyList<T> overFetched,
-        PageSize pageSize,
-        Func<T, DateTimeOffset> createdAtSelector,
-        Func<T, TKey> idSelector)
-        where TKey : notnull;
+    public static Page<T> FromOverFetch<T>(
+        IReadOnlyList<T> overFetched, PageSize pageSize,
+        Func<T, Cursor> cursorSelector);
 }
 ```
 
-Storage-agnostic over-fetch slicer. The caller asks the data source for `pageSize.Applied + 1` rows ordered by the same key(s) returned by the selectors; `FromOverFetch` keeps the first `pageSize.Applied` rows, emits a `Next` cursor from the **last kept** item via `CursorCodec`, and returns a validated `Page<T>`. Works with EF Core, Dapper, Cosmos, gRPC, or in-memory sources alike.
+**Pure assembly only.** The caller filters, seeks, orders, and fetches `pageSize.Applied + 1` rows first. The builder keeps at most `Applied` rows and invokes `cursorSelector` on the **last retained item exactly once, only when more rows exist**. On an empty, short, or exactly full final batch, the callback is never called and `Next` is null. `Previous` is always null. A null argument throws `ArgumentNullException`; a callback returning null throws `InvalidOperationException`.
 
-**Forward-only.** `Previous` is always `null`. Trellis does not yet ship a reverse-seek API; emitting a previous cursor that the forward URL builder would walk would re-fetch the current page rather than the page before it.
-
-**Selector contract.** The selectors passed to `FromOverFetch` MUST match the sort keys used in the upstream query. Mismatched selectors produce semantically wrong cursors — the boundary item the cursor points at will not be the one the next query would seek past.
-
-**Wire shape.** `Trellis.Asp` projects `Page<T>` to `200 OK` with a JSON body envelope and a co-emitted `Link` header (RFC 8288). See `HttpResponseExtensions.ToHttpResponse` for the `Result<Page<T>>` overload. Trellis intentionally does **not** use `206 Partial Content` for collection pagination — RFC 9110 §14 was designed for byte-range transfer and lacks proxy/CDN support for collection ranges.
+The callback returns a **Cursor**, not a raw key. There are no scalar-key or timestamp-selector overloads:
 
 ```csharp
-public async Task<Result<Page<OrderListItem>>> Handle(ListOrdersQuery query, CancellationToken ct)
-{
-    var pageSize = PageSize.FromRequested(query.Limit);
-
-    Guid? afterId = null;
-    if (query.Cursor is { } cursorToken)
-    {
-        if (cursorToken.Length == 0)
-            return Result.Fail<Page<OrderListItem>>(
-                Error.InvalidInput.ForField("cursor", "cursor.malformed", "Cursor must not be empty."));
-
-        var decoded = CursorCodec.TryDecode<Guid>(new Cursor(cursorToken), fieldName: "cursor");
-        if (!decoded.TryGetValue(out var id, out var cursorError))
-            return Result.Fail<Page<OrderListItem>>(cursorError);
-
-        afterId = id;
-    }
-
-    var ordered = db.Orders.AsNoTracking().OrderBy(o => o.Id);
-    var filtered = afterId is { } cursorId
-        ? ordered.Where(o => o.Id.Value > cursorId)
-        : (IQueryable<Order>)ordered;
-
-    var rows = await filtered.Take(pageSize.Applied + 1).ToListAsync(ct);
-
-    return Result.Ok(
-        PageBuilder.FromOverFetch(rows, pageSize, o => o.Id.Value)
-            .Map(o => new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value)));
-}
+var codec = CursorCodec.Composite<DateTimeOffset, Guid>();
+var page = PageBuilder.FromOverFetch(
+    orderedAndSoughtRows, pageSize,
+    row => codec.Encode((row.CreatedAt, row.Id)));
 ```
+
+The encoded boundary must match the upstream ordering and tie-breaker. Use EF [`SeekDefinition`](trellis-api-efcore.md#seekdefinition) / [`PaginationQueryableExtensions`](trellis-api-efcore.md#paginationqueryableextensions) for provider-translatable ordering/seek, or [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) for application-owned computed pagination. Provider-owned continuation tokens should use the direct `Page<T>` constructor instead.
+
+**Wire shape.** `Trellis.Asp` maps `Result<Page<T>>` to `200 OK` with a JSON envelope and RFC 8288 `Link` header; see [`pagination response mapping`](trellis-api-asp.md#use-this-file-when). Neither Core assembly nor EF helpers implement reverse-seek, signing, geospatial queries, or snapshot isolation. A direct `Page<T>` can still preserve a provider-supplied `Previous`.
 
 ---
 

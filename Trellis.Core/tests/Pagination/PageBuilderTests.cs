@@ -20,7 +20,7 @@ public sealed class PageBuilderTests
             new(Guid.NewGuid(), DateTimeOffset.UtcNow, "b"),
         };
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
         page.Items.Count.Should().Be(2);
         page.Next.Should().BeNull();
@@ -40,7 +40,7 @@ public sealed class PageBuilderTests
             new(Guid.NewGuid(), DateTimeOffset.UtcNow, "c"),
         };
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
         page.Items.Count.Should().Be(3);
         page.Next.Should().BeNull();
@@ -61,13 +61,13 @@ public sealed class PageBuilderTests
             new(sentinelId, DateTimeOffset.UtcNow, "d"),
         };
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
         page.Items.Count.Should().Be(3);
         page.Next.Should().NotBeNull();
         page.Previous.Should().BeNull();
 
-        var decoded = CursorCodec.TryDecode<Guid>(page.Next!.Value);
+        var decoded = CursorCodec.TryDecode<Guid>(page.Next!);
         decoded.IsSuccess.Should().BeTrue();
         decoded.TryGetValue(out var decodedId).Should().BeTrue();
         decodedId.Should().Be(lastKeptId);
@@ -79,7 +79,7 @@ public sealed class PageBuilderTests
         var pageSize = PageSize.FromRequested(50);
         var fetched = new List<Row>();
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
         page.Items.Count.Should().Be(0);
         page.Next.Should().BeNull();
@@ -94,7 +94,7 @@ public sealed class PageBuilderTests
             .Select(_ => new Row(Guid.NewGuid(), DateTimeOffset.UtcNow, "x"))
             .ToList();
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
         page.Items.Count.Should().Be(100);
         page.RequestedLimit.Should().Be(1000);
@@ -115,7 +115,7 @@ public sealed class PageBuilderTests
             new(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(-1), "b"),
         };
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.CreatedAt, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
 
         page.Items.Count.Should().Be(2);
         page.Next.Should().BeNull();
@@ -138,13 +138,13 @@ public sealed class PageBuilderTests
             new(sentinelId, sentinelCreated, "c"),
         };
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.CreatedAt, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
 
         page.Items.Count.Should().Be(2);
         page.Next.Should().NotBeNull();
         page.Previous.Should().BeNull();
 
-        var decoded = CursorCodec.TryDecodeComposite<Guid>(page.Next!.Value);
+        var decoded = CursorCodec.TryDecodeComposite<Guid>(page.Next!);
         decoded.IsSuccess.Should().BeTrue();
         decoded.TryGetValue(out var pair).Should().BeTrue();
         pair.CreatedAt.Should().Be(lastKeptCreated);
@@ -157,7 +157,7 @@ public sealed class PageBuilderTests
         var pageSize = PageSize.FromRequested(25);
         var fetched = new List<Row>();
 
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => r.CreatedAt, r => r.Id);
+        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
 
         page.Items.Count.Should().Be(0);
         page.Next.Should().BeNull();
@@ -176,8 +176,8 @@ public sealed class PageBuilderTests
             new(Guid.NewGuid(), DateTimeOffset.UtcNow, "d"),
         };
 
-        var single = PageBuilder.FromOverFetch(fetched, pageSize, r => r.Id);
-        var composite = PageBuilder.FromOverFetch(fetched, pageSize, r => r.CreatedAt, r => r.Id);
+        var single = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
+        var composite = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
 
         single.Previous.Should().BeNull();
         composite.Previous.Should().BeNull();
@@ -190,9 +190,9 @@ public sealed class PageBuilderTests
     {
         var fetched = new List<Row> { new(Guid.NewGuid(), DateTimeOffset.UtcNow, "a") };
 
-        var act = () => PageBuilder.FromOverFetch(fetched, default(PageSize), r => r.Id);
+        var act = () => PageBuilder.FromOverFetch(fetched, null!, r => CursorCodec.Encode(r.Id));
 
-        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("pageSize");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("pageSize");
     }
 
     [Fact]
@@ -200,8 +200,8 @@ public sealed class PageBuilderTests
     {
         var fetched = new List<Row> { new(Guid.NewGuid(), DateTimeOffset.UtcNow, "a") };
 
-        var act = () => PageBuilder.FromOverFetch(fetched, default(PageSize), r => r.CreatedAt, r => r.Id);
+        var act = () => PageBuilder.FromOverFetch(fetched, null!, r => CursorCodec.Encode(r.CreatedAt, r.Id));
 
-        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("pageSize");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("pageSize");
     }
 }
