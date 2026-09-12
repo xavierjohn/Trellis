@@ -37,6 +37,41 @@ public class ToPageAsyncSqlServerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Composite_MixedDirections_UsesSqlServerGuidOrdering()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var start = new DateTime(2026, 9, 12, 0, 0, 0, DateTimeKind.Utc).AddTicks(1234567);
+        for (var i = 0; i < 9; i++)
+            _context.Customers.Add(new TestCustomer
+            {
+                Id = TestCustomerId.NewUniqueV4(),
+                Name = TestCustomerName.Create($"Composite{i}"),
+                Email = EmailAddress.Create($"composite{i}@example.com"),
+                CreatedAt = start.AddDays(i % 2),
+            });
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+        var expected = await _context.Customers.OrderByDescending(c => c.CreatedAt)
+            .ThenBy(c => c.Id.Value).Select(c => c.Id.Value).ToListAsync(ct);
+        var seek = SeekDefinition.Descending<TestCustomer, DateTime>(c => c.CreatedAt)
+            .ThenAscending(c => c.Id.Value);
+        var collected = new List<Guid>();
+        Cursor? cursor = null;
+        for (var i = 0; i < 10; i++)
+        {
+            var page = (await _context.Customers.ToPageAsync(new PageSize(2, 2), cursor, seek,
+                cancellationToken: ct)).Unwrap();
+            collected.AddRange(page.Items.Select(c => c.Id.Value));
+            cursor = page.Next;
+            if (cursor is null)
+                break;
+        }
+
+        collected.Should().Equal(expected);
+        cursor.Should().BeNull();
+    }
+
+    [Fact]
     public async Task GuidKey_RoundTrips_AcrossPages_SqlServer()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -72,7 +107,7 @@ public class ToPageAsyncSqlServerIntegrationTests : IAsyncLifetime
             var result = await _context.Customers
                 .ToPageAsync(pageSize, cursor, c => c.Id.Value, cancellationToken: ct);
 
-            result.TryGetValue(out var page).Should().BeTrue();
+            var page = result.Unwrap();
             collected.AddRange(page.Items.Select(c => c.Id.Value));
 
             if (page.Next is null)

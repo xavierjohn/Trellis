@@ -18,7 +18,7 @@ public interface IAccountRepository
     /// the requested limit. A malformed cursor produces <see cref="Error.InvalidInput"/>
     /// carrying a field violation on <c>cursor</c>.
     /// </summary>
-    Result<Page<BankAccount>> GetPage(int limit, Cursor? cursor);
+    Result<Page<BankAccount>> GetPage(int? limit, string? cursor);
 }
 
 /// <summary>
@@ -67,30 +67,25 @@ public sealed class InMemoryAccountRepository : IAccountRepository
 
     private const int ServerCap = 5;
 
-    public Result<Page<BankAccount>> GetPage(int limit, Cursor? cursor)
+    public Result<Page<BankAccount>> GetPage(int? limit, string? cursor) =>
+        PageRequest.TryCreate(cursor, limit, max: ServerCap, defaultSize: 10).Bind(GetPage);
+
+    private Result<Page<BankAccount>> GetPage(PageRequest request)
     {
-        var pageSize = PageSize.FromRequested(limit <= 0 ? 10 : limit, max: ServerCap);
-
-        Guid? afterId = null;
-        if (cursor is { } c)
-        {
-            var decoded = CursorCodec.TryDecode<Guid>(c);
-            if (decoded.IsFailure)
-                return Result.Fail<Page<BankAccount>>(decoded.Error!);
-
-            decoded.TryGetValue(out var id);
-            afterId = id;
-        }
+        var decoded = request.Decode(CursorCodec.Scalar<Guid>());
+        if (!decoded.TryGetValue(out var boundary, out var error))
+            return Result.Fail<Page<BankAccount>>(error);
+        Guid? afterId = boundary.TryGetValue(out var id) ? id : null;
 
         lock (_gate)
         {
             var overFetched = _accounts.Values
                 .OrderBy(a => a.Id.Value)
                 .Where(a => afterId is not Guid g || a.Id.Value.CompareTo(g) > 0)
-                .Take(pageSize.Applied + 1)
+                .Take(request.Size.Applied + 1)
                 .ToList();
 
-            return Result.Ok(PageBuilder.FromOverFetch(overFetched, pageSize, a => a.Id.Value));
+            return Result.Ok(PageBuilder.FromOverFetch(overFetched, request.Size, a => CursorCodec.Encode(a.Id.Value)));
         }
     }
 }

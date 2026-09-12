@@ -137,7 +137,7 @@ public class CursorCodecTests
         var act = () => CursorCodec.Encode("");
 
         act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("id");
+            .Which.ParamName.Should().Be("state");
     }
 
     [Fact]
@@ -152,9 +152,15 @@ public class CursorCodecTests
         decoded.Error.Should().BeOfType<Error.InvalidInput>();
     }
 
-    private sealed class NonFormattableKey
+    private sealed class NonFormattableKey : IParsable<NonFormattableKey>
     {
         public override string ToString() => "anything";
+        public static NonFormattableKey Parse(string s, IFormatProvider? provider) => new();
+        public static bool TryParse(string? s, IFormatProvider? provider, out NonFormattableKey result)
+        {
+            result = new();
+            return true;
+        }
     }
 
     // ───── Composite (CreatedAt, Id) encode/decode ─────────────────────────────
@@ -167,7 +173,7 @@ public class CursorCodecTests
         var act = () => CursorCodec.Encode(DateTimeOffset.UtcNow, "");
 
         act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("id");
+            .Which.ParamName.Should().Be("state");
     }
 
     [Fact]

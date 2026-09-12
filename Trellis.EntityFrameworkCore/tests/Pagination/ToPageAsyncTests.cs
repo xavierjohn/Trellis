@@ -75,7 +75,7 @@ public class ToPageAsyncTests : IDisposable
         var result = await _context.Orders.ToPageAsync(pageSize, cursor: null, o => o.Amount, cancellationToken: ct);
 
         result.IsSuccess.Should().BeTrue();
-        result.TryGetValue(out var page).Should().BeTrue();
+        var page = result.Unwrap();
         page.Items.Should().BeEmpty();
         page.Next.Should().BeNull();
         page.RequestedLimit.Should().Be(10);
@@ -90,7 +90,7 @@ public class ToPageAsyncTests : IDisposable
 
         var result = await _context.Orders.ToPageAsync(new PageSize(10, 10), cursor: null, o => o.Amount, cancellationToken: ct);
 
-        result.TryGetValue(out var page).Should().BeTrue();
+        var page = result.Unwrap();
         page.Items.Should().HaveCount(3);
         page.Next.Should().BeNull();
     }
@@ -103,7 +103,7 @@ public class ToPageAsyncTests : IDisposable
 
         var result = await _context.Orders.ToPageAsync(new PageSize(5, 5), cursor: null, o => o.Amount, cancellationToken: ct);
 
-        result.TryGetValue(out var page).Should().BeTrue();
+        var page = result.Unwrap();
         page.Items.Should().HaveCount(5);
         page.Next.Should().BeNull();
     }
@@ -116,7 +116,7 @@ public class ToPageAsyncTests : IDisposable
 
         var result = await _context.Orders.ToPageAsync(new PageSize(3, 3), cursor: null, o => o.Amount, cancellationToken: ct);
 
-        result.TryGetValue(out var page).Should().BeTrue();
+        var page = result.Unwrap();
         page.Items.Should().HaveCount(3);
         page.Items.Select(o => o.Amount).Should().Equal(1m, 2m, 3m);
         page.Next.Should().NotBeNull();
@@ -137,7 +137,7 @@ public class ToPageAsyncTests : IDisposable
         for (var pageIndex = 0; pageIndex < 5; pageIndex++)
         {
             var pageResult = await _context.Orders.ToPageAsync(pageSize, cursor, o => o.Amount, cancellationToken: ct);
-            pageResult.TryGetValue(out var page).Should().BeTrue();
+            var page = pageResult.Unwrap();
             collected.AddRange(page.Items.Select(o => o.Amount));
             cursor = page.Next;
             if (cursor is null) break;
@@ -155,13 +155,13 @@ public class ToPageAsyncTests : IDisposable
 
         // page 1
         var page1 = await _context.Orders.ToPageAsync(new PageSize(3, 3), cursor: null, o => o.Amount, cancellationToken: ct);
-        page1.TryGetValue(out var p1).Should().BeTrue();
+        var p1 = page1.Unwrap();
         p1.Items.Should().HaveCount(3);
         p1.Next.Should().NotBeNull();
 
         // page 2 — only 2 remaining
         var page2 = await _context.Orders.ToPageAsync(new PageSize(3, 3), p1.Next, o => o.Amount, cancellationToken: ct);
-        page2.TryGetValue(out var p2).Should().BeTrue();
+        var p2 = page2.Unwrap();
         p2.Items.Should().HaveCount(2);
         p2.Items.Select(o => o.Amount).Should().Equal(4m, 5m);
         p2.Next.Should().BeNull();
@@ -178,7 +178,7 @@ public class ToPageAsyncTests : IDisposable
 
         var result = await _context.Orders.ToPageAsync(pageSize, cursor: null, o => o.Amount, cancellationToken: ct);
 
-        result.TryGetValue(out var page).Should().BeTrue();
+        var page = result.Unwrap();
         page.RequestedLimit.Should().Be(200);
         page.AppliedLimit.Should().Be(50);
         page.WasCapped.Should().BeTrue();
@@ -222,7 +222,7 @@ public class ToPageAsyncTests : IDisposable
     }
 
     [Fact]
-    public async Task DefaultCursor_ReturnsInvalidInput()
+    public async Task AbsentCursor_ReturnsFirstPage()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedOrdersAsync(3, ct);
@@ -230,7 +230,7 @@ public class ToPageAsyncTests : IDisposable
         var result = await _context.Orders.ToPageAsync(
             new PageSize(10, 10), default(Cursor), o => o.Amount, cancellationToken: ct);
 
-        result.IsFailure.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
     }
 
     // ───── Argument validation ──────────────────────────────────────────────
@@ -252,15 +252,15 @@ public class ToPageAsyncTests : IDisposable
         var act = () => _context.Orders.ToPageAsync(new PageSize(10, 10), null, keySelector!, cancellationToken: default);
 
         await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("keySelector");
+            .WithParameterName("key");
     }
 
     [Fact]
     public async Task DefaultPageSize_RejectedBeforeSql()
     {
-        var act = () => _context.Orders.ToPageAsync(default(PageSize), null, o => o.Amount, cancellationToken: default);
+        var act = () => _context.Orders.ToPageAsync(null!, null, o => o.Amount, cancellationToken: default);
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
+        await act.Should().ThrowAsync<ArgumentNullException>()
             .WithParameterName("pageSize");
     }
 
@@ -291,7 +291,7 @@ public class ToPageAsyncTests : IDisposable
             .Where(c => c.Email != EmailAddress.Create("pager@example.com")) // exclude seeded fixture customer
             .ToPageAsync(pageSize, null, c => c.CreatedAt, cancellationToken: ct);
 
-        page1.TryGetValue(out var p1).Should().BeTrue();
+        var p1 = page1.Unwrap();
         p1.Items.Should().HaveCount(2);
         p1.Items.Select(c => c.CreatedAt).Should().BeInAscendingOrder();
         p1.Next.Should().NotBeNull();
@@ -299,7 +299,7 @@ public class ToPageAsyncTests : IDisposable
         var page2 = await _context.Customers
             .Where(c => c.Email != EmailAddress.Create("pager@example.com"))
             .ToPageAsync(pageSize, p1.Next, c => c.CreatedAt, cancellationToken: ct);
-        page2.TryGetValue(out var p2).Should().BeTrue();
+        var p2 = page2.Unwrap();
         p2.Items.Should().HaveCount(2);
         var p1Ids = p1.Items.Select(c => c.Id).ToList();
         p2.Items.Select(c => c.Id).Should().NotIntersectWith(p1Ids);
@@ -342,7 +342,7 @@ public class ToPageAsyncTests : IDisposable
                     pageSize, cursor, c => c.Id.Value, cancellationToken: ct);
                 pageResult.TryGetValue(out var p).Should().BeTrue(
                     "VO Guid pagination should succeed under AddTrellisInterceptors");
-                collected.AddRange(p.Items.Select(c => c.Id.Value));
+                collected.AddRange(p!.Items.Select(c => c.Id.Value));
                 cursor = p.Next;
                 if (cursor is null) break;
             }
@@ -385,13 +385,13 @@ public class ToPageAsyncTests : IDisposable
 
         // Page 1 picks the first two rows — both Amount = 1.
         var page1 = await _context.Orders.ToPageAsync(new PageSize(2, 2), null, o => o.Amount, cancellationToken: ct);
-        page1.TryGetValue(out var p1).Should().BeTrue();
+        var p1 = page1.Unwrap();
         p1.Items.Select(o => o.Amount).Should().Equal(1m, 1m);
         p1.Next.Should().NotBeNull("page 1 over-fetched and emits a cursor");
 
         // Page 2 seeks WHERE Amount > 1 — skips the entire Amount = 1 boundary.
         var page2 = await _context.Orders.ToPageAsync(new PageSize(2, 2), p1.Next, o => o.Amount, cancellationToken: ct);
-        page2.TryGetValue(out var p2).Should().BeTrue();
+        var p2 = page2.Unwrap();
         p2.Items.Select(o => o.Amount).Should().Equal(2m, 2m);
 
         // Documented contract: a non-unique key skips rows AT the boundary value.

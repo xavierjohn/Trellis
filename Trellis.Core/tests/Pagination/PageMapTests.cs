@@ -9,33 +9,29 @@ public sealed class PageMapTests
     private sealed record Dest(string Label);
 
     [Fact]
-    public void Constructor_rejects_default_cursor_for_next()
+    public void Constructor_accepts_absent_next()
     {
-        // default(Cursor) is a Cursor whose Token getter throws. Letting it through
-        // the constructor would create a Page that explodes in HTTP projection.
-        var act = () => new Page<int>(
+        var page = new Page<int>(
             Items: Array.Empty<int>(),
             Next: default(Cursor),
             Previous: null,
             RequestedLimit: 10,
             AppliedLimit: 10);
 
-        act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("Next");
+        page.Next.Should().BeNull();
     }
 
     [Fact]
-    public void Constructor_rejects_default_cursor_for_previous()
+    public void Constructor_accepts_absent_previous()
     {
-        var act = () => new Page<int>(
+        var page = new Page<int>(
             Items: Array.Empty<int>(),
             Next: null,
             Previous: default(Cursor),
             RequestedLimit: 10,
             AppliedLimit: 10);
 
-        act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("Previous");
+        page.Previous.Should().BeNull();
     }
 
     [Fact]

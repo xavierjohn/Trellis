@@ -57,6 +57,13 @@ To pin a specific version regardless of what the client requested (cross-version
 
 ### Paginated lists — `HttpContext.PageUrl`
 
+For distinct next/previous URLs, use the direction-aware overload and pass its result as
+`urlBuilder: HttpContext.PageUrl(routeName, (cursor, direction, applied) => ...)`.
+Return `RouteValueDictionary` entries keyed by `direction == PageDirection.Next ? "after" : "before"`.
+The returned `Func<Cursor, PageDirection, int, string>` composes with both sync and async
+paginated responses. An explicit `ApiVersion` overload is also available; both retain
+the existing version-preservation, validation, and skip rules.
+
 For paginated `Result<Page<T>>` responses, supply the `nextUrlBuilder` parameter of `ToHttpResponse(Async)` from `HttpContext.PageUrl(...)`:
 
 ```csharp

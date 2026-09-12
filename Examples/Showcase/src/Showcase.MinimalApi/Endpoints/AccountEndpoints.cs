@@ -45,10 +45,7 @@ public static class AccountEndpoints
             IAccountRepository repo,
             LinkGenerator links,
             HttpContext http) =>
-            {
-                var requestedLimit = limit is int l && l > 0 ? l : 10;
-                Cursor? cursorOpt = string.IsNullOrEmpty(cursor) ? null : new Cursor(cursor);
-                return repo.GetPage(requestedLimit, cursorOpt)
+                repo.GetPage(limit, cursor)
                     .ToHttpResponse(
                         nextUrlBuilder: (c, applied) =>
                             links.GetUriByName(http, "Showcase_GetAccounts",
@@ -59,8 +56,7 @@ public static class AccountEndpoints
                                 })
                             ?? throw new InvalidOperationException("Route 'Showcase_GetAccounts' not registered."),
                         body: AccountResponse.From,
-                        configure: AdvertiseDescription);
-            })
+                        configure: AdvertiseDescription))
             .WithName("Showcase_GetAccounts")
             .Produces<PagedResponse<AccountResponse>>();
 

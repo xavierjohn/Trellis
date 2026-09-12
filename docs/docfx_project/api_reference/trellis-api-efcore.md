@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
-types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, IUnitOfWork, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
+types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, IUnitOfWork, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
-last_verified: 2026-08-18
+last_verified: 2026-09-12
 audience: [llm]
 ---
 # Trellis.EntityFrameworkCore
@@ -44,7 +44,7 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 | Classify an EF/DB exception | `DbExceptionClassifier.IsDuplicateKey(ex)` / `IsForeignKeyViolation(ex)` / `ExtractConstraintDetail(ex)` / `ExtractConstraintIdentity(ex)`. To map DB exceptions to a Trellis `Error` automatically, use `db.SaveChangesResultAsync()` / `SaveChangesResultUnitAsync()` (or, for idempotent inserts, `db.TryInsertUniqueAsync()`) instead of catching and classifying by hand. | [`DbExceptionClassifier`](#dbexceptionclassifier), [`DbContextExtensions`](#dbcontextextensions), [`DbContextIdempotencyExtensions`](#dbcontextidempotencyextensions) |
 | Wrap an aggregate-store repository with `Result<T>` returns | Inherit `RepositoryBase<TAggregate, TId>` | [`RepositoryBase<TAggregate, TId>`](#repositorybasetaggregate-tid) |
 | Stage commands in a unit of work and flush once per request | `IUnitOfWork` + `EfUnitOfWork<TContext>` + `TransactionalCommandBehavior<,>` (registered via `AddTrellisUnitOfWork<TContext>()`) | [`IUnitOfWork`](#iunitofwork), [`EfUnitOfWork<TContext>`](#efunitofworktcontext), [`TransactionalCommandBehavior<TMessage, TResponse>`](#transactionalcommandbehaviortmessage-tresponse) |
-| Paginate an `IQueryable<T>` with forward-only cursor-based seek (decodes the cursor, applies the seek `WHERE`, over-fetches, and slices through `PageBuilder` in one call) | `IQueryable<T>.ToPageAsync(pageSize, cursor, keySelector, …)` | [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
+| Paginate an `IQueryable<T>` with a typed, single/composite, ascending/descending seek | `PageRequest.TryCreate(...)` then `source.ToPageAsync(request, seek, ...)`; define ordering with `SeekDefinition.Ascending` / `Descending` and `ThenAscending` / `ThenDescending` | [`SeekDefinition`](#seekdefinition), [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
 
 ## Common traps
 
@@ -185,15 +185,87 @@ public static class QueryableExtensions
 public static class PaginationQueryableExtensions
 ```
 
-EF Core seek-pagination helper that composes with the storage-agnostic `Trellis.Core` primitives (`PageSize`, `Cursor`, `CursorCodec`, `PageBuilder`, `Page<T>`). The method owns the `OrderBy(keySelector)`, the cursor decoding, the seek `WHERE` predicate, the `Take(Applied + 1)` over-fetch, and the slice — callers supply a pre-filtered `IQueryable<T>` and the sort-key projection.
+Forward pagination over an authorized, pre-filtered `IQueryable<T>`. A typed seek definition owns ordering, boundary extraction, and the matching lexicographic predicate; `ToPageAsync` decodes state, applies that definition, fetches `Applied + 1` rows, and assembles `Page<T>`. It does not honor a conflicting caller-supplied `OrderBy`: put the complete ordering in the definition.
+
+**Database-projected boundaries.** The definition retains the key selector expressions and projects their values alongside each row in the database query. The next cursor uses that projected state from the last retained row; selectors are not compiled or re-evaluated against materialized entities. The same expressions drive ordering, seeking, and state projection, so provider-translated functions (for example `EF.Functions.Collate`) can participate when the provider supports the complete query. Never assume that a C# recomputation of a SQL expression has equivalent semantics.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Task<Result<Page<T>>> ToPageAsync<T, TKey>(this IQueryable<T> source, PageSize pageSize, Cursor? cursor, Expression<Func<T, TKey>> keySelector, string? cursorFieldName = null, CancellationToken cancellationToken = default) where T : class where TKey : notnull, IComparable<TKey>, IParsable<TKey>` | `Task<Result<Page<T>>>` | Materializes one forward-only seek page. Returns `Result.Fail<Page<T>>(Error.InvalidInput.ForField(cursorFieldName ?? "cursor", "cursor.malformed", …))` on a malformed cursor and never throws on a bad client input. Throws `ArgumentNullException` for `null` `source` or `keySelector`, and `ArgumentOutOfRangeException` for a non-validated `pageSize` (e.g. `default(PageSize)`) before any SQL round-trip. The seek predicate uses `Expression.GreaterThan` for numeric and `DateTime`/`DateTimeOffset` keys and routes through `IComparable<TKey>.CompareTo` for `Guid` and `string` keys; see the `PaginationQueryableExtensions` XML docs for the full provider-support note. |
+| `public static Task<Result<Page<T>>> ToPageAsync<T, TState>(this IQueryable<T> source, PageSize pageSize, Cursor? cursor, SeekDefinition<T, TState> seek, string? cursorFieldName = null, CancellationToken cancellationToken = default) where T : class where TState : notnull` | `Task<Result<Page<T>>>` | Decodes with `seek.Codec`; null cursor means no boundary. Invalid input fails before database execution. A continuation is encoded from the last retained row only when over-fetch proves there is another page. |
+| `public static Task<Result<Page<T>>> ToPageAsync<T, TState>(this IQueryable<T> source, PageRequest request, SeekDefinition<T, TState> seek, string? cursorFieldName = null, CancellationToken cancellationToken = default) where T : class where TState : notnull` | `Task<Result<Page<T>>>` | Uses validated `request.Size` and `request.Cursor`. Pass the same custom cursor field name used at request validation; `PageRequest` does not retain field-name overrides. |
+| `public static Task<Result<Page<T>>> ToPageAsync<T, TKey>(this IQueryable<T> source, PageSize pageSize, Cursor? cursor, Expression<Func<T, TKey>> keySelector, string? cursorFieldName = null, CancellationToken cancellationToken = default) where T : class where TKey : notnull, IComparable<TKey>, IParsable<TKey>` | `Task<Result<Page<T>>>` | Retained single-key ascending convenience; wraps `SeekDefinition.Ascending(keySelector)`. The built-in scalar codec also requires `IFormattable` or `string`, checked at factory creation. |
 
-**Single-key seek requires a stable, unique ascending key.** With a non-unique key, rows that share the boundary value with the last item on the previous page are silently skipped on the next page — use a primary-key surrogate (or the upcoming composite `(CreatedAt, Id)` overload) when the natural sort key is not unique.
+**Failure boundary.** Built-in codec failures return `Error.InvalidInput` with reason `cursor.malformed` on `cursorFieldName ?? "cursor"`. Optional decoding uses `CursorCodec.TryDecodeOptional`: only an absent cursor means the first page; a custom codec returning successful null state throws `InvalidOperationException` rather than silently restarting pagination. Null source/size/request/seek/key arguments are programming errors (`ArgumentNullException`). `PageSize` is now a sealed record class: there is no default-struct size to repair. Cancellation, provider translation/connection failures, and codec exceptions caused by invalid server state propagate; they are not relabeled malformed client input.
 
 **Value-object Id projection** (`c => c.Id.Value`) requires `AddTrellisInterceptors()` on the `DbContextOptionsBuilder` so the `ScalarValueQueryInterceptor` rewrites the projection for EF translation. See [`DbContextOptionsBuilderExtensions`](#dbcontextoptionsbuilderextensions) and [`ScalarValueQueryInterceptor`](#scalarvaluequeryinterceptor).
+
+### `SeekDefinition`
+
+```csharp
+public static class SeekDefinition
+{
+    public static SeekDefinition<T, TKey> Ascending<T, TKey>(
+        Expression<Func<T, TKey>> key)
+        where T : class where TKey : notnull, IComparable<TKey>, IParsable<TKey>;
+    public static SeekDefinition<T, TKey> Ascending<T, TKey>(
+        Expression<Func<T, TKey>> key, ICursorCodec<TKey> codec)
+        where T : class where TKey : notnull, IComparable<TKey>;
+    public static SeekDefinition<T, TKey> Descending<T, TKey>(
+        Expression<Func<T, TKey>> key)
+        where T : class where TKey : notnull, IComparable<TKey>, IParsable<TKey>;
+    public static SeekDefinition<T, TKey> Descending<T, TKey>(
+        Expression<Func<T, TKey>> key, ICursorCodec<TKey> codec)
+        where T : class where TKey : notnull, IComparable<TKey>;
+}
+```
+
+Factories start a definition with a scalar or explicit codec. Custom codecs remove the `IParsable<TKey>` requirement, not the need for provider-translatable comparisons. The helpers require no DI registration.
+
+### `SeekDefinition<T, TState>`
+
+```csharp
+public sealed class SeekDefinition<T, TState> where T : class where TState : notnull
+{
+    public ICursorCodec<TState> Codec { get; }
+    public SeekDefinition<T, TState> WithCodec(ICursorCodec<TState> codec);
+
+    public SeekDefinition<T, (TState Primary, TKey Secondary)> ThenAscending<TKey>(
+        Expression<Func<T, TKey>> key)
+        where TKey : notnull, IComparable<TKey>, IParsable<TKey>;
+    public SeekDefinition<T, (TState Primary, TKey Secondary)> ThenAscending<TKey>(
+        Expression<Func<T, TKey>> key, ICursorCodec<TKey> codec)
+        where TKey : notnull, IComparable<TKey>;
+    public SeekDefinition<T, (TState Primary, TKey Secondary)> ThenDescending<TKey>(
+        Expression<Func<T, TKey>> key)
+        where TKey : notnull, IComparable<TKey>, IParsable<TKey>;
+    public SeekDefinition<T, (TState Primary, TKey Secondary)> ThenDescending<TKey>(
+        Expression<Func<T, TKey>> key, ICursorCodec<TKey> codec)
+        where TKey : notnull, IComparable<TKey>;
+}
+```
+
+Each `ThenAscending` / `ThenDescending` returns a new definition, combines the ordering and seek predicate, and composes codecs. State nests: two keys produce `(first, second)`; three produce `((first, second), third)`. `WithCodec` returns a definition with unchanged ordering/extraction and a replacement codec for the **same** `TState`; use it to bind context or protect tokens. It does not add query filters or validate authorization automatically.
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+
+var seek = SeekDefinition.Descending<Order, DateTimeOffset>(o => o.CreatedAt)
+    .ThenAscending(o => o.Id.Value);
+
+Result<Page<Order>> page = await PageRequest.TryCreate(cursor, limit)
+    .BindAsync(request => db.Orders.AsNoTracking()
+        .ToPageAsync(request, seek, cancellationToken: ct));
+```
+
+For descending time / ascending ID, the continuation predicate is `CreatedAt < boundaryTime || (CreatedAt == boundaryTime && Id > boundaryId)` using the provider's equivalent ID comparison. All-equal rows are excluded.
+
+**Ordering contract.** End with a stable, unique key; a non-unique final ordering skips rows tied at the boundary. Null keys are unsupported. Mutable sort values or concurrent writes can still change membership between requests — pagination creates no snapshot. Descending is forward traversal in a descending order, **not** a previous-page operation; `Previous` remains null.
+
+**Provider contract.** Numeric/date-like keys use relational expressions where supported; other comparable keys (including GUID/string) use `CompareTo`. Verify translation of ordering, seeking, and boundary projection, and that `ORDER BY`, equality, and seek comparisons have matching semantics for your provider/collation/key type. Trellis does not fall back to client-side filtering or boundary recomputation. A value converter alone does not guarantee that a provider can translate an arbitrary comparison method.
+
+For computed ordering that cannot be translated, use a caller-owned, bounded algorithm and Core's typed codec/page assembly; see [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state). Do not materialize an unbounded table just to bypass translation.
 
 ### `RepositoryBase<TAggregate, TId>`
 
@@ -586,7 +658,28 @@ public static IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> 
 
 ### `PaginationQueryableExtensions`
 
+The complete overloads and ordering contract are documented [above](#paginationqueryableextensions).
+
 ```csharp
+public static Task<Result<Page<T>>> ToPageAsync<T, TState>(
+    this IQueryable<T> source,
+    PageRequest request,
+    SeekDefinition<T, TState> seek,
+    string? cursorFieldName = null,
+    CancellationToken cancellationToken = default)
+    where T : class
+    where TState : notnull
+
+public static Task<Result<Page<T>>> ToPageAsync<T, TState>(
+    this IQueryable<T> source,
+    PageSize pageSize,
+    Cursor? cursor,
+    SeekDefinition<T, TState> seek,
+    string? cursorFieldName = null,
+    CancellationToken cancellationToken = default)
+    where T : class
+    where TState : notnull
+
 public static Task<Result<Page<T>>> ToPageAsync<T, TKey>(
     this IQueryable<T> source,
     PageSize pageSize,
@@ -832,7 +925,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
 The same pattern applies to other CLR-type / provider mismatches — for example `decimal` on a provider that only supports `double`, or a value object on a document store that cannot project nested types. Identify a sortable/comparable scalar that preserves the value, register the converter in the Acl, and keep the repository query server-side rather than falling back to `ToListAsync()` + in-memory ordering.
 
-The same Acl boundary applies to [`PaginationQueryableExtensions.ToPageAsync`](#paginationqueryableextensions). The helper emits `Expression.GreaterThan` for numeric and `DateTime`/`DateTimeOffset` keys (which translate natively on every common provider) and routes through `IComparable<TKey>.CompareTo` for `Guid` and `string` keys (which SQL Server translates to native `ORDER BY` / `>` semantics, and which other providers translate to their dialect equivalents). If a provider rejects the `CompareTo` shape for a particular key type, register a `ValueConverter` on the Id column that converts to a sortable scalar (e.g. `Guid` → `string` byte-canonical form on Postgres) so the seek predicate translates correctly.
+The same Acl boundary applies to [`PaginationQueryableExtensions.ToPageAsync`](#paginationqueryableextensions). [`SeekDefinition`](#seekdefinition) emits relational comparisons for supported numeric/date-like keys and `CompareTo` expressions for other comparable keys such as `Guid` and `string`. The application must verify translation and agreement between ordering, equality, and comparison semantics for its provider. There is no automatic client-side fallback, and a `ValueConverter` alone does not make an unsupported `CompareTo` shape translatable. Use a verified sortable projection/provider mapping or an explicitly bounded caller-owned algorithm instead.
 
 ### Provider-specific behavior: owned collections on SQLite
 

@@ -38,10 +38,9 @@ public class AccountsController : ControllerBase
         [FromQuery] string? cursor,
         [FromServices] LinkGenerator links)
     {
-        var requestedLimit = limit is int l && l > 0 ? l : 10;
-        Cursor? cursorOpt = string.IsNullOrEmpty(cursor) ? null : new Cursor(cursor);
-
-        return _repository.GetPage(requestedLimit, cursorOpt)
+        // MVC normalizes empty strings to null; preserve a supplied empty cursor for validation.
+        var rawCursor = Request.Query.TryGetValue(nameof(cursor), out var token) ? token.ToString() : cursor;
+        return _repository.GetPage(limit, rawCursor)
             .ToHttpResponse(
                 nextUrlBuilder: (c, applied) =>
                     links.GetUriByName(HttpContext, "Showcase_GetAccounts",

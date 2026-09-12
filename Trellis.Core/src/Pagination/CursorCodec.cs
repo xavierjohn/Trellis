@@ -1,222 +1,222 @@
 ﻿namespace Trellis;
 
-using System;
 using System.Globalization;
 using System.Text;
 
+/// <summary>A typed continuation codec. Parsing client input returns failures; encoding invalid server state throws.</summary>
+/// <typeparam name="TState">The complete continuation state, including query context when required.</typeparam>
+public interface ICursorCodec<TState> where TState : notnull
+{
+    /// <summary>Encodes a valid boundary. Implementations must preserve its seek semantics.</summary>
+    Cursor Encode(TState state);
+
+    /// <summary>Decodes and validates client state, returning field-specific failures for invalid tokens.</summary>
+    Result<TState> TryDecode(Cursor? cursor, string? fieldName = null);
+}
+
 /// <summary>
-/// Helpers that encode and decode opaque <see cref="Cursor"/> tokens for seek-style
-/// pagination. Two overload pairs are provided: a single-key form for pure <c>Id</c>-keyed
-/// pagination (the simplest, matches single-column indexes), and a composite
-/// <c>(CreatedAt, Id)</c> form for stable time-ordered seeks across non-unique
-/// primary sort keys.
+/// AOT-friendly, versioned continuation codecs. Tokens are opaque, not signed.
+/// Existing unversioned tokens are deliberately rejected. Authorization must still filter every query.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Wire format:</b> The token is URL-safe Base64 (RFC 4648 §5) of a UTF-8 string.
-/// For single-key cursors, the payload is the key's invariant-culture string form. For
-/// composite cursors, the payload is <c>"{createdAt:O}|{id}"</c> where the date is
-/// formatted with the round-trip <c>"O"</c> specifier in invariant culture. Decoding
-/// splits at the FIRST <c>|</c> only, so an Id that happens to contain a pipe character
-/// is still unambiguous.
-/// </para>
-/// <para>
-/// <b>AOT-friendly:</b> No JSON, no reflection. Encoding uses <see cref="Convert.ToBase64String(byte[])"/>
-/// followed by URL-safe substitution; decoding inverts the substitution and parses with
-/// <see cref="IParsable{TSelf}.TryParse(string, IFormatProvider, out TSelf)"/>.
-/// </para>
-/// <para>
-/// <b>Opacity, not anti-tamper:</b> Cursors are server-opaque to discourage clients from
-/// reverse-engineering the sort key, but the encoding is not signed. Services that need
-/// to defend against tampering must wrap or replace this codec with one that signs the
-/// payload; authorization filtering must always apply to the underlying query.
-/// </para>
-/// <para>
-/// <b>Supported TKey:</b>
-/// </para>
-/// <list type="bullet">
-///   <item><description>
-///     <b>Encode</b> accepts any <c>TKey</c> that implements
-///     <see cref="IFormattable"/> (so it can be formatted in
-///     <see cref="System.Globalization.CultureInfo.InvariantCulture"/>) or that is a
-///     <see cref="string"/>.
-///   </description></item>
-///   <item><description>
-///     <b>TryDecode</b> additionally requires <c>TKey</c> to
-///     implement <see cref="IParsable{TSelf}"/>.
-///   </description></item>
-/// </list>
-/// <para>
-/// .NET primitives such as <see cref="Guid"/>, <see cref="long"/>, <see cref="int"/>,
-/// and <see cref="string"/> satisfy both. Trellis source-generated value-object wrappers
-/// (e.g. <c>partial class CustomerId : RequiredGuid&lt;CustomerId&gt;</c>) inherit
-/// <see cref="IFormattable"/> from <c>ScalarValueObject</c> and gain <see cref="IParsable{TSelf}"/>
-/// from the source generator, so they round-trip through the codec directly. Hand-written
-/// value objects that do not implement <see cref="IParsable{TSelf}"/> must project to the
-/// underlying primitive (<c>.Value</c>) for cursors.
-/// </para>
-/// </remarks>
 public static class CursorCodec
 {
-    private const string DateFormat = "O";
-    private const char Separator = '|';
-    private const string SeparatorString = "|";
+    /// <summary>Maximum encoded token size for built-in codecs, enforced on both paths.</summary>
+    public const int MaxEncodedTokenLength = 1024;
 
-    // A valid cursor encodes a single seek key — typically <128 bytes raw, ~170
-    // chars base64. 1 KiB is a generous cap that accommodates any realistic key
-    // type while rejecting adversarial inputs before allocation. The cap is a
-    // belt-and-suspenders DoS guard, not a normative cursor-length rule.
-    private const int MaxEncodedTokenLength = 1024;
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
-    // ───── Single-key ──────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Encodes a single-key cursor for pure Id-based seek pagination.
-    /// </summary>
-    /// <typeparam name="TKey">The key type. Trellis primitives such as <see cref="Guid"/>,
-    /// <see cref="long"/>, <see cref="int"/>, and <see cref="string"/> are supported.</typeparam>
-    /// <param name="id">The Id of the boundary item.</param>
-    /// <returns>An opaque <see cref="Cursor"/> token.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="id"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="id"/> formats to an empty invariant-culture string (for example, an empty <see cref="string"/> key).</exception>
-    public static Cursor Encode<TKey>(TKey id)
-        where TKey : notnull
+    /// <summary>Creates an invariant scalar codec. Custom types must implement invariant formatting and parsing.</summary>
+    public static ICursorCodec<T> Scalar<T>() where T : notnull, IParsable<T>
     {
-        ArgumentNullException.ThrowIfNull(id);
+        if (typeof(T) != typeof(string) && !typeof(IFormattable).IsAssignableFrom(typeof(T)))
+            throw new NotSupportedException($"Cursor key type '{typeof(T).FullName}' must implement IFormattable or be string.");
+        return new TextCodec<T>("s", FormatInvariant, ParseScalar<T>);
+    }
 
-        var payload = FormatInvariant(id);
-        if (payload.Length == 0)
-            throw new ArgumentException("Cursor key formatted to an empty payload; supply a non-empty key.", nameof(id));
-        return new Cursor(ToBase64Url(payload));
+    /// <summary>Creates a two-component codec using built-in scalar codecs.</summary>
+    public static ICursorCodec<(TPrimary Primary, TSecondary Secondary)> Composite<TPrimary, TSecondary>()
+        where TPrimary : notnull, IParsable<TPrimary>
+        where TSecondary : notnull, IParsable<TSecondary> =>
+        Composite(Scalar<TPrimary>(), Scalar<TSecondary>());
+
+    /// <summary>Composes arbitrary component codecs using unambiguous length-prefixed framing.</summary>
+    public static ICursorCodec<(TPrimary Primary, TSecondary Secondary)> Composite<TPrimary, TSecondary>(
+        ICursorCodec<TPrimary> primary, ICursorCodec<TSecondary> secondary)
+        where TPrimary : notnull
+        where TSecondary : notnull
+    {
+        ArgumentNullException.ThrowIfNull(primary);
+        ArgumentNullException.ThrowIfNull(secondary);
+        return new TextCodec<(TPrimary Primary, TSecondary Secondary)>(
+            "c",
+            state =>
+            {
+                var first = primary.Encode(state.Primary).Token;
+                var second = secondary.Encode(state.Secondary).Token;
+                return string.Concat(first.Length.ToString(CultureInfo.InvariantCulture), ":", first, second);
+            },
+            (payload, field) =>
+            {
+                var separator = payload.IndexOf(':');
+                if (separator <= 0
+                    || !int.TryParse(payload.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture, out var length)
+                    || length <= 0 || length >= payload.Length - separator - 1)
+                    return Fail<(TPrimary, TSecondary)>(field, "Cursor has invalid composite framing.");
+                var first = new Cursor(payload.Substring(separator + 1, length));
+                var second = new Cursor(payload[(separator + 1 + length)..]);
+                var parsed = EnsureDecodedState(primary.TryDecode(first, field));
+                if (!parsed.TryGetValue(out var primaryValue, out var error))
+                    return Result.Fail<(TPrimary, TSecondary)>(error);
+                return EnsureDecodedState(secondary.TryDecode(second, field)).Map(value => (primaryValue, value));
+            });
     }
 
     /// <summary>
-    /// Attempts to decode a single-key cursor.
+    /// Creates a codec with an explicit schema identifier and round-trip formatter/parser.
+    /// The parser must validate domain bounds and context and return InvalidInput for bad client state.
+    /// It also runs during encoding to reject server state that cannot round-trip.
     /// </summary>
-    /// <typeparam name="TKey">The key type. Must implement <see cref="IParsable{TSelf}"/>.</typeparam>
-    /// <param name="cursor">The cursor to decode.</param>
-    /// <param name="fieldName">Optional field name for the failure error; defaults to <c>"cursor"</c>.</param>
-    /// <returns>
-    /// A <see cref="Result{TKey}"/> containing the decoded key on success or
-    /// <see cref="Error.InvalidInput"/> on a malformed token.
-    /// </returns>
-    public static Result<TKey> TryDecode<TKey>(Cursor cursor, string? fieldName = null)
-        where TKey : IParsable<TKey>
+    public static ICursorCodec<TState> Create<TState>(
+        string schema,
+        Func<TState, string> format,
+        Func<string, string?, Result<TState>> parse)
+        where TState : notnull
     {
-        if (cursor.Equals(default(Cursor)))
-            return Fail<TKey>(fieldName, ValidationCodes.CursorMalformed, "Cursor is default-constructed and has no token.");
-
-        if (!TryFromBase64Url(cursor.Token, out var payload))
-            return Fail<TKey>(fieldName, ValidationCodes.CursorMalformed, "Cursor is not a valid URL-safe base64 token.");
-
-        if (!TKey.TryParse(payload, CultureInfo.InvariantCulture, out var parsed) || parsed is null)
-            return Fail<TKey>(fieldName, ValidationCodes.CursorMalformed, $"Cursor payload could not be parsed as {typeof(TKey).Name}.");
-
-        return Result.Ok(parsed);
-    }
-
-    // ───── Composite (CreatedAt, Id) ───────────────────────────────────────────
-
-    /// <summary>
-    /// Encodes a composite <c>(CreatedAt, Id)</c> cursor for stable time-ordered seek pagination.
-    /// </summary>
-    /// <typeparam name="TKey">The Id type. Trellis primitives such as <see cref="Guid"/>,
-    /// <see cref="long"/>, <see cref="int"/>, and <see cref="string"/> are supported.</typeparam>
-    /// <param name="createdAt">The creation timestamp of the boundary item.</param>
-    /// <param name="id">The Id of the boundary item, used as the secondary sort key.</param>
-    /// <returns>An opaque <see cref="Cursor"/> token.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="id"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentException"><paramref name="id"/> formats to an empty invariant-culture string (for example, an empty <see cref="string"/> key).</exception>
-    public static Cursor Encode<TKey>(DateTimeOffset createdAt, TKey id)
-        where TKey : notnull
-    {
-        ArgumentNullException.ThrowIfNull(id);
-
-        var datePart = createdAt.ToString(DateFormat, CultureInfo.InvariantCulture);
-        var idPart = FormatInvariant(id);
-        if (idPart.Length == 0)
-            throw new ArgumentException("Cursor key formatted to an empty payload; supply a non-empty key.", nameof(id));
-        var payload = string.Concat(datePart, SeparatorString, idPart);
-        return new Cursor(ToBase64Url(payload));
+        ArgumentException.ThrowIfNullOrWhiteSpace(schema);
+        if (schema.Length > 64 || schema.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-'))
+            throw new ArgumentException("Schema must contain at most 64 ASCII letters, digits or hyphens.", nameof(schema));
+        ArgumentNullException.ThrowIfNull(format);
+        ArgumentNullException.ThrowIfNull(parse);
+        return new TextCodec<TState>("x-" + schema, format, parse);
     }
 
     /// <summary>
-    /// Attempts to decode a composite <c>(CreatedAt, Id)</c> cursor.
+    /// Maps a wire codec to named validated state without hand-writing serialization.
+    /// Validation runs on inbound state and on the round-trip of every encoded boundary.
     /// </summary>
-    /// <typeparam name="TKey">The Id type. Must implement <see cref="IParsable{TSelf}"/>.</typeparam>
-    /// <param name="cursor">The cursor to decode.</param>
-    /// <param name="fieldName">Optional field name for the failure error; defaults to <c>"cursor"</c>.</param>
-    /// <returns>
-    /// A <see cref="Result{T}"/> containing the decoded <c>(CreatedAt, Id)</c> pair on success
-    /// or <see cref="Error.InvalidInput"/> on a malformed token.
-    /// </returns>
+    public static ICursorCodec<TState> Map<TWire, TState>(
+        ICursorCodec<TWire> wireCodec,
+        Func<TState, TWire> toWire,
+        Func<TWire, string?, Result<TState>> fromWire)
+        where TWire : notnull
+        where TState : notnull
+    {
+        ArgumentNullException.ThrowIfNull(wireCodec);
+        ArgumentNullException.ThrowIfNull(toWire);
+        ArgumentNullException.ThrowIfNull(fromWire);
+        return new MappedCodec<TWire, TState>(wireCodec, toWire, fromWire);
+    }
+
+    /// <summary>Encodes a scalar using the built-in codec.</summary>
+    public static Cursor Encode<T>(T id) where T : notnull, IParsable<T> => Scalar<T>().Encode(id);
+
+    /// <summary>Decodes a scalar using the built-in codec.</summary>
+    public static Result<T> TryDecode<T>(Cursor? cursor, string? fieldName = null)
+        where T : notnull, IParsable<T> => Scalar<T>().TryDecode(cursor, fieldName);
+
+    /// <summary>
+    /// Decodes optional continuation state. Only an absent token means the first page.
+    /// A codec returning successful null state violates its contract and throws InvalidOperationException.
+    /// </summary>
+    public static Result<Maybe<TState>> TryDecodeOptional<TState>(
+        Cursor? cursor, ICursorCodec<TState> codec, string? fieldName = null)
+        where TState : notnull
+    {
+        ArgumentNullException.ThrowIfNull(codec);
+        if (cursor is null)
+            return Result.Ok(Maybe<TState>.None);
+        return EnsureDecodedState(codec.TryDecode(cursor, fieldName)).Map(Maybe.From);
+    }
+
+    /// <summary>Encodes arbitrary primary and secondary scalar keys.</summary>
+    public static Cursor Encode<TPrimary, TSecondary>(TPrimary primary, TSecondary secondary)
+        where TPrimary : notnull, IParsable<TPrimary>
+        where TSecondary : notnull, IParsable<TSecondary> =>
+        Composite<TPrimary, TSecondary>().Encode((primary, secondary));
+
+    /// <summary>Decodes arbitrary primary and secondary scalar keys.</summary>
+    public static Result<(TPrimary Primary, TSecondary Secondary)> TryDecodeComposite<TPrimary, TSecondary>(
+        Cursor? cursor, string? fieldName = null)
+        where TPrimary : notnull, IParsable<TPrimary>
+        where TSecondary : notnull, IParsable<TSecondary> =>
+        Composite<TPrimary, TSecondary>().TryDecode(cursor, fieldName);
+
+    /// <summary>Convenience decoder for timestamp and ID state, using the versioned composite codec.</summary>
     public static Result<(DateTimeOffset CreatedAt, TKey Id)> TryDecodeComposite<TKey>(
-        Cursor cursor, string? fieldName = null)
-        where TKey : IParsable<TKey>
+        Cursor? cursor, string? fieldName = null)
+        where TKey : notnull, IParsable<TKey> =>
+        TryDecodeComposite<DateTimeOffset, TKey>(cursor, fieldName);
+
+    private static string FormatInvariant<T>(T state) where T : notnull
     {
-        if (cursor.Equals(default(Cursor)))
-            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor is default-constructed and has no token.");
-
-        if (!TryFromBase64Url(cursor.Token, out var payload))
-            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor is not a valid URL-safe base64 token.");
-
-        var pipe = payload.IndexOf(Separator, StringComparison.Ordinal);
-        if (pipe < 0)
-            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor payload is missing the composite separator.");
-
-        var datePart = payload.AsSpan(0, pipe);
-        var idPart = payload.AsSpan(pipe + 1);
-
-        if (!DateTimeOffset.TryParseExact(datePart, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var createdAt))
-            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, "Cursor payload date segment could not be parsed.");
-
-        if (!TKey.TryParse(idPart.ToString(), CultureInfo.InvariantCulture, out var id) || id is null)
-            return Fail<(DateTimeOffset, TKey)>(fieldName, ValidationCodes.CursorMalformed, $"Cursor payload id segment could not be parsed as {typeof(TKey).Name}.");
-
-        return Result.Ok((createdAt, id));
-    }
-
-    // ───── Internals ───────────────────────────────────────────────────────────
-
-    private static string FormatInvariant<TKey>(TKey id)
-        where TKey : notnull =>
-        id switch
+        ArgumentNullException.ThrowIfNull(state);
+        if (!IsFinite(state))
+            throw new ArgumentException("Cursor numbers must be finite.", nameof(state));
+        return state switch
         {
-            IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
-            string s => s,
-            _ => throw new NotSupportedException(
-                $"Cursor key type '{typeof(TKey).FullName}' must implement IFormattable or be string; " +
-                "a culture-sensitive ToString would break cursor round-trip.")
+            DateTime date => date.ToString("O", CultureInfo.InvariantCulture),
+            DateTimeOffset date => date.ToString("O", CultureInfo.InvariantCulture),
+            DateOnly date => date.ToString("O", CultureInfo.InvariantCulture),
+            TimeOnly time => time.ToString("O", CultureInfo.InvariantCulture),
+            TimeSpan time => time.ToString("c", CultureInfo.InvariantCulture),
+            double number => number.ToString("R", CultureInfo.InvariantCulture),
+            float number => number.ToString("R", CultureInfo.InvariantCulture),
+            Half number => number.ToString("R", CultureInfo.InvariantCulture),
+            string text => text,
+            IFormattable value => value.ToString(null, CultureInfo.InvariantCulture),
+            _ => throw new NotSupportedException($"Cursor key type '{typeof(T).FullName}' requires an explicit codec.")
         };
-
-    private static string ToBase64Url(string payload)
-    {
-        var bytes = Encoding.UTF8.GetBytes(payload);
-        var standard = Convert.ToBase64String(bytes);
-        return standard.Replace('+', '-').Replace('/', '_').TrimEnd('=');
     }
 
-    private static bool TryFromBase64Url(string token, out string payload)
+    private static Result<T> ParseScalar<T>(string payload, string? field) where T : notnull, IParsable<T>
+    {
+        if (payload.Length == 0)
+            return Fail<T>(field, "Cursor scalar must not be empty.");
+        // DateTime.TryParse without RoundtripKind normalizes UTC to local time.
+        if (typeof(T) == typeof(DateTime))
+            return DateTime.TryParseExact(payload, "O", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date)
+                ? Result.Ok((T)(object)date)
+                : Fail<T>(field, "Cursor timestamp is invalid.");
+        if (typeof(T) == typeof(DateTimeOffset))
+            return DateTimeOffset.TryParseExact(payload, "O", CultureInfo.InvariantCulture, DateTimeStyles.None, out var offset)
+                ? Result.Ok((T)(object)offset)
+                : Fail<T>(field, "Cursor timestamp is invalid.");
+        if (!T.TryParse(payload, CultureInfo.InvariantCulture, out var value) || value is null || !IsFinite(value))
+            return Fail<T>(field, $"Cursor scalar could not be parsed as {typeof(T).Name}.");
+        return Result.Ok(value);
+    }
+
+    private static bool IsFinite<T>(T value) => value switch
+    {
+        double number => double.IsFinite(number),
+        float number => float.IsFinite(number),
+        Half number => Half.IsFinite(number),
+        _ => true
+    };
+
+    private static Cursor EncodePayload(string payload)
+    {
+        if (StrictUtf8.GetByteCount(payload) > MaxEncodedTokenLength / 4 * 3)
+            throw new ArgumentException("Cursor state exceeds the encoded token limit.", nameof(payload));
+        var token = Convert.ToBase64String(StrictUtf8.GetBytes(payload)).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        if (token.Length > MaxEncodedTokenLength)
+            throw new ArgumentException("Cursor state exceeds the encoded token limit.", nameof(payload));
+        return new Cursor(token);
+    }
+
+    private static bool TryPayload(Cursor? cursor, out string payload)
     {
         payload = string.Empty;
-        if (string.IsNullOrEmpty(token))
+        if (cursor is null || cursor.Token.Length > MaxEncodedTokenLength)
             return false;
-
-        if (token.Length > MaxEncodedTokenLength)
+        var token = cursor.Token;
+        if (token.Any(c => !char.IsAsciiLetterOrDigit(c) && c != '-' && c != '_') || token.Length % 4 == 1)
             return false;
-
         var standard = token.Replace('-', '+').Replace('_', '/');
-        switch (standard.Length % 4)
-        {
-            case 2: standard += "=="; break;
-            case 3: standard += "="; break;
-            case 1: return false;
-        }
-
+        standard = standard.PadRight((standard.Length + 3) / 4 * 4, '=');
         try
         {
-            var bytes = Convert.FromBase64String(standard);
-            payload = StrictUtf8.GetString(bytes);
+            payload = StrictUtf8.GetString(Convert.FromBase64String(standard));
             return true;
         }
         catch (FormatException)
@@ -229,8 +229,62 @@ public static class CursorCodec
         }
     }
 
-    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+    private static Result<T> Fail<T>(string? field, string detail) =>
+        Result.Fail<T>(Error.InvalidInput.ForField(field ?? "cursor", ValidationCodes.CursorMalformed, detail));
 
-    private static Result<T> Fail<T>(string? fieldName, string reasonCode, string detail) =>
-        Result.Fail<T>(Error.InvalidInput.ForField(fieldName ?? "cursor", reasonCode, detail));
+    private static void EnsureRoundTrip<T>(T state, Result<T> parsed)
+    {
+        parsed = EnsureDecodedState(parsed);
+        if (!parsed.TryGetValue(out var decoded) || !EqualityComparer<T>.Default.Equals(state, decoded))
+            throw new ArgumentException("Server continuation state failed codec validation or did not round-trip.", nameof(state));
+    }
+
+    private static Result<T> EnsureDecodedState<T>(Result<T> parsed)
+    {
+        if (parsed.TryGetValue(out var state) && state is null)
+            throw new InvalidOperationException("Cursor codec returned successful null continuation state.");
+        return parsed;
+    }
+
+    private sealed class TextCodec<T>(
+        string schema,
+        Func<T, string> format,
+        Func<string, string?, Result<T>> parse) : ICursorCodec<T> where T : notnull
+    {
+        private readonly string _prefix = "1:" + schema + ":";
+
+        public Cursor Encode(T state)
+        {
+            ArgumentNullException.ThrowIfNull(state);
+            var payload = format(state) ?? throw new InvalidOperationException("Cursor formatter returned null.");
+            var cursor = EncodePayload(_prefix + payload);
+            EnsureRoundTrip(state, parse(payload, null));
+            return cursor;
+        }
+
+        public Result<T> TryDecode(Cursor? cursor, string? fieldName = null) =>
+            TryPayload(cursor, out var payload) && payload.StartsWith(_prefix, StringComparison.Ordinal)
+                ? EnsureDecodedState(parse(payload[_prefix.Length..], fieldName))
+                : Fail<T>(fieldName, "Cursor is malformed or has an unsupported format version.");
+    }
+
+    private sealed class MappedCodec<TWire, TState>(
+        ICursorCodec<TWire> wireCodec,
+        Func<TState, TWire> toWire,
+        Func<TWire, string?, Result<TState>> fromWire) : ICursorCodec<TState>
+        where TWire : notnull
+        where TState : notnull
+    {
+        public Cursor Encode(TState state)
+        {
+            ArgumentNullException.ThrowIfNull(state);
+            var cursor = wireCodec.Encode(toWire(state));
+            EnsureRoundTrip(state, TryDecode(cursor));
+            return cursor;
+        }
+
+        public Result<TState> TryDecode(Cursor? cursor, string? fieldName = null) =>
+            EnsureDecodedState(wireCodec.TryDecode(cursor, fieldName))
+                .Bind(value => EnsureDecodedState(fromWire(value, fieldName)));
+    }
 }

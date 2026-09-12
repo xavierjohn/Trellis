@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-08-18
+last_verified: 2026-09-12
 audience: [llm]
 ---
 # Trellis Cross-Package Cookbook
@@ -30,7 +30,7 @@ audience: [llm]
 ## How to read these recipes
 
 **Hold this routing head resident; read recipe bodies on demand.** Everything above the first
-`## Recipe` heading is ~4K tokens and routes every task. The 36 recipe bodies below are another
+`## Recipe` heading is ~4K tokens and routes every task. The 37 recipe bodies below are another
 ~57K, and a typical task needs one to three of them — so open a body when the [task lookup
 table](#task---recipe-lookup) sends you to one, rather than loading all of them up front. Every
 live recipe is reachable from that table (enforced by the repository's TRLDOC007 lint gate), so if
@@ -96,6 +96,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Concurrency control on mutating endpoints — when to require `If-Match` | [Recipe 23](#recipe-23--concurrency-control-on-aggregate-mutating-endpoints-when-to-require-if-match) |
 | Save bandwidth on reads — return `304 Not Modified` when the client's `If-None-Match` still matches | [Recipe 6](#recipe-6--conditional-get-with-entitytagvalue) |
 | Add a paginated list query | [Recipe 3](#recipe-3--query-handler-returning-paget-paginated-list-with-cursor) |
+| Paginate a computed score or distance with validated continuation state bound to query context | [Recipe 40](#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) |
 | Add Minimal API or MVC endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult) |
 | Map primitive DTO fields to value objects | [Recipe 18](#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
 | Add resource authorization | [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) |
@@ -140,6 +141,7 @@ These rows route recurring LLM lab mistakes to the most relevant reference befor
 | Result-returning ASP endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult), then [trellis-api-asp.md](trellis-api-asp.md#patterns-index) | `AddTrellisAsp()` is required for Result-to-HTTP mapping; exception middleware is not the mapper. |
 | Failure-code OpenAPI metadata or `.http` examples | [trellis-api-asp.md](trellis-api-asp.md#endpoint-checklist-for-generated-apis), [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#api-failure-path-test-checklist) | Generated APIs need failure paths, not happy-path-only docs/tests. |
 | Reading operands out of a failure's `detail` text — splitting `"Valid values: "`, parsing bounds out of a sentence | [Recipe 39](#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args) | Prose belongs to whichever producer noticed the failure, and one failure can have several producers wording it differently. `Code` is stable and `Args` carries the operands as typed values. |
+| Sorting by non-unique/computed values, reusing a cursor with different filters, or seeking after `Take` | [Recipe 3](#recipe-3--query-handler-returning-paget-paginated-list-with-cursor), [Recipe 40](#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) | Ordering and seek must share a unique tie-breaker; validate query context and apply the boundary before limiting the candidates. |
 | Resource authorization guards | [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth), then [trellis-api-authorization.md](trellis-api-authorization.md#patterns-index) | Use `Result.Ensure` for owner/admin boolean guards. |
 
 ---
@@ -346,10 +348,10 @@ public static class OrdersDi
 
 ```csharp
 using Mediator;
+using Microsoft.EntityFrameworkCore;
 using Trellis;
 using Trellis.EntityFrameworkCore;
 
-// Paging cursor and limit are protocol/query-string controls validated at the transport seam.
 public sealed record ListOrdersQuery(string? Cursor, int? Limit) : IQuery<Result<Page<OrderListItem>>>;
 
 public sealed record OrderListItem(Guid Id, decimal Amount, string Currency);
@@ -359,11 +361,11 @@ public sealed class ListOrdersHandler(AppDbContext db)
 {
     public async ValueTask<Result<Page<OrderListItem>>> Handle(ListOrdersQuery q, CancellationToken ct)
     {
-        var pageSize = PageSize.FromRequested(q.Limit);
-        var cursor = q.Cursor is { Length: > 0 } token ? new Cursor(token) : (Cursor?)null;
-
-        var page = await db.Orders.AsNoTracking()
-            .ToPageAsync(pageSize, cursor, o => o.Id.Value, cursorFieldName: "cursor", ct);
+        var seek = SeekDefinition.Ascending<Order, Guid>(o => o.Id.Value);
+        var page = await PageRequest.TryCreate(q.Cursor, q.Limit)
+            .BindAsync(request => db.Orders.AsNoTracking()
+                .ToPageAsync(request, seek, cursorFieldName: "cursor",
+                    cancellationToken: ct));
 
         return page.Map(p => p.Map(o =>
             new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value)));
@@ -371,9 +373,22 @@ public sealed class ListOrdersHandler(AppDbContext db)
 }
 ```
 
-**What it shows.** `PageSize.FromRequested` is the canonical lenient parser: `null` or non-positive limits collapse to `PageSize.Default`, and `Applied` is clamped to `PageSize.Max` while `Requested` is preserved verbatim so `WasCapped` round-trips through the wire envelope. `IQueryable<T>.ToPageAsync` (from `Trellis.EntityFrameworkCore`) owns the `OrderBy`, the cursor decoding (returning `Error.InvalidInput` with `cursor.malformed` on a bad token), the seek `WHERE` predicate, the `Take(Applied + 1)` over-fetch, and the slice via `PageBuilder.FromOverFetch`. `Result<T>.Map` then composes the entity-to-DTO projection (via `Page<T>.Map`) without unwrapping the railway; `Previous` is always `null` (forward-only) until Trellis ships a reverse-seek API.
+**What it shows.** `PageRequest.TryCreate` is the untrusted-input boundary: only a missing cursor means first page; empty/whitespace cursors fail. A missing limit uses `PageSize.Default`; zero/negative limits fail; above-cap limits clamp while retaining `Requested` (or fail with `policy: PageSizeLimitPolicy.Reject`). `BindAsync` executes no query on validation failure. `SeekDefinition` owns ordering, extraction, and the matching predicate; `ToPageAsync` decodes typed state, seeks, over-fetches, and delegates pure assembly to `PageBuilder`. The two `Map` calls preserve both the railway and the page metadata.
 
-> **Cursor parsing must be ROP, not throwing.** `ToPageAsync` decodes cursors via `CursorCodec.TryDecode<TKey>` internally and returns `Result.Fail` on malformed input, so a bad cursor surfaces as a clean 422 rather than a 500. Hand-rolling `Guid.Parse(cursor)` would throw on malformed input and escape the handler as a 500.
+Preserve raw cursor presence at the endpoint: MVC binding can normalize empty strings to null. Read the raw query value when necessary so a present `?cursor=` reaches `PageRequest.TryCreate` as empty, not as absence.
+
+For non-unique primary sorts, change the definition rather than hand-writing a second predicate:
+
+```csharp
+var seek = SeekDefinition.Descending<Order, DateTimeOffset>(o => o.CreatedAt)
+    .ThenAscending(o => o.Id.Value);
+```
+
+End with a stable unique key. Every key must be non-null and provider-comparable; verify translation/collation semantics. `.Id.Value` projection requires `AddTrellisInterceptors()` on the context options. Apply tenant/authorization/business filters before `ToPageAsync`; the sample assumes the order source is already appropriately scoped.
+
+EF projects boundary values alongside each row using the same expressions as ordering and seeking; the cursor is encoded from that projected state, not from selectors compiled or re-evaluated after materialization. Provider-translated functions such as `EF.Functions.Collate` are usable when the provider translates the complete query. Do not substitute an assumed-equivalent C# calculation for a SQL boundary value.
+
+**Failure and consistency boundaries.** Malformed state returns `Error.InvalidInput` with `cursor.malformed` (HTTP 422 through ASP mapping). Invalid server state, provider failures, and cancellation propagate rather than becoming cursor errors. Built-in tokens are versioned and unsigned; old unversioned tokens are rejected. `Previous` is null from the EF helper, and descending traversal is not reverse pagination. There is no snapshot guarantee across mutable data. Use [Recipe 40](#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) for query-bound computed state; see the [Core pagination reference](trellis-api-core.md#pagination) and [EF seek contract](trellis-api-efcore.md#seekdefinition).
 
 ---
 
@@ -3368,6 +3383,109 @@ The same renderer works server-side when an API must localize on behalf of thin 
 | Assuming `fieldViolations` exists | A body that never parsed reports 400 with no such member. | Treat absence as "no per-field reason available". |
 | Formatting a `Number` with `InvariantCulture` for display, or echoing the raw JSON text | Shows `1.5` to a user whose locale writes `1,5`. | Format with the UI culture; the wire stays invariant. |
 | Falling back to a generic string for an unrecognized code | Discards the server's own explanation, which is usually better than "Invalid input". | Fall back to `Detail` first, generic prose last. |
+
+## Recipe 40 — Computed pagination with validated query-bound continuation state
+
+**Problem.** Page an application-computed distance (or score) when the ordering is not a provider-translatable column. Preserve a deterministic tie-breaker, reject impossible boundaries, and reject tokens from a different origin/filter/algorithm context. The algorithm stays application-owned: Trellis supplies typed continuation codecs and page assembly, not spatial search.
+
+This example uses planar Euclidean distance over a **complete, bounded, authorized snapshot** (at most 10,000 candidates with unique IDs). `scopeSnapshotId` is a server-assigned identity for that exact candidate snapshot **and** authorization/filter scope, never a client-supplied substitute for filtering. Production code must obtain that set through an appropriate index/search provider or bounded domain operation; do not load an unbounded table. Coordinates are finite and within ±1,000,000 in the application's units.
+
+```csharp
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using Trellis;
+
+public sealed record DistanceCandidate(Guid Id, double X, double Y);
+public sealed record DistanceItem(Guid Id, double Distance);
+public sealed record DistanceBoundary(double Distance, Guid Id, string Context);
+
+public static class DistancePagination
+{
+    public static Result<Page<DistanceItem>> List(
+        IReadOnlyList<DistanceCandidate> authorizedSnapshot,
+        string scopeSnapshotId, double originX, double originY,
+        string? cursor, int? limit)
+    {
+        if (!ValidCoordinate(originX) || !ValidCoordinate(originY))
+            return Result.Fail<Page<DistanceItem>>(Error.InvalidInput.ForField(
+                "origin", "search.origin.invalid", "Origin is outside the supported coordinate range."));
+
+        var context = ContextIdentity(scopeSnapshotId, originX, originY);
+        var codec = CreateCodec(context);
+        return PageRequest.TryCreate(cursor, limit)
+            .Bind(request => request.Decode(codec)
+                .Map(boundary => BuildPage(authorizedSnapshot, originX, originY,
+                    request.Size, boundary, context, codec)));
+    }
+
+    private static ICursorCodec<DistanceBoundary> CreateCodec(string context) =>
+        CursorCodec.Map<((double Primary, Guid Secondary) Primary, string Secondary), DistanceBoundary>(
+            CursorCodec.Composite(
+                CursorCodec.Composite<double, Guid>(), CursorCodec.Scalar<string>()),
+            state => ((state.Distance, state.Id), state.Context),
+            (wire, field) =>
+                double.IsFinite(wire.Primary.Primary) && wire.Primary.Primary >= 0
+                && string.Equals(wire.Secondary, context, StringComparison.Ordinal)
+                    ? Result.Ok(new DistanceBoundary(
+                        wire.Primary.Primary, wire.Primary.Secondary, wire.Secondary))
+                    : Result.Fail<DistanceBoundary>(Error.InvalidInput.ForField(
+                        field ?? "cursor", "cursor.malformed",
+                        "Cursor distance or query context is invalid.")));
+
+    private static Page<DistanceItem> BuildPage(
+        IReadOnlyList<DistanceCandidate> candidates, double x, double y,
+        PageSize size, Maybe<DistanceBoundary> boundary, string context,
+        ICursorCodec<DistanceBoundary> codec)
+    {
+        if (candidates.Count > 10_000
+            || candidates.Select(c => c.Id).Distinct().Count() != candidates.Count
+            || candidates.Any(c => !ValidCoordinate(c.X) || !ValidCoordinate(c.Y)))
+            throw new ArgumentException("The trusted candidate snapshot violates its bounds.", nameof(candidates));
+
+        IEnumerable<DistanceItem> scored = candidates.Select(c =>
+            new DistanceItem(c.Id, Math.Sqrt(
+                ((c.X - x) * (c.X - x)) + ((c.Y - y) * (c.Y - y)))));
+
+        if (boundary.TryGetValue(out var after))
+            scored = scored.Where(item =>
+                item.Distance > after.Distance
+                || (item.Distance == after.Distance && item.Id.CompareTo(after.Id) > 0));
+
+        var rows = scored.OrderBy(item => item.Distance).ThenBy(item => item.Id)
+            .Take(size.Applied + 1).ToArray();
+
+        return PageBuilder.FromOverFetch(rows, size,
+            last => codec.Encode(new DistanceBoundary(last.Distance, last.Id, context)));
+    }
+
+    private static bool ValidCoordinate(double value) =>
+        double.IsFinite(value) && value is >= -1_000_000 and <= 1_000_000;
+
+    private static string ContextIdentity(string scopeSnapshotId, double x, double y)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scopeSnapshotId);
+        var canonical = string.Concat(
+            "distance-v1;asc;guid-asc;",
+            scopeSnapshotId.Length.ToString(CultureInfo.InvariantCulture), ":", scopeSnapshotId, ";",
+            (x == 0 ? 0d : x).ToString("R", CultureInfo.InvariantCulture), ";",
+            (y == 0 ? 0d : y).ToString("R", CultureInfo.InvariantCulture));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
+    }
+}
+```
+
+**What it shows.**
+
+- `CursorCodec.Composite` safely nests boundary `(distance, id)` with query context. `CursorCodec.Map` gives that wire tuple a named state and validates finite, nonnegative distance and exact context identity. Validation also runs when encoding server boundaries; corrupt state throws rather than generating an unusable next token.
+- Context uses invariant round-trip coordinates (normalizing signed zero), a length-prefixed scope/snapshot identity, fixed sort directions, and an algorithm version before hashing. Include every additional filter/parameter that affects membership or ordering in the canonical identity. The hash is **not a signature**: a malicious client can still construct unsigned state. Protection requires a caller-owned codec wrapper, and every request must reapply authorization.
+- The boundary filter runs **before** `Take`. Ascending distance ties use ascending `Guid.CompareTo`, matching the in-memory `ThenBy` comparator; GUIDs do not have a C# `>` operator. A descending score needs the corresponding reversed predicate. Never round the boundary for display before encoding it.
+- `PageBuilder` does not search, sort, calculate distances, or decode. It calls the encoder once on the last retained row only if over-fetch finds another row. Provider-owned continuation tokens instead belong in a directly constructed `Page<T>`.
+- This bounded implementation recomputes and sorts candidates; it is not a constant-time/indexed-search promise. An immutable snapshot identity is an application guarantee here, not a Trellis snapshot feature. Against changing data, even exact cursors cannot promise a frozen result set.
+
+**Anti-pattern → fix.** Raw JSON/base64 with unchecked distance → typed codecs plus validation; global nearest-N candidates before applying a boundary → seek before `Take`; timestamp/score alone → add a stable unique tie-breaker; replaying a token with another origin/filter → validate canonical context; treating signing or geospatial search as built-in → explicitly supply the appropriate infrastructure.
+
+**References.** [Core pagination](trellis-api-core.md#pagination), [EF seek definitions](trellis-api-efcore.md#seekdefinition), [Recipe 3](#recipe-3--query-handler-returning-paget-paginated-list-with-cursor). `Result` failures propagate through `Bind` / `Map` (TRLS001); `Maybe` is read through guarded `TryGetValue` (TRLS003). No throwing parser is used for expected client-input failures.
 
 ## Cross-references
 

@@ -31,14 +31,46 @@ Result<int> saved = await dbContext.SaveChangesResultAsync(cancellationToken);
 - Query `Maybe<T>` naturally instead of dropping to storage-specific null handling.
 - Return `Result<int>` or `Result` from save operations instead of throwing on expected failures.
 - Idempotent inserts on a unique constraint via `db.TryInsertUniqueAsync(entity, ct)` — duplicate-key violations surface as a failed `Result<TEntity>` carrying an `Error.Conflict` with reason code `"duplicate.key"` and the provider-extracted `ConstraintName` / `ConstraintTableName` telemetry fields, so worker outboxes and "save unless exists" deduplication never throw on redelivery.
-- Cursor-based seek pagination via `IQueryable<T>.ToPageAsync(pageSize, cursor, keySelector, …)` — returns `Result<Page<T>>`, composes with `PageBuilder` and `CursorCodec`, and never throws on malformed input.
+- Typed cursor pagination via `IQueryable<T>.ToPageAsync(request, seek, …)` — `SeekDefinition` keeps single/composite, ascending/descending ordering and seek predicates together; malformed client state returns `Error.InvalidInput`.
 - `RepositoryBase<TAggregate, TId>` — staging-only base class (Add/Remove/Query/Exists/Count).
 - `IUnitOfWork` / `EfUnitOfWork<TContext>` — single commit boundary for staged changes.
 - `TransactionalCommandBehavior` — Mediator pipeline behavior that auto-commits after successful command handlers (requires Mediator pipeline registration). Also commits on `Result.FailAfterCommit<T>(error)` outcomes so persist-on-failure handlers (e.g., a worker recording a permanent-failure transition) can stage state alongside the failed result.
 
+## Typed seek pagination
+
+```csharp
+var seek = SeekDefinition.Descending<Order, DateTimeOffset>(o => o.CreatedAt)
+    .ThenAscending(o => o.Id.Value);
+
+Result<Page<Order>> page = await PageRequest.TryCreate(cursor, limit)
+    .BindAsync(request => authorizedOrders.AsNoTracking()
+        .ToPageAsync(request, seek, cancellationToken: ct));
+```
+
+Supply an authorized, pre-filtered `IQueryable<Order>`. `PageRequest` distinguishes
+missing input from invalid empty cursors/non-positive limits; above-cap limits
+clamp by default (`PageSizeLimitPolicy.Reject` opts into rejection). The helper
+decodes typed state, seeks before `Take(Applied + 1)`, and assembles a forward page.
+Boundary values are projected with the database query using the same key
+expressions, not recomputed in C# after materialization. Provider-translated
+functions are supported when the provider translates the complete query.
+
+End with a stable unique key. Null keys are unsupported; verify your provider's
+translation and comparison/collation semantics. `.Id.Value` projection requires
+`AddTrellisInterceptors()`. There is no client-side fallback or snapshot guarantee,
+and descending traversal is not previous-page support. Cancellation and provider
+failures propagate rather than becoming malformed-cursor errors.
+
+Use explicit key codecs or `seek.WithCodec(...)` for custom/context-bound/protected
+state. Built-ins are versioned and unsigned; old unversioned tokens are rejected.
+The single-key ascending `ToPageAsync(pageSize, cursor, keySelector, …)` convenience
+remains. For non-translatable computed ordering, use an explicitly bounded
+application algorithm with Core codecs and `PageBuilder` instead.
+
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-ef.html)
 - [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Pagination guide](https://xavierjohn.github.io/Trellis/articles/pagination.html)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

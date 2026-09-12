@@ -199,7 +199,7 @@ public sealed class HttpResponseExtensionsExtraTests
     {
         var page = new Page<Thing>(new[] { new Thing(1, "x") }, null, null, 10, 10);
         var r = Result.Ok(page);
-        FluentActions.Invoking(() => r.ToHttpResponse<Thing, object>(null!, _ => new()))
+        FluentActions.Invoking(() => r.ToHttpResponse<Thing, object>((Func<Cursor, int, string>)null!, _ => new()))
             .Should().Throw<ArgumentNullException>();
         FluentActions.Invoking(() => r.ToHttpResponse<Thing, object>((_, _) => "next", null!))
             .Should().Throw<ArgumentNullException>();

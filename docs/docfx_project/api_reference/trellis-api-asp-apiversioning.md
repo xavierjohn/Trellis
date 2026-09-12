@@ -33,6 +33,7 @@ See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdom
 | Multi-key route values | `CreatedAtRoute(routeName, x => new RouteValueDictionary { ["tenantId"] = x.TenantId, ["id"] = x.Id }).WithVersionedRoute()` | [Composition examples](#composition-examples) |
 | Pin Location to a specific version (rare) | `CreatedAtRoute(...).WithVersionedRoute(new ApiVersion(new DateOnly(2026, 12, 1)))` | [Explicit-version overload](#explicit-version-overload) |
 | Paginated list — emit versioned next-page URL | `HttpContext.PageUrl(routeName, (c, applied) => new RouteValueDictionary { ["cursor"] = c.Token, ["limit"] = applied })` passed as the `nextUrlBuilder` argument of `ToHttpResponse(Async)` | [`HttpContextPageUrlExtensions`](#httpcontextpageurlextensions) |
+| Paginated list — distinct versioned next/previous URLs | `HttpContext.PageUrl(routeName, (cursor, direction, applied) => ...)` passed as the `urlBuilder` argument of `ToHttpResponse(Async)`; choose `after` / `before` keys using `Trellis.Asp.PageDirection` | [`Directional pagination`](#directional-pagination) |
 | Paginated list — pin next-page URL to a specific version | `HttpContext.PageUrl(routeName, new ApiVersion(new DateOnly(2026, 12, 1)), (c, applied) => …)` | [`PageUrl` explicit-version overload](#pageurl-explicit-version-overload) |
 | `[ApiVersionNeutral]` controller | Use `CreatedAtRoute` (no version injected); `.WithVersionedRoute()` short-circuits the resolver to a no-op when the endpoint is neutral | [Behavioral notes](#behavioral-notes) |
 | URL-segment versioning (`v{version:apiVersion}` in template) | Continue to use `CreatedAtRoute`; the segment is filled by the route template, not a query route value | [Behavioral notes](#behavioral-notes) |
@@ -164,6 +165,48 @@ public static class HttpContextPageUrlExtensions
 | --- | --- | --- |
 | `PageUrl(this HttpContext httpContext, string routeName, Func<Cursor, int, RouteValueDictionary> routeValues)` | `Func<Cursor, int, string>` | Returns a request-scoped builder suitable for the `nextUrlBuilder` parameter of `ToHttpResponse(Async)` on `Result<Page<T>>`. Per-request resolution of `api-version`: client-requested version (only when the target endpoint declares it — cross-route v2-request → v1-only target falls through) → single declared version on the target endpoint → `DefaultApiVersion` → throw. Defensively clones the consumer-returned dictionary before injecting `api-version`. Consumer-supplied `api-version` keys win. Skipped on `[ApiVersionNeutral]` and `:apiVersion` URL-segment routes, and also skipped when the target endpoint has no `ApiVersionMetadata` (host did not call `AddApiVersioning(...)`). |
 | `PageUrl(this HttpContext httpContext, string routeName, ApiVersion version, Func<Cursor, int, RouteValueDictionary> routeValues)` | `Func<Cursor, int, string>` | Explicit-version overload — pins the next-page URL to a specific `ApiVersion`. The pin is silently skipped on `[ApiVersionNeutral]` targets and on targets with no `ApiVersionMetadata` (the same precedent as `WithVersionedRoute(ApiVersion)`); in both cases emitting the pin as a query parameter would be a stale URL artefact the target middleware would not act on. On URL-segment-versioned targets (`:apiVersion` in the route template) the pin throws `InvalidOperationException` instead — silently honouring the pin would let `LinkGenerator` fill the segment from ambient route data, producing a URL with the *wrong* version. The pin also throws when the target endpoint has `ApiVersionMetadata` but does not declare `version` among its implicit/explicit declared versions — emitting the URL would produce a link the target rejects (e.g. `400` from the versioning middleware) when followed. |
+
+#### Directional pagination
+
+The existing two-argument callback overloads remain supported. Use these additional
+overloads when next and previous links need different route values:
+
+```csharp
+public static Func<Cursor, PageDirection, int, string> PageUrl(
+    this HttpContext httpContext,
+    string routeName,
+    Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues);
+
+public static Func<Cursor, PageDirection, int, string> PageUrl(
+    this HttpContext httpContext,
+    string routeName,
+    ApiVersion version,
+    Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues);
+```
+
+`PageDirection` is the ASP-owned enum (`Trellis.Asp.PageDirection.Next` /
+`Trellis.Asp.PageDirection.Previous`), not a separate versioning type. These overloads pass
+the direction unchanged to `routeValues` and return the delegate expected by the
+direction-aware `ToHttpResponse` / `ToHttpResponseAsync` overloads. Version resolution,
+dictionary cloning, consumer-version precedence, explicit-pin validation, URL-segment
+handling, and neutral/unversioned skip rules are identical to their respective
+two-argument callback overloads. Each link preserves the request's scheme, host, and
+`PathBase`. No registration changes are required.
+
+```csharp
+return pageResult.ToHttpResponse(
+    urlBuilder: HttpContext.PageUrl(
+        "Orders_List",
+        (cursor, direction, applied) => new RouteValueDictionary
+        {
+            [direction == PageDirection.Next ? "after" : "before"] = cursor.Token,
+            ["limit"] = applied,
+        }),
+    body: order => OrderListItemResponse.From(order));
+```
+
+The named endpoint must implement the corresponding forward/backward query semantics;
+URL generation does not add reverse-seek support. `Page<T>.Previous` remains optional.
 
 #### `PageUrl` behavioral notes
 

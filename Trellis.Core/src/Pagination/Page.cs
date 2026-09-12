@@ -27,13 +27,12 @@ using System.Collections.Immutable;
 /// makes server-side clamping observable without the client having to compare counts.
 /// </para>
 /// </remarks>
-public readonly record struct Page<T>
+public sealed record Page<T>
 {
     private readonly EquatableArray<T> _items;
 
     /// <summary>Constructs a validated page. Use <see cref="Page.Empty{T}(int, int)"/> for empty pages.</summary>
     /// <exception cref="ArgumentNullException"><paramref name="Items"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentException">A supplied cursor equals <c>default(Cursor)</c> (which has no token).</exception>
     /// <exception cref="ArgumentOutOfRangeException">A limit is non-positive, or <paramref name="AppliedLimit"/> exceeds <paramref name="RequestedLimit"/>.</exception>
     public Page(
         IReadOnlyList<T> Items,
@@ -43,13 +42,9 @@ public readonly record struct Page<T>
         int AppliedLimit)
     {
         ArgumentNullException.ThrowIfNull(Items);
-        if (Next is { } nextValue && nextValue.Equals(default(Cursor)))
-            throw new ArgumentException("Next cursor must not be default(Cursor) — use null to signal absence.", nameof(Next));
-        if (Previous is { } previousValue && previousValue.Equals(default(Cursor)))
-            throw new ArgumentException("Previous cursor must not be default(Cursor) — use null to signal absence.", nameof(Previous));
         if (RequestedLimit <= 0)
             throw new ArgumentOutOfRangeException(nameof(RequestedLimit), "Limit must be positive.");
-        if (AppliedLimit <= 0)
+        if (AppliedLimit is <= 0 or > PageSize.MaxApplied)
             throw new ArgumentOutOfRangeException(nameof(AppliedLimit), "Limit must be positive.");
         if (AppliedLimit > RequestedLimit)
             throw new ArgumentOutOfRangeException(nameof(AppliedLimit), "AppliedLimit cannot exceed RequestedLimit.");
@@ -63,13 +58,7 @@ public readonly record struct Page<T>
         this.AppliedLimit = AppliedLimit;
     }
 
-    /// <summary>The items returned for this page. Defensive against <c>default(Page&lt;T&gt;)</c>: returns an empty list when the backing storage is uninitialized.</summary>
-    /// <remarks>
-    /// Mirrors the <see cref="EquatableArray{T}.Items"/> pattern: a <c>default</c>-constructed
-    /// <see cref="Page{T}"/> is observably empty rather than throwing on enumeration. Always
-    /// construct via the public constructor or <see cref="Page.Empty{T}(int, int)"/>; defaults
-    /// are observable but not part of the supported design.
-    /// </remarks>
+    /// <summary>The immutable items returned for this page.</summary>
     public IReadOnlyList<T> Items => _items.Items;
 
     /// <summary>Cursor for the next page, or null when this is the last page.</summary>
