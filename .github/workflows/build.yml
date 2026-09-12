@@ -1,4 +1,4 @@
-name: Build
+﻿name: Build
 
 on:
   workflow_dispatch:
@@ -164,12 +164,12 @@ jobs:
     - name: Test with Coverage
       # --coverage: Native MTP coverage (requires Microsoft.Testing.Extensions.CodeCoverage)
       # --report-trx: Native MTP TRX generation (requires Microsoft.Testing.Extensions.TrxReport)
-      # --results-directory is a VSTest-only flag that forces the VSTest code path, breaking MTP flags.
-      # MTP writes TRX to TestResults/ relative to each test project directory; coverage path is set explicitly via --coverage-output.
+      # MTP 2 test modules can share a TestResults directory. Keep the generated unique
+      # filenames: a fixed --coverage-output would make parallel modules overwrite or lock it.
       run: |
         dotnet test --no-build -c Release \
           --filter-not-trait "Category=Integration" \
-          --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml \
+          --coverage --coverage-output-format cobertura \
           --report-trx
 
     - name: Publish Test Results
@@ -183,7 +183,7 @@ jobs:
       uses: codecov/codecov-action@v7
       if: always()
       with:
-        # MTP writes coverage relative to each test project; search recursively
+        # Collect every module's uniquely named coverage report.
         files: ./**/*.cobertura.xml
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false

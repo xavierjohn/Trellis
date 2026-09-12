@@ -20,7 +20,7 @@ using Trellis;
 /// </summary>
 public sealed class ResponseFailureWriterMvcIntegrationTests
 {
-    private static IHost CreateHost(bool addApiVersioning = false, bool addOpenApi = false)
+    private static IHost CreateHost(bool addVersionedOpenApi = false)
     {
         var builder = Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults(web => web
@@ -30,7 +30,7 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
                     s.AddProblemDetails();
                     s.AddControllers().AddApplicationPart(typeof(DiagController).Assembly);
 
-                    if (addApiVersioning)
+                    if (addVersionedOpenApi)
                     {
                         var apiv = s.AddApiVersioning(o =>
                         {
@@ -39,12 +39,8 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
                         });
                         apiv.AddMvc();
                         apiv.AddApiExplorer();
-                        if (addOpenApi)
-                            apiv.AddOpenApi();
+                        apiv.AddOpenApi();
                     }
-
-                    if (addOpenApi)
-                        s.AddOpenApi();
                 })
                 .Configure(app =>
                 {
@@ -114,7 +110,7 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
     [Fact]
     public async Task UnprocessableContent_with_field_violations_writes_errors_dict_under_full_pipeline()
     {
-        using var host = CreateHost(addApiVersioning: true, addOpenApi: true);
+        using var host = CreateHost(addVersionedOpenApi: true);
         using var client = host.GetTestClient();
 
         var resp = await client.GetAsync("/diag/422-fields", TestContext.Current.CancellationToken);

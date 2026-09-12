@@ -1,4 +1,4 @@
-# Dependabot version update configuration.
+﻿# Dependabot version update configuration.
 # Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
@@ -26,41 +26,31 @@ updates:
       - dependency-name: "FluentAssertions"
         update-types: ["version-update:semver-major"]
 
-      # Microsoft.Testing.Extensions.TrxReport has TWO version generations on
-      # NuGet: 1.x is the current Microsoft.Testing.Platform extension (2024+),
-      # 2.x is an abandoned 2021 codebase with confusingly-higher version
-      # numbers. Bumping 1.x -> 2.x is a downgrade-as-upgrade.
-      - dependency-name: "Microsoft.Testing.Extensions.TrxReport"
+      # ASP.NET Core OpenAPI and Asp.Versioning.OpenApi require Microsoft.OpenApi < 3.
+      # Keep receiving compatible 2.x fixes until those consumers support 3.x.
+      - dependency-name: "Microsoft.OpenApi"
         update-types: ["version-update:semver-major"]
-
-      # Microsoft.Testing.Extensions.CodeCoverage newer than 18.0.6 (e.g. 18.8.0)
-      # pulls Microsoft.Testing.Platform 2.2.x, whose TestHost.IDataConsumer ABI
-      # is incompatible with the Microsoft.Testing.Platform that xunit.v3 3.2.2
-      # bundles -> TypeLoadException at test-host startup, 0 tests run, build
-      # fails (see PR #611). This is a MINOR-version break, so a semver-major
-      # rule would miss it -> ignore the whole package. NOTE: an ignore entry
-      # also suppresses Dependabot SECURITY update PRs for it, which is fine
-      # here (any bump past 18.0.6 is un-mergeable anyway); rely on Dependabot
-      # alerts and bump manually once xunit.v3 targets Microsoft.Testing.Platform 2.2.x.
-      - dependency-name: "Microsoft.Testing.Extensions.CodeCoverage"
 
     # Group monthly NuGet bumps so the schedule produces a handful of PRs
     # instead of 20+ unrelated single-package PRs.
     groups:
       microsoft-platform:
-        patterns:
-          - "Microsoft.Extensions.*"
-          - "Microsoft.AspNetCore.*"
-          - "Microsoft.IdentityModel.*"
-          - "Microsoft.Identity.*"
-      ef-core:
+        # EF Core depends on matching Microsoft.Extensions patch versions. Keep
+        # them together so central transitive pins cannot cause NU1109 downgrades.
         patterns:
           - "Microsoft.EntityFrameworkCore*"
+          - "Microsoft.Extensions.*"
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.OpenApi"
+          - "Microsoft.IdentityModel.*"
+          - "Microsoft.Identity.*"
       roslyn:
         patterns:
           - "Microsoft.CodeAnalysis.*"
           - "Roslynator.*"
       testing:
+        # xunit.v3 4.x, TRX 2.x and current coverage extensions share MTP 2.
+        # Update them together; the old MTP 1 coverage restriction no longer applies.
         patterns:
           - "xunit*"
           - "Xunit.*"
