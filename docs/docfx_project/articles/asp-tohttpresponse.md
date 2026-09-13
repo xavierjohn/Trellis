@@ -63,6 +63,9 @@ Full signatures: [trellis-api-asp.md](../api_reference/trellis-api-asp.md).
 | `Created(string literal)` / `Created(Func<T, string>)` | `201 Created` with literal or value-derived `Location`. |
 | `CreatedAtRoute(name, Func<T, RouteValueDictionary>)` | `201 Created` with relative `Location` via `LinkGenerator.GetPathByName`. AOT-safe. |
 | `CreatedAtAction(action, Func<T, RouteValueDictionary>, controller?)` | MVC `CreatedAtAction` equivalent. **Not trim/AOT-safe** — `RequiresUnreferencedCode` / `RequiresDynamicCode`. |
+| `WithLocation(name, Func<T, RouteValueDictionary>)` | Adds a named-route Location without changing the normal 2xx status. |
+| `WithRouteValueResolver(key, Func<HttpContext, string?>)` | Applies request-based values after the domain selector; `null` preserves the existing value. |
+| `WithLocationRouteResolver(Action<LocationRouteContext>)` | Optional destination-aware callback after the selector and all legacy resolvers. Receives the final destination and a mutable per-execution copy; last registration wins and errors propagate. |
 | `EvaluatePreconditions()` | On `GET`/`HEAD`, evaluates `If-Match`, `If-Unmodified-Since`, `If-None-Match`, `If-Modified-Since` against the configured ETag/`Last-Modified`. **Not on by default.** |
 | `HonorPrefer()` | Honors RFC 7240 `Prefer: return=minimal` / `return=representation`. Always emits `Vary: Prefer`; emits `Preference-Applied` only when honored. **Not on by default.** |
 | `WithErrorMapping(Func<Error, int>)` | Per-call error → status mapper. Highest precedence. |
@@ -230,7 +233,11 @@ app.MapPost("/orders", async (CreateOrder cmd, IOrderService svc, CancellationTo
 ```
 
 > [!IMPORTANT]
-> Under query-string or header API versioning, the `RouteValueDictionary` MUST include `["api-version"] = ApiVersion`; otherwise the emitted `Location` omits the `api-version` query parameter and `404`s on dereference. The recommended path is to chain `.WithVersionedRoute()` from the [`Trellis.Asp.ApiVersioning`](integration-aspnet.md#api-version-aware-location-headers) package, which injects the version per request automatically. The [`TRLS023`](analyzers/TRLS023.md) analyzer catches missed chaining on `CreatedAtRoute(...)`, `CreatedAtAction(...)`, and `WithLocation(...)`, and the code fix appends the call.
+> Links to query/header-versioned destinations need an accepted `api-version` value. Prefer `.WithVersionedRoute()` from [`Trellis.Asp.ApiVersioning`](integration-aspnet.md#api-version-aware-location-headers) to resolve the target's mapped query/segment version rather than hard-coding values; neutral/unversioned targets do not need a version. [`TRLS023`](analyzers/TRLS023.md) catches missed chaining on `CreatedAtRoute(...)`, `CreatedAtAction(...)`, and `WithLocation(...)`, and its code fix appends the call.
+
+`WithVersionedRoute()` now resolves the **final destination**, not the current endpoint. Requested, fallback, and pinned versions must map to that destination; `[MapToApiVersion]` narrows controller versions. Missing/ambiguous targets or unsupported pins throw `InvalidOperationException` (prefer a uniquely named route). URL-segment destinations receive the resolved/pinned value in their actual `:apiVersion` parameter, without a duplicate `api-version` query entry. Neutral/missing-metadata targets remove supplied `api-version`; missing-metadata warnings now identify and deduplicate by destination.
+
+The extension uses `WithLocationRouteResolver` after all legacy callbacks; it overrides version values on a cloned dictionary without mutating shared selector values. The last destination-aware callback registration wins, including repeated `WithVersionedRoute` calls. Literal/selector `Created(...)` and `WriteOutcome`-owned URIs are unaffected. Existing syntax, statuses, and action-link AOT limitations remain. See the [migration guidance](../api_reference/trellis-api-asp-apiversioning.md#migration-existing-syntax-stricter-destination-checks). `PageUrl` shares the corrected mapping checks but retains ambient segment routing, consumer overrides, and rejection of explicit segment pins.
 
 ### `WriteOutcome<T>` variants
 

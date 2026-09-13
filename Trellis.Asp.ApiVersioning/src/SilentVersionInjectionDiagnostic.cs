@@ -20,17 +20,13 @@ using Trellis.Asp;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Only fires for the missing-metadata case. <c>[ApiVersionNeutral]</c> endpoints
-/// (intentional skip) and URL-segment-versioned routes (ambient routing fills the segment)
-/// are silent — the resolver also skips those cases by design.
+/// Only fires for the missing-metadata case. Neutral targets and versioned URL-segment
+/// targets remain silent.
 /// </para>
 /// <para>
-/// The de-duplication key is the current executing endpoint's identity, not a target route
-/// name. <c>.WithVersionedRoute()</c> registers a route-value resolver tied to the response
-/// for the request being served; the resolver runtime does not know which target route a
-/// downstream <c>CreatedAtRoute(...)</c> or <c>WithLocation(...)</c> will reference.
-/// Per-current-endpoint de-duplication is the strongest stable key available at this layer
-/// and matches the semantic of "this controller action is configured incorrectly."
+/// The de-duplication key identifies the resolved Location destination, not the endpoint
+/// handling the request. Several source actions linking to the same unversioned target
+/// therefore produce one warning.
 /// </para>
 /// </remarks>
 internal static partial class SilentVersionInjectionDiagnostic
@@ -52,7 +48,7 @@ internal static partial class SilentVersionInjectionDiagnostic
     /// <summary>
     /// Inspects <paramref name="endpoint"/> for missing <see cref="ApiVersionMetadata"/>
     /// and, when appropriate, throws (opt-in fail-fast) or logs a single warning.
-    /// Returns silently in every other case (metadata present, no current endpoint,
+    /// Returns silently in every other case (metadata present, no endpoint,
     /// or already-warned endpoint).
     /// </summary>
     /// <param name="httpContext">
@@ -60,25 +56,17 @@ internal static partial class SilentVersionInjectionDiagnostic
     /// for the fail-fast opt-in and <see cref="ILoggerFactory"/> for warning emission.
     /// </param>
     /// <param name="endpoint">
-    /// The endpoint currently being executed. <c>null</c> indicates the resolver ran
-    /// outside an endpoint-routing context (e.g. raw middleware or a test harness that
-    /// invoked the resolver directly); the diagnostic stays silent in that case because
-    /// the mid-migration scenario the warning targets requires an actual endpoint to be
-    /// matched.
+    /// The resolved Location destination. A null endpoint is ignored; the caller owns
+    /// reporting unresolved destinations.
     /// </param>
     internal static void EmitIfMetadataMissing(HttpContext httpContext, Endpoint? endpoint)
     {
-        // No current endpoint means the resolver was invoked outside endpoint routing.
-        // The mid-migration regression the diagnostic targets ("endpoint exists but
-        // AddApiVersioning() is missing") does not apply, so stay silent. The resolver's
-        // existing ShouldSkipInjection(null) → true contract still suppresses injection.
         if (endpoint is null)
             return;
 
         // Metadata present means the host did call AddApiVersioning(...) and the endpoint
         // is part of its surface — no diagnostic needed. Other ShouldSkipInjection cases
-        // ([ApiVersionNeutral], URL-segment versioning) carry metadata and are also
-        // intentional skips, so checking for `metadata is null` here scopes the diagnostic
+        // ([ApiVersionNeutral], URL-segment versioning) carry metadata, so this scopes the diagnostic
         // to exactly the missing-metadata case the issue describes.
         var metadata = endpoint.Metadata.GetMetadata<ApiVersionMetadata>();
         if (metadata is not null)

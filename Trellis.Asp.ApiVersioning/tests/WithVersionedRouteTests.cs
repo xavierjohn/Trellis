@@ -253,9 +253,7 @@ public sealed class WithVersionedRouteTests
     public async Task UrlSegment_versioned_route_omits_api_version_query_from_Location()
     {
         // URL-segment versioning embeds the version in the route template (`v{version:apiVersion}`).
-        // The resolver detects the `:apiVersion` constraint and skips injecting api-version into the
-        // route-values dictionary — the segment is filled by ambient routing, and a query-string
-        // copy would create a redundant/conflicting parameter on the Location URI.
+        // The resolver fills the target's version segment without a duplicate query parameter.
         using var host = CreateUrlSegmentHost();
         using var client = host.GetTestClient();
 
@@ -270,24 +268,14 @@ public sealed class WithVersionedRouteTests
     }
 
     [Fact]
-    public async Task Explicit_version_overload_on_url_segment_versioned_route_omits_api_version_query_from_Location()
+    public async Task Explicit_version_overload_on_url_segment_versioned_route_rejects_unsupported_pin()
     {
-        // Regression: the explicit-version overload must honor the URL-segment skip rule too.
-        // The route template `v{version:apiVersion}/segments/...` already carries the version
-        // in its path; a pinned `?api-version=...` query parameter on the Location would create
-        // a redundant/conflicting parameter that contradicts the path. The action pins
-        // ApiVersionV2 while the request comes in under the ApiVersionV1 segment — either
-        // value appearing as a query parameter indicates the skip rule was bypassed.
         using var host = CreateUrlSegmentHost();
         using var client = host.GetTestClient();
 
-        var resp = await client.PostAsync($"/v{ApiVersionV1}/segments/pinned", JsonContent("{}"), TestContext.Current.CancellationToken);
-
-        resp.StatusCode.Should().Be(HttpStatusCode.Created);
-        resp.Headers.Location!.OriginalString.Should().Contain($"/v{ApiVersionV1}/segments/");
-        resp.Headers.Location.OriginalString.Should().NotContain("?api-version=");
-        resp.Headers.Location.OriginalString.Should().NotContain("&api-version=");
-        resp.Headers.Location.OriginalString.Should().NotContain($"={ApiVersionV2}");
+        var act = () => client.PostAsync(
+            $"/v{ApiVersionV1}/segments/pinned", JsonContent("{}"), TestContext.Current.CancellationToken);
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("*not declared*");
     }
 
     [Fact]

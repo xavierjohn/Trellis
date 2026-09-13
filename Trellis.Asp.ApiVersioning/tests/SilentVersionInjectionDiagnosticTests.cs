@@ -95,7 +95,7 @@ public sealed class SilentVersionInjectionDiagnosticTests
         // The endpoint key MUST be interpolated into the message — a broken LoggerMessage
         // placeholder ({EndpointKey} without its closing brace, etc.) would render as raw
         // template text and the endpoint identifier would never reach the log line.
-        warnings[0].Should().Contain("DiagUnversionedPerRequestController.Post");
+        warnings[0].Should().Contain("DiagUnversionedPerRequestController.Get");
     }
 
     [Fact]
@@ -115,8 +115,8 @@ public sealed class SilentVersionInjectionDiagnosticTests
 
         var warnings = CaptureWarnings(capture);
         warnings.Should().HaveCount(2);
-        warnings.Should().Contain(w => w.Contains("DiagUnversionedMultiEndpointController.PostAlpha", StringComparison.Ordinal));
-        warnings.Should().Contain(w => w.Contains("DiagUnversionedMultiEndpointController.PostBeta", StringComparison.Ordinal));
+        warnings.Should().Contain(w => w.Contains("DiagUnversionedMultiEndpointController.GetAlpha", StringComparison.Ordinal));
+        warnings.Should().Contain(w => w.Contains("DiagUnversionedMultiEndpointController.GetBeta", StringComparison.Ordinal));
     }
 
     [Fact]

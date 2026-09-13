@@ -14,11 +14,11 @@ using Microsoft.Extensions.DependencyInjection;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Mirrors the resolution and skip rules of
+/// Shares destination-version mapping with
 /// <see cref="HttpResponseOptionsBuilderApiVersioningExtensions.WithVersionedRoute{TDomain}(HttpResponseOptionsBuilder{TDomain})"/>
 /// for paginated <c>Link</c> / <c>next</c> URLs: query/header versioning round-trips
-/// <c>api-version</c> automatically; version-neutral endpoints never receive an
-/// <c>api-version</c> parameter; endpoints with no <see cref="ApiVersionMetadata"/> attached
+/// <c>api-version</c> automatically; version-neutral endpoints skip automatic
+/// <c>api-version</c> injection; endpoints with no <see cref="ApiVersionMetadata"/> attached
 /// (hosts that never called <c>AddApiVersioning(...)</c>) likewise skip injection so
 /// <c>PageUrl</c> composes cleanly in unversioned and mixed-versioned hosts. For URL-segment
 /// versioning, the per-request overload skips query injection and lets ambient route data
@@ -182,7 +182,7 @@ public static class HttpContextPageUrlExtensions
     /// </summary>
     /// <param name="httpContext">The current request context.</param>
     /// <param name="routeName">The name of the target route.</param>
-    /// <param name="version">The version to inject, regardless of client request or endpoint metadata.</param>
+    /// <param name="version">The version to inject on versioned targets, provided it is mapped to the destination.</param>
     /// <param name="routeValues">
     /// A callback that maps <c>(cursor, appliedLimit)</c> to the route-value dictionary for the
     /// next-page URL. The helper clones this dictionary before injecting <c>api-version</c>.
@@ -257,8 +257,7 @@ public static class HttpContextPageUrlExtensions
         ArgumentNullException.ThrowIfNull(version);
         ArgumentNullException.ThrowIfNull(routeValues);
 
-        // Cache the stringified version outside the closure — matches the
-        // WithVersionedRoute(ApiVersion) precedent and avoids re-allocating on every call.
+        // Cache the stringified version outside the closure.
         var pinnedValue = version.ToString();
 
         return (cursor, direction, appliedLimit) =>
@@ -272,8 +271,7 @@ public static class HttpContextPageUrlExtensions
                     "MapGroup(...), etc.).");
 
             // URL-segment-versioned targets carry the version in the path. Silently skipping
-            // the pin (the WithVersionedRoute precedent for same-route Location headers) would
-            // let LinkGenerator fall back to ambient route data — emitting `/v1/...` even when
+            // the pin would let LinkGenerator fall back to ambient route data — emitting `/v1/...` even when
             // the caller explicitly pinned v2. That is a wrong URL, not just a missing query
             // parameter. Surface it so the caller switches to the implicit overload (which
             // resolves the segment from ambient route data correctly for same-version targets).
@@ -297,8 +295,7 @@ public static class HttpContextPageUrlExtensions
             var values = new RouteValueDictionary(consumerValues);
 
             // Skip injection silently when ShouldSkipInjection reports a skip case:
-            //   - Version-neutral targets (the same precedent as WithVersionedRoute(ApiVersion))
-            //     reject api-version parameters entirely; emitting one would mislead clients.
+            //   - Version-neutral targets do not need an injected version.
             //   - Targets with no ApiVersionMetadata — the host did not call AddApiVersioning()
             //     or this endpoint sits outside its surface. There is no declared-version set
             //     to validate against, and emitting an api-version parameter would be a stale

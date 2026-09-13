@@ -1,7 +1,6 @@
 ﻿namespace Trellis.Asp.ApiVersioning;
 
 using System;
-using System.Collections.Generic;
 using global::Asp.Versioning;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -11,8 +10,7 @@ using Trellis.Asp;
 
 /// <summary>
 /// API-versioning extensions on <see cref="HttpResponseOptionsBuilder{TDomain}"/> that auto-inject
-/// the <c>api-version</c> route value into <c>Location</c> headers so responses round-trip the
-/// requested version under query/header API versioning. Chain after any builder method that
+/// a target-supported version into <c>Location</c> headers. Chain after any builder method that
 /// generates a <c>Location</c> header — <c>CreatedAtRoute(...)</c>, <c>CreatedAtAction(...)</c>,
 /// <c>WithLocation(...)</c>, etc.
 /// </summary>
@@ -21,36 +19,29 @@ using Trellis.Asp;
 /// Resolution order (per request, inside the <c>LinkGenerator</c> callback):
 /// </para>
 /// <list type="number">
-///   <item><description><c>HttpContext.RequestedApiVersion</c>, if declared by the current request endpoint.</description></item>
-///   <item><description>Exactly one version in the distinct union of the endpoint's implicit and explicit declared versions.</description></item>
-///   <item><description><c>ApiVersioningOptions.DefaultApiVersion</c>, only if declared by the endpoint; otherwise throw <see cref="InvalidOperationException"/>.</description></item>
+///   <item><description><c>HttpContext.RequestedApiVersion</c>, if mapped to the destination endpoint.</description></item>
+///   <item><description>Exactly one version mapped to the destination, respecting action-level mappings.</description></item>
+///   <item><description><c>ApiVersioningOptions.DefaultApiVersion</c>, only if mapped to the destination; otherwise throw <see cref="InvalidOperationException"/>.</description></item>
 /// </list>
 /// <para>
-/// The route-value key is fixed at <c>"api-version"</c>, matching the default for
+/// Query-style injection uses <c>"api-version"</c>, matching the default for
 /// <c>QueryStringApiVersionReader</c> and the conventional header name. Hosts using a
 /// non-default reader parameter name should register a custom resolver via
 /// <see cref="HttpResponseOptionsBuilder{TDomain}.WithRouteValueResolver"/> directly.
 /// </para>
 /// <para>
-/// Both overloads inspect the current request endpoint, not the target of the Location link.
-/// Applications must verify target compatibility for cross-route links.
-/// Cases that skip injection (resolver returns <c>null</c>, applies to both the per-request
-/// and explicit-version overloads): version-neutral endpoints
-/// (<c>ApiVersionMetadata.IsApiVersionNeutral</c> or <c>[ApiVersionNeutral]</c>),
-/// URL-segment-versioned routes (route template contains <c>:apiVersion</c>; ambient
-/// routing handles substitution), and endpoints with no <see cref="ApiVersionMetadata"/>
-/// attached (hosts that never called <c>AddApiVersioning(...)</c>, or endpoints sitting
-/// outside its surface — the helpers compose cleanly in unversioned and mixed-versioned
-/// hosts by dropping injection rather than emitting a stale URL artefact). Multi-version
-/// actions with neither a declared client-requested version nor a declared <c>DefaultApiVersion</c> throw
-/// <see cref="InvalidOperationException"/> rather than silently picking — silent picking
-/// would resurrect the original 404 bug.
+/// Both overloads resolve the final named-route or MVC-action destination using endpoint routing.
+/// Missing or ambiguous destinations throw. Explicit pins must be mapped to the destination.
+/// URL-segment destinations receive the version in their actual <c>:apiVersion</c> parameter,
+/// not a duplicate query parameter. Neutral targets and targets without
+/// <see cref="ApiVersionMetadata"/> omit version injection and remove a supplied <c>api-version</c>.
+/// The missing-metadata diagnostic identifies the destination endpoint.
 /// </para>
 /// </remarks>
 public static class HttpResponseOptionsBuilderApiVersioningExtensions
 {
     /// <summary>
-    /// Injects the configured <c>api-version</c> route value into the <c>Location</c> header
+    /// Injects a destination-supported version into the <c>Location</c> header
     /// emitted by a preceding <see cref="HttpResponseOptionsBuilder{TDomain}.CreatedAtRoute(string, Func{TDomain, RouteValueDictionary})"/>,
     /// <see cref="HttpResponseOptionsBuilder{TDomain}.CreatedAtAction(string, Func{TDomain, RouteValueDictionary}, string?)"/>
     /// or <see cref="HttpResponseOptionsBuilder{TDomain}.WithLocation(string, Func{TDomain, RouteValueDictionary})"/>
@@ -60,36 +51,15 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// <param name="builder">The builder to configure.</param>
     /// <remarks>
     /// See the type-level remarks on <see cref="HttpResponseOptionsBuilderApiVersioningExtensions"/>
-    /// for the version-resolution order and skip rules. The route-value key is fixed at
-    /// <c>"api-version"</c> — matches Asp.Versioning's defaults.
+    /// for resolution and skip rules. Uses the target's URL-segment parameter when present,
+    /// otherwise <c>"api-version"</c>. Repeated calls replace the previous Location-route resolver.
     /// </remarks>
     public static HttpResponseOptionsBuilder<TDomain> WithVersionedRoute<TDomain>(
         this HttpResponseOptionsBuilder<TDomain> builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        // Resolution happens per-request from HttpContext (inside the resolver delegate);
-        // only the route-value key is fixed at registration time. The key is the constant
-        // `DefaultRouteValueKey` ("api-version") — no IOptions lookup is involved for the key.
-        // `httpContext.GetEndpoint()` returns the endpoint currently being executed. For
-        // same-route Location responses (the common case) that endpoint IS the target of the
-        // Location header. For cross-route Location helpers (e.g. CreatedAtRoute pointing at
-        // a sibling route) it is the best signal the resolver has at registration time —
-        // declared-version inspection of the actual target route requires the route name and
-        // happens in PageUrl(...) instead, which takes the route name as a parameter.
-        return builder.WithRouteValueResolver(
-            DefaultRouteValueKey,
-            httpContext =>
-            {
-                var endpoint = httpContext.GetEndpoint();
-                // Mid-migration safety net: warn once (or fail fast, opt-in) when this chain
-                // runs against an endpoint with no ApiVersionMetadata — the canonical
-                // "AddApiVersioning() was removed but WithVersionedRoute() chains remain"
-                // regression. Scoped to the missing-metadata case; [ApiVersionNeutral] and
-                // URL-segment skips stay silent.
-                SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(httpContext, endpoint);
-                return ResolveApiVersion(httpContext, endpoint);
-            });
+        return builder.WithLocationRouteResolver(context => VersionedLocationResolver.Apply(context, null));
     }
 
     /// <summary>
@@ -99,16 +69,11 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// </summary>
     /// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c>.</typeparam>
     /// <param name="builder">The builder to configure.</param>
-    /// <param name="explicitVersion">The version to inject regardless of the requested version, subject to the current endpoint's skip rules.</param>
+    /// <param name="explicitVersion">The destination-supported version to inject regardless of the requested version.</param>
     /// <remarks>
-    /// Explicit pinning overrides the per-request resolution order (requested / declared /
-    /// default), but the skip rules still apply: on a version-neutral endpoint
-    /// (<c>ApiVersionMetadata.IsApiVersionNeutral</c> or <c>[ApiVersionNeutral]</c>), on
-    /// URL-segment-versioned routes (route template contains <c>:apiVersion</c>), and on
-    /// current endpoints with no <see cref="ApiVersionMetadata"/> attached (the host did not call
-    /// <c>AddApiVersioning(...)</c>) the resolver returns <c>null</c> and no
-    /// <c>api-version</c> route value is injected. The target route's metadata and declared
-    /// versions are not inspected; the application must ensure the pin is valid for that target.
+    /// Pins the query version or actual URL-segment parameter. Unsupported pins throw
+    /// <see cref="InvalidOperationException"/>. Neutral and unversioned destinations omit the pin.
+    /// Repeated calls replace the previous Location-route resolver.
     /// </remarks>
     public static HttpResponseOptionsBuilder<TDomain> WithVersionedRoute<TDomain>(
         this HttpResponseOptionsBuilder<TDomain> builder,
@@ -117,19 +82,7 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(explicitVersion);
 
-        var pinnedValue = explicitVersion.ToString();
-        return builder.WithRouteValueResolver(
-            DefaultRouteValueKey,
-            httpContext =>
-            {
-                var endpoint = httpContext.GetEndpoint();
-                // Mid-migration safety net (mirrors the per-request overload): emit a single
-                // warning (or fail fast when TrellisAspOptions.FailFastOnSilentVersionInjection
-                // is set) when the explicit pin would be silently dropped because the endpoint
-                // carries no ApiVersionMetadata.
-                SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(httpContext, endpoint);
-                return ShouldSkipInjection(endpoint) ? null : pinnedValue;
-            });
+        return builder.WithLocationRouteResolver(context => VersionedLocationResolver.Apply(context, explicitVersion));
     }
 
     /// <summary>
@@ -149,12 +102,8 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// </summary>
     /// <remarks>
     /// Resolution order (when not skipped):
-    /// (1) <c>httpContext.RequestedApiVersion</c> — primary signal, only echoed when the target
-    ///     endpoint declares that version. For same-route helpers (<c>WithVersionedRoute</c>)
-    ///     the target IS the current endpoint, so the requested version is always declared.
-    ///     For cross-route helpers (<c>PageUrl</c>) the requested version may not be in the
-    ///     target's declared set; echoing it would emit a URL the target immediately rejects.
-    /// (2) Single declared version on <paramref name="targetEndpoint"/> — unambiguous fallback.
+    /// (1) <c>httpContext.RequestedApiVersion</c>, only when mapped to the destination.
+    /// (2) Single mapped version, respecting explicit action-level mappings.
     /// (3) <c>ApiVersioningOptions.DefaultApiVersion</c> — host-level fallback.
     /// (4) Throws <see cref="InvalidOperationException"/> — silent picking would resurrect the original 404 bug.
     /// Returns <c>null</c> when <see cref="ShouldSkipInjection"/> reports the target is version-neutral,
@@ -190,6 +139,15 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
         // returns true for the null case. The null-forgiving operator is safe here.
         var metadata = targetEndpoint!.Metadata.GetMetadata<ApiVersionMetadata>()!;
 
+        return ResolveDeclaredApiVersion(httpContext, metadata, callerLabel, explicitOverloadHint);
+    }
+
+    internal static string ResolveDeclaredApiVersion(
+        HttpContext httpContext,
+        ApiVersionMetadata metadata,
+        string callerLabel,
+        string explicitOverloadHint)
+    {
         // 1. Echo the version the client requested — primary signal. Only echo when the target
         //    actually declares the requested version. For same-route targets the requested
         //    version is guaranteed to be declared (the route was selected on that basis), so
@@ -199,13 +157,8 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
         if (requested is not null && TargetDeclaresVersion(metadata, requested))
             return requested.ToString();
 
-        // 2. Single declared version on the endpoint metadata — unambiguous fallback.
-        //    Use the union of Implicit ∪ Explicit DeclaredApiVersions for the count, matching
-        //    TargetDeclaresVersion. Otherwise a controller with `[ApiVersion(v1)]` + an action
-        //    `[MapToApiVersion(v2)]` (1 implicit + 1 explicit) would look "single-declared" via
-        //    Implicit alone and silently echo v1, even though the target declares two versions.
-        var declared = DistinctDeclaredVersions(metadata);
-        if (declared.Count == 1)
+        var declared = MappedVersions(metadata);
+        if (declared.Length == 1)
             return declared[0].ToString();
 
         // 3. ApiVersioningOptions.DefaultApiVersion — host-level fallback. Validate that the
@@ -230,54 +183,22 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     }
 
     /// <summary>
-    /// Returns <c>true</c> when <paramref name="metadata"/>'s union of implicit + explicit declared
-    /// versions contains <paramref name="requested"/>. The union is necessary because Asp.Versioning
-    /// splits declarations by mapping kind: a multi-version controller's secondary versions appear
-    /// under <see cref="ApiVersionMapping.Explicit"/> while the primary appears under
-    /// <see cref="ApiVersionMapping.Implicit"/>.
+    /// Returns whether the target is mapped to the version, including explicit action mappings.
     /// </summary>
-    internal static bool TargetDeclaresVersion(ApiVersionMetadata metadata, ApiVersion requested)
-    {
-        var implicitVersions = metadata.Map(ApiVersionMapping.Implicit).DeclaredApiVersions;
-        if (implicitVersions.Contains(requested))
-            return true;
-
-        var explicitVersions = metadata.Map(ApiVersionMapping.Explicit).DeclaredApiVersions;
-        return explicitVersions.Contains(requested);
-    }
+    internal static bool TargetDeclaresVersion(ApiVersionMetadata metadata, ApiVersion requested) =>
+        metadata.IsMappedTo(requested);
 
     /// <summary>
-    /// Returns the distinct union of implicit + explicit <c>DeclaredApiVersions</c> for the given
-    /// metadata. Used by the single-declared fallback so a controller that splits its declarations
-    /// across mapping kinds (e.g., <c>[ApiVersion(v1)]</c> with action-level <c>[MapToApiVersion(v2)]</c>)
-    /// is correctly seen as multi-version instead of looking single-version through one mapping.
+    /// Uses Asp.Versioning's combined mapping so explicit action declarations take precedence.
     /// </summary>
-    private static IReadOnlyList<ApiVersion> DistinctDeclaredVersions(ApiVersionMetadata metadata)
-    {
-        var implicitVersions = metadata.Map(ApiVersionMapping.Implicit).DeclaredApiVersions;
-        var explicitVersions = metadata.Map(ApiVersionMapping.Explicit).DeclaredApiVersions;
-
-        if (explicitVersions.Count == 0)
-            return implicitVersions;
-        if (implicitVersions.Count == 0)
-            return explicitVersions;
-
-        var union = new List<ApiVersion>(implicitVersions.Count + explicitVersions.Count);
-        union.AddRange(implicitVersions);
-        foreach (var v in explicitVersions)
-        {
-            if (!union.Contains(v))
-                union.Add(v);
-        }
-
-        return union;
-    }
+    private static ApiVersion[] MappedVersions(ApiVersionMetadata metadata) =>
+        metadata.Map(ApiVersionMapping.Implicit | ApiVersionMapping.Explicit).DeclaredApiVersions
+            .Where(metadata.IsMappedTo).ToArray();
 
     /// <summary>
     /// Returns <c>true</c> when the api-version resolver must NOT inject a route value for the
     /// given endpoint, regardless of which resolution path would otherwise produce a candidate.
-    /// Centralised so the per-request resolver, the explicit-pinning overload, and the
-    /// <c>PageUrl</c> helper share identical skip semantics.
+    /// Used by <c>PageUrl</c>; Location generation instead fills URL-segment parameters explicitly.
     /// </summary>
     internal static bool ShouldSkipInjection(Endpoint? endpoint)
     {
