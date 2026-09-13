@@ -49,5 +49,13 @@ already persisted. Nothing throws. The symptom is a customer charged twice.
   `IdempotencyResponseSnapshot` that would fail every serialising store
 
 ## Documentation
-See the [API reference](https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-idempotency.md)
+See the [package API reference](../docs/docfx_project/api_reference/trellis-api-testing-idempotency.md)
 for the full rule list and the implementation traps the suite catches.
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.Testing.Idempotency\tests\Trellis.Testing.Idempotency.Tests.csproj -c Release
+```

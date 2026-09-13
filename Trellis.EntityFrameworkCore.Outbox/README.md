@@ -2,99 +2,92 @@
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.EntityFrameworkCore.Outbox.svg)](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Outbox)
 
-Transactional outbox for Trellis: capture aggregate domain events into an EF Core table in the **same transaction** as the aggregate change, then relay them to your Trellis domain-event handlers after the commit succeeds — durable, at-least-once, in-process dispatch.
+Transactional outbox and post-commit domain-event dispatch for EF Core applications built with Trellis.
 
-> **AOT / Trim compatibility:** This package opts **out** of NativeAOT and trimming because it
-> builds on `Trellis.EntityFrameworkCore` (EF Core relies on runtime reflection for model building,
-> change tracking, and query translation) and rehydrates events by name at relay time. If your
-> application targets `PublishAot=true`, do not reference this package.
+It captures domain events in the aggregate transaction and relays them after commit. Translators can then stage integration events for reliable publication.
+
+> This package opts out of NativeAOT and trimming because it builds on EF Core and discovers integration-event types at runtime.
 
 ## Installation
+
 ```bash
 dotnet add package Trellis.EntityFrameworkCore.Outbox
 ```
 
-## Why
-The default in-pipeline domain-event dispatch fires *after* the transaction commits, so a crash between commit and dispatch loses the events. The outbox closes that gap: each event is written atomically with the aggregate, survives a crash, and is re-dispatched by a background relay.
-
-This is an **outbox, not an event store**: the rows are a transient delivery buffer that may be pruned once relayed. The aggregate tables remain the source of truth.
-
 ## Quick Example
-Three wiring points — the table, the capture interceptor, and the relay.
 
 ```csharp
-// Raise events from inside the aggregate, exactly as you do today.
-public sealed record OrderPlaced(OrderId OrderId, DateTimeOffset OccurredAt) : IDomainEvent;
-
-public sealed class Order : Aggregate<OrderId>
-{
-    public void Place(TimeProvider clock) =>
-        DomainEvents.Add(new OrderPlaced(Id, clock.GetUtcNow()));
-}
-
-// 1. Map the outbox table (OnModelCreating).
 protected override void OnModelCreating(ModelBuilder modelBuilder) =>
     modelBuilder.AddTrellisOutbox();
 
-// 2. Add the capture interceptor where the context options are built.
-options.UseNpgsql(connectionString)
-       .AddTrellisInterceptors()
-       .AddTrellisOutboxInterceptor();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString)
+        .AddTrellisInterceptors()
+        .AddTrellisOutboxInterceptor());
 
-// 3. Register the relay (plus your handlers) at the composition root.
-services.AddTrellis(trellis => trellis
-    .UseDomainEvents(typeof(Program).Assembly)     // handlers + IDomainEventPublisher
+builder.Services.AddTrellis(trellis => trellis
+    .UseDomainEvents(typeof(Program).Assembly)
+    .UseIntegrationEvents(typeof(Program).Assembly)
     .UseEntityFrameworkUnitOfWork<AppDbContext>()
-    .UseOutbox<AppDbContext>(o =>
-    {
-        o.PollInterval = TimeSpan.FromSeconds(2);
-        o.BatchSize = 100;
-        o.MaxAttempts = 10;
-    }));
+    .UseOutbox<AppDbContext>());
 ```
 
-Now `await dbContext.SaveChangesAsync(ct)` commits the `OrderPlaced` row in the **same transaction** as the order; the relay re-dispatches it to `IDomainEventHandler<OrderPlaced>` after the commit.
-
-> Prefer raw DI? Call `services.AddTrellisOutbox<AppDbContext>()` instead of the `UseOutbox` builder slot — the table and interceptor wiring (steps 1–2) are identical.
-
-## Key Features
-- **Atomic capture** — one `TrellisOutboxMessages` row per uncommitted domain event, written in the same `SaveChanges` transaction as the aggregate. State and notifications commit together or not at all.
-- **Single dispatch path** — after the commit succeeds, the capture interceptor clears aggregate events in `SavedChanges`; in-pipeline dispatch sees none. This also applies to successful `FailAfterCommit` saves. Trellis post-commit bookkeeping ignores a newly canceled token.
-- **At-least-once delivery** — the relay drains by `Sequence` through `IReportingDomainEventPublisher`, retaining completed-handler progress and retrying remaining handlers with exponential backoff up to `MaxAttempts`. A bookkeeping save failure instead fails the drain and does not durably advance the attempt counter.
-- **Fail-fast host startup** — the relay validates the reporting publisher before starting its loop. Integration features additionally require a constructible integration publisher; domain-only hosts do not.
-- **Optional DI registration probing** — providers need not expose `IServiceProviderIsService`. Without it, startup checks integration dependencies through scoped resolution instead. Collector/publisher construction failures still propagate, and the validation scope is asynchronously disposed.
-- **Safe to scale out** — each drain claims its batch under an optimistic lease (`LockedBy` is a concurrency token), so concurrent relay instances never both own a row at once and a drain that outlives its lease abandons its write instead of clobbering the new owner — no leader election needed. Delivery stays at-least-once (a batch that outlives its lease can re-deliver).
-- **Dead-letter & replay** — a message that exhausts `MaxAttempts` is parked for inspection; re-drive it with `IOutboxMaintenance` once you've fixed the cause.
-- **Crash-safe** — a failed save rolls back the captured rows and preserves the in-memory events for retry; a crash after commit re-delivers on the next drain. Handlers must be idempotent.
-
-## Integration events
-Translate internal domain events into stable external contracts by handling the domain event and adding one or more `IIntegrationEvent` instances to the scoped `IIntegrationEventCollector`:
+Translate a domain event while the outbox relay dispatches it by adding an external contract to the relay-scoped collector:
 
 ```csharp
-public sealed record OrderPlacedIntegrationEvent(Guid OrderId, DateTimeOffset OccurredAt)
+public sealed record OrderPlacedIntegrationEvent(
+    Guid OrderId,
+    DateTimeOffset OccurredAt)
     : IIntegrationEvent;
 
-public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector)
+public sealed class OrderPlacedTranslator(
+    IIntegrationEventCollector collector)
     : IDomainEventHandler<OrderPlaced>
 {
-    public ValueTask HandleAsync(OrderPlaced domainEvent, CancellationToken cancellationToken)
+    public ValueTask HandleAsync(
+        OrderPlaced domainEvent,
+        CancellationToken cancellationToken)
     {
-        collector.Add(new OrderPlacedIntegrationEvent(domainEvent.OrderId.Value, domainEvent.OccurredAt));
+        collector.Add(new OrderPlacedIntegrationEvent(
+            domainEvent.OrderId.Value,
+            domainEvent.OccurredAt));
+
         return ValueTask.CompletedTask;
     }
 }
 ```
 
-After each outboxed domain event is dispatched, the relay drains the collector and publishes the integration events through `IIntegrationEventPublisher`. The default publisher fans out to in-process `IIntegrationEventHandler<TEvent>` consumers; replace it with a broker adapter when contracts must leave the process. Delivery is at least once, so consumers must be idempotent on business identity.
+## Key Features
 
-## Delivery & Serialization Notes
-- The collector accepts `Add` only during the relay's `BeginTranslation()` lease; command/inactive-scope additions throw. The relay stages all drained events alongside partial handler progress, including additions made before a translator throws. Completed translators are skipped on retry, but a failed translator may produce a new row with a new ID; inbox message-ID deduplication does not replace business-identity deduplication.
-- The guarantee is at-least-once **delivery**, and delivery means *every handler completed*: a handler that throws leaves the message pending, and the retry re-invokes only the failed handlers (`OutboxMessage.CompletedHandlers` tracks the rest), backing off exponentially until `MaxAttempts` parks it. Handlers must still be idempotent — a crash before the relay's bookkeeping save re-delivers to all of them.
-- Events are serialized with a Trellis-owned `System.Text.Json` options instance. Value objects that carry a `[JsonConverter]` attribute round-trip, and `Maybe<T>` members are supported (present → value, absent → `null`); use a nullable transport for members that rely on a caller-registered converter.
+- Captures domain-event rows in the same transaction as aggregate changes.
+- Dispatches domain events only after a successful commit.
+- Publishes pending integration events through a resilient background service.
+- Supports configurable batching, locking, lease recovery, retry scheduling, and dead-lettering.
+- Exposes an explicit retryability contract for publisher failures.
+- Requires no broker dependency; transport packages implement `IIntegrationEventPublisher`.
+
+## Important Setup
+
+- `UseOutbox<TContext>()` registers the relay only; register domain-event dispatch and the EF unit of work separately.
+- Map the table with `modelBuilder.AddTrellisOutbox()`.
+- Register capture with `AddTrellisOutboxInterceptor()` on the context options.
+- Do not manually call `SaveChangesAsync()` inside a transactional command handler; the unit-of-work pipeline owns the commit.
+- Make integration events immutable records with unique, stable `[IntegrationEventName("...")]` values.
+- Carry `OutboundIntegrationMessage.MessageId` unchanged as the transport message ID so inbox consumers can deduplicate end to end.
+
+The package suppresses recursive domain-event generation while appending outbox rows, preventing outbox persistence from creating more domain events.
 
 ## Documentation
-- [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-outbox.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
 
-## Part of Trellis
-This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md)
+- [Outbox integration guide](https://xavierjohn.github.io/Trellis/articles/integration-outbox.html)
+- [Azure Service Bus transport](../Trellis.Messaging.AzureServiceBus/README.md)
+- [Inbox package](../Trellis.EntityFrameworkCore.Inbox/README.md)
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.EntityFrameworkCore.Outbox\tests\Trellis.EntityFrameworkCore.Outbox.Tests.csproj -c Release
+```

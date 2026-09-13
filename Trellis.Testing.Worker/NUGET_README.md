@@ -1,4 +1,4 @@
-# Trellis.Testing.Worker
+﻿# Trellis.Testing.Worker
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Testing.Worker.svg)](https://www.nuget.org/packages/Trellis.Testing.Worker)
 
@@ -75,7 +75,7 @@ reminded.SubscriptionId.Should().Be(expectedId);
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-testing.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-testing-worker.html)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

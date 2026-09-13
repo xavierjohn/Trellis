@@ -48,7 +48,15 @@ var result = Parse("abc")
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/analyzers/index.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-analyzers.md)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+
+## Development
+
+Run the analyzer tests from the repository root:
+
+```powershell
+dotnet test Trellis.Analyzers\tests\Trellis.Analyzers.Tests.csproj -c Release
+```

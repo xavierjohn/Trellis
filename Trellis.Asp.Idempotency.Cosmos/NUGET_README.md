@@ -1,4 +1,4 @@
-# Trellis.Asp.Idempotency.Cosmos
+﻿# Trellis.Asp.Idempotency.Cosmos
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Asp.Idempotency.Cosmos.svg)](https://www.nuget.org/packages/Trellis.Asp.Idempotency.Cosmos)
 
@@ -44,5 +44,5 @@ app.UseTrellisIdempotency();
   suite against a real Cosmos DB emulator.
 
 ## Documentation
-See the [API reference](https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp-idempotency-cosmos.md)
+See the [package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-asp-idempotency-cosmos.html)
 for the document model, partitioning and RU-cost guidance, and the concurrency protocol.

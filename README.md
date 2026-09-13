@@ -89,30 +89,50 @@ dotnet new trellis-asp -n MyService
 
 ## Packages
 
-### Core
+Start with `Trellis.Core`; add only the integrations your application uses. `Trellis.ServiceDefaults` is the opinionated composition root for web services.
 
-| Package | What it gives you |
+### Foundation
+
+| Package | Use it for |
 | --- | --- |
-| [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, and pipeline operators |
-| [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use concrete value objects plus JSON/tracing infrastructure |
-| [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | Compile-time guidance for Result, Maybe, and EF Core usage |
+| [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, DDD building blocks, pagination, and source-generated value-object bases |
+| [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use value objects such as `EmailAddress`, `Money`, and `Url` |
+| [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | Compile-time guidance for Result, Maybe, EF Core, and value-object usage |
 
-### Integration
+### Application and web integration
 
-| Package | What it gives you |
+| Package | Use it for |
 | --- | --- |
-| [Trellis.Asp](https://www.nuget.org/packages/Trellis.Asp) | Result-to-HTTP mapping, scalar validation, JSON/model binding (bundles the AOT-friendly JSON converter generator), and ASP.NET actor providers (Claims, Entra, Development) |
-| [Trellis.Authorization](https://www.nuget.org/packages/Trellis.Authorization) | `Actor`, permission checks, and resource authorization primitives |
-| [Trellis.Http](https://www.nuget.org/packages/Trellis.Http) | `HttpClient` extensions that stay inside the Result pipeline |
-| [Trellis.Http.Abstractions](https://www.nuget.org/packages/Trellis.Http.Abstractions) | HTTP-aware boundary primitives (`HttpError.*` cases, `EntityTagValue`, `PreconditionKind`, `RetryAfterValue`, `AuthChallenge`) shared by `Trellis.Asp` and `Trellis.Http` |
-| [Trellis.Mediator](https://www.nuget.org/packages/Trellis.Mediator) | Result-aware pipeline behaviors for [Mediator](https://github.com/martinothamar/Mediator) |
-| [Trellis.Persistence.Abstractions](https://www.nuget.org/packages/Trellis.Persistence.Abstractions) | Store-agnostic persistence contracts (`IUnitOfWork`, `IInboxStore`, `IConsumerCheckpointStore`) implementable over EF Core, Dapper, Cosmos DB, or any store |
-| [Trellis.FluentValidation](https://www.nuget.org/packages/Trellis.FluentValidation) | FluentValidation output converted into Trellis results |
-| [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, and safe save helpers (bundles the `Maybe<T>` / owned value-object source generator) |
-| [Trellis.EntityFrameworkCore.Outbox](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Outbox) | Transactional outbox that captures domain events in the same transaction and relays them after commit, with domain/integration-event routing |
-| [Trellis.ServiceDefaults](https://www.nuget.org/packages/Trellis.ServiceDefaults) | Opinionated composition builder for wiring Trellis web-service modules in the canonical order |
+| [Trellis.Asp](https://www.nuget.org/packages/Trellis.Asp) | Result-to-HTTP mapping, Problem Details, scalar validation, idempotency middleware, and actor providers |
+| [Trellis.Asp.ApiVersioning](https://www.nuget.org/packages/Trellis.Asp.ApiVersioning) | Destination-aware versioned `Location` and pagination URLs |
+| [Trellis.Authorization](https://www.nuget.org/packages/Trellis.Authorization) | Actors, permissions, attributes, and resource-authorization contracts |
+| [Trellis.FluentValidation](https://www.nuget.org/packages/Trellis.FluentValidation) | Standalone FluentValidation-to-Result conversion |
+| [Trellis.Mediator](https://www.nuget.org/packages/Trellis.Mediator) | Result-aware validation, authorization, tracing, logging, and transaction behaviors for [Mediator](https://github.com/martinothamar/Mediator) |
+| [Trellis.Mediator.FluentValidation](https://www.nuget.org/packages/Trellis.Mediator.FluentValidation) | FluentValidation inside the Trellis Mediator validation stage |
+| [Trellis.ServiceDefaults](https://www.nuget.org/packages/Trellis.ServiceDefaults) | Canonically ordered composition of Trellis web-service modules |
 | [Trellis.StateMachine](https://www.nuget.org/packages/Trellis.StateMachine) | Stateless transitions that return `Result<TState>` |
-| [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions for `Result<T>` and `Maybe<T>` |
+
+### HTTP, persistence, and messaging
+
+| Package | Use it for |
+| --- | --- |
+| [Trellis.Http.Abstractions](https://www.nuget.org/packages/Trellis.Http.Abstractions) | Shared HTTP faults, ETags, preconditions, retry values, and write outcomes |
+| [Trellis.Http](https://www.nuget.org/packages/Trellis.Http) | `HttpClient` calls that stay inside Result and Maybe pipelines |
+| [Trellis.Persistence.Abstractions](https://www.nuget.org/packages/Trellis.Persistence.Abstractions) | Store-neutral unit-of-work, inbox-store, and checkpoint contracts |
+| [Trellis.EntityFrameworkCore](https://www.nuget.org/packages/Trellis.EntityFrameworkCore) | EF Core conventions, converters, Maybe queries, pagination, and safe persistence |
+| [Trellis.EntityFrameworkCore.Outbox](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Outbox) | Crash-safe transactional domain and integration-event delivery |
+| [Trellis.EntityFrameworkCore.Inbox](https://www.nuget.org/packages/Trellis.EntityFrameworkCore.Inbox) | Idempotent integration-event consumption within an EF Core unit of work |
+| [Trellis.Asp.Idempotency.Cosmos](https://www.nuget.org/packages/Trellis.Asp.Idempotency.Cosmos) | Distributed Cosmos DB store for the ASP idempotency middleware |
+| [Trellis.Messaging.AzureServiceBus](https://www.nuget.org/packages/Trellis.Messaging.AzureServiceBus) | Azure Service Bus transport between the transactional outbox and inbox |
+
+### Testing
+
+| Package | Use it for |
+| --- | --- |
+| [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions, fake repositories, and test actor providers |
+| [Trellis.Testing.AspNetCore](https://www.nuget.org/packages/Trellis.Testing.AspNetCore) | `WebApplicationFactory`, dependency replacement, fake time, and `.http` replay helpers |
+| [Trellis.Testing.Idempotency](https://www.nuget.org/packages/Trellis.Testing.Idempotency) | Executable conformance tests for custom `IIdempotencyStore` implementations |
+| [Trellis.Testing.Worker](https://www.nuget.org/packages/Trellis.Testing.Worker) | Deterministic integration testing for `BackgroundService` workers |
 
 ## Performance
 

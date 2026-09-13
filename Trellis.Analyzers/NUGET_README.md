@@ -48,7 +48,7 @@ var result = Parse("abc")
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/analyzers/index.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

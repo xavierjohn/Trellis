@@ -34,10 +34,10 @@ dotnet run --project ConditionalRequestExample/ConditionalRequestExample.csproj
 dotnet run --project SsoExample/SsoExample.csproj --launch-profile Development
 ```
 
-## Run all sample tests
+## Run all tests, including the samples
 
 ```bash
-dotnet test --solution Trellis.slnx -c Release --filter "FullyQualifiedName~Examples"
+dotnet test Trellis.slnx -c Release
 ```
 
 ## Conventions enforced across every sample

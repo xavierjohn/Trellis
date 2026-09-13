@@ -34,5 +34,13 @@ static async Task<Result<Unit>> CommitAsync(
 
 ## Documentation
 
-- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-persistence-abstractions.html)
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-persistence-abstractions.md)
 - [Trellis documentation](https://xavierjohn.github.io/Trellis/)
+
+## Development
+
+This package has no dedicated test project. Build it from the repository root:
+
+```powershell
+dotnet build Trellis.Persistence.Abstractions\src\Trellis.Persistence.Abstractions.csproj -c Release
+```
