@@ -755,13 +755,13 @@ public override Expression<Func<Order, bool>> ToExpression() =>
          && o.SubmittedAt.GetValueOrDefault(DateTime.MaxValue) < _threshold;
 ```
 
-For ad-hoc `IQueryable<T>` calls (outside a `Specification<T>`), the strongly-typed `IQueryable<T>` extensions in `MaybeQueryableExtensions` — `WhereHasValue`, `WhereNone`, `WhereEquals`, `WhereLessThan`, `WhereGreaterThanOrEqual`, `OrderByMaybe`, etc. — are an alternative that doesn't depend on the interceptor. They compose with the same storage member directly via `EF.Property`.
+For ad-hoc `IQueryable<T>` calls (outside a `Specification<T>`), the strongly-typed `IQueryable<T>` extensions in `MaybeQueryableExtensions` — `WhereHasValue` (with or without a typed predicate), `WhereNone`, `WhereEquals`, `OrderByMaybe`, etc. — target the storage member directly via `EF.Property`, without requiring the Maybe interceptor. The predicate overload accepts an expression tree, including a reusable `Expression<Func<TInner, bool>>`, not a compiled delegate. C# validates the chosen operators; the provider must still translate them, and translation failures never trigger client-side filtering. Scalar value-object `.Value` access still requires `AddTrellisInterceptors()`.
 
 ```csharp
 // Equivalent ad-hoc query without a Specification (interceptor not required for this form):
 var overdue = await context.Orders
     .Where(o => o.Status == OrderStatus.Submitted)
-    .WhereLessThan(o => o.SubmittedAt, threshold)
+    .WhereHasValue(o => o.SubmittedAt, value => value < threshold)
     .ToListAsync(ct);
 ```
 
@@ -1364,7 +1364,7 @@ o => o.Status == OrderStatus.Submitted
      && o.SubmittedAt.Value < _threshold;
 ```
 
-is now both readable AND analyzer-clean inside any expression tree (specifications, FluentValidation, EF). The residual EF-Core/`FakeRepository` parity guidance — `AddTrellisInterceptors()`, `ApplyTrellisConventions`, and "share the same `Specification<T>` between EF and `FakeRepository` — never duplicate the predicate" — has moved into [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects). Ad-hoc query operators (`WhereLessThan`, `WhereHasValue`, etc.) live in [trellis-api-efcore.md](trellis-api-efcore.md#maybequeryableextensions).
+is now both readable AND analyzer-clean inside any expression tree (specifications, FluentValidation, EF). The residual EF-Core/`FakeRepository` parity guidance — `AddTrellisInterceptors()`, `ApplyTrellisConventions`, and "share the same `Specification<T>` between EF and `FakeRepository` — never duplicate the predicate" — has moved into [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects). Ad-hoc query operators (`WhereHasValue`, including its typed-predicate overload, `WhereEquals`, etc.) live in [trellis-api-efcore.md](trellis-api-efcore.md#maybequeryableextensions).
 
 The recipe number is preserved as a stub so existing bookmark and search-index entries remain stable; future content should renumber from Recipe 40 rather than reusing 15.
 

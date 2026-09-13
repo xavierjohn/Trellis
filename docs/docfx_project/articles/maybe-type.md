@@ -354,7 +354,7 @@ See [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md) for converter si
 
 | Approach | API | Use when |
 |---|---|---|
-| Explicit query helpers | `MaybeQueryableExtensions.WhereHasValue` / `WhereNone` / `WhereEquals` / `WhereLessThan(OrEqual)` / `WhereGreaterThan(OrEqual)` plus `OrderByMaybe` / `ThenByMaybe(Descending)` | You want predictable SQL without registering interceptors. |
+| Explicit query helpers | `MaybeQueryableExtensions.WhereHasValue` (with an optional typed predicate, e.g. `WhereHasValue(x => x.M, value => value < cutoff)`) / `WhereNone` / `WhereEquals` plus `OrderByMaybe` / `ThenByMaybe(Descending)` | You want to target storage directly without the Maybe interceptor. Operators and methods must be provider-translatable; scalar value-object `.Value` access still needs the scalar interceptor. |
 | Interceptor rewriting | `optionsBuilder.AddTrellisInterceptors()` (registers `MaybeQueryInterceptor`) | You want natural `.HasValue` / `.Value` / `GetValueOrDefault(d)` syntax to translate. |
 | Repo lookups returning optionals | `IQueryable<T>.FirstOrDefaultMaybeAsync` / `SingleOrDefaultMaybeAsync` | Replace EF's `null` returns with `Maybe<T>.None`. |
 | Indexing a `Maybe<T>` column | `entityTypeBuilder.HasTrellisIndex(x => x.M)` | Avoids analyzer **TRLS016** by targeting the storage member. |

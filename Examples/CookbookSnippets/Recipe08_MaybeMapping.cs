@@ -97,12 +97,11 @@ internal static class Recipe8MaybeMappingSurface
         IQueryable<Customer> hasValue = customers.WhereHasValue(c => c.Email);
         IQueryable<Customer> none = customers.WhereNone(c => c.Email);
         IQueryable<Customer> equals = customers.WhereEquals(c => c.Email, email);
-        IQueryable<Customer> lessThan = customers.WhereLessThan(c => c.Email, email);
-        IQueryable<Customer> greaterThanOrEqual = customers.WhereGreaterThanOrEqual(c => c.Email, email);
+        IQueryable<Customer> matching = customers.WhereHasValue(c => c.Email, value => value == email);
         IOrderedQueryable<Customer> ordered = customers.OrderByMaybe(c => c.Email);
         IOrderedQueryable<Customer> thenOrdered = ordered.ThenByMaybe(c => c.Email);
 
-        _ = (hasValue, none, equals, lessThan, greaterThanOrEqual, ordered, thenOrdered);
+        _ = (hasValue, none, equals, matching, ordered, thenOrdered);
     }
 
     private sealed class CustomersWithEmailSpecification : Specification<Customer>

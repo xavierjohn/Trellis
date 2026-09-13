@@ -37,6 +37,29 @@ Result<int> saved = await dbContext.SaveChangesResultAsync(cancellationToken);
 - `IUnitOfWork` / `EfUnitOfWork<TContext>` — single commit boundary for staged changes.
 - `TransactionalCommandBehavior` — Mediator pipeline behavior that auto-commits after successful command handlers (requires Mediator pipeline registration). Also commits on `Result.FailAfterCommit<T>(error)` outcomes so persist-on-failure handlers (e.g., a worker recording a permanent-failure transition) can stage state alongside the failed result.
 
+## Typed predicates over optional values
+
+```csharp
+var overdue = await dbContext.Orders
+    .WhereHasValue(o => o.SubmittedAt, value => value < cutoff)
+    .ToListAsync(cancellationToken);
+```
+
+**Breaking change:** `WhereLessThan`, `WhereLessThanOrEqual`, `WhereGreaterThan`,
+and `WhereGreaterThanOrEqual` are replaced by `WhereHasValue(selector, predicate)`.
+Move `<`, `<=`, `>`, or `>=` into the value lambda. The overload accepts an
+`Expression<Func<TInner, bool>>`, including reusable expression variables, not a
+compiled delegate. Absent values are always excluded, even for a constant-true predicate.
+Presence-only `WhereHasValue(selector)`, equality, and ordering helpers are unchanged.
+
+C# checks the predicate's operators; the configured provider must translate them.
+String/GUID ordering follows provider semantics, and unsupported translations
+(such as `DateTimeOffset` relational comparisons on SQLite) throw without a
+client-side fallback. The helper targets storage directly; scalar value-object
+`.Value` access still requires `AddTrellisInterceptors()`.
+For shared domain specifications, continue using `Maybe<T>.HasValueWhere` with
+an inline lambda and `AddTrellisInterceptors()` for EF execution.
+
 ## Typed seek pagination
 
 ```csharp

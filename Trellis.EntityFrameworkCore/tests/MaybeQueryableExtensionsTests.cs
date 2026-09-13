@@ -430,10 +430,10 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
     #endregion
 
-    #region WhereLessThan / WhereLessThanOrEqual / WhereGreaterThan / WhereGreaterThanOrEqual — value-type inner (DateTime)
+    #region WhereHasValue predicates — value-type inner (DateTime)
 
     [Fact]
-    public async Task WhereLessThan_ValueTypeInner_ReturnsEntitiesWithSmallerValues()
+    public async Task WhereHasValue_LessThanDate_ReturnsEntitiesWithSmallerValues()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -455,7 +455,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Act
         var results = await _context.Orders
-            .WhereLessThan(o => o.SubmittedAt, cutoff)
+            .WhereHasValue(o => o.SubmittedAt, value => value < cutoff)
             .ToListAsync(ct);
 
         // Assert
@@ -464,7 +464,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task WhereLessThan_NoMatch_ReturnsEmpty()
+    public async Task WhereHasValue_LessThanDate_NoMatchReturnsEmpty()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -483,7 +483,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Act
         var results = await _context.Orders
-            .WhereLessThan(o => o.SubmittedAt, cutoff)
+            .WhereHasValue(o => o.SubmittedAt, value => value < cutoff)
             .ToListAsync(ct);
 
         // Assert
@@ -491,7 +491,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task WhereLessThanOrEqual_IncludesBoundaryValue()
+    public async Task WhereHasValue_LessThanOrEqualDate_IncludesBoundaryValue()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -513,7 +513,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Act
         var results = await _context.Orders
-            .WhereLessThanOrEqual(o => o.SubmittedAt, exact)
+            .WhereHasValue(o => o.SubmittedAt, value => value <= exact)
             .ToListAsync(ct);
 
         // Assert
@@ -522,7 +522,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task WhereGreaterThan_ValueTypeInner_ReturnsEntitiesWithLargerValues()
+    public async Task WhereHasValue_GreaterThanDate_ReturnsEntitiesWithLargerValues()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -544,7 +544,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Act
         var results = await _context.Orders
-            .WhereGreaterThan(o => o.SubmittedAt, cutoff)
+            .WhereHasValue(o => o.SubmittedAt, value => value > cutoff)
             .ToListAsync(ct);
 
         // Assert
@@ -553,7 +553,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task WhereGreaterThanOrEqual_IncludesBoundaryValue()
+    public async Task WhereHasValue_GreaterThanOrEqualDate_IncludesBoundaryValue()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -575,7 +575,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Act
         var results = await _context.Orders
-            .WhereGreaterThanOrEqual(o => o.SubmittedAt, exact)
+            .WhereHasValue(o => o.SubmittedAt, value => value >= exact)
             .ToListAsync(ct);
 
         // Assert
@@ -584,7 +584,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public async Task WhereLessThan_NullValues_AreExcluded()
+    public async Task WhereHasValue_LessThanDate_NullValuesAreExcluded()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
@@ -601,7 +601,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Act — even with a far-future cutoff, NULL values should not match
         var results = await _context.Orders
-            .WhereLessThan(o => o.SubmittedAt, DateTime.MaxValue)
+            .WhereHasValue(o => o.SubmittedAt, value => value < DateTime.MaxValue)
             .ToListAsync(ct);
 
         // Assert
@@ -609,46 +609,40 @@ public class MaybeQueryableExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void WhereLessThan_NullSource_ThrowsArgumentNullException()
+    public void WhereHasValue_LessThanDate_NullSourceThrowsArgumentNullException()
     {
-        // m-EF-4 (self-inspection): the four comparison helpers (`WhereLessThan`,
-        // `WhereLessThanOrEqual`, `WhereGreaterThan`, `WhereGreaterThanOrEqual`) previously
-        // delegated null-checks to the private `WhereComparison` helper. The behavior was
-        // correct (paramName matched), but the entry-point guard pattern used by every other
-        // public method in this class (WhereNone/WhereHasValue/WhereEquals/OrderBy*) was
-        // inconsistent. After the m-EF-4 cleanup, all 4 comparison helpers guard at entry.
         IQueryable<TestOrder> source = null!;
-        var act = () => source.WhereLessThan(o => o.SubmittedAt, DateTime.UtcNow);
+        var act = () => source.WhereHasValue(o => o.SubmittedAt, value => value < DateTime.UtcNow);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("source");
     }
 
     [Fact]
-    public void WhereLessThanOrEqual_NullPropertySelector_ThrowsArgumentNullException()
+    public void WhereHasValue_LessThanOrEqualDate_NullPropertySelectorThrowsArgumentNullException()
     {
         Expression<Func<TestOrder, Maybe<DateTime>>> selector = null!;
-        var act = () => _context.Orders.WhereLessThanOrEqual(selector, DateTime.UtcNow);
+        var act = () => _context.Orders.WhereHasValue(selector, value => value <= DateTime.UtcNow);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("propertySelector");
     }
 
     [Fact]
-    public void WhereGreaterThan_NullSource_ThrowsArgumentNullException()
+    public void WhereHasValue_GreaterThanDate_NullSourceThrowsArgumentNullException()
     {
         IQueryable<TestOrder> source = null!;
-        var act = () => source.WhereGreaterThan(o => o.SubmittedAt, DateTime.UtcNow);
+        var act = () => source.WhereHasValue(o => o.SubmittedAt, value => value > DateTime.UtcNow);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("source");
     }
 
     [Fact]
-    public void WhereGreaterThanOrEqual_NullPropertySelector_ThrowsArgumentNullException()
+    public void WhereHasValue_GreaterThanOrEqualDate_NullPropertySelectorThrowsArgumentNullException()
     {
         Expression<Func<TestOrder, Maybe<DateTime>>> selector = null!;
-        var act = () => _context.Orders.WhereGreaterThanOrEqual(selector, DateTime.UtcNow);
+        var act = () => _context.Orders.WhereHasValue(selector, value => value >= DateTime.UtcNow);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("propertySelector");

@@ -58,7 +58,7 @@ Moving an aggregate from in-memory to EF Core surfaces a few constraints that do
 | `QueryableExtensions.FirstOrDefaultMaybeAsync<T>` / `SingleOrDefaultMaybeAsync<T>` | Query | Returns `Task<Maybe<T>>`; absence → `Maybe<T>.None`. |
 | `QueryableExtensions.FirstOrDefaultResultAsync<T>` | Query | Returns `Task<Result<T>>`; absence → **the exact `Error` you supplied** (does not invent one). |
 | `QueryableExtensions.Where(Specification<T>)` | Query | Applies a Trellis specification expression. |
-| `MaybeQueryableExtensions.WhereHasValue` / `WhereNone` / `WhereEquals` / `WhereLessThan` / `WhereLessThanOrEqual` / `WhereGreaterThan` / `WhereGreaterThanOrEqual` / `OrderByMaybe` / `OrderByMaybeDescending` / `ThenByMaybe` / `ThenByMaybeDescending` | Query | Translate `Maybe<TInner>` predicates and ordering to the mapped storage member. |
+| `MaybeQueryableExtensions.WhereHasValue` / `WhereNone` / `WhereEquals` / `OrderByMaybe` / `OrderByMaybeDescending` / `ThenByMaybe` / `ThenByMaybeDescending` | Query | Translate `Maybe<TInner>` predicates and ordering to the mapped storage member. `WhereHasValue` optionally takes a typed value predicate. |
 | `MaybeUpdateExtensions.SetMaybeValue<T>` / `SetMaybeNone<T>` | Bulk update | `ExecuteUpdate` setters for scalar `Maybe<T>` properties. |
 | `MaybeEntityTypeBuilderExtensions.HasTrellisIndex<T>` | Model builder | Indexes a `Maybe<T>` property by resolving to its storage member (avoids TRLS016). |
 | `DbContextExtensions.SaveChangesResultAsync(...)` | Save | `Task<Result<int>>`. Maps `DbUpdateConcurrencyException` / duplicate-key / FK violations to `Error.Conflict` (`duplicate.key` / `referential.integrity` carry `ConstraintName` / `ConstraintTableName` telemetry from `DbExceptionClassifier.ExtractConstraintIdentity`). |
@@ -234,18 +234,26 @@ Prefer the `MaybeQueryableExtensions` helpers over raw `GetValueOrDefault(...)` 
 | `WhereHasValue(x => x.M)` | `WHERE storage IS NOT NULL` |
 | `WhereNone(x => x.M)` | `WHERE storage IS NULL` |
 | `WhereEquals(x => x.M, value)` | `WHERE storage = value` |
-| `WhereLessThan` / `WhereLessThanOrEqual` / `WhereGreaterThan` / `WhereGreaterThanOrEqual` | Comparison against `value` (requires `IComparable<TInner>`). |
+| `WhereHasValue(x => x.M, value => value < cutoff)` | `WHERE storage IS NOT NULL AND predicate(storage)`; supports any provider-translatable typed predicate. |
 | `OrderByMaybe` / `OrderByMaybeDescending` / `ThenByMaybe` / `ThenByMaybeDescending` | Order by the mapped storage member. |
 
 ```csharp
 using Trellis.EntityFrameworkCore;
 
+var cutoff = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7));
 var dueSoon = await db.Tasks
-    .WhereHasValue(t => t.DueDate)
-    .WhereLessThanOrEqual(t => t.DueDate, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)))
+    .WhereHasValue(t => t.DueDate, dueDate => dueDate <= cutoff)
     .OrderByMaybe(t => t.DueDate)
     .ToListAsync(ct);
 ```
+
+The typed-predicate overload replaces the four operator-specific comparison helpers.
+Move the operator into the value lambda; even a constant-true predicate excludes NULL.
+Reusable `Expression<Func<TInner, bool>>` variables are supported, but compiled delegates are not.
+C# validates the operators and methods, while the database provider must translate them.
+For example, SQLite cannot translate relational comparisons over `DateTimeOffset`.
+Translation failures propagate without a client-side fallback; string and GUID ordering follow
+provider semantics. Scalar value-object `.Value` access still requires `AddTrellisInterceptors()`.
 
 For projections that unwrap `Maybe<T>`, filter with `WhereHasValue` (or `.Where(x => x.M.HasValue)` — `TRLS013` recognises that exact prior shape) **before** the projection.
 

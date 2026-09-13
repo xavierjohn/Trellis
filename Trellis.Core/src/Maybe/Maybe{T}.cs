@@ -28,9 +28,9 @@ using System.Diagnostics.CodeAnalysis;
 /// </description></item>
 /// <item><description>
 /// Use <c>Trellis.EntityFrameworkCore.MaybeQueryableExtensions</c> explicitly:
-/// <c>WhereHasValue</c>, <c>WhereNone</c>, <c>WhereEquals</c>, <c>WhereLessThan</c>,
-/// <c>WhereLessThanOrEqual</c>, <c>WhereGreaterThan</c>, <c>WhereGreaterThanOrEqual</c>, and the
-/// matching <c>OrderBy*</c>/<c>ThenBy*</c> overloads. These work without registering interceptors.
+/// <c>WhereHasValue</c> (with an optional typed predicate), <c>WhereNone</c>, <c>WhereEquals</c>, and the
+/// matching <c>OrderBy*</c>/<c>ThenBy*</c> overloads. These target storage without the Maybe interceptor;
+/// predicates that access a scalar value object's <c>Value</c> still need the scalar interceptor.
 /// </description></item>
 /// </list>
 /// <para>
@@ -60,7 +60,7 @@ using System.Diagnostics.CodeAnalysis;
 /// // (a) With AddTrellisInterceptors() registered, natural syntax translates:
 /// //     db.Orders.Where(o =&gt; o.SubmittedAt.HasValue &amp;&amp; o.SubmittedAt.Value &lt; cutoff)
 /// // (b) Without interceptors, use MaybeQueryableExtensions:
-/// //     db.Orders.WhereLessThan(o =&gt; o.SubmittedAt, cutoff)
+/// //     db.Orders.WhereHasValue(o =&gt; o.SubmittedAt, value =&gt; value &lt; cutoff)
 /// </code>
 /// </example>
 /// <seealso cref="Result{T}"/>

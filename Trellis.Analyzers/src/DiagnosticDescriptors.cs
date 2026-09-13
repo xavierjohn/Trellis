@@ -149,8 +149,7 @@ public static class DiagnosticDescriptors
                        "Filter via .Where(x => x.HasValue) before the projection (or use .Match(...)) to clear this warning. " +
                        "For EF Core IQueryable, prefer composing the query with " +
                        "Trellis.EntityFrameworkCore.MaybeQueryableExtensions: " +
-                       "predicate helpers WhereHasValue / WhereNone / WhereEquals / " +
-                       "WhereLessThan / WhereLessThanOrEqual / WhereGreaterThan / WhereGreaterThanOrEqual, " +
+                       "predicate helpers WhereHasValue (with an optional typed predicate) / WhereNone / WhereEquals, " +
                        "and ordering helpers OrderByMaybe / OrderByMaybeDescending / ThenByMaybe / ThenByMaybeDescending, " +
                        "so .Value never appears in the chain.",
         category: Category,
@@ -166,7 +165,7 @@ public static class DiagnosticDescriptors
                      "register Trellis.EntityFrameworkCore.DbContextOptionsBuilderExtensions.AddTrellisInterceptors() " +
                      "(which rewrites .HasValue/.Value/GetValueOrDefault into EF.Property/null-checks/COALESCE), " +
                      "or use Trellis.EntityFrameworkCore.MaybeQueryableExtensions " +
-                     "(WhereHasValue/WhereNone/WhereEquals/WhereLessThan/WhereLessThanOrEqual/WhereGreaterThan/WhereGreaterThanOrEqual) " +
+                     "(WhereHasValue, including its typed-predicate overload, / WhereNone / WhereEquals) " +
                      "explicitly.",
         helpLinkUri: HelpLinkBase);
 
