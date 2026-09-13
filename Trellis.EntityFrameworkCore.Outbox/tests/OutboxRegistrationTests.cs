@@ -1,10 +1,12 @@
 ﻿namespace Trellis.EntityFrameworkCore.Outbox.Tests;
 
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Trellis.Mediator;
 
 #pragma warning disable CA1707 // readable xUnit test names
@@ -12,40 +14,54 @@ using Trellis.Mediator;
 public sealed class OutboxRegistrationTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task StartAsync_DomainOnlyHost_DoesNotRequireIntegrationPublisher(bool tracked)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StartAsync_DomainOnlyHost_DoesNotRequireIntegrationPublisher(bool tracked, bool supportsProbe)
     {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddDbContext<OutboxTestDbContext>(options => options.UseSqlite(connection));
         if (tracked)
             services.AddTrackedAggregateDomainEventDispatch();
         else
             services.AddDomainEventDispatch();
         services.AddTrellisOutbox<OutboxTestDbContext>();
         await using var provider = services.BuildServiceProvider();
-        var relay = provider.GetRequiredService<IHostedService>();
+        await using (var scope = provider.CreateAsyncScope())
+            await scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>().Database.EnsureCreatedAsync(ct);
+        using var relay = CreateRelay(provider, supportsProbe);
         provider.GetService<IIntegrationEventPublisher>().Should().BeNull();
         provider.GetRequiredService<IReportingDomainEventPublisher>()
             .Should().BeSameAs(provider.GetRequiredService<IDomainEventPublisher>());
-        await relay.StartAsync(TestContext.Current.CancellationToken);
-        await relay.StopAsync(TestContext.Current.CancellationToken);
+        await relay.StartAsync(ct);
+        await relay.StopAsync(ct);
+        (await relay.DrainAsync(ct)).Should().Be(0);
     }
 
-    [Fact]
-    public async Task StartAsync_MissingReportingPublisher_FailsBeforeBackgroundDrain()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartAsync_MissingReportingPublisher_FailsBeforeBackgroundDrain(bool supportsProbe)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddTrellisOutbox<OutboxTestDbContext>();
         await using var provider = services.BuildServiceProvider();
-        var relay = provider.GetRequiredService<IHostedService>();
+        using var relay = CreateRelay(provider, supportsProbe);
         var act = () => relay.StartAsync(TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*IReportingDomainEventPublisher*");
+        relay.ExecuteTask.Should().BeNull();
     }
 
-    [Fact]
-    public async Task StartAsync_TranslationEnabledWithoutIntegrationPublisher_FailsBeforeBackgroundDrain()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartAsync_TranslationEnabledWithoutIntegrationPublisher_FailsBeforeBackgroundDrain(bool supportsProbe)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -54,9 +70,111 @@ public sealed class OutboxRegistrationTests
         services.RemoveAll<IIntegrationEventPublisher>();
         services.AddTrellisOutbox<OutboxTestDbContext>();
         await using var provider = services.BuildServiceProvider();
-        var relay = provider.GetRequiredService<IHostedService>();
+        using var relay = CreateRelay(provider, supportsProbe);
         var act = () => relay.StartAsync(TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*IIntegrationEventPublisher*");
+        relay.ExecuteTask.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StartAsync_IntegrationPublisher_ConstructsOnceAndDisposesAsync(
+        bool supportsProbe, bool registerCollector)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDomainEventDispatch();
+        services.AddIntegrationEventDispatch();
+        if (!registerCollector)
+            services.RemoveAll<IIntegrationEventCollector>();
+        services.RemoveAll<IIntegrationEventPublisher>();
+        var instances = new List<StartupIntegrationPublisher>();
+        services.AddTransient<IIntegrationEventPublisher>(_ =>
+        {
+            var instance = new StartupIntegrationPublisher();
+            instances.Add(instance);
+            return instance;
+        });
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var relay = CreateRelay(provider, supportsProbe);
+
+        await relay.StartAsync(TestContext.Current.CancellationToken);
+        await relay.StopAsync(TestContext.Current.CancellationToken);
+
+        instances.Should().ContainSingle().Which.Disposed.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StartAsync_IntegrationPublisherFactoryThrows_PropagatesAndDisposesScope(
+        bool supportsProbe, bool registerCollector)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDomainEventDispatch();
+        services.AddIntegrationEventDispatch();
+        if (!registerCollector)
+            services.RemoveAll<IIntegrationEventCollector>();
+        services.RemoveAll<IIntegrationEventPublisher>();
+        services.AddScoped<StartupIntegrationPublisher>();
+        StartupIntegrationPublisher? created = null;
+        var failure = new InvalidOperationException("Publisher construction failed.");
+        services.AddScoped<IIntegrationEventPublisher>(scope =>
+        {
+            created = scope.GetRequiredService<StartupIntegrationPublisher>();
+            throw failure;
+        });
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var relay = CreateRelay(provider, supportsProbe);
+
+        var act = () => relay.StartAsync(TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        created.Should().NotBeNull();
+        created!.Disposed.Should().BeTrue();
+        relay.ExecuteTask.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task StartAsync_ProviderSupportsProbe_DoesNotConstructCollector()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDomainEventDispatch();
+        services.AddScoped<IIntegrationEventCollector>(_ => throw new InvalidOperationException("Collector constructed."));
+        services.AddScoped<IIntegrationEventPublisher, StartupIntegrationPublisher>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider();
+        using var relay = CreateRelay(provider, supportsProbe: true);
+
+        await relay.StartAsync(TestContext.Current.CancellationToken);
+        await relay.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task StartAsync_NoProbeAndCollectorFactoryThrows_PropagatesFailure()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDomainEventDispatch();
+        var failure = new InvalidOperationException("Collector construction failed.");
+        services.AddScoped<IIntegrationEventCollector>(_ => throw failure);
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider();
+        using var relay = CreateRelay(provider, supportsProbe: false);
+
+        var act = () => relay.StartAsync(TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+        relay.ExecuteTask.Should().BeNull();
     }
 
     [Fact]
@@ -217,6 +335,47 @@ public sealed class OutboxRegistrationTests
         services.AddTrellisOutbox<OutboxTestDbContext>(o => o.BatchSize = 11);
 
         services.BuildServiceProvider().GetRequiredService<OutboxOptions>().BatchSize.Should().Be(11);
+    }
+
+    private static OutboxRelay<OutboxTestDbContext> CreateRelay(ServiceProvider provider, bool supportsProbe) =>
+        new(
+            new CapabilityScopeFactory(provider.GetRequiredService<IServiceScopeFactory>(), supportsProbe),
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<OutboxOptions>(),
+            provider.GetRequiredService<ILogger<OutboxRelay<OutboxTestDbContext>>>());
+
+    private sealed class CapabilityScopeFactory(IServiceScopeFactory inner, bool supportsProbe) : IServiceScopeFactory
+    {
+        public IServiceScope CreateScope() => new CapabilityScope(inner.CreateScope(), supportsProbe);
+    }
+
+    private sealed class CapabilityScope(IServiceScope inner, bool supportsProbe) : IServiceScope, IAsyncDisposable
+    {
+        public IServiceProvider ServiceProvider { get; } = new CapabilityProvider(inner.ServiceProvider, supportsProbe);
+        public void Dispose() => inner.Dispose();
+        public ValueTask DisposeAsync() => new AsyncServiceScope(inner).DisposeAsync();
+    }
+
+    private sealed class CapabilityProvider(IServiceProvider inner, bool supportsProbe) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) =>
+            serviceType == typeof(IServiceProviderIsService) && !supportsProbe
+                ? null
+                : inner.GetService(serviceType);
+    }
+
+    private sealed class StartupIntegrationPublisher : IIntegrationEventPublisher, IAsyncDisposable
+    {
+        public bool Disposed { get; private set; }
+
+        public ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Startup must not publish messages.");
+
+        public ValueTask DisposeAsync()
+        {
+            Disposed = true;
+            return ValueTask.CompletedTask;
+        }
     }
 
     private sealed class SecondOutboxTestDbContext(DbContextOptions<SecondOutboxTestDbContext> options)
