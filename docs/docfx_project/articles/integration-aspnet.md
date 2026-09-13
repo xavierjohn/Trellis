@@ -321,7 +321,9 @@ app.MapPost("/products", async (CreateProduct cmd, IProductWriter writer, Cancel
 
 ### API-version-aware `Location` headers
 
-The `Trellis.Asp.ApiVersioning` package adds a `WithVersionedRoute()` extension on `HttpResponseOptionsBuilder<T>` that injects the requested `api-version` into the generated `Location` URL automatically — eliminating the recurring "201 looks correct, GET 404s" bug under query/header versioning. Chain it after any builder method that emits a builder-generated `Location` header — `CreatedAtRoute(...)` / `CreatedAtAction(...)` for 201 Created, `WithLocation(...)` for 2xx state-transition responses on existing resources.
+The `Trellis.Asp.ApiVersioning` package adds a `WithVersionedRoute()` extension on `HttpResponseOptionsBuilder<T>` that resolves the final named-route or MVC-action destination and selects a version accepted by its action mappings. It uses the requested version when supported, otherwise the sole mapped declared version, then a supported configured default, and throws if no version can be resolved. For versioned destinations, it writes the selected version into the target's actual URL-segment parameter or the conventional `api-version` query value; neutral and unversioned destinations skip injection and remove supplied `api-version` entries.
+
+Chain it with `CreatedAtRoute(...)` / `CreatedAtAction(...)` for 201 Created, or `WithLocation(...)` for 2xx state-transition responses on existing resources. The final destination is used regardless of fluent configuration order.
 
 ```csharp
 using Trellis.Asp.ApiVersioning;
