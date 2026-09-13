@@ -172,12 +172,16 @@ public sealed partial class ResourceAuthorizationViaBehavior<[DynamicallyAccesse
 
 Pipeline behavior implementing indirect (multi-hop) resource authorization. Loads the leaf via the existing `IResourceLoader<TMessage, TLeaf>` infrastructure (typically the `SharedResourceLoaderAdapter` bridge for messages also implementing `IIdentifyResource<TLeaf, TLeafId>`), then walks the pre-resolved `ResolvedAuthorizationPath` from leaf to owner, and finally invokes the command's `IAuthorizeResourceVia<TOwner>.Authorize(actor, IReadOnlyList<TOwner>)`.
 
+`ResourceAuthorizationPathResolver` rejects `Nullable<T>` identifier types on selected hops (such as `Guid?`), even though null reference-type IDs can express absence. For optional value-type IDs, use a plural terminal hop with zero or one non-nullable ID, a hand-built `ResolvedAuthorizationPath`, or a custom projection loader.
+
 **Constructors**
 
 | Signature | Description |
 | --- | --- |
-| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse> pathHolder, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)` | DI-friendly constructor; the closed-generic holder is registered per via-command so DI naturally disambiguates. `options` defaults to a fresh `ResourceAuthorizationOptions` (`DefaultExposurePolicy = Propagate`); `logger` defaults to `NullLogger.Instance`. |
-| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPath path, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)` | Test/manual constructor accepting a hand-built path. Validates `path.MessageType`/`LeafType`/`OwnerType` match the behavior's generic arguments. |
+| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse> pathHolder)` | Compatibility overload with fresh options and a null logger. |
+| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse> pathHolder, IOptions<ResourceAuthorizationOptions>? options, ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)` | DI-friendly options-aware overload. `options` is required but nullable; null uses fresh options (`DefaultExposurePolicy = Propagate`). |
+| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPath path)` | Compatibility overload accepting a hand-built path. |
+| `public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPath path, IOptions<ResourceAuthorizationOptions>? options, ILogger<ResourceAuthorizationViaBehavior<TMessage, TLeaf, TOwner, TResponse>>? logger = null)` | Options-aware manual overload; validates path message/leaf/owner types. `options` is required but nullable. |
 
 **Methods**
 
@@ -287,14 +291,15 @@ Resolves a `ResolvedAuthorizationPath` from a leaf type to an owner type by walk
 **Declaration**
 
 ```csharp
-public sealed partial class ResourceAuthorizationBehavior<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage, TResource, TResponse>(IActorProvider actorProvider, IServiceProvider serviceProvider, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>? logger = null) : IPipelineBehavior<TMessage, TResponse> where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage where TResource : class where TResponse : IResult, IFailureFactory<TResponse>
+public sealed partial class ResourceAuthorizationBehavior<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage, TResource, TResponse> : IPipelineBehavior<TMessage, TResponse> where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage where TResource : class where TResponse : IResult, IFailureFactory<TResponse>
 ```
 
 **Constructors**
 
 | Signature | Description |
 | --- | --- |
-| `public ResourceAuthorizationBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, IOptions<ResourceAuthorizationOptions>? options = null, ILogger<ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>? logger = null)` | Builds the resource-loading authorization behavior. `options` defaults to a fresh `ResourceAuthorizationOptions` with `DefaultExposurePolicy = Propagate` (back-compat for consumers that have not opted any resource into hide-as-NotFound). `logger` defaults to `NullLogger.Instance`. |
+| `public ResourceAuthorizationBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider)` | Compatibility overload; uses fresh options (`DefaultExposurePolicy = Propagate`) and a null logger. |
+| `public ResourceAuthorizationBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, IOptions<ResourceAuthorizationOptions>? options, ILogger<ResourceAuthorizationBehavior<TMessage, TResource, TResponse>>? logger = null)` | Options-aware overload. `options` is required but nullable; passing null uses fresh options. `logger` defaults to `NullLogger.Instance`. |
 
 **Properties**
 
@@ -525,7 +530,7 @@ Non-cancellation exceptions thrown by a handler are logged at error level and sw
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask HandleAsync(TEvent domainEvent, CancellationToken cancellationToken)` | `ValueTask` | Handles the specified domain event. The cancellation token is propagated from the originating command pipeline. |
+| `ValueTask HandleAsync(TEvent domainEvent, CancellationToken cancellationToken)` | `ValueTask` | Handles the event with the publisher's supplied token. The post-commit dispatch behaviors and `DispatchAggregateEventsAsync` pass `CancellationToken.None`, not the originating command token. The outbox relay supplies its stopping token. |
 
 ### IDomainEventPublisher
 **Declaration**
@@ -657,15 +662,16 @@ Construction throws `ArgumentException` when a name is blank, a type is not a co
 public interface IIntegrationEventCollector
 ```
 
-Collects `IIntegrationEvent` instances produced while handling a domain event (or a command), so the transactional outbox can capture them durably and the relay can publish them after the producing work is committed. This is the translation seam: a domain-event handler observes a domain event and adds the integration events that describe the same fact in contract terms.
+Collects `IIntegrationEvent` instances produced by domain-event translators invoked by the outbox relay. It is not a command-side enqueue API: command handlers and ordinary in-process dispatch have no durable collector drain.
 
-Register the collector as scoped (the Trellis registration helpers do this for you). Translators add to it; the outbox drains it. Integration events added without the outbox enabled are never delivered, because the collector is only a hand-off buffer - durable storage and publishing are the outbox's job.
+Register the collector as scoped (the Trellis registration helpers do this for you). The relay opens `BeginTranslation()` around domain-event publishing and drains before disposing the lease. Translators call `Add`; outside that active execution-context lease it throws `InvalidOperationException`, including late child tasks after lease disposal. A lease is relay infrastructure, not a way for a command to obtain durability. Without the outbox, collector additions are rejected.
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `void Add(IIntegrationEvent integrationEvent)` | `void` | Enqueues an integration event for durable capture and later publishing. Throws `ArgumentNullException` from the default collector when the event is null. |
+| `IDisposable BeginTranslation()` | `IDisposable` | Relay-only translation lease; nested active leases throw `InvalidOperationException`. Disposal rejects late additions and discards undrained events; it does not persist them. Custom collectors must implement this lifecycle contract. |
+| `void Add(IIntegrationEvent integrationEvent)` | `void` | Enqueues within the active translation lease. Throws `ArgumentNullException` for null, or `InvalidOperationException` outside a live relay translation. |
 | `IReadOnlyList<IIntegrationEvent> DrainPending()` | `IReadOnlyList<IIntegrationEvent>` | Returns the integration events collected so far in insertion order and clears the buffer, so a subsequent drain in the same scope does not observe them again. Empty when none were added. |
 
 ### DomainEventHandlerCascadedException
@@ -719,9 +725,11 @@ public sealed partial class DomainEventDispatchBehavior<TMessage, TResponse>
     where TResponse : IResult
 ```
 
-Pipeline behavior that dispatches domain events accumulated on the success-value aggregate after the command handler returns. Constrained to `ICommand<TResponse>` so queries returning aggregate types do not trigger dispatch. Dispatch only runs when the response is a successful `IResult<TAggregate>` (typically `Result<TAggregate>`) where `TAggregate` implements `IAggregate`; other response shapes (`Result<Unit>`, `Result<TDto>`, `Result<(A,B)>`) pass through untouched.
+Pipeline behavior that dispatches domain events accumulated on successful aggregate responses. Constrained to `ICommand<TResponse>` so queries do not trigger dispatch. A successful `IResult<TAggregate>` (typically `Result<TAggregate>`, with `TAggregate : IAggregate`) contributes an aggregate to the owning dispatch batch. Other response shapes contribute no aggregate of their own, but an outer DTO/Unit/tuple response still releases successful nested aggregate responses after its owning commit.
 
-> **Persist-on-failure outcomes.** A `Result.FailAfterCommit<TAggregate>(error)` outcome is **still a failure** — `IsFailure` is `true` — so dispatch is skipped exactly as for any other failure. Any events the handler raised on aggregates remain on those in-memory instances and are discarded with the request scope; they are not a durable retry buffer. If the persist-on-failure scenario needs to drive downstream side effects, model them explicitly via an outbox row or a dedicated follow-up command instead of relying on event re-dispatch. The commit (when `TransactionalCommandBehavior` is also registered) happens upstream and is independent of dispatch.
+> **Persist-on-failure outcomes.** `Result.FailAfterCommit<TAggregate>(error)` is still a failure, so in-process dispatch is skipped and its nested dispatch batch is discarded without clearing aggregate events. **With the outbox interceptor, the successful save captures those events and clears them; the relay later delivers them despite the failed response.** Without outbox capture, they remain on the in-memory aggregates until explicitly cleared or the scope is discarded. They are not an in-process retry buffer.
+
+**Nested commit ownership.** `IUnitOfWork.BeginScope()` returns `IUnitOfWorkScope`; its `IsOwner` distinguishes a real commit from a successful deferred nested commit. Inner dispatch transfers pending aggregate references to the enclosing scope for the same unit of work, never publishes or clears them. Only an owning successful commit followed by a successful response releases the deduplicated batch. Outer failure, throw, or failed commit drops batch references without clearing events. Subsequent operations get fresh batches. Automatic dispatch under an external manually owned scope throws `InvalidOperationException`: disable automatic dispatch there and use `DispatchAggregateEventsAsync` after the manual owning commit. Concurrent commands sharing a scoped unit of work remain unsupported.
 
 When `TransactionalCommandBehavior` is also registered, dispatch fires after the transaction commits — handlers see committed state. On a successful `IResult<TAggregate>` response, the behavior snapshots `aggregate.UncommittedEvents()` once at dispatch entry and publishes **only that snapshot** sequentially. Handler-raised events are never picked up by a later loop. After the snapshot has been published, the behavior validates the aggregate's event queue: the post-dispatch list must still equal the entry snapshot by both length and per-position reference equality. Any handler that raised new events, cleared the list via `AcceptChanges`, replaced events, or reordered them trips the validation and throws [`DomainEventHandlerCascadedException`](#domaineventhandlercascadedexception). `IChangeTracking.AcceptChanges()` is called only after validation proves the dispatch was clean.
 
@@ -740,7 +748,7 @@ On cascade, `AcceptChanges()` is not called. The aggregate retains the original 
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Awaits `next`, returns immediately on failure or when the response is not an `IResult<TAggregate>` (typically `Result<TAggregate>`). On success, snapshots `aggregate.UncommittedEvents()`, publishes only that snapshot, validates the post-dispatch event list still matches the snapshot by length AND per-position reference equality, and calls `AcceptChanges()` only on clean dispatch. Throws `DomainEventHandlerCascadedException` on any mismatch (raises, clears, replaces, reorders). Dispatch is post-commit and therefore not cancellable: the caller's token is not observed and handlers receive `CancellationToken.None`. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Opens a dispatch batch before `next`; failure discards it without clearing events. A successful aggregate response contributes that aggregate. A deferred nested commit transfers its batch to the enclosing command for the same unit of work; a successful owning commit releases it even for an outer DTO/Unit. Snapshots all batch aggregates, publishes with `CancellationToken.None`, validates every queue by length and per-position reference identity, and only then calls `AcceptChanges()`. Any queue mutation throws `DomainEventHandlerCascadedException` before clearing any aggregate. |
 
 ### DomainEventDispatchServiceCollectionExtensions
 **Declaration**
@@ -788,6 +796,8 @@ public sealed partial class TrackedAggregateDomainEventDispatchBehavior<TMessage
 
 Opt-in alternative to [`DomainEventDispatchBehavior<,>`](#domaineventdispatchbehavior). Instead of extracting an aggregate from the response, it reads the unit-of-work's [`ITrackedAggregateSource`](trellis-api-core.md#itrackedaggregatesource) and dispatches events from every aggregate that participated in the most recent successful commit. Use this when handlers return outcome DTOs (`Result<DoneDto>`, `Result<Unit>`, `Result<(A, B)>`) but mutate aggregates via the EF change tracker.
 
+Shares the owning-commit rules above: deferred nested commands never read the previous `CommittedAggregates` snapshot or dispatch/clear events. Only the successful owning command reads the newly committed snapshot. Failed/throwing outer calls discard their pending dispatch without clearing aggregate events; outbox capture still owns clearing on successful persist-on-failure saves.
+
 The tracked behavior snapshots the committed aggregate set and each aggregate's `UncommittedEvents()` at dispatch entry, publishes only those snapshots, then validates every snapshot aggregate before clearing anything. If dispatching aggregate A's events causes a handler to append events to aggregate B that was also in the snapshot, aggregate B is reported as a cascade offender too; the thrown [`DomainEventHandlerCascadedException`](#domaineventhandlercascadedexception) lists every offending aggregate. `AcceptChanges()` is called on the snapshot aggregates only after the entire pass validates cleanly. The `TrackedAggregateDispatchReentrancyGuard` skips nested tracked dispatch; Mediator commands sent from inside a domain-event handler can therefore leave their own aggregate events stranded. Queue follow-up commands outside the handler instead.
 
 **Constructors**
@@ -815,7 +825,7 @@ DI registration helper for the tracked dispatch behavior.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddTrackedAggregateDomainEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers `TrackedAggregateDomainEventDispatchBehavior<,>` (open generic, scoped) and the default `IDomainEventPublisher`. Removes any prior `DomainEventDispatchBehavior<,>` registration (mutually exclusive). Yanks any prior open- or closed-generic `TransactionalCommandBehavior` registration and re-appends it last so tracked dispatch sits just outside the transaction behavior and runs after commit. **Idempotent**. Subsequent `AddDomainEventDispatch()` / `AddDomainEventHandler<,>()` calls register handlers only — they do not reintroduce the response-shape behavior. |
+| `public static IServiceCollection AddTrackedAggregateDomainEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers `TrackedAggregateDomainEventDispatchBehavior<,>` (open generic, scoped) and one scoped default publisher forwarded through both `IDomainEventPublisher` and `IReportingDomainEventPublisher`. Removes prior response-shape dispatch (mutually exclusive). Re-appends existing transaction behaviors last so dispatch runs outside the owning commit. **Idempotent**. Later `AddDomainEventDispatch()` / `AddDomainEventHandler<,>()` calls do not reintroduce response-shape dispatch. |
 
 
 ## Extension methods
@@ -960,7 +970,7 @@ The Trellis pipeline executes outermost → innermost in this order. `AddTrellis
 4. **`AuthorizationBehavior<,>`** — runs for `IAuthorize` messages; resolves the actor, returns `Error.AuthenticationRequired` when no actor is available, and rejects with `new Error.Forbidden("authorization.insufficient.permissions")` when `RequiredPermissions` are not satisfied.
 5. **`ResourceAuthorizationBehavior<,,>`** *(opt-in via `AddResourceAuthorization(...)`)* — runs for `IAuthorizeResource<TResource>` messages. Inserted **immediately before `ValidationBehavior<,>`** so a 403 short-circuits before a 422 is computed; duplicate closed behavior registrations are ignored so the same behavior does not run twice per request. Resolves the actor before loader construction or resource I/O, returns `Error.AuthenticationRequired` when no actor is available, then loads the resource via `IResourceLoader<TMessage, TResource>` and calls `message.Authorize(actor, resource)`.
 6. **`ValidationBehavior<,>`** — unified validation stage. Runs `IValidate.Validate()` if implemented, then every `IMessageValidator<TMessage>` resolved from DI; aggregates all `Error.InvalidInput` failures into a single response. External validation sources (e.g., the `Trellis.Mediator.FluentValidation` adapter) participate here without occupying their own pipeline slot.
-7. **`DomainEventDispatchBehavior<,>`** *(opt-in via `AddDomainEventDispatch(...)`)* — runs for `ICommand<TResponse>` messages where `TResponse` is `IResult<TAggregate>` (typically `Result<TAggregate>`) and `TAggregate : IAggregate`. After the inner pipeline returns success, snapshots `aggregate.UncommittedEvents()`, dispatches only that snapshot to registered `IDomainEventHandler<TEvent>` instances, validates that handlers did not append events, and calls `AcceptChanges()` only on clean dispatch. When `TransactionalCommandBehavior` is registered innermost, dispatch fires after the transaction commits — handlers see committed state, and a later cascade exception cannot roll back the database write. Non-cancellation handler exceptions are logged and swallowed. Dispatch is **not cancellable**: it runs post-commit, so the caller's token is not observed and handlers receive `CancellationToken.None`. **Mutually exclusive** with `TrackedAggregateDomainEventDispatchBehavior<,>`: `AddTrackedAggregateDomainEventDispatch()` removes any prior response-shape registration, and later `AddDomainEventDispatch()` / `AddDomainEventHandler<,>()` calls do not reintroduce it while tracked dispatch is present.
+7. **`DomainEventDispatchBehavior<,>`** *(opt-in via `AddDomainEventDispatch(...)`)* — commands with successful aggregate responses contribute to an owning dispatch batch. Deferred inner commands neither publish nor clear; the successful owning outer commit releases nested batches even when its response is DTO/Unit. All aggregate event queues are snapshotted and validated before any `AcceptChanges()`. Handlers receive `CancellationToken.None`, and default-publisher handler failures are logged/swallowed. Cascade detection throws after the durable commit and cannot roll it back. **Mutually exclusive** with tracked dispatch: registration removes response-shape dispatch and later response-shape helpers do not reintroduce it.
    - **Or** `TrackedAggregateDomainEventDispatchBehavior<,>` *(opt-in via `AddTrackedAggregateDomainEventDispatch(...)`)* — sits at the same slot but reads the aggregates from `ITrackedAggregateSource.CommittedAggregates` (populated by the unit-of-work at commit time), snapshots each aggregate's events, and throws `DomainEventHandlerCascadedException` when same-aggregate or cross-aggregate cascade is detected. Fires for any response shape, including outcome DTOs. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior).
 8. **`TransactionalCommandBehavior<,>`** *(opt-in, lives in `Trellis.Mediator`, not registered by `AddTrellisBehaviors()`)* — wraps the handler for `ICommand<TResponse>` messages and calls `IUnitOfWork.CommitAsync` on success. Install via `AddTransactionalCommandBehavior()` (or the EF Core adapter's `AddTrellisUnitOfWork<TContext>()`, which calls it). Registration is order-independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers: open- and closed-generic transaction descriptors are rehomed to remain innermost (closest to the handler), keeping commit failures visible to outer logging/tracing/dispatch. Queries are skipped.
 

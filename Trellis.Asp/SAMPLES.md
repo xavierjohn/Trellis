@@ -833,13 +833,21 @@ public class UserRepository : IUserRepository
 
 Transactional operations with UnitOfWork:
 
+Custom adapters return `IUnitOfWorkScope`, capturing `IsOwner` when the scope opens rather than
+computing it from the current depth. Nested commits defer; scope disposal does not commit or
+roll back. Do not run concurrent commands through one unit-of-work instance. Automatic domain
+event dispatch inside a manually opened outer scope is rejected; dispatch explicitly with
+`DispatchAggregateEventsAsync` after the manual owning commit succeeds.
+
 ```csharp
 public class UnitOfWork : IUnitOfWork
 {
     private readonly DbContext _context;
     private int _scopeDepth;
 
-    public async Task<Result> CommitAsync(CancellationToken ct)
+    public UnitOfWork(DbContext context) => _context = context;
+
+    public async Task<Result<Unit>> CommitAsync(CancellationToken ct = default)
     {
         // Defer until the outermost scope unwinds so a nested command's success
         // doesn't commit a partially-completed outer command's staged changes.
@@ -861,18 +869,24 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    public IDisposable BeginScope()
+    public IUnitOfWorkScope BeginScope()
     {
-        Interlocked.Increment(ref _scopeDepth);
-        return new ScopeReleaser(this);
+        var depth = Interlocked.Increment(ref _scopeDepth);
+        return new ScopeReleaser(this, depth == 1);
     }
 
-    private sealed class ScopeReleaser : IDisposable
+    private sealed class ScopeReleaser : IUnitOfWorkScope
     {
         private readonly UnitOfWork _owner;
         private bool _disposed;
 
-        public ScopeReleaser(UnitOfWork owner) => _owner = owner;
+        public ScopeReleaser(UnitOfWork owner, bool isOwner)
+        {
+            _owner = owner;
+            IsOwner = isOwner;
+        }
+
+        public bool IsOwner { get; }
 
         public void Dispose()
         {

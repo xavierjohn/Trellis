@@ -15,8 +15,9 @@ public static class OutboxServiceCollectionExtensions
     /// <see cref="OutboxModelBuilderExtensions.AddTrellisOutbox(ModelBuilder)"/> in the context's
     /// <c>OnModelCreating</c> and
     /// <see cref="OutboxModelBuilderExtensions.AddTrellisOutboxInterceptor(DbContextOptionsBuilder)"/>
-    /// on the options builder. Domain-event handlers and <c>IDomainEventPublisher</c> must also be
-    /// registered (for example via <c>AddDomainEventDispatch(...)</c>).
+    /// on the options builder. Domain-event handlers and <c>IReportingDomainEventPublisher</c> must
+    /// also be registered (for example via <c>AddDomainEventDispatch(...)</c>). Host startup validates
+    /// this publisher and, when integration features are registered, <c>IIntegrationEventPublisher</c>.
     /// </summary>
     /// <typeparam name="TContext">The application's <see cref="DbContext"/> that owns the outbox table.</typeparam>
     /// <param name="services">The service collection.</param>

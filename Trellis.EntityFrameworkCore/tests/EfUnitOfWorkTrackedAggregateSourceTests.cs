@@ -271,10 +271,11 @@ public class EfUnitOfWorkTrackedAggregateSourceTests : IDisposable
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Result.Ok());
 
-        public IDisposable BeginScope() => new NullScope();
+        public IUnitOfWorkScope BeginScope() => new NullScope();
 
-        private sealed class NullScope : IDisposable
+        private sealed class NullScope : IUnitOfWorkScope
         {
+            public bool IsOwner => true;
             public void Dispose() { }
         }
     }

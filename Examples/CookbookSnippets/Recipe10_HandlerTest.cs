@@ -1,4 +1,5 @@
 ﻿// Cookbook Recipe 10 — Test: handler test using Trellis.Testing assertions.
+#pragma warning disable CA1822 // Compile-only Fact stand-in preserves the real xUnit example's instance methods.
 namespace CookbookSnippets.Recipe10;
 
 using System;
@@ -11,7 +12,7 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Authorization;
 using Trellis.Testing;
-using Xunit;
+using CookbookSnippets.Compilation;
 
 public class PlaceOrderHandlerTests
 {

@@ -38,6 +38,9 @@ builder.Services.AddTrellisBehaviors();
 - Supports resource authorization with explicit or assembly-scanned registration.
 - Per-resource `AuthFailureExposurePolicy` (`HideAsNotFound`) translates `Forbidden` / `AuthenticationRequired` to `NotFound(ResourceRef)` for sensitive resources whose mere existence is itself a leak.
 
+- Nested domain-event dispatch waits for the owning successful unit-of-work commit, retaining inner aggregate responses even when the outer command returns a DTO or Unit. Failure/throw discards the dispatch batch without clearing events; the outbox still captures events on successful `FailAfterCommit` saves.
+- `IIntegrationEventCollector` is translator-only. The outbox relay opens `BeginTranslation()` while publishing and draining; `Add` from a command or outside that active lease throws rather than silently losing events.
+
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html)
 - [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)

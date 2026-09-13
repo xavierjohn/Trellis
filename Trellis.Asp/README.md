@@ -58,6 +58,12 @@ Default mappings (overridable per call via `.WithErrorMapping(...)` or globally 
 
 The domain `Kind` slug and the on-wire `kind` extension are intentionally distinct for the renamed cases (`invalid-input`, `invariant-violation`, `authentication-required`, `rate-limited`, `unavailable`, `unexpected`). The wire token is preserved at the boundary at the historical RFC-9110-aligned value, so external problem-details consumers see no change.
 
+## Response and converter compatibility
+
+`Error.ToHttpResponse(o => o.Vary("Accept-Language"))` appends case-insensitively unique `Vary` values without overwriting existing middleware headers. The non-generic error-only builder no longer exposes the previously ineffective `HonorPrefer()` method; remove that call when upgrading. Generic success builders retain `HonorPrefer()`.
+
+Generated scalar converters now report the same null, blank and primitive-format reason codes as the reflection-mode converters for supported primitives. Structured validation failures retain their codes, args and locations through `AddBodyError`. JSON null remains valid for optional scalars using `MaybeScalarValueJsonConverter<TValue, TPrimitive>`.
+
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-aspnet.html)
 - [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)

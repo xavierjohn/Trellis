@@ -119,9 +119,13 @@ public class UnitOfWorkServiceCollectionExtensionsTests
         public Task<global::Trellis.Result<global::Trellis.Unit>> CommitAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(global::Trellis.Result.Ok());
 
-        public IDisposable BeginScope() => new NoopScope();
+        public IUnitOfWorkScope BeginScope() => new NoopScope();
 
-        private sealed class NoopScope : IDisposable { public void Dispose() { } }
+        private sealed class NoopScope : IUnitOfWorkScope
+        {
+            public bool IsOwner => true;
+            public void Dispose() { }
+        }
     }
 
     [Fact]

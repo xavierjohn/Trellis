@@ -33,6 +33,8 @@ return pageResult.ToHttpResponse(
 
 `WithVersionedRoute()` chains after any builder method that emits a builder-generated `Location` header — including `CreatedAtRoute(...)` / `CreatedAtAction(...)` (201 Created) and `WithLocation(...)` (2xx state-transition responses on existing resources).
 
+`WithVersionedRoute` inspects the **current request endpoint**, not the `Location` target; verify cross-route compatibility yourself, including for explicit pins. `PageUrl` instead inspects its named target. Automatic resolution uses a declared requested version, then a single version in the distinct implicit/explicit declared union, then a declared host default; otherwise it throws.
+
 ## Why
 Under query/header API versioning, `Location` headers from `CreatedAtRoute(...)` / `CreatedAtAction(...)` / `WithLocation(...)` silently omit the `api-version` parameter unless every author remembers to add it to the route values dictionary — a recurring source of dereference 404s that's invisible without integration tests. `WithVersionedRoute()` injects the version at request time using the configured `IApiVersionReader` chain, with sensible fallbacks and explicit failures for ambiguous configurations.
 

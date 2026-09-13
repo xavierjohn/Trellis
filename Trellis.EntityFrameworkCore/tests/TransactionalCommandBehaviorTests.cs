@@ -277,10 +277,11 @@ public class TransactionalCommandBehaviorTests
             return Task.FromResult(CommitResult ?? Result.Ok());
         }
 
-        public IDisposable BeginScope() => new NoOpScope();
+        public IUnitOfWorkScope BeginScope() => new NoOpScope();
 
-        private sealed class NoOpScope : IDisposable
+        private sealed class NoOpScope : IUnitOfWorkScope
         {
+            public bool IsOwner => true;
             public void Dispose() { }
         }
     }
@@ -308,18 +309,24 @@ public class TransactionalCommandBehaviorTests
             return Task.FromResult(Result.Ok());
         }
 
-        public IDisposable BeginScope()
+        public IUnitOfWorkScope BeginScope()
         {
             _depth++;
             return new Releaser(this);
         }
 
-        private sealed class Releaser : IDisposable
+        private sealed class Releaser : IUnitOfWorkScope
         {
             private readonly ScopeTrackingFakeUnitOfWork _owner;
             private bool _disposed;
 
-            public Releaser(ScopeTrackingFakeUnitOfWork owner) => _owner = owner;
+            public Releaser(ScopeTrackingFakeUnitOfWork owner)
+            {
+                _owner = owner;
+                IsOwner = owner._depth == 1;
+            }
+
+            public bool IsOwner { get; }
 
             public void Dispose()
             {

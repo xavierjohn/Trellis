@@ -142,7 +142,6 @@ public sealed class HttpResponseOptionsBuilderTests
         var b = new HttpResponseOptionsBuilder();
         FluentActions.Invoking(() => b.Vary(null!)).Should().Throw<ArgumentNullException>();
         b.Vary("", "  ", "Accept")
-            .HonorPrefer()
             .WithErrorMapping(_ => 500)
             .WithErrorMapping<Error.Conflict>(409)
             .Should().BeSameAs(b);

@@ -36,5 +36,5 @@
 
     # Verbatim opening of the required banner. TRLDOC012 matches this prefix, so treat it as
     # a contract: reword the sentence in the docs and the gate must be updated with it.
-    GuardrailBannerMarker = '> **Requires `Trellis.Analyzers`.**'
+    GuardrailBannerMarker = '> **Analyzer rules require `Trellis.Analyzers`; bundled generator diagnostics do not.**'
 }

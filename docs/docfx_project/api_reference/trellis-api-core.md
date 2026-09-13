@@ -1275,7 +1275,7 @@ Sequential composition of result-producing functions. `Bind` is the monadic flat
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Result<TResult> Bind<TValue, TResult>(this Result<TValue> result, Func<TValue, Result<TResult>> func)` | `Result<TResult>` | Generic-to-generic flatMap. Short-circuits on failure. |
-| `public static Task<Result<TResult>> BindAsync<TValue, TResult>(this Task<Result<TValue>> resultTask, Func<TValue, Task<Result<TResult>>> func)` | `Task<Result<TResult>>` | All combinations of `Result<T>`/`Task<Result<T>>`/`ValueTask<Result<T>>` × sync-/async-lambda are exposed (12 overloads on `BindExtensionsAsync`). |
+| `public static Task<Result<TResult>> BindAsync<TValue, TResult>(this Task<Result<TValue>> resultTask, Func<TValue, Task<Result<TResult>>> func)` | `Task<Result<TResult>>` | Six non-tuple overloads: `Result<T>` receivers accept `Task` or `ValueTask` delegates; `Task<Result<T>>` receivers accept sync or `Task` delegates; `ValueTask<Result<T>>` receivers accept sync or `ValueTask` delegates. Mixed `Task`/`ValueTask` families require explicit adaptation or awaiting the receiver first. |
 | `public static Result<(T1, T2)> BindZip<T1, T2>(this Result<T1> result, Func<T1, Result<T2>> func)` | `Result<(T1, T2)>` | Zips upstream value with the bind result so downstream stages see both. Tuple arities 2–9 are generated. |
 | `public static Task<Result<(T1, T2)>> BindZipAsync<T1, T2>(this Task<Result<T1>> resultTask, Func<T1, Task<Result<T2>>> func)` | `Task<Result<(T1, T2)>>` | Async BindZip; generated for every Result/Task/ValueTask combination. |
 
@@ -1568,7 +1568,7 @@ Accumulating-error counterparts to `Traverse` / `Sequence`. Run the selector ove
 ```csharp
 // Form-style validation: collect every field error in one pass.
 Result<IReadOnlyList<EmailAddress>> emails =
-    raw.TraverseAll(EmailAddress.TryCreate);
+    raw.TraverseAll(value => EmailAddress.TryCreate(value));
 //   ↳ on multiple invalid entries, returns one Error.InvalidInput
 //     whose Fields/Rules concatenate every per-item violation.
 
@@ -2258,7 +2258,7 @@ public sealed class TrellisJsonValidationException : System.Text.Json.JsonExcept
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `UnprocessableContent` | `Error.InvalidInput?` (init-only) | Optional structured payload describing per-field violations recovered during deserialization. Populated by `CompositeValueObjectJsonConverter<T>` when a composite VO's `TryCreate` returns an `Error.InvalidInput`. When non-null with at least one `FieldViolation`, `Trellis.Asp`'s `ScalarValueValidationMiddleware` emits one wire entry per `FieldViolation` keyed `<parentPath>.<leaf>` (MVC dot+bracket convention) instead of collapsing all leaves into the single `;`-joined `Message`. When `null` or `Fields` is empty (e.g., rules-only `Error.InvalidInput`), the middleware falls back to a single entry under the translated parent path with `Message` as the value, preserving the curated message. |
+| `InvalidInput` | `Error.InvalidInput?` (init-only) | Optional structured payload describing per-field violations recovered during deserialization. Populated by `CompositeValueObjectJsonConverter<T>` when a composite VO's `TryCreate` returns an `Error.InvalidInput`. When non-null with at least one `FieldViolation`, `Trellis.Asp`'s `ScalarValueValidationMiddleware` emits one wire entry per `FieldViolation` keyed `<parentPath>.<leaf>` (MVC dot+bracket convention) instead of collapsing all leaves into the single `;`-joined `Message`. When `null` or `Fields` is empty (e.g., rules-only `Error.InvalidInput`), the middleware falls back to a single entry under the translated parent path with `Message` as the value, preserving the curated message. |
 
 Marker subclass of `System.Text.Json.JsonException` thrown by Trellis JSON converters when a structured value object's invariants are violated during deserialization (e.g., `CompositeValueObjectJsonConverter<Money>` rejecting a negative amount). `Trellis.Asp`'s `ScalarValueValidationMiddleware` recognizes this subtype and surfaces its content in the resulting Problem Details payload — preferring the structured per-field shape from `Error.InvalidInput` when present (one entry per `FieldViolation`), and falling back to surfacing `Message` and `JsonException.Path` as a single entry otherwise. Plain `JsonException` instances are deliberately not surfaced because their messages can include internal type names; converters opt in to message surfacing by throwing this subclass with a curated message (e.g., `error.GetDisplayMessage()` from a `Result` failure).
 

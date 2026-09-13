@@ -14,17 +14,25 @@ using System.Collections.Generic;
 /// Register the collector as scoped (the Trellis registration helpers do this for you). Translators add
 /// to it; the outbox relay drains it after dispatching each domain event. The relay is the only drain
 /// point - integration events added outside a domain-event handler dispatched by the relay (for example
-/// in a command handler) are never captured, and events added without the outbox enabled are never
-/// delivered, because the collector is only a hand-off buffer: durable storage and publishing are the
-/// outbox's job.
+/// in a command handler) are rejected with <see cref="InvalidOperationException"/>. The collector is
+/// only a hand-off buffer: durable storage and publishing are the outbox's job.
 /// </para>
 /// </remarks>
 public interface IIntegrationEventCollector
 {
     /// <summary>
+    /// Opens a translation lease. For relay infrastructure only: surround domain-event publishing
+    /// and the subsequent drain with this lease. Disposal rejects late additions and discards any
+    /// undrained events; it does not persist or publish them. Nested leases are not supported.
+    /// </summary>
+    /// <returns>The lease that limits collection to this relay translation invocation.</returns>
+    IDisposable BeginTranslation();
+
+    /// <summary>
     /// Enqueues an integration event for durable capture and later publishing.
     /// </summary>
     /// <param name="integrationEvent">The integration event to publish once the producing work is committed.</param>
+    /// <exception cref="InvalidOperationException">No relay translation lease is active in this execution context.</exception>
     void Add(IIntegrationEvent integrationEvent);
 
     /// <summary>

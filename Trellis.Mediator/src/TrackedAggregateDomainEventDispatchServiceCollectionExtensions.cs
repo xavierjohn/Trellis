@@ -54,7 +54,9 @@ public static class TrackedAggregateDomainEventDispatchServiceCollectionExtensio
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddScoped<IDomainEventPublisher, MediatorDomainEventPublisher>();
+        services.TryAddScoped<MediatorDomainEventPublisher>();
+        services.TryAddScoped<IDomainEventPublisher>(sp => sp.GetRequiredService<MediatorDomainEventPublisher>());
+        services.TryAddScoped<IReportingDomainEventPublisher>(sp => sp.GetRequiredService<MediatorDomainEventPublisher>());
 
         // Remove any pre-existing response-shape dispatch behavior so a Result<TAggregate>
         // handler doesn't dispatch twice (once via the response-shape behavior, once via the

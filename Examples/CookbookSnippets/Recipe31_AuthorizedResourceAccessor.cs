@@ -28,7 +28,7 @@ public sealed record CancelOrderCommand(OrderId OrderId)
     public OrderId GetResourceId() => OrderId;
 
     public Trellis.IResult Authorize(Actor actor, Order resource) =>
-        Result.Ensure(actor.Permissions.Contains("orders:cancel"), new Error.Forbidden("orders.cancel-denied"));
+        Result.Ensure(actor.HasPermission("orders:cancel"), new Error.Forbidden("orders.cancel-denied"));
 }
 
 // The handler reads the instance the pipeline already loaded to run Authorize — no second

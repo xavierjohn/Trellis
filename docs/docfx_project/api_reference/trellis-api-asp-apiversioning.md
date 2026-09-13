@@ -79,17 +79,17 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
 
 The api-version resolver runs per request inside the `LinkGenerator` callback (after the route-values selector produces the route values dictionary, before link generation). Resolution order:
 
-1. **`HttpContext.RequestedApiVersion`** — primary signal; reflects whatever the configured `IApiVersionReader` parsed (query, header, media-type, URL segment, composite). This is the C# extension property from `Asp.Versioning.Http`.
-2. **Endpoint metadata `ApiVersionMetadata.Map(ApiVersionMapping.Implicit).DeclaredApiVersions`** — fallback when (1) is null and exactly one declared version exists. Throws if the endpoint declares multiple versions and the client supplied none.
-3. **`ApiVersioningOptions.DefaultApiVersion`** — final fallback, configured via `services.AddApiVersioning(o => o.DefaultApiVersion = …)`.
+1. **`HttpContext.RequestedApiVersion`** — primary signal, provided it is declared by the endpoint; reflects whatever the configured `IApiVersionReader` parsed (query, header, media-type, URL segment, composite). This is the C# extension property from `Asp.Versioning.Http`.
+2. **Exactly one declared endpoint version** — use the distinct union of `ApiVersionMetadata.Map(ApiVersionMapping.Implicit).DeclaredApiVersions` and `Map(ApiVersionMapping.Explicit).DeclaredApiVersions`. This fallback also applies when the requested version is not declared by the endpoint.
+3. **`ApiVersioningOptions.DefaultApiVersion`** — use the host default only if it belongs to that declared union. Multiple declarations do not themselves cause failure: a declared host default still resolves them. If none of these steps resolves a version, throw `InvalidOperationException`.
 
-Both overloads short-circuit to a no-op (no `api-version` route value injected) when:
+Both overloads inspect the **current request endpoint** (`HttpContext.GetEndpoint()`), not the named `Location` target, and short-circuit to a no-op (no `api-version` route value injected) when:
 
 - The endpoint is decorated with `[ApiVersionNeutral]` — version-neutral endpoints must not carry a version in their `Location` header.
 - The endpoint participates in URL-segment versioning (the route template contains a `{version:apiVersion}` segment) — the segment is filled by the route template binder, not a query/header route value.
 - The endpoint has no `ApiVersionMetadata` attached — the host did not call `services.AddApiVersioning(...)`, or this endpoint sits outside its versioning surface. Emitting an `api-version` route value when no API-versioning middleware is installed would be a stale URL artefact the receiving middleware would never act on; the helpers compose cleanly in unversioned and mixed-versioned hosts by silently dropping injection in this case. The framework emits a single warning per `(endpoint, AppDomain)` pair through the `Trellis.Asp.ApiVersioning` `ILogger` category to flag the mid-migration scenario where `AddApiVersioning(...)` was removed but the chain remained; set `TrellisAspOptions.FailFastOnSilentVersionInjection = true` to throw on every offending request instead.
 
-The skip rules apply to the explicit-version overload as well: `WithVersionedRoute(explicitVersion)` overrides the resolution order but still respects neutral, URL-segment, and missing-metadata skips, so a pinned version is never injected into a Location that targets a neutral endpoint, duplicates a path-segment version, or lands on an endpoint with no versioning metadata.
+The skip rules apply to the explicit-version overload as well: `WithVersionedRoute(explicitVersion)` overrides the resolution order but still respects the current endpoint's neutral, URL-segment, and missing-metadata skips. Neither overload validates the target route's metadata or declared versions. For cross-route links, the application must ensure the selected version and query-style injection fit the target; a current versioned endpoint can still inject a version into a link whose target is neutral.
 
 The route-value key is fixed at `"api-version"`, matching the default for `QueryStringApiVersionReader` and the conventional header name. Hosts using a non-default reader parameter name should register a custom resolver via `WithRouteValueResolver(<key>, …)` directly instead of using this package.
 
@@ -139,7 +139,7 @@ return result.ToHttpResponse(opts => opts
     .WithVersionedRoute(new ApiVersion(new DateOnly(2026, 12, 1))));
 ```
 
-Pins the `Location` to `?api-version=2026-12-01` regardless of what the client requested. Use this only for redirects to a fixed version (deprecation flows, version migration). For the common case, prefer the parameterless overload. The neutral, URL-segment, and missing-metadata skip rules still apply: an explicit pin is never injected into a Location that targets a `[ApiVersionNeutral]` endpoint, a `v{version:apiVersion}` template, or an endpoint with no `ApiVersionMetadata` (unversioned hosts where `AddApiVersioning(...)` was never called).
+Pins the `Location` to `?api-version=2026-12-01` regardless of what the client requested, when the current request endpoint permits injection. Use this only for redirects to a fixed version (deprecation flows, version migration), after verifying target compatibility. For the common case, prefer the parameterless overload. The neutral, URL-segment, and missing-metadata skip rules inspect the **current endpoint**, not the target of the `Location` link.
 
 ### `HttpContextPageUrlExtensions`
 

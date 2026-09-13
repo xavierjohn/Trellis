@@ -345,8 +345,9 @@ public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
     where T : ValueObject
 ```
 
-Convention-based JSON converter for composite value objects. Each public read-only instance property
-becomes a JSON field (camelCase of the property name). The "primitive type" for each field is the
+Convention-based JSON converter for composite value objects. Each public instance property declared
+directly on `T`, with a getter and no public setter, becomes a JSON field (camelCase of the property
+name). Inherited properties and indexers are excluded. The "primitive type" for each field is the
 underlying primitive of an `IScalarValue<TSelf, TPrimitive>` property, or the property's own type when it
 is already a primitive. The target type must expose a public static
 `Result<T> TryCreate(p1, ..., pN[, string? fieldName])` whose parameters are the primitive types in the
@@ -355,7 +356,7 @@ order the properties are declared.
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Reads a JSON object, populates parameters by JSON property name (case-insensitive), invokes `TryCreate`, and throws `TrellisJsonValidationException` with the error display message on failure. When required properties are missing, throws a single `TrellisJsonValidationException` listing **all** missing names (e.g. `Required properties missing: 'amount', 'currency'.`) so multi-field violations surface in one round trip. |
-| `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes one JSON property per public instance property in declaration order, using the underlying primitive value for `IScalarValue<,>` properties. |
+| `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes one JSON property per eligible property declared directly on `T`, in declaration order, using the underlying primitive value for `IScalarValue<,>` properties. Inherited properties, indexers, and properties with public setters are excluded. |
 
 Apply via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object type.
 Reflection is performed once per generic instantiation and cached (lazily, so a configuration error surfaces
@@ -510,7 +511,7 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 | `LanguageCode` | `Trellis.Primitives` | Scalar | JSON string | Lowercase ASCII ISO 639-1 alpha-2. |
 | `MonetaryAmount` | `Trellis.Primitives` | Scalar | JSON number or numeric string input; JSON number output | Non-negative single-currency amount with 2-decimal rounding. |
 | `Money` | `Trellis.Primitives` | Structured | JSON object `{ "amount": number, "currency": string }` | Multi-currency value object; not scalar. Decimal places per ISO 4217 minor units (0 for JPY/KRW/BIF/CLP/DJF/GNF/ISK/KMF/PYG/RWF/UGX/UYI/VND/VUV/XAF/XOF/XPF; 3 for BHD/IQD/JOD/KWD/LYD/OMR/TND; 4 for CLF/UYW; 2 otherwise). |
-| `Percentage` | `Trellis.Primitives` | Scalar | JSON number or numeric string input; JSON number output | `decimal` in `0..100`; `ToString()` adds `%`. |
+| `Percentage` | `Trellis.Primitives` | Scalar | JSON number or numeric string input (with optional `%`); JSON string output such as `"50%"` | `decimal` in `0..100`; the default converter serializes the `%`-suffixed `ToString()` representation. |
 | `PhoneNumber` | `Trellis.Primitives` | Scalar | JSON string | Normalized E.164 string. `GetCountryCode()` returns `Maybe<string>.None` when the prefix is not an assigned ITU-T calling code. |
 | `Slug` | `Trellis.Primitives` | Scalar | JSON string | Lowercase letters, digits, single hyphens. |
 | `Url` | `Trellis.Primitives` | Scalar | JSON string | Absolute HTTP/HTTPS URI. |
@@ -548,11 +549,11 @@ Every built-in primitive's `TryCreate` failure carries a `FieldViolation.ReasonC
 
 **Out-of-range is not a `format.*` code.** `Age.TryCreate(200)` receives an `int` that parsed fine, so it reports `value.less-than-or-equal`. `format.integer` means the text never became an `int` at all.
 
-**Blank is not a `format.*` code either.** Every generated and hand-written `TryCreate(string?)` overload rejects a blank string *before* attempting to parse, so `EmployeeId.TryCreate("")` reports `value.not-empty` rather than `format.guid`. Whitespace cannot parse into any scalar, so a `format.*` code there would name a shape the caller never attempted.
+**Blank parsing input is not a `format.*` code either.** Generated numeric, Guid, and date/time factories and strict built-in string primitives reject blank text *before* parsing, so `EmployeeId.TryCreate("")` reports `value.not-empty` rather than `format.guid`. Generated `RequiredString<T>` factories are deliberately different: they accept empty/whitespace strings by default, trim only with `[Trim]`, and reject an empty result with `[NotDefault]` (or a length rule that excludes it). Do not infer strict string validation from the parsing families.
 
 ## Default validation field names
 
-Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, the failure `Error.InvalidInput.ForField(...)` uses the default below — which becomes the key in the `errors` dictionary of a 400 `ProblemDetails` response, and therefore the string a test asserts on. **Two defaults do not match the type name**, and are the usual source of a failing assertion:
+Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, the failure `Error.InvalidInput.ForField(...)` uses the default below — which becomes the key in the `errors` dictionary of a `ProblemDetails` response, and therefore the string a test asserts on. `Error.InvalidInput` maps to **422 by default**, configurable through Trellis ASP options; malformed JSON can follow a separate 400 path. **Two defaults do not match the type name**, and are the usual source of a failing assertion:
 
 | Type | Default field name | Factory |
 | --- | --- | --- |
@@ -576,7 +577,7 @@ Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, th
 Pass `fieldName` explicitly whenever the value object is bound to a differently-named request property, so the error key matches the client's payload shape rather than the primitive's own name:
 
 ```csharp
-// Request property is "billingEmail", so the 400 must key the error on "billingEmail".
+// Request property is "billingEmail", so the validation response must use that error key.
 var email = EmailAddress.TryCreate(request.BillingEmail, nameof(request.BillingEmail));
 ```
 

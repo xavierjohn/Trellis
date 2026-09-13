@@ -198,6 +198,9 @@ jobs:
           /p:PublishAot=true \
           /p:TreatWarningsAsErrors=true
 
+    - name: Native scalar converter contract smoke (Showcase.MinimalApi)
+      run: Examples/Showcase/src/Showcase.MinimalApi/bin/Release/net10.0/linux-x64/publish/Showcase.MinimalApi --scalar-converter-smoke
+
     - name: AOT publish gate (bare non-ASP console)
       # The Showcase gate above references Trellis.Asp, which roots the scalar-value surface
       # and so keeps IScalarValue<,> alive through trimming. A console app using only

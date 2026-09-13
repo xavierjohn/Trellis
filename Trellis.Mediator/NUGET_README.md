@@ -41,6 +41,9 @@ builder.Services.AddTrellisBehaviors();
 - **Tracked-aggregate dispatch (opt-in)**: `TrackedAggregateDomainEventDispatchBehavior<,>` reads committed aggregates from the unit of work and applies the same snapshot contract across all of them, including cross-aggregate cascade detection. Mutually exclusive with response-shape dispatch.
 - **Operational caveat**: dispatch runs after EF unit-of-work commit. Cascade detection can return a failure-shaped response after the database write is durable. In-pipeline handler exceptions are logged and swallowed by the default publisher, because this path is post-commit and cannot retry; durable at-least-once side effects require the shipped transactional outbox (`Trellis.EntityFrameworkCore.Outbox`), which retries failed handlers individually.
 
+- Nested domain-event dispatch waits for the owning successful unit-of-work commit, retaining inner aggregate responses even when the outer command returns a DTO or Unit. Failure/throw discards the dispatch batch without clearing events; the outbox still captures events on successful `FailAfterCommit` saves.
+- `IIntegrationEventCollector` is translator-only. The outbox relay opens `BeginTranslation()` while publishing and draining; `Add` from a command or outside that active lease throws rather than silently losing events.
+
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html)
 - [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)

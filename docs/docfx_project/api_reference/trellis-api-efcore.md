@@ -342,7 +342,7 @@ Abstraction over the commit boundary for staged changes. Repositories stage chan
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. Implementations must defer (return success without persisting) when called inside a nested `BeginScope` scope so a successful inner command does not commit a partially-completed outer command's staged changes. |
-| `IDisposable BeginScope()` | `IDisposable` | Begins a unit-of-work scope; nested scopes track depth so only the outermost scope's `CommitAsync` actually persists. The Trellis pipeline's `TransactionalCommandBehavior` wraps every command in a scope. Custom `IUnitOfWork` implementations are required to implement depth-aware scope tracking; `EfUnitOfWork<TContext>` does this with an internal counter. **Caveat:** if an inner command returns failure but the outer ignores it and returns success, the outer's commit will persist any changes the inner staged before failing — per-scope rollback of staged changes is not supported. |
+| `IUnitOfWorkScope BeginScope()` | `IUnitOfWorkScope` | Begins a depth-aware scope; `IsOwner` is true only for the outermost scope, whose `CommitAsync` actually persists. Custom adapters must implement this ownership contract so deferred nested commits cannot release event dispatch. **Caveat:** if an inner failure is ignored, an outer success still persists its staged changes; scopes do not provide rollback. |
 
 ### `EfUnitOfWork<TContext>`
 
@@ -359,7 +359,7 @@ Also implements [`ITrackedAggregateSource`](trellis-api-core.md#itrackedaggregat
 | --- | --- | --- |
 | `public EfUnitOfWork(TContext context)` | — | Captures the resolved `TContext` instance. Throws `ArgumentNullException` when `context` is null. Registered as scoped by `AddTrellisUnitOfWork<TContext>()`. |
 | `public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | At depth 0/1, clears the tracked-aggregate snapshot, snapshots all `IAggregate` change-tracker entries, calls `context.SaveChangesResultUnitAsync(cancellationToken)`, and (only on success) assigns the snapshot to `CommittedAggregates`. At depth > 1 (inside a nested scope), returns `Result.Ok()` without touching the database or the snapshot. |
-| `public IDisposable BeginScope()` | `IDisposable` | Increments the scope-depth counter; the returned `IDisposable.Dispose()` decrements it. Thread-safe via `Interlocked`. |
+| `public IUnitOfWorkScope BeginScope()` | `IUnitOfWorkScope` | Increments the scope-depth counter and captures `IsOwner` (true only at depth 1); `Dispose()` decrements the counter without committing. Counter operations use `Interlocked`, but concurrent commands sharing the context/unit of work remain unsupported. |
 | `IReadOnlyList<IAggregate> ITrackedAggregateSource.CommittedAggregates { get; }` | `IReadOnlyList<IAggregate>` | Snapshot of aggregates the most recent successful commit persisted. Empty by default. |
 
 ### `TransactionalCommandBehavior<TMessage, TResponse>`
@@ -428,6 +428,8 @@ public sealed class EntityTimestampInterceptor : SaveChangesInterceptor
 ```csharp
 public static class MaybeQueryableExtensions
 ```
+
+**Relational operator limitation.** `WhereLessThan`, `WhereLessThanOrEqual`, `WhereGreaterThan`, and `WhereGreaterThanOrEqual` construct CLR relational expression nodes over the mapped storage type. The `IComparable<TInner>` constraint alone is insufficient: that type must support the corresponding operator and the provider must translate it. For example, `string` and `Guid` satisfy `IComparable<T>` but have no CLR `<`/`>` operators, so constructing these predicates throws `InvalidOperationException`. These helpers do not call `CompareTo` and have no client-evaluation fallback. Presence, equality, and ordering helpers have separate translation requirements.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

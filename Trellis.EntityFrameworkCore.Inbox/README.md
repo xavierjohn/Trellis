@@ -46,6 +46,7 @@ The dispatcher deduplicates on `(ConsumerId, MessageId)` so the event's handlers
 > Prefer raw DI? Call `services.AddTrellisInbox<AppDbContext>(o => o.ConsumerId = "orders-service")` instead of the `UseInbox` builder slot — the table wiring (step 1) is identical.
 
 ## Key Features
+- Deduplication is by `(ConsumerId, MessageId)`, not business meaning. A retried translator can create a fresh integration row with a new ID; enforce business-identity idempotency separately for those logical duplicates.
 - **Atomic dedup** — the `(ConsumerId, MessageId)` row and the handler side effects commit in one `TContext` transaction. Either both land or neither does.
 - **Effectively-once processing** — at-least-once transport delivery becomes exactly-once application of local side effects, per consumer.
 - **Non-swallowing by design** — a handler throw rolls the transaction back and rethrows, so nothing is marked processed and the transport redelivers. (The default integration-event publisher swallows handler errors; the inbox must not.)

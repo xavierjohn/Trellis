@@ -149,7 +149,7 @@ permits (200) encodes well inside the 1023-byte id limit.
 | Member | Notes |
 | --- | --- |
 | `const string PartitionKeyPath` | `"/scope"` |
-| `static Task<Container> CreateIfNotExistsAsync(Database database, string containerId = "idempotency", int? throughput = null, CancellationToken ct = default)` | Creates the container with `DefaultTimeToLive = -1`, which enables TTL while expiring nothing by default, leaving each item's own `ttl` in control. |
+| `static Task<Container> CreateIfNotExistsAsync(Database database, string containerId = "idempotency", int? throughput = null, CancellationToken cancellationToken = default)` | Creates the container with `DefaultTimeToLive = -1`, which enables TTL while expiring nothing by default, leaving each item's own `ttl` in control. |
 
 > Per-item `ttl` is **ignored** unless the container enables TTL. A container provisioned without
 > `DefaultTimeToLive` accumulates idempotency entries forever.

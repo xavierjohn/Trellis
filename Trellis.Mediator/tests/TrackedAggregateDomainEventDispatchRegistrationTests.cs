@@ -22,8 +22,12 @@ public class TrackedAggregateDomainEventDispatchRegistrationTests
 
         var publisher = services.SingleOrDefault(d => d.ServiceType == typeof(IDomainEventPublisher));
         publisher.Should().NotBeNull();
-        publisher!.ImplementationType.Should().Be<MediatorDomainEventPublisher>();
-        publisher.Lifetime.Should().Be(ServiceLifetime.Scoped);
+        publisher!.Lifetime.Should().Be(ServiceLifetime.Scoped);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var resolved = scope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
+        resolved.Should().BeOfType<MediatorDomainEventPublisher>();
+        scope.ServiceProvider.GetRequiredService<IReportingDomainEventPublisher>().Should().BeSameAs(resolved);
 
         var trackedBehaviors = services
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>)

@@ -47,6 +47,8 @@ public sealed record CancelOrderCommand(OrderId OrderId)
 }
 
 // DI (composition root):
+services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
+services.AddSharedResourceLoader<CancelOrderCommand, Order, OrderId>();
 services.AddResourceAuthorization<CancelOrderCommand, Order, Result<Unit>>();
 // One per command — AOT-safe; or use the assembly-scanning overload.
 ```
@@ -54,7 +56,7 @@ services.AddResourceAuthorization<CancelOrderCommand, Order, Result<Unit>>();
 That's it. The mediator pipeline:
 
 1. resolves the actor via the registered `IActorProvider`,
-2. loads the `Order` by `OrderId` via the shared `SharedResourceLoaderById<Order, OrderId>` (auto-registered when the command implements `IIdentifyResource<Order, OrderId>`),
+2. loads the `Order` by `OrderId` via your `OrderResourceLoader` implementation of `SharedResourceLoaderById<Order, OrderId>` and the explicitly registered adapter (the typed behavior registration does not discover or register loaders),
 3. calls `Authorize(actor, order)`.
 
 For multi-hop authorization (the resource the actor must own is reached via one or more navigation hops, including the cricket "actor owns home OR away team" shape), use `IAuthorizeResourceVia<TOwner>` with `IIdentifyRelatedResource[s]<TRelated, TId>` along the path — see cookbook [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization).
@@ -158,10 +160,11 @@ public sealed class Actor : IEquatable<Actor>
 **Declaration**
 
 ```csharp
+[Trim, NotDefault]
 public sealed partial class ActorId : RequiredString<ActorId>;
 ```
 
-Strongly-typed wrapper around the raw principal id (typically the JWT `sub` or AAD `oid` claim) so the authorization layer exposes a domain type instead of an untyped `string`. It uses the strict `RequiredString<ActorId>` defaults: the value is trimmed on construction and an empty / whitespace-only id is rejected. Generated factories `ActorId.Create(string)` / `ActorId.TryCreate(string?)` come from the bundled source generator (see [`trellis-api-core.md`](trellis-api-core.md#primitive-value-object-base-classes)).
+Strongly-typed wrapper around the raw principal id (typically the JWT `sub` or AAD `oid` claim) so the authorization layer exposes a domain type instead of an untyped `string`. Its explicit `[Trim, NotDefault]` attributes trim input and reject empty / whitespace-only ids; these are opt-ins, not `RequiredString<T>` defaults (the unannotated base rejects null but allows empty/whitespace). Generated factories `ActorId.Create(string)` / `ActorId.TryCreate(string?)` come from the bundled source generator (see [`trellis-api-core.md`](trellis-api-core.md#primitive-value-object-base-classes)).
 
 Consumers that store the principal id at aggregate boundaries — audit-style fields like `Order.CreatedByActorId` or `Document.LastModifiedByActorId` — should reuse `ActorId` for those fields so cross-aggregate comparisons (`actor.IsOwner(order.CreatedByActorId)`) are type-checked end-to-end. Domain identifiers that are conceptually different from the principal id (a customer aggregate id, a tenant member id, a domain user aggregate's primary key) remain whatever VO the domain models and are resolved to / from the principal at the application service boundary.
 
@@ -279,6 +282,8 @@ public interface IIdentifyRelatedResource<TRelated, out TId>
 ```
 
 Entity-side declaration of a single outbound foreign-key navigation. Used by the resolver to walk the navigation chain at registration time. Implement on aggregate roots whose authorization is evaluated against a different aggregate one or more hops away.
+
+The reflection path resolver rejects `Nullable<T>` identifier types on selected hops (for example, `IIdentifyRelatedResource<Team, Guid?>`). Nullable reference-type IDs can represent absence; for optional value-type IDs, expose a plural terminal navigation with zero or one non-nullable ID, supply an explicit `ResolvedAuthorizationPath`, or use a custom projection loader. A nullable property alone does not make a nullable value-type hop supported.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

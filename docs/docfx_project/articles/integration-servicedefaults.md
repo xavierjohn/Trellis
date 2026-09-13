@@ -33,6 +33,8 @@ builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString
 
 ## Canonical order
 
+Event dispatch retains nested aggregate responses until the owning successful unit-of-work commit; an outer DTO/Unit response still releases the nested batch. `UseOutbox<TContext>()` validates the reporting publisher during host startup and validates an integration publisher only when integration services are enabled. The collector is relay-translator-only: `Add` outside its active translation lease throws.
+
 `AddTrellis(o => ...)` records the requested modules during the configure callback, then applies them in this order:
 
 1. **ASP integration** (`UseAsp`) — `AddTrellisAsp(...)`.

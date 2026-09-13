@@ -22,6 +22,12 @@ using Trellis.Showcase.Domain.ValueObjects;
 using Trellis.Showcase.MinimalApi;
 using Trellis.Showcase.MinimalApi.Endpoints;
 
+if (args.Contains("--scalar-converter-smoke", StringComparer.Ordinal))
+{
+    ScalarConverterSmokeProbe.Run();
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>

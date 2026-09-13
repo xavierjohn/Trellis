@@ -24,7 +24,7 @@ public sealed record UpdateOrderCommand(OrderId OrderId, decimal NewAmount)
     public OrderId GetResourceId() => OrderId;
 
     public Trellis.IResult Authorize(Actor actor, Order resource) =>
-        resource.OwnerId == actor.Id || actor.Permissions.Contains("orders:write")
+        resource.OwnerId == actor.Id || actor.HasPermission("orders:write")
             ? Result.Ok()
             : Result.Fail(new Error.Forbidden(
                 Code: "orders.owner",

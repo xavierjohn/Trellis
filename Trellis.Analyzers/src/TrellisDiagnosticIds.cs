@@ -6,15 +6,16 @@
 /// </summary>
 /// <remarks>
 /// <para>
-/// Use these constants instead of magic strings for <c>[SuppressMessage]</c>
-/// attributes and rule-set entries — for example:
+/// These constants are available to tooling that explicitly references this assembly for
+/// compilation. The NuGet package supplies only an analyzer asset, not a compile asset;
+/// ordinary application consumers use literal IDs in <c>[SuppressMessage]</c> attributes:
 /// </para>
 /// <code>
-/// [SuppressMessage("Trellis", TrellisDiagnosticIds.UnsafeMaybeValueAccess,
+/// [SuppressMessage("Trellis", "TRLS003",
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges, plus the IDs <c>TRLS063</c> and <c>TRLS064</c>, are emitted by the
+/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges, plus the IDs <c>TRLS063</c>–<c>TRLS065</c>, are emitted by the
 /// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c>, <c>TRLS056</c>–<c>TRLS058</c> and <c>TRLS060</c>–<c>TRLS062</c>
 /// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
@@ -22,7 +23,7 @@
 /// Analyzer IDs were renumbered to be contiguous in v3-alpha; prior IDs
 /// (former <c>TRLS006/008/009/010/011/012/014/015/016/017/018/019/020/021/022/024/029</c>)
 /// are now <c>TRLS003</c>–<c>TRLS019</c>. Consumers suppressing by numeric ID should
-/// prefer these constants rather than string literals.
+/// check the current mapping when upgrading.
 /// </para>
 /// </remarks>
 public static class TrellisDiagnosticIds
@@ -83,7 +84,7 @@ public static class TrellisDiagnosticIds
     /// <summary>TRLS018 — <c>Result&lt;T&gt;</c> deconstruction reads value without success gate.</summary>
     public const string UnsafeResultDeconstruction = "TRLS018";
 
-    /// <summary>TRLS019 — Avoid <c>default(Result)</c>, <c>default(Result&lt;T&gt;)</c>, and <c>default(Maybe&lt;T&gt;)</c>.</summary>
+    /// <summary>TRLS019 — Avoid <c>default(Result&lt;Unit&gt;)</c>, <c>default(Result&lt;T&gt;)</c>, and <c>default(Maybe&lt;T&gt;)</c>.</summary>
     public const string DefaultResultOrMaybe = "TRLS019";
 
     /// <summary>TRLS020 — Composite value object DTO property is missing <c>CompositeValueObjectJsonConverter&lt;T&gt;</c>.</summary>

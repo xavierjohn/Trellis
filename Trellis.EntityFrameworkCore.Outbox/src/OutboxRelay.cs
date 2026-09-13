@@ -23,10 +23,12 @@ using Trellis.Mediator;
 /// re-invokes <i>only</i> the handlers that failed — <see cref="OutboxMessage.CompletedHandlers"/> records
 /// the ones that already succeeded, so an unrelated sibling failure never re-runs their side effects.
 /// Integration events produced by handlers that did succeed are still staged on that failed attempt, so
-/// skipping those handlers on the retry loses nothing. Infrastructure failures (deserialization, the
-/// relay's own save) behave the same way. Retries back off exponentially up to
+/// skipping those handlers on the retry loses nothing. Additions made before a translator throws are
+/// also staged; there is no per-handler collector rollback. Persisted message failures retry up to
 /// <see cref="OutboxOptions.MaxAttempts"/>, after which the message is parked (dead-lettered) and
 /// surfaces through <see cref="IOutboxMaintenance"/>.
+/// Bookkeeping save failures instead fail the drain, leave progress undurable, and are not bounded
+/// by the message attempt cap.
 /// </para>
 /// <para>
 /// Handlers must still be idempotent: a crash between dispatch and the relay's bookkeeping save loses the
@@ -52,6 +54,22 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         _timeProvider = timeProvider;
         _options = options;
         _logger = logger;
+    }
+
+    /// <inheritdoc />
+    public override async Task StartAsync(CancellationToken cancellationToken)
+    {
+        var scope = _scopeFactory.CreateAsyncScope();
+        await using (scope.ConfigureAwait(false))
+        {
+            _ = scope.ServiceProvider.GetRequiredService<IReportingDomainEventPublisher>();
+            var registrations = scope.ServiceProvider.GetRequiredService<IServiceProviderIsService>();
+            if (registrations.IsService(typeof(IIntegrationEventCollector))
+                || registrations.IsService(typeof(IIntegrationEventPublisher)))
+                _ = scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
+        }
+
+        await base.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -303,12 +321,13 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         var publishScope = _scopeFactory.CreateAsyncScope();
         await using var publishScopeLifetime = publishScope.ConfigureAwait(false);
         var publisher = publishScope.ServiceProvider.GetRequiredService<IReportingDomainEventPublisher>();
+        var collector = publishScope.ServiceProvider.GetService<IIntegrationEventCollector>();
+        using var translation = collector?.BeginTranslation();
         var skip = completedHandlers.Count == 0 ? null : completedHandlers.ToHashSet(StringComparer.Ordinal);
         var report = await publisher.PublishReportingAsync(domainEvent, skip, cancellationToken).ConfigureAwait(false);
 
         // The collector is optional: consumers that do not translate integration events never register
         // it, and existing domain-only outboxes are unaffected.
-        var collector = publishScope.ServiceProvider.GetService<IIntegrationEventCollector>();
         return (report, collector?.DrainPending() ?? []);
     }
 

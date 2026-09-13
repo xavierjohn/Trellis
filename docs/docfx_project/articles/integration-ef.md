@@ -460,7 +460,7 @@ For background jobs or non-mediator code, inject `IUnitOfWork` directly and call
 
 A command handler may dispatch another command via `IMediator` (typical for orchestration handlers that compose smaller use cases). Both invocations go through `TransactionalCommandBehavior`, which means without depth tracking the inner command would commit *its own* changes the moment its handler returned — even though those changes were staged inside the outer command's transaction. If the outer command then failed, the inner's writes would already be persisted.
 
-`EfUnitOfWork<TContext>` solves this with `BeginScope()`. Each call increments a depth counter; the returned `IDisposable` decrements it on disposal. `CommitAsync` reads the depth and **defers** (returns `Result.Ok()` without touching the database) when depth > 1. Only the outermost scope's commit actually calls `SaveChangesAsync`. The behavior wraps every command in `using var scope = unitOfWork.BeginScope();`, so the pattern is automatic — handlers do not call `BeginScope` themselves.
+`EfUnitOfWork<TContext>` solves this with `BeginScope()`. Each call increments a depth counter; the returned `IUnitOfWorkScope` captures `IsOwner` (true only at depth 1) and decrements depth on disposal. `CommitAsync` defers without writing at depth > 1. Only the outermost scope's commit saves. The behavior wraps every command automatically; handlers do not call `BeginScope` themselves. Event dispatch retains successful nested aggregate responses until that owning commit and a successful outer response, including outer DTO/Unit responses.
 
 ```csharp
 public async ValueTask<Result<Unit>> Handle(ShipOrder cmd, CancellationToken ct)
@@ -486,7 +486,7 @@ public async ValueTask<Result<Unit>> Handle(ShipOrder cmd, CancellationToken ct)
 > The depth counter is per-`IUnitOfWork`-instance — i.e. per DI scope. **Concurrent commands on the same scoped `IUnitOfWork`** (e.g. `Task.WhenAll(mediator.Send(a), mediator.Send(b))` from inside a handler) are **not supported**: their scopes share the counter and one command's commit can suppress or get folded into the other's. This is consistent with EF Core's existing constraint that `DbContext` is not thread-safe — concurrent dispatch on a single request scope is unsafe regardless. To run commands in parallel, give each one its own DI scope via `IServiceScopeFactory.CreateScope()` so each resolves its own `IUnitOfWork` and `DbContext`.
 
 > [!NOTE]
-> **Custom `IUnitOfWork` implementations must implement `BeginScope()` with the same depth-aware semantics.** Mirror the `EfUnitOfWork<TContext>` shape: an `Interlocked.Increment`-counted depth field with a disposable releaser; `CommitAsync` returns `Result.Ok()` at depth > 1 and persists otherwise. The `Trellis.Asp` package's `SAMPLES.md` shows a complete custom `UnitOfWork` example with this shape.
+> **Custom adapters must implement `IUnitOfWorkScope` as well as depth-aware commits.** `BeginScope()` now returns `IUnitOfWorkScope`, not plain `IDisposable`; capture its fixed `IsOwner` when opening the scope. Preserve deferred commits at depth > 1. Automatic event dispatch inside an external manually owned scope is rejected; use explicit `DispatchAggregateEventsAsync` after its actual commit instead.
 
 ## Optimistic concurrency
 

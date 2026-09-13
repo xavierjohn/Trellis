@@ -4,11 +4,61 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Trellis.Mediator;
 
 #pragma warning disable CA1707 // readable xUnit test names
 
 public sealed class OutboxRegistrationTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartAsync_DomainOnlyHost_DoesNotRequireIntegrationPublisher(bool tracked)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        if (tracked)
+            services.AddTrackedAggregateDomainEventDispatch();
+        else
+            services.AddDomainEventDispatch();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider();
+        var relay = provider.GetRequiredService<IHostedService>();
+        provider.GetService<IIntegrationEventPublisher>().Should().BeNull();
+        provider.GetRequiredService<IReportingDomainEventPublisher>()
+            .Should().BeSameAs(provider.GetRequiredService<IDomainEventPublisher>());
+        await relay.StartAsync(TestContext.Current.CancellationToken);
+        await relay.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task StartAsync_MissingReportingPublisher_FailsBeforeBackgroundDrain()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider();
+        var relay = provider.GetRequiredService<IHostedService>();
+        var act = () => relay.StartAsync(TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*IReportingDomainEventPublisher*");
+    }
+
+    [Fact]
+    public async Task StartAsync_TranslationEnabledWithoutIntegrationPublisher_FailsBeforeBackgroundDrain()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDomainEventDispatch();
+        services.AddIntegrationEventDispatch();
+        services.RemoveAll<IIntegrationEventPublisher>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider();
+        var relay = provider.GetRequiredService<IHostedService>();
+        var act = () => relay.StartAsync(TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*IIntegrationEventPublisher*");
+    }
+
     [Fact]
     public void AddTrellisOutbox_called_twice_registers_a_single_relay()
     {

@@ -29,7 +29,8 @@ public sealed record OrderPlacedIntegrationEvent(
     decimal Total,
     DateTimeOffset OccurredAt) : IIntegrationEvent;
 
-// 2. The translator - a domain-event handler that emits the contract.
+// 2. The relay invokes this translator with an active collection lease.
+// Calling it directly or through ordinary in-process domain dispatch is rejected.
 public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector)
     : IDomainEventHandler<OrderPlaced>
 {
@@ -57,7 +58,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
 public static class IntegrationEventWiring
 {
-    // 4. Wire it - translators are domain-event handlers; the outbox delivers both kinds.
+    // 4. Add to Recipe 35's persistence/capture setup; the outbox delivers both kinds.
     public static IServiceCollection Wire(IServiceCollection services) =>
         services.AddTrellis(trellis => trellis
             .UseDomainEvents(typeof(IntegrationEventWiring).Assembly)

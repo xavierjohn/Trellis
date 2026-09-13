@@ -17,8 +17,9 @@ using Xunit;
 /// <para>
 /// <b>Why this exists.</b> <c>IdempotencyMiddleware</c> ships with only
 /// <c>InMemoryIdempotencyStore</c>, which is explicitly not safe across instances or process
-/// restarts, so every production deployment supplies its own store backed by Redis, Cosmos DB,
-/// a relational database, or something bespoke. The rules those implementations must satisfy are
+/// restarts. The separate <c>Trellis.Asp.Idempotency.Cosmos</c> package supplies a distributed
+/// production store; applications using Redis, a relational database, or another backend can
+/// implement their own. The rules those implementations must satisfy are
 /// subtle, and getting one wrong fails silently — a replayed request executes twice and the
 /// caller is charged twice, with no exception anywhere. This suite turns each rule into a test.
 /// </para>

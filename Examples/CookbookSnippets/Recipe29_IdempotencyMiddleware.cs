@@ -18,7 +18,13 @@ public static class IdempotencySample
     public static void Configure(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        var app = Build(builder);
+        app.Run();
+    }
 
+    public static WebApplication Build(WebApplicationBuilder builder)
+    {
+        builder.Services.AddControllers();
         builder.Services.AddTrellis(t => t
             .UseAsp()
             .UseProblemDetails()
@@ -35,11 +41,12 @@ public static class IdempotencySample
         app.UseTrellisIdempotency();
         app.MapControllers();
 
-        // Minimal API equivalent — attach the attribute as endpoint metadata.
-        app.MapPost("/payments", CreatePaymentAsync).WithMetadata(new IdempotentAttribute());
-
-        app.Run();
+        return app;
     }
+
+    // Use instead of MapControllers, not alongside the controller on the same route.
+    public static void MapMinimalApi(IEndpointRouteBuilder app) =>
+        app.MapPost("/payments", CreatePaymentAsync).WithMetadata(new IdempotentAttribute());
 
     private static Task<IResult> CreatePaymentAsync(CreatePaymentRequest body, CancellationToken cancellationToken) =>
         Task.FromResult(Results.Created($"/payments/{System.Guid.NewGuid()}", body));

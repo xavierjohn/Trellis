@@ -45,6 +45,35 @@ public static class AnalyzerTestHelper
         return test;
     }
 
+    /// <summary>
+    /// Creates a test that runs two analyzers together over the same compilation.
+    /// </summary>
+    public static CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> CreateDiagnosticTest<TAnalyzer, TAdditionalAnalyzer>(
+        string source,
+        params DiagnosticResult[] expectedDiagnostics)
+        where TAnalyzer : DiagnosticAnalyzer, new()
+        where TAdditionalAnalyzer : DiagnosticAnalyzer, new()
+    {
+        var test = new CombinedAnalyzerTest<TAnalyzer, TAdditionalAnalyzer>
+        {
+            TestCode = WrapInNamespace(source),
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+        };
+
+        AddTrellisStubSource(test);
+        test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
+        return test;
+    }
+
+    private sealed class CombinedAnalyzerTest<TAnalyzer, TAdditionalAnalyzer>
+        : CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
+        where TAnalyzer : DiagnosticAnalyzer, new()
+        where TAdditionalAnalyzer : DiagnosticAnalyzer, new()
+    {
+        protected override IEnumerable<DiagnosticAnalyzer> GetDiagnosticAnalyzers() =>
+            [new TAnalyzer(), new TAdditionalAnalyzer()];
+    }
+
     private static void AddTrellisStubSource<TAnalyzer>(CSharpAnalyzerTest<TAnalyzer, DefaultVerifier> test)
         where TAnalyzer : DiagnosticAnalyzer, new() =>
         // Add stub source code for Trellis types instead of referencing the actual assembly
@@ -192,6 +221,7 @@ public static class AnalyzerTestHelper
                 public Result<T> ToResult() => default;
                 public Result<T> ToResult(Error error) => default;
                 public bool HasValueWhere(Func<T, bool> predicate) => HasValue && predicate(default!);
+                public T GetValueOrDefault(T defaultValue) => defaultValue;
 
                 public bool TryGetValue(out T value)
                 {

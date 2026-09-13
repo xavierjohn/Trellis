@@ -428,10 +428,12 @@ See [FluentValidation Integration](integration-fluentvalidation.md#mediator-inte
 
 ### What gets dispatched, and when
 
+Nested command dispatch is owned by the actual outer commit. Successful inner aggregate responses are retained without publishing or clearing until that owner commits and returns success, including when the owner returns DTO/Unit. A failure or exception at the owning boundary discards the batch without clearing aggregate events. Successful grandchildren belong directly to the actual owner, so an ignored intermediate failure does not lose their events when the owner deliberately commits their staged work.
+
 | Aspect | Behavior |
 |---|---|
 | Message types covered | `ICommand<TResponse>` only — queries with the same response shape are skipped at the type-constraint level. |
-| Response shape required | `TResponse` must implement `IResult<TAggregate>` where `TAggregate : IAggregate`. The canonical case is `Result<TAggregate>`; custom envelope types also work — see [Custom envelope response types](#custom-envelope-response-types). |
+| Aggregate discovery | Successful `IResult<TAggregate>` responses where `TAggregate : IAggregate` contribute aggregates. An outer DTO/Unit contributes none itself but can release nested aggregate responses after its owning commit. Custom envelopes also work — see [Custom envelope response types](#custom-envelope-response-types). |
 | When events fire | After the handler returns a successful response, before the response is returned up the pipeline. With `AddTrellisUnitOfWork<TContext>()` registered, that means **after** the transaction commits. |
 | Failure path | If the handler returns `Result.Fail`, no events are dispatched and the aggregate retains them. |
 | Per-event ordering | Events are dispatched sequentially in the order the aggregate raised them. |
@@ -533,11 +535,11 @@ Other response shapes pass through the dispatch behavior untouched:
 |---|---|
 | `Result<TAggregate>` where `TAggregate : IAggregate` | Events extracted and dispatched. |
 | Custom type implementing `IResult<TAggregate>` (envelope) | Same as above. |
-| `Result<Unit>`, `Result<string>`, `Result<TDto>` | No `IResult<TAggregate>` interface → behavior is a no-op. |
-| `Result<(A, B)>` (tuple) | Same — no `IResult<TAggregate>` match. Manual dispatch remains the option. |
+| `Result<Unit>`, `Result<string>`, `Result<TDto>` | Contributes no aggregate itself, but an owning outer command still releases its successful nested aggregate responses. |
+| `Result<(A, B)>` (tuple) | Same: no aggregate extracted from this response; successful nested aggregate responses are retained. |
 | Custom type with **two** distinct `IResult<TAggregate1>` / `IResult<TAggregate2>` interfaces | **Fails fast at startup** with `InvalidOperationException` — the behavior cannot disambiguate which aggregate's events to dispatch. |
 
-When the response is `Result<Unit>` or any non-aggregate shape and you still need events to fire, dispatch them yourself (e.g. through an injected `IDomainEventPublisher`) — but prefer the canonical `Result<TAggregate>` shape so the pipeline owns the boundary.
+When a non-aggregate response has no nested aggregate responses to dispatch, use tracked-aggregate dispatch or explicit manual dispatch after the actual commit. Prefer `Result<TAggregate>` where it accurately expresses the command outcome.
 
 ### Dispatching events from non-aggregate response shapes (post-commit safe)
 
@@ -636,7 +638,7 @@ Failure / cancellation contract:
 
 ### Auto-dispatching from outcome-DTO commands (opt-in tracked behavior)
 
-`DomainEventDispatchBehavior<,>` only fires when the handler returns `IResult<TAggregate>` — it has no way to know which aggregates the handler mutated otherwise. For handlers that return an outcome DTO (`Result<MarkReadDto>`, `Result<Unit>`, `Result<(A, B)>`, ...) and stage their changes through `IUnitOfWork.CommitAsync(...)`, the alternative `TrackedAggregateDomainEventDispatchBehavior<,>` reads the aggregates the unit-of-work tracked at commit time and dispatches their events automatically. No manual `DispatchAggregateEventsAsync` call is needed.
+`DomainEventDispatchBehavior<,>` discovers aggregates from successful `IResult<TAggregate>` responses, including nested commands. It does not discover other aggregates directly mutated by a DTO-returning handler. For that case, `TrackedAggregateDomainEventDispatchBehavior<,>` reads the owning commit's tracked aggregate snapshot and dispatches automatically regardless of response shape. Deferred inner commands do not read stale committed snapshots or publish/clear events.
 
 The behavior is **opt-in** and **mutually exclusive** with `DomainEventDispatchBehavior<,>` — pick one model per host.
 
@@ -744,7 +746,7 @@ The `ErrorRetryExtensions` helpers in the `Trellis` namespace (`Error.IsTransien
 Pipeline behavior at this point:
 
 - `TransactionalCommandBehavior` sees `result is IPersistOnFailure { PersistOnFailure: true }` and runs `CommitAsync`. If the commit itself fails (e.g., DB unavailable), that commit error replaces the handler's gateway error in the returned response — there is no partial commit.
-- `DomainEventDispatchBehavior` sees an `IsFailure` result and skips dispatch. The `MarkPermanentlyFailed` event remains on the in-memory `reminder` aggregate and is discarded when the request scope ends; it is not a durable retry buffer. If you need the permanent-failure transition to drive downstream notifications, write an outbox row inside the same handler (committed by `TransactionalCommandBehavior` alongside `MarkPermanentlyFailed`'s row updates) and dispatch from there.
+- `DomainEventDispatchBehavior` skips the failed response and discards its pending dispatch batch without clearing aggregate events. Without outbox capture, those events remain in memory and are not a durable retry buffer. With the outbox interceptor, the successful persist-on-failure save captures and clears them, and the relay later delivers them despite the failed response.
 - Callers (worker tick loop, outbox processor, HTTP controller) see a plain failure result and react accordingly (log + alert + don't retry).
 
 Guidance:
