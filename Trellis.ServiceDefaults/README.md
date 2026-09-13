@@ -28,6 +28,8 @@ builder.Services.AddTrellis(options => options
 
 `UseFluentValidation()` and `UseResourceAuthorization()` both support no-assembly calls for explicit, no-scanning composition; pass assemblies only when you want Trellis to discover validators/resource loaders automatically.
 
+`UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` registers the per-message authorization behavior, accessor, and shared-loader adapter without scanning, and implies `UseMediator()`. Register the `SharedResourceLoaderById<TResource,TId>` implementation separately. Existing per-message loaders are preserved; repeated direct/builder registrations remain idempotent and keep authorization before validation and commit.
+
 `UseScalarValueValidation()` is independent of `UseAsp()` — it registers the scalar-value model binders, JSON converters, and `SuppressModelStateInvalidFilter` toggle that mutate global `MvcOptions` / `JsonOptions` for both MVC and Minimal API JSON pipelines. Hosts that only need error-to-status mapping (e.g. an MVC site that does not bind value-object DTOs) can call `UseAsp()` alone and skip the binder / converter wiring. Minimal API hosts must still call `app.UseScalarValueValidation()` middleware and chain `.WithScalarValueValidation()` per endpoint.
 
 `UseProblemDetails()` is independent of `UseAsp()` — it registers Trellis ProblemDetails customization (`traceId` on every error, 405 `Allow` header projected as `extensions.allow`, 500 detail rewrite) without pulling in Trellis MVC/result-mapping infrastructure. Composing it with a direct `services.AddTrellisProblemDetails()` call is idempotent — exactly one Trellis post-configure layer ends up registered.

@@ -86,6 +86,7 @@ builder.Services.AddTrellis(options => options.UseResourceAuthorization());
 |---|---|---|
 | FluentValidation | `o.UseFluentValidation()` plus `o.UseFluentValidation<TValidator, TMessage>()` per validator | `o.UseFluentValidation(asm)` |
 | Resource authorization | `o.UseResourceAuthorization()` plus `o.UseResourceAuthorization<TMessage, TResource, TResponse>()` per command | `o.UseResourceAuthorization(asm)` |
+| Resource authorization with shared loader | `o.UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` per message, plus a separately registered shared-loader implementation | `o.UseResourceAuthorization(asm)` |
 | Domain events (response-shape) | `o.UseDomainEvents()` plus `o.UseDomainEvents<TEvent, THandler>()` per handler | `o.UseDomainEvents(asm)` |
 | Domain events (tracked-aggregate) | `o.UseTrackedAggregateDomainEvents()` plus `o.UseTrackedAggregateDomainEvents<TEvent, THandler>()` per handler | `o.UseTrackedAggregateDomainEvents(asm)` |
 

@@ -329,6 +329,10 @@ public sealed class TrellisServiceBuilder
     /// <typeparam name="TMessage">The command type implementing <see cref="IAuthorizeResource{TResource}"/>.</typeparam>
     /// <typeparam name="TResource">The resource type the command authorizes against.</typeparam>
     /// <typeparam name="TResponse">The command's response type.</typeparam>
+    /// <remarks>
+    /// Does not register a resource loader. For a shared-loader adapter, use
+    /// <see cref="UseSharedResourceAuthorization{TMessage, TResource, TId, TResponse}"/> instead.
+    /// </remarks>
     public TrellisServiceBuilder UseResourceAuthorization<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage,
         TResource,
@@ -346,6 +350,36 @@ public sealed class TrellisServiceBuilder
         // helper to silently skip the v4 accessor registration that handlers depend on.
         _typedResourceAuthorizationRegistrations.Add(static services =>
             services.AddResourceAuthorization<TMessage, TResource, TResponse>());
+        return this;
+    }
+
+    /// <summary>
+    /// Registers resource authorization, its shared-loader adapter, and the authorized-resource
+    /// accessor for a message without assembly scanning. Implies <see cref="UseMediator"/>.
+    /// </summary>
+    /// <typeparam name="TMessage">The message that authorizes and identifies the resource.</typeparam>
+    /// <typeparam name="TResource">The resource type loaded for authorization.</typeparam>
+    /// <typeparam name="TId">The resource identifier type.</typeparam>
+    /// <typeparam name="TResponse">The message's result response type.</typeparam>
+    /// <returns>The builder for chaining.</returns>
+    /// <remarks>
+    /// Register the <see cref="SharedResourceLoaderById{TResource, TId}"/> implementation separately.
+    /// Existing per-message loaders are preserved. Repeated direct or builder registrations
+    /// are idempotent; the behavior runs before validation and the unit-of-work behavior.
+    /// </remarks>
+    public TrellisServiceBuilder UseSharedResourceAuthorization<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage,
+        TResource,
+        TId,
+        TResponse>()
+        where TMessage : IAuthorizeResource<TResource>, IIdentifyResource<TResource, TId>, IMessage
+        where TResource : class
+        where TResponse : IResult, IFailureFactory<TResponse>
+    {
+        _useResourceAuthorization = true;
+        _useMediator = true;
+        _typedResourceAuthorizationRegistrations.Add(static services =>
+            services.AddSharedResourceAuthorization<TMessage, TResource, TId, TResponse>());
         return this;
     }
 
