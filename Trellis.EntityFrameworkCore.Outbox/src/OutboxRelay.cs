@@ -62,11 +62,17 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         var scope = _scopeFactory.CreateAsyncScope();
         await using (scope.ConfigureAwait(false))
         {
-            _ = scope.ServiceProvider.GetRequiredService<IReportingDomainEventPublisher>();
-            var registrations = scope.ServiceProvider.GetRequiredService<IServiceProviderIsService>();
-            if (registrations.IsService(typeof(IIntegrationEventCollector))
-                || registrations.IsService(typeof(IIntegrationEventPublisher)))
-                _ = scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
+            var services = scope.ServiceProvider;
+            _ = services.GetRequiredService<IReportingDomainEventPublisher>();
+            var registrations = services.GetService<IServiceProviderIsService>();
+            var requiresIntegrationPublisher = registrations is null
+                ? services.GetService<IIntegrationEventCollector>() is not null
+                : registrations.IsService(typeof(IIntegrationEventCollector))
+                    || registrations.IsService(typeof(IIntegrationEventPublisher));
+            if (requiresIntegrationPublisher)
+                _ = services.GetRequiredService<IIntegrationEventPublisher>();
+            else if (registrations is null)
+                _ = services.GetService<IIntegrationEventPublisher>();
         }
 
         await base.StartAsync(cancellationToken).ConfigureAwait(false);
