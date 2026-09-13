@@ -40,6 +40,29 @@ public class SharedResourceAuthorizationBuilderTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void UseSharedResourceAuthorization_WithScanning_CustomLoaderWinsAfterDirectRegistration(bool directFirst)
+    {
+        var services = new ServiceCollection();
+        if (directFirst)
+            services.AddSharedResourceAuthorization<Command, Resource, string, Result<Unit>>();
+
+        services.AddTrellis(options => options
+            .UseSharedResourceAuthorization<Command, Resource, string, Result<Unit>>()
+            .UseResourceAuthorization(typeof(PerMessageResourceLoader).Assembly));
+
+        if (!directFirst)
+            services.AddSharedResourceAuthorization<Command, Resource, string, Result<Unit>>();
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IResourceLoader<Command, Resource>>()
+            .Should().BeOfType<PerMessageResourceLoader>();
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IResourceLoader<Command, Resource>));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void UseSharedResourceAuthorization_Typed_DirectAndBuilderOverlap_IsIdempotent(bool directFirst)
     {
         var services = new ServiceCollection();
@@ -134,6 +157,12 @@ public class SharedResourceAuthorizationBuilderTests
     {
         public override Task<Result<Resource>> GetByIdAsync(string id, CancellationToken cancellationToken) =>
             Task.FromResult(Result.Ok(new Resource(id)));
+    }
+
+    public sealed class PerMessageResourceLoader : IResourceLoader<Command, Resource>
+    {
+        public Task<Result<Resource>> LoadAsync(Command message, CancellationToken cancellationToken) =>
+            Task.FromResult(Result.Ok(new Resource("custom-" + message.Id)));
     }
 
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options);

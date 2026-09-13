@@ -373,6 +373,7 @@ public static class ServiceCollectionExtensions
     /// <remarks>
     /// Register the <see cref="SharedResourceLoaderById{TResource, TId}"/> implementation separately.
     /// An existing <see cref="IResourceLoader{TMessage, TResource}"/> registration is preserved.
+    /// A later loader scan may replace the framework adapter with a discovered custom loader.
     /// Repeated registrations are idempotent and retain the canonical pipeline order.
     /// This composes <see cref="AddResourceAuthorization{TMessage, TResource, TResponse}"/>
     /// and <see cref="AddSharedResourceLoader{TMessage, TResource, TId}"/>; it does not register
@@ -440,6 +441,9 @@ public static class ServiceCollectionExtensions
     /// <see cref="SharedResourceLoaderAdapter{TMessage, TResource, TId}"/> is automatically
     /// registered, bridging to the <see cref="SharedResourceLoaderById{TResource, TId}"/>.
     /// Explicit loaders always take priority.
+    /// Scanned custom loaders replace framework fallback adapters even when the adapters were
+    /// registered first. Application-provided implementation, factory, and instance registrations
+    /// are preserved, as are keyed registrations.
     /// </para>
     /// </remarks>
     /// <example>
@@ -518,12 +522,11 @@ public static class ServiceCollectionExtensions
 
                 allCandidateEntities.Add(type);
 
-                // Register IResourceLoader<,> implementations as scoped
-                // TryAdd ensures pre-registered loaders are not overridden
+                // Discovered custom loaders replace fallback adapters, not application registrations.
                 foreach (var iface in type.GetInterfaces())
                 {
                     if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderDef)
-                        services.TryAddScoped(iface, type);
+                        RegisterScannedResourceLoader(services, ServiceDescriptor.Scoped(iface, type));
                 }
 
                 // Discover SharedResourceLoaderById<TResource, TId> implementations
@@ -982,6 +985,11 @@ public static class ServiceCollectionExtensions
     /// services.AddResourceLoaders(typeof(CancelOrderResourceLoader).Assembly);
     /// </code>
     /// </example>
+    /// <remarks>
+    /// Discovered loaders replace only unkeyed framework shared-loader adapters. Existing
+    /// application-provided implementations, factories, instances, and keyed registrations
+    /// are preserved.
+    /// </remarks>
     [RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.")]
     public static IServiceCollection AddResourceLoaders(this IServiceCollection services, Assembly assembly)
     {
@@ -998,7 +1006,7 @@ public static class ServiceCollectionExtensions
             foreach (var iface in type.GetInterfaces())
             {
                 if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderInterface)
-                    services.TryAddScoped(iface, type);
+                    RegisterScannedResourceLoader(services, ServiceDescriptor.Scoped(iface, type));
             }
         }
 
@@ -1045,6 +1053,22 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IResourceLoader<TMessage, TResource>,
             SharedResourceLoaderAdapter<TMessage, TResource, TId>>();
         return services;
+    }
+
+    private static void RegisterScannedResourceLoader(IServiceCollection services, ServiceDescriptor descriptor)
+    {
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            var existing = services[i];
+            if (existing.IsKeyedService || existing.ServiceType != descriptor.ServiceType)
+                continue;
+
+            if (existing.ImplementationType is { IsGenericType: true } implementationType
+                && implementationType.GetGenericTypeDefinition() == typeof(SharedResourceLoaderAdapter<,,>))
+                services.RemoveAt(i);
+        }
+
+        services.TryAdd(descriptor);
     }
 
     /// <summary>

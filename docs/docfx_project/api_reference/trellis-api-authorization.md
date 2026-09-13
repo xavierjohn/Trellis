@@ -350,6 +350,8 @@ A single loader shared across every command that authorizes against the same `TR
 
 The assembly-scanning overload of `Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization(...)` registers discovered concrete `SharedResourceLoaderById<TResource, TId>` implementations as **scoped** — safe to depend on a `DbContext` or other scoped repository. Explicit typed helpers do not register that implementation. Replace the registration after the scan completes if a different lifetime is required.
 
+For per-message loader selection, both `AddResourceAuthorization(assemblies)` and `AddResourceLoaders(assembly)` let a discovered custom `IResourceLoader<TMessage,TResource>` replace a framework shared-loader adapter, even when the adapter was registered first. Application-provided loader implementations, factories, instances, and keyed registrations are preserved.
+
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public abstract Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken)` | `Task<Result<TResource>>` | Load the resource by ID; return `Result.Fail` with `Error.NotFound` when missing. |
