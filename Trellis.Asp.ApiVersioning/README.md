@@ -27,6 +27,7 @@ For Location:
 
 - Query-style targets receive conventional `api-version`; segment targets receive the resolved/pinned value in the **actual** `:apiVersion` parameter (e.g. `revision` in `v{revision:apiVersion}`), with no duplicate `api-version` query entry. Cross-route segments and explicit segment pins are supported.
 - Neutral or missing-metadata targets skip injection and remove any supplied `api-version` from the cloned dictionary. Missing metadata warns once per **destination endpoint / AppDomain**, identifying the target, under `Trellis.Asp.ApiVersioning`; `TrellisAspOptions.FailFastOnSilentVersionInjection = true` throws on every offending execution. Neutral targets stay quiet.
+- Warning deduplication uses weak endpoint-instance identity: same-named destinations in different hosts warn independently, while concurrent calls for one endpoint warn only once. Discarded endpoints are not kept alive by the diagnostic.
 - `WithVersionedRoute` uses ASP's `WithLocationRouteResolver` callback after the domain selector and **all** legacy `WithRouteValueResolver` callbacks, overriding supplied version values. There is one callback slot: the last registration wins, including repeated `WithVersionedRoute` calls. Callback errors propagate; shared selector dictionaries are not mutated.
 - Literal/selector `Created(...)` and `WriteOutcome`-owned URIs are unchanged. Named routes remain AOT-compatible; `CreatedAtAction` retains its trimming/AOT limitations.
 

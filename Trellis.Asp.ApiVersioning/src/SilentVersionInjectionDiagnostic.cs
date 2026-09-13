@@ -1,7 +1,7 @@
 ﻿namespace Trellis.Asp.ApiVersioning;
 
 using System;
-using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using global::Asp.Versioning;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -38,12 +38,12 @@ internal static partial class SilentVersionInjectionDiagnostic
     internal const string LoggerCategory = "Trellis.Asp.ApiVersioning";
 
     /// <summary>
-    /// Per-process de-duplication set. <see cref="ConcurrentDictionary{TKey,TValue}.TryAdd"/>
-    /// is atomic so at most one thread sees <c>true</c> for any given endpoint key, which
-    /// means at most one warning is emitted per <c>(endpoint, AppDomain)</c> pair regardless
-    /// of concurrent request volume.
+    /// Per-process de-duplication by endpoint instance, with weak keys so discarded
+    /// endpoints and their hosts can be collected. <see cref="ConditionalWeakTable{TKey,TValue}.TryAdd"/>
+    /// atomically admits one warning per endpoint, regardless of concurrent request volume.
     /// </summary>
-    private static readonly ConcurrentDictionary<string, byte> s_seenEndpoints = new();
+    private static readonly ConditionalWeakTable<Endpoint, object> s_seenEndpoints = new();
+    private static readonly object s_seenMarker = new();
 
     /// <summary>
     /// Inspects <paramref name="endpoint"/> for missing <see cref="ApiVersionMetadata"/>
@@ -72,7 +72,7 @@ internal static partial class SilentVersionInjectionDiagnostic
         if (metadata is not null)
             return;
 
-        var endpointKey = endpoint.DisplayName
+        var endpointLabel = endpoint.DisplayName
             ?? (endpoint as RouteEndpoint)?.RoutePattern?.RawText
             ?? "(unrouted endpoint)";
 
@@ -83,7 +83,7 @@ internal static partial class SilentVersionInjectionDiagnostic
         // De-duping here would cause "fail once, then succeed silently" — the opposite of
         // what an opt-in fail-fast switch is for.
         if (failFast)
-            throw new InvalidOperationException(BuildMessage(endpointKey));
+            throw new InvalidOperationException(BuildMessage(endpointLabel));
 
         // Resolve the logger BEFORE de-duplication: if ILoggerFactory is unregistered
         // (minimal test harnesses) we want a later request that does have a factory to
@@ -93,12 +93,10 @@ internal static partial class SilentVersionInjectionDiagnostic
         if (loggerFactory is null)
             return;
 
-        // ConcurrentDictionary.TryAdd is atomic; only one thread observes `true` per key,
-        // so at most one warning is emitted per (endpoint, AppDomain) under any concurrency.
-        if (!s_seenEndpoints.TryAdd(endpointKey, 0))
+        if (!s_seenEndpoints.TryAdd(endpoint, s_seenMarker))
             return;
 
-        LogSilentVersionInjection(loggerFactory.CreateLogger(LoggerCategory), endpointKey);
+        LogSilentVersionInjection(loggerFactory.CreateLogger(LoggerCategory), endpointLabel);
     }
 
     /// <summary>

@@ -48,6 +48,7 @@ Under query/header API versioning, `Location` headers from `CreatedAtRoute(...)`
 - Explicit-version overloads for both `WithVersionedRoute(ApiVersion)` and `PageUrl(routeName, version, ...)` — pin cross-version Location / next-page URLs
 - Location writes resolved/pinned versions into the target's actual `:apiVersion` parameter name (not necessarily `version`), removing duplicate `api-version` query values. Query-style targets use conventional `api-version`.
 - Neutral and missing-metadata targets skip injection; Location also removes supplied `api-version` entries. Missing metadata warns once per **destination endpoint / AppDomain** under `Trellis.Asp.ApiVersioning`, identifying the target. Set `TrellisAspOptions.FailFastOnSilentVersionInjection = true` to throw on every offending execution. Neutral targets and missing-metadata `PageUrl` targets remain quiet.
+- Warning deduplication uses weak endpoint-instance identity, not display names or route templates. Same-named destinations in different hosts warn independently, without retaining discarded endpoints.
 - Location's `WithLocationRouteResolver` hook runs after the selector and all legacy `WithRouteValueResolver` callbacks on a per-execution clone. Version values are overridden regardless of configuration order. One callback slot: the last registration wins, including repeated `WithVersionedRoute` calls; errors propagate.
 - Literal/selector `Created(...)` and `WriteOutcome`-owned URIs are unchanged. Named routes remain AOT-compatible; `CreatedAtAction` retains its trimming/AOT limitations.
 

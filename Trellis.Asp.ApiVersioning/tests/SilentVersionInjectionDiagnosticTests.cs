@@ -6,10 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using global::Asp.Versioning;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Routing;
@@ -33,8 +35,8 @@ using Trellis.Asp;
 /// Each test calls <see cref="SilentVersionInjectionDiagnostic.ResetForTests"/> in the
 /// constructor — the diagnostic's seen-set is process-wide (the contract is "warn once
 /// per (endpoint, AppDomain)") so test cases must clear shared state before observing
-/// first-skip emission. Unique route templates per test minimise collision with
-/// sibling test classes (xUnit v3 runs classes in parallel by default).
+/// first-skip emission. Endpoint instances, not route templates or display names,
+/// determine which requests share a warning.
 /// </para>
 /// <para>
 /// The class also opts into a dedicated non-parallelised xUnit collection so that any
@@ -117,6 +119,103 @@ public sealed class SilentVersionInjectionDiagnosticTests
         warnings.Should().HaveCount(2);
         warnings.Should().Contain(w => w.Contains("DiagUnversionedMultiEndpointController.GetAlpha", StringComparison.Ordinal));
         warnings.Should().Contain(w => w.Contains("DiagUnversionedMultiEndpointController.GetBeta", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Shared destination")]
+    [InlineData(null)]
+    public void EmitIfMetadataMissing_DistinctEndpointsWithSameDisplayName_WarnsForEach(string? displayName)
+    {
+        var capture = new CapturingLoggerProvider();
+        using var services = new ServiceCollection()
+            .AddLogging(logging => logging.AddProvider(capture))
+            .BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = services };
+        var first = new Endpoint(null, EndpointMetadataCollection.Empty, displayName);
+        var second = new Endpoint(null, EndpointMetadataCollection.Empty, displayName);
+
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, first);
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, second);
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, first);
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, second);
+
+        CaptureWarnings(capture).Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task WithVersionedRoute_SameControllerInDifferentHosts_WarnsOnceInEachHost()
+    {
+        var firstCapture = new CapturingLoggerProvider();
+        var secondCapture = new CapturingLoggerProvider();
+        using var firstHost = CreateUnversionedHost<DiagUnversionedPerRequestController>(firstCapture);
+        using var secondHost = CreateUnversionedHost<DiagUnversionedPerRequestController>(secondCapture);
+        using var firstClient = firstHost.GetTestClient();
+        using var secondClient = secondHost.GetTestClient();
+        var ct = TestContext.Current.CancellationToken;
+
+        using var first = await firstClient.PostAsync("/diag-warn-once/items", JsonContent(), ct);
+        using var second = await secondClient.PostAsync("/diag-warn-once/items", JsonContent(), ct);
+        using var repeatedFirst = await firstClient.PostAsync("/diag-warn-once/items", JsonContent(), ct);
+        using var repeatedSecond = await secondClient.PostAsync("/diag-warn-once/items", JsonContent(), ct);
+
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+        second.StatusCode.Should().Be(HttpStatusCode.Created);
+        repeatedFirst.StatusCode.Should().Be(HttpStatusCode.Created);
+        repeatedSecond.StatusCode.Should().Be(HttpStatusCode.Created);
+        CaptureWarnings(firstCapture).Should().ContainSingle();
+        CaptureWarnings(secondCapture).Should().ContainSingle();
+    }
+
+    [Fact]
+    public void EmitIfMetadataMissing_ConcurrentCallsForSameEndpoint_WarnsOnce()
+    {
+        var capture = new CapturingLoggerProvider();
+        using var services = new ServiceCollection()
+            .AddLogging(logging => logging.AddProvider(capture))
+            .BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = services };
+        var endpoint = new Endpoint(null, EndpointMetadataCollection.Empty, "Concurrent destination");
+
+        Parallel.For(0, 128, _ => SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, endpoint));
+
+        CaptureWarnings(capture).Should().ContainSingle();
+    }
+
+    [Fact]
+    public void EmitIfMetadataMissing_LoggerRegisteredLater_StillWarnsOnce()
+    {
+        var capture = new CapturingLoggerProvider();
+        using var withoutLogging = new ServiceCollection().BuildServiceProvider();
+        using var withLogging = new ServiceCollection()
+            .AddLogging(logging => logging.AddProvider(capture))
+            .BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = withoutLogging };
+        var endpoint = new Endpoint(null, EndpointMetadataCollection.Empty, "Late logger");
+
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, endpoint);
+        context.RequestServices = withLogging;
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, endpoint);
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, endpoint);
+
+        CaptureWarnings(capture).Should().ContainSingle();
+    }
+
+    [Fact]
+    public void EmitIfMetadataMissing_EndpointNoLongerReferenced_DoesNotPreventCollection()
+    {
+        var capture = new CapturingLoggerProvider();
+        using var services = new ServiceCollection()
+            .AddLogging(logging => logging.AddProvider(capture))
+            .BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = services };
+        var endpoint = EmitForCollectibleEndpoint(context);
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        endpoint.TryGetTarget(out _).Should().BeFalse();
+        CaptureWarnings(capture).Should().ContainSingle();
     }
 
     [Fact]
@@ -210,6 +309,14 @@ public sealed class SilentVersionInjectionDiagnosticTests
     }
 
     public const string DiagApiVersionV1 = "2027-01-01";
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference<Endpoint> EmitForCollectibleEndpoint(HttpContext context)
+    {
+        var endpoint = new Endpoint(null, EndpointMetadataCollection.Empty, "Collectible destination");
+        SilentVersionInjectionDiagnostic.EmitIfMetadataMissing(context, endpoint);
+        return new WeakReference<Endpoint>(endpoint);
+    }
 
     private static IHost CreateVersionedHost(CapturingLoggerProvider capture)
     {
