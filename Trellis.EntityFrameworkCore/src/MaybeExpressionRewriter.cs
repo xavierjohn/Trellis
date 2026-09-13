@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 /// only the generated <c>_camelCase</c> backing field, EF Core cannot translate direct LINQ
 /// references to <see cref="Maybe{T}"/> properties. This visitor transparently rewrites such
 /// references so that specifications, inline LINQ, and generic repository patterns work without
-/// requiring explicit <c>WhereHasValue</c> / <c>WhereLessThan</c> extension methods.
+/// requiring explicit <c>WhereHasValue</c> / <c>WhereEquals</c> extension methods.
 /// </para>
 /// <para>Supported patterns:</para>
 /// <list type="table">
@@ -162,41 +162,9 @@ internal sealed class MaybeExpressionRewriter : ExpressionVisitor
 
                 if (lambda is { Parameters.Count: 1 })
                 {
-                    var param = lambda.Parameters[0];
-                    var innerType = isSomeProp.PropertyType.GetGenericArguments()[0];
-
-                    // Storage member type is Nullable<T> for value types, T for reference types.
-                    // Substitute the inner lambda's parameter with the storage access so the
-                    // predicate body operates on the same expression EF will translate.
-                    Expression replacement;
-                    if (innerType.IsValueType)
-                    {
-                        // Storage is Nullable<T>; .Value unwraps to T. The leading IS NOT NULL
-                        // check, combined with SQL three-valued logic, ensures we never
-                        // materialize the .Value on a NULL row.
-                        replacement = Expression.Property(efPropertyAccess, "Value");
-                    }
-                    else
-                    {
-                        // Storage is T?. The convert is a no-op when the types already match,
-                        // skipped to avoid emitting unnecessary nodes that some EF translators
-                        // are sensitive to.
-                        replacement = efPropertyAccess.Type == innerType
-                            ? efPropertyAccess
-                            : Expression.Convert(efPropertyAccess, innerType);
-                    }
-
-                    var rewrittenBody = new ParameterReplacer(param, replacement).Visit(lambda.Body)!;
-
                     // Recurse so nested Maybe access inside the predicate body
                     // (e.g., `t => o.OtherMaybe.HasValue`) is also rewritten.
-                    rewrittenBody = Visit(rewrittenBody);
-
-                    var notNullCheck = Expression.NotEqual(
-                        efPropertyAccess,
-                        Expression.Constant(null, efPropertyAccess.Type));
-
-                    return Expression.AndAlso(notNullCheck, rewrittenBody);
+                    return Visit(MaybePredicateBuilder.Build(efPropertyAccess, lambda));
                 }
             }
         }
@@ -367,22 +335,5 @@ internal sealed class MaybeExpressionRewriter : ExpressionVisitor
             return true;
 
         return false;
-    }
-
-    /// <summary>
-    /// Substitutes a single <see cref="ParameterExpression"/> with a replacement expression
-    /// throughout an expression tree. Used to inline an <c>HasValueWhere</c> predicate's lambda
-    /// parameter with the storage-member access expression so the predicate body operates
-    /// on the same expression EF Core will translate.
-    /// </summary>
-    /// <remarks>
-    /// Parameter identity is compared by reference because each <see cref="ParameterExpression"/>
-    /// is a distinct instance even when names collide. Nested lambdas inside the body keep
-    /// their own distinct parameter instances and are not affected by this visitor.
-    /// </remarks>
-    private sealed class ParameterReplacer(ParameterExpression target, Expression replacement) : ExpressionVisitor
-    {
-        protected override Expression VisitParameter(ParameterExpression node) =>
-            node == target ? replacement : node;
     }
 }

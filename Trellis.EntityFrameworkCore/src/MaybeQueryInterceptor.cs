@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 /// <para>
 /// When registered, this interceptor allows natural LINQ syntax with <see cref="Maybe{T}"/>
 /// properties in queries and specifications, without requiring explicit extension methods
-/// like <c>WhereHasValue</c> or <c>WhereLessThan</c>.
+/// like <c>WhereHasValue</c> or <c>WhereEquals</c>.
 /// </para>
 /// <para>
 /// Register by calling <c>optionsBuilder.AddTrellisInterceptors()</c> — that helper

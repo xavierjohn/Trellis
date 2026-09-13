@@ -137,135 +137,51 @@ public static class MaybeQueryableExtensions
     }
 
     /// <summary>
-    /// Filters the query to entities where the <see cref="Maybe{T}"/> property is less than
-    /// the specified value (mapped storage field &lt; <paramref name="value"/>).
-    /// Entities where the property has no value (NULL) are excluded.
+    /// Filters the query to entities where the <see cref="Maybe{T}"/> property has a value
+    /// and that value satisfies <paramref name="predicate"/>.
     /// </summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
-    /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>. Must implement <see cref="IComparable{T}"/>.</typeparam>
+    /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>.</typeparam>
     /// <param name="source">The queryable source.</param>
     /// <param name="propertySelector">
     /// An expression selecting the <see cref="Maybe{T}"/> property (e.g., <c>o =&gt; o.SubmittedAt</c>).
     /// </param>
-    /// <param name="value">The value to compare against.</param>
-    /// <returns>A filtered queryable where the mapped storage field is less than the value.</returns>
+    /// <param name="predicate">An expression over the present value, not a compiled delegate.</param>
+    /// <returns>A filtered queryable excluding NULL storage values and applying the predicate.</returns>
+    /// <remarks>
+    /// The predicate is inlined against the mapped storage member without requiring
+    /// <see cref="MaybeQueryInterceptor"/>. C# checks the operators and methods used in the
+    /// predicate; the database provider must still translate them. Scalar value-object
+    /// <c>Value</c> access requires <see cref="ScalarValueQueryInterceptor"/>.
+    /// Translation failures propagate; there is no client-side fallback.
+    /// Even a predicate that always returns <see langword="true"/> excludes absent values.
+    /// </remarks>
     /// <example>
     /// Find orders submitted before a cutoff date:
     /// <code>
     /// var cutoff = DateTime.UtcNow.AddDays(-7);
     /// var overdueOrders = await context.Orders
-    ///     .WhereLessThan(o => o.SubmittedAt, cutoff)
+    ///     .WhereHasValue(o => o.SubmittedAt, submittedAt => submittedAt &lt; cutoff)
     ///     .ToListAsync(ct);
     /// </code>
     /// </example>
-    public static IQueryable<TEntity> WhereLessThan<TEntity, TInner>(
+    public static IQueryable<TEntity> WhereHasValue<TEntity, TInner>(
         this IQueryable<TEntity> source,
         Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
-        TInner value)
+        Expression<Func<TInner, bool>> predicate)
         where TEntity : class
-        where TInner : notnull, IComparable<TInner>
+        where TInner : notnull
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(propertySelector);
-        return WhereComparison(source, propertySelector, value, ExpressionType.LessThan);
-    }
-
-    /// <summary>
-    /// Filters the query to entities where the <see cref="Maybe{T}"/> property is less than or equal to
-    /// the specified value (mapped storage field &lt;= <paramref name="value"/>).
-    /// Entities where the property has no value (NULL) are excluded.
-    /// </summary>
-    /// <typeparam name="TEntity">The entity type.</typeparam>
-    /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>. Must implement <see cref="IComparable{T}"/>.</typeparam>
-    /// <param name="source">The queryable source.</param>
-    /// <param name="propertySelector">
-    /// An expression selecting the <see cref="Maybe{T}"/> property.
-    /// </param>
-    /// <param name="value">The value to compare against.</param>
-    /// <returns>A filtered queryable where the mapped storage field is less than or equal to the value.</returns>
-    public static IQueryable<TEntity> WhereLessThanOrEqual<TEntity, TInner>(
-        this IQueryable<TEntity> source,
-        Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
-        TInner value)
-        where TEntity : class
-        where TInner : notnull, IComparable<TInner>
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(propertySelector);
-        return WhereComparison(source, propertySelector, value, ExpressionType.LessThanOrEqual);
-    }
-
-    /// <summary>
-    /// Filters the query to entities where the <see cref="Maybe{T}"/> property is greater than
-    /// the specified value (mapped storage field &gt; <paramref name="value"/>).
-    /// Entities where the property has no value (NULL) are excluded.
-    /// </summary>
-    /// <typeparam name="TEntity">The entity type.</typeparam>
-    /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>. Must implement <see cref="IComparable{T}"/>.</typeparam>
-    /// <param name="source">The queryable source.</param>
-    /// <param name="propertySelector">
-    /// An expression selecting the <see cref="Maybe{T}"/> property.
-    /// </param>
-    /// <param name="value">The value to compare against.</param>
-    /// <returns>A filtered queryable where the mapped storage field is greater than the value.</returns>
-    public static IQueryable<TEntity> WhereGreaterThan<TEntity, TInner>(
-        this IQueryable<TEntity> source,
-        Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
-        TInner value)
-        where TEntity : class
-        where TInner : notnull, IComparable<TInner>
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(propertySelector);
-        return WhereComparison(source, propertySelector, value, ExpressionType.GreaterThan);
-    }
-
-    /// <summary>
-    /// Filters the query to entities where the <see cref="Maybe{T}"/> property is greater than or equal to
-    /// the specified value (mapped storage field &gt;= <paramref name="value"/>).
-    /// Entities where the property has no value (NULL) are excluded.
-    /// </summary>
-    /// <typeparam name="TEntity">The entity type.</typeparam>
-    /// <typeparam name="TInner">The type wrapped in <see cref="Maybe{T}"/>. Must implement <see cref="IComparable{T}"/>.</typeparam>
-    /// <param name="source">The queryable source.</param>
-    /// <param name="propertySelector">
-    /// An expression selecting the <see cref="Maybe{T}"/> property.
-    /// </param>
-    /// <param name="value">The value to compare against.</param>
-    /// <returns>A filtered queryable where the mapped storage field is greater than or equal to the value.</returns>
-    public static IQueryable<TEntity> WhereGreaterThanOrEqual<TEntity, TInner>(
-        this IQueryable<TEntity> source,
-        Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
-        TInner value)
-        where TEntity : class
-        where TInner : notnull, IComparable<TInner>
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(propertySelector);
-        return WhereComparison(source, propertySelector, value, ExpressionType.GreaterThanOrEqual);
-    }
-
-    private static IQueryable<TEntity> WhereComparison<TEntity, TInner>(
-        IQueryable<TEntity> source,
-        Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
-        TInner value,
-        ExpressionType comparisonType)
-        where TEntity : class
-        where TInner : notnull, IComparable<TInner>
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(propertySelector);
+        ArgumentNullException.ThrowIfNull(predicate);
 
         var descriptor = MaybePropertyResolver.Resolve(propertySelector);
         var parameter = propertySelector.Parameters[0];
         var efProperty = MaybePropertyResolver.BuildEfPropertyAccess(parameter, descriptor);
 
-        Expression valueExpr = typeof(TInner).IsValueType
-            ? Expression.Convert(Expression.Constant(value), descriptor.StoreType)
-            : Expression.Constant(value, descriptor.StoreType);
-
-        var comparison = Expression.MakeBinary(comparisonType, efProperty, valueExpr);
-        var lambda = Expression.Lambda<Func<TEntity, bool>>(comparison, parameter);
+        var body = MaybePredicateBuilder.Build(efProperty, predicate);
+        var lambda = Expression.Lambda<Func<TEntity, bool>>(body, parameter);
 
         return source.Where(lambda);
     }
