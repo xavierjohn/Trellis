@@ -4,7 +4,7 @@
 
 Transactional outbox and post-commit domain-event dispatch for EF Core applications built with Trellis.
 
-It atomically stores integration events with aggregate changes, then publishes them from a background service so transient broker failures do not lose messages.
+It captures domain events in the aggregate transaction and relays them after commit. Translators can then stage integration events for reliable publication.
 
 > This package opts out of NativeAOT and trimming because it builds on EF Core and discovers integration-event types at runtime.
 
@@ -25,7 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         .AddTrellisInterceptors()
         .AddTrellisOutboxInterceptor());
 
-services.AddTrellis(trellis => trellis
+builder.Services.AddTrellis(trellis => trellis
     .UseDomainEvents(typeof(Program).Assembly)
     .UseIntegrationEvents(typeof(Program).Assembly)
     .UseEntityFrameworkUnitOfWork<AppDbContext>()
@@ -36,7 +36,7 @@ Translate domain events into integration events by adding them to `IIntegrationE
 
 ## Key Features
 
-- Persists outbox rows in the same transaction as aggregate changes.
+- Captures domain-event rows in the same transaction as aggregate changes.
 - Dispatches domain events only after a successful commit.
 - Publishes pending integration events through a resilient background service.
 - Supports configurable batching, locking, lease recovery, retry scheduling, and dead-lettering.

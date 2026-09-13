@@ -4,7 +4,7 @@
 
 Transactional outbox and post-commit domain-event dispatch for EF Core applications built with Trellis.
 
-It atomically stores integration events with aggregate changes, then publishes them from a background service so transient broker failures do not lose messages.
+It captures domain events in the aggregate transaction and relays them after commit. Translators can then stage integration events for reliable publication.
 
 > This package opts out of NativeAOT and trimming because it builds on EF Core and discovers integration-event types at runtime.
 
@@ -25,16 +25,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         .AddTrellisInterceptors()
         .AddTrellisOutboxInterceptor());
 
-services.AddTrellis(trellis => trellis
+builder.Services.AddTrellis(trellis => trellis
     .UseDomainEvents(typeof(Program).Assembly)
     .UseIntegrationEvents(typeof(Program).Assembly)
     .UseEntityFrameworkUnitOfWork<AppDbContext>()
     .UseOutbox<AppDbContext>());
 ```
 
-Publish an integration event from a domain-event handler by appending it to the current outbox scope:
+Translate a domain event while the outbox relay dispatches it by adding an external contract to the relay-scoped collector:
 
 ```csharp
+public sealed record OrderPlacedIntegrationEvent(
+    Guid OrderId,
+    DateTimeOffset OccurredAt)
+    : IIntegrationEvent;
+
 public sealed class OrderPlacedTranslator(
     IIntegrationEventCollector collector)
     : IDomainEventHandler<OrderPlaced>
@@ -43,7 +48,9 @@ public sealed class OrderPlacedTranslator(
         OrderPlaced domainEvent,
         CancellationToken cancellationToken)
     {
-        collector.Add(OrderPlacedIntegrationEvent.From(domainEvent));
+        collector.Add(new OrderPlacedIntegrationEvent(
+            domainEvent.OrderId.Value,
+            domainEvent.OccurredAt));
 
         return ValueTask.CompletedTask;
     }
@@ -52,7 +59,7 @@ public sealed class OrderPlacedTranslator(
 
 ## Key Features
 
-- Persists outbox rows in the same transaction as aggregate changes.
+- Captures domain-event rows in the same transaction as aggregate changes.
 - Dispatches domain events only after a successful commit.
 - Publishes pending integration events through a resilient background service.
 - Supports configurable batching, locking, lease recovery, retry scheduling, and dead-lettering.
@@ -65,7 +72,7 @@ public sealed class OrderPlacedTranslator(
 - Map the table with `modelBuilder.AddTrellisOutbox()`.
 - Register capture with `AddTrellisOutboxInterceptor()` on the context options.
 - Do not manually call `SaveChangesAsync()` inside a transactional command handler; the unit-of-work pipeline owns the commit.
-- Make integration events immutable records with unique `[IntegrationEventType]` values and stable names.
+- Make integration events immutable records with unique, stable `[IntegrationEventName("...")]` values.
 - Carry `OutboundIntegrationMessage.MessageId` unchanged as the transport message ID so inbox consumers can deduplicate end to end.
 
 The package suppresses recursive domain-event generation while appending outbox rows, preventing outbox persistence from creating more domain events.

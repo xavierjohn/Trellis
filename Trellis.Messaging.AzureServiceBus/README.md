@@ -33,7 +33,7 @@ Register a `ServiceBusClient` separately. Consumers also require an `IInboxDispa
 
 ## What it is for
 
-Trellis already ships both ends of reliable messaging: the outbox stages integration events in the same transaction as the business change, and the inbox makes consumption idempotent by recording `(ConsumerId, MessageId)`. This package is the piece in between.
+Trellis already ships both ends of reliable messaging: the outbox captures domain events with the business change, then stages translated integration events during its post-commit relay; the inbox makes consumption idempotent by recording `(ConsumerId, MessageId)`. This package is the piece in between.
 
 Its central obligation is one line of code: the producer's outbox row id becomes the Service Bus `MessageId`, carried verbatim.
 

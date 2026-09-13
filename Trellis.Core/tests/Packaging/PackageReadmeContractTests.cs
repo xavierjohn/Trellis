@@ -28,11 +28,11 @@ public partial class PackageReadmeContractTests
         var missing = Packages()
             .SelectMany(package => new[]
             {
-                (Path: package.RepositoryReadmePath, Role: "repository"),
-                (Path: package.NuGetReadmePath, Role: "NuGet"),
-            }
+                (PackageName: package.Name, Path: package.RepositoryReadmePath, Role: "repository"),
+                (PackageName: package.Name, Path: package.NuGetReadmePath, Role: "NuGet"),
+            })
             .Where(readme => !File.Exists(readme.Path))
-            .Select(readme => $"{package.Name}: missing {readme.Role} README"))
+            .Select(readme => $"{readme.PackageName}: missing {readme.Role} README")
             .ToList();
 
         missing.Should().BeEmpty(
@@ -103,16 +103,73 @@ public partial class PackageReadmeContractTests
         var failures = Directory
             .EnumerateFiles(RepositoryRoot(), "*README*.md", SearchOption.AllDirectories)
             .Where(path => !IsBuildOutput(path))
-            .SelectMany(path => File.ReadLines(path)
-                .Select((line, index) => (Line: line, Number: index + 1))
-                .Where(item => UnsupportedDotnetTestOption().IsMatch(item.Line))
-                .Select(item => $"{Path.GetRelativePath(RepositoryRoot(), path)}:{item.Number}: {item.Line.Trim()}"))
+            .SelectMany(path =>
+            {
+                var text = File.ReadAllText(path);
+                return UnsupportedDotnetTestOption()
+                    .Matches(text)
+                    .Cast<Match>()
+                    .Select(match =>
+                        $"{Path.GetRelativePath(RepositoryRoot(), path)}:{LineNumber(text, match.Index)}: "
+                        + match.Value.ReplaceLineEndings(" ").Trim());
+            })
             .ToList();
 
         failures.Should().BeEmpty(
             "Microsoft.Testing.Platform does not support VSTest's --filter or --nologo switches, "
             + "and the solution path is passed positionally rather than with --solution");
     }
+
+    [Fact]
+    public void Packages_DifferentProjectNameAndNonPackableProject_ReturnsOnlyShippingPackage()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"trellis-readme-contract-{Guid.NewGuid():N}");
+        var shippingDirectory = Path.Combine(root, "Trellis.Adapter");
+        var internalDirectory = Path.Combine(root, "Trellis.Internal");
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(shippingDirectory, "src"));
+            Directory.CreateDirectory(Path.Combine(internalDirectory, "src"));
+
+            File.WriteAllText(
+                Path.Combine(shippingDirectory, "src", "Different.Package.csproj"),
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TrellisApiRefName>adapter</TrellisApiRefName>
+                  </PropertyGroup>
+                </Project>
+                """);
+            File.WriteAllText(
+                Path.Combine(internalDirectory, "src", "Trellis.Internal.csproj"),
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <IsPackable>false</IsPackable>
+                  </PropertyGroup>
+                </Project>
+                """);
+
+            var package = Packages(root).Should().ContainSingle().Which;
+
+            package.Name.Should().Be("Different.Package");
+            package.ApiReferenceName.Should().Be("adapter");
+            package.RepositoryReadmePath.Should().Be(Path.Combine(shippingDirectory, "README.md"));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("dotnet test Trellis.slnx `\n    --filter \"FullyQualifiedName~Examples\"")]
+    [InlineData("dotnet test Trellis.slnx \\\n    --nologo")]
+    [InlineData("dotnet test Trellis.slnx ^\r\n    --solution Trellis.slnx")]
+    public void UnsupportedDotnetTestOption_ContinuedCommand_DetectsUnsupportedOption(string command) =>
+        UnsupportedDotnetTestOption().IsMatch(command).Should().BeTrue();
 
     private static IEnumerable<string> RepositoryReadmeFailures(PackageReadmes package)
     {
@@ -170,36 +227,44 @@ public partial class PackageReadmeContractTests
         }
     }
 
-    private static List<PackageReadmes> Packages()
-    {
-        var root = RepositoryRoot();
+    private static List<PackageReadmes> Packages() =>
+        Packages(RepositoryRoot());
 
-        return Directory
-            .EnumerateDirectories(root, "Trellis.*", SearchOption.TopDirectoryOnly)
-            .Select(directory => new DirectoryInfo(directory))
-            .Select(directory => new
+    private static List<PackageReadmes> Packages(string root) =>
+        Directory
+            .EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => string.Equals(
+                new DirectoryInfo(Path.GetDirectoryName(path)!).Name,
+                "src",
+                StringComparison.Ordinal))
+            .Where(path => !IsBuildOutput(path))
+            .Select(path => new
             {
-                Directory = directory,
-                ProjectPath = Path.Combine(
-                    directory.FullName,
-                    "src",
-                    $"{directory.Name}.csproj"),
+                Path = path,
+                Document = XDocument.Load(path),
             })
-            .Where(package => File.Exists(package.ProjectPath))
-            .Select(package =>
+            .Where(project => !string.Equals(
+                ProjectProperty(project.Document, "IsPackable"),
+                "false",
+                StringComparison.OrdinalIgnoreCase))
+            .Select(project =>
             {
-                var project = XDocument.Load(package.ProjectPath);
-                var apiReferenceName = project.Descendants("TrellisApiRefName").Single().Value.Trim();
+                var sourceDirectory = new DirectoryInfo(Path.GetDirectoryName(project.Path)!);
+                var packageDirectory = sourceDirectory.Parent!;
 
                 return new PackageReadmes(
-                    package.Directory.Name,
-                    apiReferenceName,
-                    Path.Combine(package.Directory.FullName, "README.md"),
-                    Path.Combine(package.Directory.FullName, "NUGET_README.md"));
+                    Path.GetFileNameWithoutExtension(project.Path),
+                    ProjectProperty(project.Document, "TrellisApiRefName"),
+                    Path.Combine(packageDirectory.FullName, "README.md"),
+                    Path.Combine(packageDirectory.FullName, "NUGET_README.md"));
             })
             .OrderBy(package => package.Name, StringComparer.Ordinal)
             .ToList();
-    }
+
+    private static string ProjectProperty(XDocument document, string name) =>
+        document.Descendants()
+            .FirstOrDefault(element => element.Name.LocalName == name)?.Value.Trim()
+        ?? string.Empty;
 
     private static bool IsBuildOutput(string path) =>
         path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
@@ -226,7 +291,12 @@ public partial class PackageReadmeContractTests
         return directory!.FullName;
     }
 
-    [GeneratedRegex(@"(?im)^\s*dotnet\s+test\b[^\r\n]*(?:\s--(?:filter|nologo|solution)(?:\s|=|$))")]
+    private static int LineNumber(string text, int index) =>
+        text.Take(index).Count(character => character == '\n') + 1;
+
+    [GeneratedRegex(
+        @"^[ \t]*dotnet[ \t]+test\b[^\r\n]*(?:(?:`|\\|\^)[ \t]*\r?\n[ \t]*[^\r\n]*)*(?:[ \t]+--(?:filter|nologo|solution)(?:[ \t=]|$))",
+        RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex UnsupportedDotnetTestOption();
 
     [GeneratedRegex(@"\]\(\.\.?[\\/]", RegexOptions.CultureInvariant)]

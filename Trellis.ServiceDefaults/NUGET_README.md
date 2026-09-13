@@ -13,6 +13,8 @@ dotnet add package Trellis.ServiceDefaults
 ## Quick Example
 
 ```csharp
+using Trellis.ServiceDefaults;
+
 builder.Services.AddTrellis(trellis => trellis
     .UseAsp()
     .UseScalarValueValidation()

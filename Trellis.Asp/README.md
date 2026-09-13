@@ -51,8 +51,9 @@ Default failure mappings include 401 for `AuthenticationRequired`, 403 for `Forb
 
 ## Development
 
-Run the package tests from the repository root:
+Run the package and source-generator tests from the repository root:
 
 ```powershell
 dotnet test Trellis.Asp\tests\Trellis.Asp.Tests.csproj -c Release
+dotnet test Trellis.Asp\generator-tests\Trellis.AspSourceGenerator.Tests.csproj -c Release
 ```
