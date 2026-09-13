@@ -3,7 +3,7 @@ package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
 types: [Actor, ActorAttributes, ActorId, IActorProvider, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
-last_verified: 2026-06-21
+last_verified: 2026-09-12
 audience: [llm]
 ---
 # Trellis.Authorization — API Reference
@@ -48,18 +48,19 @@ public sealed record CancelOrderCommand(OrderId OrderId)
 
 // DI (composition root):
 services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
-services.AddSharedResourceLoader<CancelOrderCommand, Order, OrderId>();
-services.AddResourceAuthorization<CancelOrderCommand, Order, Result<Unit>>();
+services.AddSharedResourceAuthorization<CancelOrderCommand, Order, OrderId, Result<Unit>>();
 // One per command — AOT-safe; or use the assembly-scanning overload.
 ```
 
 That's it. The mediator pipeline:
 
 1. resolves the actor via the registered `IActorProvider`,
-2. loads the `Order` by `OrderId` via your `OrderResourceLoader` implementation of `SharedResourceLoaderById<Order, OrderId>` and the explicitly registered adapter (the typed behavior registration does not discover or register loaders),
+2. loads the `Order` by `OrderId` via your `OrderResourceLoader` implementation of `SharedResourceLoaderById<Order, OrderId>` and the adapter installed by `AddSharedResourceAuthorization`,
 3. calls `Authorize(actor, order)`.
 
 For multi-hop authorization (the resource the actor must own is reached via one or more navigation hops, including the cricket "actor owns home OR away team" shape), use `IAuthorizeResourceVia<TOwner>` with `IIdentifyRelatedResource[s]<TRelated, TId>` along the path — see cookbook [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization).
+
+`AddSharedResourceAuthorization` lives in `Trellis.Mediator`; import `Microsoft.Extensions.DependencyInjection` and `Trellis.Mediator` in the composition root. Its builder counterpart is `UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()`. The existing `AddResourceAuthorization<TMessage,TResource,TResponse>()` remains the lower-level behavior/accessor registration and still requires a loader or `AddSharedResourceLoader` bridge separately.
 
 ## Patterns Index
 
@@ -345,9 +346,11 @@ Convenience base for loaders that extract an ID from the message and call a repo
 public abstract class SharedResourceLoaderById<TResource, TId>
 ```
 
-A single loader shared across every command that authorizes against the same `TResource`. When a command implements both `IAuthorizeResource<TResource>` and `IIdentifyResource<TResource, TId>` the pipeline bridges to this shared loader automatically. Explicit `IResourceLoader<TMessage, TResource>` registrations win over the shared loader.
+A single loader shared across every command that authorizes against the same `TResource`. For a command implementing both `IAuthorizeResource<TResource>` and `IIdentifyResource<TResource, TId>`, use `AddSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` to register the behavior, accessor, and bridge without scanning. Alternatively, the assembly scanner discovers the bridge, or `AddSharedResourceLoader` registers it separately. Existing explicit `IResourceLoader<TMessage, TResource>` registrations are preserved.
 
-`Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization(...)` registers all concrete `SharedResourceLoaderById<TResource, TId>` implementations as **scoped** — safe to depend on a `DbContext` or other scoped repository. Replace the registration after the scan completes if a different lifetime is required.
+The assembly-scanning overload of `Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization(...)` registers discovered concrete `SharedResourceLoaderById<TResource, TId>` implementations as **scoped** — safe to depend on a `DbContext` or other scoped repository. Explicit typed helpers do not register that implementation. Replace the registration after the scan completes if a different lifetime is required.
+
+For per-message loader selection, both `AddResourceAuthorization(assemblies)` and `AddResourceLoaders(assembly)` let a discovered custom `IResourceLoader<TMessage,TResource>` replace a framework shared-loader adapter, even when the adapter was registered first. Application-provided loader implementations, factories, instances, and keyed registrations are preserved.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

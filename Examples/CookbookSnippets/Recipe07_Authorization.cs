@@ -54,6 +54,12 @@ public static class AuthorizationDi
 }
 internal static class Recipe7AuthorizationSurface
 {
+    public static void RegisterSharedResourceAuthorization(IServiceCollection services)
+    {
+        services.AddScoped<SharedResourceLoaderById<Order, OrderId>, SharedOrderLoader>();
+        services.AddSharedResourceAuthorization<UpdateOrderCommand, Order, OrderId, Result<Trellis.Unit>>();
+    }
+
     public static void AuthorizationBehavior_RegistrationSurface(IServiceCollection services, DeleteOrderCommand command)
     {
         services.AddTrellisBehaviors();

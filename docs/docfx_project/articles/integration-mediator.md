@@ -44,6 +44,7 @@ audience: [developer]
 | `AddTrellisBehaviors(Action<TrellisMediatorTelemetryOptions>)` | DI extension | Same, with telemetry options (e.g., `IncludeErrorDetail`). |
 | `AddResourceAuthorization(params Assembly[])` | DI extension | Scans assemblies for `IAuthorizeResource<>`, loaders, and shared loaders. |
 | `AddResourceAuthorization<TMessage, TResource, TResponse>()` | DI extension | Explicit registration (AOT/trimming friendly). |
+| `AddSharedResourceAuthorization<TMessage, TResource, TId, TResponse>()` | DI extension | Explicit behavior, accessor, and shared-loader adapter registration (AOT/trimming friendly); the shared-loader implementation is registered separately. |
 | `AddSharedResourceLoader<TMessage, TResource, TId>()` | DI extension | Bridges an `IIdentifyResource<T,TId>` message to a `SharedResourceLoaderById<T,TId>`. |
 | `IValidate` | Interface | Message-side hook; `IResult Validate()` runs before the handler. |
 | `IMessageValidator<TMessage>` | Interface | DI-resolved async validator; aggregated by `ValidationBehavior`. |
@@ -219,7 +220,7 @@ For the `RenameDocumentCommand` above, the per-request order becomes: permission
 
 ### Shared resource loaders
 
-When several commands authorize against the same resource, register one `SharedResourceLoaderById<TResource, TId>` and let messages declare `IIdentifyResource<TResource, TId>`. Assembly scanning auto-bridges them; explicit registration uses `AddSharedResourceLoader<,,>`.
+When several commands authorize against the same resource, register one `SharedResourceLoaderById<TResource, TId>` and let messages declare `IIdentifyResource<TResource, TId>`. Assembly scanning auto-bridges them; explicit registration uses `AddSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` for the behavior, accessor, and adapter together. The lower-level `AddResourceAuthorization<,,>` plus `AddSharedResourceLoader<,,>` combination remains available.
 
 ```csharp
 using System;
@@ -266,8 +267,7 @@ public static class Composition
         builder.Services.AddScoped<SharedResourceLoaderById<Order, Guid>, OrderResourceLoader>();
 
         // Explicit (AOT/trimming friendly):
-        builder.Services.AddResourceAuthorization<CancelOrderCommand, Order, Result<Unit>>();
-        builder.Services.AddSharedResourceLoader<CancelOrderCommand, Order, Guid>();
+        builder.Services.AddSharedResourceAuthorization<CancelOrderCommand, Order, Guid, Result<Unit>>();
 
         // Equivalent via assembly scan (not AOT-friendly):
         // builder.Services.AddResourceAuthorization(typeof(CancelOrderCommand).Assembly);

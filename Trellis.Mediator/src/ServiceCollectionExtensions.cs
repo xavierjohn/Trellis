@@ -310,7 +310,9 @@ public static class ServiceCollectionExtensions
     /// </para>
     /// <para>
     /// Also register the corresponding <see cref="IResourceLoader{TMessage, TResource}"/> as scoped,
-    /// either explicitly or via <see cref="AddResourceLoaders"/>.
+    /// either explicitly or via <see cref="AddResourceLoaders"/>. For shared-loader registration,
+    /// use <see cref="AddSharedResourceAuthorization{TMessage, TResource, TId, TResponse}"/>
+    /// to include the adapter with the behavior and accessor.
     /// </para>
     /// </remarks>
     /// <example>
@@ -359,6 +361,44 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers resource authorization and the shared-loader adapter for a specific message,
+    /// without assembly scanning. Also registers the authorized-resource accessor.
+    /// </summary>
+    /// <typeparam name="TMessage">The message that authorizes and identifies the resource.</typeparam>
+    /// <typeparam name="TResource">The resource type loaded for authorization.</typeparam>
+    /// <typeparam name="TId">The resource identifier type.</typeparam>
+    /// <typeparam name="TResponse">The message's result response type.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// Register the <see cref="SharedResourceLoaderById{TResource, TId}"/> implementation separately.
+    /// An existing <see cref="IResourceLoader{TMessage, TResource}"/> registration is preserved.
+    /// A later loader scan may replace the framework adapter with a discovered custom loader.
+    /// Repeated registrations are idempotent and retain the canonical pipeline order.
+    /// This composes <see cref="AddResourceAuthorization{TMessage, TResource, TResponse}"/>
+    /// and <see cref="AddSharedResourceLoader{TMessage, TResource, TId}"/>; it does not register
+    /// an actor provider, Mediator handlers, or the standard Trellis behaviors.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="services"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the message also implements <see cref="IAuthorizeResourceVia{TOwner}"/>.
+    /// </exception>
+    public static IServiceCollection AddSharedResourceAuthorization<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] TMessage,
+        TResource,
+        TId,
+        TResponse>(this IServiceCollection services)
+        where TMessage : IAuthorizeResource<TResource>, IIdentifyResource<TResource, TId>, global::Mediator.IMessage
+        where TResource : class
+        where TResponse : IResult, IFailureFactory<TResponse>
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddResourceAuthorization<TMessage, TResource, TResponse>();
+        return services.AddSharedResourceLoader<TMessage, TResource, TId>();
+    }
+
+    /// <summary>
     /// Scans the specified assembly for types implementing
     /// <see cref="IAuthorizeResource{TResource}"/> and automatically registers the
     /// <see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> for each.
@@ -401,6 +441,9 @@ public static class ServiceCollectionExtensions
     /// <see cref="SharedResourceLoaderAdapter{TMessage, TResource, TId}"/> is automatically
     /// registered, bridging to the <see cref="SharedResourceLoaderById{TResource, TId}"/>.
     /// Explicit loaders always take priority.
+    /// Scanned custom loaders replace framework fallback adapters even when the adapters were
+    /// registered first. Application-provided implementation, factory, and instance registrations
+    /// are preserved, as are keyed registrations.
     /// </para>
     /// </remarks>
     /// <example>
@@ -479,12 +522,11 @@ public static class ServiceCollectionExtensions
 
                 allCandidateEntities.Add(type);
 
-                // Register IResourceLoader<,> implementations as scoped
-                // TryAdd ensures pre-registered loaders are not overridden
+                // Discovered custom loaders replace fallback adapters, not application registrations.
                 foreach (var iface in type.GetInterfaces())
                 {
                     if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderDef)
-                        services.TryAddScoped(iface, type);
+                        RegisterScannedResourceLoader(services, ServiceDescriptor.Scoped(iface, type));
                 }
 
                 // Discover SharedResourceLoaderById<TResource, TId> implementations
@@ -943,6 +985,11 @@ public static class ServiceCollectionExtensions
     /// services.AddResourceLoaders(typeof(CancelOrderResourceLoader).Assembly);
     /// </code>
     /// </example>
+    /// <remarks>
+    /// Discovered loaders replace only unkeyed framework shared-loader adapters. Existing
+    /// application-provided implementations, factories, instances, and keyed registrations
+    /// are preserved.
+    /// </remarks>
     [RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.")]
     public static IServiceCollection AddResourceLoaders(this IServiceCollection services, Assembly assembly)
     {
@@ -959,7 +1006,7 @@ public static class ServiceCollectionExtensions
             foreach (var iface in type.GetInterfaces())
             {
                 if (iface.IsGenericType && iface.GetGenericTypeDefinition() == loaderInterface)
-                    services.TryAddScoped(iface, type);
+                    RegisterScannedResourceLoader(services, ServiceDescriptor.Scoped(iface, type));
             }
         }
 
@@ -1006,6 +1053,22 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IResourceLoader<TMessage, TResource>,
             SharedResourceLoaderAdapter<TMessage, TResource, TId>>();
         return services;
+    }
+
+    private static void RegisterScannedResourceLoader(IServiceCollection services, ServiceDescriptor descriptor)
+    {
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            var existing = services[i];
+            if (existing.IsKeyedService || existing.ServiceType != descriptor.ServiceType)
+                continue;
+
+            if (existing.ImplementationType is { IsGenericType: true } implementationType
+                && implementationType.GetGenericTypeDefinition() == typeof(SharedResourceLoaderAdapter<,,>))
+                services.RemoveAt(i);
+        }
+
+        services.TryAdd(descriptor);
     }
 
     /// <summary>

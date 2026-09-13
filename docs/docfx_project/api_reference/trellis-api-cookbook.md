@@ -545,7 +545,14 @@ services.AddResourceAuthorization(
 
 **What it shows.** Lead with `IAuthorizeResource<TResource>` + `IIdentifyResource<TResource, TId>` for the owner-on-loaded-resource case — that pair covers most domain authorization decisions, and the framework wires up `SharedResourceLoaderById<TResource, TId>` automatically so no per-command loader is needed. Fall back to `IAuthorize` for static permission gates that do not require a resource load. `IAuthorizeResource<TResource>` runs *after* the resource loader produces the loaded resource, then calls `Authorize(actor, resource)`; `IAuthorize` enforces an AND-permission gate via `AuthorizationBehavior<,>` before the handler runs.
 
-For the AOT-safe per-command registration shape (`AddResourceAuthorization<TMessage, TResource, TResponse>()`) and the equivalent `TrellisServiceBuilder.UseResourceAuthorization<TMessage, TResource, TResponse>()` slot, see [`trellis-api-servicedefaults.md`](trellis-api-servicedefaults.md#trellisservicebuilder). For multi-hop authorization (the resource the actor must own is reached via one or more navigation hops), see [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization).
+For the same shared-loader shape without assembly scanning, register the implementation once and the behavior/accessor/adapter together per message:
+
+```csharp
+services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
+services.AddSharedResourceAuthorization<UpdateOrderCommand, Order, OrderId, Result<Trellis.Unit>>();
+```
+
+The equivalent builder slot is `UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()`; it also enables the standard Mediator behaviors. Both helpers preserve existing per-message loaders and leave the shared-loader implementation explicitly registered. The lower-level `AddResourceAuthorization<TMessage,TResource,TResponse>()` and `UseResourceAuthorization<TMessage,TResource,TResponse>()` remain available for custom loaders; neither adds the shared-loader bridge. See [`trellis-api-servicedefaults.md`](trellis-api-servicedefaults.md#trellisservicebuilder). For multi-hop authorization, see [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization).
 
 **Microservices.** The setup above works identically behind a reverse proxy / API gateway — the simplest microservices pattern is **token pass-through**: the gateway validates the incoming external JWT (Auth0 / Entra / Keycloak / etc.) and forwards it as-is, and each microservice configures `AddJwtBearer(o => o.Authority = "https://idp")` against the SAME external IDP. No new Trellis packages required.
 

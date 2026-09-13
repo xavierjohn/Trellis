@@ -65,6 +65,7 @@ public class RegistrationSurfaceTests
         ["Trellis.Asp::AddTrellisWorkerActor"] = new("UseWorkerActor", "Ambient actor for non-HTTP hosts."),
         ["Trellis.Mediator::AddTrellisBehaviors"] = new("UseMediator", "Core pipeline behaviors."),
         ["Trellis.Mediator::AddResourceAuthorization"] = new("UseResourceAuthorization", "Resource-authorization behavior."),
+        ["Trellis.Mediator::AddSharedResourceAuthorization"] = new("UseSharedResourceAuthorization", "Resource-authorization behavior with its shared-loader adapter."),
         ["Trellis.Mediator::AddRelatedResourceAuthorization"] = new("UseRelatedResourceAuthorization", "Related-resource authorization behavior."),
         ["Trellis.Mediator::AddDomainEventDispatch"] = new("UseDomainEvents", "Domain-event dispatcher."),
         ["Trellis.Mediator::AddIntegrationEventDispatch"] = new("UseIntegrationEvents", "Integration-event dispatcher."),
@@ -85,7 +86,7 @@ public class RegistrationSurfaceTests
         ["Trellis.Mediator::AddDomainEventHandler"] = new(null, "Registers one handler; invoked by the typed UseDomainEvents overload."),
         ["Trellis.Mediator::AddIntegrationEventHandler"] = new(null, "Registers one handler; invoked by the typed UseIntegrationEvents overload."),
         ["Trellis.Mediator::AddResourceLoaders"] = new(null, "Assembly scan over per-resource loaders; content for UseResourceAuthorization."),
-        ["Trellis.Mediator::AddSharedResourceLoader"] = new(null, "Registers one loader; content for UseResourceAuthorization."),
+        ["Trellis.Mediator::AddSharedResourceLoader"] = new(null, "Adapter registration composed by AddSharedResourceAuthorization, whose feature has a builder slot; also reusable for via-command leaf loaders."),
         ["Trellis.EntityFrameworkCore::AddTrellisUnitOfWorkWithoutBehavior"] = new(null, "Escape hatch for hosts that own pipeline ordering; slotting it would contradict its purpose."),
         ["Trellis.EntityFrameworkCore.Inbox::AddTrellisConsumerCheckpointStore"] = new(null, "Store for consumers that track checkpoints without the full inbox."),
 
