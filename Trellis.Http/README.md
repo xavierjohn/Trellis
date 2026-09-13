@@ -10,22 +10,7 @@
 dotnet add package Trellis.Http
 ```
 
-## What we provide (v3 surface)
-
-A single static class `Trellis.Http.HttpResponseExtensions` with the canonical HTTP result methods:
-
-| Method | Purpose |
-| --- | --- |
-| `ToResultAsync(this Task<HttpResponseMessage>, Func<HttpStatusCode, Error?>? statusMap = null)` | Bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>`. Without a map, 2xx statuses pass through as `Ok` and non-2xx statuses become typed failures. With a map, a non-null return becomes `Fail`. |
-| `ToResultAsync(this Task<HttpResponseMessage>, Func<HttpResponseMessage, CancellationToken, Task<Error?>>, CancellationToken = default)` | Body-aware bridge. The async mapper is invoked only on non-success status codes. |
-| `HandleNotFoundAsync(this Task<HttpResponseMessage>, Error.NotFound)` | Map 404 to `Fail`; pass through otherwise. |
-| `HandleConflictAsync(this Task<HttpResponseMessage>, Error.Conflict)` | Map 409 to `Fail`; pass through otherwise. |
-| `HandleUnauthorizedAsync(this Task<HttpResponseMessage>, Error.AuthenticationRequired)` | Map 401 to `Fail`; pass through otherwise. |
-| `ReadJsonAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken = default)` | Read and deserialize the body into `T`. Invalid JSON becomes `Fail<Error.Unexpected>`. |
-| `ReadJsonMaybeAsync<T>(this Task<Result<HttpResponseMessage>>, JsonTypeInfo<T>, CancellationToken = default)` | Read into `Maybe<T>`. `204`, `205`, empty body, JSON `null` map to `Maybe.None`. Invalid JSON becomes `Fail<Error.Unexpected>`. |
-| `ReadJsonOrNoneOn404Async<T>(this Task<HttpResponseMessage>, JsonTypeInfo<T>, CancellationToken = default)` | Terminal optional-resource helper: `404` maps to `Ok(Maybe.None)`; other non-2xx statuses use strict status mapping. |
-
-## Quick example
+## Quick Example
 
 ```csharp
 using System.Text.Json.Serialization;
@@ -42,6 +27,14 @@ var result = await httpClient.GetAsync("/profile", cancellationToken)
     .HandleNotFoundAsync(new Error.NotFound(ResourceRef.For("Profile", userId)))
     .ReadJsonAsync(ProfileJsonContext.Default.ProfileDto, cancellationToken);
 ```
+
+## Key Features
+
+- `ToResultAsync` turns HTTP success and failure statuses into typed Trellis results.
+- `HandleNotFoundAsync`, `HandleConflictAsync`, and `HandleUnauthorizedAsync` map expected statuses to domain-specific errors.
+- `ReadJsonAsync<T>` and `ReadJsonMaybeAsync<T>` deserialize required and optional response bodies.
+- `ReadJsonOrNoneOn404Async<T>` models an optional upstream resource without a manual 404 branch.
+- Terminal `ReadJson*` operations own response disposal; pass-through operations leave it with the caller.
 
 ## Disposal contract
 
@@ -95,8 +88,16 @@ There are no shims or compatibility redirects. To call the current API on a sync
 ## Documentation
 
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-http.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-http.md)
 
 ## Part of Trellis
 
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.Http\tests\Trellis.Http.Tests.csproj -c Release
+```

@@ -40,7 +40,15 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/primitives.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-primitives.md)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.Primitives\tests\Trellis.Primitives.Tests.csproj -c Release
+```

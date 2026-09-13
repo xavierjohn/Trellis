@@ -49,5 +49,5 @@ already persisted. Nothing throws. The symptom is a customer charged twice.
   `IdempotencyResponseSnapshot` that would fail every serialising store
 
 ## Documentation
-See the [API reference](https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-idempotency.md)
+See the [package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-testing-idempotency.html)
 for the full rule list and the implementation traps the suite catches.

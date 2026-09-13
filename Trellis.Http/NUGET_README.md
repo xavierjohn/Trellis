@@ -10,17 +10,7 @@
 dotnet add package Trellis.Http
 ```
 
-## What we provide (v3 surface)
-
-A single static class `Trellis.Http.HttpResponseExtensions` with the canonical HTTP result methods:
-
-- `ToResultAsync(statusMap?)` &mdash; bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>`; without a map, non-2xx statuses become typed failures.
-- `ToResultAsync(mapper, ct)` &mdash; body-aware bridge invoked only for non-success status codes.
-- `HandleNotFoundAsync` / `HandleConflictAsync` / `HandleUnauthorizedAsync` &mdash; single-status convenience entry points on `Task<HttpResponseMessage>`.
-- `ReadJsonAsync<T>` / `ReadJsonMaybeAsync<T>` &mdash; deserialize the body of `Task<Result<HttpResponseMessage>>` into `T` or `Maybe<T>`.
-- `ReadJsonOrNoneOn404Async<T>` &mdash; terminal optional-resource read where `404` maps to `Ok(Maybe.None)`.
-
-## Quick example
+## Quick Example
 
 ```csharp
 using System.Text.Json.Serialization;
@@ -38,6 +28,14 @@ var result = await httpClient.GetAsync("/profile", cancellationToken)
     .ReadJsonAsync(ProfileJsonContext.Default.ProfileDto, cancellationToken);
 ```
 
+## Key Features
+
+- `ToResultAsync` maps HTTP status codes into typed Trellis results.
+- `HandleNotFoundAsync`, `HandleConflictAsync`, and `HandleUnauthorizedAsync` cover common expected failures.
+- `ReadJsonAsync<T>` and `ReadJsonMaybeAsync<T>` deserialize required and optional bodies.
+- `ReadJsonOrNoneOn404Async<T>` maps a missing upstream resource to `Maybe.None`.
+- Terminal `ReadJson*` operations own response disposal; pass-through operations leave it with the caller.
+
 ## Disposal contract
 
 The library owns `HttpResponseMessage` disposal on terminal/transformative paths: `ToResultAsync` and `Handle*Async` dispose on the `Fail` path; `ReadJson*` always dispose after reading. Pass-through paths leave disposal to the caller. Programmer-error null-argument paths (e.g. `client.GetAsync(...).HandleNotFoundAsync(null!)`) await first, then dispose before throwing `ArgumentNullException`.
@@ -50,9 +48,10 @@ The library owns `HttpResponseMessage` disposal on terminal/transformative paths
 
 `HttpRequestException` and `OperationCanceledException` / `TaskCanceledException` propagate through the chain rather than being mapped to `Result.Fail`. `JsonException` does **not**: `ReadJsonAsync<T>`, `ReadJsonMaybeAsync<T>`, and `ReadJsonOrNoneOn404Async<T>` all catch it and return `Fail<Error.Unexpected>` (`Code = FaultCodes.HttpResponseInvalidBody`) with structured position diagnostics only (no response body, no `JsonException.Path`).
 
-## Breaking changes from v1
+## Documentation
 
-`Trellis.Http` has collapsed from 60+ overloads to a small canonical method set. Removed verbs: `HandleForbidden*`, `HandleClientError*`, `HandleServerError*`, `EnsureSuccess`/`EnsureSuccessAsync`, `HandleFailureAsync<TContext>`, and all sync / `Result<HRM>` / `HttpResponseMessage`-receiver overloads. Renamed verbs: `ReadResultFromJsonAsync` -> `ReadJsonAsync`, `ReadResultMaybeFromJsonAsync` -> `ReadJsonMaybeAsync`. See the package README on GitHub for the full migration table.
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-http.html)
+- [HTTP integration guide](https://xavierjohn.github.io/Trellis/articles/integration-http.html)
 
 ## Part of Trellis
 

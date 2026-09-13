@@ -30,7 +30,9 @@
     <!--
       NUGET_README.md, not README.md. Each package carries both: README.md documents the
       package for someone reading the repository, NUGET_README.md is the trimmed listing
-      copy nuget.org renders. Every package sets this identically, so it belongs here - and
+      copy nuget.org renders. PackageReadmeContractTests enforces both roles, their shared
+      reader path, and package discoverability from the root README.
+      Every package sets this identically, so it belongs here - and
       declaring the default as README.md while all 23 overrode it meant a new package that
       forgot to override would fail pack with NU5039, because README.md is never packed.
     -->

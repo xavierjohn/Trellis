@@ -2,18 +2,18 @@
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.ServiceDefaults.svg)](https://www.nuget.org/packages/Trellis.ServiceDefaults)
 
-Opinionated composition defaults for Trellis web services.
+An ordered composition root for Trellis services. Configure authorization, validation, EF Core transactions, outbox, inbox, idempotency, and integration events in one fluent call.
 
 ## Installation
+
 ```bash
 dotnet add package Trellis.ServiceDefaults
 ```
 
 ## Quick Example
-```csharp
-using Trellis.ServiceDefaults;
 
-builder.Services.AddTrellis(options => options
+```csharp
+builder.Services.AddTrellis(trellis => trellis
     .UseAsp()
     .UseScalarValueValidation()
     .UseProblemDetails()
@@ -24,31 +24,21 @@ builder.Services.AddTrellis(options => options
     .UseEntityFrameworkUnitOfWork<AppDbContext>());
 ```
 
-`UseEntityFrameworkUnitOfWork<TContext>()` is always applied last so the transactional command behavior runs innermost. `AddDbContext<TContext>(...)` and `AddMediator(...)` remain application-owned registrations.
+Call `AddTrellis(...)` once. If omitted, the composition features are intentionally not registered.
 
-`UseFluentValidation()` and `UseResourceAuthorization()` both support no-assembly calls for explicit, no-scanning composition; pass assemblies only when you want Trellis to discover validators/resource loaders automatically.
+## Key Features
 
-`UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` registers the per-message authorization behavior, accessor, and shared-loader adapter without scanning, and implies `UseMediator()`. Register the `SharedResourceLoaderById<TResource,TId>` implementation separately. Existing per-message loaders are preserved; repeated direct/builder registrations remain idempotent and keep authorization before validation and commit.
+- Applies Trellis registrations in canonical pipeline order.
+- Keeps feature selection explicit and discoverable at the application composition root.
+- Provides slots for ASP.NET Core, authorization, FluentValidation, EF Core unit of work, outbox, inbox, idempotency, and events.
+- Preserves package-specific options through focused `UseXxx(...)` methods.
+- Leaves vendor stores and transport adapters in their owning packages, avoiding unnecessary SDK dependencies.
 
-`UseScalarValueValidation()` is independent of `UseAsp()` — it registers the scalar-value model binders, JSON converters, and `SuppressModelStateInvalidFilter` toggle that mutate global `MvcOptions` / `JsonOptions` for both MVC and Minimal API JSON pipelines. Hosts that only need error-to-status mapping (e.g. an MVC site that does not bind value-object DTOs) can call `UseAsp()` alone and skip the binder / converter wiring. Minimal API hosts must still call `app.UseScalarValueValidation()` middleware and chain `.WithScalarValueValidation()` per endpoint.
+For most applications, use the builder instead of mixing standalone `AddTrellis*` calls. Provider-specific stores and adapters remain separate registrations by design.
 
-`UseProblemDetails()` is independent of `UseAsp()` — it registers Trellis ProblemDetails customization (`traceId` on every error, 405 `Allow` header projected as `extensions.allow`, 500 detail rewrite) without pulling in Trellis MVC/result-mapping infrastructure. Composing it with a direct `services.AddTrellisProblemDetails()` call is idempotent — exactly one Trellis post-configure layer ends up registered.
+## Documentation
 
-`UseIdempotency(opt => ...)` wires the opt-in IETF `Idempotency-Key` middleware (options + scope resolver + marker). Composition is explicit — the slot does not register a store, so callers add `services.AddInMemoryIdempotencyStore()` (dev / tests) or an EF-backed store (production) and mount the middleware with `app.UseTrellisIdempotency()`. Endpoints opt in with `[Idempotent]`.
-
-`UseWorkerActor(systemActor)` wraps one compatible unkeyed actor provider, supplied either by a builder slot or a pre-existing service registration. It applies after actor-provider selection and caching, so HTTP requests use the inner provider and background scopes without `HttpContext` get the supplied system actor.
-
-Domain-event slots retain nested aggregate responses until the owning successful unit-of-work commit, including outer DTO/Unit responses. `UseOutbox<TContext>()` validates the reporting publisher at host startup; integration publisher validation is conditional on registered integration features, so domain-only hosts need none.
-
-## AOT compatibility
-
-`Trellis.ServiceDefaults` is **AOT- and trim-compatible**. The package enables the AOT and trim analyzers (`IsAotCompatible`, `IsTrimmable`, `EnableAotAnalyzer`, `EnableTrimAnalyzer`) and keeps the default composition slots safe when you choose explicit overloads.
-
-AOT-safe builder shapes are `UseFluentValidation()` plus `UseFluentValidation<TValidator, TMessage>()` per validator, `UseResourceAuthorization()` plus `UseResourceAuthorization<TMessage, TResource, TResponse>()` per command, and `UseDomainEvents()` or `UseTrackedAggregateDomainEvents()` plus their `<TEvent, THandler>()` per-handler overloads.
-
-The assembly-scanning overloads (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`, `UseTrackedAggregateDomainEvents(asm)`) remain convenience APIs for non-AOT consumers. They are annotated with `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`, so trimmed/AOT applications must either switch to explicit registrations or make that choice visible at the consumer call site, for example by annotating the composition method or suppressing the analyzer warning.
-
-`UseEntityFrameworkUnitOfWork<TContext>()` is also annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` because the EF Core integration depends on runtime reflection and is excluded from the Trellis AOT publish gate. AOT consumers can still use the ASP, Mediator, FluentValidation, and authorization slots through this builder, but should compose data access separately.
-
-## Part of Trellis
-This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-servicedefaults.html)
+- [Cross-package cookbook](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html)
+- [Mediator reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-mediator.html)
+- [EF Core reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore.html)

@@ -32,7 +32,7 @@ IResult result = actor.HasPermission("orders:read")
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-db-permissions.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-authorization.html)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

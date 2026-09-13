@@ -50,7 +50,15 @@ The adapter normalizes FluentValidation property names (`Metadata.Reference`, `L
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-fluentvalidation.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-fluentvalidation.md)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.FluentValidation\tests\Trellis.FluentValidation.Tests.csproj -c Release
+```

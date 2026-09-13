@@ -1,4 +1,4 @@
-# Trellis.StateMachine
+﻿# Trellis.StateMachine
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.StateMachine.svg)](https://www.nuget.org/packages/Trellis.StateMachine)
 
@@ -31,7 +31,7 @@ Result<OrderState> result = machine.FireResult(OrderTrigger.Submit);
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/state-machines.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-statemachine.html)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

@@ -16,19 +16,7 @@ dotnet add package Trellis.Http.Abstractions
 
 `Trellis.Asp` and `Trellis.Http` reference this package transitively; add an explicit reference only when boundary glue code needs to construct or pattern-match the types directly.
 
-## What it provides
-
-| Type | Purpose |
-| --- | --- |
-| `HttpError` (closed union) | Transport faults for `405`, `406`, `412`, `413`, `415`, `416`, `428`. Each case carries the payload that drives the synthesized response header (e.g., `Allow` for `MethodNotAllowed`, `Content-Range` for `RangeNotSatisfiable`). Implements `ITransportFault`. |
-| `PreconditionKind` | Discriminates conditional-request preconditions (`IfMatch`, `IfNoneMatch`, `IfModifiedSince`, `IfUnmodifiedSince`). Used by `HttpError.PreconditionFailed` and `HttpError.PreconditionRequired`. |
-| `EntityTagValue` | Strongly typed `ETag` value with strong/weak distinction and wildcard support. |
-| `AggregateETagExtensions` | `OptionalETag` / `RequireETag` pipeline operators that lift `HttpError.PreconditionFailed` / `PreconditionRequired` into `Error.TransportFault` for `Result<T>` of an `IAggregate`. |
-| `AuthChallenge` | Boundary representation of a `WWW-Authenticate` challenge. |
-| `RetryAfterValue` | HTTP wire representation of `Retry-After` (delay-seconds or HTTP-date). Use `RetryAdvice` in the domain; the boundary translates one to the other. |
-| `RepresentationMetadata`, `WriteOutcome<T>` | Conditional-request and response-shaping helpers shared by server/client packages. The static `WriteOutcome` factory (`Updated<T>`, `Created<T>`, `UpdatedNoContent<T>`, `Accepted<T>`, `AcceptedNoContent<T>`) builds each case but returns the base `WriteOutcome<T>`, so results flow through `Result.Map(...)` / `ToHttpResponse(...)` without a `(WriteOutcome<T>)` cast — e.g. `WriteOutcome.Updated(value, metadata)`. |
-
-## Quick example
+## Quick Example
 
 ```csharp
 using Trellis;
@@ -42,11 +30,29 @@ Error error = new Error.TransportFault(
 
 The server boundary (`Trellis.Asp.ResponseFailureWriter`) unwraps `Error.TransportFault` for status-code resolution and header synthesis. The client (`Trellis.Http.HttpResponseExtensions`) constructs `HttpError.*` cases from inbound responses (preserving `Allow`, `Content-Range`, etc.) and rewraps them in `Error.TransportFault` so they round-trip through the `Result<T>` pipeline without leaving the domain shape.
 
+## Key Features
+
+| Type | Purpose |
+| --- | --- |
+| `HttpError` | Closed transport-fault union for HTTP-specific failures such as 405, 412, 416, and 428 |
+| `EntityTagValue`, `PreconditionKind` | Typed conditional-request and ETag vocabulary |
+| `AuthChallenge`, `RetryAfterValue` | Reusable authentication and retry header values |
+| `RepresentationMetadata`, `WriteOutcome<T>` | Response metadata and write-result shapes shared by server and client packages |
+| `AggregateETagExtensions` | `OptionalETag` and `RequireETag` operators for aggregate result pipelines |
+
 ## Documentation
 
-- [API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-http-abstractions.html)
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-http-abstractions.md)
 - [Error handling](https://xavierjohn.github.io/Trellis/articles/error-handling.html)
 
 ## Part of Trellis
 
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.Http.Abstractions\tests\Trellis.Http.Abstractions.Tests.csproj -c Release
+```

@@ -44,7 +44,15 @@ builder.Services.AddTrellisBehaviors();
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-mediator.md)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.Mediator\tests\Trellis.Mediator.Tests.csproj -c Release
+```

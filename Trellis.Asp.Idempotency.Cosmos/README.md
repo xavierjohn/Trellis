@@ -1,4 +1,4 @@
-# Trellis.Asp.Idempotency.Cosmos
+﻿# Trellis.Asp.Idempotency.Cosmos
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Asp.Idempotency.Cosmos.svg)](https://www.nuget.org/packages/Trellis.Asp.Idempotency.Cosmos)
 
@@ -54,5 +54,15 @@ dotnet test Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.
 ```
 
 ## Documentation
-See the [API reference](https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp-idempotency-cosmos.md)
+See the [package API reference](../docs/docfx_project/api_reference/trellis-api-asp-idempotency-cosmos.md)
 for the document model, partitioning and RU-cost guidance, and the concurrency protocol.
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.Asp.Idempotency.Cosmos\tests\Trellis.Asp.Idempotency.Cosmos.Tests.csproj -c Release
+```
+
+The Cosmos emulator integration tests are opt-in; see the package API reference for the required setup and Microsoft.Testing.Platform trait syntax.

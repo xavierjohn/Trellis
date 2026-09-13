@@ -1,6 +1,35 @@
-# Trellis.Messaging.AzureServiceBus
+﻿# Trellis.Messaging.AzureServiceBus
+
+[![NuGet Package](https://img.shields.io/nuget/v/Trellis.Messaging.AzureServiceBus.svg)](https://www.nuget.org/packages/Trellis.Messaging.AzureServiceBus)
 
 Azure Service Bus transport for Trellis integration events — the wire between a producer's transactional outbox and a consumer's deduplicating inbox.
+
+## Installation
+
+```bash
+dotnet add package Trellis.Messaging.AzureServiceBus
+```
+
+## Quick Example
+
+```csharp
+services.AddAzureServiceBusIntegrationEventPublisher(
+    IntegrationEventNameMap.FromAssemblies(typeof(OrderPlaced).Assembly),
+    options => options.MessageSource = "orders-service");
+
+services.AddAzureServiceBusIntegrationEventConsumer(
+    IntegrationEventNameMap.FromAssemblies(typeof(OrderPlaced).Assembly),
+    options => options.Subscribe("orders.order-placed.v1", "billing"));
+```
+
+Register a `ServiceBusClient` separately. Consumers also require an `IInboxDispatcher`, normally from `AddTrellisInbox<TContext>()`.
+
+## Key Features
+
+- Carries the producer's outbox row ID verbatim as the Service Bus `MessageId`.
+- Uses one topic per stable integration-event wire name by default.
+- Replaces the in-process publisher to prevent duplicate local and broker delivery.
+- Settles messages from the inbox outcome: complete processed or duplicate messages, retry handler failures, and dead-letter unusable payloads.
 
 ## What it is for
 
@@ -64,3 +93,19 @@ docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compos
 ```
 
 The emulator declares its entities in `Config.json` at startup and cannot create them at runtime, which is why the compose file and its entity list are part of the test fixture. Duplicate detection is deliberately **off** on the test topic: if the broker collapsed duplicate ids, the tests would pass even if the transport invented a fresh id per publish. The suite skips visibly when no emulator is reachable, so it never passes against a substitute.
+
+## Documentation
+
+- [Package API reference](../docs/docfx_project/api_reference/trellis-api-messaging-azureservicebus.md)
+- [Outbox guide](https://xavierjohn.github.io/Trellis/articles/integration-outbox.html)
+- [Inbox guide](https://xavierjohn.github.io/Trellis/articles/integration-inbox.html)
+
+## Development
+
+Run the package tests from the repository root:
+
+```powershell
+dotnet test Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release
+```
+
+Start the Azure Service Bus emulator with the command above before running emulator-backed integration tests.

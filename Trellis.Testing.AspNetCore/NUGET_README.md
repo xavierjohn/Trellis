@@ -1,4 +1,4 @@
-# Trellis.Testing.AspNetCore
+﻿# Trellis.Testing.AspNetCore
 
 [![NuGet Package](https://img.shields.io/nuget/v/Trellis.Testing.AspNetCore.svg)](https://www.nuget.org/packages/Trellis.Testing.AspNetCore)
 
@@ -34,7 +34,7 @@ fakeTime.SetUtcNow(DateTimeOffset.UtcNow.AddDays(-7));
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-testing.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-testing-aspnetcore.html)
 
 ## Part of Trellis
 This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) framework.

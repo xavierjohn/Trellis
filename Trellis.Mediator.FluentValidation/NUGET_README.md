@@ -16,7 +16,7 @@ This package bridges the two without forcing Domain projects to take a transitiv
 dotnet add package Trellis.Mediator.FluentValidation
 ```
 
-## Quick example
+## Quick Example
 
 ```csharp
 using FluentValidation;
@@ -31,6 +31,13 @@ builder.Services.AddScoped<IValidator<MyCommand>, MyCommandValidator>();
 
 `AddTrellisFluentValidation()` registers `FluentValidationMessageValidatorAdapter<TMessage>` as the open-generic `IMessageValidator<TMessage>` implementation. Every `IValidator<T>` registered for the message in DI runs inside the existing `ValidationBehavior<TMessage, TResponse>` and contributes its failures to an aggregated `Error.InvalidInput` response. FluentValidation property names with member chains (`Address.City`) or indexers (`Items[0].Sku`) are translated to camelCase RFC 6901 JSON Pointers (`/address/city`, `/items/0/sku`).
 
+## Key Features
+
+- Plugs into the existing Trellis validation behavior instead of adding another pipeline stage.
+- Aggregates all registered validator failures into one `Error.InvalidInput`.
+- Normalizes member chains and indexers to RFC 6901 JSON Pointers.
+- Supports an AOT-safe parameterless registration with explicit validators.
+
 ## AOT / trim story
 
 The parameterless `AddTrellisFluentValidation()` overload is AOT- and trim-safe — it uses open-generic DI registration with no reflection. Validators must be registered explicitly:
@@ -44,7 +51,7 @@ The `AddTrellisFluentValidation(params Assembly[])` overload scans assemblies fo
 ## Documentation
 
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-fluentvalidation.html)
-- [API Reference](https://xavierjohn.github.io/Trellis/api/index.html)
+- [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-mediator-fluentvalidation.html)
 
 ## Part of Trellis
 
