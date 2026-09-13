@@ -36,6 +36,12 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Map Azure App Service / Container Apps built-in authentication ("Easy Auth") principal headers to an `Actor`: `AddAuthentication(...).AddEasyAuth()` decodes `X-MS-CLIENT-PRINCIPAL` (with `-ID` / `-NAME` fallback) onto `HttpContext.User`, then `services.AddEasyAuthActorProvider(...)` maps its claims and varies the response cache by the platform principal headers instead of `Authorization`. Trust precondition: enable only when the app is reachable exclusively through the Easy Auth front end.
 - For microservices that consume gateway-minted internal JWTs, use the separately-packaged [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` + `AddTrellisInternalJwtActorProvider` extension that previously lived under `Trellis.Asp.Authorization` moved to that repo, along with `Trellis.Yarp`).
 
+## Destination-aware Location customization
+
+`HttpResponseOptionsBuilder<T>.WithLocationRouteResolver(Action<LocationRouteContext>)` optionally customizes route values at Location generation after the domain selector and all `WithRouteValueResolver` callbacks. It observes the final destination regardless of configuration order. `LocationRouteContext` exposes get-only `HttpContext`, `RouteName`, `ActionName`, `ControllerName`, and mutable `RouteValues` on a per-execution copy; shared selector dictionaries are not changed.
+
+One callback slot means the last registration wins, including `WithVersionedRoute(...)` from `Trellis.Asp.ApiVersioning`; errors propagate. Literal/selector `Created(...)` and `WriteOutcome`-owned URIs are unaffected. `CreatedAtRoute` / `CreatedAtAction` retain 201, `WithLocation` retains normal 2xx, and action links retain their trimming/AOT limitations (named routes remain AOT-compatible). No new service registration is required.
+
 ## Response and converter compatibility
 
 `Error.ToHttpResponse(o => o.Vary("Accept-Language"))` appends case-insensitively unique `Vary` values without overwriting existing middleware headers. The non-generic error-only builder no longer exposes the previously ineffective `HonorPrefer()` method; remove that call when upgrading. Generic success builders retain `HonorPrefer()`.

@@ -7,7 +7,7 @@
 
 Flags `HttpResponseOptionsBuilder<T>.CreatedAtRoute(routeName, routeValues)`, `CreatedAtAction(actionName, routeValues, controllerName)`, and `WithLocation(routeName, routeValues)` invocations that produce `Location` headers without an `api-version` route value, when the enclosing controller is decorated with `[ApiVersion(...)]`.
 
-The analyzer suppresses when the same fluent builder chain calls `.WithVersionedRoute(...)` from `Trellis.Asp.ApiVersioning` — that helper injects the version per-request and removes the need to encode it in the route values literal. The analyzer also suppresses when the chain calls the underlying primitive directly: `.WithRouteValueResolver("api-version", httpContext => ...)` on `HttpResponseOptionsBuilder<T>`. The key match is case-insensitive (`"API-Version"` also suppresses).
+The analyzer suppresses when the same fluent builder chain calls `.WithVersionedRoute(...)` from `Trellis.Asp.ApiVersioning` — that helper resolves the destination's version per request and removes the need to encode it in the route values literal. The analyzer also suppresses for the manual primitive `.WithRouteValueResolver("api-version", httpContext => ...)` on `HttpResponseOptionsBuilder<T>`. This suppression is not equivalent to destination-aware validation. The key match is case-insensitive (`"API-Version"` also suppresses).
 
 The analyzer runs only inside controllers/types annotated with `[ApiVersion]` and not `[ApiVersionNeutral]`. `[ApiVersion]` is `Inherited = false`, so the analyzer inspects the immediate type — derived controllers without their own `[ApiVersion]` attribute are ignored.
 
@@ -20,7 +20,7 @@ Recognised dictionary shapes (suppress the warning when an `api-version` key is 
 
 Key matching is case-insensitive (matches `RouteValueDictionary`'s runtime semantics): `"API-VERSION"`, `"Api-Version"`, etc., are all accepted.
 
-The single-id overloads (`CreatedAtRoute(routeName, idSelector)` / `WithLocation(routeName, idSelector)`) construct the dictionary internally with a single non-`"api-version"` key, so they are always flagged unless followed by `.WithVersionedRoute()` (or the equivalent manual `.WithRouteValueResolver("api-version", ...)`).
+The single-id overloads (`CreatedAtRoute(routeName, idSelector)` / `WithLocation(routeName, idSelector)`) construct the dictionary internally with a single non-`"api-version"` key, so they are always flagged unless followed by `.WithVersionedRoute()` (or the manual `.WithRouteValueResolver("api-version", ...)`).
 
 ## Why it matters
 
@@ -65,7 +65,7 @@ opts.CreatedAtRoute(
 
 ## Good examples
 
-The recommended fix is to chain `.WithVersionedRoute()` from the [`Trellis.Asp.ApiVersioning`](../integration-aspnet.md#api-version-aware-location-headers) package. The runtime helper injects the version per request from `HttpContext.RequestedApiVersion`, with sensible fallbacks for `[ApiVersionNeutral]` endpoints and URL-segment versioning:
+The recommended fix is to chain `.WithVersionedRoute()` from the [`Trellis.Asp.ApiVersioning`](../integration-aspnet.md#api-version-aware-location-headers) package. It resolves the **final named-route or MVC-action destination**, not the current endpoint. It accepts a requested version only when mapped to that target, otherwise uses a single mapped declared version, then a mapped host default, otherwise throws. Action-level `[MapToApiVersion]` narrows controller declarations.
 
 ```csharp
 using Trellis.Asp.ApiVersioning;
@@ -89,7 +89,19 @@ opts.CreatedAtRoute(
     o => new RouteValueDictionary { ["id"] = o.Id, ["api-version"] = "2026-12-01" });
 ```
 
-Either form silences TRLS023.
+Either form silences TRLS023, but manual values do not supply target-aware checks. For manual query values, ensure the destination actually accepts the version.
+
+### Runtime migration considerations
+
+The code-fix syntax is unchanged; its runtime behavior is now stricter:
+
+- Missing or ambiguous destinations throw `InvalidOperationException`; prefer uniquely named routes. Suppressed link-generation endpoints are excluded, and resolution never falls back to the current endpoint.
+- Explicit pins must map to the destination. Segment destinations receive the resolved/pinned value in their actual `:apiVersion` parameter (not necessarily `version`), without a duplicate query value.
+- Neutral and missing-metadata destinations skip injection and remove supplied `api-version` entries. Missing-metadata warnings identify and deduplicate by **destination endpoint / AppDomain**, not caller; neutral targets stay quiet.
+- Version injection runs through `WithLocationRouteResolver` after the domain selector and all legacy route-value callbacks, overriding competing version values on a per-execution clone. One callback slot means the last registration wins, including repeated `WithVersionedRoute` calls; errors propagate.
+- Literal/selector `Created(...)`, `WriteOutcome`-owned URIs, existing statuses, and action-link trimming/AOT limitations are unchanged. No new registration or analyzer diagnostic is introduced.
+
+`PageUrl` shares corrected mapping checks, not the new Location segment behavior: it retains ambient segment routing, cross-route validation, consumer overrides, quiet missing-metadata handling, and rejection of explicit segment pins.
 
 ## Code fix available
 
@@ -112,12 +124,12 @@ Standard Roslyn configuration applies.
 dotnet_diagnostic.TRLS023.severity = error
 ```
 
-If you have a controller that genuinely needs version-neutral `Location` headers despite carrying `[ApiVersion]` (rare), suppress at the call site with a clear justification:
+For a versioned controller linking to a neutral destination, prefer `.WithVersionedRoute()` — it inspects the target and removes the query version automatically. If you deliberately own manual Location generation instead, suppress at the call site with a clear justification:
 
 ```csharp
 [System.Diagnostics.CodeAnalysis.SuppressMessage(
     "Trellis", "TRLS023",
-    Justification = "Cross-version redirect; Location must omit api-version on this endpoint.")]
+    Justification = "Manual neutral-target link; application validates the destination and omits api-version.")]
 public ActionResult<Order> CrossVersionRedirect() => ...;
 ```
 
@@ -128,4 +140,3 @@ public ActionResult<Order> CrossVersionRedirect() => ...;
 
 - The analyzer recognises only the dictionary shapes listed above. Computed dictionaries (`c => myDict`, `c => MakeDict(c)`) on the 2-arg overload are bailed to false-negative — TRLS023 won't fire even if `myDict` is missing the key. Chaining `.WithVersionedRoute()` is still the right answer there.
 - The analyzer does not run on Minimal API endpoints (`app.MapPost("/orders", ...)`); it's scoped to `HttpResponseOptionsBuilder<T>` calls inside MVC controllers.
-

@@ -58,6 +58,14 @@ Default mappings (overridable per call via `.WithErrorMapping(...)` or globally 
 
 The domain `Kind` slug and the on-wire `kind` extension are intentionally distinct for the renamed cases (`invalid-input`, `invariant-violation`, `authentication-required`, `rate-limited`, `unavailable`, `unexpected`). The wire token is preserved at the boundary at the historical RFC-9110-aligned value, so external problem-details consumers see no change.
 
+## Destination-aware Location customization
+
+`HttpResponseOptionsBuilder<T>.WithLocationRouteResolver(Action<LocationRouteContext>)` is an optional hook for `CreatedAtRoute`, `CreatedAtAction`, and `WithLocation`. It runs at Location generation after the domain selector and **all** `WithRouteValueResolver` callbacks, observing the final destination regardless of configuration order. `LocationRouteContext` exposes get-only `HttpContext`, `RouteName`, `ActionName`, `ControllerName`, and mutable `RouteValues` (a per-execution copy, so shared selector dictionaries are safe).
+
+There is one callback slot: the last registration wins, including `WithVersionedRoute(...)` from `Trellis.Asp.ApiVersioning`. Callback errors propagate. Literal/selector `Created(...)` and `WriteOutcome`-owned URIs ignore the hook. Statuses remain 201 for `CreatedAtRoute` / `CreatedAtAction` and normal 2xx for `WithLocation`; named routes remain AOT-compatible while action links retain trimming/AOT limitations. No service registration is added.
+
+See the [ASP API reference](../docs/docfx_project/api_reference/trellis-api-asp.md#locationroutecontext) for property semantics and [target-aware versioning migration](../docs/docfx_project/api_reference/trellis-api-asp-apiversioning.md#migration-existing-syntax-stricter-destination-checks) for stricter target checks and honored segment pins.
+
 ## Response and converter compatibility
 
 `Error.ToHttpResponse(o => o.Vary("Accept-Language"))` appends case-insensitively unique `Vary` values without overwriting existing middleware headers. The non-generic error-only builder no longer exposes the previously ineffective `HonorPrefer()` method; remove that call when upgrading. Generic success builders retain `HonorPrefer()`.

@@ -29,6 +29,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     private string? _controllerName;
     private Func<TDomain, Microsoft.AspNetCore.Routing.RouteValueDictionary>? _routeValuesSelector;
     private Dictionary<string, Func<Microsoft.AspNetCore.Http.HttpContext, string?>>? _routeValueResolvers;
+    private Action<LocationRouteContext>? _locationRouteResolver;
     private bool _markAsCreated;
 
     private bool _evaluatePreconditions;
@@ -346,6 +347,27 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     }
 
     /// <summary>
+    /// Configures route values using the final Location destination at execution time.
+    /// Runs after the route-values selector and all single-key route-value resolvers.
+    /// </summary>
+    /// <param name="resolver">
+    /// A callback that can inspect the destination and modify its per-execution route-values copy.
+    /// </param>
+    /// <returns>This builder for chaining.</returns>
+    /// <remarks>
+    /// Replaces any previously configured Location-route resolver. Configuration order relative
+    /// to CreatedAtRoute, CreatedAtAction, and WithLocation does not affect destination selection:
+    /// the final destination wins. Ignored for literal/selector locations and outcome-owned URIs.
+    /// Callback exceptions propagate.
+    /// </remarks>
+    public HttpResponseOptionsBuilder<TDomain> WithLocationRouteResolver(Action<LocationRouteContext> resolver)
+    {
+        ArgumentNullException.ThrowIfNull(resolver);
+        _locationRouteResolver = resolver;
+        return this;
+    }
+
+    /// <summary>
     /// Honors RFC 9110 conditional request headers (<c>If-Match</c>, <c>If-Unmodified-Since</c>,
     /// <c>If-None-Match</c>, <c>If-Modified-Since</c>) on the response side. Only meaningful for
     /// safe methods (GET/HEAD); on unsafe methods the precondition must be evaluated *before* the mutation.
@@ -403,6 +425,7 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
         ControllerName = _controllerName,
         RouteValuesSelector = _routeValuesSelector,
         RouteValueResolvers = _routeValueResolvers,
+        LocationRouteResolver = _locationRouteResolver,
         MarkAsCreated = _markAsCreated,
         EvaluatePreconditions = _evaluatePreconditions,
         HonorPrefer = _honorPrefer,
@@ -433,6 +456,7 @@ internal sealed class HttpResponseOptions<TDomain>
     public string? ControllerName { get; init; }
     public Func<TDomain, Microsoft.AspNetCore.Routing.RouteValueDictionary>? RouteValuesSelector { get; init; }
     public IReadOnlyDictionary<string, Func<Microsoft.AspNetCore.Http.HttpContext, string?>>? RouteValueResolvers { get; init; }
+    public Action<LocationRouteContext>? LocationRouteResolver { get; init; }
     public bool MarkAsCreated { get; init; }
 
     public bool EvaluatePreconditions { get; init; }

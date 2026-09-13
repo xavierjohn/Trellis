@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TrellisApiRefName>asp-apiversioning</TrellisApiRefName>
-    <Description>API-versioning helpers for Trellis.Asp. Adds a WithVersionedRoute() extension on HttpResponseOptionsBuilder that auto-injects the api-version route value into Location headers, so responses round-trip the requested version under query/header API versioning. Chain after CreatedAtRoute(...), CreatedAtAction(...), or WithLocation(...). Skips injection for [ApiVersionNeutral] endpoints, URL-segment-versioned routes, and endpoints with no ApiVersionMetadata (composes cleanly in unversioned and mixed-versioned hosts).</Description>
+    <Description>Target-aware API-versioning helpers for Trellis.Asp. WithVersionedRoute() versions Location headers from CreatedAtRoute(...), CreatedAtAction(...), and WithLocation(...) using the destination's actual version mappings. Supports query values and URL-segment parameters, including explicit segment pins. Neutral and missing-metadata destinations skip injection and remove supplied api-version values. PageUrl supplies version-aware pagination links while retaining ambient segment routing and rejecting explicit segment pins.</Description>
     <PackageTags>trellis;api-versioning;asp;versioning;result;railway-oriented;functional-programming</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -17,5 +17,3 @@
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
   </ItemGroup>
 </Project>
-
-

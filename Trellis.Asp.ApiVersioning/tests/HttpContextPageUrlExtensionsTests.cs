@@ -677,32 +677,29 @@ public sealed class HttpContextPageUrlExtensionsTests
     }
 
     [Fact]
-    public async Task Split_mapping_declared_versions_counted_as_multi_not_single()
+    public void ResolveApiVersion_ActionMapping_TakesPrecedenceOverControllerVersions()
     {
-        // Asp.Versioning splits declarations across mapping kinds when a controller carries
-        // [ApiVersion(v1)] and an action carries [MapToApiVersion(v2)]: v1 lands under
-        // Implicit, v2 under Explicit. The single-declared fallback (step 2) must count the
-        // distinct union — Map(Implicit) ∪ Map(Explicit) — not just one mapping. Otherwise
-        // a target that declares two versions would look single-declared via Implicit alone
-        // and the resolver would silently return v1, defeating the cross-route validation
-        // built into step 1.
         var ctx = BuildHttpContextWithoutRequestedVersion();
         var endpoint = BuildSplitMappingEndpointWithoutDefault();
 
-        Action act = () =>
-            HttpResponseOptionsBuilderApiVersioningExtensions.ResolveApiVersion(
-                ctx,
-                endpoint,
-                callerLabel: "the next-page URL",
-                explicitOverloadHint: "PageUrl(routeName, ApiVersion, ...)");
+        var version = HttpResponseOptionsBuilderApiVersioningExtensions.ResolveApiVersion(
+            ctx,
+            endpoint,
+            callerLabel: "the next-page URL",
+            explicitOverloadHint: "PageUrl(routeName, ApiVersion, ...)");
 
-        // No requested version + no default + two distinct declared versions split across
-        // mappings ⇒ must throw, not silently echo v1. If the resolver returned a string,
-        // the single-declared fallback miscounted.
-        act.Should().Throw<InvalidOperationException>()
-            .Which.Message.Should().Contain("declares more than one");
+        version.Should().Be(ApiVersionV2);
+    }
 
-        await Task.CompletedTask;
+    [Fact]
+    public void TargetDeclaresVersion_ActionMapping_RejectsControllerOnlyVersion()
+    {
+        var metadata = BuildSplitMappingEndpointWithoutDefault().Metadata.GetMetadata<ApiVersionMetadata>()!;
+
+        HttpResponseOptionsBuilderApiVersioningExtensions.TargetDeclaresVersion(
+            metadata, new ApiVersion(new DateOnly(2026, 11, 12))).Should().BeFalse();
+        HttpResponseOptionsBuilderApiVersioningExtensions.TargetDeclaresVersion(
+            metadata, new ApiVersion(new DateOnly(2026, 12, 1))).Should().BeTrue();
     }
 
     #endregion
@@ -1051,14 +1048,11 @@ public sealed class HttpContextPageUrlExtensionsTests
 
     private static RouteEndpoint BuildSplitMappingEndpointWithoutDefault()
     {
-        // ApiVersionMetadata that splits declarations across mapping kinds: v1 lives under
-        // the Implicit mapping (the controller-level [ApiVersion(v1)] equivalent) and v2 under
-        // the Explicit mapping (the action-level [MapToApiVersion(v2)] equivalent). Each
-        // mapping individually has Count == 1 and would fool a single-mapping fallback into
-        // returning v1; the distinct UNION is 2 and must therefore not pick a winner.
+        // An explicit action mapping narrows the API's declared versions; it does not add
+        // the controller's other versions back into the set accepted by this action.
         var v1 = new ApiVersion(new DateOnly(2026, 11, 12));
         var v2 = new ApiVersion(new DateOnly(2026, 12, 1));
-        var implicitModel = new ApiVersionModel([v1], [v1], [], [], []);
+        var implicitModel = new ApiVersionModel([v1, v2], [v1, v2], [], [], []);
         var explicitModel = new ApiVersionModel([v2], [v2], [], [], []);
         var metadata = new ApiVersionMetadata(implicitModel, explicitModel, "SplitMappingTarget");
 

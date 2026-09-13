@@ -99,6 +99,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Add a paginated list query | [Recipe 3](#recipe-3--query-handler-returning-paget-paginated-list-with-cursor) |
 | Paginate a computed score or distance with validated continuation state bound to query context | [Recipe 40](#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) |
 | Add Minimal API or MVC endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult) |
+| Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
 | Map primitive DTO fields to value objects | [Recipe 18](#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
 | Add resource authorization | [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) |
 | Authorize against a related resource one or more navigation hops away (cricket-style fan-out, owner chains) | [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization) |
@@ -427,6 +428,8 @@ app.Run();
 ```
 
 **What it shows.** `ToHttpResponse` returns `Microsoft.AspNetCore.Http.IResult` and is the **only** supported response verb. The fluent `HttpResponseOptionsBuilder<TDomain>` configures protocol semantics (`WithETag`, `WithLastModified`, `Vary`, `EvaluatePreconditions`) without leaking HTTP into the handler. Failures (`Error.NotFound`, `Error.InvalidInput`, …) round-trip through Problem Details using the `TrellisAspOptions` mapping registered by `AddTrellisAsp`.
+
+**Versioned Location links.** For `CreatedAtRoute` / `CreatedAtAction` (201) or `WithLocation` (normal 2xx), load [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) before chaining the existing `.WithVersionedRoute()` / `.WithVersionedRoute(ApiVersion)` APIs. They now inspect the final destination, honor actual action mappings and segment pins, and reject missing/ambiguous targets or unsupported pins. The optional ASP [`WithLocationRouteResolver`](trellis-api-asp.md#locationroutecontext) hook runs after all legacy callbacks on a cloned dictionary; last registration wins. Literal `Created` and `WriteOutcome` URIs are unchanged. Do not transfer Location segment behavior to `PageUrl`: its implicit ambient routing and explicit segment-pin rejection remain.
 
 ---
 
