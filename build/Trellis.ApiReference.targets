@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!--
     Shared targets file packed into each Trellis NuGet package.
     Declares TrellisApiReference items pointing to the API reference markdown
@@ -190,7 +190,9 @@
           RetryDelayMilliseconds="200"
           ContinueOnError="WarnAndContinue"
           Condition="'$(_TrellisApiOutputDir)' != ''" />
-    <Exec Command="chmod 0644 &quot;%(_TrellisApiReferenceDestination.FullPath)&quot;"
+    <Exec Command="chmod 0644 &quot;$TRELLIS_API_REFERENCE_DESTINATION&quot;"
+          EnvironmentVariables="TRELLIS_API_REFERENCE_DESTINATION=%(_TrellisApiReferenceDestination.FullPath)"
+          ContinueOnError="WarnAndContinue"
           Condition="'$(OS)' != 'Windows_NT' AND Exists('%(_TrellisApiReferenceDestination.FullPath)')" />
   </Target>
 

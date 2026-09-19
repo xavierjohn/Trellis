@@ -17,6 +17,8 @@
       5. TrellisDisableApiReferenceSync  - opts out entirely.
       6. Packed layout                   - docs land at a clean trellis/<name>.md on every platform.
       7. Unix permissions                - copied docs are normalized to mode 0644.
+      8. Shell-special paths             - destination paths are passed as data, not shell code.
+      9. Permission failures             - chmod errors warn without failing consumer builds.
 #>
 [CmdletBinding()]
 param(
@@ -149,7 +151,10 @@ function New-NuGetConfig {
 }
 
 function Invoke-ConsumerBuild {
-    param([string] $ProjectDir)
+    param(
+        [string] $ProjectDir,
+        [switch] $PassThru
+    )
 
     Push-Location $ProjectDir
     try {
@@ -158,9 +163,75 @@ function Invoke-ConsumerBuild {
             Write-Host ($output | Out-String)
             throw "Consumer build failed in $ProjectDir"
         }
+        if ($PassThru) { return ($output | Out-String) }
     }
     finally {
         Pop-Location
+    }
+}
+
+function Assert-PermissionTaskContract {
+    [xml] $targets = Get-Content -LiteralPath (Join-Path $repoRoot 'build/Trellis.ApiReference.targets') -Raw
+    $permissionTask = $targets.SelectSingleNode(
+        "//*[local-name()='Target' and @Name='_CopyTrellisApiReference']/*[local-name()='Exec']")
+
+    Assert-Condition -Scenario 'permission task' -Because 'the shell command references only a fixed environment variable' `
+        -Condition ($permissionTask.Command -ceq 'chmod 0644 "$TRELLIS_API_REFERENCE_DESTINATION"')
+    Assert-Condition -Scenario 'permission task' -Because 'the destination is supplied through the task environment' `
+        -Condition ($permissionTask.GetAttribute('EnvironmentVariables') -ceq 'TRELLIS_API_REFERENCE_DESTINATION=%(_TrellisApiReferenceDestination.FullPath)')
+    Assert-Condition -Scenario 'permission task' -Because 'permission failures warn and continue like copy failures' `
+        -Condition ($permissionTask.GetAttribute('ContinueOnError') -ceq 'WarnAndContinue')
+}
+
+function Assert-UnixPermissionEdgeCases {
+    param([string] $PackageVersion)
+
+    if ($IsWindows) {
+        Write-Host "`nScenarios 8-9 - Unix permission edge cases (not applicable on Windows)"
+        return
+    }
+
+    $specialRoot = Join-Path $work 'literal $HOME `printf expanded` "quoted" space'
+    $projectDir = Join-Path $work 'shell-path-consumer'
+    New-ScratchConsumer -Path $projectDir -PackageVersion $PackageVersion `
+        -Properties @{ TrellisApiReferenceRoot = $specialRoot }
+    New-NuGetConfig -Path $projectDir
+    Invoke-ConsumerBuild -ProjectDir $projectDir
+    $docPath = Join-Path $specialRoot '.github/trellis-start-here.md'
+    $expectedMode =
+        [System.IO.UnixFileMode]::UserRead -bor
+        [System.IO.UnixFileMode]::UserWrite -bor
+        [System.IO.UnixFileMode]::GroupRead -bor
+        [System.IO.UnixFileMode]::OtherRead
+    Assert-Condition -Scenario 'shell-special path' -Because 'the literal destination receives mode 0644' `
+        -Condition ([System.IO.File]::GetUnixFileMode($docPath) -eq $expectedMode)
+
+    $executableMode = $expectedMode -bor [System.IO.UnixFileMode]::UserExecute
+    [System.IO.File]::SetUnixFileMode($docPath, $executableMode)
+    Invoke-ConsumerBuild -ProjectDir $projectDir
+    Assert-Condition -Scenario 'shell-special path' -Because 'unchanged copies at literal paths are normalized too' `
+        -Condition ([System.IO.File]::GetUnixFileMode($docPath) -eq $expectedMode)
+
+    $shimDirectory = Join-Path $work 'failing-chmod'
+    New-Item -ItemType Directory -Path $shimDirectory -Force | Out-Null
+    $shimPath = Join-Path $shimDirectory 'chmod'
+    [System.IO.File]::WriteAllText(
+        $shimPath,
+        "#!/bin/sh`necho 'Trellis probe: chmod denied' >&2`nexit 1`n",
+        [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::SetUnixFileMode($shimPath, $executableMode)
+    [System.IO.File]::SetUnixFileMode($docPath, $executableMode)
+    $originalPath = $env:PATH
+    try {
+        $env:PATH = "$shimDirectory$([System.IO.Path]::PathSeparator)$originalPath"
+        $output = Invoke-ConsumerBuild -ProjectDir $projectDir -PassThru
+        Assert-Condition -Scenario 'permission failure' -Because 'a failed chmod is reported as a build warning' `
+            -Condition ($output -match 'Trellis probe: chmod denied' -and $output -match 'warning MSB3073')
+        Assert-Condition -Scenario 'permission failure' -Because 'the simulated permission failure left the mode unchanged' `
+            -Condition ([System.IO.File]::GetUnixFileMode($docPath) -eq $executableMode)
+    }
+    finally {
+        $env:PATH = $originalPath
     }
 }
 
@@ -209,6 +280,7 @@ function Assert-UnixPermissionsNormalized {
 }
 
 try {
+    Assert-PermissionTaskContract
     Write-Host "Probe workspace: $work"
     New-Item -ItemType Directory -Path $feed -Force | Out-Null
 
@@ -259,6 +331,7 @@ try {
     Assert-UnixPermissionsNormalized `
         -ProjectDir $s1Project `
         -DocPath (Join-Path $s1Root 'src/services/.github/trellis-start-here.md')
+    Assert-UnixPermissionEdgeCases -PackageVersion $version
 
     # ------------------------------------------------------- Scenario 2: never escape the .git root
     # A .github exists ABOVE the consumer's repository. Writing there would leak files into an
