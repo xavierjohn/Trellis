@@ -16,7 +16,8 @@ using System.Collections.Generic;
 /// <param name="Body">The raw response body bytes captured from the handler.</param>
 /// <param name="Fingerprint">
 /// The request fingerprint that produced this snapshot. Stored alongside the response so a
-/// replay can reject a key reused with a different body.
+/// replay can reject a key reused in the same scope with a different request fingerprint
+/// (method, path, query, fingerprinted headers, or body bytes).
 /// </param>
 /// <remarks>
 /// Record equality on this type is the C# record default: scalar fields (<see cref="StatusCode"/>,

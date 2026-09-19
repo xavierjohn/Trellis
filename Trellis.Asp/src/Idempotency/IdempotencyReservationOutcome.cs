@@ -28,8 +28,8 @@ public abstract record IdempotencyReservationOutcome
     public sealed record Reserved(string ReservationId) : IdempotencyReservationOutcome;
 
     /// <summary>
-    /// Another request with the same key and scope is currently being processed and the
-    /// caller's reservation request was rejected. The middleware translates this into a
+    /// Another request with the same key, scope, and fingerprint has an active reservation and
+    /// the caller's reservation request was rejected. The middleware translates this into a
     /// <c>409 Conflict</c> with a <c>Retry-After</c> header derived from
     /// <see cref="RetryAfter"/>.
     /// </summary>
@@ -37,19 +37,22 @@ public abstract record IdempotencyReservationOutcome
     public sealed record AlreadyInFlight(TimeSpan RetryAfter) : IdempotencyReservationOutcome;
 
     /// <summary>
-    /// A completed snapshot exists for this key+scope+fingerprint. The caller replays
+    /// An unexpired completed snapshot exists for this key+scope and its fingerprint matches
+    /// the request. The caller replays
     /// <paramref name="Snapshot"/> verbatim to the client and skips handler execution.
     /// </summary>
     /// <param name="Snapshot">The previously captured response.</param>
     public sealed record Replay(IdempotencyResponseSnapshot Snapshot) : IdempotencyReservationOutcome;
 
     /// <summary>
-    /// A snapshot or in-flight reservation exists for this key+scope but the request's
+    /// An unexpired snapshot or outstanding reservation exists for this key+scope but the request's
     /// fingerprint does not match the stored one. The middleware translates this into the
     /// configured <see cref="IdempotencyOptions.MismatchStatusCode"/> (default 422). Returned
     /// both for completed snapshots (replay would not match) and for an in-flight reservation
     /// whose fingerprint differs from the new request — the latter prevents the second caller
-    /// from taking over the slot with a different body.
+    /// from taking over the slot with a different request fingerprint, even after the
+    /// reservation timeout. Despite the outcome's name, mismatches include method, path,
+    /// query, fingerprinted headers, and body bytes.
     /// </summary>
     /// <param name="StoredFingerprint">
     /// Fingerprint of the request that originally created the stored snapshot or holds the
