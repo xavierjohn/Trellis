@@ -16,6 +16,7 @@
       4. TrellisApiReferenceRoot         - explicit override wins over the walk.
       5. TrellisDisableApiReferenceSync  - opts out entirely.
       6. Packed layout                   - docs land at a clean trellis/<name>.md on every platform.
+      7. Unix permissions                - copied docs are normalized to mode 0644.
 #>
 [CmdletBinding()]
 param(
@@ -172,6 +173,41 @@ function Get-DocNames {
     return , @(Get-ChildItem -Path $GitHubDir -Filter '*.md' -File | ForEach-Object { $_.Name })
 }
 
+function Assert-UnixPermissionsNormalized {
+    param(
+        [string] $ProjectDir,
+        [string] $DocPath
+    )
+
+    if ($IsWindows) {
+        Write-Host "`nScenario 7 - Unix permissions (not applicable on Windows)"
+        return
+    }
+
+    [System.IO.File]::SetUnixFileMode(
+        $DocPath,
+        [System.IO.UnixFileMode]::UserRead -bor
+        [System.IO.UnixFileMode]::UserWrite -bor
+        [System.IO.UnixFileMode]::UserExecute -bor
+        [System.IO.UnixFileMode]::GroupRead -bor
+        [System.IO.UnixFileMode]::GroupExecute -bor
+        [System.IO.UnixFileMode]::OtherRead -bor
+        [System.IO.UnixFileMode]::OtherExecute)
+
+    Invoke-ConsumerBuild -ProjectDir $ProjectDir
+
+    $expectedMode =
+        [System.IO.UnixFileMode]::UserRead -bor
+        [System.IO.UnixFileMode]::UserWrite -bor
+        [System.IO.UnixFileMode]::GroupRead -bor
+        [System.IO.UnixFileMode]::OtherRead
+    $actualMode = [System.IO.File]::GetUnixFileMode($DocPath)
+
+    Write-Host "`nScenario 7 - Unix permissions"
+    Assert-Condition -Scenario 'permissions' -Because 'copied docs are normalized to mode 0644' `
+        -Condition ($actualMode -eq $expectedMode)
+}
+
 try {
     Write-Host "Probe workspace: $work"
     New-Item -ItemType Directory -Path $feed -Force | Out-Null
@@ -220,6 +256,9 @@ try {
         Assert-Condition -Scenario 'nearest' -Because "$doc delivered to the nearest .github" -Condition ($s1Near -contains $doc)
     }
     Assert-Condition -Scenario 'nearest' -Because 'the repo-root .github was left untouched' -Condition ($s1Far.Count -eq 0)
+    Assert-UnixPermissionsNormalized `
+        -ProjectDir $s1Project `
+        -DocPath (Join-Path $s1Root 'src/services/.github/trellis-start-here.md')
 
     # ------------------------------------------------------- Scenario 2: never escape the .git root
     # A .github exists ABOVE the consumer's repository. Writing there would leak files into an
