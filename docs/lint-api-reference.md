@@ -12,9 +12,10 @@ The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, 
 
 ## DocFX site build
 
-The site build is verified with DocFX 2.80.1, whose Roslyn host runs the Trellis source generators directly:
+Both CI workflows pin DocFX to 2.80.1, whose Roslyn host runs the Trellis source generators directly. Use the same version locally:
 
 ```powershell
+dotnet tool update -g docfx --version 2.80.1
 dotnet build Trellis.slnx -c Release
 docfx docs/docfx_project/docfx.json --warningsAsErrors
 ```

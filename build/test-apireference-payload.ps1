@@ -191,7 +191,7 @@ function Assert-UnixPermissionEdgeCases {
         return
     }
 
-    $specialRoot = Join-Path $work 'literal $HOME `printf expanded` "quoted" space'
+    $specialRoot = Join-Path $work 'literal $HOME `printf expanded` "quoted" space;semicolon'
     $projectDir = Join-Path $work 'shell-path-consumer'
     New-ScratchConsumer -Path $projectDir -PackageVersion $PackageVersion `
         -Properties @{ TrellisApiReferenceRoot = $specialRoot }

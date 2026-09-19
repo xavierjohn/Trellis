@@ -334,8 +334,8 @@ jobs:
         fi
         run_smoke "Mvc-JIT" 5100 mvc-jit.log dotnet "$MVC_DLL"
 
-    - name: Update doc tools
-      run: dotnet tool update -g docfx
+    - name: Install DocFX
+      run: dotnet tool update -g docfx --version 2.80.1
 
     - name: Build docs
       run: docfx docs/docfx_project/docfx.json

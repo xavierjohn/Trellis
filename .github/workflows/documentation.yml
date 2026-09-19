@@ -56,8 +56,8 @@ jobs:
       # partials are included in Compile. Build first so project references are available.
       run: dotnet build --no-restore -c Release
 
-    - name: Update doc tools
-      run: dotnet tool update -g docfx
+    - name: Install DocFX
+      run: dotnet tool update -g docfx --version 2.80.1
 
     - name: Gate stale v1 Error.X(...) factory references
       shell: bash
