@@ -1,43 +1,17 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Lightweight authorization primitives for Trellis. Provides Actor, IActorProvider, IAuthorize, IAuthorizeResource of TResource, IResourceLoader, and ResourceLoaderById types that integrate with the Trellis Result type system. No dependency on any mediator or web framework.</Description>
     <PackageTags>trellis;authorization;actor;permissions;result;railway-oriented;functional-programming</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>authorization</TrellisApiRefName>
-    <!--
-      Emit generator output to disk so docfx (which re-parses source through its bundled
-      Roslyn and cannot load our newer-compiler source generators) can read the generated
-      partials as ordinary .cs files alongside ActorId.cs. The build itself does not depend
-      on these files being on disk — they are also produced in-memory by Roslyn — but the
-      on-disk copy is what docfx consumes for XML doc metadata.
-    -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
   <!--
-    During a real compile (normal `dotnet build`, IDE IntelliSense via design-time builds,
-    `dotnet test`, etc.), the Trellis.Core source generator runs and feeds the partial
-    class into Roslyn in-memory; we must exclude the on-disk copy under Generated/ from
-    <Compile> to avoid duplicate-definition errors.
-
-    docfx's metadata step loads the project through its bundled (older) Roslyn, which
-    cannot load our newer-compiler source generators (FailedToLoadAnalyzer). When invoked
-    by docfx we set TrellisDocfxMetadataBuild=true (see docs/docfx_project/docfx.json
-    metadata.properties); under that flag we keep the on-disk Generated/*.g.cs in
-    <Compile> so docfx can see the generator-emitted partial. The build itself emits these
-    files (see EmitCompilerGeneratedFiles above) so by the time docfx runs in CI (after
-    `dotnet build`) the files exist on disk for docfx to consume.
-
-    Important: do NOT key this off `$(DesignTimeBuild)` — IDEs (Visual Studio, Rider, VS
-    Code with C# DevKit) set DesignTimeBuild=true for IntelliSense and DO run source
-    generators in that mode, which would produce both an in-memory copy and an on-disk
-    copy → CS0101.
+    DocFX 2.80.1 runs the source generator itself. Exclude output left by the old
+    on-disk metadata workaround in existing checkouts to avoid duplicate declarations.
   -->
-  <ItemGroup Condition="'$(TrellisDocfxMetadataBuild)' != 'true'">
-    <Compile Remove="Generated/**/*.cs" />
-  </ItemGroup>
   <ItemGroup>
+    <Compile Remove="Generated/**/*.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Trellis.Core\src\Trellis.Core.csproj" />

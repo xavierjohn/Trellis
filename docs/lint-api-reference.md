@@ -10,6 +10,18 @@ pwsh docs/lint-api-reference.ps1
 
 The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, so failures are emitted as MSBuild errors.
 
+## DocFX site build
+
+Both CI workflows pin DocFX to 2.80.1, whose Roslyn host runs the Trellis source generators directly. Use the same version locally:
+
+```powershell
+dotnet tool update -g docfx --version 2.80.1
+dotnet build Trellis.slnx -c Release
+docfx docs/docfx_project/docfx.json --warningsAsErrors
+```
+
+Do not include saved generator output as ordinary compilation inputs for metadata extraction. The old `TrellisDocfxMetadataBuild` workaround did that for `ActorId` when older DocFX versions could not load the generator; with the current tool it causes duplicate partial declarations. `Trellis.Authorization` excludes any stale `Generated/**/*.cs` files left in existing checkouts, and generated members such as `ActorId.TryCreate` are still included in the API metadata.
+
 ## Rules
 
 - **TRLDOC001**: Bare cross-doc links such as `](trellis-api-core.md)` must point at a specific anchor, for example `](trellis-api-core.md#some-section)`. Lines inside fenced code blocks are skipped.
@@ -22,7 +34,7 @@ TRLDOC004 used to assert that some package *packs* each file. It no longer can, 
 
 - **TRLDOC012**: Every doc listed under `GuardrailDocs` in `docs/api-reference-docs.psd1` must carry the opt-in banner. Guardrail docs are the one exception to "delivering a doc for an unreferenced package is harmless": describing an absent *API* produces a compile error, but describing an absent *analyzer* makes an agent write **less** defensively, trusting a rule that never runs. The banner states that standalone analyzer rules require a `PackageReference` to `Trellis.Analyzers`; source-generator diagnostics are supplied by their hosting packages and do not require that separate reference.
 
-Proving docs are *delivered* needs `build/test-apireference-payload.ps1`, which packs real packages, restores them into scratch consumers outside the repository and asserts which `.github` directory the files land in — covering the nearest-`.github` preference, the `.git` boundary that stops the walk escaping into an unrelated parent checkout, the `TrellisApiReferenceRoot` override, the `TrellisDisableApiReferenceSync` opt-out, and a satellite package contributing its own reference. Run it with `pwsh ./build/test-apireference-payload.ps1`; it runs in the Build workflow.
+Proving docs are *delivered* needs `build/test-apireference-payload.ps1`, which packs real packages, restores them into scratch consumers outside the repository and asserts which `.github` directory the files land in — covering the nearest-`.github` preference, the `.git` boundary that stops the walk escaping into an unrelated parent checkout, the `TrellisApiReferenceRoot` override, the `TrellisDisableApiReferenceSync` opt-out, and a satellite package contributing its own reference. On Unix, copied references are normalized to mode `0644`, including unchanged files. The probe also covers paths containing shell-special characters and permission failures, which must produce warnings without failing the consumer build. Cross-platform declaration checks guard the environment-variable handoff and warning policy even on Windows. Run it with `pwsh ./build/test-apireference-payload.ps1`; it runs in the Build workflow.
 
 - **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies beneath it" in `trellis-start-here.md`, "The *n* recipe bodies below" in `trellis-api-cookbook.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. Those routing heads tell agents the Patterns Index is exhaustive and use the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count is checked: the rule originally guarded only `trellis-start-here.md`, and the cookbook's unguarded copy of the same claim duly drifted out of date while the guarded one stayed correct.
 
