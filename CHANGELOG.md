@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — idempotency request identity documentation and mismatch detail
+
+Clarified that idempotency entries are keyed by `(scope, key)`, with a stored fingerprint covering method, path, query, fingerprinted headers, and body bytes. The default actor scope (or shared anonymous fallback) shares one key namespace across opted-in endpoints. API references, XML documentation, and examples now distinguish fingerprint mismatches from matching retries.
+
+The mismatch response detail now names the full request fingerprint rather than only body or headers. Matching behavior, status-code configuration, and the historical wire code `idempotency.key_reused_with_different_body` are unchanged.
+
 ### Changed — `Error.NotFound.For` / `Error.Gone.For` accept a reason `code`
 
 All four factories — `NotFound.For<TResource>`, `NotFound.For(string, …)`, `Gone.For<TResource>`, `Gone.For(string, …)` — now take a trailing optional `string? code`:

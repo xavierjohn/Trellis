@@ -23,7 +23,7 @@ using Trellis.Asp.Idempotency;
 /// <summary>
 /// Integration tests for the full <see cref="IdempotencyMiddleware"/> pipeline driven through
 /// a <see cref="TestServer"/>. Pins the IETF Idempotency-Key contract end-to-end: opt-in via
-/// <c>IdempotentAttribute</c>, replay verbatim, in-flight 409, body-mismatch
+/// <c>IdempotentAttribute</c>, replay verbatim, in-flight 409, fingerprint-mismatch
 /// <c>idempotency.key_reused_with_different_body</c>, and request-body 413.
 /// </summary>
 public sealed class IdempotencyMiddlewareTests
@@ -191,6 +191,52 @@ public sealed class IdempotencyMiddlewareTests
         body.Should().Contain("idempotency.key_reused_with_different_body");
         body.Should().Contain("\"kind\":\"unprocessable-content\"",
             "every failure response carries a top-level kind, whichever layer wrote it");
+        body.Should().Contain("different request fingerprint (method, path, query, headers, or body)");
+    }
+
+    [Theory]
+    [InlineData("POST", "/fingerprint/B", 422)]
+    [InlineData("PATCH", "/fingerprint/A", 422)]
+    [InlineData("POST", "/fingerprint/A?mode=other", 422)]
+    [InlineData("POST", "/fingerprint/B", 409)]
+    public async Task InvokeAsync_NonBodyFingerprintMismatch_PreservesCodeAndExplainsRequestIdentity(
+        string method, string path, int mismatchStatusCode)
+    {
+        var executions = 0;
+        using var host = await BuildHost(
+            configureEndpoints: endpoints =>
+                endpoints.MapMethods("/fingerprint/{id}", ["POST", "PATCH"], async context =>
+                {
+                    executions++;
+                    context.Response.StatusCode = 201;
+                    await context.Response.WriteAsync("created", context.RequestAborted);
+                }).WithMetadata(new IdempotentAttribute()),
+            configureOptions: options => options.MismatchStatusCode = mismatchStatusCode);
+        var client = host.GetTestClient();
+        var key = Guid.NewGuid().ToString();
+
+        using var first = new HttpRequestMessage(HttpMethod.Post, "/fingerprint/A") { Content = JsonBody("{}") };
+        first.Headers.Add(KeyHeader, key);
+        using var firstResponse = await client.SendAsync(first, TestContext.Current.CancellationToken);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using var changed = new HttpRequestMessage(new HttpMethod(method), path) { Content = JsonBody("{}") };
+        changed.Headers.Add(KeyHeader, key);
+        using var response = await client.SendAsync(changed, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be((HttpStatusCode)mismatchStatusCode);
+        using var problem = System.Text.Json.JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        problem.RootElement.GetProperty("code").GetString().Should().Be("idempotency.key_reused_with_different_body");
+        problem.RootElement.GetProperty("detail").GetString().Should().Be(
+            "The Idempotency-Key value was reused with a different request fingerprint (method, path, query, headers, or body).");
+        executions.Should().Be(1);
+
+        using var retry = new HttpRequestMessage(HttpMethod.Post, "/fingerprint/A") { Content = JsonBody("{}") };
+        retry.Headers.Add(KeyHeader, key);
+        using var replay = await client.SendAsync(retry, TestContext.Current.CancellationToken);
+        replay.StatusCode.Should().Be(HttpStatusCode.Created);
+        replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
+        executions.Should().Be(1);
     }
 
     [Fact]

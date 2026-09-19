@@ -42,6 +42,13 @@ distributed production store, Trellis ships `CosmosIdempotencyStore` in the sepa
 `Trellis.Asp.Idempotency.Cosmos` package, registered with `AddCosmosIdempotencyStore`.
 Applications using Redis, a relational database, or another backend can implement their own store.
 
+Stores receive a resolved `scope`, parsed `key`, and an opaque `fingerprint` string, not the
+fingerprint's request components. They must key entries only on `(scope, key)` and compare the
+supplied fingerprint with the stored value, never use it as a third key component. The middleware
+owns fingerprint computation and scope resolution; see
+[request identity and fingerprint](trellis-api-asp.md#namespace-trellisaspidempotency) for the
+full input list and the default actor/shared-anonymous scope.
+
 The contract those stores must satisfy is subtle, and a violation fails **silently**. A store that
 reserves non-atomically lets two racing callers both execute the handler; a store whose
 `AbandonAsync` deletes unconditionally destroys a response that `CompleteAsync` already persisted.
@@ -134,7 +141,7 @@ public sealed class InMemoryIdempotencyStoreConformanceTests : IdempotencyStoreC
 | `Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight` | Concurrent duplicate is told to retry; `RetryAfter` is positive and `<= ReservationTimeout`. |
 | `Reserve_under_a_different_scope_does_not_collide` | Scope isolates tenants and actors. |
 | `Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint` | The core replay guarantee. |
-| `Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch` | Key reuse with a new body is surfaced, not silently swallowed. `StoredFingerprint` carries the original. |
+| `Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch` | Key reuse in the same scope with a different request fingerprint is rejected, not replayed or stored as a separate entry. `StoredFingerprint` carries the original. |
 | `Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch` | Same protection before the first request finishes. |
 
 ### Expiry
@@ -177,7 +184,7 @@ under load, executing the handler twice. Reserve with one atomic primitive:
 | Relational | `INSERT` against a unique index on `(scope, key)` — catch the duplicate-key violation |
 
 `ReservationTimeout` expires the reservation's **lease**, not its fingerprint metadata.
-Do not use `SET ... NX PX <reservationTimeout>` to expire the entire reservation: a different-body
+Do not use `SET ... NX PX <reservationTimeout>` to expire the entire reservation: a different-fingerprint
 retry must still return `BodyHashMismatch` after that timeout. Retain the fingerprint and compare it
 before atomically granting a same-fingerprint takeover. Completed snapshots have a separate `Ttl`;
 apply response expiry when completing the entry, not when reserving it.

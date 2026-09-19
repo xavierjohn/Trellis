@@ -93,7 +93,7 @@ An AI implements the most specific statement it can find. If three sections disa
 
 The framework provides these, but only if the spec asks for them:
 
-- **Idempotency.** Which unsafe writes require an `Idempotency-Key` header, and the replay contract (same key replays the original response; same key in flight -> 409 until the reservation times out; same key with a different body -> 422).
+- **Idempotency.** Which unsafe writes require an `Idempotency-Key` header, the scope boundary, and the replay contract: within the same scope, the same key and matching request fingerprint replay an unexpired snapshot; a matching-fingerprint retry during an active reservation returns 409; a different fingerprint against an existing reservation or unexpired snapshot returns 422 by default. Fingerprints include method, path, query, fingerprinted headers, and body bytes, not just the body. See [request identity and fingerprint](../api_reference/trellis-api-asp.md#namespace-trellisaspidempotency).
 - **Optimistic concurrency.** Which writes require `If-Match` (stale -> 412, missing -> 428) and which reads support conditional GET (`If-None-Match` -> 304).
 - **Pagination.** List endpoints page by **forward-only cursor (keyset)** using a stable sort key — not offset/skip. See [Pagination](pagination.md).
 - **Lifecycle timestamps.** Domain timestamps (for example `SubmittedAt`, `ApprovedAt`) are aggregate fields. Note that a domain **event**'s timestamp property must be named `OccurredAt` and typed `DateTimeOffset`.

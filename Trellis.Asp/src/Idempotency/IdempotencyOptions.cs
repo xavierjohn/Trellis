@@ -66,7 +66,8 @@ public sealed class IdempotencyOptions
     public long MaxResponseBodyBytes { get; set; } = 1L * 1024 * 1024;
 
     /// <summary>
-    /// HTTP status code to return when the same key is reused with a different request body.
+    /// HTTP status code to return when a key already in use in the same scope is reused with a
+    /// different request fingerprint (method, path, query, fingerprinted headers, or body bytes).
     /// Defaults to 422 (Unprocessable Entity), matching the convention used by Stripe and Adyen.
     /// </summary>
     public int MismatchStatusCode { get; set; } = 422;

@@ -79,6 +79,13 @@ app.UseTrellisIdempotency();
 primary replica, so exactly one concurrent caller wins. The store *never* grants a reservation on
 the strength of a read.
 
+**Scope and fingerprint have different jobs.** The document identity is `(scope, key)`; the
+fingerprint is an opaque stored string, not a third key component. An existing reservation or
+unexpired completed snapshot with a different fingerprint returns `BodyHashMismatch`, not a
+separate document or a replay. For the middleware's fingerprint inputs, default actor scope,
+shared endpoint key namespace, and HTTP mismatch response, see
+[request identity and fingerprint](trellis-api-asp.md#namespace-trellisaspidempotency).
+
 **Every other mutation is ETag-conditional.** Taking over a timed-out reservation, recording a
 response, and releasing a slot are all `IfMatchEtag` replaces or deletes. A caller whose view is
 stale gets `412` and retries, so it cannot clobber newer state.
@@ -98,7 +105,7 @@ allowed to fall on a document the store's own rules have already made unreachabl
 
 | Document state | `ttl` | Why |
 |---|---|---|
-| Reserved | `-1` (never expires) | A reserved entry stays answerable indefinitely, because a request reusing the key with a different body must keep being rejected. A finite `ttl` would make that answer depend on whether a background sweep had happened to run. |
+| Reserved | `-1` (never expires) | A reserved entry stays answerable indefinitely, because a request reusing the key in the same scope with a different fingerprint must keep being rejected. A finite `ttl` would make that answer depend on whether a background sweep had happened to run. |
 | Completed | `Ttl + 60s` | Unreachable once the store treats it as absent, so deleting it cannot change an answer. |
 
 Reservations are removed by `AbandonAsync` or superseded on completion, so the only documents that

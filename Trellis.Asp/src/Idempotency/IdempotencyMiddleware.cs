@@ -165,7 +165,7 @@ public sealed partial class IdempotencyMiddleware
                     context,
                     _options.MismatchStatusCode,
                     "idempotency.key_reused_with_different_body",
-                    $"The {_options.HeaderName} value was reused with a different request body or headers.").ConfigureAwait(false);
+                    $"The {_options.HeaderName} value was reused with a different request fingerprint (method, path, query, headers, or body).").ConfigureAwait(false);
                 return;
 
             default:
