@@ -1,4 +1,4 @@
-name: Publish documentation.
+﻿name: Publish documentation.
 
 on:
   workflow_dispatch:
@@ -51,18 +51,9 @@ jobs:
         dotnet build Trellis.Asp/generator/Trellis.AspSourceGenerator.csproj --no-restore -c Release
         dotnet build Trellis.EntityFrameworkCore/generator/Trellis.EntityFrameworkCore.Generator.csproj --no-restore -c Release
 
-    - name: Build library projects to emit generator output for DocFX
-      # docfx 2.x's bundled Roslyn cannot load our newer-compiler source generators
-      # (FailedToLoadAnalyzer / ReferencesNewerCompiler), so any src project that derives a
-      # type from `RequiredXxx<T>` (e.g. Trellis.Authorization's ActorId) would fail docfx's
-      # source-parse with CS0311 because the generator-emitted partial is missing the
-      # IScalarValue<TSelf,T> interface declaration. Those projects opt into
-      # <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles> +
-      # <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath> so the
-      # generator's partial lands on disk during a real build, and docfx's metadata pass
-      # opts back in to those on-disk files via the TrellisDocfxMetadataBuild property set in
-      # docfx.json. This step does the "real build" so the on-disk files exist before docfx
-      # runs in the next step.
+    - name: Build library projects for DocFX
+      # DocFX 2.80.1 runs source generators through Roslyn; no on-disk generated
+      # partials are included in Compile. Build first so project references are available.
       run: dotnet build --no-restore -c Release
 
     - name: Update doc tools
@@ -119,24 +110,7 @@ jobs:
       run: ./docs/audit-doc-freshness.ps1
 
     - name: Build docs (warnings as errors)
-      shell: bash
-      run: |
-        set -o pipefail
-        # Capture full output so we can both display it and gate on it.
-        docfx docs/docfx_project/docfx.json 2>&1 | tee docfx_output.log
-        # FailedToLoadAnalyzer warnings are benign: docfx 2.x bundles an older
-        # Roslyn than our source generators target (ReferencesNewerCompiler).
-        # Source generators are not needed to extract XML doc metadata, so we
-        # ignore those specific warnings. ALL other warnings fail the build.
-        REMAINING=$(grep -E '^(warning|error|.*\.md\([0-9]+,[0-9]+\): warning)' docfx_output.log \
-          | grep -v 'FailedToLoadAnalyzer' \
-          || true)
-        if [ -n "$REMAINING" ]; then
-          echo "::error::docfx produced warnings/errors that are not on the known-benign list:"
-          echo "$REMAINING"
-          exit 1
-        fi
-        echo "docfx build clean (only known-benign FailedToLoadAnalyzer warnings, if any)."
+      run: docfx docs/docfx_project/docfx.json --warningsAsErrors
 
     - name: Verify documentation build
       run: |

@@ -29,11 +29,7 @@
           ]
         }
       ],
-      "dest": "api",
-      "disableAnalyzers": true,
-      "properties": {
-        "TrellisDocfxMetadataBuild": "true"
-      }
+      "dest": "api"
     }
   ],
   "build": {

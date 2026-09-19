@@ -10,6 +10,17 @@ pwsh docs/lint-api-reference.ps1
 
 The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, so failures are emitted as MSBuild errors.
 
+## DocFX site build
+
+The site build is verified with DocFX 2.80.1, whose Roslyn host runs the Trellis source generators directly:
+
+```powershell
+dotnet build Trellis.slnx -c Release
+docfx docs/docfx_project/docfx.json --warningsAsErrors
+```
+
+Do not include saved generator output as ordinary compilation inputs for metadata extraction. The old `TrellisDocfxMetadataBuild` workaround did that for `ActorId` when older DocFX versions could not load the generator; with the current tool it causes duplicate partial declarations. `Trellis.Authorization` excludes any stale `Generated/**/*.cs` files left in existing checkouts, and generated members such as `ActorId.TryCreate` are still included in the API metadata.
+
 ## Rules
 
 - **TRLDOC001**: Bare cross-doc links such as `](trellis-api-core.md)` must point at a specific anchor, for example `](trellis-api-core.md#some-section)`. Lines inside fenced code blocks are skipped.
