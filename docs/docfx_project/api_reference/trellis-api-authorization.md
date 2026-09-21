@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
-types: [Actor, ActorAttributes, ActorId, IActorProvider, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
+types: [Actor, ActorAttributes, ActorId, ActorProviderExtensions, IActorProvider, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
@@ -22,6 +22,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-7--authorizat
 - You are modeling actors, permissions, forbidden permissions, or actor attributes without ASP.NET dependencies.
 - You are implementing static permission authorization through `IAuthorize`.
 - You are implementing resource-based authorization through `IAuthorizeResource<TResource>` and want the canonical guard shape.
+- You need a required-actor accessor in code where actor presence is already guaranteed.
 
 ## Owner check quick-start — copy this
 
@@ -70,6 +71,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 | Represent the current user/service | `Actor` | [`Actor`](#actor) |
 | Check granted permissions with explicit deny override | `actor.HasPermission(...)`, `HasAllPermissions(...)`, `HasAnyPermission(...)` | [`Actor`](#actor) |
 | Resolve actor for a request/message | `IActorProvider.GetCurrentActorAsync(...)` | [`IActorProvider`](#iactorprovider) |
+| Read an actor whose presence is already guaranteed by authorization | `actorProvider.RequireActorAsync(cancellationToken)` | [`ActorProviderExtensions`](#actorproviderextensions) |
 | Require static permissions on a message | Implement `IAuthorize.RequiredPermissions` | [`IAuthorize`](#iauthorize) |
 | Authorize against a loaded resource | Implement `IAuthorizeResource<TResource>.Authorize(actor, resource)` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource) |
 | Write owner/admin resource guards | `Result.Ensure(condition, new Error.Forbidden(...))` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource), [Core `Result.Ensure`](trellis-api-core.md#public-static-partial-class-result) |
@@ -80,6 +82,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 
 - `Trellis.Authorization` is domain/application-layer only. ASP.NET actor providers are documented in [trellis-api-asp.md](trellis-api-asp.md#namespace-trellisaspauthorization).
 - Prefer `Result.Ensure` for boolean authorization guards so generated code uses the same ROP primitive as the rest of Trellis.
+- `RequireActorAsync` is an invariant accessor, not an authentication gate. Keep ordinary missing-actor handling on `GetCurrentActorAsync` / `Error.AuthenticationRequired`; do not replace the authorization behaviors' normal 401 path with this throwing helper.
 - Do not mutate `RequiredPermissions`; expose the complete permission list as an immutable/read-only collection.
 - The DI registration extension `AddResourceAuthorization(...)` lives in `Trellis.Mediator` (`namespace Trellis.Mediator`), not in `Trellis.Authorization`. Wiring an `IAuthorizeResource<TResource>` therefore typically requires both `using Trellis.Authorization;` (for the interfaces) and `using Trellis.Mediator;` (for the DI extension). The compile error if the second is missing is `CS1061: 'IServiceCollection' does not contain a definition for 'AddResourceAuthorization' and no accessible extension method 'AddResourceAuthorization' accepting a first argument of type 'IServiceCollection' could be found` — see [trellis-api-mediator.md](trellis-api-mediator.md#servicecollectionextensions).
 
@@ -206,6 +209,36 @@ public interface IActorProvider
 **401 vs 500 contract.** `Maybe<Actor>.None` means the framework cannot identify an actor for the request — typically the request lacks credentials, the auth middleware did not produce an authenticated identity, or the configured actor-id claim is missing from an otherwise authenticated identity. All three are classes of client error and the mediator pipeline emits HTTP 401. A thrown `InvalidOperationException` means the provider itself cannot operate (no `HttpContext`, malformed configuration, mapping delegate failure) — that's a server bug and surfaces as HTTP 500.
 
 > **`WWW-Authenticate` header on the 401.** RFC 9110 §11.6.1 requires `WWW-Authenticate` on 401 responses. `Error.AuthenticationRequired` stays transport-neutral, so `ResponseFailureWriter` emits the optional `Scheme` string verbatim when the error provides one; otherwise it synthesizes a scheme-level challenge from the registered default-challenge scheme via `IAuthenticationSchemeProvider` when no other middleware has already written the header. The synthesized header uses the scheme NAME registered with `AddAuthentication` (so `AddJwtBearer("ApiJwt", ...)` produces `WWW-Authenticate: ApiJwt`). If no authentication is registered at all, the writer emits no synthesized header — synthesizing "Bearer" for a service that does not use Bearer would mislead clients. Applications that need a parameterized challenge can return `new Error.AuthenticationRequired("Bearer realm=\"api\"")` or write `WWW-Authenticate` before Trellis renders the failure.
+
+### `ActorProviderExtensions`
+
+```csharp
+public static class ActorProviderExtensions
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Task<Actor> RequireActorAsync(this IActorProvider actorProvider, CancellationToken cancellationToken = default)` | `Task<Actor>` | Calls `GetCurrentActorAsync` once with the supplied token and returns the same actor instance. Throws `InvalidOperationException` with an invariant diagnostic when absent, and `ArgumentNullException` for a null `actorProvider`. Provider exceptions and cancellation propagate unchanged. |
+
+Use only when the caller has **already established actor presence**: for example, a handler
+reached through a correctly registered Trellis authorization behavior. Implementing an
+authorization marker alone is not enough if the behavior is not registered or the handler
+is called directly. HTTP authentication alone also does not guarantee usable actor claim
+mapping, so a direct endpoint must still handle ordinary absence as authentication failure.
+
+```csharp
+using Trellis.Authorization;
+
+// Inside a handler reached after its authorization behavior succeeded.
+Actor actor = await actorProvider.RequireActorAsync(cancellationToken);
+```
+
+This method performs no authentication or permission checks and introduces no cache,
+accessor service, DI registration, or pipeline change. With the existing scoped
+`CachingActorProvider` (from `Trellis.Asp.Authorization`), repeated calls reuse that provider's
+resolution task; without it, each invocation calls the provider again. Normal missing-actor
+401 and insufficient-permission 403 behavior is unchanged. An absent actor at this explicit
+invariant boundary is a programming/configuration fault, not a replacement 401 result.
 
 ### `IAuthorize`
 

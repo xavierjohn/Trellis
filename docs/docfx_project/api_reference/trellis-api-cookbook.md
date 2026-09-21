@@ -548,6 +548,14 @@ services.AddResourceAuthorization(
 
 **What it shows.** Lead with `IAuthorizeResource<TResource>` + `IIdentifyResource<TResource, TId>` for the owner-on-loaded-resource case — that pair covers most domain authorization decisions, and the framework wires up `SharedResourceLoaderById<TResource, TId>` automatically so no per-command loader is needed. Fall back to `IAuthorize` for static permission gates that do not require a resource load. `IAuthorizeResource<TResource>` runs *after* the resource loader produces the loaded resource, then calls `Authorize(actor, resource)`; `IAuthorize` enforces an AND-permission gate via `AuthorizationBehavior<,>` before the handler runs.
 
+**Actor access after authorization.** A handler reached through the correctly registered
+behavior can use `await actorProvider.RequireActorAsync(cancellationToken)` from
+`Trellis.Authorization`. It returns the actor or throws `InvalidOperationException` if the
+presence invariant is broken; it does not authenticate, check permissions, or add a cache.
+Keep ordinary missing-actor handling in the pipeline (401). Direct endpoints and callers
+without an established actor-presence invariant must still use `GetCurrentActorAsync` and
+handle `None`. The existing `CachingActorProvider` avoids repeated underlying resolution.
+
 For the same shared-loader shape without assembly scanning, register the implementation once and the behavior/accessor/adapter together per message:
 
 ```csharp

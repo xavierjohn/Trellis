@@ -26,6 +26,7 @@ IResult result = actor.HasPermission("orders:read")
 - `AddSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` from `Trellis.Mediator` registers the typed behavior, accessor, and shared-loader bridge together; register your `SharedResourceLoaderById<TResource,TId>` implementation separately. The lower-level `AddResourceAuthorization<TMessage,TResource,TResponse>()` still leaves all loader registration to the caller.
 - `ActorId` opts into `[Trim, NotDefault]`; trimming and blank rejection are not the unannotated `RequiredString<T>` defaults.
 - Defines `Actor`, `ActorId`, `IActorProvider`, `IAuthorize`, and resource authorization interfaces.
+- `actorProvider.RequireActorAsync(ct)` returns the actor when presence is already guaranteed, throwing `InvalidOperationException` if that invariant is broken. It performs no authorization or caching; ordinary unauthenticated flows still use `GetCurrentActorAsync` and handle absence.
 - `Actor.Id` is the strongly-typed `ActorId` value object — reuse it on consumer aggregate boundaries (`Order.CreatedByActorId`, `Document.LastModifiedByActorId`) for type-checked principal-identity comparisons.
 - Works without ASP.NET Core, Mediator, or any web dependency.
 - Keeps permission rules inside the same Result-based workflow as the rest of your application.

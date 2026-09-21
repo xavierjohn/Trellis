@@ -300,6 +300,28 @@ app.Run();
 > [!TIP]
 > Microsoft Entra ID consumers can substitute `AddEntraActorProvider()` for `AddClaimsActorProvider(...)` to opt in to Entra-specific defaults (App Roles via `roles`, ABAC attributes from `tid` / `oid` / `amr`). See [SSO → Microsoft (Entra ID)](integration-sso.md#microsoft-entra-id).
 
+## Reading an actor after authorization
+
+Inside a handler reached through a correctly registered Trellis authorization behavior,
+actor presence has already been established. Use the invariant accessor from
+`Trellis.Authorization` instead of repeating a manual unwrap:
+
+```csharp
+using Trellis.Authorization;
+
+Actor actor = await actorProvider.RequireActorAsync(cancellationToken);
+```
+
+An absent actor here throws `InvalidOperationException` with an actionable diagnostic.
+The helper calls the provider once, forwards the cancellation token, and preserves provider
+exceptions. It does not authenticate, check permissions, or cache independently; an existing
+`CachingActorProvider` still supplies the request-scoped cache.
+
+Do not substitute this helper into the `/me` endpoint above or into the authorization
+behaviors themselves. An authenticated HTTP identity may still lack the claim needed to
+construct an actor, and that remains a normal 401 response. A marker interface without its
+registered behavior, or a direct call to a handler, does not establish the invariant.
+
 ## Entra ID provider
 
 For IdP wiring (Authority URL, audience format, multi-tenant pinning), see [SSO → Microsoft (Entra ID)](integration-sso.md#microsoft-entra-id). The table below covers the framework-side options.
