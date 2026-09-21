@@ -41,6 +41,29 @@ public class CachingActorProviderTests
         result.HasPermission("Write").Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RequireActorAsync_InnerActorChanges_PreservesPreviouslyResolvedSnapshot(bool sameIdentity)
+    {
+        var original = Actor.Create("user-1", new HashSet<string>(["Read"]));
+        var changed = Actor.Create(sameIdentity ? "user-1" : "user-2", new HashSet<string>(["Write"]));
+        var inner = new TestActorProvider(original);
+        var caching = new CachingActorProvider(inner, s_nullAccessor);
+        var token = TestContext.Current.CancellationToken;
+        var previouslyResolved = (await caching.GetCurrentActorAsync(token)).Unwrap();
+        previouslyResolved.HasPermission("Read").Should().BeTrue();
+
+        using var changedScope = inner.WithActor(changed);
+        (await inner.GetCurrentActorAsync(token)).Unwrap().Should().BeSameAs(changed);
+
+        var result = await caching.RequireActorAsync(token);
+
+        result.Should().BeSameAs(previouslyResolved);
+        result.HasPermission("Read").Should().BeTrue();
+        result.HasPermission("Write").Should().BeFalse();
+    }
+
     [Fact]
     public async Task GetCurrentActorAsync_InnerReceivesRequestAbortedToken()
     {

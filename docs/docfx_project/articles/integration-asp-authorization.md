@@ -300,6 +300,47 @@ app.Run();
 > [!TIP]
 > Microsoft Entra ID consumers can substitute `AddEntraActorProvider()` for `AddClaimsActorProvider(...)` to opt in to Entra-specific defaults (App Roles via `roles`, ABAC attributes from `tid` / `oid` / `amr`). See [SSO → Microsoft (Entra ID)](integration-sso.md#microsoft-entra-id).
 
+## Reading an actor after authorization
+
+`RequireActorAsync` is an invariant accessor for **established actor presence and stable
+provider resolution**, not a way to retrieve an actor captured by the authorization behavior.
+It performs another lookup. A correctly registered authorization behavior may have checked
+an earlier identity or permission snapshot if the provider reads mutable data.
+
+For mutable providers, configure the existing cache before dispatch so the behavior and
+handler receive the same scoped `IActorProvider`. For the claims provider from the quick start:
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services.AddCachingActorProvider<ClaimsActorProvider>();
+```
+
+Place this after `AddClaimsActorProvider(...)`; for a database-backed provider, wrap that
+provider instead (see [Caching wrapper](#caching-wrapper)). Caching only the handler's
+lookup, injecting the uncached inner provider, or using a different scope is insufficient.
+A provider that explicitly guarantees stable identity and authorization state throughout
+the operation can also be used without a cache.
+
+Inside the authorized handler, using that same stable or cached provider:
+
+```csharp
+using Trellis.Authorization;
+
+Actor actor = await actorProvider.RequireActorAsync(cancellationToken);
+```
+
+An absent actor here throws `InvalidOperationException` with an actionable diagnostic.
+The helper calls the provider once, forwards the cancellation token, and preserves provider
+exceptions. It does not authenticate, check permissions, enforce provider stability, or cache
+independently. The shared provider, not this helper, preserves the authorized snapshot.
+
+Do not substitute this helper into the `/me` endpoint above or into the authorization
+behaviors themselves. An authenticated HTTP identity may still lack the claim needed to
+construct an actor, and that remains a normal 401 response. A marker interface without its
+registered behavior, or a direct call to a handler, does not establish the invariant.
+
 ## Entra ID provider
 
 For IdP wiring (Authority URL, audience format, multi-tenant pinning), see [SSO → Microsoft (Entra ID)](integration-sso.md#microsoft-entra-id). The table below covers the framework-side options.

@@ -88,6 +88,17 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>(IActorProvider ac
 | --- | --- | --- |
 | `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Resolves the current actor via `IActorProvider`. When the provider returns `Maybe<Actor>.None`, short-circuits with `TResponse.CreateFailure(new Error.AuthenticationRequired { Detail = "Authentication required." })` (HTTP 401, RFC 9110 §15.5.2). When the actor is present but lacks one of `RequiredPermissions`, short-circuits with `TResponse.CreateFailure(new Error.Forbidden("authorization.insufficient.permissions") { Detail = "Insufficient permissions." })` (HTTP 403). The 401 vs 403 distinction is shared with `ResourceAuthorizationBehavior` and `ResourceAuthorizationViaBehavior` via the internal `ActorResolution.TryResolveAsync` / `ActorResolution.AuthenticationRequired()` helpers; provider-side `InvalidOperationException` (genuine bugs — no `HttpContext`, mapping delegate threw, etc.) propagates uncaught and surfaces as `Error.Unexpected` (HTTP 500) via `ExceptionBehavior`. |
 
+Handlers reached after authorization can use `actorProvider.RequireActorAsync(cancellationToken)`
+from `Trellis.Authorization` only when actor presence **and stable provider resolution** are
+guaranteed. It performs another lookup, not retrieval of the snapshot checked by this behavior.
+For mutable providers, configure a scoped `CachingActorProvider` before dispatch and inject
+that same scoped provider into the behavior and handler; authorization alone does not freeze
+identity or permissions. This accessor does not replace normal `Maybe.None` to
+`Error.AuthenticationRequired` handling, check permissions, or cache independently.
+Missing actor state at this invariant boundary is a fault; ordinary unauthenticated requests
+must still take the normal 401 path.
+See [`ActorProviderExtensions`](trellis-api-authorization.md#actorproviderextensions).
+
 ### ExceptionBehavior<TMessage, TResponse>
 **Declaration**
 
