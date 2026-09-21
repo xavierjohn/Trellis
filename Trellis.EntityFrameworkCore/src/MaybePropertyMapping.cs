@@ -23,4 +23,26 @@ public sealed record MaybePropertyMapping(
     bool IsMapped,
     bool IsNullable,
     string? ColumnName,
-    Type? ProviderClrType);
+    Type? ProviderClrType)
+{
+    /// <summary>Gets the storage shape resolved from the finalized model.</summary>
+    public MaybeStorageKind StorageKind { get; init; }
+
+    /// <summary>Gets the scalar or owned root's table name, or null when it has no table mapping.</summary>
+    public string? TableName { get; init; }
+
+    /// <summary>Gets the root table's schema, or null for the provider's default.</summary>
+    public string? Schema { get; init; }
+
+    /// <summary>
+    /// Gets every table-column mapping, including ownership keys and recursively owned values.
+    /// Nested values can target different tables. Sequence equality preserves record value semantics.
+    /// </summary>
+    public EquatableArray<MaybeColumnMapping> Columns { get; init; }
+
+    /// <summary>
+    /// Gets the recorded reason for Trellis's separate-table fallback, or null when no
+    /// convention reason is known (including explicit table overrides).
+    /// </summary>
+    public string? StorageReason { get; init; }
+}

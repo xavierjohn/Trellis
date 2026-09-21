@@ -37,6 +37,7 @@ Use the reflection-based `ApplyTrellisConventions(typeof(AppDbContext).Assembly)
 - Convention-based mapping for Trellis scalar and composite value objects.
 - Source-generated discovery for `Maybe<T>` properties and `[OwnedEntity]` value objects.
 - Query helpers for presence, equality, predicates, and ordering over `Maybe<T>`.
+- Inspect `Maybe<T>` storage strategies, tables/schemas, all owned columns, and known convention reasons with `GetMaybePropertyMappings()` / `ToMaybeMappingDebugString()`.
 - `SaveChangesResultAsync` and `SaveChangesResultUnitAsync` for typed persistence failures.
 - `TryInsertUniqueAsync` for idempotent unique-key inserts.
 - Typed seek pagination through `SeekDefinition` and `ToPageAsync`.

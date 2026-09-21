@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
-types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, IUnitOfWork, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
+types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, IUnitOfWork, MaybeColumnMapping, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeStorageKind, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
@@ -39,7 +39,7 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 | Wire Trellis EF conventions in `ConfigureConventions` (preferred — compile-time, no reflection) | `configurationBuilder.ApplyTrellisConventionsFor<TContext>()` (source-generated) | [`GeneratedTrellisConventions`](#generatedtrellisconventions-source-generated) |
 | Wire Trellis EF conventions via runtime assembly scan (fallback) | `configurationBuilder.ApplyTrellisConventions(typeof(TContext).Assembly)` | [`ModelConfigurationBuilderExtensions`](#modelconfigurationbuilderextensions) |
 | Wire `MaybeQueryInterceptor`, `EntityTimestampInterceptor`, ETag, and scalar-value interceptors in one call | `optionsBuilder.AddTrellisInterceptors()` (overloads accept a `TimeProvider`) | [`DbContextOptionsBuilderExtensions`](#dbcontextoptionsbuilderextensions) |
-| Inspect / debug discovered `Maybe<T>` mappings | `dbContext.GetMaybePropertyMappings()` / `dbContext.ToMaybeMappingDebugString()` | [`MaybeModelExtensions`](#maybemodelextensions) |
+| Inspect / debug discovered `Maybe<T>` storage strategies, tables, all columns, and known convention reasons | `dbContext.GetMaybePropertyMappings()` / `dbContext.ToMaybeMappingDebugString()` | [`MaybeModelExtensions`](#maybemodelextensions) |
 | Project an aggregate to a DTO and unwrap `Maybe<T>` safely (avoids TRLS013) | Filter with `.Where(x => x.M.HasValue)` *before* the projection (TRLS013 recognises this exact prior-Where shape). For EF query composition over `Maybe<T>`, prefer `MaybeQueryableExtensions.WhereHasValue` / `WhereXxx` so the SQL is correct, then project. | [`MaybeQueryableExtensions`](#maybequeryableextensions) |
 | Classify an EF/DB exception | `DbExceptionClassifier.IsDuplicateKey(ex)` / `IsForeignKeyViolation(ex)` / `ExtractConstraintDetail(ex)` / `ExtractConstraintIdentity(ex)`. To map DB exceptions to a Trellis `Error` automatically, use `db.SaveChangesResultAsync()` / `SaveChangesResultUnitAsync()` (or, for idempotent inserts, `db.TryInsertUniqueAsync()`) instead of catching and classifying by hand. | [`DbExceptionClassifier`](#dbexceptionclassifier), [`DbContextExtensions`](#dbcontextextensions), [`DbContextIdempotencyExtensions`](#dbcontextidempotencyextensions) |
 | Wrap an aggregate-store repository with `Result<T>` returns | Inherit `RepositoryBase<TAggregate, TId>` | [`RepositoryBase<TAggregate, TId>`](#repositorybasetaggregate-tid) |
@@ -520,11 +520,54 @@ Diagnostic record describing how a `Maybe<T>` property resolved to an EF Core ma
 | `IsNullable` | `bool` | `true` when the EF mapping is nullable/optional. |
 | `ColumnName` | `string?` | Representative relational column name, if available. |
 | `ProviderClrType` | `Type?` | Provider CLR type after conversion, if available. |
+| `StorageKind` | `MaybeStorageKind` | Finalized storage classification: `Unmapped`, `Scalar`, `Owned` (no relational table), `TableSplit`, or `SeparateTable`. Table sharing compares both table name and schema with the immediate owner. |
+| `TableName` | `string?` | Primary table for the scalar or owned root, or null without a table mapping. |
+| `Schema` | `string?` | Root table schema, or null for the provider's default. |
+| `Columns` | `EquatableArray<MaybeColumnMapping>` | All table-column mappings, including ownership keys and recursively owned values. Nested values may target other tables. Use `.Items` for LINQ; sequence equality preserves record value semantics. |
+| `StorageReason` | `string?` | Reason recorded when Trellis selects the separate-table fallback, naming nested owned navigations and/or non-nullable value-type properties. Null when no convention reason is known, including explicit table overrides and the specialized `Maybe<Money>` mapping. |
+
+The original positional constructor and deconstruction remain unchanged; the new properties
+are init-only diagnostics populated by `GetMaybePropertyMappings`. Existing `ColumnName`
+remains representative, not exhaustive; it now resolves the actual store name including
+owned-navigation prefixes. `IsNullable` describes the optional value; `Columns.Items`
+reports each physical column's nullability, which can be false for a separate-table value.
+Names, schemas, column types, and nullability come from the finalized relational model, not
+from guessed CLR conventions. Non-table mappings have an empty `Columns` array.
+
+`ToMaybeMappingDebugString()` keeps the existing backing-field summary and adds `storage`,
+qualified `table`, any recorded `reason`, and one line per column (property path, qualified
+store name, type, nullability). This is an inspection helper, not a migration or schema-diff
+engine. It does not compare the model with a previous version.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public MaybePropertyMapping(string EntityTypeName, Type EntityClrType, string PropertyName, string MappedBackingFieldName, Type InnerType, Type StoreType, bool IsMapped, bool IsNullable, string? ColumnName, Type? ProviderClrType)` | — | Positional record constructor. Instances are produced by `MaybeModelExtensions`; consumer code typically reads them rather than constructing them. |
 | — | — | No additional methods beyond compiler-generated record members (`Equals`, `GetHashCode`, `ToString`, `Deconstruct`, `with`-clone). |
+
+### `MaybeStorageKind`
+
+```csharp
+public enum MaybeStorageKind { Unmapped, Scalar, Owned, TableSplit, SeparateTable }
+```
+
+`Scalar` denotes a mapped scalar backing field. `Owned` denotes a mapped owned navigation
+without a relational table. `TableSplit` shares the immediate owner's table/schema;
+`SeparateTable` differs in either. `Unmapped` means neither mapping was found.
+
+### `MaybeColumnMapping`
+
+```csharp
+public sealed record MaybeColumnMapping(
+    string PropertyPath, string TableName, string? Schema,
+    string ColumnName, string ColumnType, bool IsNullable);
+```
+
+`PropertyPath` is the EF property name prefixed by nested ownership navigation names
+(for example `DeliveryFee.Amount`); backing-field and shadow-key names are retained.
+`TableName` / `Schema` identify that column's destination, `ColumnName` is the actual store
+name, `ColumnType` is the provider SQL type, and `IsNullable` is the physical column's
+nullability. Multiple property paths may share one physical ownership-key column.
+Columns are sorted by property path, schema, table, and column using ordinal comparison.
 
 ### `DbExceptionClassifier`
 
@@ -766,7 +809,7 @@ public static string ToMaybeMappingDebugString(this DbContext dbContext)
   - **Separate table.** When the owned type contains **non-nullable value-type properties** or **nested owned navigations**, `Maybe<T>` switches to a separate table named `{OwnerTypeName}_{PropertyName}` to preserve nullability semantics. Migrations will produce a child table with FK to the parent. Switching the inner shape of an owned type between these two regimes therefore generates a non-trivial migration (column drop + table create, or vice-versa) — review the generated migration and provide custom `Up`/`Down` data-copy steps when production data exists.
 - **`Maybe<Money>` specifically.** `MoneyConvention` honors the nullability annotation written by `MaybeConvention` so the amount/currency columns are emitted as nullable when the property is `Maybe<Money>`.
 - **Indexes — `HasTrellisIndex` vs `HasIndex`.** Use `MaybeEntityTypeBuilderExtensions.HasTrellisIndex(x => new { x.SubmittedAt, ... })` for **any** index selector that includes a `Maybe<T>` property — it resolves each `Maybe<T>` selector to the mapped `_camelCase` storage member before calling EF's `HasIndex`, so the index lands on the actual column instead of the unmapped CLR property (and avoids `TRLS016`). Plain `HasIndex` is correct only when every member in the selector is an ordinary mapped property; a selector that mixes ordinary and `Maybe<T>` members must use `HasTrellisIndex`.
-- **Inspection.** Call `db.GetMaybePropertyMappings()` (or `db.ToMaybeMappingDebugString()`) at startup to verify each `Maybe<T>` property resolved to the expected backing field, column, and nullability before generating a migration.
+- **Inspection.** Call `db.GetMaybePropertyMappings()` (or `db.ToMaybeMappingDebugString()`) at startup to verify each `Maybe<T>` property's `StorageKind`, `TableName`, `Schema`, and complete `Columns` mappings before generating a migration. `StorageReason` records the separate-table fallback's triggering members when known; explicit overrides are reported from the actual model without inventing a reason.
 
 
 

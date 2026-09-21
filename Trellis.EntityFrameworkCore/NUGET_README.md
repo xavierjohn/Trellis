@@ -35,6 +35,7 @@ Result<int> saved =
 - Convention-based mapping for Trellis scalar and composite value objects.
 - Source-generated discovery for `Maybe<T>` properties and `[OwnedEntity]` value objects.
 - Query helpers for presence, equality, predicates, and ordering over `Maybe<T>`.
+- Inspect `Maybe<T>` storage strategies, tables/schemas, all owned columns, and known convention reasons with `GetMaybePropertyMappings()` / `ToMaybeMappingDebugString()`.
 - Result-returning save helpers and idempotent unique-key inserts.
 - Typed seek pagination through `SeekDefinition` and `ToPageAsync`.
 - `EfUnitOfWork<TContext>` integration for mediator-owned commits.

@@ -1,5 +1,7 @@
 ﻿namespace Trellis;
 
+using System.Globalization;
+
 /// <summary>
 /// A pointer into a structured input document, expressed as an RFC 6901 JSON Pointer.
 /// Used by validation errors to identify the location of an offending value.
@@ -73,6 +75,32 @@ public readonly record struct InputPointer
     public static InputPointer Root => new("");
 
     /// <summary>
+    /// Appends one literal property-name segment, escaping '~' and '/' per RFC 6901.
+    /// Preserves <see cref="In"/> and does not reinterpret a leading slash as a pointer.
+    /// </summary>
+    /// <param name="propertyName">The literal name. Empty addresses a property named "".</param>
+    /// <returns>A new pointer beneath this pointer.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
+    public InputPointer AppendProperty(string propertyName)
+    {
+        ArgumentNullException.ThrowIfNull(propertyName);
+        return new(Path + "/" + EscapeSegment(propertyName), In);
+    }
+
+    /// <summary>
+    /// Appends a non-negative collection index using invariant decimal formatting.
+    /// Preserves <see cref="In"/>.
+    /// </summary>
+    /// <param name="index">The zero-based collection index.</param>
+    /// <returns>A new pointer beneath this pointer.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is negative.</exception>
+    public InputPointer AppendIndex(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        return new(Path + "/" + index.ToString(CultureInfo.InvariantCulture), In);
+    }
+
+    /// <summary>
     /// Builds an <see cref="InputPointer"/> from a property name, prepending <c>"/"</c>
     /// if the value is not already a JSON Pointer.
     /// </summary>
@@ -93,9 +121,7 @@ public readonly record struct InputPointer
         if (propertyName.StartsWith('/'))
             return new(propertyName);
 
-        var escaped = propertyName.Replace("~", "~0", StringComparison.Ordinal)
-                                  .Replace("/", "~1", StringComparison.Ordinal);
-        return new("/" + escaped);
+        return new("/" + EscapeSegment(propertyName));
     }
 
     /// <inheritdoc />
@@ -174,10 +200,12 @@ public readonly record struct InputPointer
         if (string.IsNullOrEmpty(name))
             throw new ArgumentException("A parameter name must not be null or empty.", nameof(name));
 
-        var escaped = name.Replace("~", "~0", StringComparison.Ordinal)
-                          .Replace("/", "~1", StringComparison.Ordinal);
-        return new("/" + escaped, location);
+        return new("/" + EscapeSegment(name), location);
     }
+
+    private static string EscapeSegment(string name) =>
+        name.Replace("~", "~0", StringComparison.Ordinal)
+            .Replace("/", "~1", StringComparison.Ordinal);
 
     /// <summary>
     /// Deconstructs the pointer into its JSON Pointer path.
