@@ -22,7 +22,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-7--authorizat
 - You are modeling actors, permissions, forbidden permissions, or actor attributes without ASP.NET dependencies.
 - You are implementing static permission authorization through `IAuthorize`.
 - You are implementing resource-based authorization through `IAuthorizeResource<TResource>` and want the canonical guard shape.
-- You need a required-actor accessor in code where actor presence is already guaranteed.
+- You need a required-actor accessor where actor presence and stable or cached provider resolution are already guaranteed.
 
 ## Owner check quick-start — copy this
 
@@ -71,7 +71,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 | Represent the current user/service | `Actor` | [`Actor`](#actor) |
 | Check granted permissions with explicit deny override | `actor.HasPermission(...)`, `HasAllPermissions(...)`, `HasAnyPermission(...)` | [`Actor`](#actor) |
 | Resolve actor for a request/message | `IActorProvider.GetCurrentActorAsync(...)` | [`IActorProvider`](#iactorprovider) |
-| Read an actor whose presence is already guaranteed by authorization | `actorProvider.RequireActorAsync(cancellationToken)` | [`ActorProviderExtensions`](#actorproviderextensions) |
+| Read a required actor through a stable or explicitly cached provider after authorization | `actorProvider.RequireActorAsync(cancellationToken)` | [`ActorProviderExtensions`](#actorproviderextensions) |
 | Require static permissions on a message | Implement `IAuthorize.RequiredPermissions` | [`IAuthorize`](#iauthorize) |
 | Authorize against a loaded resource | Implement `IAuthorizeResource<TResource>.Authorize(actor, resource)` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource) |
 | Write owner/admin resource guards | `Result.Ensure(condition, new Error.Forbidden(...))` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource), [Core `Result.Ensure`](trellis-api-core.md#public-static-partial-class-result) |
@@ -218,26 +218,38 @@ public static class ActorProviderExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Task<Actor> RequireActorAsync(this IActorProvider actorProvider, CancellationToken cancellationToken = default)` | `Task<Actor>` | Calls `GetCurrentActorAsync` once with the supplied token and returns the same actor instance. Throws `InvalidOperationException` with an invariant diagnostic when absent, and `ArgumentNullException` for a null `actorProvider`. Provider exceptions and cancellation propagate unchanged. |
+| `public static Task<Actor> RequireActorAsync(this IActorProvider actorProvider, CancellationToken cancellationToken = default)` | `Task<Actor>` | Performs a new `GetCurrentActorAsync` call with the supplied token and returns that call's actor instance, not a previously authorized snapshot. Requires established presence and stable or explicitly cached provider resolution. Throws `InvalidOperationException` when absent, and `ArgumentNullException` for a null `actorProvider`. Provider exceptions and cancellation propagate unchanged. |
 
-Use only when the caller has **already established actor presence**: for example, a handler
-reached through a correctly registered Trellis authorization behavior. Implementing an
-authorization marker alone is not enough if the behavior is not registered or the handler
-is called directly. HTTP authentication alone also does not guarantee usable actor claim
-mapping, so a direct endpoint must still handle ordinary absence as authentication failure.
+Use only when the caller has **already established actor presence and stable provider
+resolution**. A successful authorization behavior checks one actor snapshot; it does not
+guarantee that a later provider lookup returns the same identity or authorization state
+(`Permissions`, `ForbiddenPermissions`, and `Attributes`). An uncached provider that queries
+mutable permission data can return a different snapshot even when `Id` is unchanged.
+
+When resolution can change, configure the existing scoped `CachingActorProvider` **before
+authorization runs**, and use the same scoped `IActorProvider` for both authorization and
+the handler. Caching only inside the handler, resolving the uncached inner provider directly,
+or using a different scope does not preserve the earlier snapshot. A provider with an
+explicit stability guarantee for the whole operation is also valid. The accessor itself
+cannot verify this precondition.
+
+Implementing an authorization marker alone is not enough if the behavior is not registered
+or the handler is called directly. HTTP authentication alone also does not guarantee usable
+actor claim mapping, so a direct endpoint must still handle ordinary absence as authentication failure.
 
 ```csharp
 using Trellis.Authorization;
 
-// Inside a handler reached after its authorization behavior succeeded.
+// After authorization, using the same stable or request-cached provider.
 Actor actor = await actorProvider.RequireActorAsync(cancellationToken);
 ```
 
 This method performs no authentication or permission checks and introduces no cache,
 accessor service, DI registration, or pipeline change. With the existing scoped
 `CachingActorProvider` (from `Trellis.Asp.Authorization`), repeated calls reuse that provider's
-resolution task; without it, each invocation calls the provider again. Normal missing-actor
-401 and insufficient-permission 403 behavior is unchanged. An absent actor at this explicit
+resolution task; without it, stable identity and authorization state are the provider's
+responsibility. Normal missing-actor 401 and insufficient-permission 403 behavior is unchanged.
+An absent actor at this explicit
 invariant boundary is a programming/configuration fault, not a replacement 401 result.
 
 ### `IAuthorize`

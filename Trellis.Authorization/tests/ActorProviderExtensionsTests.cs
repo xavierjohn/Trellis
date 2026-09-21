@@ -112,18 +112,27 @@ public class ActorProviderExtensionsTests
             .Which.CancellationToken.Should().Be(token);
     }
 
-    [Fact]
-    public async Task RequireActorAsync_RepeatedCalls_DoesNotIntroduceIndependentCache()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RequireActorAsync_UncachedMutableProvider_ResolvesAgainOnEveryCall(bool sameIdentity)
     {
-        var first = Actor.Create("user-1", new HashSet<string>());
-        var second = Actor.Create("user-2", new HashSet<string>());
+        var first = Actor.Create("user-1", new HashSet<string>(["Read"]));
+        var second = Actor.Create(sameIdentity ? "user-1" : "user-2", new HashSet<string>(["Write"]));
         var calls = 0;
         var provider = new DelegateActorProvider(_ =>
             Task.FromResult(Maybe.From(++calls == 1 ? first : second)));
 
-        (await provider.RequireActorAsync(TestContext.Current.CancellationToken)).Should().BeSameAs(first);
-        (await provider.RequireActorAsync(TestContext.Current.CancellationToken)).Should().BeSameAs(second);
-        calls.Should().Be(2);
+        var previouslyResolved = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).GetValueOrThrow();
+
+        previouslyResolved.Should().BeSameAs(first);
+        previouslyResolved.HasPermission("Read").Should().BeTrue();
+        var firstRequired = await provider.RequireActorAsync(TestContext.Current.CancellationToken);
+        var secondRequired = await provider.RequireActorAsync(TestContext.Current.CancellationToken);
+
+        firstRequired.Should().BeSameAs(second);
+        secondRequired.Should().BeSameAs(second);
+        calls.Should().Be(3);
     }
 
     private sealed class DelegateActorProvider(Func<CancellationToken, Task<Maybe<Actor>>> resolve) : IActorProvider

@@ -1,7 +1,7 @@
 ﻿namespace Trellis.Authorization;
 
 /// <summary>
-/// Provides actor access for callers that have already established an actor-presence invariant.
+/// Provides required actor access for callers with established actor presence and stable provider resolution.
 /// </summary>
 public static class ActorProviderExtensions
 {
@@ -12,9 +12,13 @@ public static class ActorProviderExtensions
     /// <param name="cancellationToken">Token forwarded to the provider.</param>
     /// <returns>The same actor instance returned by the provider.</returns>
     /// <remarks>
-    /// Use only when actor presence is already guaranteed, such as inside a handler reached
-    /// through a correctly registered authorization behavior. This method does not authenticate,
-    /// check permissions, or cache the actor. It calls the provider once per invocation.
+    /// Use only when actor presence is already guaranteed and the provider returns stable identity
+    /// and authorization state throughout the operation. This method performs another provider lookup;
+    /// it does not retrieve a snapshot captured by an authorization behavior. Authorization alone
+    /// does not establish provider stability. When resolution can change, both authorization and
+    /// the handler must use the same scoped caching provider, configured before either lookup.
+    /// This method does not authenticate, check permissions, enforce stability, or cache the actor.
+    /// It calls the provider once per invocation.
     /// For ordinary unauthenticated requests, use <see cref="IActorProvider.GetCurrentActorAsync"/>
     /// and handle absence as <see cref="Error.AuthenticationRequired"/> instead.
     /// Provider exceptions and cancellation propagate unchanged.

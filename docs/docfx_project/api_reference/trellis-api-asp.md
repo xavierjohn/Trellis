@@ -1170,6 +1170,11 @@ public sealed class CachingActorProvider : IActorProvider, IProvideActorVaryHead
 
 Decorator that caches the inner provider's resolution task per request scope using `LazyInitializer.EnsureInitialized`. The shared task uses `HttpContext.RequestAborted` so expensive work (DB lookups) is canceled with the request, but individual callers' tokens only cancel their own awaits.
 
+When a handler uses `RequireActorAsync` from `Trellis.Authorization` after authorization,
+both lookups must use this same scoped wrapper (or a provider with an explicit stability
+guarantee). Configure the wrapper before dispatch; caching only the handler's lookup does
+not preserve the actor identity or permission snapshot previously checked by authorization.
+
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public CachingActorProvider(IActorProvider inner, IHttpContextAccessor httpContextAccessor)` | — | `inner` cannot be null. |

@@ -550,11 +550,17 @@ services.AddResourceAuthorization(
 
 **Actor access after authorization.** A handler reached through the correctly registered
 behavior can use `await actorProvider.RequireActorAsync(cancellationToken)` from
-`Trellis.Authorization`. It returns the actor or throws `InvalidOperationException` if the
-presence invariant is broken; it does not authenticate, check permissions, or add a cache.
+`Trellis.Authorization` **only with stable or explicitly cached provider resolution**.
+The helper performs another lookup; authorization does not freeze the actor's identity or
+permission snapshot. For mutable providers, both behavior and handler must use the same
+scoped caching provider, configured before dispatch. With the claims provider above, opt in
+after registering it via `services.AddCachingActorProvider<ClaimsActorProvider>()`; for a
+database-backed provider, wrap that provider instead. A stable provider contract is also valid.
+The helper returns the actor or throws `InvalidOperationException` if the presence invariant
+is broken; it does not authenticate, check permissions, enforce stability, or add a cache.
 Keep ordinary missing-actor handling in the pipeline (401). Direct endpoints and callers
 without an established actor-presence invariant must still use `GetCurrentActorAsync` and
-handle `None`. The existing `CachingActorProvider` avoids repeated underlying resolution.
+handle `None`.
 
 For the same shared-loader shape without assembly scanning, register the implementation once and the behavior/accessor/adapter together per message:
 
