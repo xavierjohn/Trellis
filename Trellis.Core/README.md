@@ -22,6 +22,7 @@ Result<string> email = Result.Ok("ada@example.com")
 ## Key Features
 - Compose success and failure paths with `Bind`, `Map`, `Tap`, and `Ensure`.
 - Model optional data with `Maybe<T>` instead of `null`.
+- Treat blank optional text as absent with `Maybe.OptionalNonBlank`; nonblank input reaches the factory unchanged, while `Maybe.Optional` remains null-only.
 - Return typed errors that map cleanly to APIs, logs, and tests.
 - Accumulate failures with `EnsureAll`, including lazy value-dependent error factories.
 - Compose nested validation paths with `InputPointer.AppendProperty` and `AppendIndex`, preserving location and RFC 6901 escaping.

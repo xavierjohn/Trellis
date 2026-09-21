@@ -20,6 +20,7 @@ audience: [developer]
 | Compose multiple optionals | LINQ `from … from … select` (`Select`/`SelectMany`) | [LINQ query syntax](#linq-query-syntax) |
 | Pull the first/only present item out of a sequence | `TryFirst`, `TryLast`, `Choose` | [Collections](#collections) |
 | Validate an optional input ("null OK; if present, must be valid") | `Maybe.Optional(value, validate)` | [Boundary validation](#boundary-validation) |
+| Treat an optional blank text field as absent before validation | `Maybe.OptionalNonBlank(value, validate)` | [Boundary validation](#boundary-validation) |
 | Enforce cross-field invariants over `Maybe<T>` properties | `MaybeInvariant.AllOrNone` / `Requires` / `MutuallyExclusive` / `ExactlyOne` / `AtLeastOne` | [Multi-field invariants](#multi-field-invariants) |
 | Convert `Maybe<T>` ↔ `Result<T>` | `ToResult(error)` / `ToResultAsync(...)` / `Result<T>.ToMaybe()` | [Bridging to Result](#bridging-to-result) |
 | Convert `Maybe<T>` ↔ nullable | `AsMaybe()` / `AsNullable()` | [Interop with nullable](#interop-with-nullable) |
@@ -65,6 +66,7 @@ For ordinary nullable primitives on a DTO or for plain nullable interop, prefer 
 | `MaybeCollectionExtensions.TryFirst` / `TryLast` (with optional predicate) | extension methods | First/last hit as `Maybe<T>`. |
 | `MaybeLinqExtensions.Select` / `SelectMany` | extension methods | Enables LINQ query syntax. |
 | `Maybe.Optional<TIn, TOut>(TIn?, Func<TIn, Result<TOut>>)` | static method (class & struct overloads) | "Null OK; if present, validate." Returns `Result<Maybe<TOut>>`. |
+| `Maybe.OptionalNonBlank<TOut>(string?, Func<string, Result<TOut>>)` | static method | Null, empty, or whitespace-only input becomes successful `None`; otherwise validate the unchanged string. |
 | `MaybeInvariant.AllOrNone` / `Requires` / `MutuallyExclusive` / `ExactlyOne` / `AtLeastOne` | static methods | Cross-field invariants returning `Result<Unit>`. |
 | `Result<T>.ToMaybe()` / `ToMaybeAsync()` | extension methods (Result side) | Failure → `None`. |
 
@@ -265,6 +267,22 @@ string? input = "Countess";
 Result<Maybe<string>> result = Maybe.Optional(input, NonEmpty);
 ```
 
+An empty or whitespace-only string is **present** to `Maybe.Optional`, so the validator
+above rejects it. When a form treats blank optional text as missing, opt in explicitly:
+
+```csharp
+Result<Maybe<string>> absent = Maybe.OptionalNonBlank(" \t", NonEmpty);
+Result<Maybe<string>> present = Maybe.OptionalNonBlank(" Countess ", NonEmpty);
+```
+
+The first result succeeds with `None` without calling `NonEmpty`. The second succeeds with
+the original `" Countess "` string: the helper does not trim or otherwise normalize
+nonblank input. A factory can still normalize intentionally. Blankness follows
+`string.IsNullOrWhiteSpace`, including Unicode whitespace. Nonblank input invokes the
+factory exactly once; validation failures and persist-on-failure intent propagate unchanged.
+A null factory throws `ArgumentNullException`, even for blank input, and factory exceptions
+are not caught. Existing `Maybe.Optional` behavior is unchanged.
+
 ## Multi-field invariants
 
 `MaybeInvariant` enforces shape rules across several `Maybe<T>` fields and returns `Result<Unit>`. Failures are collected as `Error.InvalidInput` with one `FieldViolation` per offending field; field paths are normalized via `InputPointer.ForProperty(name)`.
@@ -395,6 +413,7 @@ For the "no payload" success case, prefer `Result<Unit>` (`Result.Ok()` returns 
 - Prefer `Maybe<T>.None` over `default(Maybe<T>)` (analyzer **TRLS019**).
 - Prefer safe readers (`Match`, `TryGetValue`, `GetValueOrDefault`) over `Value` (analyzer **TRLS003**).
 - Use `Maybe.Optional` at boundaries when "null OK; if present, must validate."
+- Use `Maybe.OptionalNonBlank` only when the boundary explicitly treats blank optional text as absent; normalization of nonblank input belongs to the factory.
 - Use `MaybeInvariant.*` for cross-field shape rules instead of bespoke `if`/`else` ladders.
 - Use `ToResult` to lift absence into a typed `Error` at the boundary; use `ToMaybe()` only when discarding the error is genuinely correct.
 - For EF Core, prefer the `MaybeQueryableExtensions.WhereXxx` helpers; otherwise register `AddTrellisInterceptors()` to make natural syntax translate.
