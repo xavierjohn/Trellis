@@ -61,6 +61,24 @@ public static class Maybe
     }
 
     /// <summary>
+    /// Validates an optional string, treating null, empty, or whitespace-only input as absence.
+    /// </summary>
+    /// <typeparam name="TOut">The validated output type.</typeparam>
+    /// <param name="value">The optional string. Nonblank input is passed unchanged to the function.</param>
+    /// <param name="function">A validation function invoked exactly once for nonblank input, and never for blank input.</param>
+    /// <returns>Success with <see cref="Maybe{TOut}.None"/> for blank input; otherwise the function's
+    /// successful value wrapped in <see cref="Maybe{TOut}"/>, or its failure.</returns>
+    /// <remarks>
+    /// Blankness follows <see cref="string.IsNullOrWhiteSpace(string?)"/>. This method does not trim
+    /// nonblank input. Factory failures retain their persist-on-failure intent, and exceptions propagate.
+    /// Unlike this opt-in helper, <c>Maybe.Optional</c> treats only null as absence.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="function"/> is null, even when the input is blank.</exception>
+    public static Result<Maybe<TOut>> OptionalNonBlank<TOut>(string? value, Func<string, Result<TOut>> function)
+        where TOut : notnull =>
+        Optional(string.IsNullOrWhiteSpace(value) ? null : value, function);
+
+    /// <summary>
     /// Converts an optional nullable value type to a strongly typed value object wrapped in <see cref="Maybe{TOut}"/>.
     /// </summary>
     /// <typeparam name="TIn">The nullable value input type.</typeparam>

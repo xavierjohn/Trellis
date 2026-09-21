@@ -53,6 +53,8 @@ Use this table before searching the long type catalog.
 | Combine multiple boolean guards | `Result.Ensure(...).Combine(Result.Ensure(...))` then `.Bind(...)` (extension `Combine` aggregates errors and adds each value as the next tuple element; pass a `Result<Unit>` from a no-payload guard and ignore it with `_` in the next lambda) | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
 | Adapt an already-computed result to async APIs | `.AsTask()` / `.AsValueTask()` | [`ResultTaskAdapterExtensions`](#task-adapter-family--resulttaskadapterextensions) |
 | Model expected absence | `Maybe<T>`, `Maybe.From(value)`, `Maybe<T>.None` | [`Maybe<T>`](#public-readonly-struct-maybet-where-t--notnull) |
+| Validate optional input, treating only null as absent | `Maybe.Optional(value, function)` | [`Maybe`](#public-static-class-maybe) |
+| Treat null, empty, or whitespace-only optional text as absent before validation | `Maybe.OptionalNonBlank(value, function)` | [`Maybe`](#public-static-class-maybe) |
 | Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
 | Convert a nullable reference / value to a domain failure (sync or async) | `obj.ToResult(error)` / `task.ToResultAsync(error)` / `valueTask.ToResultAsync(errorFactory)` — works on `T?` for both `class` and `struct`, plus `Task<T?>` and `ValueTask<T?>` | [`Nullable to Result`](#nullable-to-result--nullableextensions-nullableextensionsasync) |
 | Create HTTP-oriented domain errors | Closed `Error` cases plus `ResourceRef.For<TResource>(id)` | [`Error`](#public-abstract-record-error), [`Error Cases`](#error-cases-closed-adt) |
@@ -362,12 +364,27 @@ None.
 | Signature | Notes |
 | --- | --- |
 | `public static Maybe<T> From<T>(T? value) where T : notnull` | Wraps nullable input |
-| `public static Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> function) where TIn : class where TOut : notnull` | Runs function only when a reference value exists |
+| `public static Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> function) where TIn : class where TOut : notnull` | Runs function for every non-null reference, including empty or whitespace-only strings |
 | `public static Result<Maybe<TOut>> Optional<TIn, TOut>(TIn? value, Func<TIn, Result<TOut>> function) where TIn : struct where TOut : notnull` | Value-type overload |
+| `public static Result<Maybe<TOut>> OptionalNonBlank<TOut>(string? value, Func<string, Result<TOut>> function) where TOut : notnull` | Opt-in string adapter: null, empty, or whitespace-only input becomes successful `Maybe<TOut>.None` without invoking the function; nonblank input is passed unchanged exactly once |
+
+`OptionalNonBlank` uses `string.IsNullOrWhiteSpace`, including .NET's Unicode whitespace
+classification. It does **not** trim nonblank input: normalization remains the supplied
+factory's responsibility. The factory can return either a reference or value type, and its
+failures retain the original error and persist-on-failure intent. Factory exceptions propagate.
+A null `function` throws `ArgumentNullException` even for absent input, matching `Optional`.
+Existing `Optional` and `From` semantics are unchanged; this policy is never applied
+automatically to required strings, JSON binding, or query parameters.
+
+```csharp
+string? input = "   ";
+Result<Maybe<string>> label = Maybe.OptionalNonBlank(input, value => Result.Ok(value));
+// Success with None; the factory is not invoked.
+```
 
 #### Factory Methods
 
-`From` and `Optional`.
+`From`, `Optional`, and `OptionalNonBlank`.
 
 ---
 

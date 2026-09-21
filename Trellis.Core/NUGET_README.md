@@ -29,6 +29,7 @@ Result<string> email = Result.Ok("ada@example.com")
 
 - Compose explicit success and failure paths with `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, and their async variants.
 - Model expected absence with `Maybe<T>` instead of `null` or exceptions.
+- Treat blank optional text as absent with `Maybe.OptionalNonBlank`; nonblank input reaches the factory unchanged, while `Maybe.Optional` remains null-only.
 - Return a closed set of typed errors that adapters can map consistently.
 - Accumulate failures with `EnsureAll`, including lazy value-dependent error factories.
 - Compose nested validation paths with `InputPointer.AppendProperty` and `AppendIndex`, preserving location and RFC 6901 escaping.
