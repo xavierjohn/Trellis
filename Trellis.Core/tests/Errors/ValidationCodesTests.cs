@@ -93,6 +93,10 @@ public class ValidationCodesTests
             .Should().BeEmpty("one code means one thing, so two names for it would let producers drift apart");
 
     [Fact]
+    public void NumberFinite_KeepsPublishedWireValue() =>
+        ValidationCodes.NumberFinite.Should().Be("number.finite");
+
+    [Fact]
     public void No_code_is_another_code_prefix_at_a_dot_boundary()
     {
         // A client falls back from `string.exact-length` to `string`, so a code that is itself a

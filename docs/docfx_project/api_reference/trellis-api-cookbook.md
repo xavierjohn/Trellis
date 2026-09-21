@@ -98,6 +98,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Save bandwidth on reads — return `304 Not Modified` when the client's `If-None-Match` still matches | [Recipe 6](#recipe-6--conditional-get-with-entitytagvalue) |
 | Add a paginated list query | [Recipe 3](#recipe-3--query-handler-returning-paget-paginated-list-with-cursor) |
 | Paginate a computed score or distance with validated continuation state bound to query context | [Recipe 40](#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) |
+| Validate geographic coordinates or calculate an approximate in-memory distance | [`GeoCoordinate` in the Primitives reference](trellis-api-primitives.md#geocoordinate); use Recipe 40 separately for computed-distance pagination |
 | Add Minimal API or MVC endpoints | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](#recipe-5--mvc-controller-using-asactionresult) |
 | Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
 | Map primitive DTO fields to value objects | [Recipe 18](#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |

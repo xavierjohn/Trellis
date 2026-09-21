@@ -107,6 +107,12 @@ Concrete percentage (`Value : decimal`) with `FromFraction` / `AsFraction` / `Of
 
 Concrete **structured** value object (`Amount` + `Currency`) for multi-currency; arithmetic enforces a currency match and supports `Allocate(...)`.
 
+### `GeoCoordinate`
+
+Concrete **structured** value object (`Latitude` + `Longitude`) for finite geographic
+coordinates. Component equality is exact; `DistanceMetersTo` is an approximate spherical
+great-circle calculation in memory, not a SQL spatial operation.
+
 ## Base class hierarchy
 
 - **Scalar value objects**
@@ -136,7 +142,7 @@ Concrete **structured** value object (`Amount` + `Currency`) for multi-currency;
 - **Symbolic value objects**
   - `RequiredEnum<TSelf>` is separate from `ScalarValueObject<TSelf, T>` but still uses `Value` as its canonical public identity and implicitly unwraps to it.
 - **Structured value objects**
-  - `Money` -> `ValueObject`
+  - `Money`, `GeoCoordinate` -> `ValueObject`
 - **Optionality wrappers**
   - `Maybe<T>` belongs to `Trellis.Core`; it wraps presence/absence and is not a value object category peer to scalar/symbolic/structured types.
 
@@ -162,6 +168,7 @@ For a `partial` `Required*<TSelf>` type the primitive generator emits the `IScal
 | `Url` | Scalar | `Value : string` | JSON string | Absolute HTTP/HTTPS URL. |
 | `RequiredEnum<TSelf>` derivatives | Symbolic | `Value : string` | JSON string | Finite symbolic set with behavior. |
 | `Money` | Structured | `Amount` + `Currency` | JSON object | Use for multi-currency scenarios. |
+| `GeoCoordinate` | Structured | `Latitude` + `Longitude` | JSON object | Validated decimal degrees; approximate distance in meters. |
 
 ### `Money` vs `MonetaryAmount`
 
