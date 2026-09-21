@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
-types: [Age, CountryCode, CurrencyCode, EmailAddress, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
+types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoCoordinate, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
 version: v3
 last_verified: 2026-08-18
 audience: [llm]
@@ -10,7 +10,7 @@ audience: [llm]
 
 **Package:** `Trellis.Primitives`  
 **Namespaces:** `Trellis`, `Trellis.Primitives`  
-**Purpose:** the 13 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
+**Purpose:** the 14 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `GeoCoordinate`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) — recipes using this package.
 
@@ -37,6 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 | Validate an email string | `EmailAddress.TryCreate(...)` | [`EmailAddress`](#emailaddress) |
 | Validate optional phone input | `PhoneNumber.TryCreate(...)` and wrap absence with `Maybe<PhoneNumber>` at the domain seam | [`PhoneNumber`](#phonenumber), [Core `Maybe<T>`](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
 | Represent money | `Money` / `MonetaryAmount` / `CurrencyCode` | [`Money`](#money), [`MonetaryAmount`](#monetaryamount), [`CurrencyCode`](#currencycode) |
+| Validate geographic coordinates or measure approximate in-memory distance | `GeoCoordinate.TryCreate(...)`, `DistanceMetersTo(...)` | [`GeoCoordinate`](#geocoordinate) |
 | Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](trellis-api-core.md#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
 | Define a custom SKU/order-id primitive | Use `partial class Sku : RequiredString<Sku>` or `partial class OrderId : RequiredGuid<OrderId>` from `Trellis.Core` | [Core primitive base classes](trellis-api-core.md#primitive-value-object-base-classes) |
 | Opt into strict Required behavior | Use `[NotDefault]` to reject the type's sentinel, `[Trim]` to enable string trimming | [`Required*` defaults and opt-ins](#required-defaults-and-opt-ins) |
@@ -259,6 +260,58 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
 | `public static Result<EmailAddress> TryCreate(string? value, string? fieldName = null)` | `Result<EmailAddress>` | Regex-based email validation, bounded by the RFC 5321 limits: 254 characters overall and 64 for the local part. |
 | `public static EmailAddress Parse(string? s, IFormatProvider? provider)` | `EmailAddress` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out EmailAddress result)` | `bool` | Safe parse helper. |
+
+### `GeoCoordinate`
+
+```csharp
+[JsonConverter(typeof(CompositeValueObjectJsonConverter<GeoCoordinate>))]
+public sealed class GeoCoordinate : ValueObject
+```
+
+A structured value object, not a scalar. Properties are exposed with private setters;
+construction goes through the factories. No spatial database package is required.
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Latitude` | `double` | Finite decimal degrees, `-90..90` inclusive. Stored without rounding. |
+| `Longitude` | `double` | Finite decimal degrees, `-180..180` inclusive. Stored without wrapping or normalization. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<GeoCoordinate> TryCreate(double latitude, double longitude, string? fieldName = null)` | `Result<GeoCoordinate>` | Validates both components and accumulates failures into one `Error.InvalidInput`. NaN/infinity use `number.finite`; finite values below/above a bound use `value.greater-than-or-equal` / `value.less-than-or-equal` with numeric `comparisonValue`. |
+| `public static GeoCoordinate Create(double latitude, double longitude)` | `GeoCoordinate` | Throwing factory for trusted values. Throws `InvalidOperationException` on invalid input; use `TryCreate` for user input and Result pipelines. |
+| `public double DistanceMetersTo(GeoCoordinate other)` | `double` | Approximate shortest great-circle distance in meters, using haversine on a sphere with radius **6,371,008.8 m**. Handles poles, antimeridian crossings, and antipodal points. Throws `ArgumentNullException` for null `other`. |
+| `public override string ToString()` | `string` | Invariant `(latitude, longitude)` representation. Not a parsing or wire-format contract. |
+| `protected override void GetEqualityComponents(ref EqualityComponents components)` | `void` | Adds latitude, then longitude; equality, hashing, and ordering are inherited from `ValueObject`. |
+
+**Equality is component equality, not geographic equivalence.** No epsilon, wrapping, or
+pole normalization is applied. `(0, -180)` and `(0, 180)` are unequal coordinates whose
+distance is zero; different longitudes at the same pole also have zero distance.
+
+**Validation pointers.** With no owner, errors use `/latitude` and `/longitude`. The optional
+`fieldName` names the coordinate as a whole: `"Location"` becomes `/location/latitude` and
+`/location/longitude`. An existing pointer such as `"/items/0/location"` is preserved, while
+literal property names have RFC 6901 escaping applied. Both errors are retained when both
+components are invalid.
+
+**JSON.** The included composite converter emits
+`{ "latitude": 47.6062, "longitude": -122.3321 }` and deserializes through `TryCreate`.
+Both numeric fields are required; missing fields are not silently treated as zero.
+Use a nullable `GeoCoordinate?` transport for an optional coordinate rather than a
+`Maybe<GeoCoordinate>` request DTO property (Cookbook Recipe 14).
+
+**Distance scope.** This is an in-memory spherical approximation, not an ellipsoidal
+geodesic, surveying calculation, or altitude-aware distance. It has no EF SQL translation,
+bounding-box query helper, or new pagination overload. Use provider-specific spatial
+operations when query translation or ellipsoidal accuracy is required.
+
+```csharp
+using Trellis.Primitives;
+
+var seattle = GeoCoordinate.Create(47.6062, -122.3321);
+var portland = GeoCoordinate.Create(45.5152, -122.6784);
+double meters = seattle.DistanceMetersTo(portland);
+```
 
 ### `Hostname`
 
@@ -495,8 +548,8 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 
 - Built-in scalars:
   - `Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Percentage`, `PhoneNumber`, `Slug`, `Url` -> `ScalarValueObject<TSelf, T>` -> `ValueObject`
-- Structured built-in:
-  - `Money` -> `ValueObject`
+- Structured built-ins:
+  - `Money`, `GeoCoordinate` -> `ValueObject`
 
 ## Built-in primitives table
 
@@ -506,6 +559,7 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 | `CountryCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ASCII ISO 3166-1 alpha-2 (exactly two ASCII letters). |
 | `CurrencyCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ASCII ISO 4217 (exactly three ASCII letters). |
 | `EmailAddress` | `Trellis.Primitives` | Scalar | JSON string | Trimmed validated email. |
+| `GeoCoordinate` | `Trellis.Primitives` | Structured | JSON object `{ "latitude": number, "longitude": number }` | Finite latitude/longitude; approximate in-memory great-circle distance in meters. |
 | `Hostname` | `Trellis.Primitives` | Scalar | JSON string | RFC 1123 hostname. |
 | `IpAddress` | `Trellis.Primitives` | Scalar | JSON string | IPv4 or IPv6 text. |
 | `LanguageCode` | `Trellis.Primitives` | Scalar | JSON string | Lowercase ASCII ISO 639-1 alpha-2. |
@@ -544,6 +598,9 @@ Every built-in primitive's `TryCreate` failure carries a `FieldViolation.ReasonC
 | `Money` | operation across two currencies | `money.currency-mismatch` | `expected`, `actual` |
 | `Money` | operation would go negative | `money.negative-result` | — |
 | `Money` | arithmetic overflow | `number.overflow` | — |
+| `GeoCoordinate` | NaN or infinity in either component | `number.finite` | — |
+| `GeoCoordinate` | below latitude/longitude minimum | `value.greater-than-or-equal` | `comparisonValue: -90` / `-180` |
+| `GeoCoordinate` | above latitude/longitude maximum | `value.less-than-or-equal` | `comparisonValue: 90` / `180` |
 
 **Range failures are directional.** `Age`, `Percentage` and the generated range checks report `value.greater-than-or-equal` or `value.less-than-or-equal` with a `comparisonValue`, never a single `value.between-inclusive` covering both ends. A client that cannot tell which bound failed cannot say "too old" rather than "not yet born", and a directional code keeps a hand-written primitive agreeing with a generated one on the same input.
 
@@ -561,6 +618,7 @@ Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, th
 | `CountryCode` | `countryCode` | `TryCreate` |
 | `CurrencyCode` | `currencyCode` | `TryCreate` |
 | `EmailAddress` | **`email`** — not `emailAddress` | `TryCreate` |
+| `GeoCoordinate` | `latitude` / `longitude`, nested under the optional owner | `TryCreate` |
 | `Hostname` | `hostname` | `TryCreate` |
 | `IpAddress` | `ipAddress` | `TryCreate` |
 | `LanguageCode` | `languageCode` | `TryCreate` |
@@ -581,7 +639,7 @@ Pass `fieldName` explicitly whenever the value object is bound to a differently-
 var email = EmailAddress.TryCreate(request.BillingEmail, nameof(request.BillingEmail));
 ```
 
-> **`Money` reports each component at its own JSON Pointer.** `Money` is the one structured primitive with two independently-validatable components, so `fieldName` names the *money value*, not a single error key, and component failures are reported beneath it — matching the serialized shape `{ "amount": …, "currency": … }`:
+> **Structured primitives report each component at its own JSON Pointer.** `Money` and `GeoCoordinate` have independently-validatable components, so `fieldName` names the *whole value*, not a single error key. For `Money`, component failures are reported beneath it matching the serialized shape `{ "amount": …, "currency": … }`:
 >
 > ```csharp
 > Money.TryCreate(-1m, "USD", "price");      // → /price/amount

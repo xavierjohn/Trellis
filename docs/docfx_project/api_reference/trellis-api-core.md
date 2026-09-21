@@ -721,6 +721,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `StringLanguageCode` | `string.language-code` | Not an ISO 639-1 alpha-2 code. |
 | `StringCurrencyCode` | `string.currency-code` | Not an ISO 4217 code. |
 | `StringCreditCard` | `string.credit-card` | Failed credit-card validation. |
+| `NumberFinite` | `number.finite` | An already-parsed floating-point value is NaN or infinity where a finite number is required. No args; the non-finite input is not echoed into JSON. |
 | `NumberPrecision` | `number.precision` | A parsed decimal exceeded the allowed scale or precision. |
 | `NumberOverflow` | `number.overflow` | **Arithmetic** overflow, such as `Money.Add`. Malformed input is a `format.*` code. |
 | `ValueNotNull` | `value.not-null` | Required and absent (or explicitly `null`). |

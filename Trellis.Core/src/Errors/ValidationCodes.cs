@@ -170,6 +170,9 @@ public static class ValidationCodes
 
     // ---- number.* — validation of an already-parsed number ----
 
+    /// <summary>A floating-point number is NaN or infinity where a finite value is required.</summary>
+    public const string NumberFinite = "number.finite";
+
     /// <summary>Scale or precision exceeds what the target permits.</summary>
     public const string NumberPrecision = "number.precision";
 

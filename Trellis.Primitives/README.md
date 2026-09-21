@@ -37,6 +37,20 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 - `Trellis.Core` base classes like `RequiredString<CustomerEmail>` and `RequiredGuid<OrderId>` for custom domain types.
 - Lenient-by-default generated validation (rejects `null` only); opt into sentinel rejection with `[NotDefault]` and string trimming with `[Trim]` when domain strictness is required.
 - Validation and parsing rules that stay with the type instead of leaking into handlers and controllers.
+- `GeoCoordinate` validates finite latitude/longitude and calculates approximate in-memory great-circle distances in meters.
+
+## Geographic coordinates
+
+```csharp
+var seattle = GeoCoordinate.Create(47.6062, -122.3321);
+var portland = GeoCoordinate.Create(45.5152, -122.6784);
+double meters = seattle.DistanceMetersTo(portland);
+```
+
+Use `TryCreate(latitude, longitude, fieldName)` for untrusted input. It accumulates both
+component errors; latitude is `-90..90` and longitude is `-180..180`, inclusive. JSON is
+`{ "latitude": number, "longitude": number }`. Values are not rounded or normalized.
+Distance uses a sphere of radius 6,371,008.8 meters, not an ellipsoidal model or SQL spatial query.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/primitives.html)

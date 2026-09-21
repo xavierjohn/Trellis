@@ -15,6 +15,7 @@ audience: [developer]
 | Goal | Use | See |
 |---|---|---|
 | Use a ready-made validated email / URL / phone / ISO code | Built-in concrete VOs in `Trellis.Primitives` (`EmailAddress`, `Url`, `PhoneNumber`, `CountryCode`, ...) | [Built-in primitives](#built-in-primitives) |
+| Validate coordinates or calculate approximate geographic distance | `GeoCoordinate.TryCreate(...)` / `DistanceMetersTo(...)` | [Geographic coordinates](#geographic-coordinates) |
 | Wrap an ID, name, count, flag, or timestamp from your own domain | `partial class X : Required*<X>` from `Trellis.Core` | [Defining custom primitives](#defining-custom-primitives) |
 | Constrain a custom string length or numeric range | `[Trellis.StringLength(...)]` / `[Trellis.Range(...)]` on the partial class | [Validation](#validation) |
 | Add a regex / pattern check | Override `static partial void ValidateAdditional(...)` | [Validation](#validation) |
@@ -34,12 +35,12 @@ audience: [developer]
 
 ## Surface at a glance
 
-`Trellis.Primitives` ships 13 ready-made concrete value objects plus the composite JSON converter and OpenTelemetry registration extension that backs them. The `Required*<TSelf>` base classes, validation attributes, source generator, scalar JSON converter, and primitive trace source that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
+`Trellis.Primitives` ships 14 ready-made concrete value objects plus the composite JSON converter and OpenTelemetry registration extension that backs them. The `Required*<TSelf>` base classes, validation attributes, source generator, scalar JSON converter, and primitive trace source that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
 
 | Area | Key APIs | Lives in |
 |---|---|---|
 | Built-in scalar VOs | `Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Percentage`, `PhoneNumber`, `Slug`, `Url` | `Trellis.Primitives` |
-| Built-in structured VO | `Money` (`amount` + `currency`) | `Trellis.Primitives` |
+| Built-in structured VOs | `Money` (`amount` + `currency`), `GeoCoordinate` (`latitude` + `longitude`) | `Trellis.Primitives` |
 | Custom-primitive bases | `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredLong<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredBool<TSelf>`, `RequiredDateTime<TSelf>`, `RequiredDateTimeOffset<TSelf>`, `RequiredEnum<TSelf>` | `Trellis.Core` |
 | Validation and behavior attributes | `[Trellis.StringLength]`, `[Trellis.Range]`, `[Trellis.EnumValue]`, `[Trellis.NotDefault]`, `[Trellis.Trim]` | `Trellis.Core` |
 | Pattern / cross-field hook | `static partial void ValidateAdditional(value, fieldName, ref string? errorMessage)` | generator-emitted |
@@ -313,7 +314,7 @@ The converter discovers properties in declaration order, populates a matching `s
 
 ## Built-in primitives
 
-`Trellis.Primitives` ships 13 concrete value objects so you do not re-derive `Email`, `Money`, or `Slug` in every project.
+`Trellis.Primitives` ships 14 concrete value objects so you do not re-derive `Email`, `Money`, `GeoCoordinate`, or `Slug` in every project.
 
 | Type | Category | Wire shape | Notes |
 |---|---|---|---|
@@ -321,6 +322,7 @@ The converter discovers properties in declaration order, populates a matching `s
 | `CountryCode` | scalar `string` | JSON string | Uppercase **ASCII** ISO 3166-1 alpha-2 (exactly two ASCII letters). Non-ASCII letters are rejected. |
 | `CurrencyCode` | scalar `string` | JSON string | Uppercase **ASCII** ISO 4217 (exactly three ASCII letters). |
 | `EmailAddress` | scalar `string` | JSON string | Trimmed, regex-validated. |
+| `GeoCoordinate` | structured `ValueObject` | JSON object `{ "latitude": number, "longitude": number }` | Finite decimal degrees; accumulated validation and approximate in-memory great-circle distance. |
 | `Hostname` | scalar `string` | JSON string | RFC 1123 hostname. |
 | `IpAddress` | scalar `string` | JSON string | IPv4/IPv6 via `IPAddress.TryParse`; `ToIPAddress()` returns the cached parse. |
 | `LanguageCode` | scalar `string` | JSON string | Lowercase **ASCII** ISO 639-1 alpha-2. |
@@ -330,6 +332,29 @@ The converter discovers properties in declaration order, populates a matching `s
 | `PhoneNumber` | scalar `string` | JSON string | Strips spaces / dashes / parentheses then validates E.164; `GetCountryCode()` returns `Maybe<string>` with the calling code when the prefix is ITU-T-assigned, or `Maybe<string>.None` when `TryCreate` accepts the E.164 *shape* but the prefix is unrecognized. |
 | `Slug` | scalar `string` | JSON string | Lowercase letters, digits, single-hyphen separators. |
 | `Url` | scalar `string` | JSON string | Absolute HTTP/HTTPS only; exposes `Scheme`, `Host`, `Port`, `Path`, `Query`, `IsSecure`, `ToUri()`. |
+
+### Geographic coordinates
+
+```csharp
+using Trellis.Primitives;
+
+var seattle = GeoCoordinate.Create(47.6062, -122.3321);
+var portland = GeoCoordinate.Create(45.5152, -122.6784);
+double meters = seattle.DistanceMetersTo(portland);
+```
+
+For user input, use `GeoCoordinate.TryCreate(latitude, longitude, "location")`. It validates
+both components and reports errors at `/location/latitude` and `/location/longitude`.
+Latitude is `-90..90` and longitude is `-180..180`, inclusive; NaN and infinity are invalid.
+The built-in JSON converter requires both numeric fields and routes them through the same factory.
+
+Coordinates are stored without rounding or normalization. Inherited value-object equality
+compares the two components, so `-180` and `180` longitudes can describe the same location
+while remaining unequal coordinate values. Distance handles that equivalence and the poles.
+
+`DistanceMetersTo` uses haversine with a fixed spherical Earth radius of **6,371,008.8 m**.
+It is not an ellipsoidal or altitude-aware calculation, and is not translated into SQL.
+EF spatial queries and nearby-query helpers are outside this primitive's scope.
 
 ### `MonetaryAmount` vs `Money`
 
