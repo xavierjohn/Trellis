@@ -97,6 +97,13 @@ public class ValidationCodesTests
         ValidationCodes.NumberFinite.Should().Be("number.finite");
 
     [Fact]
+    public void WeeklyScheduleCodes_KeepPublishedWireValues()
+    {
+        ValidationCodes.StringTimeZoneIana.Should().Be("string.time-zone-iana");
+        ValidationCodes.SchedulePeriodsOverlap.Should().Be("schedule.periods-overlap");
+    }
+
+    [Fact]
     public void No_code_is_another_code_prefix_at_a_dot_boundary()
     {
         // A client falls back from `string.exact-length` to `string`, so a code that is itself a

@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
-types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoCoordinate, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
+types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoCoordinate, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, WeeklyPeriod, WeeklySchedule, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
 version: v3
 last_verified: 2026-08-18
 audience: [llm]
@@ -10,7 +10,7 @@ audience: [llm]
 
 **Package:** `Trellis.Primitives`  
 **Namespaces:** `Trellis`, `Trellis.Primitives`  
-**Purpose:** the 14 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `GeoCoordinate`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
+**Purpose:** the 16 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `GeoCoordinate`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`, `WeeklyPeriod`, `WeeklySchedule`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) — recipes using this package.
 
@@ -38,6 +38,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 | Validate optional phone input | `PhoneNumber.TryCreate(...)` and wrap absence with `Maybe<PhoneNumber>` at the domain seam | [`PhoneNumber`](#phonenumber), [Core `Maybe<T>`](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
 | Represent money | `Money` / `MonetaryAmount` / `CurrencyCode` | [`Money`](#money), [`MonetaryAmount`](#monetaryamount), [`CurrencyCode`](#currencycode) |
 | Validate geographic coordinates or measure approximate in-memory distance | `GeoCoordinate.TryCreate(...)`, `DistanceMetersTo(...)` | [`GeoCoordinate`](#geocoordinate) |
+| Represent recurring weekly availability, overnight windows, or local-clock DST membership | `WeeklyPeriod.TryCreate(...)`, `WeeklySchedule.TryCreate(...)`, `IsActiveAt(...)` | [`WeeklyPeriod`](#weeklyperiod), [`WeeklySchedule`](#weeklyschedule) |
 | Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](trellis-api-core.md#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
 | Define a custom SKU/order-id primitive | Use `partial class Sku : RequiredString<Sku>` or `partial class OrderId : RequiredGuid<OrderId>` from `Trellis.Core` | [Core primitive base classes](trellis-api-core.md#primitive-value-object-base-classes) |
 | Opt into strict Required behavior | Use `[NotDefault]` to reject the type's sentinel, `[Trim]` to enable string trimming | [`Required*` defaults and opt-ins](#required-defaults-and-opt-ins) |
@@ -542,6 +543,99 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
 | `public static Url Parse(string? s, IFormatProvider? provider)` | `Url` | Throws `FormatException` on failure. |
 | `public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Url result)` | `bool` | Safe parse helper. |
 
+### `WeeklyPeriod`
+
+```csharp
+public sealed class WeeklyPeriod : ValueObject
+```
+
+Immutable structured value object. `Day : DayOfWeek` is the starting day; `Start : TimeOnly`
+is inclusive and `End : TimeOnly` exclusive. All `TimeOnly` ticks are preserved. An earlier
+end means the following day; equal endpoints are rejected. `IsAllDay : bool` explicitly
+distinguishes a whole calendar day, represented by two midnight endpoints.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<WeeklyPeriod> TryCreate(DayOfWeek day, TimeOnly start, TimeOnly end, string? fieldName = null)` | `Result<WeeklyPeriod>` | Accumulates undefined-day and equal-endpoint failures. A normal period is strictly shorter than 24 local-clock hours. |
+| `public static Result<WeeklyPeriod> TryCreateAllDay(DayOfWeek day, string? fieldName = null)` | `Result<WeeklyPeriod>` | Explicit midnight-to-midnight calendar day. Validates the day. |
+| `public static WeeklyPeriod Create(DayOfWeek day, TimeOnly start, TimeOnly end)` | `WeeklyPeriod` | Trusted-input factory; throws `InvalidOperationException` on validation failure. |
+| `public static WeeklyPeriod CreateAllDay(DayOfWeek day)` | `WeeklyPeriod` | Trusted-input all-day factory; throws `InvalidOperationException` for an undefined day. |
+| `protected override void GetEqualityComponents(ref EqualityComponents components)` | `void` | Adds `Day`, `Start`, `End`, `IsAllDay`; equality, hashing, and ordering are inherited. |
+
+The optional owner composes component pointers, as for `GeoCoordinate`: `/day` and `/end`
+by default, or `/hours/periods/2/day` when given `"/hours/periods/2"`.
+
+`Create` and `CreateAllDay` terminate their validating factories with `GetValueOrThrow`.
+Their `InvalidOperationException` messages use the standard Result format, including the
+value-object type and validation details. Use the `TryCreate` variants for untrusted input.
+
+### `WeeklySchedule`
+
+```csharp
+public sealed class WeeklySchedule : ValueObject
+```
+
+Immutable structured value object holding `TimeZoneId : string` and
+`Periods : IReadOnlyList<WeeklyPeriod>`. Construction copies the periods and exposes a
+read-only snapshot, sorted Sunday-first by local start time. Empty means always closed;
+a null collection or null element is invalid. There is no restaurant-specific period-count cap.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<WeeklySchedule> TryCreate(string? timeZoneId, IReadOnlyList<WeeklyPeriod>? periods, string? fieldName = null)` | `Result<WeeklySchedule>` | Accumulates zone and collection failures. Rejects overlaps, including overnight/week-wrap overlap; permits touching endpoints. Null elements are reported at their original input indexes. |
+| `public static WeeklySchedule Create(string timeZoneId, IReadOnlyList<WeeklyPeriod> periods)` | `WeeklySchedule` | Trusted-input factory; throws `InvalidOperationException` on validation failure. |
+| `public bool Contains(DayOfWeek day, TimeOnly time)` | `bool` | Membership in local weekly clock coordinates, with no zone conversion. Throws `ArgumentOutOfRangeException` for an undefined day. |
+| `public bool IsActiveAt(DateTimeOffset instant)` | `bool` | Converts an absolute instant to local weekly clock coordinates using the schedule's zone, not the supplied offset. Pure in-memory calculation; no SQL translation or clock read. |
+| `protected override void GetEqualityComponents(ref EqualityComponents components)` | `void` | Adds the resolved zone ID, then each sorted period; equality, hashing, and ordering are inherited. |
+
+`Create` delegates to `TryCreate(...).GetValueOrThrow()`, using the standard Result
+exception format with the value-object type and validation details. `TryCreate` accumulates
+independent zone and collection errors, but checks for null elements before sorting or
+checking overlaps, preserving their original input indexes.
+
+**Time zones and DST.** Trims the identifier, resolves it through
+`TimeZoneInfo.TryFindSystemTimeZoneById`, and requires `HasIanaId`. `UTC` is accepted;
+Windows-only IDs such as `Pacific Standard Time` are not. The host must provide the
+corresponding time-zone data (including ICU/tzdata where required); there is no UTC fallback.
+`TimeZoneId` is the resolved `TimeZoneInfo.Id`. Equivalent aliases are not unified.
+The instance retains the resolved rules; reconstruct it after updating the host's zone data.
+
+The schedule describes wall-clock availability, not elapsed duration. Both occurrences of a
+repeated local time match the same periods; skipped local times have no corresponding instant.
+An all-day period covers its entire local calendar day even when that day is 23 or 25 elapsed
+hours. Non-hourly offsets and DST transitions are supported. Membership at the extremes of
+`DateTimeOffset` uses modular week arithmetic rather than clamping a local date.
+
+**Equality.** Input order does not matter after sorting. Adjacent periods are **not merged**:
+one 09:00-17:00 period and two touching 09:00-12:00 / 12:00-17:00 periods remain different
+structural values. Different zone IDs remain different even when their current rules agree.
+
+**JSON and persistence.** Use an application-owned DTO containing the zone ID and period
+fields (`Day`, `Start`, `End`, `IsAllDay`). These types deliberately have no
+`CompositeValueObjectJsonConverter` attribute: that converter does not support collections
+or `TimeOnly`. Do not bind these value objects directly as request-body properties.
+On inbound data, call `TryCreateAllDay` for explicit all-day periods and `TryCreate` for
+ordinary periods, accumulate the period results with `SequenceAll`, then validate the
+schedule. Use nullable/required DTO fields to distinguish missing values from midnight/Sunday.
+On output, project the validated components back to the DTO.
+
+Persist that DTO/snapshot in an application-selected representation (for example JSON or
+separate records) and rehydrate through the factories. These types do **not** expose the
+parameterless constructors required for direct EF owned-type materialization; persist a
+separate storage representation rather than attaching them as owned navigations. There is
+no implicit single-string storage format or new EF helper. See Cookbook Recipe 13's DTO
+boundary guidance. Holidays, exceptions, booking capacity, recurrence engines, and
+`NextChange` are deliberately outside this API.
+
+```csharp
+var schedule = WeeklySchedule.Create("America/Los_Angeles",
+[
+    WeeklyPeriod.Create(DayOfWeek.Friday, new TimeOnly(22, 0), new TimeOnly(2, 0)),
+    WeeklyPeriod.CreateAllDay(DayOfWeek.Sunday)
+]);
+bool available = schedule.IsActiveAt(new DateTimeOffset(2026, 9, 26, 8, 0, 0, TimeSpan.Zero));
+```
+
 ## Base class hierarchy
 
 The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<TSelf>`, etc.) live in `Trellis.Core` — see [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the full hierarchy. The concrete primitives in this package layer on top:
@@ -549,7 +643,7 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 - Built-in scalars:
   - `Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Percentage`, `PhoneNumber`, `Slug`, `Url` -> `ScalarValueObject<TSelf, T>` -> `ValueObject`
 - Structured built-ins:
-  - `Money`, `GeoCoordinate` -> `ValueObject`
+  - `Money`, `GeoCoordinate`, `WeeklyPeriod`, `WeeklySchedule` -> `ValueObject`
 
 ## Built-in primitives table
 
@@ -569,6 +663,8 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 | `PhoneNumber` | `Trellis.Primitives` | Scalar | JSON string | Normalized E.164 string. `GetCountryCode()` returns `Maybe<string>.None` when the prefix is not an assigned ITU-T calling code. |
 | `Slug` | `Trellis.Primitives` | Scalar | JSON string | Lowercase letters, digits, single hyphens. |
 | `Url` | `Trellis.Primitives` | Scalar | JSON string | Absolute HTTP/HTTPS URI. |
+| `WeeklyPeriod` | `Trellis.Primitives` | Structured | Application DTO | One half-open local-clock period or explicit all-day period. |
+| `WeeklySchedule` | `Trellis.Primitives` | Structured | Application DTO | IANA time zone and immutable, sorted, non-overlapping weekly periods. |
 
 ## Reason codes emitted by the built-in primitives
 
@@ -601,6 +697,12 @@ Every built-in primitive's `TryCreate` failure carries a `FieldViolation.ReasonC
 | `GeoCoordinate` | NaN or infinity in either component | `number.finite` | — |
 | `GeoCoordinate` | below latitude/longitude minimum | `value.greater-than-or-equal` | `comparisonValue: -90` / `-180` |
 | `GeoCoordinate` | above latitude/longitude maximum | `value.less-than-or-equal` | `comparisonValue: 90` / `180` |
+| `WeeklyPeriod` | undefined day | `enum.undefined` | `allowed`: day names |
+| `WeeklyPeriod` | equal normal endpoints | `value.must-not-equal` | `comparisonProperty: "start"` |
+| `WeeklySchedule` | null/blank zone ID | `value.not-null` / `value.not-empty` | — |
+| `WeeklySchedule` | unresolved or non-IANA zone ID | `string.time-zone-iana` | — |
+| `WeeklySchedule` | null collection or element | `value.not-null` | — |
+| `WeeklySchedule` | overlapping periods | `schedule.periods-overlap` | — |
 
 **Range failures are directional.** `Age`, `Percentage` and the generated range checks report `value.greater-than-or-equal` or `value.less-than-or-equal` with a `comparisonValue`, never a single `value.between-inclusive` covering both ends. A client that cannot tell which bound failed cannot say "too old" rather than "not yet born", and a directional code keeps a hand-written primitive agreeing with a generated one on the same input.
 
@@ -629,6 +731,8 @@ Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, th
 | `PhoneNumber` | `phoneNumber` | `TryCreate` |
 | `Slug` | `slug` | `TryCreate` |
 | `Url` | `url` | `TryCreate` |
+| `WeeklyPeriod` | `day` / `end`, nested under the optional owner | `TryCreate` / `TryCreateAllDay` |
+| `WeeklySchedule` | `timeZoneId` / `periods` / `periods/{index}`, nested under the optional owner | `TryCreate` |
 
 `EmailAddress` and `MonetaryAmount` keep the shorter defaults deliberately: `email` and `amount` are the names those values almost always carry in a payload, so the default is right more often than a type-derived `emailAddress` or `monetaryAmount` would be. Override with `fieldName` in the minority of cases where it isn't.
 

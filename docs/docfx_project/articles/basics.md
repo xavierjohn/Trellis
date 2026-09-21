@@ -253,6 +253,22 @@ A good mental model is:
 - **`TryCreate`** checks shape and basic validity
 - **`Ensure`** checks context-specific business rules
 
+For a standalone guard, use the static `Result.Ensure` factory. Supply an error factory
+to avoid constructing the error when the condition passes:
+
+```csharp
+var quantity = 3;
+Result<Unit> guard = Result.Ensure(quantity > 0, () =>
+    Error.InvalidInput.ForField("quantity", ValidationCodes.ValueGreaterThan,
+        ValidationArgs.Of("comparisonValue", 0), "Quantity must be positive."));
+```
+
+`Result.Ensure(() => condition, () => error)` and
+`Result.EnsureAsync(() => predicateTask, () => error)` offer the same lazy error creation.
+The predicate runs once; the factory runs once only for a false result. Predicate exceptions
+and cancellation propagate without creating an error. These guards return `Result<Unit>`;
+use `.Map(_ => value)` when a successful guard should introduce a value into the pipeline.
+
 ### `Tap`: run a side effect without changing the result
 
 Use `Tap` when you want to log, save, publish, or notify on the success path.

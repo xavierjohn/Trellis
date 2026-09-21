@@ -21,6 +21,7 @@ Result<string> email = Result.Ok("ada@example.com")
 
 ## Key Features
 - Compose success and failure paths with `Bind`, `Map`, `Tap`, and `Ensure`.
+- Use static `Result.Ensure(condition, () => error)` guards to create errors only on failure; predicate and async-predicate overloads support the same lazy factories.
 - Model optional data with `Maybe<T>` instead of `null`.
 - Treat blank optional text as absent with `Maybe.OptionalNonBlank`; nonblank input reaches the factory unchanged, while `Maybe.Optional` remains null-only.
 - Return typed errors that map cleanly to APIs, logs, and tests.
