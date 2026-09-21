@@ -141,6 +141,10 @@ using Trellis;
 
 var single = Error.InvalidInput.ForField("email", ValidationCodes.ValueNotEmpty, "Email is required");
 
+var indexedField = InputPointer.ForBody("/items").AppendIndex(2).AppendProperty("quantity");
+var indexed = Error.InvalidInput.ForField(indexedField, ValidationCodes.ValueGreaterThan,
+    "Quantity must be greater than zero.");
+
 var multiField = new Error.InvalidInput(EquatableArray.Create(
     new FieldViolation(InputPointer.ForProperty("email"),    ValidationCodes.ValueNotEmpty) { Detail = "Email is required" },
     new FieldViolation(InputPointer.ForProperty("password"), ValidationCodes.StringMinLength,
@@ -157,6 +161,10 @@ var crossField = new Error.InvalidInput(
             InputPointer.ForProperty("passwordConfirmation")))
         { Detail = "Passwords must match" }));
 ```
+
+`AppendProperty` appends a literal name and escapes `~` and `/`; it does not treat a
+leading slash as another pointer. `AppendIndex` rejects negative indexes. Both retain the
+parent pointer's input location, so the example points to `/items/2/quantity` in the body.
 
 ## Pattern matching
 

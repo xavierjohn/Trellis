@@ -280,6 +280,23 @@ var result = Result.Ok(new CheckoutRequest("SPRING25", 125m, "USD"))
         (request => request.CouponCode.Length <= 20, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("couponCode"), ValidationCodes.StringMaxLength) { Detail = "Coupon code is too long." }))));
 ```
 
+To build errors only when a check fails, supply value-dependent factories instead:
+
+```csharp
+var result = Result.Ok(new CheckoutRequest("SPRING25", -5m, "USD"))
+    .EnsureAll(
+        (request => request.Subtotal > 0m, request =>
+            Error.InvalidInput.ForField("subtotal", ValidationCodes.ValueGreaterThan,
+                $"Subtotal {request.Subtotal} must be greater than zero.")),
+        (request => request.Currency.Length == 3, _ =>
+            Error.InvalidInput.ForField("currency", ValidationCodes.StringExactLength,
+                "Currency must be a 3-letter code.")));
+```
+
+Every predicate runs on a successful input, and only failed checks invoke their factory.
+An upstream failure skips all checks. `EnsureAllAsync` offers the same synchronous
+factories on `Task<Result<T>>` and `ValueTask<Result<T>>` receivers.
+
 ### `RecoverOnFailure`: provide a fallback path
 
 Use `RecoverOnFailure` when a failure should trigger another attempt.

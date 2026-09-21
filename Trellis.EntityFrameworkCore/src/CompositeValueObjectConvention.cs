@@ -47,6 +47,7 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
     : IModelInitializedConvention, INavigationAddedConvention, IModelFinalizingConvention
 {
     private static readonly Type s_moneyType = typeof(Money);
+    internal const string MaybeStorageReasonAnnotation = "Trellis:MaybeStorageReason";
 
     /// <summary>
     /// Registers all discovered composite value object types as owned so that EF Core's
@@ -155,8 +156,26 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
                 {
                     var ownerTypeName = entityType.ClrType?.Name ?? entityType.Name;
                     var tableName = $"{ownerTypeName}_{maybePropertyName}";
-                    navigation.TargetEntityType.Builder.HasAnnotation(
+                    var target = navigation.TargetEntityType;
+                    var tableSource = target.FindAnnotation(RelationalAnnotationNames.TableName)?.GetConfigurationSource();
+                    var configured = target.Builder.HasAnnotation(
                         RelationalAnnotationNames.TableName, tableName);
+                    if (configured is not null && tableSource is null or ConfigurationSource.Convention)
+                    {
+                        var reasons = new List<string>();
+                        if (hasNestedOwned)
+                            reasons.Add("nested owned navigations: " + string.Join(", ",
+                                target.GetDeclaredNavigations().Where(n => n.TargetEntityType.IsOwned())
+                                    .Select(n => n.Name).Order(StringComparer.Ordinal)));
+                        if (hasNonNullableValueType)
+                            reasons.Add("non-nullable value-type properties: " + string.Join(", ",
+                                target.GetDeclaredProperties()
+                                    .Where(p => !p.IsShadowProperty() && p.ClrType.IsValueType
+                                        && Nullable.GetUnderlyingType(p.ClrType) is null)
+                                    .Select(p => p.Name).Order(StringComparer.Ordinal)));
+                        target.Builder.HasAnnotation(MaybeStorageReasonAnnotation, string.Join("; ", reasons));
+                    }
+
                     continue;
                 }
 

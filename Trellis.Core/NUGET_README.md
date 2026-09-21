@@ -30,6 +30,8 @@ Result<string> email = Result.Ok("ada@example.com")
 - Compose explicit success and failure paths with `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, and their async variants.
 - Model expected absence with `Maybe<T>` instead of `null` or exceptions.
 - Return a closed set of typed errors that adapters can map consistently.
+- Accumulate failures with `EnsureAll`, including lazy value-dependent error factories.
+- Compose nested validation paths with `InputPointer.AppendProperty` and `AppendIndex`, preserving location and RFC 6901 escaping.
 - Build aggregates, entities, value objects, specifications, domain events, and integration-event contracts.
 - Define source-generated `Required*<TSelf>` scalar value objects.
 - Validate cursor pagination with `PageRequest`, `CursorCodec`, `Page<T>`, and `PageBuilder`.

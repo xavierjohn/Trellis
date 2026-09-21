@@ -669,6 +669,13 @@ public static class ModelDiagnostics
 
 **What it shows.** `Maybe<T>` properties are routed through `MaybeConvention`, which generates a backing field (`_email` for `Email`) that EF Core maps to a nullable column. The CLR property remains `Maybe<EmailAddress>` everywhere in the domain. `MaybePropertyMapping` is the diagnostic record that exposes both names — useful for `HasIndex` on the storage member.
 
+For storage-level inspection, the same record exposes `StorageKind`, `TableName`,
+`Schema`, and `Columns.Items` (property paths, actual table/column names, provider column
+types, and physical nullability). Composite mappings include recursively owned columns,
+even when those values target different tables. `StorageReason` records Trellis's
+separate-table fallback reason when known, not a guess about explicit overrides.
+`db.ToMaybeMappingDebugString()` renders all of these diagnostics.
+
 > For **composite** value objects (multi-field `[OwnedEntity]` types like `ShippingAddress`) — and for `Maybe<T>` where `T` is composite — see [Recipe 13](#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership). `Recipe 8` covers scalar `Maybe<T>` only.
 
 **Anti-pattern → fix (TRLS016).**

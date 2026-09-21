@@ -880,12 +880,26 @@ A pointer carries *where* a value came from as well as *which* value it was. The
 | `public static InputPointer ForQuery(string name)` | `InputPointer` | A query-string parameter, addressed by name. |
 | `public static InputPointer ForPath(string name)` | `InputPointer` | A route parameter, addressed by name. |
 | `public static InputPointer ForHeader(string name)` | `InputPointer` | A request header, addressed by name. |
+| `public InputPointer AppendProperty(string propertyName)` | `InputPointer` | Appends one literal property-name segment, escaping `~` and `/` even at the start of the name. Empty means an empty-name property, not root; null throws `ArgumentNullException`. Preserves `In`. |
+| `public InputPointer AppendIndex(int index)` | `InputPointer` | Appends a zero-based index with invariant decimal formatting. Negative indexes throw `ArgumentOutOfRangeException`. Preserves `In`. |
 | `public void Deconstruct(out string Path)` | `void` | Path only — preserves the single-element deconstruction the original positional record offered. |
 | `public void Deconstruct(out string Path, out InputLocation In)` | `void` | Path and location. |
 
 The three name factories store the name as **one** escaped token, so a parameter named `a/b` becomes `/a~1b` — one parameter, not two segments. Unlike `ForProperty` and `ForBody` they escape a leading `/` rather than treating it as an already-formed pointer, because a parameter named `/id` is a name and a name factory must never reinterpret it as a location. They reject an empty name rather than collapsing to root, since the root pointer is meaningful for a body and meaningless for a named parameter.
 
 `Equals` and `GetHashCode` compare `Path` **and** `In`. Path alone would make two pointers that project to different wire locations compare equal, and de-duplication would then collapse distinct failures into one.
+
+Build nested paths without string concatenation:
+
+```csharp
+var field = InputPointer.ForBody("/openingHours")
+    .AppendProperty("periods").AppendIndex(1).AppendProperty("open");
+// Path: /openingHours/periods/1/open; In: Body
+```
+
+`AppendProperty` takes a **literal name**, not a pre-escaped pointer: appending `"/name"`
+produces the segment `~1name`, and appending `"~1"` produces `~01`. Existing parent
+segments are not re-escaped. Appending to `Root` or a default pointer works identically.
 
 ---
 
@@ -1391,6 +1405,18 @@ Predicate-based validation. `Ensure` short-circuits on the first failed predicat
 | `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Result<TValue>` | Applicative validation: runs every check and folds failures via `error.Combine(...)` into one `Error.Aggregate`. |
 | `public static Task<Result<TValue>> EnsureAllAsync<TValue>(this Task<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Task<Result<TValue>>` | Task overload of `EnsureAllAsync`. |
 | `public static ValueTask<Result<TValue>> EnsureAllAsync<TValue>(this ValueTask<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `ValueTask<Result<TValue>>` | ValueTask overload of `EnsureAllAsync`. |
+| `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `Result<TValue>` | Lazy accumulation: each failed check calls its factory exactly once with the successful value; passing checks never create errors. |
+| `public static Task<Result<TValue>> EnsureAllAsync<TValue>(this Task<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `Task<Result<TValue>>` | Awaits the receiver, then applies lazy accumulation. |
+| `public static ValueTask<Result<TValue>> EnsureAllAsync<TValue>(this ValueTask<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `ValueTask<Result<TValue>>` | ValueTask receiver with lazy accumulation. |
+
+Both `EnsureAll` families preserve upstream failures (including persist-on-failure intent)
+without invoking predicates or factories. Empty checks preserve the original result. A
+null checks array throws; on success, null predicates/factories throw with their check
+index. A factory returning null throws `InvalidOperationException` instead of silently
+dropping the failure. Delegate exceptions propagate. Factories are synchronous; the async
+overloads await the receiver, not the predicates or factories. The constant-error overloads
+have higher overload-resolution priority, preserving existing `EnsureAll()`,
+`EnsureAll(null!)`, and null-error tuple calls.
 
 ```csharp
 Result<Quote> Validate(Quote q) =>

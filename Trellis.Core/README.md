@@ -23,6 +23,8 @@ Result<string> email = Result.Ok("ada@example.com")
 - Compose success and failure paths with `Bind`, `Map`, `Tap`, and `Ensure`.
 - Model optional data with `Maybe<T>` instead of `null`.
 - Return typed errors that map cleanly to APIs, logs, and tests.
+- Accumulate failures with `EnsureAll`, including lazy value-dependent error factories.
+- Compose nested validation paths with `InputPointer.AppendProperty` and `AppendIndex`, preserving location and RFC 6901 escaping.
 - Use `AsTask()` / `AsValueTask()` to return synchronous `Result` chains from async-shaped APIs.
 - Build resource-aware HTTP errors tersely with `ResourceRef.For<TResource>(id)`.
 - Define custom `Required*<TSelf>` value objects with source-generated parsing, JSON conversion, and tracing support.
