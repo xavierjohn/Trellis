@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class DomainEventHandlerCascadedException | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class DomainEventHandlerCascadedException | Trellis ">
+      
+      <meta name="description" content="Thrown by the domain event dispatch behaviors and helper when the aggregate&#39;s pending-event list no longer matches the entry snapshot at the end of dispatch. The validation is strict: length must match AND each position must be reference-equal to the snapshot, so any handler-caused mutation (raising new events, clearing via AcceptChanges, replacing, reordering) triggers this exception. Handlers MUST be side-effect-only. In the multi-aggregate tracked-dispatch variant, every aggregate in the snapshot is validated and offenders are reported together in .  Note: this exception fires AFTER the inner TransactionalCommandBehavior commits. The database state is durable, but the dispatch-stage response is failure-shaped. Consumers retrying the same command will hit &quot;already committed&quot; semantics; durable at-least-once dispatch requires the outbox pattern (planned, not shipped).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Mediator_DomainEventHandlerCascadedException.md&amp;value=---%0Auid%3A%20Trellis.Mediator.DomainEventHandlerCascadedException%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Mediator.DomainEventHandlerCascadedException">
+
+
+
+  <h1 id="Trellis_Mediator_DomainEventHandlerCascadedException" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException" class="text-break">
+Class DomainEventHandlerCascadedException  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L18"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Mediator.html">Mediator</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Mediator.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Thrown by the domain event dispatch behaviors and helper when the aggregate's
+pending-event list no longer matches the entry snapshot at the end of dispatch.
+The validation is strict: length must match AND each position must be reference-equal
+to the snapshot, so any handler-caused mutation (raising new events, clearing via
+<code>AcceptChanges</code>, replacing, reordering) triggers this exception. Handlers MUST
+be side-effect-only. In the multi-aggregate tracked-dispatch variant, every aggregate
+in the snapshot is validated and offenders are reported together in <a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html#Trellis_Mediator_DomainEventHandlerCascadedException_Offenders">Offenders</a>.</p>
+<p>
+Note: this exception fires AFTER the inner <code>TransactionalCommandBehavior</code> commits.
+The database state is durable, but the dispatch-stage response is failure-shaped.
+Consumers retrying the same command will hit "already committed" semantics; durable
+at-least-once dispatch requires the outbox pattern (planned, not shipped).
+</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class DomainEventHandlerCascadedException : InvalidOperationException, ISerializable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.systemexception">SystemException</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></div>
+      <div><span class="xref">DomainEventHandlerCascadedException</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.runtime.serialization.iserializable">ISerializable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.getbaseexception">Exception.GetBaseException()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.gettype">Exception.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.tostring">Exception.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.data">Exception.Data</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.helplink">Exception.HelpLink</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.hresult">Exception.HResult</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.innerexception">Exception.InnerException</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.message">Exception.Message</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.source">Exception.Source</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.stacktrace">Exception.StackTrace</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception.targetsite">Exception.TargetSite</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor">
+  DomainEventHandlerCascadedException()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L23"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DomainEventHandlerCascadedException()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_System_Collections_Generic_IReadOnlyList_Trellis_Mediator_CascadeOffender__" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor(System.Collections.Generic.IReadOnlyList{Trellis.Mediator.CascadeOffender})">
+  DomainEventHandlerCascadedException(IReadOnlyList&lt;CascadeOffender&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DomainEventHandlerCascadedException(IReadOnlyList&lt;CascadeOffender&gt; offenders)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>offenders</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Trellis.Mediator.CascadeOffender.html">CascadeOffender</a>&gt;</dt>
+    <dd><p>The aggregates whose pending-event list changed during dispatch
+(handlers raised new events, cleared via <code>AcceptChanges</code>, replaced, or reordered).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_System_String_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor(System.String)">
+  DomainEventHandlerCascadedException(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DomainEventHandlerCascadedException(string message)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>message</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The exception message.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_System_String_System_Exception_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor(System.String,System.Exception)">
+  DomainEventHandlerCascadedException(string, Exception)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DomainEventHandlerCascadedException(string message, Exception innerException)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>message</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The exception message.</p>
+</dd>
+    <dt><code>innerException</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></dt>
+    <dd><p>The inner exception.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_DomainEventHandlerCascadedException__ctor_System_Type_System_Collections_Generic_IReadOnlyList_System_String__" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.#ctor(System.Type,System.Collections.Generic.IReadOnlyList{System.String})">
+  DomainEventHandlerCascadedException(Type, IReadOnlyList&lt;string&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a> class for one aggregate.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DomainEventHandlerCascadedException(Type aggregateType, IReadOnlyList&lt;string&gt; cascadedEventTypeNames)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>aggregateType</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.type">Type</a></dt>
+    <dd><p>The offending aggregate type.</p>
+</dd>
+    <dt><code>cascadedEventTypeNames</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd><p>The event type names still present at the first changed
+position after dispatch.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Mediator_DomainEventHandlerCascadedException_Offenders_" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.Offenders*"></a>
+
+  <h3 id="Trellis_Mediator_DomainEventHandlerCascadedException_Offenders" data-uid="Trellis.Mediator.DomainEventHandlerCascadedException.Offenders">
+  Offenders
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L69"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the aggregates whose pending-event list changed during dispatch.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyList&lt;CascadeOffender&gt; Offenders { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Trellis.Mediator.CascadeOffender.html">CascadeOffender</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventHandlerCascadedException.cs/#L18" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

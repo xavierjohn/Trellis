@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ValidationErrorsContext | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ValidationErrorsContext | Trellis ">
+      
+      <meta name="description" content="Provides a context for collecting validation errors during JSON deserialization. Uses AsyncLocal to maintain thread-safe, request-scoped error collection.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_ValidationErrorsContext.md&amp;value=---%0Auid%3A%20Trellis.Asp.ValidationErrorsContext%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.ValidationErrorsContext">
+
+
+
+  <h1 id="Trellis_Asp_ValidationErrorsContext" data-uid="Trellis.Asp.ValidationErrorsContext" class="text-break">
+Class ValidationErrorsContext  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides a context for collecting validation errors during JSON deserialization.
+Uses AsyncLocal to maintain thread-safe, request-scoped error collection.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class ValidationErrorsContext</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ValidationErrorsContext</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Asp_ValidationErrorsContext_examples">Examples</h2>
+  <pre><code class="lang-csharp">using (ValidationErrorsContext.BeginScope())
+{
+    // Deserialize JSON - errors are collected
+    var dto = JsonSerializer.Deserialize&lt;CreateUserDto&gt;(json, options);
+
+    // Check for collected errors
+    var error = ValidationErrorsContext.GetUnprocessableContent();
+    if (error is not null)
+    {
+        return Results.Problem(detail: error.Detail, statusCode: 422);
+    }
+}</code></pre>
+
+
+  <h2 id="Trellis_Asp_ValidationErrorsContext_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This class enables the pattern of collecting all validation errors from value objects
+during JSON deserialization, rather than failing on the first error. This allows
+returning a comprehensive list of validation failures to the client.
+</p>
+<p>
+The context is automatically scoped per async operation, making it safe for use
+in concurrent web request scenarios.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_CurrentPropertyName_" data-uid="Trellis.Asp.ValidationErrorsContext.CurrentPropertyName*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_CurrentPropertyName" data-uid="Trellis.Asp.ValidationErrorsContext.CurrentPropertyName">
+  CurrentPropertyName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the current property name being deserialized.
+Used by ValidatingJsonConverter (reflection mode) and AOT-generated converters
+to determine the field name for validation errors.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static string? CurrentPropertyName { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ValidationErrorsContext_CurrentPropertyName_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>In reflection mode, the property name is set by <code>PropertyNameAwareConverter&lt;T&gt;</code>
+during JSON deserialization. In AOT mode, generated converters read this property and fall back
+to a camel-cased type name when no scope is active. Using AsyncLocal ensures thread-safety
+and proper isolation across concurrent requests.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_HasErrors_" data-uid="Trellis.Asp.ValidationErrorsContext.HasErrors*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_HasErrors" data-uid="Trellis.Asp.ValidationErrorsContext.HasErrors">
+  HasErrors
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L328"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets whether any validation errors have been collected in the current scope.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool HasErrors { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_AddBodyError_" data-uid="Trellis.Asp.ValidationErrorsContext.AddBodyError*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_AddBodyError_System_String_System_String_" data-uid="Trellis.Asp.ValidationErrorsContext.AddBodyError(System.String,System.String)">
+  AddBodyError(string, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L182"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds a validation error for a specific field of the request body to the current scope.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void AddBodyError(string fieldName, string errorMessage)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fieldName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the field that failed validation.</p>
+</dd>
+    <dt><code>errorMessage</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The validation error message.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ValidationErrorsContext_AddBodyError_System_String_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If no scope is active, this method is a no-op. Unlike <a class="xref" href="Trellis.Asp.ValidationErrorsContext.html#Trellis_Asp_ValidationErrorsContext_AddError_System_String_System_String_">AddError(string, string)</a>,
+this asserts that the value came from the request body, so the resulting violation is
+located at <a class="xref" href="Trellis.InputLocation.html#Trellis_InputLocation_Body">Body</a>. As with that overload, the violation carries the
+neutral sentinel code because no code is supplied.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_AddBodyError_" data-uid="Trellis.Asp.ValidationErrorsContext.AddBodyError*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_AddBodyError_System_String_System_String_System_String_System_Collections_Generic_IReadOnlyDictionary_System_String_Trellis_ValidationArgValue__" data-uid="Trellis.Asp.ValidationErrorsContext.AddBodyError(System.String,System.String,System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,Trellis.ValidationArgValue})">
+  AddBodyError(string, string, string, IReadOnlyDictionary&lt;string, ValidationArgValue&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L200"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds a coded validation error for a specific field of the request body to the current scope.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void AddBodyError(string fieldName, string code, string message, IReadOnlyDictionary&lt;string, ValidationArgValue&gt;? args = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fieldName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the field that failed validation.</p>
+</dd>
+    <dt><code>code</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The machine-readable reason code.</p>
+</dd>
+    <dt><code>message</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The human-readable validation error message.</p>
+</dd>
+    <dt><code>args</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlydictionary-2">IReadOnlyDictionary</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>&gt;</dt>
+    <dd><p>Optional arguments that parameterize the message.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ValidationErrorsContext_AddBodyError_System_String_System_String_System_String_System_Collections_Generic_IReadOnlyDictionary_System_String_Trellis_ValidationArgValue___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If no scope is active, this method is a no-op. The resulting violation is located at
+<a class="xref" href="Trellis.InputLocation.html#Trellis_InputLocation_Body">Body</a>.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_AddBodyError_" data-uid="Trellis.Asp.ValidationErrorsContext.AddBodyError*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_AddBodyError_Trellis_Error_InvalidInput_" data-uid="Trellis.Asp.ValidationErrorsContext.AddBodyError(Trellis.Error.InvalidInput)">
+  AddBodyError(InvalidInput)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L237"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds all field violations and rule violations from an existing <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a>
+to the current scope, asserting that they describe the request body.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void AddBodyError(Error.InvalidInput unprocessableContent)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>unprocessableContent</code> <a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.InvalidInput.html">InvalidInput</a></dt>
+    <dd><p>The error whose violations should be merged.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ValidationErrorsContext_AddBodyError_Trellis_Error_InvalidInput__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If no scope is active, this method is a no-op.</p>
+<p>
+Violations are merged under the body-context rebase rule: a violation with no explicit
+location is prefixed with the current ancestor path and promoted to
+<a class="xref" href="Trellis.InputLocation.html#Trellis_InputLocation_Body">Body</a>; one already located in the body is prefixed; and one
+carrying an explicit <a class="xref" href="Trellis.InputLocation.html#Trellis_InputLocation_Query">Query</a>, <a class="xref" href="Trellis.InputLocation.html#Trellis_InputLocation_Path">Path</a>
+or <a class="xref" href="Trellis.InputLocation.html#Trellis_InputLocation_Header">Header</a> location passes through untouched, because a body
+ancestor is meaningless for a named parameter.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_AddError_" data-uid="Trellis.Asp.ValidationErrorsContext.AddError*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_AddError_System_String_System_String_" data-uid="Trellis.Asp.ValidationErrorsContext.AddError(System.String,System.String)">
+  AddError(string, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L149"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds a validation error for a specific field to the current scope.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void AddError(string fieldName, string errorMessage)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fieldName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the field that failed validation.</p>
+</dd>
+    <dt><code>errorMessage</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The validation error message.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ValidationErrorsContext_AddError_System_String_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If no scope is active, this method is a no-op. Called by the framework's reflection-mode
+converters and by AOT-generated scalar value converters to surface deserialization
+failures as 422 responses via <a class="xref" href="Trellis.Asp.ScalarValueValidationMiddleware.html">ScalarValueValidationMiddleware</a>.</p>
+<p>
+The violation carries the neutral sentinel code, because this overload accepts a message and
+no code — there is nothing truthful to report. To emit a real reason code, build the
+violation yourself and use <a class="xref" href="Trellis.Asp.ValidationErrorsContext.html#Trellis_Asp_ValidationErrorsContext_AddError_Trellis_Error_InvalidInput_">AddError(InvalidInput)</a>, which preserves the
+code, args, and detail unchanged.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_AddError_" data-uid="Trellis.Asp.ValidationErrorsContext.AddError*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_AddError_Trellis_Error_InvalidInput_" data-uid="Trellis.Asp.ValidationErrorsContext.AddError(Trellis.Error.InvalidInput)">
+  AddError(InvalidInput)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L168"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds all field violations and rule violations from an existing <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a> to the current scope.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void AddError(Error.InvalidInput unprocessableContent)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>unprocessableContent</code> <a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.InvalidInput.html">InvalidInput</a></dt>
+    <dd><p>The error whose violations should be merged.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ValidationErrorsContext_AddError_Trellis_Error_InvalidInput__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If no scope is active, this method is a no-op.</p>
+<p>
+The merge preserves each field violation's full structure — including its
+<a class="xref" href="Trellis.FieldViolation.html#Trellis_FieldViolation_ReasonCode">ReasonCode</a>, <a class="xref" href="Trellis.FieldViolation.html#Trellis_FieldViolation_Args">Args</a>,
+and <a class="xref" href="Trellis.FieldViolation.html#Trellis_FieldViolation_Detail">Detail</a> — and also preserves any top-level
+<a class="xref" href="Trellis.Error.InvalidInput.html#Trellis_Error_InvalidInput_Rules">Rules</a> entries. Used by the framework's
+reflection-mode converters and by AOT-generated scalar value converters to surface
+rich, structured validation failures.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_BeginScope_" data-uid="Trellis.Asp.ValidationErrorsContext.BeginScope*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_BeginScope" data-uid="Trellis.Asp.ValidationErrorsContext.BeginScope">
+  BeginScope()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Begins a new validation error collection scope.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IDisposable BeginScope()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></dt>
+    <dd><p>An <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a> that ends the scope when disposed.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_ValidationErrorsContext_BeginScope_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Always use this in a using statement or block to ensure proper cleanup.
+Nested scopes are supported; each scope maintains its own error collection and starts at the
+document root, so the ambient current-property name and ancestor path are reset for the new
+scope and restored when it is disposed.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_ValidationErrorsContext_GetUnprocessableContent_" data-uid="Trellis.Asp.ValidationErrorsContext.GetUnprocessableContent*"></a>
+
+  <h3 id="Trellis_Asp_ValidationErrorsContext_GetUnprocessableContent" data-uid="Trellis.Asp.ValidationErrorsContext.GetUnprocessableContent">
+  GetUnprocessableContent()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L322"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the aggregated <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a> from the current scope, or null if no errors were collected.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Error.InvalidInput? GetUnprocessableContent()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Error.html">Error</a>.<a class="xref" href="Trellis.Error.InvalidInput.html">InvalidInput</a></dt>
+    <dd><p>An <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a> containing all collected field and rule violations,
+or <code>null</code> if no validation errors were recorded.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ValidationErrorsContext.cs/#L38" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

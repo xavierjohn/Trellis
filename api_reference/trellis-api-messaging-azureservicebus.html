@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Messaging.AzureServiceBus — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Messaging.AzureServiceBus — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-messaging-azureservicebus.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellismessagingazureservicebus--api-reference">Trellis.Messaging.AzureServiceBus — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Messaging.AzureServiceBus</code>
+<strong>Namespace:</strong> <code>Trellis.Messaging.AzureServiceBus</code>
+<strong>Purpose:</strong> Carry integration events between services over Azure Service Bus, preserving the message identity the transactional inbox deduplicates on.</p>
+<p>See also: <a href="trellis-api-efcore-outbox.html#outboxmessage">trellis-api-efcore-outbox.md</a>, <a href="trellis-api-efcore-inbox.html#integrationenvelope">trellis-api-efcore-inbox.md</a>, <a href="trellis-api-mediator.html#iintegrationeventpublisher">trellis-api-mediator.md</a>.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are publishing integration events to another service rather than fanning them out in process.</li>
+<li>You are consuming integration events from Service Bus into a Trellis inbox.</li>
+<li>You need the exact wire format (which Service Bus member carries what).</li>
+<li>You are deciding how a received message should be settled.</li>
+</ul>
+<h2 id="why-this-package-exists">Why this package exists</h2>
+<p>Trellis ships both ends of reliable messaging and, until this package, no wire between them:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Component</th>
+<th>Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Produce</td>
+<td><code>OutboxCaptureInterceptor</code> + <code>OutboxRelay</code></td>
+<td>The event is staged in the same transaction as the business change, then relayed at-least-once.</td>
+</tr>
+<tr>
+<td><strong>Transport</strong></td>
+<td><strong>this package</strong></td>
+<td><strong>The producer's message identity survives the wire.</strong></td>
+</tr>
+<tr>
+<td>Consume</td>
+<td><code>IInboxDispatcher</code> + <code>IInboxStore</code></td>
+<td>Handler side effects and the <code>(ConsumerId, MessageId)</code> dedup row commit together, so a redelivery is skipped.</td>
+</tr>
+</tbody>
+</table>
+<p>The middle row is load-bearing. <code>OutboxRelay</code> delivery is at-least-once — a crash between publishing and the relay's bookkeeping save republishes the row — so a transport that minted its own id per attempt would put a <em>different</em> <code>MessageId</code> on each copy. The consumer's dedup would miss and handlers would run twice. Because <a href="trellis-api-mediator.html#iintegrationeventpublisher"><code>IIntegrationEventPublisher</code></a> takes an <code>OutboundIntegrationMessage</code>, which carries the outbox row id, publishing without it is not expressible.</p>
+<p>This collapses redeliveries of a <em>single</em> outbox row. It does not collapse the other duplicate the outbox can produce — a retried domain row re-running its translator stages a genuinely new row with a new id — which still needs business-identity deduplication. See <a href="trellis-api-efcore-outbox.html#two-different-duplicates--only-one-is-the-message-ids-job">the outbox reference</a> for the distinction.</p>
+<p>Successful translators recorded in <code>CompletedHandlers</code> are skipped on ordinary sibling retries. A translator can rerun when it failed after adding events or its progress was not durably saved; the new integration row then has its own transport identity. The relay validates the registered integration publisher at host startup when integration features are enabled; this validates DI construction, not Service Bus connectivity.</p>
+<h2 id="wire-format">Wire format</h2>
+<p><code>ServiceBusMessageFormat</code> names the members Trellis assigns meaning to.</p>
+<table>
+<thead>
+<tr>
+<th>Service Bus member</th>
+<th>Carries</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MessageId</code></td>
+<td>The producer's outbox row id (UUIDv7)</td>
+<td>The consumer's dedup key. Must parse as a non-empty <code>Guid</code>.</td>
+</tr>
+<tr>
+<td><code>Subject</code></td>
+<td>The event's stable wire name</td>
+<td>From <code>[IntegrationEventName]</code>; resolved through <code>IntegrationEventNameMap</code>.</td>
+</tr>
+<tr>
+<td><code>Body</code></td>
+<td>The event as UTF-8 JSON</td>
+<td>Serialized against the event's <strong>runtime</strong> type.</td>
+</tr>
+<tr>
+<td><code>ContentType</code></td>
+<td><code>ServiceBusMessageFormat.JsonContentType</code> (<code>application/json</code>)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>trellis-message-source</code> (application property, <code>ServiceBusMessageFormat.MessageSourceProperty</code>)</td>
+<td><code>IntegrationEnvelope.MessageSource</code></td>
+<td>Optional; observability only. Omitted when unset or blank.</td>
+</tr>
+</tbody>
+</table>
+<p>Standard Service Bus members are preferred over custom application properties wherever one exists: <code>MessageId</code> and <code>Subject</code> are indexed by the broker, surfaced in the portal and Service Bus Explorer, and usable in subscription filters, so a message stays diagnosable and routable by tools that know nothing about Trellis.</p>
+<p><code>IntegrationEnvelope</code>'s lineage members <code>CausationId</code> and <code>CorrelationId</code> are <strong>not</strong> on the wire, because nothing on the publish side can populate them: <code>OutboundIntegrationMessage</code> deliberately omits them until the outbox persists them.</p>
+<h2 id="lifecycle-and-shutdown">Lifecycle and shutdown</h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ServiceBusIntegrationEventPublisher.DisposeAsync()</code></td>
+<td><code>ValueTask</code></td>
+<td>Closes every cached <code>ServiceBusSender</code>. The publisher caches one sender per topic and is the sole owner of every sender it creates, which is what makes a complete close possible. A sender added after the final emptiness check is left to the container disposing the <code>ServiceBusClient</code>, which closes everything it created.</td>
+</tr>
+<tr>
+<td><code>ServiceBusInboxConsumer.StopAsync(CancellationToken)</code></td>
+<td><code>Task</code></td>
+<td>Stops and disposes each <code>ServiceBusProcessor</code> before delegating to <code>BackgroundService.StopAsync</code>, so in-flight message handlers are allowed to settle rather than being torn down mid-dispatch.</td>
+</tr>
+</tbody>
+</table>
+<p>Both are invoked by the host during graceful shutdown; you do not normally call them yourself.</p>
+<h2 id="topology">Topology</h2>
+<p>The default layout is <strong>one topic per contract</strong>, named after the wire name. A subscriber declares interest by subscribing to the topics it wants, rather than filtering a firehose.</p>
+<p><code>AzureServiceBusPublisherOptions.TopicNameResolver</code> changes that mapping — prefix an environment segment (<code>name =&gt; $&quot;prod.{name}&quot;</code>), or collapse several contracts onto one topic. If you collapse them, add a correlation filter on <code>sys.Label</code> (the message's <code>Subject</code>) to each subscription, or a subscriber will receive contracts it cannot deserialize and dead-letter them.</p>
+<h2 id="azureservicebuspublisheroptions">AzureServiceBusPublisherOptions</h2>
+<pre><code class="lang-csharp">public sealed class AzureServiceBusPublisherOptions
+{
+    public string? MessageSource { get; set; }
+    public Func&lt;string, string&gt; TopicNameResolver { get; set; }
+    public JsonSerializerOptions JsonSerializerOptions { get; set; }
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MessageSource</code></td>
+<td><code>null</code></td>
+<td>The producing service or bounded context. Observability only — never affects dedup or routing.</td>
+</tr>
+<tr>
+<td><code>TopicNameResolver</code></td>
+<td>identity</td>
+<td>Wire name → topic name.</td>
+</tr>
+<tr>
+<td><code>JsonSerializerOptions</code></td>
+<td><code>JsonSerializerOptions.Web</code></td>
+<td>A wire-format decision shared with every consumer. Change it before the first message ships, or accept that in-flight messages written with the previous settings must still deserialize.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="azureservicebusconsumeroptions">AzureServiceBusConsumerOptions</h2>
+<pre><code class="lang-csharp">public sealed class AzureServiceBusConsumerOptions
+{
+    public IList&lt;ServiceBusSubscription&gt; Subscriptions { get; }
+    public int MaxConcurrentCalls { get; set; }
+    public int PrefetchCount { get; set; }
+    public JsonSerializerOptions JsonSerializerOptions { get; set; }
+
+    public AzureServiceBusConsumerOptions Subscribe(string topicName, string subscriptionName);
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Subscriptions</code></td>
+<td>empty</td>
+<td>Each gets its own processor. At least one is required.</td>
+</tr>
+<tr>
+<td><code>MaxConcurrentCalls</code></td>
+<td><code>1</code></td>
+<td>Each concurrent message runs handlers in its own database transaction, so raising this raises connection-pool pressure and write contention. Deduplication stays correct at any value — concurrent delivery of the same message is resolved by the inbox's composite primary key — so this is purely a throughput knob.</td>
+</tr>
+<tr>
+<td><code>PrefetchCount</code></td>
+<td><code>0</code></td>
+<td>Prefetched messages have their lock clock already running; a large prefetch with slow handlers expires locks and causes redelivery. Safe (the inbox absorbs it) but wasteful.</td>
+</tr>
+<tr>
+<td><code>JsonSerializerOptions</code></td>
+<td><code>JsonSerializerOptions.Web</code></td>
+<td>Must agree with the producer.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The subscriber identity is not here.</strong> Deduplication keys on <code>InboxOptions.ConsumerId</code>, so every transport a service consumes from shares one dedup namespace and a message arriving twice by two routes is still processed once.</p>
+<p>Validation runs at registration, not on the first message: no subscriptions, <code>MaxConcurrentCalls &lt; 1</code>, a negative <code>PrefetchCount</code>, or the same <code>(topic, subscription)</code> registered twice each throw <code>InvalidOperationException</code> from the <code>AddAzureServiceBusIntegrationEventConsumer</code> call.</p>
+<p>The duplicate check spans calls. Configuration accumulates onto one options instance, so two registrations that are each valid alone can still add the same subscription twice — which would start two processors competing on one subscription. Registration validates the accumulated configuration, and the consumer re-validates what it was actually handed, since <code>Subscriptions</code> is a mutable list that can be appended to directly.</p>
+<p><code>TopicNameResolver</code> and both <code>JsonSerializerOptions</code> properties reject <code>null</code> on assignment rather than failing with a <code>NullReferenceException</code> on the first message.</p>
+<h2 id="registration">Registration</h2>
+<pre><code class="lang-csharp">public static IServiceCollection AddAzureServiceBusIntegrationEventPublisher(
+    this IServiceCollection services,
+    IntegrationEventNameMap nameMap,
+    Action&lt;AzureServiceBusPublisherOptions&gt;? configure = null);
+
+public static IServiceCollection AddAzureServiceBusIntegrationEventConsumer(
+    this IServiceCollection services,
+    IntegrationEventNameMap nameMap,
+    Action&lt;AzureServiceBusConsumerOptions&gt; configure);
+</code></pre>
+<p>Both require a <code>ServiceBusClient</code> in the container; neither owns its lifetime.</p>
+<p><code>AddAzureServiceBusIntegrationEventPublisher</code> <strong>replaces</strong> any existing <code>IIntegrationEventPublisher</code> registration rather than adding to it. In-process fan-out and broker publication are alternatives, not layers: registering both would deliver each event locally <em>and</em> over the wire, so a service subscribed to its own topic would handle everything twice. Replacing also makes the registration order-independent.</p>
+<p><code>AddAzureServiceBusIntegrationEventConsumer</code> requires an <code>IInboxDispatcher</code> (<code>AddTrellisInbox&lt;TContext&gt;()</code>); consuming without one runs handlers with no deduplication, which is the failure the inbox exists to prevent. The dispatcher is resolved per message from a fresh scope, so it need not be registered before this call.</p>
+<p><strong>Each helper keeps the map it was handed.</strong> The <code>nameMap</code> argument is captured by the component being registered rather than published as a shared container service, so a service that publishes one set of contracts and consumes another can pass a different map to each call without the first silently winning. Calling the consumer helper more than once still runs a single consumer, configured with every caller's subscriptions.</p>
+<p><strong>Neither helper has a <code>TrellisServiceBuilder.UseXxx()</code> slot.</strong> Surfacing them would force every <code>Trellis.ServiceDefaults</code> consumer to take a transitive dependency on the Azure SDK to use features unrelated to Azure. This matches <code>Trellis.Asp.Idempotency.Cosmos</code>; see <a href="trellis-api-servicedefaults.html#registrations-without-a-builder-slot">trellis-api-servicedefaults.md</a>.</p>
+<h2 id="settlement">Settlement</h2>
+<p><code>ServiceBusInboxConsumer</code> runs with <code>AutoCompleteMessages = false</code>, because settlement follows from the inbox outcome.</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Action</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InboxDispatchOutcome.Processed</code></td>
+<td>Complete</td>
+<td>Handler side effects and the dedup row committed together.</td>
+</tr>
+<tr>
+<td><code>InboxDispatchOutcome.SkippedDuplicate</code></td>
+<td>Complete</td>
+<td>Already durably accounted for. Abandoning would redeliver forever, because every attempt reaches the same conclusion.</td>
+</tr>
+<tr>
+<td>Handler throws</td>
+<td>Abandon</td>
+<td>The dispatcher rolled its transaction back, so nothing was applied. The exception is deliberately not caught: the SDK abandons an unsettled message whose handler threw and routes the exception to the error handler. <code>MaxDeliveryCount</code> dead-letters a persistently failing message.</td>
+</tr>
+<tr>
+<td>Message is unusable</td>
+<td>Dead-letter with a reason code</td>
+<td>A property of the bytes, not of this consumer's state, so retrying cannot change the outcome. Abandoning would burn the delivery count and dead-letter anyway, with no diagnosis attached.</td>
+</tr>
+</tbody>
+</table>
+<p>Dead-letter reasons:</p>
+<table>
+<thead>
+<tr>
+<th>Reason</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>servicebus_unusable_message_id</code></td>
+<td><code>MessageId</code> is absent or not a non-empty GUID, so the message has no stable inbox dedup key.</td>
+</tr>
+<tr>
+<td><code>servicebus_missing_subject</code></td>
+<td>No <code>Subject</code>, so no contract can be chosen to deserialize the body.</td>
+</tr>
+<tr>
+<td><code>servicebus_unknown_contract</code></td>
+<td>The wire name is well-formed but unregistered here. Normal traffic on a shared topic, not necessarily a bug.</td>
+</tr>
+<tr>
+<td><code>servicebus_malformed_body</code></td>
+<td>The contract is known but the body does not deserialize to it — either the JSON is invalid for that shape, or the contract itself cannot be materialized (an abstract or interface-typed member, or a shape with no converter). Both are permanent for these bytes, so both dead-letter rather than escaping as a fault the consumer would retry until the delivery count is exhausted.</td>
+</tr>
+</tbody>
+</table>
+<p>The dead-letter description carries the specific diagnosis (the offending wire name, the JSON error, and so on).</p>
+<h2 id="publishing-an-unmapped-event">Publishing an unmapped event</h2>
+<p><code>ServiceBusIntegrationEventPublisher.PublishAsync</code> throws <code>InvalidOperationException</code> when the event type has no registered wire name. This is deliberately fatal to the publish rather than a skip: the event cannot be named on the wire, so no consumer could identify it. The outbox row stays unsent and the relay retries, surfacing a missing <code>[IntegrationEventName]</code> as a stuck message rather than as silently dropped traffic.</p>
+<h2 id="testing">Testing</h2>
+<p>Integration tests are marked <code>[Trait(&quot;Category&quot;, &quot;Integration&quot;)]</code> and skip visibly when no emulator is reachable, so they never pass against a substitute.</p>
+<pre><code>docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml up -d
+</code></pre>
+<p>The emulator declares its entities in <code>Config.json</code> at container start and cannot create them at runtime, so the compose file and its entity list are part of the fixture. Duplicate detection is deliberately <strong>off</strong> on the test topic: if the broker collapsed duplicate message ids, the suite would pass even if the transport minted a fresh id per publish. The assertion is that Trellis carries the id — not that Service Bus can be configured to hide the consequences of losing it.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-messaging-azureservicebus.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

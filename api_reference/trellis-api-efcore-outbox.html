@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.EntityFrameworkCore.Outbox | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.EntityFrameworkCore.Outbox | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-efcore-outbox.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisentityframeworkcoreoutbox">Trellis.EntityFrameworkCore.Outbox</h1>
+
+<p><strong>Package:</strong> <code>Trellis.EntityFrameworkCore.Outbox</code><br>
+<strong>Namespace:</strong> <code>Trellis.EntityFrameworkCore</code><br>
+<strong>Purpose:</strong> Transactional outbox — atomically capture aggregate domain events to an EF Core table in the same transaction as the aggregate change, then durably relay them to Trellis domain-event handlers after the commit.</p>
+<p>This package composes <code>Trellis.EntityFrameworkCore</code> (the capture interceptor and table mapping) with <code>Trellis.Mediator</code> (the <code>IDomainEventPublisher</code> dispatch seam the relay reuses). It opts out of AOT/trim, exactly like <code>Trellis.EntityFrameworkCore</code>.</p>
+<p>See also: <a href="trellis-api-cookbook.html#trellis-cross-package-cookbook">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You need domain events to survive a crash between the commit and the in-pipeline dispatch (the gap a plain <code>UseDomainEvents()</code> pipeline leaves open).</li>
+<li>You are wiring <code>AddTrellisOutbox</code>, <code>AddTrellisOutboxInterceptor</code>, or the <code>UseOutbox&lt;TContext&gt;()</code> builder slot.</li>
+<li>You are reasoning about the outbox's delivery guarantee, retry/parking behavior, or event-serialization constraints.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use this</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Capture an aggregate's domain events into the outbox table atomically with the aggregate write</td>
+<td><code>optionsBuilder.AddTrellisOutboxInterceptor()</code> (capture) + <code>modelBuilder.AddTrellisOutbox()</code> (table)</td>
+<td><a href="#wiring-three-required-calls">Wiring: three required calls</a>, <a href="#outboxmodelbuilderextensions"><code>OutboxModelBuilderExtensions</code></a></td>
+</tr>
+<tr>
+<td>Run the background relay that re-dispatches captured events after commit</td>
+<td><code>services.AddTrellisOutbox&lt;TContext&gt;(configure?)</code> or <code>trellis.UseOutbox&lt;TContext&gt;(configure?)</code></td>
+<td><a href="#outboxservicecollectionextensions"><code>OutboxServiceCollectionExtensions</code></a>, <a href="#useoutbox-builder-slot"><code>UseOutbox</code> builder slot</a></td>
+</tr>
+<tr>
+<td>Tune poll interval, batch size, or max attempts</td>
+<td><code>OutboxOptions</code> (via the <code>configure</code> delegate)</td>
+<td><a href="#outboxoptions"><code>OutboxOptions</code></a></td>
+</tr>
+<tr>
+<td>Inspect a captured-but-not-yet-relayed message</td>
+<td>Query <code>TContext.Set&lt;OutboxMessage&gt;()</code> (read-only; rows are produced by the interceptor)</td>
+<td><a href="#outboxmessage"><code>OutboxMessage</code></a></td>
+</tr>
+<tr>
+<td>Understand what happens when a handler throws</td>
+<td>The message stays pending and retries <strong>only the failed handlers</strong>, then parks after <code>MaxAttempts</code></td>
+<td><a href="#delivery-semantics">Delivery semantics</a></td>
+</tr>
+<tr>
+<td>Decide how to shape an event so it round-trips</td>
+<td>Use attribute-driven value objects; <code>Maybe&lt;T&gt;</code> members are supported (present → value, absent → <code>null</code>)</td>
+<td><a href="#serialization">Serialization</a></td>
+</tr>
+<tr>
+<td>Publish a stable external contract instead of raw domain events</td>
+<td>Translate a domain event into an <code>IIntegrationEvent</code> via <code>IIntegrationEventCollector</code>; the relay routes it to <code>IIntegrationEventPublisher</code></td>
+<td><a href="#integration-events">Integration events</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li><strong>The interceptor and the model mapping are <em>not</em> optional extras.</strong> <code>AddTrellisOutbox&lt;TContext&gt;()</code> only registers the relay. Without <code>optionsBuilder.AddTrellisOutboxInterceptor()</code> nothing is captured, and without <code>modelBuilder.AddTrellisOutbox()</code> the <code>TrellisOutboxMessages</code> table is unmapped. All three calls are required — see <a href="#wiring-three-required-calls">Wiring: three required calls</a>.</li>
+<li><strong>The relay host must have the producing assemblies loaded.</strong> The relay rehydrates each event from its assembly-qualified <code>EventType</code> via <code>Type.GetType</code>. If the worker process does not reference the assembly that declares the event, the message fails deserialization and parks after <code>MaxAttempts</code>.</li>
+<li><strong>Handlers must be idempotent.</strong> Delivery is at-least-once; a crash between dispatch and the relay's bookkeeping <code>SaveChanges</code> re-delivers the message on the next drain. Per-handler progress tracking removes the <em>routine</em> duplicate (a sibling handler failing) but not this crash window.</li>
+<li><strong>A failing handler now parks the message.</strong> Handler exceptions are no longer swallowed on the relay path, so a permanently failing handler exhausts <code>MaxAttempts</code> and dead-letters. Alert on <code>OutboxRelay.MessageParked</code>, and add a migration for the <code>CompletedHandlers</code> column — see <a href="#delivery-semantics">Delivery semantics</a>.</li>
+<li><strong>Caller-registered <code>JsonSerializerOptions</code> converters do not travel with the payload.</strong> The outbox serializer round-trips <code>[JsonConverter]</code>-attributed value objects and <code>Maybe&lt;T&gt;</code> members; converters registered only on a caller's own options are not consulted — shape those members with attribute-driven types or nullable transports. See <a href="#serialization">Serialization</a>.</li>
+<li><strong><code>OutboxMessage</code> is read-only to application code.</strong> Its constructor is private and its mutators are internal; rows are produced exclusively by the capture interceptor and advanced by the relay.</li>
+<li><strong>Post-commit cancellation does not skip Trellis bookkeeping.</strong> <code>AggregateETagInterceptor.SavedChangesAsync</code> synchronizes ETags and <code>OutboxCaptureInterceptor.SavedChangesAsync</code> clears captured events without observing a newly canceled token: the write has already committed. Cancellation before or during saving still propagates normally. A custom interceptor that throws after commit can still interrupt later callbacks; do not introduce such a post-commit cancellation check.</li>
+<li><strong>Persist-on-failure (<code>FailAfterCommit</code>) events are dispatched by the outbox.</strong> The capture interceptor cannot see the command <code>Result</code>, so it captures events from <em>every</em> commit — including the persist-on-failure commits that <code>TransactionalCommandBehavior</code> performs. Without the outbox, <code>DomainEventDispatchBehavior</code> deliberately does <strong>not</strong> dispatch events for a failed result: the <code>FailAfterCommit</code> contract (documented under persist-on-failure in <code>trellis-api-core.md</code>) treats those events as discarded, <em>not</em> a durable retry buffer. With the outbox enabled, those events are captured and the relay delivers them — so the suppression no longer holds. If you depend on it, do not raise domain events on persist-on-failure paths under the outbox: return a success result for events you want delivered, and model post-failure side effects explicitly (a follow-up command, or a dedicated outbox row).</li>
+</ul>
+<h2 id="how-the-outbox-works">How the outbox works</h2>
+<p>The outbox replaces the in-pipeline domain-event dispatch with a durable, two-phase flow:</p>
+<ol>
+<li><strong>Capture (inside the transaction).</strong> <code>OutboxCaptureInterceptor</code> (a <code>SaveChangesInterceptor</code>) scans the change tracker during <code>SavingChanges</code> for <code>IAggregate</code> entries with uncommitted events. It serializes each event and adds one <code>OutboxMessage</code> row per event to the same <code>SaveChanges</code> — so the rows commit atomically with the aggregate. It does <strong>not</strong> clear the aggregate's events yet.</li>
+<li><strong>Clear (after the commit succeeds).</strong> In <code>SavedChanges</code> the interceptor calls each aggregate's <code>AcceptChanges()</code>. Because the events are cleared only after a successful commit, a failed save leaves the in-memory events intact for retry, and the interceptor detaches the rows it staged on <code>SaveChangesFailed</code> and <code>SaveChangesCanceled</code> so a retry on the same context does not double-capture.</li>
+</ol>
+<blockquote>
+<p><strong>Interceptor constraint.</strong> No other <code>SaveChangesInterceptor</code> may raise domain events on a tracked aggregate between step 1 and step 2. <code>AcceptChanges()</code> empties an aggregate's whole event list, so an event raised in that window is discarded without ever reaching the outbox. No Trellis interceptor raises domain events, so this applies only to caller-supplied interceptors — raise events from the domain model before <code>SaveChanges</code> is called instead.
+3. <strong>Single dispatch path.</strong> Since the aggregate's events are cleared after the commit (in <code>SavedChanges</code>), a post-commit in-pipeline <code>DomainEventDispatchBehavior</code> observes an empty list and dispatches nothing. The relay becomes the one dispatcher.
+4. <strong>Relay (after the commit).</strong> <code>OutboxRelay&lt;TContext&gt;</code> is a <code>BackgroundService</code>. Each poll it opens a bookkeeping scope, drains a batch of pending rows ordered by <code>Sequence</code>, and routes each by <code>OutboxMessage.Kind</code>. A <code>Domain</code> row is published through <code>IReportingDomainEventPublisher</code> <strong>in a dedicated per-message scope</strong>: handlers receive their own context, never the bookkeeping context, and their tracked changes do not ride its save. An <code>Integration</code> row is published through <code>IIntegrationEventPublisher</code>. The relay saves processed/failed state, completed-handler progress, and translated rows together on the bookkeeping context.</p>
+</blockquote>
+<h2 id="integration-events">Integration events</h2>
+<p>A <strong>domain event</strong> is internal to the bounded context; an <strong>integration event</strong> (<code>IIntegrationEvent</code>) is the stable, versioned contract published to other services. The outbox keeps them separate: domain events are captured from aggregates, and integration events are <em>translated</em> from them so external consumers never couple to your internal model. See <code>trellis-api-mediator.md</code> for the <code>IIntegrationEvent*</code> types.</p>
+<p>The flow:</p>
+<ol>
+<li>A <strong>translator</strong> — an ordinary <code>IDomainEventHandler&lt;TDomainEvent&gt;</code> — injects <code>IIntegrationEventCollector</code> and <code>Add(...)</code>s integration events while the relay re-dispatches the domain event.</li>
+<li>The relay opens the collector's <code>BeginTranslation()</code> lease only around publishing a <code>Domain</code> row and draining the per-message collector. Every drained event is staged as a new <code>OutboxMessageKind.Integration</code> row in the same bookkeeping save as handler progress, even if a sibling handler failed and the source domain row remains pending. Events added before a translator itself throws are also drained; there is no per-handler rollback of collector additions.</li>
+<li>A later drain publishes each <code>Integration</code> row through <code>IIntegrationEventPublisher</code> — its sole method <code>PublishAsync(OutboundIntegrationMessage, CancellationToken)</code>, carrying that row's own <code>OutboxMessage.Id</code> (default in-process fan-out to <code>IIntegrationEventHandler&lt;T&gt;</code>; replace the registration with a message-broker adapter to deliver to other services).</li>
+</ol>
+<p>Register the consumer side with <code>services.AddIntegrationEventDispatch(...)</code> / <code>AddIntegrationEventHandler&lt;TEvent, THandler&gt;()</code>, or the <code>TrellisServiceBuilder.UseIntegrationEvents(...)</code> slot. The collector is optional: outboxes that capture only domain events never register it and are unaffected.</p>
+<p>A retry skips translators already recorded in <code>CompletedHandlers</code>; an unrelated sibling failure does not rerun them. A translator that failed after adding an event, or whose successful progress was not saved (crash/bookkeeping failure), can run again and produce a distinct integration row with a new ID. Deduplicate these logical duplicates on business identity, in addition to inbox message-ID deduplication.</p>
+<h3 id="two-different-duplicates--only-one-is-the-message-ids-job">Two different duplicates — only one is the message id's job</h3>
+<p>These are easy to conflate, and they need different defences:</p>
+<table>
+<thead>
+<tr>
+<th>Duplicate</th>
+<th>Cause</th>
+<th><code>OutboxMessage.Id</code></th>
+<th>Defence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Redelivery of one <code>Integration</code> row</strong></td>
+<td>The relay crashed between publishing and its bookkeeping <code>SaveChanges</code>, or the batch outlived its lease</td>
+<td><strong>Same</strong> on every attempt</td>
+<td>The consumer's inbox, keyed <code>(ConsumerId, MessageId)</code> — provided the transport carried <code>OutboundIntegrationMessage.MessageId</code> verbatim</td>
+</tr>
+<tr>
+<td><strong>A re-run translator staging a fresh row</strong></td>
+<td>The translator itself failed after adding events, or its successful progress was not durably saved; completed translators are skipped on ordinary sibling retries</td>
+<td><strong>Different</strong> each time</td>
+<td>Business identity — the inbox cannot help, because these genuinely are two messages</td>
+</tr>
+</tbody>
+</table>
+<p>The relay hands <code>OutboundIntegrationMessage.MessageId</code> to the publisher precisely so a broker adapter can stamp it on the wire (for example <code>ServiceBusMessage.MessageId</code>) and collapse the first row of the table. An adapter that minted its own id per publish attempt would turn every redelivery into a distinct message and silently defeat the consumer's inbox. It does <strong>not</strong> collapse the second row, which is why the &quot;dedupe on business identity&quot; guidance above still stands.</p>
+<h2 id="wiring-three-required-calls">Wiring: three required calls</h2>
+<pre><code class="lang-csharp">// 1. Map the outbox table.
+protected override void OnModelCreating(ModelBuilder modelBuilder) =&gt;
+    modelBuilder.AddTrellisOutbox();
+
+// 2. Register the capture interceptor on the context options.
+options.UseNpgsql(connectionString)
+       .AddTrellisInterceptors()
+       .AddTrellisOutboxInterceptor();
+
+// 3. Register the relay + your handlers + IDomainEventPublisher.
+services.AddTrellis(trellis =&gt; trellis
+    .UseDomainEvents(typeof(Program).Assembly)
+    .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;()
+    .UseOutbox&lt;AppDbContext&gt;());
+</code></pre>
+<p>The relay needs <code>IDomainEventPublisher</code> and the <code>IDomainEventHandler&lt;TEvent&gt;</code> registrations that <code>UseDomainEvents()</code> / <code>AddDomainEventDispatch()</code> provide; register them in the same container.</p>
+<h2 id="outboxservicecollectionextensions">OutboxServiceCollectionExtensions</h2>
+<p>Static class. Registers the relay for a <code>DbContext</code>.</p>
+<pre><code class="lang-csharp">public static IServiceCollection AddTrellisOutbox&lt;TContext&gt;(
+    this IServiceCollection services,
+    Action&lt;OutboxOptions&gt;? configure = null)
+    where TContext : DbContext;
+</code></pre>
+<ul>
+<li>Registers <code>OutboxRelay&lt;TContext&gt;</code> as an <code>IHostedService</code>, the (configured) <code>OutboxOptions</code> as a singleton, and <code>TimeProvider.System</code> if no <code>TimeProvider</code> is already registered.</li>
+<li><code>TimeProvider</code> is added with <code>TryAdd</code>. A single shared <code>OutboxOptions</code> instance backs all relays in the container. Configure the outbox for one <code>DbContext</code> per composition (the <code>UseOutbox</code> slot enforces this).</li>
+<li><strong>Repeated calls accumulate configuration.</strong> <code>AddHostedService</code> dedupes by service + implementation type, so calling this twice for the same <code>TContext</code> yields exactly one relay. Each call applies its <code>configure</code> callback on top of the already-registered <code>OutboxOptions</code> instance and re-runs <code>Validate()</code>, so a later callback wins per setting rather than being silently discarded. Configuration is applied to a clone and committed only after <code>Validate()</code> succeeds, so a rejected callback leaves the container's options untouched. Prefer the <code>UseOutbox&lt;TContext&gt;()</code> builder slot, which fails fast on a duplicate.</li>
+<li><strong>Do not register <code>OutboxOptions</code> yourself via a factory or implementation type.</strong> The helper layers onto the <em>last</em> <code>OutboxOptions</code> descriptor, which is the one the container resolves. If that descriptor is a factory or type registration it cannot be cloned, so passing a <code>configure</code> callback throws <code>InvalidOperationException</code> rather than silently configuring an instance the relay would never receive. Calling <code>AddTrellisOutbox&lt;TContext&gt;()</code> with no callback leaves your registration intact.</li>
+</ul>
+<p>This is the service-collection half only. Pair with <code>AddTrellisOutbox(ModelBuilder)</code> and <code>AddTrellisOutboxInterceptor(DbContextOptionsBuilder)</code>.</p>
+<h2 id="outboxmodelbuilderextensions">OutboxModelBuilderExtensions</h2>
+<p>Static class. EF Core model + interceptor hooks.</p>
+<pre><code class="lang-csharp">public static ModelBuilder AddTrellisOutbox(this ModelBuilder modelBuilder);
+
+public static DbContextOptionsBuilder AddTrellisOutboxInterceptor(
+    this DbContextOptionsBuilder optionsBuilder);
+
+public static DbContextOptionsBuilder&lt;TContext&gt; AddTrellisOutboxInterceptor&lt;TContext&gt;(
+    this DbContextOptionsBuilder&lt;TContext&gt; optionsBuilder)
+    where TContext : DbContext;
+</code></pre>
+<ul>
+<li><code>AddTrellisOutbox(ModelBuilder)</code> — applies <code>OutboxMessageConfiguration</code>, mapping the <code>TrellisOutboxMessages</code> table. Call from <code>OnModelCreating</code>.</li>
+<li><code>AddTrellisOutboxInterceptor(...)</code> — adds the shared, stateless <code>OutboxCaptureInterceptor</code>. The generic overload preserves the <code>DbContextOptionsBuilder&lt;TContext&gt;</code> fluent type so it chains after <code>AddTrellisInterceptors&lt;TContext&gt;()</code>. The interceptor is a singleton; registering it on multiple contexts is safe.</li>
+</ul>
+<h2 id="useoutbox-builder-slot">UseOutbox builder slot</h2>
+<p><code>TrellisServiceBuilder.UseOutbox&lt;TContext&gt;(Action&lt;OutboxOptions&gt;? configure = null)</code> (in <code>Trellis.ServiceDefaults</code>) is the opinionated entry point. It wraps <code>AddTrellisOutbox&lt;TContext&gt;()</code> and:</p>
+<ul>
+<li>Fails fast with <code>InvalidOperationException</code> if called more than once — one outbox relay per composition.</li>
+<li>Is order-independent versus <code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</code>: the relay is a hosted service, not a Mediator behavior, so the canonical pipeline order is identical whether <code>UseOutbox</code> is called before or after the unit-of-work slot.</li>
+<li>Carries <code>[RequiresUnreferencedCode]</code> / <code>[RequiresDynamicCode]</code> because the outbox builds on the non-AOT <code>Trellis.EntityFrameworkCore</code>.</li>
+</ul>
+<p>The slot owns only the service registration; the capture interceptor and table mapping are still wired on the <code>DbContext</code> (steps 1–2 above), mirroring how <code>UseEntityFrameworkUnitOfWork</code> pairs with <code>AddTrellisInterceptors</code>.</p>
+<h2 id="outboxmessage">OutboxMessage</h2>
+<p>A persisted event awaiting relay — one row per captured domain event or translated integration event. Read-only to application code (private constructor, internal mutators).</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Sequence</code></td>
+<td><code>long</code></td>
+<td>Database-generated, monotonic. Primary key and relay order (ascending).</td>
+</tr>
+<tr>
+<td><code>Id</code></td>
+<td><code>Guid</code></td>
+<td>UUIDv7. Stable message identity for consumer-side idempotency / de-duplication.</td>
+</tr>
+<tr>
+<td><code>Kind</code></td>
+<td><code>OutboxMessageKind</code></td>
+<td><code>Domain</code> (captured from an aggregate) or <code>Integration</code> (translated). Routes the relay to the correct publisher. Stored as a string column.</td>
+</tr>
+<tr>
+<td><code>OccurredAt</code></td>
+<td><code>DateTimeOffset</code></td>
+<td>Copied from the event's <code>OccurredAt</code>.</td>
+</tr>
+<tr>
+<td><code>EventType</code></td>
+<td><code>string</code></td>
+<td>Assembly-qualified name of the concrete event type, used to rehydrate the payload.</td>
+</tr>
+<tr>
+<td><code>Payload</code></td>
+<td><code>string</code></td>
+<td>The JSON-serialized event.</td>
+</tr>
+<tr>
+<td><code>ProcessedAt</code></td>
+<td><code>DateTimeOffset?</code></td>
+<td>When the message was relayed; <code>null</code> while pending.</td>
+</tr>
+<tr>
+<td><code>Attempts</code></td>
+<td><code>int</code></td>
+<td>Relay attempts so far.</td>
+</tr>
+<tr>
+<td><code>LastError</code></td>
+<td><code>string?</code></td>
+<td>Most recent relay error, if any.</td>
+</tr>
+<tr>
+<td><code>LockedUntil</code></td>
+<td><code>DateTime?</code></td>
+<td>UTC instant until which a relay drain holds an exclusive claim (lease) on the row; <code>null</code> when unclaimed.</td>
+</tr>
+<tr>
+<td><code>LockedBy</code></td>
+<td><code>Guid?</code></td>
+<td>Claim token of the relay drain that currently holds the row; <code>null</code> when unclaimed.</td>
+</tr>
+<tr>
+<td><code>CompletedHandlers</code></td>
+<td><code>IReadOnlyList&lt;string&gt;</code></td>
+<td>For domain rows, the identity of every handler that has already completed for this event (see <code>DomainEventDispatchReport.HandlerIdentity</code>). A retry skips them, so a successful handler is never re-run because a sibling failed. Deliberately <strong>not</strong> cleared by <code>ReplayAsync</code> — replaying means &quot;finish the work that did not happen&quot;. Empty for integration rows.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>OutboxMessageConfiguration</code> maps the table <code>TrellisOutboxMessages</code>, the <code>Sequence</code> primary key (<code>ValueGeneratedOnAdd</code>), a unique index on <code>Id</code>, the <code>Kind</code> discriminator (string, max length 32), a covering index on <code>{ ProcessedAt, LockedUntil, Sequence }</code> for the relay's claimable-rows scan, and an index on <code>LockedBy</code> for loading a drain's just-claimed batch.</p>
+<blockquote>
+<p><strong>Schema migration.</strong> Row-claiming added the nullable <code>LockedUntil</code> and <code>LockedBy</code> columns. An existing outbox table needs a migration to add them; both are nullable, so in-flight rows default to unclaimed and are picked up normally.</p>
+</blockquote>
+<p><code>OutboxMessage</code> is an infrastructure record, not a domain aggregate. The rows are transient and may be pruned once <code>ProcessedAt</code> is set — deleting processed rows loses no source-of-truth state. This is an outbox, <strong>not</strong> an event store.</p>
+<h2 id="outboxoptions">OutboxOptions</h2>
+<p>Tuning for the relay.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PollInterval</code></td>
+<td><code>TimeSpan</code></td>
+<td>5 seconds</td>
+<td>How long the relay waits before polling again when the outbox is empty.</td>
+</tr>
+<tr>
+<td><code>BatchSize</code></td>
+<td><code>int</code></td>
+<td>100</td>
+<td>Maximum messages drained per poll.</td>
+</tr>
+<tr>
+<td><code>MaxAttempts</code></td>
+<td><code>int</code></td>
+<td>10</td>
+<td>After this many failed attempts a message is dead-lettered (parked): left unprocessed and skipped by the scan so it does not block later messages. With the exponential backoff below this is roughly a few hours of retrying at the defaults. Replay dead-lettered messages with <code>IOutboxMaintenance</code> once the cause is fixed. Because the dead-letter set is defined relative to this value, <strong>raising it makes previously dead-lettered rows eligible again</strong>. Must be greater than zero.</td>
+</tr>
+<tr>
+<td><code>LeaseDuration</code></td>
+<td><code>TimeSpan</code></td>
+<td>5 minutes</td>
+<td>How long a relay drain holds an exclusive claim (lease) on the rows it drains before another instance may reclaim them. Set comfortably above the time to publish one batch so a slow batch is not reclaimed mid-flight; a crashed instance's rows become reclaimable once the lease expires. Must be greater than zero.</td>
+</tr>
+<tr>
+<td><code>RetryBackoff</code></td>
+<td><code>TimeSpan</code></td>
+<td>30 seconds</td>
+<td>Base delay before retrying a failed message. The wait after the <em>n</em>th failed attempt is <code>RetryBackoff × 2^(n-1)</code>, capped at <code>MaxRetryBackoff</code>, so a transient failure (a brief outage) is retried with growing spacing instead of in a tight claim/fail/reclaim loop that would hammer the database. Must be greater than zero.</td>
+</tr>
+<tr>
+<td><code>MaxRetryBackoff</code></td>
+<td><code>TimeSpan</code></td>
+<td>1 hour</td>
+<td>Ceiling on the exponential retry backoff, so a persistently failing message keeps retrying at a steady, bounded cadence rather than spacing out into many hours. Must be greater than or equal to <code>RetryBackoff</code>.</td>
+</tr>
+<tr>
+<td><code>RetryBackoffJitter</code></td>
+<td><code>double</code></td>
+<td>0.5</td>
+<td>Fraction in <code>[0, 1]</code> of deterministic, per-message jitter that only <strong>subtracts</strong> from the computed backoff (so the wait stays at or below the cap) to de-correlate messages that failed together — they don't all retry the instant a failed dependency recovers, which would flood it. <code>0</code> disables jitter; the jitter is keyed on the message id, so it is reproducible (no run-to-run randomness). Must be between 0 and 1 inclusive.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="delivery-semantics">Delivery semantics</h2>
+<p>The guarantee is at-least-once <strong>delivery</strong>, and delivery now means <em>every handler completed</em>.</p>
+<ul>
+<li>A domain message is marked processed only once <strong>every</strong> registered <code>IDomainEventHandler&lt;TEvent&gt;</code> has completed. A handler that throws leaves the message pending, and the retry re-invokes <strong>only the handlers that failed</strong> — <code>OutboxMessage.CompletedHandlers</code> records the ones that already succeeded. An unrelated sibling's failure therefore never re-runs a successful handler's side effect.</li>
+<li>All drained integration events are staged on a failed attempt, including additions from successful handlers and additions made before a translator itself threw. There is no per-handler rollback of collector additions. Successful handlers are skipped on retry; failed translators can run again and produce logical duplicates under new row IDs.</li>
+<li>Event-type resolution, deserialization, and publisher failures become per-message failed attempts when their bookkeeping save succeeds. A bookkeeping <code>SaveChanges</code> failure is different: it escapes to the drain loop, which logs <code>DrainFailed</code> and waits <code>PollInterval</code>. That attempt/progress is not durable, the prior lease remains until expiry, and repeated bookkeeping failures need not ever reach <code>MaxAttempts</code>. Monitor drain failures as well as parked messages.</li>
+<li>Failures retry on later polls with an <strong>exponential backoff</strong> (<code>RetryBackoff</code> doubling up to <code>MaxRetryBackoff</code>, minus a deterministic per-message jitter), up to <code>MaxAttempts</code>, after which the message is dead-lettered (parked): its <code>Attempts</code> reaches the cap and the scan skips it, so later messages are not blocked. <code>LastError</code> records the most recent failure. The backoff means a brief outage is ridden out by a later retry rather than burning every attempt in a tight loop. With the defaults, a permanently failing handler is retried 10 times over roughly 3 hours before parking.</li>
+<li><strong>Handlers must still be idempotent.</strong> The progress record is only durable once the relay's bookkeeping <code>SaveChanges</code> lands, so a crash between dispatch and that save re-delivers the event to <em>every</em> handler. The per-handler tracking removes the routine duplicate (a failing sibling), not the crash window.</li>
+<li>Integration messages have a single publish step rather than a fan-out, so <code>CompletedHandlers</code> stays empty for them; a publisher failure retries the whole row.</li>
+<li>A dead-lettered message stays in the table for inspection and <strong>replay</strong> — see <em>Dead-letter and replay</em> below. Monitor for rows where <code>ProcessedAt IS NULL AND Attempts &gt;= MaxAttempts</code>.</li>
+<li><strong>Logs (production support).</strong> The relay emits structured events. <code>OutboxRelay.MessageParked</code> (<strong>Error</strong>, <code>EventId</code> 5) is the alertable signal that a message exhausted <code>MaxAttempts</code> and is dead-lettered — it carries <code>MessageId</code>, <code>EventType</code>, <code>Attempts</code>, and the exception. Transient per-message failures log <code>OutboxRelay.RelayAttemptFailed</code> (<strong>Warning</strong>, <code>EventId</code> 4, with the attempt number); a drain that outlived its lease and was reclaimed by another instance logs <code>OutboxRelay.LeaseLost</code> (<strong>Warning</strong>, <code>EventId</code> 6); a whole drain cycle failing logs <code>OutboxRelay.DrainFailed</code> (<strong>Error</strong>, <code>EventId</code> 3); startup logs <code>OutboxRelay.Started</code> (Information), and <code>OutboxRelay.DrainCompleted</code> (Debug) reports the per-cycle count. Alert on <code>MessageParked</code>.</li>
+<li><strong>Safe to run N-up (row-claiming + concurrency guard).</strong> Each drain atomically claims a batch with a lease — a single <code>UPDATE</code> sets <code>LockedBy</code> (a per-drain token) and <code>LockedUntil</code> (now + <code>LeaseDuration</code>) on eligible rows. Concurrent relays running that <code>UPDATE</code> are serialized by row locks and re-evaluate the lease guard, so every row is claimed by exactly one instance. <code>LockedBy</code> is additionally an <strong>optimistic concurrency token</strong>: if a slow batch outlives its lease and another instance reclaims a row, the first instance's bookkeeping <code>UPDATE</code> matches no row and it abandons its write for that row (dropping any integration rows it produced and logging <code>OutboxRelay.LeaseLost</code>) rather than clobber the new owner. This makes a horizontally-scaled deployment safe <strong>without</strong> leader election or an external lock. Delivery is still at-least-once and handlers must stay idempotent: a crash between publish and the relay's <code>SaveChanges</code>, or a batch that outlives its lease, can re-deliver. Set <code>LeaseDuration</code> comfortably above the worst-case batch publish time, and keep node clocks reasonably in sync — the lease is compared against each relay's wall clock.</li>
+</ul>
+<blockquote>
+<p><strong>Migration note.</strong> This behavior replaces the previous &quot;handed to the publisher = delivered&quot; semantics, under which a throwing handler silently dropped its work. Two consequences for an existing deployment: messages whose handlers fail now retry and can park (alert on <code>OutboxRelay.MessageParked</code>), and the <code>TrellisOutboxMessages</code> table gains a <code>CompletedHandlers</code> column — add a migration before deploying. The column is non-nullable with an empty default, so existing rows backfill cleanly.</p>
+</blockquote>
+<p>The relay obtains this behavior from <code>IReportingDomainEventPublisher</code> (see <code>trellis-api-mediator.md</code>), the non-swallowing counterpart to <code>IDomainEventPublisher</code>. In-pipeline dispatch still swallows, because it runs post-commit and has no retry mechanism. The relay's <code>StartAsync</code> resolves <code>IReportingDomainEventPublisher</code> in a fresh scope before starting the drain loop and fails host startup if it is missing or cannot be constructed. When an <code>IIntegrationEventCollector</code> or <code>IIntegrationEventPublisher</code> registration enables integration features, startup also resolves the integration publisher; domain-only hosts need no integration publisher. This validates publisher construction, not broker connectivity or every handler dependency. Both response and tracked domain-dispatch registrations supply the reporting capability.</p>
+<p><code>IServiceProviderIsService</code> is optional. When available, the relay probes registrations without constructing the collector. With a provider or scoped-provider wrapper that omits this capability, startup resolves the optional collector to determine whether an integration publisher is required; when there is no collector, it still resolves any optional integration publisher to validate its construction. Optional resolution follows the <code>IServiceProvider</code> contract: an absent service returns <code>null</code>, while construction exceptions propagate. Each publisher is requested directly at most once during validation, and the scope is asynchronously disposed on success or failure. A provider without registration probing therefore need not register a dummy probe or integration publisher for a domain-only outbox.</p>
+<h2 id="dead-letter-and-replay">Dead-letter and replay</h2>
+<p>A message that exhausts <code>MaxAttempts</code> is <strong>dead-lettered</strong> (parked): it stays in <code>TrellisOutboxMessages</code> with <code>ProcessedAt == null</code> and <code>Attempts &gt;= MaxAttempts</code>, is skipped by the relay scan so it does not block later messages, and logs <code>OutboxRelay.MessageParked</code> (Error). It is kept in the table for inspection — a soft dead-letter, not a separate queue.</p>
+<p>Resolve <code>IOutboxMaintenance</code> (registered by <code>AddTrellisOutbox&lt;TContext&gt;</code>, scoped) to inspect and replay dead-lettered messages once you have fixed the cause (deployed the missing handler assembly, corrected a bad payload):</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GetDeadLetteredAsync(limit = 100, ct)</code></td>
+<td>Returns up to <code>limit</code> dead-lettered rows, oldest first, for inspection.</td>
+</tr>
+<tr>
+<td><code>ReplayAsync(id, ct)</code></td>
+<td>Replays one message by <code>Id</code>: resets <code>Attempts</code> to 0, clears <code>LastError</code> and the lease so the relay drains it again. Returns the rows affected (0 if it does not exist or is not dead-lettered, 1 otherwise).</td>
+</tr>
+<tr>
+<td><code>ReplayAllAsync(ct)</code></td>
+<td>Replays every currently dead-lettered message and returns the count. The set is a snapshot taken when the statement runs — messages that dead-letter afterward are not included.</td>
+</tr>
+</tbody>
+</table>
+<p>Replaying a dead-lettered row is race-free against a running relay because the relay never claims a row whose <code>Attempts &gt;= MaxAttempts</code>. Note that the dead-letter set is defined relative to <code>MaxAttempts</code>, so lowering or raising that option also changes which rows are considered dead-lettered. <code>IOutboxMaintenance</code> targets the single outbox context registered in the container (like <code>OutboxOptions</code>); run one outbox per composition.</p>
+<h2 id="serialization">Serialization</h2>
+<p>Events are serialized and rehydrated with a Trellis-owned <code>System.Text.Json</code> options instance that adds a <code>Maybe&lt;T&gt;</code> converter.</p>
+<ul>
+<li><strong>Supported:</strong> value objects that carry a <code>[JsonConverter]</code> attribute (the Trellis scalar and composite primitives) round-trip, because the converter travels with the type. <code>Maybe&lt;T&gt;</code> members also round-trip — a present value serializes as the underlying value and an absent one as JSON <code>null</code>.</li>
+<li><strong>Not supported:</strong> converters registered only through a caller-supplied <code>JsonSerializerOptions</code> factory (they are not consulted by the outbox serializer). Shape those members with attribute-driven value objects or a <strong>nullable transport</strong> (e.g. <code>string?</code>).</li>
+</ul>
+<p>A fully configurable serializer is a planned follow-up; until then, keep event payloads to attribute-driven, <code>Maybe&lt;T&gt;</code>, and primitive-or-nullable members.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-efcore-outbox.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

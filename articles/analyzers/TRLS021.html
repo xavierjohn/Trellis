@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>TRLS021 — EF configuration duplicates Trellis conventions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="TRLS021 — EF configuration duplicates Trellis conventions | Trellis ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS021.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trls021--ef-configuration-duplicates-trellis-conventions">TRLS021 — EF configuration duplicates Trellis conventions</h1>
+
+<ul>
+<li><strong>Severity:</strong> Warning</li>
+<li><strong>Category:</strong> Trellis</li>
+</ul>
+<h2 id="what-it-detects">What it detects</h2>
+<p>Flags <code>IEntityTypeConfiguration&lt;T&gt;</code> (or inline <code>modelBuilder.Entity&lt;T&gt;()</code>) code that manually calls <code>HasConversion(...)</code>, <code>OwnsOne(...)</code>, or <code>Ignore(...)</code> for a property whose type is already owned by Trellis conventions:</p>
+<ul>
+<li>A <code>Maybe&lt;T&gt;</code> property — <code>MaybeConvention</code> already maps the underlying storage member (<code>_camelCase</code> backing field) when <code>ApplyTrellisConventions(...)</code> is wired.</li>
+<li>An <code>[OwnedEntity]</code>-decorated composite value object — <code>CompositeValueObjectConvention</code> already configures ownership and column splitting.</li>
+</ul>
+<p>Activates only when <code>ApplyTrellisConventions(...)</code> or <code>ApplyTrellisConventionsFor&lt;TContext&gt;()</code> is reachable from the consumer's compilation.</p>
+<h2 id="why-it-matters">Why it matters</h2>
+<p>Manual EF mapping for property shapes that Trellis already handles is at best redundant and at worst silently conflicts with the convention-generated model. Common failure modes:</p>
+<ul>
+<li>A manual <code>HasConversion(maybe =&gt; maybe.AsNullable(), nullable =&gt; Maybe.From(nullable))</code> on a <code>Maybe&lt;T&gt;</code> property overrides the backing-field-based convention and produces double-serialization or column mismatches at runtime.</li>
+<li>A manual <code>OwnsOne(c =&gt; c.Address, ...)</code> on an <code>[OwnedEntity]</code> composite competes with <code>CompositeValueObjectConvention</code>, producing two ownership records and a <code>Cannot add ... already owned</code> migration error.</li>
+<li>A manual <code>Ignore(c =&gt; c.SomeMaybe)</code> masks a property the convention would have correctly persisted, silently losing data.</li>
+</ul>
+<h2 id="bad-examples">Bad examples</h2>
+<pre><code class="lang-csharp">public sealed class CustomerConfiguration : IEntityTypeConfiguration&lt;Customer&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Customer&gt; builder)
+    {
+        // ❌ Maybe&lt;T&gt; backed by a convention — manual conversion conflicts.
+        builder.Property(c =&gt; c.PhoneNumber)
+            .HasConversion(
+                m =&gt; m.AsNullable(),
+                v =&gt; Maybe.From(v));                                                     // TRLS021
+
+        // ❌ [OwnedEntity] composite — CompositeValueObjectConvention already owns it.
+        builder.OwnsOne(c =&gt; c.ShippingAddress);                                         // TRLS021
+    }
+}
+</code></pre>
+<h2 id="good-examples">Good examples</h2>
+<pre><code class="lang-csharp">public sealed class CustomerConfiguration : IEntityTypeConfiguration&lt;Customer&gt;
+{
+    public void Configure(EntityTypeBuilder&lt;Customer&gt; builder)
+    {
+        builder.HasKey(c =&gt; c.Id);
+        builder.Property(c =&gt; c.Email).IsRequired();
+        builder.HasIndex(c =&gt; c.Email).IsUnique();
+
+        // No mapping for PhoneNumber or ShippingAddress — conventions own them.
+        // ApplyTrellisConventions(typeof(CustomerId).Assembly) in ConfigureConventions
+        // does the wiring once for the whole DbContext.
+    }
+}
+</code></pre>
+<h2 id="code-fix-available">Code fix available</h2>
+<p>No. The diagnostic is informational about a redundant mapping; the right action is to <em>delete</em> the manual configuration, which the developer should verify by running <code>dotnet ef dbcontext optimize</code> (or inspecting the generated model snapshot) to confirm the property is still mapped by the convention.</p>
+<h2 id="configuration">Configuration</h2>
+<p>Standard Roslyn configuration applies.</p>
+<pre><code class="lang-ini">dotnet_diagnostic.TRLS021.severity = none
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>If a property genuinely needs custom mapping that the convention cannot express (a non-default column name, a project-specific value converter, a check constraint), suppress the diagnostic with a <code>#pragma</code> at the call site and leave a one-line comment naming the constraint. The rule is opinionated, not absolute.</p>
+</div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS021.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>TRLS013 — Unsafe access to Maybe.Value in LINQ expression | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="TRLS013 — Unsafe access to Maybe.Value in LINQ expression | Trellis ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS013.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trls013--unsafe-access-to-maybevalue-in-linq-expression">TRLS013 — Unsafe access to Maybe.Value in LINQ expression</h1>
+
+<ul>
+<li><strong>Severity:</strong> Warning</li>
+<li><strong>Category:</strong> Trellis</li>
+</ul>
+<h2 id="what-it-detects">What it detects</h2>
+<p>Flags <code>.Value</code> access on a <code>Maybe&lt;T&gt;</code> LINQ lambda parameter inside projections, grouping, ordering, and dictionary-building operations unless an earlier <code>Where(...)</code> guard proves the value is safe.</p>
+<p>The Result-side equivalent was removed along with <code>Result&lt;T&gt;.Value</code>. This rule now applies only to <code>Maybe&lt;T&gt;</code>.</p>
+<h2 id="why-it-matters">Why it matters</h2>
+<p>Collection pipelines make it easy to forget that some items may be <code>Maybe&lt;T&gt;.None</code>. One unsafe <code>.Value</code> access can throw for the whole query.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>The analyzer understands guard chains like <code>.Where(x =&gt; x.HasValue)</code>. Without that filter, <code>.Value</code> is treated as unsafe.</p>
+</div>
+<h2 id="bad-example">Bad example</h2>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using System.Linq;
+using Trellis;
+
+static class Example
+{
+    public static List&lt;int&gt; Bad(IEnumerable&lt;Maybe&lt;int&gt;&gt; values) =&gt;
+        values.Select(maybe =&gt; maybe.Value).ToList();
+}
+</code></pre>
+<h2 id="good-example">Good example</h2>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using System.Linq;
+using Trellis;
+
+static class Example
+{
+    public static List&lt;int&gt; Good(IEnumerable&lt;Maybe&lt;int&gt;&gt; values) =&gt;
+        values
+            .Where(maybe =&gt; maybe.HasValue)
+            .Select(maybe =&gt; maybe.Value)
+            .ToList();
+}
+</code></pre>
+<h2 id="code-fix-available">Code fix available</h2>
+<p>No.</p>
+<h2 id="configuration">Configuration</h2>
+<p>Use standard Roslyn configuration if you need to suppress this rule in a specific scope.</p>
+<pre><code class="lang-ini">dotnet_diagnostic.TRLS013.severity = none
+</code></pre>
+<pre><code class="lang-csharp">#pragma warning disable TRLS013
+// Intentional: documented exception or test-only pattern.
+#pragma warning restore TRLS013
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Filter first, then project. If you need both present and absent paths, use <code>Match</code> inside the projection instead of <code>.Value</code>.</p>
+</div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS013.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

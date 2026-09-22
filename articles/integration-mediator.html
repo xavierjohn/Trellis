@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Mediator Pipeline | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Mediator Pipeline | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-mediator.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="mediator-pipeline">Mediator Pipeline</h1>
+
+<p><code>Trellis.Mediator</code> registers result-aware pipeline behaviors around the <a href="https://github.com/martinothamar/Mediator">Mediator</a> library so handlers stay focused on business work while exception safety, tracing, logging, authorization, and validation run as composable pre/post stages.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Register the standard Trellis behaviors</td>
+<td><code>services.AddTrellisBehaviors()</code></td>
+<td><a href="#quick-start">Quick start</a></td>
+</tr>
+<tr>
+<td>Inspect or override the canonical behavior order</td>
+<td><code>ServiceCollectionExtensions.PipelineBehaviors</code></td>
+<td><a href="#pipeline-order">Pipeline order</a></td>
+</tr>
+<tr>
+<td>Gate a message on static permissions</td>
+<td>Implement <code>IAuthorize</code> on the message</td>
+<td><a href="#permission-authorization">Permission authorization</a></td>
+</tr>
+<tr>
+<td>Authorize against a loaded resource (ownership, tenancy)</td>
+<td>Implement <code>IAuthorizeResource&lt;T&gt;</code> and register a loader</td>
+<td><a href="#resource-authorization">Resource authorization</a></td>
+</tr>
+<tr>
+<td>Reuse one loader across many commands for the same resource</td>
+<td><code>IIdentifyResource&lt;T, TId&gt;</code> + <code>SharedResourceLoaderById&lt;T, TId&gt;</code></td>
+<td><a href="#shared-resource-loaders">Shared resource loaders</a></td>
+</tr>
+<tr>
+<td>Self-validate a message</td>
+<td>Implement <code>IValidate.Validate()</code></td>
+<td><a href="#validation">Validation</a></td>
+</tr>
+<tr>
+<td>Plug FluentValidation into the same stage</td>
+<td><code>services.AddTrellisFluentValidation()</code></td>
+<td><a href="#fluentvalidation-adapter">FluentValidation adapter</a></td>
+</tr>
+<tr>
+<td>Show <code>Error.Detail</code> in logs/traces (dev only)</td>
+<td><code>AddTrellisBehaviors(o =&gt; o.IncludeErrorDetail = true)</code></td>
+<td><a href="#telemetry-redaction">Telemetry redaction</a></td>
+</tr>
+<tr>
+<td>Convert thrown exceptions to typed failures</td>
+<td><code>ExceptionBehavior</code> (always-on)</td>
+<td><a href="#exception-safety-net">Exception safety net</a></td>
+</tr>
+<tr>
+<td>Dispatch domain events that aggregates raised during a command</td>
+<td><code>services.AddDomainEventDispatch()</code> + <code>IDomainEventHandler&lt;TEvent&gt;</code></td>
+<td><a href="#domain-event-dispatch">Domain event dispatch</a></td>
+</tr>
+<tr>
+<td>Manually dispatch an aggregate's events from a non-aggregate handler or <code>BackgroundService</code></td>
+<td><code>IDomainEventPublisher.DispatchAggregateEventsAsync(aggregate, ct)</code></td>
+<td><a href="#dispatching-events-from-non-aggregate-response-shapes-post-commit-safe">Dispatching events from non-aggregate response shapes</a></td>
+</tr>
+<tr>
+<td>Auto-dispatch domain events from <em>every</em> aggregate the unit-of-work tracked, regardless of response shape</td>
+<td><code>services.AddTrellis(t =&gt; t.UseTrackedAggregateDomainEvents(...))</code></td>
+<td><a href="#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior">Auto-dispatching from outcome-DTO commands</a></td>
+</tr>
+<tr>
+<td>Use a custom envelope response type around an aggregate</td>
+<td><code>TResponse : IResult&lt;TAggregate&gt;, IFailureFactory&lt;TResponse&gt;</code></td>
+<td><a href="#custom-envelope-response-types">Custom envelope response types</a></td>
+</tr>
+<tr>
+<td>Persist a <code>permanently_failed</code> row alongside a failure outcome (worker pattern)</td>
+<td><code>Result.FailAfterCommit&lt;T&gt;(error)</code></td>
+<td><a href="#persisting-failure-state-from-a-worker-handler">Persisting failure state from a worker handler</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You are wiring <code>Trellis.Mediator</code> into a Web API or Worker host and need the canonical behavior registration.</li>
+<li>You want to move authorization or validation off your handlers and into the pipeline.</li>
+<li>You want consistent OpenTelemetry spans and structured logs for every command/query.</li>
+<li>You need to plug FluentValidation (or another validation library) into the same validation stage as <code>IValidate</code>.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Type / member</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddTrellisBehaviors()</code></td>
+<td>DI extension</td>
+<td>Registers the five always-on behaviors (idempotent).</td>
+</tr>
+<tr>
+<td><code>AddTrellisBehaviors(Action&lt;TrellisMediatorTelemetryOptions&gt;)</code></td>
+<td>DI extension</td>
+<td>Same, with telemetry options (e.g., <code>IncludeErrorDetail</code>).</td>
+</tr>
+<tr>
+<td><code>AddResourceAuthorization(params Assembly[])</code></td>
+<td>DI extension</td>
+<td>Scans assemblies for <code>IAuthorizeResource&lt;&gt;</code>, loaders, and shared loaders.</td>
+</tr>
+<tr>
+<td><code>AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</code></td>
+<td>DI extension</td>
+<td>Explicit registration (AOT/trimming friendly).</td>
+</tr>
+<tr>
+<td><code>AddSharedResourceAuthorization&lt;TMessage, TResource, TId, TResponse&gt;()</code></td>
+<td>DI extension</td>
+<td>Explicit behavior, accessor, and shared-loader adapter registration (AOT/trimming friendly); the shared-loader implementation is registered separately.</td>
+</tr>
+<tr>
+<td><code>AddSharedResourceLoader&lt;TMessage, TResource, TId&gt;()</code></td>
+<td>DI extension</td>
+<td>Bridges an <code>IIdentifyResource&lt;T,TId&gt;</code> message to a <code>SharedResourceLoaderById&lt;T,TId&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>IValidate</code></td>
+<td>Interface</td>
+<td>Message-side hook; <code>IResult Validate()</code> runs before the handler.</td>
+</tr>
+<tr>
+<td><code>IMessageValidator&lt;TMessage&gt;</code></td>
+<td>Interface</td>
+<td>DI-resolved async validator; aggregated by <code>ValidationBehavior</code>.</td>
+</tr>
+<tr>
+<td><code>TrellisMediatorTelemetryOptions.IncludeErrorDetail</code></td>
+<td>Property</td>
+<td>Opt-in to include <code>Error.Detail</code> in logs/traces (default <code>false</code>).</td>
+</tr>
+<tr>
+<td><code>TracingBehavior&lt;,&gt;.ActivitySourceName</code></td>
+<td><code>const string</code></td>
+<td><code>&quot;Trellis.Mediator&quot;</code> — add this to your OpenTelemetry config.</td>
+</tr>
+<tr>
+<td><code>ServiceCollectionExtensions.PipelineBehaviors</code></td>
+<td>Property</td>
+<td>Ordered behavior list for AOT <code>MediatorOptions.PipelineBehaviors</code>.</td>
+</tr>
+<tr>
+<td><code>AddDomainEventDispatch()</code> / <code>AddDomainEventDispatch(params Assembly[])</code></td>
+<td>DI extension</td>
+<td>Registers <code>DomainEventDispatchBehavior&lt;,&gt;</code> (open-generic) + the default <code>IDomainEventPublisher</code>; the assembly overload also scans for <code>IDomainEventHandler&lt;TEvent&gt;</code> implementations. Idempotent.</td>
+</tr>
+<tr>
+<td><code>AddDomainEventHandler&lt;TEvent, THandler&gt;()</code></td>
+<td>DI extension</td>
+<td>AOT/trim-friendly per-handler registration (also wires up the dispatch behavior + publisher).</td>
+</tr>
+<tr>
+<td><code>IDomainEventHandler&lt;TEvent&gt;</code></td>
+<td>Interface</td>
+<td>Side-effect handler invoked once per matching event after the command commits.</td>
+</tr>
+<tr>
+<td><code>IDomainEventPublisher</code></td>
+<td>Interface</td>
+<td>Resolves <code>IDomainEventHandler&lt;TEvent&gt;</code> instances and fans events out; default impl is <code>MediatorDomainEventPublisher</code> (DI-resolved, scoped).</td>
+</tr>
+<tr>
+<td><code>DomainEventPublisherExtensions.DispatchAggregateEventsAsync(this IDomainEventPublisher, IAggregate, CancellationToken)</code></td>
+<td>Extension method</td>
+<td>Post-commit-only helper that uses the strict snapshot-and-cascade-validation contract for handlers that do not return <code>Result&lt;TAggregate&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>TrackedAggregateDomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</code></td>
+<td>Pipeline behavior</td>
+<td>Opt-in alternative to <code>DomainEventDispatchBehavior&lt;,&gt;</code> that auto-dispatches events from every aggregate the unit-of-work tracked at commit time, regardless of response shape. Registered via <code>AddTrackedAggregateDomainEventDispatch()</code> or <code>TrellisServiceBuilder.UseTrackedAggregateDomainEvents(...)</code>. Mutually exclusive with the response-shape behavior.</td>
+</tr>
+<tr>
+<td><code>AddTrackedAggregateDomainEventDispatch()</code></td>
+<td>DI extension</td>
+<td>Registers the tracked behavior + default publisher and replaces any prior response-shape dispatch registration. Idempotent.</td>
+</tr>
+<tr>
+<td><code>ITrackedAggregateSource</code></td>
+<td>Interface</td>
+<td>Sidecar exposed by <code>EfUnitOfWork&lt;TContext&gt;</code> (or a custom <code>IUnitOfWork</code>) — returns the aggregates the unit-of-work committed on its most recent successful save. Empty after a failed commit or thrown save.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Mediator
+</code></pre>
+<h2 id="quick-start">Quick start</h2>
+<p>Register Mediator with the <strong>scoped</strong> lifetime, add the Trellis behaviors, and your handlers immediately get exception safety, tracing, logging, authorization, and validation.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Mediator;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+
+var app = builder.Build();
+app.Run();
+
+public sealed record PublishDocumentCommand(string DocumentId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;documents:publish&quot;];
+}
+
+public sealed class PublishDocumentHandler : ICommandHandler&lt;PublishDocumentCommand, Result&lt;Unit&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(PublishDocumentCommand command, CancellationToken cancellationToken) =&gt;
+        ValueTask.FromResult(Result.Ok());
+}
+</code></pre>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>Pass <code>opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped</code>. The Trellis behaviors depend on per-request services (<code>IActorProvider</code>, <code>IUnitOfWork</code>, <code>IMessageValidator&lt;&gt;</code> adapters). Mediator's default lifetime is <code>Singleton</code>, which fails ASP.NET's root-scope validation as soon as a behavior tries to resolve a scoped dependency. <code>AddTrellisBehaviors()</code> fails fast with an actionable message if it sees a <code>Singleton</code> Mediator.</p>
+</div>
+<div class="NOTE">
+<h5>Note</h5>
+<p>A file that imports both the <code>Trellis</code> and <code>Mediator</code> namespaces has two <code>Unit</code> types in scope — <code>Trellis.Unit</code> (the success-without-payload value a command returns) and <code>Mediator.Unit</code> — so a bare <code>Result&lt;Unit&gt;</code> is <em>ambiguous</em>. The examples here abbreviate it; in real code either qualify it as <code>Result&lt;Trellis.Unit&gt;</code> (what the compiled samples do) or add a one-line alias to your <code>GlobalUsings.cs</code> so the short form keeps working:</p>
+<pre><code class="lang-csharp">global using TrellisUnit = Trellis.Unit;   // then write Result&lt;TrellisUnit&gt;
+// or, since Trellis consumers never reference Mediator.Unit directly:
+global using Unit = Trellis.Unit;           // then write Result&lt;Unit&gt;
+</code></pre>
+</div>
+<h2 id="pipeline-order">Pipeline order</h2>
+<p><code>AddTrellisBehaviors()</code> registers the five always-on behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 5, 7, and 8 slot in only when their registration helpers are called.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Behavior</th>
+<th>Runs for</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>ExceptionBehavior</code></td>
+<td>all messages</td>
+<td>Catches everything except <code>OperationCanceledException</code>; returns <code>Error.Unexpected</code>.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>TracingBehavior</code></td>
+<td>all messages</td>
+<td>Opens an <code>Activity</code> under <code>&quot;Trellis.Mediator&quot;</code>; tags <code>error.code</code> / <code>error.type</code> on failure, records exception events for thrown handlers, and leaves consumer-initiated cancellations non-error.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>LoggingBehavior</code></td>
+<td>all messages</td>
+<td>Structured start/end with elapsed ms; emits <code>Error.Code</code> on failure.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>AuthorizationBehavior</code></td>
+<td><code>IAuthorize</code> messages</td>
+<td>Resolves the actor and checks <code>RequiredPermissions</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>ResourceAuthorizationBehavior</code> <em>(opt-in)</em></td>
+<td><code>IAuthorizeResource&lt;T&gt;</code> messages</td>
+<td>Loads the resource and calls <code>Authorize(actor, resource)</code>. Inserted by <code>AddResourceAuthorization(...)</code> immediately before <code>ValidationBehavior</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>ValidationBehavior</code></td>
+<td>all messages</td>
+<td>Runs <code>IValidate.Validate()</code> and every <code>IMessageValidator&lt;TMessage&gt;</code>; aggregates <code>Error.InvalidInput</code>.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>DomainEventDispatchBehavior</code> <em>(opt-in)</em></td>
+<td><code>ICommand&lt;TResponse&gt;</code> where <code>TResponse : IResult</code></td>
+<td>After a successful response, extracts the aggregate via <code>IResult&lt;TAggregate&gt;</code> and publishes the events it raised. Inserted by <code>AddDomainEventDispatch(...)</code>. See <a href="#domain-event-dispatch">Domain event dispatch</a>.</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>TransactionalCommandBehavior</code> <em>(opt-in, EFCore)</em></td>
+<td><code>ICommand&lt;TResponse&gt;</code></td>
+<td><code>IUnitOfWork.CommitAsync</code> on success; wraps each command in <code>using var scope = unitOfWork.BeginScope();</code> so nested commands defer commit to the outermost scope. Register <strong>after</strong> <code>AddTrellisBehaviors()</code> so it lands innermost. See <a href="integration-ef.html#nested-commands-and-scope-aware-commit">Nested commands and scope-aware commit</a>.</td>
+</tr>
+</tbody>
+</table>
+<p>The first five live in <code>ServiceCollectionExtensions.PipelineBehaviors</code> for the AOT-friendly source-generator path; assign that list to <code>MediatorOptions.PipelineBehaviors</code> when configuring <code>AddMediator</code>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Rows 7 and 8 are designed to be <strong>registration-order-independent</strong>: <code>AddDomainEventDispatch(...)</code> and <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> both detect the other and shuffle so the canonical order (events fire after the transaction commits, so handlers see committed state) holds regardless of which <code>services.Add*</code> call comes first.</p>
+</div>
+<h2 id="permission-authorization">Permission authorization</h2>
+<p>Implement <code>IAuthorize</code> when a message always requires the same permission set. <code>AuthorizationBehavior</code> resolves the current <code>Actor</code> from <code>IActorProvider</code> and rejects with <code>new Error.Forbidden(&quot;authorization.insufficient.permissions&quot;) { Detail = &quot;Insufficient permissions.&quot; }</code> when any required permission is missing.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Mediator;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record PublishDocumentCommand(string DocumentId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;documents:publish&quot;];
+}
+</code></pre>
+<p><code>AuthorizationBehavior</code> performs no I/O — it only reads from the resolved <code>Actor</code>. Use <code>IAuthorizeResource&lt;T&gt;</code> (next section) when the answer depends on the resource itself.</p>
+<h2 id="resource-authorization">Resource authorization</h2>
+<p>Use <code>IAuthorizeResource&lt;TResource&gt;</code> when authorization depends on the resource (ownership, tenancy, state). The pipeline loads the resource first, then calls <code>message.Authorize(actor, resource)</code>.</p>
+<p><code>ResourceAuthorizationBehavior</code> is <strong>opt-in</strong>: it is added only when you call <code>AddResourceAuthorization(...)</code>. Without that call the behavior never runs even if the message implements <code>IAuthorizeResource&lt;T&gt;</code>.</p>
+<h3 id="per-message-loader">Per-message loader</h3>
+<p>Use <code>ResourceLoaderById&lt;TMessage, TResource, TId&gt;</code> for the common &quot;message has an id, repository loads by id&quot; case.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Mediator;
+
+public sealed record Document(Guid Id, string OwnerId, string Title);
+
+public interface IDocumentRepository
+{
+    Task&lt;Result&lt;Document&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task&lt;Result&lt;Document&gt;&gt; RenameAsync(Document document, string title, CancellationToken cancellationToken);
+}
+
+public sealed record RenameDocumentCommand(Guid DocumentId, string Title)
+    : ICommand&lt;Result&lt;Document&gt;&gt;, IAuthorize, IAuthorizeResource&lt;Document&gt;
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions =&gt; [&quot;documents:edit&quot;];
+
+    public IResult Authorize(Actor actor, Document resource) =&gt;
+        actor.IsOwner(resource.OwnerId)
+            ? Result.Ok()
+            : Result.Fail(new Error.Forbidden(&quot;documents.rename&quot;) { Detail = &quot;Only the owner can rename this document.&quot; });
+}
+
+public sealed class RenameDocumentResourceLoader(IDocumentRepository repository)
+    : ResourceLoaderById&lt;RenameDocumentCommand, Document, Guid&gt;
+{
+    protected override Guid GetId(RenameDocumentCommand message) =&gt; message.DocumentId;
+
+    protected override Task&lt;Result&lt;Document&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken) =&gt;
+        repository.GetByIdAsync(id, cancellationToken);
+}
+
+public static class Composition
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+        builder.Services.AddTrellisBehaviors();
+        builder.Services.AddResourceAuthorization(typeof(RenameDocumentCommand).Assembly);
+    }
+}
+</code></pre>
+<p>For the <code>RenameDocumentCommand</code> above, the per-request order becomes: permission check → resource load + <code>Authorize(actor, resource)</code> → validation → handler.</p>
+<h3 id="shared-resource-loaders">Shared resource loaders</h3>
+<p>When several commands authorize against the same resource, register one <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> and let messages declare <code>IIdentifyResource&lt;TResource, TId&gt;</code>. Assembly scanning auto-bridges them; explicit registration uses <code>AddSharedResourceAuthorization&lt;TMessage,TResource,TId,TResponse&gt;()</code> for the behavior, accessor, and adapter together. The lower-level <code>AddResourceAuthorization&lt;,,&gt;</code> plus <code>AddSharedResourceLoader&lt;,,&gt;</code> combination remains available.</p>
+<pre><code class="lang-csharp">using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Authorization;
+using Trellis.Mediator;
+
+public sealed record Order(Guid Id, string OwnerId);
+
+public interface IOrderRepository
+{
+    Task&lt;Result&lt;Order&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken);
+}
+
+public sealed class OrderResourceLoader(IOrderRepository repository)
+    : SharedResourceLoaderById&lt;Order, Guid&gt;
+{
+    public override Task&lt;Result&lt;Order&gt;&gt; GetByIdAsync(Guid id, CancellationToken cancellationToken) =&gt;
+        repository.GetByIdAsync(id, cancellationToken);
+}
+
+public sealed record CancelOrderCommand(Guid OrderId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, Guid&gt;
+{
+    public Guid GetResourceId() =&gt; OrderId;
+
+    public IResult Authorize(Actor actor, Order resource) =&gt;
+        actor.IsOwner(resource.OwnerId)
+            ? Result.Ok()
+            : Result.Fail(new Error.Forbidden(&quot;orders.cancel&quot;) { Detail = &quot;Only the owner can cancel this order.&quot; });
+}
+
+public static class Composition
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+        builder.Services.AddTrellisBehaviors();
+        builder.Services.AddScoped&lt;SharedResourceLoaderById&lt;Order, Guid&gt;, OrderResourceLoader&gt;();
+
+        // Explicit (AOT/trimming friendly):
+        builder.Services.AddSharedResourceAuthorization&lt;CancelOrderCommand, Order, Guid, Result&lt;Unit&gt;&gt;();
+
+        // Equivalent via assembly scan (not AOT-friendly):
+        // builder.Services.AddResourceAuthorization(typeof(CancelOrderCommand).Assembly);
+    }
+}
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Explicit <code>IResourceLoader&lt;TMessage, TResource&gt;</code> registrations always win over the shared-loader bridge.</p>
+</div>
+<h3 id="hide-existence-with-authfailureexposurepolicyhideasnotfound">Hide existence with <code>AuthFailureExposurePolicy.HideAsNotFound</code></h3>
+<p>For resources whose mere existence is sensitive — incident reports, security findings, internal correspondence, private profiles — the default <code>Forbidden</code> response leaks that the resource exists. Opt the resource into <code>AuthFailureExposurePolicy.HideAsNotFound</code> via <code>ResourceAuthorizationOptions</code> and the pipeline translates <code>Error.Forbidden</code> and <code>Error.AuthenticationRequired</code> to <code>new Error.NotFound(ResourceRef)</code>. Other error kinds (<code>Unexpected</code>, <code>Unavailable</code>, loader-<code>NotFound</code>, transport faults) returned by the <strong>direct</strong> loader pass through verbatim — operational signal is never hidden. For multi-hop <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> commands, intermediate / owner hop failures are already collapsed to a synthetic <code>Forbidden(&quot;resource.authorization-via.load-failed&quot;)</code> by the v1 multi-hop security model (existence-leak protection on related resources) before exposure translation runs; under <code>HideAsNotFound</code> that synthetic Forbidden becomes <code>404</code>, so a downstream owner-service <code>Unavailable</code> surfaces as <code>404</code> to the consumer. See cookbook <a href="../api_reference/trellis-api-cookbook.html#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound">Recipe 32</a> for the leaf-vs-hop distinction in detail.</p>
+<pre><code class="lang-csharp">builder.Services.AddTrellis(options =&gt; options
+    .UseResourceAuthorization()                                                // pipeline enabled
+    .UseResourceAuthorization&lt;GetIncidentQuery, Incident, Result&lt;IncidentDto&gt;&gt;()
+    .UseResourceAuthorization(o =&gt; o.HideExistence&lt;Incident&gt;()));              // opt-in per resource
+</code></pre>
+<p>Default is <code>Propagate</code> — no behavior change for resources that don't opt in. Set <code>DefaultExposurePolicy = HideAsNotFound</code> to flip the default service-wide and use <code>Propagate&lt;TResource&gt;()</code> for individual safe-to-disclose resources. Each translation emits a structured <code>[LoggerMessage]</code> event <code>ExistenceHidden</code> carrying the original <code>Kind</code> and <code>Code</code> so SecOps can audit the underlying denial reason via SIEM.</p>
+<p><strong>Caveats.</strong></p>
+<ul>
+<li><strong><code>AuthorizationBehavior</code> runs first.</strong> Commands implementing both <code>IAuthorize</code> and <code>IAuthorizeResource&lt;T&gt;</code> have static-permission <code>AuthenticationRequired</code> / <code>Forbidden</code> surfaced by <code>AuthorizationBehavior</code> — those are NOT translated, because the static-auth behavior has no concept of the resource. Commands needing existence-hiding to apply to anonymous probes must omit <code>IAuthorize</code>.</li>
+<li><strong>Cache safety.</strong> Synthetic 404s look identical to real 404s on the wire — pair these endpoints with <code>Cache-Control: no-store</code> or <code>private</code> so a shared cache cannot serve an unauthorized actor's 404 to a later authorized actor.</li>
+<li><strong>Via commands key on the leaf.</strong> <code>HideExistence&lt;Match&gt;()</code> covers commands implementing <code>IAuthorizeResourceVia&lt;Team&gt;</code> + <code>IIdentifyResource&lt;Match, MatchId&gt;</code> — the synthetic NotFound references the leaf the command identifies, never the owner.</li>
+</ul>
+<p>See cookbook <a href="../api_reference/trellis-api-cookbook.html#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound">Recipe 32</a> for the projection-loader overload, SIEM query examples, and the full worked example.</p>
+<h2 id="validation">Validation</h2>
+<p><code>ValidationBehavior</code> runs for every message and pulls violations from two sources.</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Use it for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IValidate.Validate()</code> on the message</td>
+<td>Cross-field invariants and domain rules awkward to express as property checks.</td>
+</tr>
+<tr>
+<td><code>IEnumerable&lt;IMessageValidator&lt;TMessage&gt;&gt;</code> from DI</td>
+<td>Property-level validation, FluentValidation adapter, or any custom validator package.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Aggregation rules</strong></p>
+<ul>
+<li>All <code>Error.InvalidInput</code> failures from both sources are merged into a single <code>Error.InvalidInput</code> whose <code>Fields</code> and <code>Rules</code> collect every reported violation. The caller never gets &quot;the first failure&quot; — they get the full list in one round trip.</li>
+<li>An <code>Error.InvalidInput</code> with empty <code>Fields</code> and empty <code>Rules</code> still short-circuits the handler.</li>
+<li>A non-<code>Error.InvalidInput</code> failure (e.g., <code>Error.Conflict</code>, <code>Error.Forbidden</code>) returned by any source short-circuits the stage immediately and is propagated as-is.</li>
+</ul>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed record ArchiveDocumentCommand(string DocumentId, bool IsArchived)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IValidate
+{
+    public IResult Validate() =&gt;
+        IsArchived
+            ? Result.Ok()
+            : Result.Fail(new Error.Conflict(null, &quot;domain.violation&quot;) { Detail = &quot;Only archived documents can be processed.&quot; });
+}
+
+public sealed class ArchiveDocumentHandler : ICommandHandler&lt;ArchiveDocumentCommand, Result&lt;Unit&gt;&gt;
+{
+    public ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(ArchiveDocumentCommand command, CancellationToken cancellationToken) =&gt;
+        ValueTask.FromResult(Result.Ok());
+}
+</code></pre>
+<h3 id="custom-imessagevalidatortmessage">Custom <code>IMessageValidator&lt;TMessage&gt;</code></h3>
+<p>Implement <code>IMessageValidator&lt;TMessage&gt;</code> to plug an arbitrary async validator into the same stage as <code>IValidate</code>. Field-level violations should be wrapped in <code>Error.InvalidInput</code> so they aggregate with other validators' output.</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Mediator;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed record CreateUserCommand(string Email)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;;
+
+public interface IUserDirectory
+{
+    Task&lt;bool&gt; IsEmailTakenAsync(string email, CancellationToken cancellationToken);
+}
+
+public sealed class UniqueEmailValidator(IUserDirectory directory)
+    : IMessageValidator&lt;CreateUserCommand&gt;
+{
+    public async ValueTask&lt;IResult&gt; ValidateAsync(CreateUserCommand message, CancellationToken cancellationToken)
+    {
+        var taken = await directory.IsEmailTakenAsync(message.Email, cancellationToken).ConfigureAwait(false);
+        return taken
+            ? Result.Fail(new Error.InvalidInput(EquatableArray.Create(
+                new FieldViolation(InputPointer.ForProperty(nameof(message.Email)), &quot;email.taken&quot;) { Detail = &quot;Email already in use.&quot; })))
+            : Result.Ok();
+    }
+}
+
+public static class Composition
+{
+    public static void Register(IServiceCollection services) =&gt;
+        services.AddScoped&lt;IMessageValidator&lt;CreateUserCommand&gt;, UniqueEmailValidator&gt;();
+}
+</code></pre>
+<h3 id="fluentvalidation-adapter">FluentValidation adapter</h3>
+<p>Add the optional <code>Trellis.Mediator.FluentValidation</code> package and call <code>AddTrellisFluentValidation()</code> to surface every registered <code>IValidator&lt;TMessage&gt;</code> through <code>IMessageValidator&lt;TMessage&gt;</code>. The adapter normalizes FluentValidation property paths (e.g., <code>Lines[0].Memo</code>) into RFC 6901 JSON Pointers (<code>/lines/0/memo</code>) so <code>Error.InvalidInput.Fields</code> has a consistent pointer shape regardless of which source produced each violation.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using FluentValidation;
+using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
+
+public sealed record TransferLine(string TargetAccount, decimal Amount, string? Memo);
+
+public sealed record SubmitBatchTransfersCommand(string SourceAccount, IReadOnlyList&lt;TransferLine&gt; Lines)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;;
+
+public sealed class SubmitBatchTransfersValidator : AbstractValidator&lt;SubmitBatchTransfersCommand&gt;
+{
+    public SubmitBatchTransfersValidator()
+    {
+        RuleFor(x =&gt; x.SourceAccount).NotEmpty();
+        RuleForEach(x =&gt; x.Lines).ChildRules(line =&gt;
+        {
+            line.RuleFor(l =&gt; l.TargetAccount).NotEmpty();
+            line.RuleFor(l =&gt; l.Amount).GreaterThan(0);
+        });
+    }
+}
+
+public static class Composition
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+        builder.Services.AddTrellisBehaviors();
+        builder.Services.AddTrellisFluentValidation();
+        builder.Services.AddScoped&lt;IValidator&lt;SubmitBatchTransfersCommand&gt;, SubmitBatchTransfersValidator&gt;();
+    }
+}
+</code></pre>
+<p>See <a href="integration-fluentvalidation.html#mediator-integration">FluentValidation Integration</a> for the AOT vs. assembly-scanning registration overloads.</p>
+<h2 id="domain-event-dispatch">Domain event dispatch</h2>
+<p><code>DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</code> (registered by <code>AddDomainEventDispatch(...)</code>) closes the loop between the domain layer's <code>DomainEvents.Add(...)</code> calls and the outside world. It runs as an inner pipeline behavior — after the handler returns a successful response — and fans out the events the aggregate accumulated to every registered <code>IDomainEventHandler&lt;TEvent&gt;</code>. Dispatch is strict single-wave snapshot dispatch: the behavior snapshots the aggregate's <code>UncommittedEvents()</code> once, publishes only that snapshot, and throws <code>DomainEventHandlerCascadedException</code> if the pending-event list at the end of dispatch differs from the entry snapshot (length + reference equality — covers handlers that raise new events, clear via <code>AcceptChanges</code>, replace, or reorder). When <code>Trellis.EntityFrameworkCore</code> is also wired up, the behavior sits <strong>outside</strong> <code>TransactionalCommandBehavior</code> in the pipeline, so handlers see the post-commit state and a transaction failure suppresses dispatch automatically.</p>
+<h3 id="what-gets-dispatched-and-when">What gets dispatched, and when</h3>
+<p>Nested command dispatch is owned by the actual outer commit. Successful inner aggregate responses are retained without publishing or clearing until that owner commits and returns success, including when the owner returns DTO/Unit. A failure or exception at the owning boundary discards the batch without clearing aggregate events. Successful grandchildren belong directly to the actual owner, so an ignored intermediate failure does not lose their events when the owner deliberately commits their staged work.</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Message types covered</td>
+<td><code>ICommand&lt;TResponse&gt;</code> only — queries with the same response shape are skipped at the type-constraint level.</td>
+</tr>
+<tr>
+<td>Aggregate discovery</td>
+<td>Successful <code>IResult&lt;TAggregate&gt;</code> responses where <code>TAggregate : IAggregate</code> contribute aggregates. An outer DTO/Unit contributes none itself but can release nested aggregate responses after its owning commit. Custom envelopes also work — see <a href="#custom-envelope-response-types">Custom envelope response types</a>.</td>
+</tr>
+<tr>
+<td>When events fire</td>
+<td>After the handler returns a successful response, before the response is returned up the pipeline. With <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> registered, that means <strong>after</strong> the transaction commits.</td>
+</tr>
+<tr>
+<td>Failure path</td>
+<td>If the handler returns <code>Result.Fail</code>, no events are dispatched and the aggregate retains them.</td>
+</tr>
+<tr>
+<td>Per-event ordering</td>
+<td>Events are dispatched sequentially in the order the aggregate raised them.</td>
+</tr>
+<tr>
+<td>Multiple handlers per event</td>
+<td>Each <code>IDomainEventHandler&lt;TEvent&gt;</code> registered for the runtime event type runs in turn (registration order). One handler's failure does not stop the next from running — see &quot;Handler exceptions&quot; below.</td>
+</tr>
+<tr>
+<td>Cascade detection</td>
+<td>Handler-raised events are not dispatched. If post-dispatch validation finds any new events on the aggregate, dispatch throws <code>DomainEventHandlerCascadedException</code> and does not call <code>AcceptChanges()</code>. Handlers must be side-effect-only.</td>
+</tr>
+<tr>
+<td>Cancellation</td>
+<td>Not cancellable. Dispatch runs after the transaction commits, so the caller's <code>cancellationToken</code> is not observed and handlers receive <code>CancellationToken.None</code>. A disconnect mid-fan-out cannot strand a durable write with a partially published event set.</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>Post-commit throw caveat.</strong> With <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> registered, the database commit is already durable before dispatch starts. If cascade detection throws, the request returns a failure-shaped response even though the write committed; a client retry may encounter &quot;already committed&quot; semantics. Durable at-least-once delivery requires the <a href="integration-outbox.html">transactional outbox</a>, which captures the event in the same transaction as the write and re-dispatches it after the commit.</p>
+</div>
+<h3 id="registration">Registration</h3>
+<p>Three registration shapes; pick by composition style.</p>
+<pre><code class="lang-csharp">// 1. AOT/trim-friendly: register each handler explicitly. Implies AddDomainEventDispatch().
+services.AddDomainEventHandler&lt;UserRegistered, SendWelcomeEmailHandler&gt;();
+services.AddDomainEventHandler&lt;UserRegistered, ProvisionTenantHandler&gt;();
+
+// 2. Assembly scanning: discovers every concrete IDomainEventHandler&lt;TEvent&gt; in the listed assemblies.
+//    Carries [RequiresUnreferencedCode] / [RequiresDynamicCode] — not for AOT.
+services.AddDomainEventDispatch(typeof(SendWelcomeEmailHandler).Assembly);
+
+// 3. Service-defaults builder (Trellis.ServiceDefaults). Order-safe with the other Use* slots.
+builder.Services.AddTrellis(trellis =&gt; trellis
+    .UseEntraActorProvider()
+    .UseDomainEvents(typeof(SendWelcomeEmailHandler).Assembly)
+    .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;());
+</code></pre>
+<p><code>AddDomainEventDispatch()</code> is <strong>idempotent</strong> — calling it more than once registers the behavior and the default <code>IDomainEventPublisher</code> exactly once. Both the per-handler overload and the assembly-scan overload call it for you.</p>
+<h3 id="handler-shape">Handler shape</h3>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+
+public sealed record UserRegistered(UserId UserId, DateTimeOffset OccurredAt) : IDomainEvent;
+
+public sealed class SendWelcomeEmailHandler : IDomainEventHandler&lt;UserRegistered&gt;
+{
+    private readonly IEmailSender _email;
+
+    public SendWelcomeEmailHandler(IEmailSender email) =&gt; _email = email;
+
+    public ValueTask HandleAsync(UserRegistered domainEvent, CancellationToken cancellationToken) =&gt;
+        _email.SendWelcomeAsync(domainEvent.UserId, cancellationToken);
+}
+</code></pre>
+<p>Handlers are registered as <strong>scoped</strong> services (one instance per request). Inject side-effect services — <code>HttpClient</code> factories, message-bus producers, mailers, projection writers — directly through the constructor.</p>
+<p>Handlers must stay side-effect-only. Do not mutate the source aggregate, mutate another aggregate, raise a new domain event, or send a nested Mediator command from inside the dispatch loop. If a side effect needs more domain mutation, issue a follow-up command from the application layer after the originating command completes, or enqueue post-commit work that runs as a separate top-level command.</p>
+<h3 id="handler-exceptions">Handler exceptions</h3>
+<p><code>MediatorDomainEventPublisher</code> (the default implementation) treats handler failures defensively:</p>
+<ul>
+<li><strong>Non-cancellation exceptions</strong> thrown by a handler are logged at <code>Error</code> level and <strong>swallowed</strong>; the publisher continues with the next handler so a single misbehaving handler does not block other side effects of the same event.</li>
+<li><strong><code>OperationCanceledException</code></strong> matching the supplied cancellation token propagates so the originating request can abort cleanly.</li>
+<li><strong>No handler resolved</strong> for a given runtime event type is logged at <code>Debug</code> and treated as a no-op.</li>
+</ul>
+<p>Cascade detection does not change handler-exception semantics. A swallowed handler failure can still be followed by clean snapshot validation and <code>AcceptChanges()</code>, so the default publisher is best-effort, not durable retry. Durable at-least-once side effects require the <a href="integration-outbox.html">transactional outbox</a>.</p>
+<p>Event-to-handler matching uses <code>domainEvent.GetType()</code> exactly. Handlers registered against a base class or interface of the runtime event type are <strong>not</strong> invoked — register one handler per concrete event type (or one type implementing multiple <code>IDomainEventHandler&lt;TEvent&gt;</code> interfaces, each of which is wired up separately).</p>
+<h3 id="custom-envelope-response-types">Custom envelope response types</h3>
+<p>The dispatch behavior walks <code>TResponse.GetInterfaces()</code> looking for an <code>IResult&lt;TValue&gt;</code> where <code>TValue : IAggregate</code>. The common case (<code>Result&lt;TAggregate&gt;</code>) is detected directly; less common shapes also work:</p>
+<pre><code class="lang-csharp">// A non-generic envelope that exposes an aggregate-valued result. Both interfaces are required:
+//   IResult&lt;Order&gt;          → so the dispatch behavior can extract the aggregate
+//   IFailureFactory&lt;TSelf&gt;  → so failure-projecting behaviors (e.g. ResourceAuthorizationBehavior)
+//                             can construct a failure of this envelope type
+public sealed class OrderEnvelope : IResult&lt;Order&gt;, IFailureFactory&lt;OrderEnvelope&gt;
+{
+    private readonly Result&lt;Order&gt; _inner;
+    public OrderEnvelope(Result&lt;Order&gt; inner) =&gt; _inner = inner;
+
+    public bool IsSuccess =&gt; _inner.IsSuccess;
+    public bool IsFailure =&gt; _inner.IsFailure;
+    public Error? Error =&gt; _inner.Error;
+    public bool TryGetValue(out Order value) =&gt; _inner.TryGetValue(out value!);
+    public bool TryGetError(out Error? error) =&gt; _inner.TryGetError(out error);
+
+    public static OrderEnvelope CreateFailure(Error error) =&gt; new(Result.Fail&lt;Order&gt;(error));
+}
+</code></pre>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>If a message implements <code>IAuthorizeResource&lt;TResource&gt;</code>, its <code>TResponse</code> must satisfy <strong>both</strong> <code>IResult</code> <em>and</em> <code>IFailureFactory&lt;TResponse&gt;</code>. <code>Result&lt;T&gt;</code> does both automatically. <code>AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</code> (and the assembly-scanning overload) <strong>fails fast at registration</strong> with <code>InvalidOperationException</code> if either interface is missing — the security-marked command will not silently ship without resource authorization.</p>
+</div>
+<p>Other response shapes pass through the dispatch behavior untouched:</p>
+<table>
+<thead>
+<tr>
+<th><code>TResponse</code></th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Result&lt;TAggregate&gt;</code> where <code>TAggregate : IAggregate</code></td>
+<td>Events extracted and dispatched.</td>
+</tr>
+<tr>
+<td>Custom type implementing <code>IResult&lt;TAggregate&gt;</code> (envelope)</td>
+<td>Same as above.</td>
+</tr>
+<tr>
+<td><code>Result&lt;Unit&gt;</code>, <code>Result&lt;string&gt;</code>, <code>Result&lt;TDto&gt;</code></td>
+<td>Contributes no aggregate itself, but an owning outer command still releases its successful nested aggregate responses.</td>
+</tr>
+<tr>
+<td><code>Result&lt;(A, B)&gt;</code> (tuple)</td>
+<td>Same: no aggregate extracted from this response; successful nested aggregate responses are retained.</td>
+</tr>
+<tr>
+<td>Custom type with <strong>two</strong> distinct <code>IResult&lt;TAggregate1&gt;</code> / <code>IResult&lt;TAggregate2&gt;</code> interfaces</td>
+<td><strong>Fails fast at startup</strong> with <code>InvalidOperationException</code> — the behavior cannot disambiguate which aggregate's events to dispatch.</td>
+</tr>
+</tbody>
+</table>
+<p>When a non-aggregate response has no nested aggregate responses to dispatch, use tracked-aggregate dispatch or explicit manual dispatch after the actual commit. Prefer <code>Result&lt;TAggregate&gt;</code> where it accurately expresses the command outcome.</p>
+<h3 id="dispatching-events-from-non-aggregate-response-shapes-post-commit-safe">Dispatching events from non-aggregate response shapes (post-commit safe)</h3>
+<p>For the manual case the cleanest entry point is <code>IDomainEventPublisher.DispatchAggregateEventsAsync(aggregate)</code> — an extension method on the publisher that uses the same strict snapshot contract as <code>DomainEventDispatchBehavior&lt;,&gt;</code> (same non-cancellable contract, same cascade exception, same final <code>AcceptChanges()</code> only after clean validation) so you do not have to re-implement the edge cases.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>POST-COMMIT ONLY.</strong> The helper publishes events immediately. If you call it inside a handler whose commit is run by <code>TransactionalCommandBehavior</code> (i.e., the handler is chained behind <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code>), the events fire <em>before</em> the database transaction commits — and if the commit then fails, the handlers have already observed state that was rolled back. <code>AcceptChanges()</code> has cleared the events off the aggregate, so the failure is non-replayable.</p>
+</div>
+<p><strong>Wrong shape — helper called inside a transactional handler:</strong></p>
+<pre><code class="lang-csharp">// AddTrellisUnitOfWork&lt;AppDbContext&gt;() is wired; TransactionalCommandBehavior owns the commit.
+public async ValueTask&lt;Result&lt;MarkReadDto&gt;&gt; Handle(
+    MarkInboxReadCommand cmd,
+    CancellationToken cancellationToken)
+{
+    var inbox = await _db.Inboxes.FirstAsync(i =&gt; i.Id == cmd.Id, cancellationToken).ConfigureAwait(false);
+    inbox.MarkRead(_clock.UtcNow); // raises InboxRead event
+
+    // ⚠️ Events fire NOW, before TransactionalCommandBehavior commits. If the commit fails after
+    // this handler returns, handlers have already seen InboxRead — and AcceptChanges() has erased
+    // it from the aggregate so nothing on the next retry will re-raise it.
+    await _publisher.DispatchAggregateEventsAsync(inbox, cancellationToken).ConfigureAwait(false);
+
+    return Result.Ok(new MarkReadDto(inbox.Id, inbox.ReadAt!.Value));
+}
+</code></pre>
+<p><strong>Right shape 1 — handler owns its commit, helper runs after it succeeds:</strong></p>
+<pre><code class="lang-csharp">// No AddTrellisUnitOfWork&lt;&gt;() chain. The handler is responsible for saving and dispatching.
+public async ValueTask&lt;Result&lt;MarkReadDto&gt;&gt; Handle(
+    MarkInboxReadCommand cmd,
+    CancellationToken cancellationToken)
+{
+    var inbox = await _db.Inboxes.FirstAsync(i =&gt; i.Id == cmd.Id, cancellationToken).ConfigureAwait(false);
+    inbox.MarkRead(_clock.UtcNow);
+
+    await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+    // Commit is durable. Safe to publish. If cancellation or cascade detection throws,
+    // AcceptChanges() will NOT have run; handlers must still be idempotent because some
+    // snapshot events may already have fired.
+    await _publisher.DispatchAggregateEventsAsync(inbox, cancellationToken).ConfigureAwait(false);
+
+    return Result.Ok(new MarkReadDto(inbox.Id, inbox.ReadAt!.Value));
+}
+</code></pre>
+<p><strong>Right shape 2 — <code>BackgroundService</code> tick after <code>SaveChangesAsync</code>:</strong></p>
+<pre><code class="lang-csharp">public sealed class InboxCleanupWorker(
+    IServiceScopeFactory scopes,
+    TimeProvider clock,
+    ILogger&lt;InboxCleanupWorker&gt; log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();
+            var publisher = scope.ServiceProvider.GetRequiredService&lt;IDomainEventPublisher&gt;();
+
+            var stale = await db.Inboxes
+                .Where(i =&gt; i.ReadAt == null &amp;&amp; i.CreatedAt &lt; clock.GetUtcNow().AddDays(-30))
+                .ToListAsync(stoppingToken)
+                .ConfigureAwait(false);
+
+            foreach (var inbox in stale)
+                inbox.Discard(clock.GetUtcNow()); // raises InboxDiscarded
+
+            await db.SaveChangesAsync(stoppingToken).ConfigureAwait(false);
+
+            // Commit is durable; now drain each aggregate's events.
+            foreach (var inbox in stale)
+                await publisher.DispatchAggregateEventsAsync(inbox, stoppingToken).ConfigureAwait(false);
+
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken).ConfigureAwait(false);
+        }
+    }
+}
+</code></pre>
+<p>Failure / cancellation contract:</p>
+<ul>
+<li>Not cancellable. The <code>cancellationToken</code> parameter is retained for source compatibility but is not observed, and handlers receive <code>CancellationToken.None</code>. The helper is post-commit only, so aborting mid-fan-out would strand an already-durable write with a partially published event set.</li>
+<li>On <code>DomainEventHandlerCascadedException</code>, <code>AcceptChanges()</code> is <strong>not</strong> called and the original plus cascaded events stay on the aggregate so the caller can inspect them. Domain event handlers must not raise new events on the same aggregate they were given; if you have a cascade requirement, model it with a separate top-level command after the original command completes.</li>
+<li>On an exception thrown by an event handler, behavior follows the publisher's contract. The default <code>MediatorDomainEventPublisher</code> <strong>logs and swallows</strong> non-cancellation handler exceptions (same as <code>DomainEventDispatchBehavior&lt;,&gt;</code>), so the helper continues dispatching the remaining snapshot events and reaches <code>AcceptChanges()</code> after clean cascade validation. If you supply a custom <code>IDomainEventPublisher</code> that propagates handler exceptions, the helper rethrows and <code>AcceptChanges()</code> is not called. Use idempotent handlers and an outbox for durable downstream retries; the helper is not a retry buffer.</li>
+<li>Re-entrant calls on the same aggregate are <strong>not supported</strong>. Do not call <code>DispatchAggregateEventsAsync</code> from inside an <code>IDomainEventHandler&lt;TEvent&gt;</code> that is currently draining the same aggregate: the nested call creates a second snapshot before the outer dispatch has validated or cleared the queue. Treat domain event handlers as side-effect-only and let exactly one outer call own the drain.</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>An opt-in pipeline behavior — <code>TrackedAggregateDomainEventDispatchBehavior</code> — covers the common case where you want post-commit dispatch against aggregates the handler tracks via the EF change tracker (instead of returning them through <code>Result&lt;TAggregate&gt;</code>). See <a href="#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior">Auto-dispatching from outcome-DTO commands</a> below.</p>
+</div>
+<h3 id="auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior">Auto-dispatching from outcome-DTO commands (opt-in tracked behavior)</h3>
+<p><code>DomainEventDispatchBehavior&lt;,&gt;</code> discovers aggregates from successful <code>IResult&lt;TAggregate&gt;</code> responses, including nested commands. It does not discover other aggregates directly mutated by a DTO-returning handler. For that case, <code>TrackedAggregateDomainEventDispatchBehavior&lt;,&gt;</code> reads the owning commit's tracked aggregate snapshot and dispatches automatically regardless of response shape. Deferred inner commands do not read stale committed snapshots or publish/clear events.</p>
+<p>The behavior is <strong>opt-in</strong> and <strong>mutually exclusive</strong> with <code>DomainEventDispatchBehavior&lt;,&gt;</code> — pick one model per host.</p>
+<pre><code class="lang-csharp">// Outcome-DTO command. Handler returns Result&lt;MarkReadDto&gt;, not Result&lt;Inbox&gt;.
+public sealed record MarkInboxReadCommand(Guid Id) : ICommand&lt;Result&lt;MarkReadDto&gt;&gt;;
+public sealed record MarkReadDto(Guid Id, DateTimeOffset ReadAt);
+
+public sealed class MarkInboxReadHandler(AppDbContext db, TimeProvider clock)
+    : ICommandHandler&lt;MarkInboxReadCommand, Result&lt;MarkReadDto&gt;&gt;
+{
+    public async ValueTask&lt;Result&lt;MarkReadDto&gt;&gt; Handle(
+        MarkInboxReadCommand cmd,
+        CancellationToken cancellationToken)
+    {
+        var inbox = await db.Inboxes.FirstAsync(i =&gt; i.Id == cmd.Id, cancellationToken).ConfigureAwait(false);
+        inbox.MarkRead(clock.GetUtcNow()); // raises InboxRead — staged on the aggregate
+
+        // No SaveChangesAsync or DispatchAggregateEventsAsync needed:
+        // TransactionalCommandBehavior commits, then TrackedAggregateDomainEventDispatchBehavior
+        // reads ITrackedAggregateSource.CommittedAggregates and drains events from each.
+        return Result.Ok(new MarkReadDto(inbox.Id, inbox.ReadAt!.Value));
+    }
+}
+</code></pre>
+<p>Registration via the <code>TrellisServiceBuilder</code>:</p>
+<pre><code class="lang-csharp">services.AddTrellis(t =&gt; t
+    .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;()
+    .UseTrackedAggregateDomainEvents(typeof(MarkInboxReadHandler).Assembly));
+</code></pre>
+<p>Or via DI extensions directly:</p>
+<pre><code class="lang-csharp">services.AddTrackedAggregateDomainEventDispatch();
+services.AddTrellisUnitOfWork&lt;AppDbContext&gt;();
+services.AddDomainEventHandler&lt;InboxRead, SendReadReceiptHandler&gt;();
+</code></pre>
+<h4 id="how-it-composes-with-the-rest-of-the-pipeline">How it composes with the rest of the pipeline</h4>
+<ul>
+<li>The tracked behavior sits at the same slot as <code>DomainEventDispatchBehavior&lt;,&gt;</code> — just outside <code>TransactionalCommandBehavior</code>, so dispatch runs after commit. Pipeline order is enforced by <code>AddTrackedAggregateDomainEventDispatch()</code> regardless of registration order with <code>AddTrellisUnitOfWork&lt;&gt;()</code>.</li>
+<li>After the inner pipeline returns <code>IsSuccess</code>, the behavior reads <code>ITrackedAggregateSource.CommittedAggregates</code> (the snapshot the unit-of-work captured at commit time), snapshots each aggregate's <code>UncommittedEvents()</code>, publishes only those snapshots, and then validates every snapshot aggregate before clearing anything.</li>
+<li>Same-aggregate and cross-aggregate cascades both throw <code>DomainEventHandlerCascadedException</code>. If dispatching aggregate A's event causes a handler to append events to aggregate B that was also in the committed snapshot, B is listed in <code>Offenders</code>; no aggregate events are cleared on throw.</li>
+<li>The unit-of-work snapshot is <strong>cleared before save</strong> and <strong>only repopulated on success</strong>. A failed commit (or a thrown save) leaves it empty, so a subsequent successful commit never auto-dispatches events from a previously-failed handler.</li>
+<li><code>Result.FailAfterCommit&lt;T&gt;(error)</code> (a failure whose <code>IPersistOnFailure.PersistOnFailure</code> flag is set) commits the staged state, but the tracked behavior <strong>skips dispatch</strong> because the result is a failure — the worker pattern in <a href="#persisting-failure-state-from-a-worker-handler">Persisting failure state from a worker handler</a> continues to work as documented.</li>
+<li>Re-entrant calls (a handler schedules another command via <code>IMediator.Send</code>) are blocked by the <code>TrackedAggregateDispatchReentrancyGuard</code>, so the nested invocation of the tracked behavior is <strong>skipped</strong> for every closed-generic behavior shape. A nested command sent from inside a domain-event handler can leave its own aggregate events stranded. Queue follow-up commands from the application layer after the originating command completes instead.</li>
+</ul>
+<h4 id="when-to-pick-which-model">When to pick which model</h4>
+<table>
+<thead>
+<tr>
+<th>Handler shape</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Returns <code>Result&lt;TAggregate&gt;</code> for one aggregate per command</td>
+<td><code>AddDomainEventDispatch()</code> (the response-shape behavior). Most precise — the response identifies the aggregate.</td>
+</tr>
+<tr>
+<td>Returns an outcome DTO (<code>Result&lt;DoneDto&gt;</code>, <code>Result&lt;Unit&gt;</code>, <code>Result&lt;(A, B)&gt;</code>) and mutates one or more aggregates via the EF change tracker</td>
+<td><code>AddTrackedAggregateDomainEventDispatch()</code>. The unit-of-work tells the behavior which aggregates committed.</td>
+</tr>
+<tr>
+<td>Hand-rolled <code>BackgroundService</code> tick without <code>TransactionalCommandBehavior</code></td>
+<td><code>IDomainEventPublisher.DispatchAggregateEventsAsync(aggregate, ct)</code> after your own <code>SaveChangesAsync</code>.</td>
+</tr>
+<tr>
+<td>Custom <code>IUnitOfWork</code> that does not implement <code>ITrackedAggregateSource</code></td>
+<td>Throws at first resolve. Either implement the interface on your unit-of-work or use the response-shape model.</td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>AddTrackedAggregateDomainEventDispatch()</code> and <code>AddDomainEventDispatch()</code> are mutually exclusive. The tracked extension removes any prior response-shape registration, and <code>AddDomainEventDispatch()</code> short-circuits if the tracked behavior is already registered. The <code>TrellisServiceBuilder</code> slots <code>UseDomainEvents(...)</code> and <code>UseTrackedAggregateDomainEvents(...)</code> throw <code>InvalidOperationException</code> if you call both.</p>
+</div>
+<h3 id="persisting-failure-state-from-a-worker-handler">Persisting failure state from a worker handler</h3>
+<p>A worker handler often needs to mark a domain record as <code>permanently_failed</code> <em>and</em> return failure to the caller (so retries stop, alerts fire, the outbox doesn't redrive). The naive shape — handler stages the state change then returns <code>Result.Fail&lt;T&gt;(error)</code> — loses the persisted state because <code>TransactionalCommandBehavior</code> rolls back on failure.</p>
+<p><code>Result.FailAfterCommit&lt;T&gt;(error)</code> solves this. It is still a failure (<code>IsFailure == true</code>, dispatch is skipped, callers see the error), but it carries an <code>IPersistOnFailure.PersistOnFailure</code> flag that <code>TransactionalCommandBehavior</code> reads to decide whether to commit:</p>
+<pre><code class="lang-csharp">public async ValueTask&lt;Result&lt;Reminder&gt;&gt; Handle(
+    SendReminderCommand cmd,
+    CancellationToken cancellationToken)
+{
+    var reminder = await _repo.GetAsync(cmd.ReminderId, cancellationToken).ConfigureAwait(false);
+    if (reminder is null)
+        return Result.Fail&lt;Reminder&gt;(new Error.NotFound(ResourceRef.For&lt;Reminder&gt;(cmd.ReminderId)));
+
+    var gatewayResult = await _gateway.SendAsync(reminder, cancellationToken).ConfigureAwait(false);
+    if (gatewayResult.IsSuccess)
+    {
+        reminder.MarkSent(_clock.UtcNow);
+        return Result.Ok(reminder);
+    }
+
+    // Fail-fast (e.g., AuthenticationRequired) → ordinary failure; nothing persists,
+    // and the caller halts the batch instead of treating the item as permanently failed.
+    if (gatewayResult.Error.IsFailFast())
+        return Result.Fail&lt;Reminder&gt;(gatewayResult.Error);
+
+    // Transient → ordinary failure: nothing persists, retry will re-enter the handler.
+    if (gatewayResult.Error.IsTransient())
+        return Result.Fail&lt;Reminder&gt;(gatewayResult.Error);
+
+    // Permanent failure → mark the row and persist that decision alongside the failure outcome.
+    // Without FailAfterCommit, MarkPermanentlyFailed's tracked changes roll back and the next
+    // tick re-enters this handler against the same row.
+    reminder.MarkPermanentlyFailed(gatewayResult.Error.Code, _clock.UtcNow);
+    return Result.FailAfterCommit&lt;Reminder&gt;(gatewayResult.Error);
+}
+</code></pre>
+<p>The <code>ErrorRetryExtensions</code> helpers in the <code>Trellis</code> namespace (<code>Error.IsTransient()</code>, <code>IsPermanent()</code>, <code>IsFailFast()</code>, <code>Classify()</code>) are the canonical worker-side retry classifier. They cover <code>Error.Unavailable</code> and <code>Error.RateLimited</code> as transient, fold in <code>Error.Unexpected</code> (so an unanticipated exception in a downstream gateway doesn't permanently park the message), separate <code>Error.AuthenticationRequired</code> as fail-fast (halt the batch — not the same as a per-item permanent failure), and handle <code>Error.Aggregate</code> with max-severity semantics. The hand-written <code>is Error.Unavailable or Error.RateLimited</code> switch is incomplete on every axis and should not be repeated.</p>
+<p>Pipeline behavior at this point:</p>
+<ul>
+<li><code>TransactionalCommandBehavior</code> sees <code>result is IPersistOnFailure { PersistOnFailure: true }</code> and runs <code>CommitAsync</code>. If the commit itself fails (e.g., DB unavailable), that commit error replaces the handler's gateway error in the returned response — there is no partial commit.</li>
+<li><code>DomainEventDispatchBehavior</code> skips the failed response and discards its pending dispatch batch without clearing aggregate events. Without outbox capture, those events remain in memory and are not a durable retry buffer. With the outbox interceptor, the successful persist-on-failure save captures and clears them, and the relay later delivers them despite the failed response.</li>
+<li>Callers (worker tick loop, outbox processor, HTTP controller) see a plain failure result and react accordingly (log + alert + don't retry).</li>
+</ul>
+<p>Guidance:</p>
+<ul>
+<li>Only the <strong>permanent</strong> branch uses <code>FailAfterCommit</code>. Transient errors must stay as <code>Result.Fail&lt;T&gt;(...)</code> so the retry path re-runs against fresh state.</li>
+<li><code>Result.FailAfterCommit&lt;T&gt;(error)</code> and <code>Result.Fail&lt;T&gt;(error)</code> with the same <code>Error</code> are <strong>not</strong> equal — equality discriminates on the per-instance <code>PersistOnFailure</code> flag.</li>
+<li><code>IFailureFactory&lt;Result&lt;T&gt;&gt;.CreateFailure(error)</code> (the constructor used by upstream behaviors when projecting a failure into the response type) deliberately produces a plain <code>Result.Fail&lt;T&gt;(error)</code>, <strong>not</strong> a <code>FailAfterCommit</code>. This prevents a commit-error from looping back into another commit attempt.</li>
+</ul>
+<h2 id="exception-safety-net">Exception safety net</h2>
+<p><code>ExceptionBehavior</code> is the outermost behavior. It:</p>
+<ul>
+<li>Catches every unhandled exception <strong>except</strong> <code>OperationCanceledException</code> (which propagates so cancellation flows correctly).</li>
+<li>Logs the exception, then returns <code>TResponse.CreateFailure(new Error.Unexpected(FaultCodes.UnhandledException, faultId) { Detail = &quot;An unexpected error occurred while processing the request.&quot; })</code>.</li>
+</ul>
+<p>The generated <code>&quot;N&quot;</code>-format Guid is passed as <code>FaultId</code> (the <code>Code</code> stays the stable <code>unhandled-exception</code>), so operators can join the failed response to the logged stack trace without giving every incident its own code.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Don't use exceptions for expected business outcomes — return <code>Result&lt;T&gt;</code> failures instead and let <code>ExceptionBehavior</code> handle only true surprises.</p>
+</div>
+<h2 id="telemetry">Telemetry</h2>
+<p><code>TracingBehavior</code> opens an <code>Activity</code> per message under the activity source <code>&quot;Trellis.Mediator&quot;</code> (also exposed as the constant <code>TracingBehavior&lt;,&gt;.ActivitySourceName</code>). Add it to your OpenTelemetry tracing config or you will get no spans:</p>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Trace;
+using Trellis.Mediator;
+
+builder.Services.AddOpenTelemetry().WithTracing(tracing =&gt;
+    tracing.AddTrellisMediatorInstrumentation());
+</code></pre>
+<p>On a failed result, both <code>LoggingBehavior</code> and <code>TracingBehavior</code> always emit:</p>
+<ul>
+<li><code>Error.Code</code> (operator-defined identifier, e.g., <code>&quot;orders.cancel&quot;</code>).</li>
+<li>The stable <code>Error</code> type name (e.g., <code>Error.Forbidden</code>) on the activity as <code>error.type</code>.</li>
+</ul>
+<p><code>LoggingBehavior</code> writes Debug on success and Warning on failure; <code>TracingBehavior</code> sets <code>ActivityStatusCode.Error</code> on failed results and non-cancellation exceptions, records standard exception-event tags when a handler throws, and leaves request-token cancellations at the default <code>Unset</code> status. Per-call timing is at Debug to keep production logs quiet at the default <code>Information</code> minimum; raise via <code>&quot;Trellis.Mediator&quot;: &quot;Debug&quot;</code> in logging configuration to surface every dispatch.</p>
+<h3 id="telemetry-redaction">Telemetry redaction</h3>
+<p>The free-text <code>Error.Detail</code> string is <strong>redacted by default</strong> because it is frequently composed from user input or domain payloads (an order id, an email, a free-text validation message) and must not flow into log aggregators or distributed traces without explicit opt-in.</p>
+<p>To opt in (typically development only, or environments verified PII-free):</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Mediator;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors(options =&gt; options.IncludeErrorDetail = true);
+</code></pre>
+<p>The <code>error.code</code> tag and the <code>Error.Code</code> value are operator-defined identifiers and are always emitted regardless of this setting.</p>
+<h2 id="composition">Composition</h2>
+<p>Resource authorization, FluentValidation, and the EF Core unit-of-work behavior compose into one pipeline. Register Trellis behaviors first, then any extension validators, then the actor provider, and finally <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code> so the transactional behavior lands innermost (closest to the handler) and commit failures stay visible to outer logging/tracing.</p>
+<pre><code class="lang-csharp">using Mediator;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Trellis.Asp.Authorization;
+using Trellis.EntityFrameworkCore;
+using Trellis.Mediator;
+using Trellis.Mediator.FluentValidation;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediator(opts =&gt; opts.ServiceLifetime = ServiceLifetime.Scoped);
+builder.Services.AddTrellisBehaviors();
+builder.Services.AddTrellisFluentValidation();
+builder.Services.AddResourceAuthorization(typeof(Program).Assembly);
+
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddDevelopmentActorProvider();
+else
+    builder.Services.AddEntraActorProvider();
+
+builder.Services.AddTrellisUnitOfWork&lt;AppDbContext&gt;();
+
+var app = builder.Build();
+app.Run();
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Use the <code>Scoped</code> Mediator lifetime.</strong> All Trellis behaviors depend on per-request services; <code>Singleton</code> (the Mediator default) fails the root-scope check on first request.</li>
+<li><strong><code>IAuthorize</code> for coarse gates, <code>IAuthorizeResource&lt;T&gt;</code> for fine rules.</strong> Static permissions (<code>documents:edit</code>) belong on <code>IAuthorize</code>; ownership / tenancy / state rules belong on <code>IAuthorizeResource&lt;T&gt;</code>.</li>
+<li><strong>Prefer shared resource loaders.</strong> Register one <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> per resource and let messages implement <code>IIdentifyResource&lt;,&gt;</code> — avoids one loader class per command.</li>
+<li><strong>Don't forget <code>AddResourceAuthorization(...)</code>.</strong> Implementing <code>IAuthorizeResource&lt;T&gt;</code> is not enough; the behavior must be registered or it never runs.</li>
+<li><strong>Keep <code>IValidate.Validate()</code> synchronous and cheap.</strong> It runs on every request. Push I/O-bound checks into an <code>IMessageValidator&lt;TMessage&gt;</code> (which is async) or into the handler.</li>
+<li><strong>Return <code>Result&lt;Unit&gt;</code> from commands</strong> (not bare <code>Result</code>), and never throw for expected business outcomes — <code>ExceptionBehavior</code> is for surprises only.</li>
+<li><strong>Leave <code>IncludeErrorDetail = false</code> in production.</strong> <code>Error.Detail</code> is free text and may contain PII.</li>
+<li><strong>Add the <code>&quot;Trellis.Mediator&quot;</code> activity source</strong> to your OpenTelemetry config or you will not see mediator spans.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>API surface: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a></li>
+<li><code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, <code>Error</code> semantics: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Authorization primitives (<code>Actor</code>, <code>IAuthorize</code>, <code>IAuthorizeResource</code>, loaders): <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a></li>
+<li>FluentValidation integration article: <a href="integration-fluentvalidation.html">integration-fluentvalidation.md</a></li>
+<li>ASP.NET integration (<code>IActorProvider</code> wiring): <a href="integration-asp-authorization.html">integration-asp-authorization.md</a></li>
+<li>Observability article: <a href="integration-observability.html">integration-observability.md</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-mediator.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Asp.Idempotency.Cosmos API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Asp.Idempotency.Cosmos API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp-idempotency-cosmos.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisaspidempotencycosmos-api-reference">Trellis.Asp.Idempotency.Cosmos API Reference</h1>
+
+<p>Cosmos DB-backed <code>IIdempotencyStore</code> for the <code>Trellis.Asp</code> idempotency middleware.</p>
+<ul>
+<li><strong>Package:</strong> <code>Trellis.Asp.Idempotency.Cosmos</code></li>
+<li><strong>Namespace:</strong> <code>Trellis.Asp.Idempotency.Cosmos</code></li>
+<li><strong>Depends on:</strong> <code>Trellis.Asp</code>, <code>Microsoft.Azure.Cosmos</code>, <code>Newtonsoft.Json</code></li>
+</ul>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are running the <code>Trellis.Asp</code> idempotency middleware on more than one replica, so <code>InMemoryIdempotencyStore</code> is no longer safe.</li>
+<li>You are wiring, configuring, or provisioning the Cosmos-backed store (container, partition key, TTL, throughput).</li>
+<li>You are diagnosing duplicate execution, stuck reservations, or unexpected RU cost on an idempotent endpoint.</li>
+</ul>
+<p>If you are <em>implementing</em> a store over some other backend rather than using this one, read <a href="trellis-api-testing-idempotency.html#the-rules-pinned-by-the-suite"><code>trellis-api-testing-idempotency.md</code></a> instead — it pins the contract.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use this</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Replace the in-memory store on a multi-replica service</td>
+<td><code>services.AddCosmosIdempotencyStore(...)</code></td>
+<td><a href="#quick-start">Quick start</a>, <a href="#registration">Registration</a></td>
+</tr>
+<tr>
+<td>Understand why Cosmos satisfies the contract</td>
+<td><code>CreateItem</code> 409 for atomic reserve, ETag for conditional complete, per-item <code>ttl</code> for expiry</td>
+<td><a href="#why-cosmos-db">Why Cosmos DB</a>, <a href="#how-it-stays-correct">How it stays correct</a></td>
+</tr>
+<tr>
+<td>Provision or point at the container</td>
+<td><code>CosmosIdempotencyContainer</code></td>
+<td><a href="#cosmosidempotencycontainer"><code>CosmosIdempotencyContainer</code></a></td>
+</tr>
+<tr>
+<td>See exactly what is persisted per key</td>
+<td>The stored document shape and its <code>ttl</code> field</td>
+<td><a href="#stored-document">Stored document</a></td>
+</tr>
+<tr>
+<td>Size throughput, set TTL, or reason about RU cost</td>
+<td>Operational guidance</td>
+<td><a href="#operational-notes">Operational notes</a></td>
+</tr>
+<tr>
+<td>Prove your deployment actually honours the contract</td>
+<td>Run the conformance suite against the live container</td>
+<td><a href="#verification">Verification</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-cosmos-db">Why Cosmos DB</h2>
+<p><code>InMemoryIdempotencyStore</code> is documented as unsafe across instances and process restarts, so any
+multi-replica service needs a shared store. Cosmos DB fits the <code>IIdempotencyStore</code> contract
+unusually well:</p>
+<table>
+<thead>
+<tr>
+<th>Contract requirement</th>
+<th>Cosmos DB primitive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Atomic reserve</td>
+<td><code>CreateItem</code> returns <code>409 Conflict</code> on a duplicate id within a partition, decided on the primary replica</td>
+</tr>
+<tr>
+<td>Conditional complete / abandon</td>
+<td>Native ETag with <code>IfMatchEtag</code>, no scripting required</td>
+</tr>
+<tr>
+<td>Expiry</td>
+<td>Per-item <code>ttl</code> reclaims storage without a sweeper process</td>
+</tr>
+<tr>
+<td>No silent eviction</td>
+<td>Unlike a Redis cache under <code>allkeys-lru</code>, Cosmos DB never drops a live entry under memory pressure</td>
+</tr>
+<tr>
+<td>Diagnosis</td>
+<td>Entries are queryable in Data Explorer</td>
+</tr>
+</tbody>
+</table>
+<h2 id="quick-start">Quick start</h2>
+<pre><code class="lang-csharp">// Startup: provision the container once. It must be partitioned on /scope with TTL enabled.
+var database = (await cosmosClient.CreateDatabaseIfNotExistsAsync(&quot;billing&quot;)).Database;
+await CosmosIdempotencyContainer.CreateIfNotExistsAsync(database);
+
+// Composition root.
+builder.Services.AddSingleton(cosmosClient);
+builder.Services.AddTrellisIdempotency(o =&gt; o.MaxResponseBodyBytes = 64 * 1024);
+builder.Services.AddCosmosIdempotencyStore(&quot;billing&quot;);
+
+// Pipeline: after UseRouting and UseAuthentication, so scope resolves to the authenticated actor.
+app.UseTrellisIdempotency();
+</code></pre>
+<h2 id="cosmosidempotencystore"><code>CosmosIdempotencyStore</code></h2>
+<p><code>public sealed class CosmosIdempotencyStore : IIdempotencyStore</code></p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CosmosIdempotencyStore(Container container, IdempotencyOptions options, TimeProvider? timeProvider = null)</code></td>
+<td><code>container</code> must use partition key path <code>/scope</code> with TTL enabled. <code>timeProvider</code> defaults to <code>TimeProvider.System</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-it-stays-correct">How it stays correct</h3>
+<p><strong>Reserve is one atomic operation.</strong> <code>TryReserveAsync(scope, key, fingerprint, ct)</code> returns an
+<code>IdempotencyReservationOutcome</code>. A reservation is claimed with <code>CreateItem</code>, keyed by
+<code>id = Base64Url(key)</code> within partition <code>scope</code>. Cosmos DB resolves duplicates on the partition's
+primary replica, so exactly one concurrent caller wins. The store <em>never</em> grants a reservation on
+the strength of a read.</p>
+<p><strong>Scope and fingerprint have different jobs.</strong> The document identity is <code>(scope, key)</code>; the
+fingerprint is an opaque stored string, not a third key component. An existing reservation or
+unexpired completed snapshot with a different fingerprint returns <code>BodyHashMismatch</code>, not a
+separate document or a replay. For the middleware's fingerprint inputs, default actor scope,
+shared endpoint key namespace, and HTTP mismatch response, see
+<a href="trellis-api-asp.html#namespace-trellisaspidempotency">request identity and fingerprint</a>.</p>
+<p><strong>Every other mutation is ETag-conditional.</strong> Taking over a timed-out reservation, recording a
+response, and releasing a slot are all <code>IfMatchEtag</code> replaces or deletes. A caller whose view is
+stale gets <code>412</code> and retries, so it cannot clobber newer state.</p>
+<p><strong>Session consistency is safe.</strong> On a Session-consistency account, the read that follows a <code>409</code>
+may hit a replica that has not yet seen another instance's write, returning a stale item or a
+transient <code>404</code>. Neither can cause a double execution, because reservations are granted only by an
+atomic create or an ETag-conditional replace. A stale read simply produces <code>412</code>/<code>404</code> on the
+follow-up write and the operation retries. The worst observable effect is a spurious
+<code>AlreadyInFlight</code>, which the caller retries. <strong>Strong consistency is not required.</strong></p>
+<p><strong>Expiry is enforced in-process, not by Cosmos DB.</strong> Cosmos DB deletes expired items on a
+best-effort background sweep, so an item can outlive its <code>ttl</code> and still be returned by a read. The
+store re-checks <code>reservedAt</code> / <code>completedAt</code> on every read and treats a TTL-expired snapshot as
+absent. Per-item <code>ttl</code> is a storage-reclamation backstop only, and deletion is therefore only ever
+allowed to fall on a document the store's own rules have already made unreachable:</p>
+<table>
+<thead>
+<tr>
+<th>Document state</th>
+<th><code>ttl</code></th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reserved</td>
+<td><code>-1</code> (never expires)</td>
+<td>A reserved entry stays answerable indefinitely, because a request reusing the key in the same scope with a different fingerprint must keep being rejected. A finite <code>ttl</code> would make that answer depend on whether a background sweep had happened to run.</td>
+</tr>
+<tr>
+<td>Completed</td>
+<td><code>Ttl + 60s</code></td>
+<td>Unreachable once the store treats it as absent, so deleting it cannot change an answer.</td>
+</tr>
+</tbody>
+</table>
+<p>Reservations are removed by <code>AbandonAsync</code> or superseded on completion, so the only documents that
+accumulate are those whose process was killed between reserving and responding.</p>
+<p><strong>Reservation timeout depends on host clocks.</strong> Takeover compares the reading instance's clock
+against a <code>reservedAt</code> written by another instance, so the effective timeout is the configured
+<code>ReservationTimeout</code> shifted by the clock skew between the two hosts. This is not a new failure
+mode — the timeout is a liveness bound that already permits taking over a handler that is merely
+slow rather than dead — but it moves the boundary. Set <code>ReservationTimeout</code> comfortably above the
+slowest expected handler <em>plus</em> the skew tolerated across the fleet, and keep hosts NTP-synchronised.
+<code>InMemoryIdempotencyStore</code> reads one clock and is not exposed to this.</p>
+<p>A skewed clock can also make a reservation appear to have been made in the <em>future</em>, which would
+otherwise produce a <code>Retry-After</code> longer than the reservation can possibly live. The value is
+clamped into <code>(0, ReservationTimeout]</code>, so a client is never told to wait longer than the timeout.</p>
+<p><strong>Abandon never deletes a completed entry.</strong> The middleware calls <code>AbandonAsync</code> from the failure
+paths around <code>CompleteAsync</code>, so an unconditional delete would destroy a response that was already
+durably recorded and let the retry re-run the handler.</p>
+<h3 id="stored-document">Stored document</h3>
+<pre><code class="lang-json">{
+  &quot;id&quot;: &quot;aWRlbXBvdGVuY3kta2V5&quot;,
+  &quot;scope&quot;: &quot;actor:user-1&quot;,
+  &quot;key&quot;: &quot;idempotency-key&quot;,
+  &quot;fingerprint&quot;: &quot;sha256:...&quot;,
+  &quot;reservationId&quot;: &quot;3f2a...&quot;,
+  &quot;reservedAt&quot;: 1767268800000,
+  &quot;completedAt&quot;: 1767268801000,
+  &quot;snapshot&quot;: { &quot;statusCode&quot;: 201, &quot;headers&quot;: { }, &quot;body&quot;: &quot;eyJ9&quot;, &quot;fingerprint&quot;: &quot;sha256:...&quot; },
+  &quot;ttl&quot;: 86460
+}
+</code></pre>
+<p>The example shows a completed entry; while reserved, <code>reservationId</code> is set, <code>completedAt</code> and
+<code>snapshot</code> are absent, and <code>ttl</code> is <code>-1</code>.</p>
+<p>Item ids are Base64Url-encoded because idempotency keys are client-supplied and may contain
+<code>/</code>, <code>\</code>, <code>?</code>, or <code>#</code>, none of which Cosmos DB permits in an id. Encoding rather than hashing keeps
+the mapping collision-free and reversible. The longest key <code>IdempotencyOptions.MaxKeyLength</code>
+permits (200) encodes well inside the 1023-byte id limit.</p>
+<h2 id="cosmosidempotencycontainer"><code>CosmosIdempotencyContainer</code></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>const string PartitionKeyPath</code></td>
+<td><code>&quot;/scope&quot;</code></td>
+</tr>
+<tr>
+<td><code>static Task&lt;Container&gt; CreateIfNotExistsAsync(Database database, string containerId = &quot;idempotency&quot;, int? throughput = null, CancellationToken cancellationToken = default)</code></td>
+<td>Creates the container with <code>DefaultTimeToLive = -1</code>, which enables TTL while expiring nothing by default, leaving each item's own <code>ttl</code> in control.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Per-item <code>ttl</code> is <strong>ignored</strong> unless the container enables TTL. A container provisioned without
+<code>DefaultTimeToLive</code> accumulates idempotency entries forever.</p>
+</blockquote>
+<h2 id="registration">Registration</h2>
+<p><code>public static class CosmosIdempotencyServiceCollectionExtensions</code></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddCosmosIdempotencyStore(this IServiceCollection services, Func&lt;IServiceProvider, Container&gt; containerFactory)</code></td>
+<td>Use when the container is provisioned at startup or shared with other components.</td>
+</tr>
+<tr>
+<td><code>AddCosmosIdempotencyStore(this IServiceCollection services, string databaseId, string containerId = &quot;idempotency&quot;)</code></td>
+<td>Resolves <code>CosmosClient</code> from the container. Addresses the container; does not create it.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>No <code>TrellisServiceBuilder.UseXxx()</code> slot</strong>, by design. These are store registrations, in the
+same category as <code>AddInMemoryIdempotencyStore()</code>: they do not participate in pipeline ordering,
+so a builder slot would add surface without removing a decision.</p>
+</blockquote>
+<h2 id="operational-notes">Operational notes</h2>
+<p><strong>Partition design.</strong> Partitioning by scope keeps every operation for one key inside a single
+logical partition, which is what makes the create-or-conditionally-replace protocol atomic. Because
+scope derives from the actor or tenant, keys spread evenly in multi-tenant hosts. A host that
+mounts <code>UseTrellisIdempotency()</code> <em>before</em> authentication resolves every request to the shared
+<code>anonymous</code> scope, concentrating all traffic on one partition and capping it at that partition's
+throughput.</p>
+<p><strong>Request-unit cost.</strong> RU charge scales with item size, so an entry costs roughly what its captured
+response body costs to write. With <code>MaxResponseBodyBytes</code> at its 1 MiB default, one completion can
+exceed 100 RU. Lower the cap, or keep large payloads out of the snapshot.</p>
+<p><strong>Newtonsoft.Json.</strong> The Cosmos DB SDK v3 uses it internally but omits it from its package
+dependencies so consumers pin the version, and its build target fails without an explicit
+reference. This package therefore has a transitive <code>Newtonsoft.Json</code> dependency.</p>
+<p><strong>Stream APIs.</strong> The store uses <code>CreateItemStreamAsync</code> / <code>ReadItemStreamAsync</code> /
+<code>ReplaceItemStreamAsync</code> / <code>DeleteItemStreamAsync</code> rather than the typed overloads, because a <code>409</code>
+is a <em>normal</em> outcome on the replay path — every retry produces one. The typed overloads raise
+<code>CosmosException</code> for it, which would put exception throwing on the hot path.</p>
+<h2 id="verification">Verification</h2>
+<p>The store is covered by the <code>Trellis.Testing.Idempotency</code> conformance suite running against a real
+Cosmos DB emulator — all 17 contract rules, not a substitute. Because expiry is enforced against an
+injected <code>TimeProvider</code>, the reservation-takeover and TTL rules run against real Cosmos DB with a
+fake clock and complete in the time of ordinary round trips.</p>
+<p>The suite skips, visibly, when no emulator is reachable. The decision-ordering rules and key
+encoding are additionally covered by tests that need no emulator.</p>
+<p>Tests that require the emulator are marked <code>[Trait(&quot;Category&quot;, &quot;Integration&quot;)]</code>, matching the
+repository convention for SQL Server-backed tests, so CI excludes them via
+<code>--filter-not-trait &quot;Category=Integration&quot;</code>. To run them:</p>
+<pre><code class="lang-powershell"># Requires the Azure Cosmos DB emulator on https://localhost:8081/
+dotnet test Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.Tests.csproj `
+  --filter-trait &quot;Category=Integration&quot;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Tests</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default / CI</td>
+<td>36 — decision ordering, document model, key encoding, service registration; no emulator needed</td>
+</tr>
+<tr>
+<td><code>Category=Integration</code></td>
+<td>19 — the 17 conformance rules plus the two <code>ttl</code> tests, against real Cosmos DB</td>
+</tr>
+</tbody>
+</table>
+<p>Because CI cannot see the integration run, <code>CosmosIdempotencyStore.cs</code> and
+<code>CosmosIdempotencyContainer.cs</code> are exempted in <code>codecov.yml</code>. The exemption is per-file, not
+per-package: everything reachable without a live service — decision ordering, the document model,
+and service registration — stays gated by the coverage target.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="trellis-api-asp.html#iidempotencystore"><code>trellis-api-asp.md</code></a> — the middleware and the contract.</li>
+<li><a href="trellis-api-testing-idempotency.html#quick-start"><code>trellis-api-testing-idempotency.md</code></a> — the
+conformance suite, for authoring a different store.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp-idempotency-cosmos.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

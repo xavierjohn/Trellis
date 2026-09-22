@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class WhenAllExtensionsAsync | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class WhenAllExtensionsAsync | Trellis ">
+      
+      <meta name="description" content="Provides Await extension methods for waiting on multiple Task-wrapped Result instances and combining them. These methods enable efficient parallel execution of independent async operations with Result aggregation.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_WhenAllExtensionsAsync.md&amp;value=---%0Auid%3A%20Trellis.WhenAllExtensionsAsync%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.WhenAllExtensionsAsync">
+
+
+
+  <h1 id="Trellis_WhenAllExtensionsAsync" data-uid="Trellis.WhenAllExtensionsAsync" class="text-break">
+Class WhenAllExtensionsAsync  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides Await extension methods for waiting on multiple Task-wrapped Result instances and combining them.
+These methods enable efficient parallel execution of independent async operations with Result aggregation.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class WhenAllExtensionsAsync</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">WhenAllExtensionsAsync</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_WhenAllExtensionsAsync_examples">Examples</h2>
+  <pre><code class="lang-csharp">// Execute three independent async operations in parallel
+var result = await (
+    GetUserAsync(userId),
+    GetOrdersAsync(userId),
+    GetPreferencesAsync(userId)
+).WhenAllAsync();
+
+// All three operations run concurrently
+// If all succeed, result contains (user, orders, preferences)
+// If any fail, result contains all errors
+
+// Then process the combined result
+result.Match(
+    onSuccess: (user, orders, prefs) =&gt; ProcessData(user, orders, prefs),
+    onFailure: error =&gt; HandleError(error)
+);</code></pre>
+
+
+  <h2 id="Trellis_WhenAllExtensionsAsync_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+WhenAllAsync waits for all tasks to complete using Task.WhenAll for efficient parallel execution,
+then combines their results using the standard Combine semantics.
+</p>
+<p>
+These overloads expect each task to complete with a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>. If a task faults or is canceled,
+the exception escapes from <code>Task.WhenAll</code> instead of being converted into a failed result.
+</p>
+<p>
+Key characteristics:
+<ul><li>All tasks execute in parallel (not sequentially)</li><li>Waits for all tasks to complete before combining results</li><li>If any task's result fails, all errors are aggregated</li><li>Faulted or canceled tasks propagate their exception to the caller</li><li>More efficient than sequential await chains for independent operations</li><li>Creates distributed tracing spans for observability</li></ul>
+
+<p>
+Use WhenAllAsync when you need to:
+<ul><li>Execute multiple independent async operations in parallel</li><li>Wait for all operations to complete before proceeding</li><li>Combine results from parallel operations</li><li>Maximize throughput for I/O-bound operations</li><li>Monitor parallel operation performance in distributed traces</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__2_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``2(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}}})">
+  WhenAllAsync&lt;T1, T2&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L102"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits two parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2)&gt;&gt; WhenAllAsync&lt;T1, T2&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;)</dt>
+    <dd><p>A tuple containing two tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 2-element tuple if both tasks succeed</li><li>A failure result with combined errors if either task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__2_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(userId),
+    GetOrdersAsync(userId)
+).WhenAllAsync();
+
+result.Match(
+    onSuccess: (user, orders) =&gt; ProcessUser(user, orders),
+    onFailure: error =&gt; LogError(error)
+);</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__2_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This method uses Task.WhenAll to execute both operations in parallel,
+then combines their results using standard Combine semantics.
+If either task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.</p>
+</div>
+
+
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__3_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``3(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}},System.Threading.Tasks.Task{Trellis.Result{``2}}})">
+  WhenAllAsync&lt;T1, T2, T3&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L166"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits 3 parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; WhenAllAsync&lt;T1, T2, T3&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;)</dt>
+    <dd><p>A tuple containing 3 tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 3-element tuple if all tasks succeed</li><li>A failure result with combined errors if any task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the third result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__3_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(id),
+    GetOrdersAsync(id),
+    GetPreferencesAsync(id)    /// ).WhenAllAsync();
+
+result.Bind((v1, v2, v3) =&gt; Process(v1, v2, v3));</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__3_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+All 3 tasks execute in parallel using Task.WhenAll for maximum efficiency.
+Results are combined only after all tasks complete.
+If any task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.
+</p>
+<p>
+This is significantly more efficient than:
+<pre><code class="lang-csharp">var r1 = await Task1(); // Wait
+var r2 = await Task2(); // Wait
+var r3 = await Task3(); // Wait sequentially</code></pre>
+
+</div>
+
+
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__4_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``4(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}},System.Threading.Tasks.Task{Trellis.Result{``2}},System.Threading.Tasks.Task{Trellis.Result{``3}}})">
+  WhenAllAsync&lt;T1, T2, T3, T4&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L232"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits 4 parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; WhenAllAsync&lt;T1, T2, T3, T4&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;)</dt>
+    <dd><p>A tuple containing 4 tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 4-element tuple if all tasks succeed</li><li>A failure result with combined errors if any task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the fourth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__4_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(id),
+    GetOrdersAsync(id),
+    GetPreferencesAsync(id),
+    GetData4Async(id)    /// ).WhenAllAsync();
+
+result.Bind((v1, v2, v3, v4) =&gt; Process(v1, v2, v3, v4));</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__4_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+All 4 tasks execute in parallel using Task.WhenAll for maximum efficiency.
+Results are combined only after all tasks complete.
+If any task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.
+</p>
+<p>
+This is significantly more efficient than:
+<pre><code class="lang-csharp">var r1 = await Task1(); // Wait
+var r2 = await Task2(); // Wait
+var r3 = await Task3(); // Wait sequentially</code></pre>
+
+</div>
+
+
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__5_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``5(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}},System.Threading.Tasks.Task{Trellis.Result{``2}},System.Threading.Tasks.Task{Trellis.Result{``3}},System.Threading.Tasks.Task{Trellis.Result{``4}}})">
+  WhenAllAsync&lt;T1, T2, T3, T4, T5&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L300"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits 5 parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; WhenAllAsync&lt;T1, T2, T3, T4, T5&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;)</dt>
+    <dd><p>A tuple containing 5 tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 5-element tuple if all tasks succeed</li><li>A failure result with combined errors if any task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the fifth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__5_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(id),
+    GetOrdersAsync(id),
+    GetPreferencesAsync(id),
+    GetData4Async(id),
+    GetData5Async(id)    /// ).WhenAllAsync();
+
+result.Bind((v1, v2, v3, v4, v5) =&gt; Process(v1, v2, v3, v4, v5));</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__5_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+All 5 tasks execute in parallel using Task.WhenAll for maximum efficiency.
+Results are combined only after all tasks complete.
+If any task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.
+</p>
+<p>
+This is significantly more efficient than:
+<pre><code class="lang-csharp">var r1 = await Task1(); // Wait
+var r2 = await Task2(); // Wait
+var r3 = await Task3(); // Wait sequentially</code></pre>
+
+</div>
+
+
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__6_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``6(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}},System.Threading.Tasks.Task{Trellis.Result{``2}},System.Threading.Tasks.Task{Trellis.Result{``3}},System.Threading.Tasks.Task{Trellis.Result{``4}},System.Threading.Tasks.Task{Trellis.Result{``5}}})">
+  WhenAllAsync&lt;T1, T2, T3, T4, T5, T6&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L370"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits 6 parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; WhenAllAsync&lt;T1, T2, T3, T4, T5, T6&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;)</dt>
+    <dd><p>A tuple containing 6 tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 6-element tuple if all tasks succeed</li><li>A failure result with combined errors if any task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the sixth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__6_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(id),
+    GetOrdersAsync(id),
+    GetPreferencesAsync(id),
+    GetData4Async(id),
+    GetData5Async(id),
+    GetData6Async(id)    /// ).WhenAllAsync();
+
+result.Bind((v1, v2, v3, v4, v5, v6) =&gt; Process(v1, v2, v3, v4, v5, v6));</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__6_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+All 6 tasks execute in parallel using Task.WhenAll for maximum efficiency.
+Results are combined only after all tasks complete.
+If any task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.
+</p>
+<p>
+This is significantly more efficient than:
+<pre><code class="lang-csharp">var r1 = await Task1(); // Wait
+var r2 = await Task2(); // Wait
+var r3 = await Task3(); // Wait sequentially</code></pre>
+
+</div>
+
+
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__7_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``7(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}},System.Threading.Tasks.Task{Trellis.Result{``2}},System.Threading.Tasks.Task{Trellis.Result{``3}},System.Threading.Tasks.Task{Trellis.Result{``4}},System.Threading.Tasks.Task{Trellis.Result{``5}},System.Threading.Tasks.Task{Trellis.Result{``6}}})">
+  WhenAllAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L442"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits 7 parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; WhenAllAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;)</dt>
+    <dd><p>A tuple containing 7 tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 7-element tuple if all tasks succeed</li><li>A failure result with combined errors if any task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the sixth result value.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of the seventh result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__7_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(id),
+    GetOrdersAsync(id),
+    GetPreferencesAsync(id),
+    GetData4Async(id),
+    GetData5Async(id),
+    GetData6Async(id),
+    GetData7Async(id)    /// ).WhenAllAsync();
+
+result.Bind((v1, v2, v3, v4, v5, v6, v7) =&gt; Process(v1, v2, v3, v4, v5, v6, v7));</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__7_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+All 7 tasks execute in parallel using Task.WhenAll for maximum efficiency.
+Results are combined only after all tasks complete.
+If any task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.
+</p>
+<p>
+This is significantly more efficient than:
+<pre><code class="lang-csharp">var r1 = await Task1(); // Wait
+var r2 = await Task2(); // Wait
+var r3 = await Task3(); // Wait sequentially</code></pre>
+
+</div>
+
+
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__8_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6___System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___7_____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``8(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}},System.Threading.Tasks.Task{Trellis.Result{``2}},System.Threading.Tasks.Task{Trellis.Result{``3}},System.Threading.Tasks.Task{Trellis.Result{``4}},System.Threading.Tasks.Task{Trellis.Result{``5}},System.Threading.Tasks.Task{Trellis.Result{``6}},System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``7}}}})">
+  WhenAllAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;, Task&lt;Result&lt;T8&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L516"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits 8 parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; WhenAllAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;, Task&lt;Result&lt;T8&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;)</dt>
+    <dd><p>A tuple containing 8 tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 8-element tuple if all tasks succeed</li><li>A failure result with combined errors if any task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the sixth result value.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of the seventh result value.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>The type of the eighth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__8_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6___System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___7______examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(id),
+    GetOrdersAsync(id),
+    GetPreferencesAsync(id),
+    GetData4Async(id),
+    GetData5Async(id),
+    GetData6Async(id),
+    GetData7Async(id),
+    GetData8Async(id)    /// ).WhenAllAsync();
+
+result.Bind((v1, v2, v3, v4, v5, v6, v7, v8) =&gt; Process(v1, v2, v3, v4, v5, v6, v7, v8));</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__8_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6___System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___7______remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+All 8 tasks execute in parallel using Task.WhenAll for maximum efficiency.
+Results are combined only after all tasks complete.
+If any task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.
+</p>
+<p>
+This is significantly more efficient than:
+<pre><code class="lang-csharp">var r1 = await Task1(); // Wait
+var r2 = await Task2(); // Wait
+var r3 = await Task3(); // Wait sequentially</code></pre>
+
+</div>
+
+
+
+
+  <a id="Trellis_WhenAllExtensionsAsync_WhenAllAsync_" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync*"></a>
+
+  <h3 id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__9_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6___System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___7___System_Threading_Tasks_Task_Trellis_Result___8_____" data-uid="Trellis.WhenAllExtensionsAsync.WhenAllAsync``9(System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``0}},System.Threading.Tasks.Task{Trellis.Result{``1}},System.Threading.Tasks.Task{Trellis.Result{``2}},System.Threading.Tasks.Task{Trellis.Result{``3}},System.Threading.Tasks.Task{Trellis.Result{``4}},System.Threading.Tasks.Task{Trellis.Result{``5}},System.Threading.Tasks.Task{Trellis.Result{``6}},System.ValueTuple{System.Threading.Tasks.Task{Trellis.Result{``7}},System.Threading.Tasks.Task{Trellis.Result{``8}}}})">
+  WhenAllAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;((Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;, Task&lt;Result&lt;T8&gt;&gt;, Task&lt;Result&lt;T9&gt;&gt;))
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L592"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits 9 parallel async Result operations and combines their results.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; WhenAllAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;, Task&lt;Result&lt;T8&gt;&gt;, Task&lt;Result&lt;T9&gt;&gt;) tasks)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>tasks</code> (<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;)</dt>
+    <dd><p>A tuple containing 9 tasks that produce Result values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd><p>A task that represents the asynchronous operation. The task result contains:</p>
+<ul><li>A success result with a 9-element tuple if all tasks succeed</li><li>A failure result with combined errors if any task fails</li></ul>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the sixth result value.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of the seventh result value.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>The type of the eighth result value.</p>
+</dd>
+    <dt><code>T9</code></dt>
+    <dd><p>The type of the ninth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__9_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6___System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___7___System_Threading_Tasks_Task_Trellis_Result___8______examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await (
+    GetUserAsync(id),
+    GetOrdersAsync(id),
+    GetPreferencesAsync(id),
+    GetData4Async(id),
+    GetData5Async(id),
+    GetData6Async(id),
+    GetData7Async(id),
+    GetData8Async(id),
+    GetData9Async(id)    /// ).WhenAllAsync();
+
+result.Bind((v1, v2, v3, v4, v5, v6, v7, v8, v9) =&gt; Process(v1, v2, v3, v4, v5, v6, v7, v8, v9));</code></pre>
+
+
+  <h4 class="section" id="Trellis_WhenAllExtensionsAsync_WhenAllAsync__9_System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___0___System_Threading_Tasks_Task_Trellis_Result___1___System_Threading_Tasks_Task_Trellis_Result___2___System_Threading_Tasks_Task_Trellis_Result___3___System_Threading_Tasks_Task_Trellis_Result___4___System_Threading_Tasks_Task_Trellis_Result___5___System_Threading_Tasks_Task_Trellis_Result___6___System_ValueTuple_System_Threading_Tasks_Task_Trellis_Result___7___System_Threading_Tasks_Task_Trellis_Result___8______remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+All 9 tasks execute in parallel using Task.WhenAll for maximum efficiency.
+Results are combined only after all tasks complete.
+If any task faults or is canceled, that exception escapes immediately.
+Creates a distributed tracing span to monitor parallel execution.
+</p>
+<p>
+This is significantly more efficient than:
+<pre><code class="lang-csharp">var r1 = await Task1(); // Wait
+var r2 = await Task2(); // Wait
+var r3 = await Task3(); // Wait sequentially</code></pre>
+
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/WhenAllTs.g.cs/#L67" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

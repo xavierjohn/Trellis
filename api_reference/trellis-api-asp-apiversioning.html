@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Asp.ApiVersioning — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Asp.ApiVersioning — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp-apiversioning.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisaspapiversioning--api-reference">Trellis.Asp.ApiVersioning — API Reference</h1>
+
+<h2 id="header">Header</h2>
+<ul>
+<li><strong>Package:</strong> <code>Trellis.Asp.ApiVersioning</code></li>
+<li><strong>Namespace:</strong> <code>Trellis.Asp.ApiVersioning</code></li>
+<li><strong>Purpose:</strong> Target-aware API-versioning helpers for URLs emitted by <code>Trellis.Asp</code>. <code>HttpResponseOptionsBuilderApiVersioningExtensions</code> versions <code>Location</code> headers from <code>CreatedAtRoute(...)</code> / <code>CreatedAtAction(...)</code> (201 Created) and <code>WithLocation(...)</code> (normal 2xx on existing resources). It resolves the actual destination and writes the supported version into its <code>:apiVersion</code> segment parameter or the conventional <code>api-version</code> query route value. <code>HttpContextPageUrlExtensions</code> supplies paginated next/previous URLs to <code>ToHttpResponse(Async)</code> for <code>Result&lt;Page&lt;T&gt;&gt;</code>; its implicit URL-segment overloads still use ambient routing and its explicit overloads still reject segment pins. Both helpers skip injection for neutral or missing-metadata targets; Location additionally removes supplied <code>api-version</code> values in those cases.</li>
+</ul>
+<p>See also: <a href="trellis-api-asp.html#httpresponseoptionsbuildertdomain">trellis-api-asp.md</a> — the underlying <code>HttpResponseOptionsBuilder&lt;T&gt;</code>, <code>CreatedAtRoute</code>, <code>CreatedAtAction</code>, <code>WithLocation</code>, and destination-aware <code>WithLocationRouteResolver</code> hook this package builds on. <a href="trellis-api-analyzers.html#error-ef-core-and-value-object-rules">trellis-api-analyzers.md</a> — <code>TRLS023</code> warns on <code>CreatedAtRoute</code> / <code>CreatedAtAction</code> / <code>WithLocation</code> calls in versioned controllers that omit the <code>api-version</code> route value, and offers a code fix that chains <code>.WithVersionedRoute()</code>.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You return <code>Result&lt;T&gt;</code> responses from versioned controllers (<code>[ApiVersion(&quot;…&quot;)]</code>) and need a builder-generated <code>Location</code> header to round-trip the client's requested <code>api-version</code>.</li>
+<li>You return paginated <code>Result&lt;Page&lt;T&gt;&gt;</code> responses from versioned controllers and need the <code>next</code>-page URL (the <code>nextUrlBuilder</code> parameter of <code>ToHttpResponse(Async)</code>) to carry the version, honor URL-segment ambient route values, and skip injection on neutral endpoints — without hard-coding the version literal or hand-rolling URL encoding.</li>
+<li>You configured <code>Asp.Versioning</code> with query, header, URL-segment, or composite readers and need Location links to carry a version accepted by their destination.</li>
+<li>You need destination-aware Location customization (<code>WithLocationRouteResolver</code>), after ordinary per-request values (<code>WithRouteValueResolver</code>) have been applied.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Return 201 Created with versioned Location</td>
+<td>Chain <code>.WithVersionedRoute()</code> after <code>CreatedAtRoute(...)</code> or <code>CreatedAtAction(...)</code></td>
+<td><a href="#httpresponseoptionsbuilderapiversioningextensions"><code>HttpResponseOptionsBuilderApiVersioningExtensions</code></a></td>
+</tr>
+<tr>
+<td>Return 200 OK with versioned Location on an existing resource</td>
+<td>Chain <code>.WithVersionedRoute()</code> after <code>WithLocation(...)</code></td>
+<td><a href="#withlocation-composition"><code>WithLocation</code> composition</a></td>
+</tr>
+<tr>
+<td>Single id route value</td>
+<td><code>CreatedAtRoute(routeName, x =&gt; x.Id).WithVersionedRoute()</code> (uses the single-id overload from <code>Trellis.Asp</code>)</td>
+<td><a href="#composition-examples">Composition examples</a></td>
+</tr>
+<tr>
+<td>Multi-key route values</td>
+<td><code>CreatedAtRoute(routeName, x =&gt; new RouteValueDictionary { [&quot;tenantId&quot;] = x.TenantId, [&quot;id&quot;] = x.Id }).WithVersionedRoute()</code></td>
+<td><a href="#composition-examples">Composition examples</a></td>
+</tr>
+<tr>
+<td>Pin Location to a specific version (rare)</td>
+<td><code>CreatedAtRoute(...).WithVersionedRoute(new ApiVersion(new DateOnly(2026, 12, 1)))</code></td>
+<td><a href="#explicit-version-overload">Explicit-version overload</a></td>
+</tr>
+<tr>
+<td>Paginated list — emit versioned next-page URL</td>
+<td><code>HttpContext.PageUrl(routeName, (c, applied) =&gt; new RouteValueDictionary { [&quot;cursor&quot;] = c.Token, [&quot;limit&quot;] = applied })</code> passed as the <code>nextUrlBuilder</code> argument of <code>ToHttpResponse(Async)</code></td>
+<td><a href="#httpcontextpageurlextensions"><code>HttpContextPageUrlExtensions</code></a></td>
+</tr>
+<tr>
+<td>Paginated list — distinct versioned next/previous URLs</td>
+<td><code>HttpContext.PageUrl(routeName, (cursor, direction, applied) =&gt; ...)</code> passed as the <code>urlBuilder</code> argument of <code>ToHttpResponse(Async)</code>; choose <code>after</code> / <code>before</code> keys using <code>Trellis.Asp.PageDirection</code></td>
+<td><a href="#directional-pagination"><code>Directional pagination</code></a></td>
+</tr>
+<tr>
+<td>Paginated list — pin next-page URL to a specific version</td>
+<td><code>HttpContext.PageUrl(routeName, new ApiVersion(new DateOnly(2026, 12, 1)), (c, applied) =&gt; …)</code></td>
+<td><a href="#pageurl-explicit-version-overload"><code>PageUrl</code> explicit-version overload</a></td>
+</tr>
+<tr>
+<td>Link to an <code>[ApiVersionNeutral]</code> destination</td>
+<td><code>.WithVersionedRoute()</code> skips injection and removes supplied <code>api-version</code> values from the cloned dictionary</td>
+<td><a href="#behavioral-notes">Behavioral notes</a></td>
+</tr>
+<tr>
+<td>URL-segment Location, including cross-route links or explicit pins</td>
+<td><code>.WithVersionedRoute(...)</code> writes the resolved version into the target's actual <code>:apiVersion</code> parameter name, without a duplicate query value</td>
+<td><a href="#behavioral-notes">Behavioral notes</a></td>
+</tr>
+<tr>
+<td>Detect mid-migration silent skips (<code>.WithVersionedRoute()</code> left in place after <code>AddApiVersioning(...)</code> was removed)</td>
+<td>Default: warn once per <code>(endpoint, AppDomain)</code> to the <code>Trellis.Asp.ApiVersioning</code> <code>ILogger</code> category. Opt-in fail-fast: <code>services.AddTrellisAsp(o =&gt; o.FailFastOnSilentVersionInjection = true)</code></td>
+<td><a href="#behavioral-notes">Behavioral notes</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li>Do <strong>not</strong> supply competing version values when chaining <code>.WithVersionedRoute()</code>. It owns version route values after the selector and <strong>all</strong> <code>WithRouteValueResolver</code> callbacks, regardless of configuration order. It overwrites query/segment version values or removes <code>api-version</code> for segment, neutral, and missing-metadata targets.</li>
+<li>Do not treat <code>PageUrl</code> segment behavior as identical to Location: Location writes and honors segment pins; implicit <code>PageUrl</code> retains ambient routing and cross-route validation, and explicit <code>PageUrl</code> still rejects segment pins.</li>
+<li>Use a uniquely named destination route when action or route addressing yields multiple link-generation candidates. Suppressed link-generation endpoints are excluded; zero or multiple remaining candidates throw rather than falling back to the current endpoint.</li>
+<li><code>WithLocation(...)</code> produces a <code>Location</code> header <strong>without</strong> changing the status code (typically 200 OK on <code>Result&lt;T&gt;</code> responses). Use it on state-transition endpoints that mutate an existing resource and want to point clients at the canonical URL (e.g., <code>POST /orders/{id}/return</code> returning 200 OK). For new-resource creation, use <code>CreatedAtRoute(...)</code> / <code>CreatedAtAction(...)</code> (201 Created). <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> uses the <code>WriteOutcome</code> location/monitor URI instead; builder <code>WithLocation(...)</code> and route-value resolvers do not rewrite those outcome-owned URIs.</li>
+<li>The route values selector must return a non-null <code>RouteValueDictionary</code>. The runtime clones it before applying resolvers, so callbacks do not mutate a shared selector dictionary. Application code must not modify a shared dictionary concurrently.</li>
+<li>For a target with multiple mapped declared versions, supply a mapped requested version or configure a mapped <code>DefaultApiVersion</code>. If neither is available, resolution throws rather than silently picking one. Controller declarations alone do not make an action multi-version.</li>
+<li><code>HttpContext.PageUrl(routeName, ...)</code> requires the target action to carry a route name (<code>[HttpGet(&quot;...&quot;, Name = &quot;Things_List&quot;)]</code>). Without a name the helper cannot resolve the endpoint and the returned builder throws <code>InvalidOperationException</code> on first invocation. The route name typically matches the current paginated endpoint (self-referential pagination) but cross-route pagination is supported — supply path parameters in the callback's <code>RouteValueDictionary</code> for the target route's template.</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="httpresponseoptionsbuilderapiversioningextensions"><code>HttpResponseOptionsBuilderApiVersioningExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class HttpResponseOptionsBuilderApiVersioningExtensions
+</code></pre>
+<p><strong>Constructors</strong></p>
+<ul>
+<li>None. This is a static class.</li>
+</ul>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>—</td>
+<td>This static class exposes no public properties.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WithVersionedRoute&lt;TDomain&gt;(this HttpResponseOptionsBuilder&lt;TDomain&gt; builder)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Registers a <code>WithLocationRouteResolver</code> callback that resolves the final named-route or MVC-action destination and injects a version mapped to that target at Location generation. Works before or after configuring <code>CreatedAtRoute(...)</code>, <code>CreatedAtAction(...)</code>, or <code>WithLocation(...)</code>.</td>
+</tr>
+<tr>
+<td><code>WithVersionedRoute&lt;TDomain&gt;(this HttpResponseOptionsBuilder&lt;TDomain&gt; builder, ApiVersion explicitVersion)</code></td>
+<td><code>HttpResponseOptionsBuilder&lt;TDomain&gt;</code></td>
+<td>Pins Location to a version mapped to the final destination, overriding automatic resolution. Unsupported pins throw <code>InvalidOperationException</code>. Honors target segment parameters as well as query-style links; neutral and missing-metadata targets skip injection and remove supplied <code>api-version</code> entries.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="behavioral-notes">Behavioral notes</h4>
+<p>At Location generation, the resolver receives the <strong>final destination</strong>, independently of fluent configuration order, and a per-execution copy of the domain selector's dictionary after <strong>all</strong> legacy <code>WithRouteValueResolver</code> callbacks. It uses public ASP.NET Core endpoint-address schemes for the named-route or MVC-action address. Endpoints suppressed for link generation are excluded. No candidates throws <code>InvalidOperationException</code>; multiple candidates throws <code>InvalidOperationException</code> with advice to use a uniquely named destination route. It never falls back to <code>HttpContext.GetEndpoint()</code> for target metadata. For action destinations, the controller is the explicit controller, otherwise the route-value controller, otherwise the ambient current controller.</p>
+<p>For a versioned target, the shared Location / <code>PageUrl</code> resolution order is:</p>
+<ol>
+<li><strong><code>HttpContext.RequestedApiVersion</code></strong> — use the parsed version only if it maps to the destination. The <code>Asp.Versioning.Http</code> extension property reflects the configured <code>IApiVersionReader</code> (query, header, media-type, URL segment, composite).</li>
+<li><strong>Exactly one mapped declared target version</strong> — apply the destination's action-level mappings before counting accepted declared versions, and use the version if exactly one remains. This also applies when the requested version is unsupported.</li>
+<li><strong><code>ApiVersioningOptions.DefaultApiVersion</code></strong> — use the configured default only if it maps to the destination; otherwise throw <code>InvalidOperationException</code>.</li>
+</ol>
+<p><strong>Action mappings narrow controller declarations.</strong> <code>[MapToApiVersion]</code> on an action does not automatically accept all <code>[ApiVersion]</code> values on its controller. Do not union implicit and explicit declaration sets to decide support. Both helpers validate requested, fallback, and pinned versions against actual destination mappings using public <code>Asp.Versioning</code> APIs; no upstream feature is required.</p>
+<p>Location-specific application (both overloads):</p>
+<ul>
+<li>A target with a <code>:apiVersion</code> segment receives the resolved/pinned value in that <strong>actual parameter name</strong>, e.g. <code>revision</code> in <code>v{revision:apiVersion}</code>. Supplied segment values are overridden, and <code>api-version</code> is removed to avoid a duplicate query parameter. This supports cross-route segment links without relying on ambient version values.</li>
+<li>A query-style target receives the conventional <code>&quot;api-version&quot;</code> value, overriding values supplied by the selector or legacy callbacks. For a non-default query-reader key, use a custom hook instead of <code>WithVersionedRoute</code>.</li>
+<li>A neutral or missing-metadata target receives no version injection, and any supplied <code>&quot;api-version&quot;</code> entry is <strong>removed from the cloned dictionary</strong>. Neutral targets stay quiet. Missing metadata logs once per <strong>destination endpoint / AppDomain</strong> under <code>Trellis.Asp.ApiVersioning</code>, identifying the destination; <code>TrellisAspOptions.FailFastOnSilentVersionInjection = true</code> throws on every offending execution instead. <code>PageUrl</code> remains quiet for missing metadata.</li>
+<li>Warning deduplication uses endpoint instance identity, not display names or route templates. Distinct endpoints, including same-named destinations in separate hosts, warn independently. Weak keys allow discarded endpoints to be collected; concurrent calls for the same endpoint still produce only one warning.</li>
+<li>There is one <code>WithLocationRouteResolver</code> callback slot: the last registration wins, including repeated <code>WithVersionedRoute</code> calls or a custom hook that replaces one. Callback errors propagate; shared selector dictionaries are not mutated.</li>
+<li>Literal/selector <code>Created(...)</code> locations and <code>WriteOutcome</code>-owned Location/monitor URIs ignore the hook. <code>CreatedAtRoute</code> / <code>CreatedAtAction</code> retain 201, while <code>WithLocation</code> retains the normal 2xx status. Named routes remain AOT-compatible; <code>CreatedAtAction</code> retains its existing trimming/AOT limitations.</li>
+</ul>
+<h4 id="migration-existing-syntax-stricter-destination-checks">Migration: existing syntax, stricter destination checks</h4>
+<p>Keep <code>.WithVersionedRoute()</code> and <code>.WithVersionedRoute(ApiVersion)</code> call sites; there is no replacement API or new registration. Re-test generated links: missing or ambiguous destinations and unsupported pins now fail rather than using current-endpoint metadata. Prefer uniquely named destinations for ambiguous MVC actions. Segment pins are now honored, not silently ignored. Neutral/unversioned targets lose supplied <code>api-version</code> entries; missing-metadata warnings identify and deduplicate by the <strong>target</strong>, not the caller. Action-level mappings now constrain accepted versions in <strong>both Location and PageUrl</strong>. PageUrl's ambient segment routing, consumer overrides, rejection of explicit segment pins, and quiet missing-metadata behavior are otherwise unchanged.</p>
+<h4 id="composition-examples">Composition examples</h4>
+<p>Single-id overload (sugar for the common <code>{ [&quot;id&quot;] = order.Id }</code> shape):</p>
+<pre><code class="lang-csharp">return result.ToHttpResponse(opts =&gt; opts
+    .CreatedAtRoute(&quot;Customers_GetById&quot;, c =&gt; c.Id)
+    .WithVersionedRoute());
+</code></pre>
+<p>Generates <code>Location: /customers/42?api-version=2026-12-01</code> when the request specified <code>?api-version=2026-12-01</code>. The <code>idRouteKey</code> parameter on <code>CreatedAtRoute</code> defaults to <code>&quot;id&quot;</code>; supply a different key when the route template uses a different parameter name (e.g. <code>&quot;orderId&quot;</code>).</p>
+<p>Multi-key route values:</p>
+<pre><code class="lang-csharp">return result.ToHttpResponse(opts =&gt; opts
+    .CreatedAtRoute(
+        &quot;Orders_GetById&quot;,
+        o =&gt; new RouteValueDictionary
+        {
+            [&quot;tenantId&quot;] = o.TenantId,
+            [&quot;id&quot;] = o.Id,
+        })
+    .WithVersionedRoute());
+</code></pre>
+<h4 id="withlocation-composition"><code>WithLocation</code> composition</h4>
+<p>For state-transition endpoints that return 200 OK (or another 2xx) but want a <code>Location</code> header pointing to the canonical URL of the mutated resource:</p>
+<pre><code class="lang-csharp">return result.ToHttpResponse(opts =&gt; opts
+    .WithLocation(&quot;Orders_GetById&quot;, o =&gt; o.Id)
+    .WithVersionedRoute());
+</code></pre>
+<p>Unlike <code>CreatedAtRoute</code>, <code>WithLocation</code> does <strong>not</strong> force the status code to 201 — the <code>Result&lt;T&gt;</code> response's natural 200 OK status is preserved. It does not affect <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> responses, where <code>WriteOutcome.Created</code>, <code>WriteOutcome.Accepted</code>, and <code>WriteOutcome.AcceptedNoContent</code> own their literal <code>Location</code> / monitor URI values.</p>
+<h4 id="explicit-version-overload">Explicit-version overload</h4>
+<pre><code class="lang-csharp">return result.ToHttpResponse(opts =&gt; opts
+    .CreatedAtRoute(&quot;Orders_GetById&quot;, o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id })
+    .WithVersionedRoute(new ApiVersion(new DateOnly(2026, 12, 1))));
+</code></pre>
+<p>Pins the <code>Location</code> to <code>?api-version=2026-12-01</code> for a query-style destination, or writes <code>2026-12-01</code> into the destination's actual <code>:apiVersion</code> segment parameter. The target must map the pin or the resolver throws. Neutral and missing-metadata targets skip injection and remove supplied <code>api-version</code> entries. Use this for redirects to a fixed version (deprecation flows, version migration); prefer automatic resolution for the common case.</p>
+<h3 id="httpcontextpageurlextensions"><code>HttpContextPageUrlExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class HttpContextPageUrlExtensions
+</code></pre>
+<p><strong>Constructors</strong></p>
+<ul>
+<li>None. This is a static class.</li>
+</ul>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>—</td>
+<td>This static class exposes no public properties.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PageUrl(this HttpContext httpContext, string routeName, Func&lt;Cursor, int, RouteValueDictionary&gt; routeValues)</code></td>
+<td><code>Func&lt;Cursor, int, string&gt;</code></td>
+<td>Returns a request-scoped builder suitable for the <code>nextUrlBuilder</code> parameter of <code>ToHttpResponse(Async)</code> on <code>Result&lt;Page&lt;T&gt;&gt;</code>. Version resolution uses the shared mapping checks above: mapped client-requested version → single mapped declared target version → mapped <code>DefaultApiVersion</code> → throw. Defensively clones the consumer-returned dictionary before injecting <code>api-version</code>. Consumer-supplied <code>api-version</code> keys win. Injection is skipped on <code>[ApiVersionNeutral]</code> and <code>:apiVersion</code> URL-segment routes, and when the target endpoint has no <code>ApiVersionMetadata</code>. Ambient segment routing and existing cross-route validation are unchanged.</td>
+</tr>
+<tr>
+<td><code>PageUrl(this HttpContext httpContext, string routeName, ApiVersion version, Func&lt;Cursor, int, RouteValueDictionary&gt; routeValues)</code></td>
+<td><code>Func&lt;Cursor, int, string&gt;</code></td>
+<td>Pins the next-page URL to a specific <code>ApiVersion</code>. The pin is silently skipped on neutral and missing-metadata targets. Unlike Location, URL-segment targets still throw <code>InvalidOperationException</code> rather than writing the pin into the segment. For a versioned query-style target, the version must map to the destination or the pin throws; controller declarations do not override an action's narrower mappings. Existing consumer-value precedence is unchanged.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="directional-pagination">Directional pagination</h4>
+<p>The existing two-argument callback overloads remain supported. Use these additional
+overloads when next and previous links need different route values:</p>
+<pre><code class="lang-csharp">public static Func&lt;Cursor, PageDirection, int, string&gt; PageUrl(
+    this HttpContext httpContext,
+    string routeName,
+    Func&lt;Cursor, PageDirection, int, RouteValueDictionary&gt; routeValues);
+
+public static Func&lt;Cursor, PageDirection, int, string&gt; PageUrl(
+    this HttpContext httpContext,
+    string routeName,
+    ApiVersion version,
+    Func&lt;Cursor, PageDirection, int, RouteValueDictionary&gt; routeValues);
+</code></pre>
+<p><code>PageDirection</code> is the ASP-owned enum (<code>Trellis.Asp.PageDirection.Next</code> /
+<code>Trellis.Asp.PageDirection.Previous</code>), not a separate versioning type. These overloads pass
+the direction unchanged to <code>routeValues</code> and return the delegate expected by the
+direction-aware <code>ToHttpResponse</code> / <code>ToHttpResponseAsync</code> overloads. Version resolution,
+dictionary cloning, consumer-version precedence, explicit-pin validation, URL-segment
+handling, and neutral/unversioned skip rules are identical to their respective
+two-argument callback overloads. Each link preserves the request's scheme, host, and
+<code>PathBase</code>. No registration changes are required.</p>
+<pre><code class="lang-csharp">return pageResult.ToHttpResponse(
+    urlBuilder: HttpContext.PageUrl(
+        &quot;Orders_List&quot;,
+        (cursor, direction, applied) =&gt; new RouteValueDictionary
+        {
+            [direction == PageDirection.Next ? &quot;after&quot; : &quot;before&quot;] = cursor.Token,
+            [&quot;limit&quot;] = applied,
+        }),
+    body: order =&gt; OrderListItemResponse.From(order));
+</code></pre>
+<p>The named endpoint must implement the corresponding forward/backward query semantics;
+URL generation does not add reverse-seek support. <code>Page&lt;T&gt;.Previous</code> remains optional.</p>
+<h4 id="pageurl-behavioral-notes"><code>PageUrl</code> behavioral notes</h4>
+<ul>
+<li><strong>Self-referential pagination is the common case.</strong> A paginated list endpoint typically supplies its own route name to <code>PageUrl(...)</code>: the next-page URL targets the same action with a different <code>cursor</code>. Target version-support checks are shared with Location, but PageUrl retains its own segment, consumer-override, and missing-metadata behavior.</li>
+<li><strong>Cross-route pagination is supported.</strong> Pass any registered route name. The helper uses the target endpoint's actual version mappings and URL-segment template; supply the target's required path parameters (besides ambient ones that <code>LinkGenerator</code> fills automatically from the current request's route values) in the <code>RouteValueDictionary</code> returned from the callback.</li>
+<li><strong>URL-segment versioning works without consumer awareness.</strong> When the target route template carries a <code>{version:apiVersion}</code> segment, <code>LinkGenerator.GetUriByRouteValues(httpContext, ...)</code> fills the segment from ambient route data. The helper skips automatic <code>api-version</code> query injection; it does not remove a query value supplied by the consumer.</li>
+<li><strong>Skipping injection does not remove consumer values.</strong> For neutral, missing-metadata, and implicit URL-segment targets, PageUrl preserves any consumer-supplied <code>api-version</code> entry. A manually supplied value can therefore appear even on a neutral target. Only Location's <code>WithVersionedRoute</code> owns/removes/overrides version entries; PageUrl's existing consumer precedence is unchanged.</li>
+<li><strong><code>PathBase</code> is preserved.</strong> Building absolute URLs through <code>LinkGenerator.GetUriByRouteValues(httpContext, ...)</code> carries the request's scheme, host, and <code>PathBase</code> into the emitted URL — important for hosts mounted under a virtual directory.</li>
+<li><strong>Request-scoped contract.</strong> The returned <code>Func</code> captures <code>httpContext</code> and must be invoked during the same request that produced it — not handed off to a background <code>Task</code>. The framework's <code>ToHttpResponse(Async)</code> consumes the builder synchronously while building the response envelope, so the typical consumer call site honors this naturally.</li>
+<li><strong>Cross-route version validation.</strong> The destination action must accept the version: <code>[MapToApiVersion]</code> narrows controller declarations, so sharing a controller version is not sufficient. For query-style links, an unsupported requested version falls through to a single mapped declared version, then a mapped <code>DefaultApiVersion</code>, then throws. URL-segment links retain ambient segment routing and existing cross-route target-version validation; PageUrl does not adopt Location's segment rewriting.</li>
+<li><strong>Failure modes.</strong> The returned builder throws <code>InvalidOperationException</code> when (a) the target route name resolves to no registered endpoint, (b) no requested, single declared, or default version maps to the versioned target, (c) <code>LinkGenerator.GetUriByRouteValues</code> returns <code>null</code> (the supplied + ambient route values do not match the target template), (d) the consumer's <code>routeValues</code> callback returns <code>null</code>, (e) the explicit-version overload targets a URL-segment-versioned route, or (f) the explicit pin does not map to the target.</li>
+<li><strong>Unversioned hosts compose cleanly.</strong> When the target endpoint has no <code>ApiVersionMetadata</code>, both PageUrl overloads skip automatic injection silently rather than throwing an unresolvable-version error; the explicit overload drops its pin. Consumer-supplied version entries are retained, so the URL is version-free only when the consumer has not supplied one. This also applies to individual unversioned endpoints in mixed hosts.</li>
+</ul>
+<h4 id="pageurl-composition-example"><code>PageUrl</code> composition example</h4>
+<p>Canonical paginated controller action consuming <code>PageUrl</code> via the <code>nextUrlBuilder</code> parameter:</p>
+<pre><code class="lang-csharp">[ApiController]
+[ApiVersion(&quot;2026-12-01&quot;)]
+[Route(&quot;orders&quot;)]
+public sealed class OrdersController : ControllerBase
+{
+    [HttpGet(&quot;overdue&quot;, Name = &quot;Orders_GetOverdue&quot;)]
+    public async Task&lt;IResult&gt; GetOverdue(
+        [FromQuery] string? cursor,
+        [FromQuery] int? limit,
+        [FromServices] IMediator mediator,
+        CancellationToken ct)
+    {
+        var query = new GetOverdueOrdersQuery(cursor, limit);
+        var result = await mediator.Send(query, ct);
+        return result.ToHttpResponse(
+            nextUrlBuilder: HttpContext.PageUrl(
+                &quot;Orders_GetOverdue&quot;,
+                (c, applied) =&gt; new RouteValueDictionary
+                {
+                    [&quot;cursor&quot;] = c.Token,
+                    [&quot;limit&quot;] = applied,
+                }),
+            body: o =&gt; OrderListItemResponse.From(o));
+    }
+}
+</code></pre>
+<p>Replaces hand-rolled URL construction (<code>$&quot;{Request.Scheme}://{Request.Host}/api/v{version}/orders/overdue?cursor={Uri.EscapeDataString(c.Token)}&amp;limit={applied}&quot;</code>) with a single call that resolves the version, encodes the cursor, and preserves <code>PathBase</code> automatically.</p>
+<h4 id="pageurl-explicit-version-overload"><code>PageUrl</code> explicit-version overload</h4>
+<pre><code class="lang-csharp">return result.ToHttpResponse(
+    nextUrlBuilder: HttpContext.PageUrl(
+        &quot;Orders_GetOverdue&quot;,
+        new ApiVersion(new DateOnly(2026, 12, 1)),
+        (c, applied) =&gt; new RouteValueDictionary
+        {
+            [&quot;cursor&quot;] = c.Token,
+            [&quot;limit&quot;] = applied,
+        }),
+    body: o =&gt; OrderListItemResponse.From(o));
+</code></pre>
+<p>Use only when the next-page URL must target a fixed version (cross-version migration of a deprecated paginated endpoint pointing clients at its successor). Behaviour depends on the target endpoint:</p>
+<table>
+<thead>
+<tr>
+<th>Target endpoint</th>
+<th>Pin behaviour</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[ApiVersionNeutral]</code>, or no <code>ApiVersionMetadata</code> (unversioned host where <code>AddApiVersioning(...)</code> was never called)</td>
+<td>Pin silently skipped; consumer-supplied values retained</td>
+<td>There is no version to pin; skipping does not remove dictionary entries</td>
+</tr>
+<tr>
+<td>URL-segment-versioned (<code>v{version:apiVersion}</code> in the template)</td>
+<td>Throws <code>InvalidOperationException</code></td>
+<td>Silently honouring it would let <code>LinkGenerator</code> fill the segment from ambient route data and emit a URL with the wrong version. Switch to the per-request implicit overload, which resolves the segment from ambient route data and validates cross-route target-version support</td>
+</tr>
+<tr>
+<td>Has version metadata but the pin does not map to the target (including an action narrowed by <code>[MapToApiVersion]</code>)</td>
+<td>Throws <code>InvalidOperationException</code></td>
+<td>Choose a version actually mapped to the target or use the per-request overload</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration">Configuration</h3>
+<p>Register API versioning in the host as you would normally; <code>Trellis.Asp.ApiVersioning</code> does not require its own <code>services.AddXxx(...)</code> call:</p>
+<pre><code class="lang-csharp">builder.Services.AddApiVersioning(options =&gt;
+{
+    options.DefaultApiVersion = new ApiVersion(new DateOnly(2026, 12, 1));
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new QueryStringApiVersionReader(&quot;api-version&quot;),
+        new HeaderApiVersionReader(&quot;api-version&quot;));
+});
+</code></pre>
+<p>The package depends on <code>Asp.Versioning.Http</code> (for <code>HttpContext.RequestedApiVersion</code>), <code>Asp.Versioning.Mvc</code>, and <code>Asp.Versioning.Mvc.ApiExplorer</code>.</p>
+<h2 id="related-diagnostics">Related diagnostics</h2>
+<ul>
+<li><strong>TRLS023</strong> (<code>Trellis.Analyzers</code>) — warns on <code>HttpResponseOptionsBuilder&lt;T&gt;.CreatedAtRoute(...)</code>, <code>CreatedAtAction(...)</code>, or <code>WithLocation(...)</code> calls inside <code>[ApiVersion]</code>-decorated controllers when the chain is not followed by <code>.WithVersionedRoute(...)</code> (or the manual primitive <code>.WithRouteValueResolver(&quot;api-version&quot;, ...)</code>, matched case-insensitively) and the route values dictionary literal does not include an <code>&quot;api-version&quot;</code> key. Code fix appends <code>.WithVersionedRoute()</code> and adds <code>using Trellis.Asp.ApiVersioning;</code> when missing. Detection is unchanged; only <code>WithVersionedRoute</code> supplies the target-aware runtime checks. Manual suppression is not equivalent validation.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-asp-apiversioning.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

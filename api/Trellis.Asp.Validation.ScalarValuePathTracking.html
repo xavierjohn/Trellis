@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ScalarValuePathTracking | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ScalarValuePathTracking | Trellis ">
+      
+      <meta name="description" content="Registry of compile-time-closed path-tracking converters, keyed by the container property type they wrap. It is the Native AOT counterpart to the reflection pipeline&#39;s runtime Type.MakeGenericType construction: AOT forbids building a closed generic at runtime, so the closed instantiations are created by the source generator at compile time and registered here.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_Validation_ScalarValuePathTracking.md&amp;value=---%0Auid%3A%20Trellis.Asp.Validation.ScalarValuePathTracking%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.Validation.ScalarValuePathTracking">
+
+
+
+  <h1 id="Trellis_Asp_Validation_ScalarValuePathTracking" data-uid="Trellis.Asp.Validation.ScalarValuePathTracking" class="text-break">
+Class ScalarValuePathTracking  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ScalarValuePathTracking.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a>.<a class="xref" href="Trellis.Asp.Validation.html">Validation</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Registry of compile-time-closed path-tracking converters, keyed by the container property type
+they wrap. It is the Native AOT counterpart to the reflection pipeline's runtime
+<code>Type.MakeGenericType</code> construction: AOT forbids building a closed generic at runtime, so the
+closed instantiations are created by the source generator at compile time and registered here.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class ScalarValuePathTracking</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ScalarValuePathTracking</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Asp_Validation_ScalarValuePathTracking_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Consumers do not normally call this type. The Trellis ASP source generator emits a
+<code>[ModuleInitializer]</code> that registers every container property type in the DTO graph reachable
+from a <code>[JsonSerializable]</code>-annotated <code>JsonSerializerContext</code>, so index-precise validation
+field paths (<code>/members/0/email</code>) work identically in reflection and Native AOT.
+</p>
+<p>
+Manual registration is supported for the cases the generator cannot see — for example a DTO reached
+only through a hand-written <code>JsonSerializerContext</code> in another assembly, or a bespoke collection
+shape. Registration is idempotent and last-call-wins; it is expected to happen once at startup
+(module initialization), before any deserialization, and is safe to call concurrently.
+</p>
+<p>
+A property type that is not registered simply falls back to the reflection pipeline (when dynamic
+code is available) or to leaf-only field names (under AOT) — never to an error.
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_Validation_ScalarValuePathTracking_RegisterCollection_" data-uid="Trellis.Asp.Validation.ScalarValuePathTracking.RegisterCollection*"></a>
+
+  <h3 id="Trellis_Asp_Validation_ScalarValuePathTracking_RegisterCollection__2" data-uid="Trellis.Asp.Validation.ScalarValuePathTracking.RegisterCollection``2">
+  RegisterCollection&lt;TCollection, TElement&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ScalarValuePathTracking.cs/#L54"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a collection property type so failures inside its elements report an index-precise
+path (e.g. <code>/members/0/email</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void RegisterCollection&lt;TCollection, TElement&gt;()</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TCollection</code></dt>
+    <dd><p>The declared collection property type — <code>List&lt;TElement&gt;</code>,
+<code>TElement[]</code>, or an interface (<code>IList</code>/<code>ICollection</code>/<code>IEnumerable</code>/
+<code>IReadOnlyList</code>/<code>IReadOnlyCollection</code> of <code class="typeparamref">TElement</code>) that
+<code>List&lt;TElement&gt;</code> is assignable to.</p>
+</dd>
+    <dt><code>TElement</code></dt>
+    <dd><p>The element type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Asp_Validation_ScalarValuePathTracking_RegisterDictionary_" data-uid="Trellis.Asp.Validation.ScalarValuePathTracking.RegisterDictionary*"></a>
+
+  <h3 id="Trellis_Asp_Validation_ScalarValuePathTracking_RegisterDictionary__2" data-uid="Trellis.Asp.Validation.ScalarValuePathTracking.RegisterDictionary``2">
+  RegisterDictionary&lt;TDictionary, TValue&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ScalarValuePathTracking.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a string-keyed dictionary property type so failures inside its values report a
+key-precise path (e.g. <code>/prices/USD/amount</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void RegisterDictionary&lt;TDictionary, TValue&gt;()</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TDictionary</code></dt>
+    <dd><p>The declared dictionary property type —
+<code>Dictionary&lt;string, TValue&gt;</code>, or an interface
+(<code>IDictionary</code>/<code>IReadOnlyDictionary</code> of <code>string</code> and
+<code class="typeparamref">TValue</code>) that it is assignable to.</p>
+</dd>
+    <dt><code>TValue</code></dt>
+    <dd><p>The value type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Validation_ScalarValuePathTracking_RegisterDictionary__2_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Only string-keyed dictionaries are supported: a non-string key has no faithful RFC 6901
+rendering, so those shapes fall back to leaf-only paths rather than emitting a pointer a client
+cannot map back to its input.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_Validation_ScalarValuePathTracking_RegisterObject_" data-uid="Trellis.Asp.Validation.ScalarValuePathTracking.RegisterObject*"></a>
+
+  <h3 id="Trellis_Asp_Validation_ScalarValuePathTracking_RegisterObject__1" data-uid="Trellis.Asp.Validation.ScalarValuePathTracking.RegisterObject``1">
+  RegisterObject&lt;T&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ScalarValuePathTracking.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a nested-object property type so failures inside it report the full path
+(e.g. <code>/contact/email</code> rather than <code>/email</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static void RegisterObject&lt;T&gt;()</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The object property type appearing in a DTO — for example <code>AddressDto</code>
+for a <code>Contact</code> property.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Validation/ScalarValuePathTracking.cs/#L32" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

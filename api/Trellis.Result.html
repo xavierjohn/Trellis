@@ -1,0 +1,2373 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class Result | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class Result | Trellis ">
+      
+      <meta name="description" content="Static Combine methods for combining multiple independent Result values without chaining (3-9 tuples).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Result.md&amp;value=---%0Auid%3A%20Trellis.Result%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Result">
+
+
+
+  <h1 id="Trellis_Result" data-uid="Trellis.Result" class="text-break">
+Class Result  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Static Combine methods for combining multiple independent Result values without chaining (3-9 tuples).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class Result</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">Result</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Result_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Use <code>Result.Combine(r1, r2, r3, ...)</code> when you already have individual Result variables
+and want to combine them before error checking. Delegates to the chaining extension methods.</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__2_Trellis_Result___0__Trellis_Result___1__" data-uid="Trellis.Result.Combine``2(Trellis.Result{``0},Trellis.Result{``1})">
+  Combine&lt;T1, T2&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L201"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines two independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2)&gt; Combine&lt;T1, T2&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>First result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>Second result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd><p>A success result with a 2-element tuple if both succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__2_Trellis_Result___0__Trellis_Result___1___examples">Examples</h4>
+  <pre><code class="lang-csharp">var emailResult = EmailAddress.TryCreate(dto.Email);
+var nameResult = FirstName.TryCreate(dto.Name);
+
+var result = Result.Combine(emailResult, nameResult)
+    .Bind((email, name) =&gt; User.Create(email, name));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__3_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__" data-uid="Trellis.Result.Combine``3(Trellis.Result{``0},Trellis.Result{``1},Trellis.Result{``2})">
+  Combine&lt;T1, T2, T3&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;, Result&lt;T3&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/CombineTs.g.cs/#L711"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines 3 independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single 3-element tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3)&gt; Combine&lt;T1, T2, T3&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2, Result&lt;T3&gt; r3)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The first result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>The second result.</p>
+</dd>
+    <dt><code>r3</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;</dt>
+    <dd><p>The third result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;</dt>
+    <dd><p>A success result with a 3-element tuple if all succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>Type of the third result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__3_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = Result.Combine(r1, r2, r3)
+    .Bind((v1, v2, v3) =&gt; Process(v1, v2, v3));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__4_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__" data-uid="Trellis.Result.Combine``4(Trellis.Result{``0},Trellis.Result{``1},Trellis.Result{``2},Trellis.Result{``3})">
+  Combine&lt;T1, T2, T3, T4&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;, Result&lt;T3&gt;, Result&lt;T4&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/CombineTs.g.cs/#L737"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines 4 independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single 4-element tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4)&gt; Combine&lt;T1, T2, T3, T4&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2, Result&lt;T3&gt; r3, Result&lt;T4&gt; r4)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The first result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>The second result.</p>
+</dd>
+    <dt><code>r3</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;</dt>
+    <dd><p>The third result.</p>
+</dd>
+    <dt><code>r4</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;</dt>
+    <dd><p>The fourth result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;</dt>
+    <dd><p>A success result with a 4-element tuple if all succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>Type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>Type of the fourth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__4_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = Result.Combine(r1, r2, r3, r4)
+    .Bind((v1, v2, v3, v4) =&gt; Process(v1, v2, v3, v4));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__5_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__" data-uid="Trellis.Result.Combine``5(Trellis.Result{``0},Trellis.Result{``1},Trellis.Result{``2},Trellis.Result{``3},Trellis.Result{``4})">
+  Combine&lt;T1, T2, T3, T4, T5&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;, Result&lt;T3&gt;, Result&lt;T4&gt;, Result&lt;T5&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/CombineTs.g.cs/#L766"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines 5 independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single 5-element tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5)&gt; Combine&lt;T1, T2, T3, T4, T5&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2, Result&lt;T3&gt; r3, Result&lt;T4&gt; r4, Result&lt;T5&gt; r5)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The first result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>The second result.</p>
+</dd>
+    <dt><code>r3</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;</dt>
+    <dd><p>The third result.</p>
+</dd>
+    <dt><code>r4</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;</dt>
+    <dd><p>The fourth result.</p>
+</dd>
+    <dt><code>r5</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;</dt>
+    <dd><p>The fifth result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;</dt>
+    <dd><p>A success result with a 5-element tuple if all succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>Type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>Type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>Type of the fifth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__5_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = Result.Combine(r1, r2, r3, r4, r5)
+    .Bind((v1, v2, v3, v4, v5) =&gt; Process(v1, v2, v3, v4, v5));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__6_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5__" data-uid="Trellis.Result.Combine``6(Trellis.Result{``0},Trellis.Result{``1},Trellis.Result{``2},Trellis.Result{``3},Trellis.Result{``4},Trellis.Result{``5})">
+  Combine&lt;T1, T2, T3, T4, T5, T6&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;, Result&lt;T3&gt;, Result&lt;T4&gt;, Result&lt;T5&gt;, Result&lt;T6&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/CombineTs.g.cs/#L798"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines 6 independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single 6-element tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6)&gt; Combine&lt;T1, T2, T3, T4, T5, T6&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2, Result&lt;T3&gt; r3, Result&lt;T4&gt; r4, Result&lt;T5&gt; r5, Result&lt;T6&gt; r6)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The first result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>The second result.</p>
+</dd>
+    <dt><code>r3</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;</dt>
+    <dd><p>The third result.</p>
+</dd>
+    <dt><code>r4</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;</dt>
+    <dd><p>The fourth result.</p>
+</dd>
+    <dt><code>r5</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;</dt>
+    <dd><p>The fifth result.</p>
+</dd>
+    <dt><code>r6</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;</dt>
+    <dd><p>The sixth result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;</dt>
+    <dd><p>A success result with a 6-element tuple if all succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>Type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>Type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>Type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>Type of the sixth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__6_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = Result.Combine(r1, r2, r3, r4, r5, r6)
+    .Bind((v1, v2, v3, v4, v5, v6) =&gt; Process(v1, v2, v3, v4, v5, v6));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__7_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5__Trellis_Result___6__" data-uid="Trellis.Result.Combine``7(Trellis.Result{``0},Trellis.Result{``1},Trellis.Result{``2},Trellis.Result{``3},Trellis.Result{``4},Trellis.Result{``5},Trellis.Result{``6})">
+  Combine&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;, Result&lt;T3&gt;, Result&lt;T4&gt;, Result&lt;T5&gt;, Result&lt;T6&gt;, Result&lt;T7&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/CombineTs.g.cs/#L833"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines 7 independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single 7-element tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt; Combine&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2, Result&lt;T3&gt; r3, Result&lt;T4&gt; r4, Result&lt;T5&gt; r5, Result&lt;T6&gt; r6, Result&lt;T7&gt; r7)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The first result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>The second result.</p>
+</dd>
+    <dt><code>r3</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;</dt>
+    <dd><p>The third result.</p>
+</dd>
+    <dt><code>r4</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;</dt>
+    <dd><p>The fourth result.</p>
+</dd>
+    <dt><code>r5</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;</dt>
+    <dd><p>The fifth result.</p>
+</dd>
+    <dt><code>r6</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;</dt>
+    <dd><p>The sixth result.</p>
+</dd>
+    <dt><code>r7</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;</dt>
+    <dd><p>The seventh result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;</dt>
+    <dd><p>A success result with a 7-element tuple if all succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>Type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>Type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>Type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>Type of the sixth result value.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>Type of the seventh result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__7_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5__Trellis_Result___6___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = Result.Combine(r1, r2, r3, r4, r5, r6, r7)
+    .Bind((v1, v2, v3, v4, v5, v6, v7) =&gt; Process(v1, v2, v3, v4, v5, v6, v7));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__8_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5__Trellis_Result___6__Trellis_Result___7__" data-uid="Trellis.Result.Combine``8(Trellis.Result{``0},Trellis.Result{``1},Trellis.Result{``2},Trellis.Result{``3},Trellis.Result{``4},Trellis.Result{``5},Trellis.Result{``6},Trellis.Result{``7})">
+  Combine&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;, Result&lt;T3&gt;, Result&lt;T4&gt;, Result&lt;T5&gt;, Result&lt;T6&gt;, Result&lt;T7&gt;, Result&lt;T8&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/CombineTs.g.cs/#L871"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines 8 independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single 8-element tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt; Combine&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2, Result&lt;T3&gt; r3, Result&lt;T4&gt; r4, Result&lt;T5&gt; r5, Result&lt;T6&gt; r6, Result&lt;T7&gt; r7, Result&lt;T8&gt; r8)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The first result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>The second result.</p>
+</dd>
+    <dt><code>r3</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;</dt>
+    <dd><p>The third result.</p>
+</dd>
+    <dt><code>r4</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;</dt>
+    <dd><p>The fourth result.</p>
+</dd>
+    <dt><code>r5</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;</dt>
+    <dd><p>The fifth result.</p>
+</dd>
+    <dt><code>r6</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;</dt>
+    <dd><p>The sixth result.</p>
+</dd>
+    <dt><code>r7</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;</dt>
+    <dd><p>The seventh result.</p>
+</dd>
+    <dt><code>r8</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;</dt>
+    <dd><p>The eighth result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;</dt>
+    <dd><p>A success result with a 8-element tuple if all succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>Type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>Type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>Type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>Type of the sixth result value.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>Type of the seventh result value.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>Type of the eighth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__8_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5__Trellis_Result___6__Trellis_Result___7___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = Result.Combine(r1, r2, r3, r4, r5, r6, r7, r8)
+    .Bind((v1, v2, v3, v4, v5, v6, v7, v8) =&gt; Process(v1, v2, v3, v4, v5, v6, v7, v8));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Combine_" data-uid="Trellis.Result.Combine*"></a>
+
+  <h3 id="Trellis_Result_Combine__9_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5__Trellis_Result___6__Trellis_Result___7__Trellis_Result___8__" data-uid="Trellis.Result.Combine``9(Trellis.Result{``0},Trellis.Result{``1},Trellis.Result{``2},Trellis.Result{``3},Trellis.Result{``4},Trellis.Result{``5},Trellis.Result{``6},Trellis.Result{``7},Trellis.Result{``8})">
+  Combine&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Result&lt;T1&gt;, Result&lt;T2&gt;, Result&lt;T3&gt;, Result&lt;T4&gt;, Result&lt;T5&gt;, Result&lt;T6&gt;, Result&lt;T7&gt;, Result&lt;T8&gt;, Result&lt;T9&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/CombineTs.g.cs/#L912"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Combines 9 independent <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> instances into a single 9-element tuple result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt; Combine&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Result&lt;T1&gt; r1, Result&lt;T2&gt; r2, Result&lt;T3&gt; r3, Result&lt;T4&gt; r4, Result&lt;T5&gt; r5, Result&lt;T6&gt; r6, Result&lt;T7&gt; r7, Result&lt;T8&gt; r8, Result&lt;T9&gt; r9)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>r1</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The first result.</p>
+</dd>
+    <dt><code>r2</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;</dt>
+    <dd><p>The second result.</p>
+</dd>
+    <dt><code>r3</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;</dt>
+    <dd><p>The third result.</p>
+</dd>
+    <dt><code>r4</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;</dt>
+    <dd><p>The fourth result.</p>
+</dd>
+    <dt><code>r5</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;</dt>
+    <dd><p>The fifth result.</p>
+</dd>
+    <dt><code>r6</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;</dt>
+    <dd><p>The sixth result.</p>
+</dd>
+    <dt><code>r7</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;</dt>
+    <dd><p>The seventh result.</p>
+</dd>
+    <dt><code>r8</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;</dt>
+    <dd><p>The eighth result.</p>
+</dd>
+    <dt><code>r9</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;</dt>
+    <dd><p>The ninth result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;</dt>
+    <dd><p>A success result with a 9-element tuple if all succeed; otherwise a failure with combined errors.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the first result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the second result value.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>Type of the third result value.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>Type of the fourth result value.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>Type of the fifth result value.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>Type of the sixth result value.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>Type of the seventh result value.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>Type of the eighth result value.</p>
+</dd>
+    <dt><code>T9</code></dt>
+    <dd><p>Type of the ninth result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Combine__9_Trellis_Result___0__Trellis_Result___1__Trellis_Result___2__Trellis_Result___3__Trellis_Result___4__Trellis_Result___5__Trellis_Result___6__Trellis_Result___7__Trellis_Result___8___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = Result.Combine(r1, r2, r3, r4, r5, r6, r7, r8, r9)
+    .Bind((v1, v2, v3, v4, v5, v6, v7, v8, v9) =&gt; Process(v1, v2, v3, v4, v5, v6, v7, v8, v9));</code></pre>
+
+
+
+
+
+
+  <a id="Trellis_Result_Ensure_" data-uid="Trellis.Result.Ensure*"></a>
+
+  <h3 id="Trellis_Result_Ensure_System_Boolean_System_Func_Trellis_Error__" data-uid="Trellis.Result.Ensure(System.Boolean,System.Func{Trellis.Error})">
+  Ensure(bool, Func&lt;Error&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L269"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns success when the condition is true, creating the error only when it is false.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ensure(bool flag, Func&lt;Error&gt; errorFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>flag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>The condition to assert.</p>
+</dd>
+    <dt><code>errorFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd><p>Creates the failure error; invoked exactly once on failure and never on success.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd><p>A successful no-payload result or a failure containing the factory's error.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Ensure_System_Boolean_System_Func_Trellis_Error___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The factory is required even when the condition passes. Factory exceptions propagate.
+The eager overload has higher overload-resolution priority to preserve existing null-literal calls.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>The factory is null, or an invoked factory returns null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_Ensure_" data-uid="Trellis.Result.Ensure*"></a>
+
+  <h3 id="Trellis_Result_Ensure_System_Boolean_Trellis_Error_" data-uid="Trellis.Result.Ensure(System.Boolean,Trellis.Error)">
+  Ensure(bool, Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L249"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a successful no-payload result if <code class="paramref">flag</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>;
+otherwise a failure with the specified <code class="paramref">error</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ensure(bool flag, Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>flag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>The condition to assert. <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> yields success; <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a> yields failure.</p>
+</dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd><p>The error to wrap when <code class="paramref">flag</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>. Always evaluated by the caller.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd><p><a class="xref" href="Trellis.Result.html#Trellis_Result_Ok">Ok()</a> when <code class="paramref">flag</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>; otherwise <a class="xref" href="Trellis.Result.html#Trellis_Result_Fail_Trellis_Error_">Fail(Error)</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Ensure_System_Boolean_Trellis_Error__examples">Examples</h4>
+  <p>Authorization guard inside <code>IAuthorizeResource&lt;TResource&gt;.Authorize</code>:</p>
+<pre><code class="lang-csharp">public IResult Authorize(Actor actor, Order resource) =&gt;
+    Result.Ensure(
+        resource.OwnerId == actor.UserId,
+        new Error.Forbidden("order.not-owned"));</code></pre>
+
+  <p>Domain invariant guard inside an aggregate method (replaces a hand-written <code>if</code>/<code>return</code>):</p>
+<pre><code class="lang-csharp">public Result&lt;Unit&gt; Cancel(DateTimeOffset now) =&gt;
+    Result.Ensure(Status == OrderStatus.Pending,
+        new Error.Conflict(null, "order.not-cancellable") { Detail = "Only pending orders can be cancelled." })
+    .Tap(() =&gt; { Status = OrderStatus.Cancelled; CancelledAt = now; });</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_Ensure_System_Boolean_Trellis_Error__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<strong>Canonical guard primitive.</strong> Prefer <code>Result.Ensure(condition, error)</code> over
+hand-written <code>if (!condition) return Result.Fail(error);</code> blocks or ad-hoc ternaries — Ensure
+reads as a single declarative line, participates in <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.activity">Activity</a> tracing, and is the
+preferred form for guard clauses in current guidance.
+</p>
+<p>
+To construct an error only when the condition fails, use
+<a class="xref" href="Trellis.Result.html#Trellis_Result_Ensure_System_Boolean_System_Func_Trellis_Error__">Ensure(bool, Func&lt;Error&gt;)</a> with an error factory.
+</p>
+<p>
+For an asynchronous predicate use <a class="xref" href="Trellis.Result.html#Trellis_Result_EnsureAsync_System_Func_System_Threading_Tasks_Task_System_Boolean___Trellis_Error_">EnsureAsync(Func&lt;Task&lt;bool&gt;&gt;, Error)</a>. For a value-threaded
+guard that preserves an existing <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> on success, use the
+<code>Result&lt;TValue&gt;.Ensure(predicate, error)</code> extension overloads on <a class="xref" href="Trellis.EnsureExtensions.html">EnsureExtensions</a>.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_Ensure_" data-uid="Trellis.Result.Ensure*"></a>
+
+  <h3 id="Trellis_Result_Ensure_System_Func_System_Boolean__System_Func_Trellis_Error__" data-uid="Trellis.Result.Ensure(System.Func{System.Boolean},System.Func{Trellis.Error})">
+  Ensure(Func&lt;bool&gt;, Func&lt;Error&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L302"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Evaluates a predicate once and creates an error only when it returns false.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ensure(Func&lt;bool&gt; predicate, Func&lt;Error&gt; errorFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p>The condition to evaluate.</p>
+</dd>
+    <dt><code>errorFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd><p>Creates the failure error after a false predicate result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd><p>A successful no-payload result or a failure containing the factory's error.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Ensure_System_Func_System_Boolean__System_Func_Trellis_Error___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Both delegates are validated before the predicate is invoked. A passing or throwing
+predicate never invokes the factory. Delegate exceptions propagate.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>A delegate is null, or an invoked factory returns null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_Ensure_" data-uid="Trellis.Result.Ensure*"></a>
+
+  <h3 id="Trellis_Result_Ensure_System_Func_System_Boolean__Trellis_Error_" data-uid="Trellis.Result.Ensure(System.Func{System.Boolean},Trellis.Error)">
+  Ensure(Func&lt;bool&gt;, Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L281"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a successful no-payload result if the predicate is true; otherwise a failure with the specified error.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ensure(Func&lt;bool&gt; predicate, Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_EnsureAsync_" data-uid="Trellis.Result.EnsureAsync*"></a>
+
+  <h3 id="Trellis_Result_EnsureAsync_System_Func_System_Threading_Tasks_Task_System_Boolean___System_Func_Trellis_Error__" data-uid="Trellis.Result.EnsureAsync(System.Func{System.Threading.Tasks.Task{System.Boolean}},System.Func{Trellis.Error})">
+  EnsureAsync(Func&lt;Task&lt;bool&gt;&gt;, Func&lt;Error&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L338"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Awaits a predicate once and creates an error only when it completes with false.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;Unit&gt;&gt; EnsureAsync(Func&lt;Task&lt;bool&gt;&gt; predicate, Func&lt;Error&gt; errorFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;&gt;</dt>
+    <dd><p>The asynchronous condition to evaluate.</p>
+</dd>
+    <dt><code>errorFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd><p>Synchronously creates the error after a false predicate result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd><p>A task containing a successful no-payload result or the factory's failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_EnsureAsync_System_Func_System_Threading_Tasks_Task_System_Boolean___System_Func_Trellis_Error___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Both delegates are validated before the predicate is invoked. A passing, faulted, or
+cancelled predicate never invokes the factory. Exceptions and cancellation propagate
+through the returned task; no errors are created for them.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>A delegate is null, or an invoked factory returns null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_EnsureAsync_" data-uid="Trellis.Result.EnsureAsync*"></a>
+
+  <h3 id="Trellis_Result_EnsureAsync_System_Func_System_Threading_Tasks_Task_System_Boolean___Trellis_Error_" data-uid="Trellis.Result.EnsureAsync(System.Func{System.Threading.Tasks.Task{System.Boolean}},Trellis.Error)">
+  EnsureAsync(Func&lt;Task&lt;bool&gt;&gt;, Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L315"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously evaluates the predicate and returns success if true; otherwise a failure with the specified error.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;Unit&gt;&gt; EnsureAsync(Func&lt;Task&lt;bool&gt;&gt; predicate, Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_Fail_" data-uid="Trellis.Result.Fail*"></a>
+
+  <h3 id="Trellis_Result_Fail_Trellis_Error_" data-uid="Trellis.Result.Fail(Trellis.Error)">
+  Fail(Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a failed no-payload result (<code>Result&lt;Unit&gt;</code>) with the specified <code class="paramref">error</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Fail(Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd><p>The error describing the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd><p>A failed <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> containing <code class="paramref">error</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">error</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_FailAfterCommit_" data-uid="Trellis.Result.FailAfterCommit*"></a>
+
+  <h3 id="Trellis_Result_FailAfterCommit_Trellis_Error_" data-uid="Trellis.Result.FailAfterCommit(Trellis.Error)">
+  FailAfterCommit(Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L146"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a failed no-payload result that opts in to post-handler persistence.
+See <a class="xref" href="Trellis.Result.html#Trellis_Result_FailAfterCommit__1_Trellis_Error_">FailAfterCommit&lt;TValue&gt;(Error)</a> for the full semantics.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; FailAfterCommit(Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd><p>The error describing the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd><p>A failed <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> whose <a class="xref" href="Trellis.IPersistOnFailure.html#Trellis_IPersistOnFailure_PersistOnFailure">PersistOnFailure</a>
+flag is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">error</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_FailAfterCommit_" data-uid="Trellis.Result.FailAfterCommit*"></a>
+
+  <h3 id="Trellis_Result_FailAfterCommit__1_Trellis_Error_" data-uid="Trellis.Result.FailAfterCommit``1(Trellis.Error)">
+  FailAfterCommit&lt;TValue&gt;(Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a failed result that <em>opts in</em> to post-handler persistence: pipeline
+behaviors implementing the <a class="xref" href="Trellis.IPersistOnFailure.html">IPersistOnFailure</a> contract (notably
+<code>TransactionalCommandBehavior</code>) will still commit staged changes alongside this
+failure, so the failure state is durably recorded.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TValue&gt; FailAfterCommit&lt;TValue&gt;(Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd><p>The error describing the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd><p>A failed <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> whose <a class="xref" href="Trellis.IPersistOnFailure.html#Trellis_IPersistOnFailure_PersistOnFailure">PersistOnFailure</a>
+flag is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd><p>Success value type for the result envelope.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_FailAfterCommit__1_Trellis_Error__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<strong>Worker-handler pattern.</strong> The canonical use case is a background-worker
+handler that converts a transient external-service rejection into a persisted
+<code>permanently_failed</code> state on the corresponding aggregate. The handler updates the
+aggregate via the change tracker, then returns <code>Result.FailAfterCommit&lt;TResponse&gt;(error)</code>.
+<code>TransactionalCommandBehavior</code> observes the per-instance flag and commits the staged
+row even though the result is a failure. The caller still receives the original
+<a class="xref" href="Trellis.Error.html">Error</a> — the result is <em>still a failure</em>.
+</p>
+<p>
+<strong>Commit-failure semantics.</strong> If the commit itself fails, the commit error
+is returned (overwriting the original handler error). This is intentional — the caller
+must learn that the persist-on-failure guarantee was not honored.
+</p>
+<p>
+<strong>Domain-event dispatch.</strong>
+<code>DomainEventDispatchBehavior</code> does <em>not</em> fan out events on a failed result,
+including persist-on-failure ones. Any events the handler raised on aggregates remain on
+those in-memory aggregate instances and are discarded with them when the request scope ends —
+they are <em>not</em> a durable retry buffer. If your scenario requires post-failure side
+effects (notifications, downstream commands), model them explicitly via an outbox row or a
+dedicated follow-up command instead of relying on event re-dispatch.
+</p>
+<p>
+<strong>Operator propagation.</strong> The persist-on-failure flag is preserved by every
+railway operator that projects a failure (<code>Map</code>, <code>Bind</code>, <code>MapOnFailure</code>,
+<code>Check</code>, <code>BindZip</code>, <code>Traverse</code>, <code>Ensure</code> upstream-propagation). Aggregating
+operators (<code>Combine</code>, <code>TraverseAll</code>, <code>SequenceAll</code>, <code>WhenAllAsync</code>)
+OR-accumulate the flag: if any failing source opted in, the aggregated failure carries the
+flag. The flag is sticky once introduced — a later validation failure combined with an
+upstream <code>FailAfterCommit</code> cannot suppress the persist intent. Fresh failures created
+without an upstream source (e.g., <code>Ensure</code> evaluating <code>false</code> on a previously
+successful value, <code>EnsureNotNull</code>'s value-was-null branch) do <em>not</em> set the flag.
+</p>
+<p>
+<strong>Do not compose <code>FailAfterCommit</code> with aggregating operators.</strong>
+<code>FailAfterCommit</code> is a <em>leaf</em> worker-handler operation: it converts a single
+aggregate's transient external rejection into a persisted <code>permanently_failed</code> state
+and returns. Threading that result through <code>Combine</code>, <code>TraverseAll</code>,
+<code>SequenceAll</code>, or <code>WhenAllAsync</code> — composing it with the outcomes of other,
+independent operations — is outside the supported pattern. The OR-accumulated flag will
+then commit the staged permanent-failure mutation alongside whatever the other legs
+produced, which is unlikely to match the handler author's intent. Restructure such
+handlers so the aggregating step runs to its terminal outcome first and
+<code>FailAfterCommit</code> is invoked at the end (or in a follow-up command), never as a
+leg inside a multi-aggregate composition.
+</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">error</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_Fail_" data-uid="Trellis.Result.Fail*"></a>
+
+  <h3 id="Trellis_Result_Fail__1_Trellis_Error_" data-uid="Trellis.Result.Fail``1(Trellis.Error)">
+  Fail&lt;TValue&gt;(Error)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a failed result with the specified <code class="paramref">error</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TValue&gt; Fail&lt;TValue&gt;(Error error)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>error</code> <a class="xref" href="Trellis.Error.html">Error</a></dt>
+    <dd><p>The error describing the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd><p>A failed <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> containing <code class="paramref">error</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd><p>The success value type for the failed result envelope.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">error</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_Ok_" data-uid="Trellis.Result.Ok*"></a>
+
+  <h3 id="Trellis_Result_Ok" data-uid="Trellis.Result.Ok">
+  Ok()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L126"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a successful no-payload result (<code>Result&lt;Unit&gt;</code>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Ok()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd><p>A successful <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> containing <a class="xref" href="Trellis.Unit.html#Trellis_Unit_Default">Default</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_Ok_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Goes through the constructor so that <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.activity.current">Current</a> receives the success status,
+matching the tracing behavior of <a class="xref" href="Trellis.Result.html#Trellis_Result_Ok__1___0_">Ok&lt;TValue&gt;(TValue)</a>. Always prefer this factory over
+<code>default(Result&lt;Unit&gt;)</code>: <code>default</code> represents <em>failure</em> with the
+<a class="xref" href="Trellis.Error.Unexpected.html">Error.Unexpected</a> sentinel, not success.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_Ok_" data-uid="Trellis.Result.Ok*"></a>
+
+  <h3 id="Trellis_Result_Ok__1___0_" data-uid="Trellis.Result.Ok``1(``0)">
+  Ok&lt;TValue&gt;(TValue)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a successful result wrapping the provided <code class="paramref">value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TValue&gt; Ok&lt;TValue&gt;(TValue value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">TValue</span></dt>
+    <dd><p>The value to wrap in the successful result.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd><p>A successful <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> containing <code class="paramref">value</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd><p>The success value type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__2_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____" data-uid="Trellis.Result.ParallelAsync``2(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}})">
+  ParallelAsync&lt;T1, T2&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 2 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;) ParallelAsync&lt;T1, T2&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;)</dt>
+    <dd><p>A tuple of 2 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__2_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__2_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__3_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____" data-uid="Trellis.Result.ParallelAsync``3(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``2}}})">
+  ParallelAsync&lt;T1, T2, T3&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 3 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;) ParallelAsync&lt;T1, T2, T3&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt; taskFactory3)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+    <dt><code>taskFactory3</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the third task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;)</dt>
+    <dd><p>A tuple of 3 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the result value from the third operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__3_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async(),
+    () =&gt; GetData3Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__3_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__4_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____" data-uid="Trellis.Result.ParallelAsync``4(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``2}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``3}}})">
+  ParallelAsync&lt;T1, T2, T3, T4&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L143"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 4 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;) ParallelAsync&lt;T1, T2, T3, T4&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt; taskFactory3, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt; taskFactory4)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+    <dt><code>taskFactory3</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the third task.</p>
+</dd>
+    <dt><code>taskFactory4</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fourth task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;)</dt>
+    <dd><p>A tuple of 4 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the result value from the third operation.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the result value from the fourth operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__4_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async(),
+    () =&gt; GetData3Async(),
+    () =&gt; GetData4Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__4_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__5_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____" data-uid="Trellis.Result.ParallelAsync``5(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``2}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``3}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``4}}})">
+  ParallelAsync&lt;T1, T2, T3, T4, T5&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L199"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 5 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;) ParallelAsync&lt;T1, T2, T3, T4, T5&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt; taskFactory3, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt; taskFactory4, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt; taskFactory5)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+    <dt><code>taskFactory3</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the third task.</p>
+</dd>
+    <dt><code>taskFactory4</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fourth task.</p>
+</dd>
+    <dt><code>taskFactory5</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fifth task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;)</dt>
+    <dd><p>A tuple of 5 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the result value from the third operation.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the result value from the fourth operation.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the result value from the fifth operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__5_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async(),
+    () =&gt; GetData3Async(),
+    () =&gt; GetData4Async(),
+    () =&gt; GetData5Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__5_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__6_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____" data-uid="Trellis.Result.ParallelAsync``6(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``2}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``3}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``4}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``5}}})">
+  ParallelAsync&lt;T1, T2, T3, T4, T5, T6&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L261"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 6 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;) ParallelAsync&lt;T1, T2, T3, T4, T5, T6&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt; taskFactory3, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt; taskFactory4, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt; taskFactory5, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt; taskFactory6)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+    <dt><code>taskFactory3</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the third task.</p>
+</dd>
+    <dt><code>taskFactory4</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fourth task.</p>
+</dd>
+    <dt><code>taskFactory5</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fifth task.</p>
+</dd>
+    <dt><code>taskFactory6</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the sixth task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;)</dt>
+    <dd><p>A tuple of 6 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the result value from the third operation.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the result value from the fourth operation.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the result value from the fifth operation.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the result value from the sixth operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__6_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async(),
+    () =&gt; GetData3Async(),
+    () =&gt; GetData4Async(),
+    () =&gt; GetData5Async(),
+    () =&gt; GetData6Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__6_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__7_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6____" data-uid="Trellis.Result.ParallelAsync``7(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``2}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``3}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``4}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``5}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``6}}})">
+  ParallelAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T7&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L329"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 7 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;) ParallelAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt; taskFactory3, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt; taskFactory4, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt; taskFactory5, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt; taskFactory6, Func&lt;Task&lt;Result&lt;T7&gt;&gt;&gt; taskFactory7)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+    <dt><code>taskFactory3</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the third task.</p>
+</dd>
+    <dt><code>taskFactory4</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fourth task.</p>
+</dd>
+    <dt><code>taskFactory5</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fifth task.</p>
+</dd>
+    <dt><code>taskFactory6</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the sixth task.</p>
+</dd>
+    <dt><code>taskFactory7</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the seventh task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;)</dt>
+    <dd><p>A tuple of 7 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the result value from the third operation.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the result value from the fourth operation.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the result value from the fifth operation.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the result value from the sixth operation.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of the result value from the seventh operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__7_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async(),
+    () =&gt; GetData3Async(),
+    () =&gt; GetData4Async(),
+    () =&gt; GetData5Async(),
+    () =&gt; GetData6Async(),
+    () =&gt; GetData7Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__7_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__8_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6____System_Func_System_Threading_Tasks_Task_Trellis_Result___7____" data-uid="Trellis.Result.ParallelAsync``8(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``2}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``3}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``4}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``5}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``6}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``7}}})">
+  ParallelAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T7&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T8&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L403"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 8 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;, Task&lt;Result&lt;T8&gt;&gt;) ParallelAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt; taskFactory3, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt; taskFactory4, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt; taskFactory5, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt; taskFactory6, Func&lt;Task&lt;Result&lt;T7&gt;&gt;&gt; taskFactory7, Func&lt;Task&lt;Result&lt;T8&gt;&gt;&gt; taskFactory8)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+    <dt><code>taskFactory3</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the third task.</p>
+</dd>
+    <dt><code>taskFactory4</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fourth task.</p>
+</dd>
+    <dt><code>taskFactory5</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fifth task.</p>
+</dd>
+    <dt><code>taskFactory6</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the sixth task.</p>
+</dd>
+    <dt><code>taskFactory7</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the seventh task.</p>
+</dd>
+    <dt><code>taskFactory8</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the eighth task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;)</dt>
+    <dd><p>A tuple of 8 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the result value from the third operation.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the result value from the fourth operation.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the result value from the fifth operation.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the result value from the sixth operation.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of the result value from the seventh operation.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>The type of the result value from the eighth operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__8_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6____System_Func_System_Threading_Tasks_Task_Trellis_Result___7_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async(),
+    () =&gt; GetData3Async(),
+    () =&gt; GetData4Async(),
+    () =&gt; GetData5Async(),
+    () =&gt; GetData6Async(),
+    () =&gt; GetData7Async(),
+    () =&gt; GetData8Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__8_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6____System_Func_System_Threading_Tasks_Task_Trellis_Result___7_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_ParallelAsync_" data-uid="Trellis.Result.ParallelAsync*"></a>
+
+  <h3 id="Trellis_Result_ParallelAsync__9_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6____System_Func_System_Threading_Tasks_Task_Trellis_Result___7____System_Func_System_Threading_Tasks_Task_Trellis_Result___8____" data-uid="Trellis.Result.ParallelAsync``9(System.Func{System.Threading.Tasks.Task{Trellis.Result{``0}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``1}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``2}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``3}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``4}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``5}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``6}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``7}}},System.Func{System.Threading.Tasks.Task{Trellis.Result{``8}}})">
+  ParallelAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T7&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T8&gt;&gt;&gt;, Func&lt;Task&lt;Result&lt;T9&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/ParallelAsyncs.g.cs/#L483"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts 9 async operations in parallel and returns a tuple of tasks.
+All operations start immediately and execute concurrently.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static (Task&lt;Result&lt;T1&gt;&gt;, Task&lt;Result&lt;T2&gt;&gt;, Task&lt;Result&lt;T3&gt;&gt;, Task&lt;Result&lt;T4&gt;&gt;, Task&lt;Result&lt;T5&gt;&gt;, Task&lt;Result&lt;T6&gt;&gt;, Task&lt;Result&lt;T7&gt;&gt;, Task&lt;Result&lt;T8&gt;&gt;, Task&lt;Result&lt;T9&gt;&gt;) ParallelAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Func&lt;Task&lt;Result&lt;T1&gt;&gt;&gt; taskFactory1, Func&lt;Task&lt;Result&lt;T2&gt;&gt;&gt; taskFactory2, Func&lt;Task&lt;Result&lt;T3&gt;&gt;&gt; taskFactory3, Func&lt;Task&lt;Result&lt;T4&gt;&gt;&gt; taskFactory4, Func&lt;Task&lt;Result&lt;T5&gt;&gt;&gt; taskFactory5, Func&lt;Task&lt;Result&lt;T6&gt;&gt;&gt; taskFactory6, Func&lt;Task&lt;Result&lt;T7&gt;&gt;&gt; taskFactory7, Func&lt;Task&lt;Result&lt;T8&gt;&gt;&gt; taskFactory8, Func&lt;Task&lt;Result&lt;T9&gt;&gt;&gt; taskFactory9)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskFactory1</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the first task.</p>
+</dd>
+    <dt><code>taskFactory2</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the second task.</p>
+</dd>
+    <dt><code>taskFactory3</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the third task.</p>
+</dd>
+    <dt><code>taskFactory4</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fourth task.</p>
+</dd>
+    <dt><code>taskFactory5</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the fifth task.</p>
+</dd>
+    <dt><code>taskFactory6</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the sixth task.</p>
+</dd>
+    <dt><code>taskFactory7</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the seventh task.</p>
+</dd>
+    <dt><code>taskFactory8</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the eighth task.</p>
+</dd>
+    <dt><code>taskFactory9</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;&gt;</dt>
+    <dd><p>Factory function that creates and starts the ninth task.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;)</dt>
+    <dd><p>A tuple of 9 tasks that can be awaited using WhenAllAsync.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of the result value from the first operation.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of the result value from the second operation.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of the result value from the third operation.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of the result value from the fourth operation.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of the result value from the fifth operation.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of the result value from the sixth operation.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of the result value from the seventh operation.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>The type of the result value from the eighth operation.</p>
+</dd>
+    <dt><code>T9</code></dt>
+    <dd><p>The type of the result value from the ninth operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__9_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6____System_Func_System_Threading_Tasks_Task_Trellis_Result___7____System_Func_System_Threading_Tasks_Task_Trellis_Result___8_____examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = await Result.ParallelAsync(
+    () =&gt; GetData1Async(),
+    () =&gt; GetData2Async(),
+    () =&gt; GetData3Async(),
+    () =&gt; GetData4Async(),
+    () =&gt; GetData5Async(),
+    () =&gt; GetData6Async(),
+    () =&gt; GetData7Async(),
+    () =&gt; GetData8Async(),
+    () =&gt; GetData9Async()
+).WhenAllAsync();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Result_ParallelAsync__9_System_Func_System_Threading_Tasks_Task_Trellis_Result___0____System_Func_System_Threading_Tasks_Task_Trellis_Result___1____System_Func_System_Threading_Tasks_Task_Trellis_Result___2____System_Func_System_Threading_Tasks_Task_Trellis_Result___3____System_Func_System_Threading_Tasks_Task_Trellis_Result___4____System_Func_System_Threading_Tasks_Task_Trellis_Result___5____System_Func_System_Threading_Tasks_Task_Trellis_Result___6____System_Func_System_Threading_Tasks_Task_Trellis_Result___7____System_Func_System_Threading_Tasks_Task_Trellis_Result___8_____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method invokes the factory functions eagerly and returns the created tasks as a tuple.
+The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+</p>
+<p>
+Any tasks that are created successfully can execute concurrently once started by their factories.
+If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+</p>
+<p>
+ParallelAsync builds the tuple structure without awaiting any tasks.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Result_Try_" data-uid="Trellis.Result.Try*"></a>
+
+  <h3 id="Trellis_Result_Try_System_Action_System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.Try(System.Action,System.Func{System.Exception,Trellis.Error})">
+  Try(Action, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L397"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the action and converts exceptions to a failed no-payload result using the optional mapper.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;Unit&gt; Try(Action work, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>work</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action">Action</a></dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_TryAsync_" data-uid="Trellis.Result.TryAsync*"></a>
+
+  <h3 id="Trellis_Result_TryAsync_System_Func_System_Threading_Tasks_Task__System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.TryAsync(System.Func{System.Threading.Tasks.Task},System.Func{System.Exception,Trellis.Error})">
+  TryAsync(Func&lt;Task&gt;, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L418"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the asynchronous action and converts exceptions to a failed no-payload result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;Unit&gt;&gt; TryAsync(Func&lt;Task&gt; work, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>work</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Unit.html">Unit</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Result_TryAsync_" data-uid="Trellis.Result.TryAsync*"></a>
+
+  <h3 id="Trellis_Result_TryAsync__1_System_Func_System_Threading_Tasks_Task___0___System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.TryAsync``1(System.Func{System.Threading.Tasks.Task{``0}},System.Func{System.Exception,Trellis.Error})">
+  TryAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt;, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L377"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the asynchronous function and converts exceptions to a failed result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;T&gt;&gt; TryAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; func, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">func</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Result_Try_" data-uid="Trellis.Result.Try*"></a>
+
+  <h3 id="Trellis_Result_Try__1_System_Func___0__System_Func_System_Exception_Trellis_Error__" data-uid="Trellis.Result.Try``1(System.Func{``0},System.Func{System.Exception,Trellis.Error})">
+  Try&lt;T&gt;(Func&lt;T&gt;, Func&lt;Exception, Error&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L356"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the function and converts exceptions to a failed result using the optional mapper
+(default <a class="xref" href="Trellis.Error.Unexpected.html">Error.Unexpected</a> with a per-incident fault ID).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;T&gt; Try&lt;T&gt;(Func&lt;T&gt; func, Func&lt;Exception, Error&gt;? map = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;T&gt;</dt>
+    <dd></dd>
+    <dt><code>map</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>, <a class="xref" href="Trellis.Error.html">Error</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">func</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Result.cs/#L25" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

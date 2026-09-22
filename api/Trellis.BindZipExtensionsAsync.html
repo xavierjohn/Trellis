@@ -1,0 +1,2750 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class BindZipExtensionsAsync | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class BindZipExtensionsAsync | Trellis ">
+      
+      <meta name="description" content="Async BindZip extensions where both input and function are async (Task).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_BindZipExtensionsAsync.md&amp;value=---%0Auid%3A%20Trellis.BindZipExtensionsAsync%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.BindZipExtensionsAsync">
+
+
+
+  <h1 id="Trellis_BindZipExtensionsAsync" data-uid="Trellis.BindZipExtensionsAsync" class="text-break">
+Class BindZipExtensionsAsync  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L321"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Async BindZip extensions where both input and function are async (Task).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class BindZipExtensionsAsync</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">BindZipExtensionsAsync</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__2_System_Threading_Tasks_Task_Trellis_Result___0___System_Func___0_System_Threading_Tasks_Task_Trellis_Result___1____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``2(System.Threading.Tasks.Task{Trellis.Result{``0}},System.Func{``0,System.Threading.Tasks.Task{Trellis.Result{``1}}})">
+  BindZipAsync&lt;T1, T2&gt;(Task&lt;Result&lt;T1&gt;&gt;, Func&lt;T1, Task&lt;Result&lt;T2&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZip.Task.cs/#L18"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function to the awaited Result value and zips both values into a tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2)&gt;&gt; BindZipAsync&lt;T1, T2&gt;(this Task&lt;Result&lt;T1&gt;&gt; resultTask, Func&lt;T1, Task&lt;Result&lt;T2&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;</dt>
+    <dd><p>The task containing the result to bind and zip.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T1, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>The async function to call if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd><p>A tuple result combining both values on success; otherwise the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the new result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__2_System_Threading_Tasks_Task_Trellis_Result___0___System_Func___0_Trellis_Result___1___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``2(System.Threading.Tasks.Task{Trellis.Result{``0}},System.Func{``0,Trellis.Result{``1}})">
+  BindZipAsync&lt;T1, T2&gt;(Task&lt;Result&lt;T1&gt;&gt;, Func&lt;T1, Result&lt;T2&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZip.Task.Left.cs/#L16"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds a function to the awaited Result value and zips both values into a tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2)&gt;&gt; BindZipAsync&lt;T1, T2&gt;(this Task&lt;Result&lt;T1&gt;&gt; resultTask, Func&lt;T1, Result&lt;T2&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;</dt>
+    <dd><p>The task containing the result to bind and zip.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T1, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;</dt>
+    <dd><p>The synchronous function to call if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd><p>A tuple result combining both values on success; otherwise the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the new result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__2_System_Threading_Tasks_ValueTask_Trellis_Result___0___System_Func___0_System_Threading_Tasks_ValueTask_Trellis_Result___1____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``2(System.Threading.Tasks.ValueTask{Trellis.Result{``0}},System.Func{``0,System.Threading.Tasks.ValueTask{Trellis.Result{``1}}})">
+  BindZipAsync&lt;T1, T2&gt;(ValueTask&lt;Result&lt;T1&gt;&gt;, Func&lt;T1, ValueTask&lt;Result&lt;T2&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZip.ValueTask.cs/#L16"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds an async function to the awaited ValueTask Result value and zips both values into a tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2)&gt;&gt; BindZipAsync&lt;T1, T2&gt;(this ValueTask&lt;Result&lt;T1&gt;&gt; resultTask, Func&lt;T1, ValueTask&lt;Result&lt;T2&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;</dt>
+    <dd><p>The ValueTask containing the result to bind and zip.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T1, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>The async function to call if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd><p>A ValueTask tuple result combining both values on success; otherwise the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the new result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__2_System_Threading_Tasks_ValueTask_Trellis_Result___0___System_Func___0_Trellis_Result___1___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``2(System.Threading.Tasks.ValueTask{Trellis.Result{``0}},System.Func{``0,Trellis.Result{``1}})">
+  BindZipAsync&lt;T1, T2&gt;(ValueTask&lt;Result&lt;T1&gt;&gt;, Func&lt;T1, Result&lt;T2&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZip.ValueTask.Left.cs/#L16"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a synchronous function to the awaited ValueTask Result value and zips both values into a tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2)&gt;&gt; BindZipAsync&lt;T1, T2&gt;(this ValueTask&lt;Result&lt;T1&gt;&gt; resultTask, Func&lt;T1, Result&lt;T2&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;&gt;</dt>
+    <dd><p>The ValueTask containing the result to bind and zip.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T1, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;</dt>
+    <dd><p>The synchronous function to call if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd><p>A tuple result combining both values on success; otherwise the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the new result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__2_Trellis_Result___0__System_Func___0_System_Threading_Tasks_Task_Trellis_Result___1____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``2(Trellis.Result{``0},System.Func{``0,System.Threading.Tasks.Task{Trellis.Result{``1}}})">
+  BindZipAsync&lt;T1, T2&gt;(Result&lt;T1&gt;, Func&lt;T1, Task&lt;Result&lt;T2&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZip.Task.Right.cs/#L18"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds an async function to the Result value and zips both values into a tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2)&gt;&gt; BindZipAsync&lt;T1, T2&gt;(this Result&lt;T1&gt; result, Func&lt;T1, Task&lt;Result&lt;T2&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The result to bind and zip.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T1, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>The async function to call if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd><p>A tuple result combining both values on success; otherwise the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the new result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__2_Trellis_Result___0__System_Func___0_System_Threading_Tasks_ValueTask_Trellis_Result___1____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``2(Trellis.Result{``0},System.Func{``0,System.Threading.Tasks.ValueTask{Trellis.Result{``1}}})">
+  BindZipAsync&lt;T1, T2&gt;(Result&lt;T1&gt;, Func&lt;T1, ValueTask&lt;Result&lt;T2&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZip.ValueTask.Right.cs/#L16"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds an async function to the Result value and zips both values into a tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2)&gt;&gt; BindZipAsync&lt;T1, T2&gt;(this Result&lt;T1&gt; result, Func&lt;T1, ValueTask&lt;Result&lt;T2&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T1&gt;</dt>
+    <dd><p>The result to bind and zip.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T1, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T2&gt;&gt;&gt;</dt>
+    <dd><p>The async function to call if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd><p>A ValueTask tuple result combining both values on success; otherwise the failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>Type of the new result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__3_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1_System_Threading_Tasks_Task_Trellis_Result___2____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``3(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,System.Threading.Tasks.Task{Trellis.Result{``2}}})">
+  BindZipAsync&lt;T1, T2, T3&gt;(Task&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, Task&lt;Result&lt;T3&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L373"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 2-tuple result and zips into a 3-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; BindZipAsync&lt;T1, T2, T3&gt;(this Task&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, Task&lt;Result&lt;T3&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__3_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1_Trellis_Result___2___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``3(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,Trellis.Result{``2}})">
+  BindZipAsync&lt;T1, T2, T3&gt;(Task&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, Result&lt;T3&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L360"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 2-tuple result and zips into a 3-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; BindZipAsync&lt;T1, T2, T3&gt;(this Task&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, Result&lt;T3&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__3_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1_System_Threading_Tasks_ValueTask_Trellis_Result___2____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``3(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,System.Threading.Tasks.ValueTask{Trellis.Result{``2}}})">
+  BindZipAsync&lt;T1, T2, T3&gt;(ValueTask&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, ValueTask&lt;Result&lt;T3&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L449"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 2-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt; BindZipAsync&lt;T1, T2, T3&gt;(this ValueTask&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, ValueTask&lt;Result&lt;T3&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__3_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1_Trellis_Result___2___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``3(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,Trellis.Result{``2}})">
+  BindZipAsync&lt;T1, T2, T3&gt;(ValueTask&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, Result&lt;T3&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L437"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 2-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt; BindZipAsync&lt;T1, T2, T3&gt;(this ValueTask&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, Result&lt;T3&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__3_Trellis_Result_System_ValueTuple___0___1___System_Func___0___1_System_Threading_Tasks_Task_Trellis_Result___2____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``3(Trellis.Result{System.ValueTuple{``0,``1}},System.Func{``0,``1,System.Threading.Tasks.Task{Trellis.Result{``2}}})">
+  BindZipAsync&lt;T1, T2, T3&gt;(Result&lt;(T1, T2)&gt;, Func&lt;T1, T2, Task&lt;Result&lt;T3&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L328"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 2-tuple result and zips into a 3-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; BindZipAsync&lt;T1, T2, T3&gt;(this Result&lt;(T1, T2)&gt; result, Func&lt;T1, T2, Task&lt;Result&lt;T3&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__3_Trellis_Result_System_ValueTuple___0___1___System_Func___0___1_System_Threading_Tasks_ValueTask_Trellis_Result___2____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``3(Trellis.Result{System.ValueTuple{``0,``1}},System.Func{``0,``1,System.Threading.Tasks.ValueTask{Trellis.Result{``2}}})">
+  BindZipAsync&lt;T1, T2, T3&gt;(Result&lt;(T1, T2)&gt;, Func&lt;T1, T2, ValueTask&lt;Result&lt;T3&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L406"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 2-tuple result and zips into a 3-tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt; BindZipAsync&lt;T1, T2, T3&gt;(this Result&lt;(T1, T2)&gt; result, Func&lt;T1, T2, ValueTask&lt;Result&lt;T3&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T3&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__4_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2_System_Threading_Tasks_Task_Trellis_Result___3____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``4(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,System.Threading.Tasks.Task{Trellis.Result{``3}}})">
+  BindZipAsync&lt;T1, T2, T3, T4&gt;(Task&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, Task&lt;Result&lt;T4&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L528"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 3-tuple result and zips into a 4-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4&gt;(this Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, Task&lt;Result&lt;T4&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__4_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2_Trellis_Result___3___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``4(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,Trellis.Result{``3}})">
+  BindZipAsync&lt;T1, T2, T3, T4&gt;(Task&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, Result&lt;T4&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L515"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 3-tuple result and zips into a 4-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4&gt;(this Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, Result&lt;T4&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__4_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2_System_Threading_Tasks_ValueTask_Trellis_Result___3____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``4(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,System.Threading.Tasks.ValueTask{Trellis.Result{``3}}})">
+  BindZipAsync&lt;T1, T2, T3, T4&gt;(ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, ValueTask&lt;Result&lt;T4&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L604"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 3-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, ValueTask&lt;Result&lt;T4&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__4_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2_Trellis_Result___3___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``4(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,Trellis.Result{``3}})">
+  BindZipAsync&lt;T1, T2, T3, T4&gt;(ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, Result&lt;T4&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L592"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 3-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, Result&lt;T4&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__4_Trellis_Result_System_ValueTuple___0___1___2___System_Func___0___1___2_System_Threading_Tasks_Task_Trellis_Result___3____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``4(Trellis.Result{System.ValueTuple{``0,``1,``2}},System.Func{``0,``1,``2,System.Threading.Tasks.Task{Trellis.Result{``3}}})">
+  BindZipAsync&lt;T1, T2, T3, T4&gt;(Result&lt;(T1, T2, T3)&gt;, Func&lt;T1, T2, T3, Task&lt;Result&lt;T4&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L483"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 3-tuple result and zips into a 4-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4&gt;(this Result&lt;(T1, T2, T3)&gt; result, Func&lt;T1, T2, T3, Task&lt;Result&lt;T4&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__4_Trellis_Result_System_ValueTuple___0___1___2___System_Func___0___1___2_System_Threading_Tasks_ValueTask_Trellis_Result___3____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``4(Trellis.Result{System.ValueTuple{``0,``1,``2}},System.Func{``0,``1,``2,System.Threading.Tasks.ValueTask{Trellis.Result{``3}}})">
+  BindZipAsync&lt;T1, T2, T3, T4&gt;(Result&lt;(T1, T2, T3)&gt;, Func&lt;T1, T2, T3, ValueTask&lt;Result&lt;T4&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L561"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 3-tuple result and zips into a 4-tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4&gt;(this Result&lt;(T1, T2, T3)&gt; result, Func&lt;T1, T2, T3, ValueTask&lt;Result&lt;T4&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T4&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__5_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3_System_Threading_Tasks_Task_Trellis_Result___4____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``5(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.Task{Trellis.Result{``4}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, Task&lt;Result&lt;T5&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L683"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 4-tuple result and zips into a 5-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, Task&lt;Result&lt;T5&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__5_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3_Trellis_Result___4___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``5(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,Trellis.Result{``4}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, Result&lt;T5&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L670"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 4-tuple result and zips into a 5-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, Result&lt;T5&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__5_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3_System_Threading_Tasks_ValueTask_Trellis_Result___4____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``5(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.ValueTask{Trellis.Result{``4}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, ValueTask&lt;Result&lt;T5&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L759"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 4-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, ValueTask&lt;Result&lt;T5&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__5_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3_Trellis_Result___4___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``5(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,Trellis.Result{``4}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, Result&lt;T5&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L747"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 4-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, Result&lt;T5&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__5_Trellis_Result_System_ValueTuple___0___1___2___3___System_Func___0___1___2___3_System_Threading_Tasks_Task_Trellis_Result___4____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``5(Trellis.Result{System.ValueTuple{``0,``1,``2,``3}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.Task{Trellis.Result{``4}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(Result&lt;(T1, T2, T3, T4)&gt;, Func&lt;T1, T2, T3, T4, Task&lt;Result&lt;T5&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L638"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 4-tuple result and zips into a 5-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(this Result&lt;(T1, T2, T3, T4)&gt; result, Func&lt;T1, T2, T3, T4, Task&lt;Result&lt;T5&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__5_Trellis_Result_System_ValueTuple___0___1___2___3___System_Func___0___1___2___3_System_Threading_Tasks_ValueTask_Trellis_Result___4____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``5(Trellis.Result{System.ValueTuple{``0,``1,``2,``3}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.ValueTask{Trellis.Result{``4}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(Result&lt;(T1, T2, T3, T4)&gt;, Func&lt;T1, T2, T3, T4, ValueTask&lt;Result&lt;T5&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L716"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 4-tuple result and zips into a 5-tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5&gt;(this Result&lt;(T1, T2, T3, T4)&gt; result, Func&lt;T1, T2, T3, T4, ValueTask&lt;Result&lt;T5&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T5&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__6_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4_System_Threading_Tasks_Task_Trellis_Result___5____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``6(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.Task{Trellis.Result{``5}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, Task&lt;Result&lt;T6&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L838"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 5-tuple result and zips into a 6-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, Task&lt;Result&lt;T6&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__6_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4_Trellis_Result___5___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``6(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,Trellis.Result{``5}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, Result&lt;T6&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L825"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 5-tuple result and zips into a 6-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, Result&lt;T6&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__6_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4_System_Threading_Tasks_ValueTask_Trellis_Result___5____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``6(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.ValueTask{Trellis.Result{``5}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;Result&lt;T6&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L914"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 5-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;Result&lt;T6&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__6_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4_Trellis_Result___5___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``6(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,Trellis.Result{``5}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, Result&lt;T6&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L902"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 5-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, Result&lt;T6&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__6_Trellis_Result_System_ValueTuple___0___1___2___3___4___System_Func___0___1___2___3___4_System_Threading_Tasks_Task_Trellis_Result___5____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``6(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.Task{Trellis.Result{``5}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(Result&lt;(T1, T2, T3, T4, T5)&gt;, Func&lt;T1, T2, T3, T4, T5, Task&lt;Result&lt;T6&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L793"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 5-tuple result and zips into a 6-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(this Result&lt;(T1, T2, T3, T4, T5)&gt; result, Func&lt;T1, T2, T3, T4, T5, Task&lt;Result&lt;T6&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__6_Trellis_Result_System_ValueTuple___0___1___2___3___4___System_Func___0___1___2___3___4_System_Threading_Tasks_ValueTask_Trellis_Result___5____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``6(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.ValueTask{Trellis.Result{``5}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(Result&lt;(T1, T2, T3, T4, T5)&gt;, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;Result&lt;T6&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L871"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 5-tuple result and zips into a 6-tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6&gt;(this Result&lt;(T1, T2, T3, T4, T5)&gt; result, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;Result&lt;T6&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T6&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__7_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5_System_Threading_Tasks_Task_Trellis_Result___6____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``7(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.Task{Trellis.Result{``6}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;Result&lt;T7&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L993"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 6-tuple result and zips into a 7-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;Result&lt;T7&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__7_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5_Trellis_Result___6___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``7(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,Trellis.Result{``6}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, Result&lt;T7&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L980"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 6-tuple result and zips into a 7-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, Result&lt;T7&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__7_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5_System_Threading_Tasks_ValueTask_Trellis_Result___6____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``7(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.ValueTask{Trellis.Result{``6}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;Result&lt;T7&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1069"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 6-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;Result&lt;T7&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__7_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5_Trellis_Result___6___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``7(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,Trellis.Result{``6}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, Result&lt;T7&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1057"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 6-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, Result&lt;T7&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__7_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___System_Func___0___1___2___3___4___5_System_Threading_Tasks_Task_Trellis_Result___6____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``7(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.Task{Trellis.Result{``6}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Result&lt;(T1, T2, T3, T4, T5, T6)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;Result&lt;T7&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L948"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 6-tuple result and zips into a 7-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;Result&lt;T7&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__7_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___System_Func___0___1___2___3___4___5_System_Threading_Tasks_ValueTask_Trellis_Result___6____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``7(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.ValueTask{Trellis.Result{``6}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Result&lt;(T1, T2, T3, T4, T5, T6)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;Result&lt;T7&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1026"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 6-tuple result and zips into a 7-tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;Result&lt;T7&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T7&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__8_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_Task_Trellis_Result___7____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``8(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.Task{Trellis.Result{``7}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;Result&lt;T8&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1148"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 7-tuple result and zips into a 8-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;Result&lt;T8&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__8_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6_Trellis_Result___7___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``8(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,Trellis.Result{``7}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, Result&lt;T8&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1135"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 7-tuple result and zips into a 8-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, Result&lt;T8&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__8_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_ValueTask_Trellis_Result___7____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``8(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.ValueTask{Trellis.Result{``7}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;Result&lt;T8&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1224"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 7-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;Result&lt;T8&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__8_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6_Trellis_Result___7___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``8(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,Trellis.Result{``7}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, Result&lt;T8&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1212"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 7-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, Result&lt;T8&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__8_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6___System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_Task_Trellis_Result___7____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``8(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.Task{Trellis.Result{``7}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;Result&lt;T8&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1103"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 7-tuple result and zips into a 8-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;Result&lt;T8&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__8_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6___System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_ValueTask_Trellis_Result___7____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``8(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.ValueTask{Trellis.Result{``7}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;Result&lt;T8&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1181"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 7-tuple result and zips into a 8-tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;Result&lt;T8&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T8&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__9_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_Task_Trellis_Result___8____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``9(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.Task{Trellis.Result{``8}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;Result&lt;T9&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1303"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 8-tuple result and zips into a 9-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;Result&lt;T9&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__9_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7_Trellis_Result___8___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``9(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,Trellis.Result{``8}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Result&lt;T9&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1290"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 8-tuple result and zips into a 9-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Result&lt;T9&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__9_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_ValueTask_Trellis_Result___8____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``9(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.ValueTask{Trellis.Result{``8}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;Result&lt;T9&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1379"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on an async 8-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;Result&lt;T9&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__9_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7_Trellis_Result___8___" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``9(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,Trellis.Result{``8}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Result&lt;T9&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1367"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds a sync function on an async 8-tuple result (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Result&lt;T9&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__9_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_Task_Trellis_Result___8____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``9(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.Task{Trellis.Result{``8}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;Result&lt;T9&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1258"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 8-tuple result and zips into a 9-tuple.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;Result&lt;T9&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_BindZipExtensionsAsync_BindZipAsync_" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync*"></a>
+
+  <h3 id="Trellis_BindZipExtensionsAsync_BindZipAsync__9_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_ValueTask_Trellis_Result___8____" data-uid="Trellis.BindZipExtensionsAsync.BindZipAsync``9(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.ValueTask{Trellis.Result{``8}}})">
+  BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;Result&lt;T9&gt;&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L1336"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously binds an async function on a 8-tuple result and zips into a 9-tuple (ValueTask variant).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; BindZipAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;Result&lt;T9&gt;&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;T9&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/BindZipTs.g.cs/#L321" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Pagination | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Pagination | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/pagination.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="pagination">Pagination</h1>
+
+<p>Trellis separates pagination into three responsibilities:</p>
+<ol>
+<li><strong>Validate request controls</strong> with <code>PageRequest.TryCreate</code>.</li>
+<li><strong>Continue the query</strong> using typed state: an EF <code>SeekDefinition</code>, an application-owned algorithm, or a provider's own continuation token.</li>
+<li><strong>Assemble and project the result</strong> with <code>PageBuilder</code>, <code>Page&lt;T&gt;</code>, and <code>Page&lt;T&gt;.Map</code>.</li>
+</ol>
+<p>Core has no storage or HTTP dependency. <code>Trellis.EntityFrameworkCore</code> supplies
+provider-translatable seek pagination. <code>Trellis.Asp</code> maps <code>Result&lt;Page&lt;T&gt;&gt;</code> to
+<code>200 OK</code>, a JSON envelope, and an RFC 8288 <code>Link</code> header. Collection pagination
+does not use <code>206 Partial Content</code>, which belongs to byte-range transfer.</p>
+<h2 id="why-use-a-cursor">Why use a cursor?</h2>
+<p>Offset pagination can skip or repeat rows when concurrent changes shift their
+positions. A seek cursor instead identifies a boundary in a deterministic
+ordering, such as <code>(CreatedAt descending, Id ascending)</code>. With suitable indexes,
+the database can avoid scanning a growing offset.</p>
+<p>This is not a universal performance or consistency guarantee. Provider support,
+indexes, filters, and comparison semantics determine the query plan. Mutable
+sort values and concurrent writes can still change results between pages.
+Trellis does not create a snapshot.</p>
+<h2 id="building-blocks">Building blocks</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Package</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Cursor</code></td>
+<td>Core</td>
+<td>Opaque token; clients echo <code>Token</code> unchanged.</td>
+</tr>
+<tr>
+<td><code>PageSize</code></td>
+<td>Core</td>
+<td>Validated <code>Requested</code>, <code>Applied</code>, and <code>WasCapped</code>.</td>
+</tr>
+<tr>
+<td><code>PageRequest</code></td>
+<td>Core</td>
+<td>Validates raw cursor/limit; <code>Decode(codec)</code> produces <code>Result&lt;Maybe&lt;TState&gt;&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>ICursorCodec&lt;TState&gt;</code> / <code>CursorCodec</code></td>
+<td>Core</td>
+<td>Typed encoding, parsing, and validation of continuation state.</td>
+</tr>
+<tr>
+<td><code>PageBuilder</code></td>
+<td>Core</td>
+<td>Pure assembly from an already ordered, sought, over-fetched batch.</td>
+</tr>
+<tr>
+<td><code>Page&lt;T&gt;</code></td>
+<td>Core</td>
+<td>Immutable item sequence, adjacent cursors, and observable limit metadata; <code>Map</code> preserves that metadata.</td>
+</tr>
+<tr>
+<td><code>SeekDefinition&lt;T,TState&gt;</code></td>
+<td>EF Core</td>
+<td>Owns ordering, state extraction, and the matching lexicographic seek predicate together.</td>
+</tr>
+<tr>
+<td><code>ToPageAsync</code></td>
+<td>EF Core</td>
+<td>Decode, seek, over-fetch, and assemble a forward page.</td>
+</tr>
+</tbody>
+</table>
+<p><code>Cursor</code>, <code>PageSize</code>, <code>PageRequest</code>, and <code>Page&lt;T&gt;</code> are <strong>sealed record classes</strong>.
+Their default value is null, not an empty valid struct. Use <code>Page.Empty&lt;T&gt;(...)</code>
+for empty results and null only for an absent cursor.</p>
+<h2 id="validate-raw-input-once">Validate raw input once</h2>
+<p>Use the non-throwing factory at an untrusted boundary:</p>
+<pre><code class="lang-csharp">Result&lt;PageRequest&gt; request = PageRequest.TryCreate(
+    cursor, limit, max: 100, defaultSize: 50,
+    policy: PageSizeLimitPolicy.Clamp,
+    cursorFieldName: &quot;cursor&quot;, limitFieldName: &quot;limit&quot;);
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Missing cursor (<code>null</code>)</td>
+<td>First page: no continuation boundary.</td>
+</tr>
+<tr>
+<td>Empty or whitespace-only cursor</td>
+<td>Failed result, reason <code>cursor.malformed</code>. Never silently restarts at page one.</td>
+</tr>
+<tr>
+<td>Missing limit</td>
+<td>Uses <code>defaultSize</code>, capped to <code>max</code> if necessary.</td>
+</tr>
+<tr>
+<td>Zero or negative limit</td>
+<td>Failed result, reason <code>page-size.out-of-range</code>.</td>
+</tr>
+<tr>
+<td>Explicit limit above <code>max</code>, <code>Clamp</code> policy</td>
+<td>Keeps the original requested limit; caps the applied limit.</td>
+</tr>
+<tr>
+<td>Explicit limit above <code>max</code>, <code>Reject</code> policy</td>
+<td>Failed result, reason <code>page-size.out-of-range</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>PageRequest</code> defaults field names to <code>&quot;cursor&quot;</code> and <code>&quot;limit&quot;</code>. A custom cursor
+field name must also be passed to <code>Decode</code> / <code>ToPageAsync</code>; it is not stored in
+the request.</p>
+<p>Preserve the distinction at the transport boundary too. MVC string binding can
+convert a present-but-empty query value to null before the factory sees it.
+When binding cursor input, preserve the raw query value (for example through
+<code>Request.Query</code>) and pass null only when the parameter is actually absent.
+Otherwise <code>?cursor=</code> can accidentally become a first-page request.</p>
+<p><code>PageSize.TryCreate(limit, ...)</code> offers the same policy when only a size is
+needed (its default field name is <code>&quot;pageSize&quot;</code>). <code>PageSize.FromRequested</code>
+is a <strong>trusted, throwing convenience</strong>, not a lenient query-string parser:
+non-positive input throws. Missing input defaults; above-cap input clamps.</p>
+<p>Bad server configuration also throws: <code>max</code> must be positive and at most
+<code>PageSize.MaxApplied</code> (<code>int.MaxValue - 1</code>), <code>defaultSize</code> must be positive,
+and the policy must be defined. That bound makes <code>Applied + 1</code> safe.</p>
+<h2 id="ef-core-keep-ordering-and-seek-together">EF Core: keep ordering and seek together</h2>
+<p>The source must already carry the application's authorization, tenant, and
+business filters. This function assumes <code>authorizedOrders</code> is appropriately scoped:</p>
+<pre><code class="lang-csharp">using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+
+static Task&lt;Result&lt;Page&lt;Order&gt;&gt;&gt; ListOrders(
+    IQueryable&lt;Order&gt; authorizedOrders, string? cursor, int? limit,
+    CancellationToken ct)
+{
+    var seek = SeekDefinition.Descending&lt;Order, DateTimeOffset&gt;(o =&gt; o.CreatedAt)
+        .ThenAscending(o =&gt; o.Id.Value);
+
+    return PageRequest.TryCreate(cursor, limit)
+        .BindAsync(request =&gt; authorizedOrders.AsNoTracking()
+            .ToPageAsync(request, seek, cursorFieldName: &quot;cursor&quot;,
+                cancellationToken: ct));
+}
+</code></pre>
+<p><code>BindAsync</code> prevents database execution when request validation fails. The
+helper decodes through <code>seek.Codec</code>, applies the matching order and boundary,
+fetches <code>Applied + 1</code> rows, and emits a next cursor from the last retained row
+only when another row exists.</p>
+<p>Boundary values are projected alongside the rows in the database query using
+the same key expressions as ordering and seeking. The helper does not compile
+selectors or recompute their values after materialization. Provider-translated
+functions such as <code>EF.Functions.Collate</code> can therefore participate when the
+provider translates the complete query; equivalent-looking C# recomputation
+is not assumed to match SQL semantics.</p>
+<p>For descending time / ascending ID, the predicate is equivalent to:</p>
+<pre><code class="lang-text">time &lt; boundaryTime OR (time == boundaryTime AND id &gt; boundaryId)
+</code></pre>
+<p>Use <code>ThenAscending</code> / <code>ThenDescending</code> for additional keys, ending with a
+<strong>stable unique tie-breaker</strong>. Tuple state nests as keys are added: <code>(time, id)</code>,
+then <code>((time, id), thirdKey)</code>. Null keys are unsupported. Do not add a competing
+<code>OrderBy</code> upstream; the definition owns the complete ordering.</p>
+<p>The single-key convenience remains:</p>
+<pre><code class="lang-csharp">await authorizedOrders.ToPageAsync(
+    pageSize, cursor, o =&gt; o.Id.Value, cancellationToken: ct);
+</code></pre>
+<p>Here <code>cursor</code> is already a <code>Cursor?</code> and <code>pageSize</code> is validated. This overload
+wraps a single ascending definition, so the key must itself be unique.</p>
+<h3 id="provider-comparison-is-part-of-correctness">Provider comparison is part of correctness</h3>
+<p>Numeric/date-like keys use relational expressions; other comparable keys,
+including GUID and string, use <code>CompareTo</code>. Verify provider translation and
+agreement between <code>ORDER BY</code>, equality, and the seek comparison. Database
+collations and GUID ordering need not match .NET in-memory ordering.</p>
+<p>There is <strong>no automatic client-side fallback</strong>. A value converter alone cannot
+guarantee translation of an arbitrary comparison method. Projections through
+Trellis value objects (<code>o.Id.Value</code>) require <code>AddTrellisInterceptors()</code> on the
+context options. Verify boundary projection as well as ordering and seek
+translation when using provider-specific expressions.</p>
+<p><code>Ascending</code> / <code>Descending</code> and their <code>Then</code> counterparts accept an explicit
+key codec when the scalar codec is unsuitable. <code>seek.WithCodec(codec)</code> replaces
+the complete state codec without changing ordering or extraction; use it for
+context binding or a caller-owned protection wrapper.</p>
+<h2 id="typed-codecs-opaque-versioned-not-signed">Typed codecs: opaque, versioned, not signed</h2>
+<pre><code class="lang-csharp">ICursorCodec&lt;Guid&gt; ids = CursorCodec.Scalar&lt;Guid&gt;();
+ICursorCodec&lt;(DateTimeOffset Primary, Guid Secondary)&gt; events =
+    CursorCodec.Composite&lt;DateTimeOffset, Guid&gt;();
+
+Cursor token = events.Encode((createdAt, id));
+Result&lt;(DateTimeOffset Primary, Guid Secondary)&gt; decoded = events.TryDecode(token);
+</code></pre>
+<p>Scalar codecs require <code>IParsable&lt;T&gt;</code> plus invariant <code>IFormattable</code> support (or
+<code>string</code>); unsupported formatting fails at factory creation. Generated scalar
+IDs satisfying both interfaces can be used directly. For other value objects,
+project their primitive or provide an explicit codec.</p>
+<p>Built-in frames are URL-safe base64 of <code>1:s:...</code> (scalar), <code>1:c:...</code>
+(composite), or <code>1:x-&lt;schema&gt;:...</code> (explicit codec). Composites length-prefix
+the first component token and can nest arbitrary codecs without delimiter
+ambiguity. The entire encoded token is limited to 1,024 characters on <strong>both</strong>
+encoding and decoding. <strong>Old unversioned tokens are deliberately rejected.</strong></p>
+<p><code>CursorCodec.Create(schema, format, parse)</code> supplies an explicit serializer
+and validating parser. <code>CursorCodec.Map(wireCodec, toWire, fromWire)</code> instead
+maps a composed wire representation to named validated state. There is no
+implicit JSON fallback. Encode validates parsing and state equality, so a lossy
+formatter or invalid server boundary throws rather than issuing an unusable
+cursor. Floating-point state must be finite; dates use round-trip <code>&quot;O&quot;</code> format
+to preserve ticks and kind/offset.</p>
+<p>Built-in tokens are not encrypted or signed. Bind tenant/filter/origin/sort/
+algorithm context in the application codec when tokens must not be reused
+across different queries. A context hash is not authentication; use a
+caller-owned <code>ICursorCodec&lt;TState&gt;</code> protection wrapper for anti-tamper needs.
+Authorization must still filter every request.</p>
+<h2 id="computed-distance-or-score">Computed distance or score</h2>
+<p>For a computed order that cannot be translated, the application owns the
+algorithm and its candidate bounds. Use:</p>
+<ol>
+<li>An authorized, appropriately bounded candidate source.</li>
+<li><code>PageRequest.Decode(codec)</code> to validate optional typed continuation state.</li>
+<li>A deterministic computed value plus a stable unique tie-breaker.</li>
+<li>The matching boundary predicate <strong>before</strong> <code>Take(Applied + 1)</code>.</li>
+<li><code>PageBuilder.FromOverFetch</code> with a callback that encodes the last retained boundary.</li>
+</ol>
+<p>The <a href="../api_reference/trellis-api-cookbook.html#recipe-40--computed-pagination-with-validated-query-bound-continuation-state">computed pagination recipe</a>
+shows finite, nonnegative distance state mapped from nested composite codecs,
+canonical query-context binding, and an in-memory GUID tie-breaker using
+<code>CompareTo</code>. It deliberately uses a complete bounded snapshot; it is not
+geospatial support or a reason to materialize an unbounded database table.</p>
+<h2 id="pure-page-assembly-and-provider-tokens">Pure page assembly and provider tokens</h2>
+<p><code>PageBuilder</code> has only one overload; the callback returns a <code>Cursor</code>, not a key:</p>
+<pre><code class="lang-csharp">var codec = CursorCodec.Composite&lt;DateTimeOffset, Guid&gt;();
+var page = PageBuilder.FromOverFetch(orderedAndSoughtRows, pageSize,
+    last =&gt; codec.Encode((last.CreatedAt, last.Id)));
+</code></pre>
+<p>The caller has already sought and ordered the rows using those same keys.
+For an applied size of 25, 26 fetched rows means 25 retained rows and a next
+cursor from row 25; exactly 25, fewer rows, or no rows means no next cursor.
+The callback runs exactly once if there is more data, otherwise never.</p>
+<p>For stores that supply opaque continuation tokens, construct <code>Page&lt;T&gt;</code> directly:</p>
+<pre><code class="lang-csharp">var page = new Page&lt;Order&gt;(
+    providerItems,
+    providerNextToken is null ? null : new Cursor(providerNextToken),
+    providerPreviousToken is null ? null : new Cursor(providerPreviousToken),
+    pageSize.Requested, pageSize.Applied);
+</code></pre>
+<p>Do not decode provider tokens with <code>CursorCodec</code> or infer completion solely
+from item count. Some providers return an empty batch with a continuation.
+The page constructor snapshots the item sequence; value equality includes
+sequence contents, both cursors, and both limits.</p>
+<p><code>Page&lt;T&gt;.Map</code> preserves both cursors and limits while projecting items:</p>
+<pre><code class="lang-csharp">Result&lt;Page&lt;OrderListItem&gt;&gt; response = result.Map(page =&gt; page.Map(order =&gt;
+    new OrderListItem(order.Id.Value, order.Total.Amount, order.Total.Currency.Value)));
+</code></pre>
+<p>The EF helper and <code>PageBuilder</code> are forward-only (<code>Previous</code> is null).
+Descending ordering does not implement previous-page navigation. A direct
+<code>Page&lt;T&gt;</code> can carry a provider-supplied previous token when the provider really
+supports that operation.</p>
+<h2 id="what-fails-how">What fails how?</h2>
+<table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Missing/empty distinction, invalid raw limit</td>
+<td><code>PageRequest.TryCreate</code> returns a field-specific <code>Error.InvalidInput</code>.</td>
+</tr>
+<tr>
+<td>Bad token version/base64/UTF-8/framing, oversized or invalid state</td>
+<td>Built-in codecs return <code>Error.InvalidInput</code> with reason <code>cursor.malformed</code>.</td>
+</tr>
+<tr>
+<td>Invalid server size configuration, null required arguments</td>
+<td>Throws: a configuration/programming error, not invalid client input.</td>
+</tr>
+<tr>
+<td>Encoding invalid or non-round-tripping server state</td>
+<td>Throws <code>ArgumentException</code>.</td>
+</tr>
+<tr>
+<td>A custom codec/parser returns successful null continuation state</td>
+<td>Throws <code>InvalidOperationException</code>, including through <code>CursorCodec.TryDecodeOptional</code> / <code>PageRequest.Decode</code>; never restarts at the first page.</td>
+</tr>
+<tr>
+<td>Cancellation, query translation, database/connection failures</td>
+<td>Propagate; pagination does not relabel infrastructure faults as malformed cursors.</td>
+</tr>
+</tbody>
+</table>
+<p>Expected invalid input maps to HTTP 422 through Trellis ASP mapping; successful
+pages map to 200. See the <a href="../api_reference/trellis-api-asp.html#use-this-file-when">ASP reference</a>
+for response-envelope and link-builder overloads. Do not serialize a raw
+<code>Result&lt;Page&lt;T&gt;&gt;</code> directly.</p>
+<h2 id="upgrading-existing-pagination-code">Upgrading existing pagination code</h2>
+<ul>
+<li>Replace manual string-to-cursor parsing and lenient limit handling with
+<code>PageRequest.TryCreate</code>; do not treat empty cursors or non-positive limits as absence.</li>
+<li>Replace raw-key / timestamp-selector <code>PageBuilder</code> lambdas with
+<code>last =&gt; codec.Encode(state)</code>; there is no key-selector overload.</li>
+<li>Replace separately maintained ordering and seek predicates with an EF
+<code>SeekDefinition</code> where translation is supported.</li>
+<li>Treat cursors as nullable references, not nullable structs (<code>cursor.Token</code>,
+not <code>cursor.Value.Token</code> after a presence check).</li>
+<li>Expect outstanding old unversioned tokens to fail validation; clients must
+restart pagination. No legacy migration decoder is shipped.</li>
+</ul>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="../api_reference/trellis-api-core.html#pagination">Core pagination API</a></li>
+<li><a href="../api_reference/trellis-api-efcore.html#paginationqueryableextensions">EF pagination API</a></li>
+<li><a href="../api_reference/trellis-api-cookbook.html#recipe-3--query-handler-returning-paget-paginated-list-with-cursor">Paginated query-handler recipe</a></li>
+<li><a href="../api_reference/trellis-api-cookbook.html#recipe-40--computed-pagination-with-validated-query-bound-continuation-state">Computed pagination recipe</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/pagination.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

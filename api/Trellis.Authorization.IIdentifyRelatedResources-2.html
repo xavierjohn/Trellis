@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Interface IIdentifyRelatedResources&lt;TRelated, TId&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Interface IIdentifyRelatedResources&lt;TRelated, TId&gt; | Trellis ">
+      
+      <meta name="description" content="Declares that this resource has a plural outbound navigation to a set of related resources of type TRelated identified by TId. Used at the terminal hop of an indirect authorization chain to express OR-style / candidate-set authorization (e.g. cricket Match → {HomeTeam, AwayTeam}).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Authorization_IIdentifyRelatedResources_2.md&amp;value=---%0Auid%3A%20Trellis.Authorization.IIdentifyRelatedResources%602%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Authorization.IIdentifyRelatedResources`2">
+
+
+
+  <h1 id="Trellis_Authorization_IIdentifyRelatedResources_2" data-uid="Trellis.Authorization.IIdentifyRelatedResources`2" class="text-break">
+Interface IIdentifyRelatedResources&lt;TRelated, TId&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/IIdentifyRelatedResources.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Authorization.html">Authorization</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Authorization.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Declares that this resource has a plural outbound navigation to a set of related
+resources of type <code class="typeparamref">TRelated</code> identified by <code class="typeparamref">TId</code>.
+Used at the terminal hop of an indirect authorization chain to express OR-style /
+candidate-set authorization (e.g. cricket <code>Match → {HomeTeam, AwayTeam}</code>).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface IIdentifyRelatedResources&lt;TRelated, TId&gt;</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TRelated</code></dt>
+    <dd><p>The related resource type.</p>
+</dd>
+    <dt><code>TId</code></dt>
+    <dd><p>The identifier type of the related resource.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_Authorization_IIdentifyRelatedResources_2_examples">Examples</h2>
+  <pre><code class="lang-csharp">public sealed class Match : Aggregate&lt;MatchId&gt;, IIdentifyRelatedResources&lt;Team, TeamId&gt;
+{
+    public TeamId Team1Id { get; }
+    public TeamId Team2Id { get; }
+    public IReadOnlyList&lt;TeamId&gt; GetRelatedResourceIds() =&gt; [Team1Id, Team2Id];
+}</code></pre>
+
+
+  <h2 id="Trellis_Authorization_IIdentifyRelatedResources_2_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+The list semantics are:
+<ul><li>Empty list is treated as "no candidates" and produces a
+  <a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a> result without invoking the command's
+  <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html#Trellis_Authorization_IAuthorizeResourceVia_1_Authorize_Trellis_Authorization_Actor_System_Collections_Generic_IReadOnlyList__0__">Authorize(Actor, IReadOnlyList&lt;TOwner&gt;)</a>.</li><li>Duplicate IDs are de-duplicated by the pipeline before loading.</li><li>Order is not significant. If your domain needs to distinguish
+  roles (e.g., <code>HomeTeam</code> vs <code>AwayTeam</code>), use distinct types for each role
+  or drop to <code>IResourceLoader&lt;TMessage, TProjection&gt;</code>.</li></ul>
+
+<p>
+Only supported at the terminal hop of an authorization chain in v1. Plural-in-middle
+(fan-out cartesian expansion) is intentionally out of scope and produces a startup
+error. Use <code>IResourceLoader&lt;TMessage, TProjection&gt;</code> for that shape.
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Authorization_IIdentifyRelatedResources_2_GetRelatedResourceIds_" data-uid="Trellis.Authorization.IIdentifyRelatedResources`2.GetRelatedResourceIds*"></a>
+
+  <h3 id="Trellis_Authorization_IIdentifyRelatedResources_2_GetRelatedResourceIds" data-uid="Trellis.Authorization.IIdentifyRelatedResources`2.GetRelatedResourceIds">
+  GetRelatedResourceIds()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/IIdentifyRelatedResources.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the identifiers of all related resources of type <code class="typeparamref">TRelated</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">IReadOnlyList&lt;TId&gt; GetRelatedResourceIds()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TId&gt;</dt>
+    <dd><p>A non-null read-only list. Duplicates are de-duplicated by the pipeline before loading.
+An empty list short-circuits authorization to <a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Authorization/src/IIdentifyRelatedResources.cs/#L40" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class TapExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class TapExtensions | Trellis ">
+      
+      <meta name="description" content="Provides extension methods for executing side effects on successful Results without changing the Result.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_TapExtensions.md&amp;value=---%0Auid%3A%20Trellis.TapExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.TapExtensions">
+
+
+
+  <h1 id="Trellis_TapExtensions" data-uid="Trellis.TapExtensions" class="text-break">
+Class TapExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides extension methods for executing side effects on successful Results without changing the Result.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class TapExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">TapExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_TapExtensions_examples">Examples</h2>
+  <pre><code class="lang-csharp">var result = GetUser(id)
+    .Tap(user =&gt; _logger.LogInformation("Found user: {Name}", user.Name))
+    .Bind(user =&gt; ValidateUser(user))
+    .Tap(() =&gt; _metrics.IncrementCounter("user.validated"));</code></pre>
+
+  <pre><code class="lang-csharp">// Without cancellation token
+var result = EmailAddress.TryCreate("user@example.com")
+    .Combine(UserId.TryCreate("123"))
+    .Tap((email, userId) =&gt; _logger.LogInformation("Processing user {UserId} with email {Email}", userId, email))
+    .Tap((email, userId) =&gt; _metrics.RecordUserCreation())
+    .Bind((email, userId) =&gt; CreateUser(email, userId));
+
+// With cancellation token (closure capture)
+var ct = cancellationToken;
+var result = await EmailAddress.TryCreate("user@example.com")
+    .Combine(UserId.TryCreate("123"))
+    .TapAsync((email, userId) =&gt; LogAsync(email, userId, ct))
+    .BindAsync((email, userId) =&gt; CreateUserAsync(email, userId, ct));</code></pre>
+
+
+  <h2 id="Trellis_TapExtensions_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Tap is useful for performing side effects (like logging, auditing, or debugging) in a functional pipeline
+without breaking the chain. The action is only executed if the Result is successful, and the original
+Result is always returned unchanged. This allows you to &quot;peek&quot; at values flowing through the pipeline.</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__1_Trellis_Result___0__System_Action_" data-uid="Trellis.TapExtensions.Tap``1(Trellis.Result{``0},System.Action)">
+  Tap&lt;TValue&gt;(Result&lt;TValue&gt;, Action)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Tap.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the given action if the result is a success. Returns the original result unchanged.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TValue&gt; Tap&lt;TValue&gt;(this Result&lt;TValue&gt; result, Action action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd><p>The result to tap.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action">Action</a></dt>
+    <dd><p>The action to execute if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd><p>Type of the result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__1_Trellis_Result___0__System_Action___0__" data-uid="Trellis.TapExtensions.Tap``1(Trellis.Result{``0},System.Action{``0})">
+  Tap&lt;TValue&gt;(Result&lt;TValue&gt;, Action&lt;TValue&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Tap.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes the given action with the value if the result is a success. Returns the original result unchanged.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;TValue&gt; Tap&lt;TValue&gt;(this Result&lt;TValue&gt; result, Action&lt;TValue&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd><p>The result to tap.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;TValue&gt;</dt>
+    <dd><p>The action to execute with the value if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TValue&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValue</code></dt>
+    <dd><p>Type of the result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__2_Trellis_Result_System_ValueTuple___0___1___System_Action___0___1__" data-uid="Trellis.TapExtensions.Tap``2(Trellis.Result{System.ValueTuple{``0,``1}},System.Action{``0,``1})">
+  Tap&lt;T1, T2&gt;(Result&lt;(T1, T2)&gt;, Action&lt;T1, T2&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 2-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2)&gt; Tap&lt;T1, T2&gt;(this Result&lt;(T1, T2)&gt; result, Action&lt;T1, T2&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd><p>The result containing a 2-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-2">Action</a>&lt;T1, T2&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__2_Trellis_Result_System_ValueTuple___0___1___System_Action___0___1___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Tap((arg1, arg2) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2}"))
+    .Bind((arg1, arg2) =&gt; ProcessData(arg1, arg2));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__2_Trellis_Result_System_ValueTuple___0___1___System_Action___0___1___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__3_Trellis_Result_System_ValueTuple___0___1___2___System_Action___0___1___2__" data-uid="Trellis.TapExtensions.Tap``3(Trellis.Result{System.ValueTuple{``0,``1,``2}},System.Action{``0,``1,``2})">
+  Tap&lt;T1, T2, T3&gt;(Result&lt;(T1, T2, T3)&gt;, Action&lt;T1, T2, T3&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 3-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3)&gt; Tap&lt;T1, T2, T3&gt;(this Result&lt;(T1, T2, T3)&gt; result, Action&lt;T1, T2, T3&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;</dt>
+    <dd><p>The result containing a 3-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-3">Action</a>&lt;T1, T2, T3&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of element 3 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__3_Trellis_Result_System_ValueTuple___0___1___2___System_Action___0___1___2___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Combine(Field3.TryCreate("value3"))
+    .Tap((arg1, arg2, arg3) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2 + ", " + arg3}"))
+    .Bind((arg1, arg2, arg3) =&gt; ProcessData(arg1, arg2, arg3));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__3_Trellis_Result_System_ValueTuple___0___1___2___System_Action___0___1___2___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__4_Trellis_Result_System_ValueTuple___0___1___2___3___System_Action___0___1___2___3__" data-uid="Trellis.TapExtensions.Tap``4(Trellis.Result{System.ValueTuple{``0,``1,``2,``3}},System.Action{``0,``1,``2,``3})">
+  Tap&lt;T1, T2, T3, T4&gt;(Result&lt;(T1, T2, T3, T4)&gt;, Action&lt;T1, T2, T3, T4&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 4-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4)&gt; Tap&lt;T1, T2, T3, T4&gt;(this Result&lt;(T1, T2, T3, T4)&gt; result, Action&lt;T1, T2, T3, T4&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;</dt>
+    <dd><p>The result containing a 4-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-4">Action</a>&lt;T1, T2, T3, T4&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of element 3 in the tuple.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of element 4 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__4_Trellis_Result_System_ValueTuple___0___1___2___3___System_Action___0___1___2___3___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Combine(Field3.TryCreate("value3"))
+    .Combine(Field4.TryCreate("value4"))
+    .Tap((arg1, arg2, arg3, arg4) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2 + ", " + arg3 + ", " + arg4}"))
+    .Bind((arg1, arg2, arg3, arg4) =&gt; ProcessData(arg1, arg2, arg3, arg4));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__4_Trellis_Result_System_ValueTuple___0___1___2___3___System_Action___0___1___2___3___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__5_Trellis_Result_System_ValueTuple___0___1___2___3___4___System_Action___0___1___2___3___4__" data-uid="Trellis.TapExtensions.Tap``5(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}},System.Action{``0,``1,``2,``3,``4})">
+  Tap&lt;T1, T2, T3, T4, T5&gt;(Result&lt;(T1, T2, T3, T4, T5)&gt;, Action&lt;T1, T2, T3, T4, T5&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L188"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 5-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5)&gt; Tap&lt;T1, T2, T3, T4, T5&gt;(this Result&lt;(T1, T2, T3, T4, T5)&gt; result, Action&lt;T1, T2, T3, T4, T5&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;</dt>
+    <dd><p>The result containing a 5-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-5">Action</a>&lt;T1, T2, T3, T4, T5&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of element 3 in the tuple.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of element 4 in the tuple.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of element 5 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__5_Trellis_Result_System_ValueTuple___0___1___2___3___4___System_Action___0___1___2___3___4___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Combine(Field3.TryCreate("value3"))
+    .Combine(Field4.TryCreate("value4"))
+    .Combine(Field5.TryCreate("value5"))
+    .Tap((arg1, arg2, arg3, arg4, arg5) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2 + ", " + arg3 + ", " + arg4 + ", " + arg5}"))
+    .Bind((arg1, arg2, arg3, arg4, arg5) =&gt; ProcessData(arg1, arg2, arg3, arg4, arg5));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__5_Trellis_Result_System_ValueTuple___0___1___2___3___4___System_Action___0___1___2___3___4___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__6_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___System_Action___0___1___2___3___4___5__" data-uid="Trellis.TapExtensions.Tap``6(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}},System.Action{``0,``1,``2,``3,``4,``5})">
+  Tap&lt;T1, T2, T3, T4, T5, T6&gt;(Result&lt;(T1, T2, T3, T4, T5, T6)&gt;, Action&lt;T1, T2, T3, T4, T5, T6&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L231"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 6-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6)&gt; Tap&lt;T1, T2, T3, T4, T5, T6&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6)&gt; result, Action&lt;T1, T2, T3, T4, T5, T6&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;</dt>
+    <dd><p>The result containing a 6-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-6">Action</a>&lt;T1, T2, T3, T4, T5, T6&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of element 3 in the tuple.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of element 4 in the tuple.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of element 5 in the tuple.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of element 6 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__6_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___System_Action___0___1___2___3___4___5___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Combine(Field3.TryCreate("value3"))
+    .Combine(Field4.TryCreate("value4"))
+    .Combine(Field5.TryCreate("value5"))
+    .Combine(Field6.TryCreate("value6"))
+    .Tap((arg1, arg2, arg3, arg4, arg5, arg6) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2 + ", " + arg3 + ", " + arg4 + ", " + arg5 + ", " + arg6}"))
+    .Bind((arg1, arg2, arg3, arg4, arg5, arg6) =&gt; ProcessData(arg1, arg2, arg3, arg4, arg5, arg6));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__6_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___System_Action___0___1___2___3___4___5___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__7_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6___System_Action___0___1___2___3___4___5___6__" data-uid="Trellis.TapExtensions.Tap``7(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}},System.Action{``0,``1,``2,``3,``4,``5,``6})">
+  Tap&lt;T1, T2, T3, T4, T5, T6, T7&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;, Action&lt;T1, T2, T3, T4, T5, T6, T7&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L276"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 7-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt; Tap&lt;T1, T2, T3, T4, T5, T6, T7&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt; result, Action&lt;T1, T2, T3, T4, T5, T6, T7&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;</dt>
+    <dd><p>The result containing a 7-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-7">Action</a>&lt;T1, T2, T3, T4, T5, T6, T7&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of element 3 in the tuple.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of element 4 in the tuple.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of element 5 in the tuple.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of element 6 in the tuple.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of element 7 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__7_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6___System_Action___0___1___2___3___4___5___6___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Combine(Field3.TryCreate("value3"))
+    .Combine(Field4.TryCreate("value4"))
+    .Combine(Field5.TryCreate("value5"))
+    .Combine(Field6.TryCreate("value6"))
+    .Combine(Field7.TryCreate("value7"))
+    .Tap((arg1, arg2, arg3, arg4, arg5, arg6, arg7) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2 + ", " + arg3 + ", " + arg4 + ", " + arg5 + ", " + arg6 + ", " + arg7}"))
+    .Bind((arg1, arg2, arg3, arg4, arg5, arg6, arg7) =&gt; ProcessData(arg1, arg2, arg3, arg4, arg5, arg6, arg7));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__7_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6___System_Action___0___1___2___3___4___5___6___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__8_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7____System_Action___0___1___2___3___4___5___6___7__" data-uid="Trellis.TapExtensions.Tap``8(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}},System.Action{``0,``1,``2,``3,``4,``5,``6,``7})">
+  Tap&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;, Action&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L323"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 8-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt; Tap&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt; result, Action&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;</dt>
+    <dd><p>The result containing a 8-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-8">Action</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of element 3 in the tuple.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of element 4 in the tuple.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of element 5 in the tuple.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of element 6 in the tuple.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of element 7 in the tuple.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>The type of element 8 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__8_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7____System_Action___0___1___2___3___4___5___6___7___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Combine(Field3.TryCreate("value3"))
+    .Combine(Field4.TryCreate("value4"))
+    .Combine(Field5.TryCreate("value5"))
+    .Combine(Field6.TryCreate("value6"))
+    .Combine(Field7.TryCreate("value7"))
+    .Combine(Field8.TryCreate("value8"))
+    .Tap((arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2 + ", " + arg3 + ", " + arg4 + ", " + arg5 + ", " + arg6 + ", " + arg7 + ", " + arg8}"))
+    .Bind((arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) =&gt; ProcessData(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__8_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7____System_Action___0___1___2___3___4___5___6___7___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+  <a id="Trellis_TapExtensions_Tap_" data-uid="Trellis.TapExtensions.Tap*"></a>
+
+  <h3 id="Trellis_TapExtensions_Tap__9_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8____System_Action___0___1___2___3___4___5___6___7___8__" data-uid="Trellis.TapExtensions.Tap``9(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7,``8}}},System.Action{``0,``1,``2,``3,``4,``5,``6,``7,``8})">
+  Tap&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;, Action&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L372"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Executes a side effect action on a successful 9-element tuple result without modifying the result.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt; Tap&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt; result, Action&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt; action)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;</dt>
+    <dd><p>The result containing a 9-element tuple.</p>
+</dd>
+    <dt><code>action</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-9">Action</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9&gt;</dt>
+    <dd><p>The side effect action to execute on the tuple elements if successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;</dt>
+    <dd><p>The original result unchanged.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd><p>The type of element 1 in the tuple.</p>
+</dd>
+    <dt><code>T2</code></dt>
+    <dd><p>The type of element 2 in the tuple.</p>
+</dd>
+    <dt><code>T3</code></dt>
+    <dd><p>The type of element 3 in the tuple.</p>
+</dd>
+    <dt><code>T4</code></dt>
+    <dd><p>The type of element 4 in the tuple.</p>
+</dd>
+    <dt><code>T5</code></dt>
+    <dd><p>The type of element 5 in the tuple.</p>
+</dd>
+    <dt><code>T6</code></dt>
+    <dd><p>The type of element 6 in the tuple.</p>
+</dd>
+    <dt><code>T7</code></dt>
+    <dd><p>The type of element 7 in the tuple.</p>
+</dd>
+    <dt><code>T8</code></dt>
+    <dd><p>The type of element 8 in the tuple.</p>
+</dd>
+    <dt><code>T9</code></dt>
+    <dd><p>The type of element 9 in the tuple.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__9_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8____System_Action___0___1___2___3___4___5___6___7___8___examples">Examples</h4>
+  <pre><code class="lang-csharp">var result = FirstName.TryCreate("John")
+    .Combine(LastName.TryCreate("Doe"))
+    .Combine(Field3.TryCreate("value3"))
+    .Combine(Field4.TryCreate("value4"))
+    .Combine(Field5.TryCreate("value5"))
+    .Combine(Field6.TryCreate("value6"))
+    .Combine(Field7.TryCreate("value7"))
+    .Combine(Field8.TryCreate("value8"))
+    .Combine(Field9.TryCreate("value9"))
+    .Tap((arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) =&gt; _logger.LogInfo($"Values: {arg1 + ", " + arg2 + ", " + arg3 + ", " + arg4 + ", " + arg5 + ", " + arg6 + ", " + arg7 + ", " + arg8 + ", " + arg9}"))
+    .Bind((arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) =&gt; ProcessData(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9));</code></pre>
+
+
+  <h4 class="section" id="Trellis_TapExtensions_Tap__9_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8____System_Action___0___1___2___3___4___5___6___7___8___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the result is a failure, the action is not executed and the failure is returned unchanged.
+This enables safe side effects in Railway Oriented Programming chains.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/TapTs.g.cs/#L49" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

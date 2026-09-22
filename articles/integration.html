@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Integration Guides | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Integration Guides | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="integration">Integration</h1>
+
+<p>When you adopt Trellis, the hard part is rarely <code>Result&lt;T&gt;</code> itself. The real work is making it feel natural in HTTP APIs, validation, persistence, authorization, and observability. These guides show the pieces that fit around Trellis in real applications.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Article</th>
+<th>Topics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Map <code>Result&lt;T&gt;</code> to HTTP responses (MVC, Minimal APIs, Problem Details, ETags, <code>Prefer</code>)</td>
+<td><a href="integration-aspnet.html">ASP.NET Core</a></td>
+<td>asp, http, problem-details</td>
+</tr>
+<tr>
+<td>Authorize HTTP requests with actor-based claims</td>
+<td><a href="integration-asp-authorization.html">ASP.NET Authorization</a></td>
+<td>asp, authorization, actor</td>
+</tr>
+<tr>
+<td>Call HTTP APIs and bridge responses into <code>Result&lt;T&gt;</code> / <code>Maybe&lt;T&gt;</code></td>
+<td><a href="integration-http.html">HTTP Client</a></td>
+<td>http, httpclient, json</td>
+</tr>
+<tr>
+<td>Add validator-based input checks at the application boundary</td>
+<td><a href="integration-fluentvalidation.html">FluentValidation</a></td>
+<td>validation, fluentvalidation</td>
+</tr>
+<tr>
+<td>Persist aggregates with EF Core and explicit failure mapping</td>
+<td><a href="integration-ef.html">Entity Framework Core</a></td>
+<td>ef, persistence, repository</td>
+</tr>
+<tr>
+<td>Apply pipeline behaviors (validation, logging, transactions) around handlers</td>
+<td><a href="integration-mediator.html">Mediator</a></td>
+<td>mediator, pipeline</td>
+</tr>
+<tr>
+<td>Configure least-privilege database permissions</td>
+<td><a href="integration-db-permissions.html">Database Permissions</a></td>
+<td>ef, security, permissions</td>
+</tr>
+<tr>
+<td>Sign users in via external identity providers</td>
+<td><a href="integration-sso.html">SSO</a></td>
+<td>sso, authentication</td>
+</tr>
+<tr>
+<td>Test against Microsoft Entra in integration tests</td>
+<td><a href="integration-entra-testing.html">Entra Testing</a></td>
+<td>testing, entra, sso</td>
+</tr>
+<tr>
+<td>Write integration tests for Trellis-based services</td>
+<td><a href="integration-testing.html">Testing</a></td>
+<td>testing, integration</td>
+</tr>
+<tr>
+<td>Trace, correlate, and diagnose production behavior</td>
+<td><a href="integration-observability.html">Observability</a></td>
+<td>observability, opentelemetry, tracing</td>
+</tr>
+</tbody>
+</table>
+<div class="TIP">
+<h5>Tip</h5>
+<p>If you are building a web API, start with <a href="integration-aspnet.html">ASP.NET Core Integration</a>. It gives you the cleanest end-to-end path from domain results to HTTP responses.</p>
+</div>
+<h2 id="pick-the-guide-you-need">Pick the guide you need</h2>
+<table>
+<thead>
+<tr>
+<th>Guide</th>
+<th>Use it when you need to...</th>
+<th>What you will learn</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="integration-aspnet.html">ASP.NET Core Integration</a></td>
+<td>Turn <code>Result&lt;T&gt;</code> into clean HTTP responses</td>
+<td>MVC, Minimal APIs, Problem Details, ETags, <code>Prefer</code>, pagination</td>
+</tr>
+<tr>
+<td><a href="integration-http.html">HTTP Client Integration</a></td>
+<td>Consume HTTP APIs without exception-driven control flow</td>
+<td>Functional status handling, deserialization into <code>Result&lt;T&gt;</code> and <code>Maybe&lt;T&gt;</code></td>
+</tr>
+<tr>
+<td><a href="integration-fluentvalidation.html">FluentValidation Integration</a></td>
+<td>Add richer validation rules at the application boundary</td>
+<td>Validator composition, async validation, converting failures to Trellis results</td>
+</tr>
+<tr>
+<td><a href="integration-ef.html">Entity Framework Core Integration</a></td>
+<td>Keep persistence explicit and result-driven</td>
+<td>Repository patterns, database exception mapping, pagination</td>
+</tr>
+<tr>
+<td><a href="integration-observability.html">Observability &amp; Monitoring</a></td>
+<td>Trace and diagnose production behavior</td>
+<td>OpenTelemetry, correlation, break-glass Result tracing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-the-pieces-fit-together">How the pieces fit together</h2>
+<pre><code class="lang-mermaid">flowchart LR
+    Client[Client Request]
+    Asp[ASP.NET Core + Trellis.Asp]
+    App[Application Layer]
+    Domain[Domain Model]
+    Infra[Infrastructure]
+
+    Client --&gt; Asp
+    Asp --&gt; App
+    App --&gt; Domain
+    App --&gt; Infra
+    Domain --&gt; App
+    Infra --&gt; App
+    App --&gt; Asp
+    Asp --&gt; Client
+</code></pre>
+<p>In practice, most Trellis applications follow the same flow:</p>
+<ol>
+<li><strong>Validate input early</strong> with scalar-value validation and/or FluentValidation.</li>
+<li><strong>Keep <code>Result&lt;T&gt;</code> inside your application layer</strong> while business rules run.</li>
+<li><strong>Map results once at the boundary</strong> using ASP.NET Core or HttpClient integrations.</li>
+<li><strong>Attach operational concerns</strong> like authorization, concurrency, persistence, and telemetry around that core flow.</li>
+</ol>
+<h2 id="a-sensible-learning-path">A sensible learning path</h2>
+<h3 id="if-you-are-building-an-http-api">If you are building an HTTP API</h3>
+<ol>
+<li>Start with <a href="integration-aspnet.html">ASP.NET Core Integration</a></li>
+<li>Add <a href="integration-fluentvalidation.html">FluentValidation Integration</a> for business rules</li>
+<li>Add <a href="integration-ef.html">Entity Framework Core Integration</a> for persistence</li>
+<li>Add <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a> if requests need actor-based authorization</li>
+<li>Finish with <a href="integration-observability.html">Observability &amp; Monitoring</a></li>
+</ol>
+<h3 id="if-you-are-calling-other-apis">If you are calling other APIs</h3>
+<p>Start with <a href="integration-http.html">HTTP Client Integration</a>, then add the validation and observability guides as needed.</p>
+<h2 id="what-stays-the-same-across-all-guides">What stays the same across all guides</h2>
+<p>No matter which integration you use, the same design rule keeps paying off:</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Let Trellis types describe success and failure inside your application. Convert them to framework-specific responses only at the edge.</p>
+</div>
+<p>That usually means:</p>
+<ul>
+<li><code>Result&lt;T&gt;</code> stays in handlers, services, and repositories</li>
+<li>ASP.NET Core controllers/endpoints call <code>ToHttpResponse(...)</code>, with <code>.AsActionResult&lt;T&gt;()</code> for typed MVC signatures</li>
+<li>outbound HTTP code turns responses back into <code>Result&lt;T&gt;</code></li>
+<li>validation, authorization, and persistence all return explicit failures instead of throwing for expected conditions</li>
+</ul>
+<h2 id="quick-start">Quick start</h2>
+<p>If you want the shortest path to something useful:</p>
+<pre><code class="lang-csharp">using Trellis.Asp;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddTrellisAsp();
+
+var app = builder.Build();
+app.MapControllers();
+app.Run();
+</code></pre>
+<p>From there:</p>
+<ul>
+<li>add <code>AddScalarValueValidation()</code> when you use scalar value objects in requests</li>
+<li>add <code>integration-asp-authorization.md</code> when HTTP claims need to become an <code>Actor</code></li>
+<li>add EF Core and FluentValidation integrations as your app grows</li>
+</ul>
+<h2 id="next-step">Next step</h2>
+<p>Go to <a href="integration-aspnet.html">ASP.NET Core Integration</a>.</p>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>Core <code>Result&lt;T&gt;</code> / <code>Maybe&lt;T&gt;</code> / <code>Error</code> semantics: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Mediator pipeline behaviors: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a></li>
+<li>ASP.NET Core response mapping surface: <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+<li>EF Core integration surface: <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a></li>
+<li>FluentValidation integration surface: <a href="../api_reference/trellis-api-fluentvalidation.html"><code>trellis-api-fluentvalidation.md</code></a></li>
+<li>HttpClient extensions surface: <a href="../api_reference/trellis-api-http.html"><code>trellis-api-http.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Azure Service Bus Transport | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Azure Service Bus Transport | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-azure-service-bus.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="azure-service-bus-transport">Azure Service Bus Transport</h1>
+
+<p>The <a href="integration-outbox.html">transactional outbox</a> stages integration events durably, and the <a href="integration-inbox.html">transactional inbox</a> makes consuming them idempotent. <code>Trellis.Messaging.AzureServiceBus</code> is the wire between the two, so those guarantees hold across service boundaries instead of only inside one process.</p>
+<h2 id="the-guarantee-that-matters">The guarantee that matters</h2>
+<p>Everything in this package exists to preserve one value.</p>
+<p>Outbox relay delivery is <strong>at-least-once</strong>. If the process crashes between publishing a row and saving the relay's bookkeeping, that row is published again. The consumer's inbox deduplicates on <code>(ConsumerId, MessageId)</code>, so those two copies only collapse into one effective processing if they arrive under the <em>same</em> message id.</p>
+<p>That id is the producer's outbox row id, and the transport's job is to carry it verbatim:</p>
+<pre><code class="lang-csharp">var serviceBusMessage = new ServiceBusMessage(body)
+{
+    MessageId = message.MessageId.ToString(),  // the outbox row id, unchanged
+    Subject = wireName,
+    ContentType = &quot;application/json&quot;,
+};
+</code></pre>
+<p>A transport that generated its own id per publish attempt would put a different <code>MessageId</code> on each copy. The inbox would still be there, still look correct, and still deduplicate nothing. That is why <code>IIntegrationEventPublisher</code> takes an <code>OutboundIntegrationMessage</code> carrying the id, rather than the bare event: publishing without the identity is not expressible.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>This collapses redeliveries of a <em>single</em> outbox row. A retried domain row re-runs its translator and stages a genuinely new integration row with a new id — a different duplicate that still needs business-identity deduplication. See <a href="integration-outbox.html">Transactional Outbox</a> for the distinction.</p>
+</div>
+<h2 id="naming-events-on-the-wire">Naming events on the wire</h2>
+<p>The outbox stores <code>Type.AssemblyQualifiedName</code>, which is fine for relaying inside one process and useless across services: the consumer's assemblies differ, and the string embeds an assembly version that a routine upgrade invalidates.</p>
+<p>Give each contract a stable name it owns:</p>
+<pre><code class="lang-csharp">[IntegrationEventName(&quot;orders.order-placed.v1&quot;)]
+public sealed record OrderPlaced(string OrderNumber, DateTimeOffset OccurredAt) : IIntegrationEvent;
+</code></pre>
+<p>Both sides build an <code>IntegrationEventNameMap</code> and resolve the name in whichever direction they need. The producer never has to know what the consumer calls the type.</p>
+<h2 id="producing">Producing</h2>
+<pre><code class="lang-csharp">builder.Services.AddSingleton(new ServiceBusClient(connectionString));
+
+builder.Services.AddAzureServiceBusIntegrationEventPublisher(
+    IntegrationEventNameMap.FromAssemblies(typeof(OrderPlaced).Assembly),
+    options =&gt; options.MessageSource = &quot;orders-service&quot;);
+</code></pre>
+<p>That is the only change to a service that already has an outbox. The relay keeps draining rows; they now leave the process.</p>
+<p>This <strong>replaces</strong> the in-process publisher rather than adding to it. The two are alternatives, not layers — running both would deliver each event locally <em>and</em> over the wire, so a service subscribed to its own topic would handle everything twice.</p>
+<p>By default each contract gets its own topic, named after its wire name. Subscribers declare interest by subscribing to the topics they want rather than filtering everything. Use <code>TopicNameResolver</code> to prefix an environment segment or to collapse contracts onto a shared topic — and if you collapse them, filter each subscription on <code>sys.Label</code>, which always carries the wire name.</p>
+<h2 id="consuming">Consuming</h2>
+<pre><code class="lang-csharp">builder.Services.AddSingleton(new ServiceBusClient(connectionString));
+
+builder.Services.AddTrellisInbox&lt;BillingDbContext&gt;(o =&gt; o.ConsumerId = &quot;billing&quot;);
+
+builder.Services.AddAzureServiceBusIntegrationEventConsumer(
+    IntegrationEventNameMap.FromAssemblies(typeof(OrderPlaced).Assembly),
+    options =&gt; options.Subscribe(&quot;orders.order-placed.v1&quot;, &quot;billing&quot;));
+</code></pre>
+<p>The dedup identity is <code>InboxOptions.ConsumerId</code>, not a transport setting. That is deliberate: a service that consumes the same logical message from two routes should still process it once.</p>
+<h2 id="how-messages-are-settled">How messages are settled</h2>
+<p>Settlement follows from what the inbox reports, so <code>AutoCompleteMessages</code> is off.</p>
+<table>
+<thead>
+<tr>
+<th>Outcome</th>
+<th>Action</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Processed</code></td>
+<td>Complete</td>
+<td>Handler side effects and the dedup row committed together.</td>
+</tr>
+<tr>
+<td><code>SkippedDuplicate</code></td>
+<td>Complete</td>
+<td>Already durably accounted for. Abandoning it would redeliver forever — every attempt would reach the same conclusion.</td>
+</tr>
+<tr>
+<td>Handler threw</td>
+<td>Abandon</td>
+<td>The dispatcher rolled back, so nothing was applied. Redelivery is correct; <code>MaxDeliveryCount</code> dead-letters a persistently failing message.</td>
+</tr>
+<tr>
+<td>Message unusable</td>
+<td>Dead-letter</td>
+<td>No parseable id, no contract name, an unknown contract, or a body that will not deserialize. Retrying the same bytes cannot change the outcome, so the message is dead-lettered immediately with a reason code rather than after burning the delivery count.</td>
+</tr>
+</tbody>
+</table>
+<p>Dead-letter reasons are <code>servicebus_unusable_message_id</code>, <code>servicebus_missing_subject</code>, <code>servicebus_unknown_contract</code>, and <code>servicebus_malformed_body</code>, each with a description naming the specific problem.</p>
+<p><code>servicebus_unknown_contract</code> is worth calling out: on a shared topic it is normal traffic, not a defect. A producer may emit contracts you do not model. Dead-lettering is a routing decision you can monitor, not a crash.</p>
+<h2 id="running-the-tests-locally">Running the tests locally</h2>
+<pre><code>docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml up -d
+</code></pre>
+<p>The emulator declares its topics and subscriptions in <code>Config.json</code> before it starts and cannot create them at runtime, so that file is part of the test fixture rather than something the tests provision.</p>
+<p>Two details in that fixture are deliberate:</p>
+<ul>
+<li><strong>Duplicate detection is off.</strong> If the broker collapsed duplicate message ids, the tests would pass even if the transport invented a fresh id per publish. The suite asserts that Trellis carries the id, not that Service Bus can be configured to hide the consequences of losing it.</li>
+<li><strong>The tests skip visibly</strong> when no emulator is reachable, rather than passing against an in-memory stand-in. A suite that quietly substitutes a fake proves nothing about a transport.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-azure-service-bus.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

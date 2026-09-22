@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt; | Trellis ">
+      
+      <meta name="description" content="Pipeline behavior that performs indirect (multi-hop) resource-based authorization. The command identifies a leaf resource via the existing  infrastructure and declares its final authorization target via ; this behavior walks the pre-resolved  from leaf to owner and invokes the command&#39;s  method against the final list of owners.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4">
+
+
+
+  <h1 id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4" class="text-break">
+Class ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;  
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Mediator.html">Mediator</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Mediator.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Pipeline behavior that performs indirect (multi-hop) resource-based authorization.
+The command identifies a leaf resource via the existing
+<a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> infrastructure and declares its final
+authorization target via <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html">IAuthorizeResourceVia&lt;TOwner&gt;</a>; this behavior walks
+the pre-resolved <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a> from leaf to owner and invokes
+the command's <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html#Trellis_Authorization_IAuthorizeResourceVia_1_Authorize_Trellis_Authorization_Actor_System_Collections_Generic_IReadOnlyList__0__">Authorize(Actor, IReadOnlyList&lt;TOwner&gt;)</a> method against the
+final list of owners.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt; : IPipelineBehavior&lt;TMessage, TResponse&gt; where TMessage : IAuthorizeResourceVia&lt;TOwner&gt;, IMessage where TLeaf : class where TResponse : IResult, IFailureFactory&lt;TResponse&gt;</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TMessage</code></dt>
+    <dd><p>The message type, constrained to <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html">IAuthorizeResourceVia&lt;TOwner&gt;</a>.</p>
+</dd>
+    <dt><code>TLeaf</code></dt>
+    <dd><p>The leaf resource type identified by the message.</p>
+</dd>
+    <dt><code>TOwner</code></dt>
+    <dd><p>The owner resource type at the end of the navigation chain.</p>
+</dd>
+    <dt><code>TResponse</code></dt>
+    <dd><p>The response type, constrained to <a class="xref" href="Trellis.IResult.html">IResult</a> and <a class="xref" href="Trellis.IFailureFactory-1.html">IFailureFactory&lt;TSelf&gt;</a>.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><span class="xref">IPipelineBehavior</span>&lt;TMessage, TResponse&gt;</div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Failure semantics:
+<ul><li><b>Leaf load failure</b> — the loader's error bubbles verbatim (matches the existing <a class="xref" href="Trellis.Mediator.ResourceAuthorizationBehavior-3.html">ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</a> semantics for the resource the command identifies).</li><li><b>Intermediate / owner load failure</b> — collapsed to <a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a> to avoid leaking existence of related resources whose presence/absence the actor may not be authorized to learn.</li><li><b>Empty result at any hop</b> (singular extract returning 0 IDs or plural extract returning 0 IDs) — short-circuits to <a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a> without calling <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html#Trellis_Authorization_IAuthorizeResourceVia_1_Authorize_Trellis_Authorization_Actor_System_Collections_Generic_IReadOnlyList__0__">Authorize(Actor, IReadOnlyList&lt;TOwner&gt;)</a>.</li></ul>
+
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_Trellis_Authorization_IActorProvider_System_IServiceProvider_Trellis_Mediator_ResolvedAuthorizationPath_" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor(Trellis.Authorization.IActorProvider,System.IServiceProvider,Trellis.Mediator.ResolvedAuthorizationPath)">
+  ResourceAuthorizationViaBehavior(IActorProvider, IServiceProvider, ResolvedAuthorizationPath)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ResourceAuthorizationViaBehavior.cs/#L113"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Mediator.ResourceAuthorizationViaBehavior-4.html">ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPath path)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>actorProvider</code> <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a></dt>
+    <dd><p>Provider used to resolve the current actor.</p>
+</dd>
+    <dt><code>serviceProvider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a></dt>
+    <dd><p>The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</p>
+</dd>
+    <dt><code>path</code> <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a></dt>
+    <dd><p>The pre-resolved authorization path from leaf to owner.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when any argument is null.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown when <code class="paramref">path</code> does not agree with the behavior's generic
+arguments — specifically when <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html#Trellis_Mediator_ResolvedAuthorizationPath_MessageType">MessageType</a>
+is not <code class="typeparamref">TMessage</code>, <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html#Trellis_Mediator_ResolvedAuthorizationPath_LeafType">LeafType</a>
+is not <code class="typeparamref">TLeaf</code>, or <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html#Trellis_Mediator_ResolvedAuthorizationPath_OwnerType">OwnerType</a>
+is not <code class="typeparamref">TOwner</code>. This guards against a single
+<a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a> being shared across multiple via-authorized
+commands via DI; the typed-registration path uses
+<a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPathHolder-4.html">ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a> to
+prevent that misuse statically, and this constructor's defense applies if a consumer
+constructs the behavior manually.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_Trellis_Authorization_IActorProvider_System_IServiceProvider_Trellis_Mediator_ResolvedAuthorizationPath_Microsoft_Extensions_Options_IOptions_Trellis_Mediator_ResourceAuthorizationOptions__Microsoft_Extensions_Logging_ILogger_Trellis_Mediator_ResourceAuthorizationViaBehavior__0__1__2__3___" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor(Trellis.Authorization.IActorProvider,System.IServiceProvider,Trellis.Mediator.ResolvedAuthorizationPath,Microsoft.Extensions.Options.IOptions{Trellis.Mediator.ResourceAuthorizationOptions},Microsoft.Extensions.Logging.ILogger{Trellis.Mediator.ResourceAuthorizationViaBehavior{`0,`1,`2,`3}})">
+  ResourceAuthorizationViaBehavior(IActorProvider, IServiceProvider, ResolvedAuthorizationPath, IOptions&lt;ResourceAuthorizationOptions&gt;?, ILogger&lt;ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ResourceAuthorizationViaBehavior.cs/#L132"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Mediator.ResourceAuthorizationViaBehavior-4.html">ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a>
+class with exposure-policy options and logger for the v2 hide-as-NotFound translation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPath path, IOptions&lt;ResourceAuthorizationOptions&gt;? options, ILogger&lt;ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;&gt;? logger = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>actorProvider</code> <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a></dt>
+    <dd><p>Provider used to resolve the current actor.</p>
+</dd>
+    <dt><code>serviceProvider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a></dt>
+    <dd><p>The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</p>
+</dd>
+    <dt><code>path</code> <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a></dt>
+    <dd><p>The pre-resolved authorization path from leaf to owner.</p>
+</dd>
+    <dt><code>options</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptions-1">IOptions</a>&lt;<a class="xref" href="Trellis.Mediator.ResourceAuthorizationOptions.html">ResourceAuthorizationOptions</a>&gt;</dt>
+    <dd><p>Per-resource exposure-policy options resolved from DI.</p>
+</dd>
+    <dt><code>logger</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.ilogger-1">ILogger</a>&lt;<a class="xref" href="Trellis.Mediator.ResourceAuthorizationViaBehavior-4.html">ResourceAuthorizationViaBehavior</a>&lt;TMessage, TLeaf, TOwner, TResponse&gt;&gt;</dt>
+    <dd><p>Logger used to emit the <code>ExistenceHidden</code> event when a translation occurs.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when any required argument is null.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Same shape as the parameterless overload — see remarks on path agreement.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_Trellis_Authorization_IActorProvider_System_IServiceProvider_Trellis_Mediator_ResolvedAuthorizationPathHolder__0__1__2__3__" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor(Trellis.Authorization.IActorProvider,System.IServiceProvider,Trellis.Mediator.ResolvedAuthorizationPathHolder{`0,`1,`2,`3})">
+  ResourceAuthorizationViaBehavior(IActorProvider, IServiceProvider, ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ResourceAuthorizationViaBehavior.cs/#L60"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance using a <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPathHolder-4.html">ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a>
+for DI-friendly typed registration. The holder is registered as a closed-generic singleton
+per via-authorized command; DI naturally disambiguates it per command, eliminating the
+need for factory-style descriptor registration.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt; pathHolder)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>actorProvider</code> <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a></dt>
+    <dd><p>Provider used to resolve the current actor.</p>
+</dd>
+    <dt><code>serviceProvider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a></dt>
+    <dd><p>The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</p>
+</dd>
+    <dt><code>pathHolder</code> <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPathHolder-4.html">ResolvedAuthorizationPathHolder</a>&lt;TMessage, TLeaf, TOwner, TResponse&gt;</dt>
+    <dd><p>The closed-generic carrier for the resolved path.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when any argument is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor*"></a>
+
+  <h3 id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4__ctor_Trellis_Authorization_IActorProvider_System_IServiceProvider_Trellis_Mediator_ResolvedAuthorizationPathHolder__0__1__2__3__Microsoft_Extensions_Options_IOptions_Trellis_Mediator_ResourceAuthorizationOptions__Microsoft_Extensions_Logging_ILogger_Trellis_Mediator_ResourceAuthorizationViaBehavior__0__1__2__3___" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.#ctor(Trellis.Authorization.IActorProvider,System.IServiceProvider,Trellis.Mediator.ResolvedAuthorizationPathHolder{`0,`1,`2,`3},Microsoft.Extensions.Options.IOptions{Trellis.Mediator.ResourceAuthorizationOptions},Microsoft.Extensions.Logging.ILogger{Trellis.Mediator.ResourceAuthorizationViaBehavior{`0,`1,`2,`3}})">
+  ResourceAuthorizationViaBehavior(IActorProvider, IServiceProvider, ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt;, IOptions&lt;ResourceAuthorizationOptions&gt;?, ILogger&lt;ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ResourceAuthorizationViaBehavior.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance using a <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPathHolder-4.html">ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a>
+for DI-friendly typed registration. Includes exposure-policy options and logger for
+the v2 hide-as-NotFound translation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ResourceAuthorizationViaBehavior(IActorProvider actorProvider, IServiceProvider serviceProvider, ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt; pathHolder, IOptions&lt;ResourceAuthorizationOptions&gt;? options, ILogger&lt;ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;&gt;? logger = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>actorProvider</code> <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a></dt>
+    <dd><p>Provider used to resolve the current actor.</p>
+</dd>
+    <dt><code>serviceProvider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a></dt>
+    <dd><p>The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</p>
+</dd>
+    <dt><code>pathHolder</code> <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPathHolder-4.html">ResolvedAuthorizationPathHolder</a>&lt;TMessage, TLeaf, TOwner, TResponse&gt;</dt>
+    <dd><p>The closed-generic carrier for the resolved path.</p>
+</dd>
+    <dt><code>options</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptions-1">IOptions</a>&lt;<a class="xref" href="Trellis.Mediator.ResourceAuthorizationOptions.html">ResourceAuthorizationOptions</a>&gt;</dt>
+    <dd><p>Per-resource exposure-policy options resolved from DI. Null defaults to the always-propagate behavior.</p>
+</dd>
+    <dt><code>logger</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.ilogger-1">ILogger</a>&lt;<a class="xref" href="Trellis.Mediator.ResourceAuthorizationViaBehavior-4.html">ResourceAuthorizationViaBehavior</a>&lt;TMessage, TLeaf, TOwner, TResponse&gt;&gt;</dt>
+    <dd><p>Logger used to emit the <code>ExistenceHidden</code> event when a Forbidden or AuthenticationRequired failure is translated to NotFound. Null defaults to <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.abstractions.nulllogger.instance">Instance</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when any required argument is null.</p>
+</dd>
+  </dl>
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4_Handle_" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.Handle*"></a>
+
+  <h3 id="Trellis_Mediator_ResourceAuthorizationViaBehavior_4_Handle__0_Mediator_MessageHandlerDelegate__0__3__System_Threading_CancellationToken_" data-uid="Trellis.Mediator.ResourceAuthorizationViaBehavior`4.Handle(`0,Mediator.MessageHandlerDelegate{`0,`3},System.Threading.CancellationToken)">
+  Handle(TMessage, MessageHandlerDelegate&lt;TMessage, TResponse&gt;, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/ResourceAuthorizationViaBehavior.cs/#L173"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask&lt;TResponse&gt; Handle(TMessage message, MessageHandlerDelegate&lt;TMessage, TResponse&gt; next, CancellationToken cancellationToken)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>message</code> <span class="xref">TMessage</span></dt>
+    <dd></dd>
+    <dt><code>next</code> <span class="xref">MessageHandlerDelegate</span>&lt;TMessage, TResponse&gt;</dt>
+    <dd></dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResponse&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

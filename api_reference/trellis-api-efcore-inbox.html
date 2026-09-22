@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.EntityFrameworkCore.Inbox | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.EntityFrameworkCore.Inbox | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-efcore-inbox.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisentityframeworkcoreinbox">Trellis.EntityFrameworkCore.Inbox</h1>
+
+<p><strong>Package:</strong> <code>Trellis.EntityFrameworkCore.Inbox</code><br>
+<strong>Namespace:</strong> <code>Trellis.EntityFrameworkCore</code><br>
+<strong>Purpose:</strong> Transactional inbox — the consume-side complement to the outbox. Make integration-event consumption idempotent by deduplicating redeliveries on <code>(ConsumerId, MessageId)</code> inside the consumer's unit of work, so a handler's local side effects commit exactly once even though the transport delivers at-least-once.</p>
+<p>This package composes <code>Trellis.EntityFrameworkCore</code> (the <code>DbContext</code>, transaction, and table mapping) with <code>Trellis.Mediator</code> (the <code>IIntegrationEvent</code> / <code>IIntegrationEventHandler&lt;TEvent&gt;</code> contracts it fans out to). It opts out of AOT/trim, exactly like <code>Trellis.EntityFrameworkCore</code>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The <strong>contracts</strong> are store-agnostic and live outside the EF Core packages. The store SPIs — <code>IUnitOfWork</code>, <code>IInboxStore</code>, <code>IConsumerCheckpointStore</code>, and <code>InboxRecord</code> — are in <code>Trellis.Persistence.Abstractions</code> (namespace <code>Trellis</code>); the consume-side dispatch contracts — <code>IInboxDispatcher</code>, <code>IntegrationEnvelope</code>, <code>InboxDispatchOutcome</code> — are in <code>Trellis.Mediator</code>. This page documents the EF Core <strong>adapter</strong> (<code>EfInboxStore</code>, <code>EfConsumerCheckpointStore</code>, <code>InboxDispatcher&lt;TContext&gt;</code>, <code>InboxMessage</code>, and the registration extensions) that implements them.</p>
+</div>
+<p>See also: <a href="trellis-api-cookbook.html#trellis-cross-package-cookbook">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You receive integration events from a broker (or an in-process channel) and must process each one <strong>effectively once</strong>, even though the transport can redeliver after a lock-renewal timeout, an offset replay, or a producer re-publish.</li>
+<li>You are wiring <code>AddTrellisInbox</code>, <code>modelBuilder.AddTrellisInbox()</code>, or the <code>UseInbox&lt;TContext&gt;()</code> builder slot.</li>
+<li>You are reasoning about the inbox's idempotency guarantee, its transaction boundary, or what <code>(ConsumerId, MessageId)</code> must be.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use this</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Make a consumer idempotent against redeliveries</td>
+<td><code>services.AddTrellisInbox&lt;TContext&gt;(o =&gt; o.ConsumerId = &quot;...&quot;)</code> or <code>trellis.UseInbox&lt;TContext&gt;(...)</code> + <code>modelBuilder.AddTrellisInbox()</code></td>
+<td><a href="#wiring-two-required-calls">Wiring: two required calls</a>, <a href="#inboxservicecollectionextensions">InboxServiceCollectionExtensions</a></td>
+</tr>
+<tr>
+<td>Hand a received message to the inbox</td>
+<td><code>IInboxDispatcher.DispatchAsync(envelope, ct)</code> from your transport adapter — returns <code>Processed</code> or <code>SkippedDuplicate</code></td>
+<td><a href="#iinboxdispatcher">IInboxDispatcher</a>, <a href="#inboxdispatchoutcome">InboxDispatchOutcome</a></td>
+</tr>
+<tr>
+<td>Drive a gap-free pull / anti-join consumer</td>
+<td><code>IInboxStore.FilterUnprocessedAsync(consumerId, ids, ct)</code> to skip already-processed feed rows</td>
+<td><a href="#iinboxstore">IInboxStore</a></td>
+</tr>
+<tr>
+<td>Resume a pull consumer without rescanning the whole feed</td>
+<td><code>services.AddTrellisConsumerCheckpointStore&lt;TContext&gt;()</code> + <code>modelBuilder.AddTrellisConsumerCheckpoints()</code>; <code>IConsumerCheckpointStore.GetAsync</code> / <code>SetAsync</code></td>
+<td><a href="#pull-consumer-checkpoint-resume-cursor">Pull-consumer checkpoint</a></td>
+</tr>
+<tr>
+<td>Map the deduplication table</td>
+<td><code>modelBuilder.AddTrellisInbox()</code> in <code>OnModelCreating</code></td>
+<td><a href="#inboxmodelbuilderextensions">InboxModelBuilderExtensions</a>, <a href="#inboxmessage">InboxMessage</a></td>
+</tr>
+<tr>
+<td>Identify this subscriber for per-consumer dedup</td>
+<td><code>InboxOptions.ConsumerId</code> (required)</td>
+<td><a href="#inboxoptions">InboxOptions</a></td>
+</tr>
+<tr>
+<td>Supply the same guarantee over a non-EF store</td>
+<td>Implement <code>IInboxStore</code></td>
+<td><a href="#iinboxstore">IInboxStore</a></td>
+</tr>
+<tr>
+<td>Understand why a failed handler reprocesses</td>
+<td>The dispatcher is <strong>non-swallowing</strong>: a handler throw rolls back and rethrows, so the transport redelivers</td>
+<td><a href="#processing-semantics">Processing semantics</a></td>
+</tr>
+<tr>
+<td>Connect a producer's outbox to a consumer's inbox</td>
+<td>Carry the outbox <code>OutboxMessage.Id</code> verbatim as the envelope <code>MessageId</code></td>
+<td><a href="#relationship-to-the-outbox">Relationship to the outbox</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li><strong><code>AddTrellisInbox&lt;TContext&gt;()</code> only registers the service half.</strong> Without <code>modelBuilder.AddTrellisInbox()</code> the <code>TrellisInboxMessages</code> table is unmapped, and without a transport adapter calling <code>IInboxDispatcher.DispatchAsync(...)</code> nothing is ever deduplicated. See <a href="#wiring-two-required-calls">Wiring: two required calls</a>.</li>
+<li><strong>The <code>MessageId</code> must be stable across redeliveries.</strong> Dedup keys on <code>(ConsumerId, MessageId)</code>. If the transport assigns a <em>new</em> id on every delivery (instead of carrying the producer's <code>OutboxMessage.Id</code> verbatim), every redelivery looks new and is reprocessed. The envelope's lineage fields (<code>MessageSource</code>, <code>CausationId</code>, <code>CorrelationId</code>) are observability only and never participate in dedup.</li>
+<li><strong><code>ConsumerId</code> must be stable across deploys.</strong> It is part of the dedup key, so renaming it resets dedup history and the consumer reprocesses everything still inside the transport's redelivery window. Each independent subscriber/consumer-group uses its own stable <code>ConsumerId</code>.</li>
+<li><strong>The guarantee is local-side-effects-only.</strong> The dedup row and the handlers' writes through the injected <code>TContext</code> commit in one <code>SaveChanges</code>. Effects that are <em>not</em> part of that save — sending an email, calling a downstream API, writing through a different <code>DbContext</code>/connection — are not covered and need their own idempotency. A handler that writes through a second context escapes the dedup unit of work.</li>
+<li><strong>Handlers run before the save and must propagate failures.</strong> Unlike the default <code>IIntegrationEventPublisher</code> (which logs and swallows handler exceptions), the inbox dispatcher is non-swallowing: a handler throw aborts the unit of work before anything is saved — no dedup row, no side effects — and propagates so the transport redelivers. Make handlers safe to re-run, and do not call <code>SaveChanges</code> inside a handler (it would break the single-save atomicity).</li>
+<li><strong>An absent <code>ConsumerId</code> fails fast at registration.</strong> <code>AddTrellisInbox</code> calls <code>InboxOptions.Validate()</code>, which throws <code>InvalidOperationException</code> if <code>ConsumerId</code> is blank, so the misconfiguration surfaces at startup rather than on the first message.</li>
+<li><strong>The checkpoint is not a dedup substitute.</strong> <code>IConsumerCheckpointStore</code> is a performance resume cursor, not the correctness boundary — a high-water cursor can skip a row committed out of order. Always pair it with an overlap window <strong>and</strong> <code>FilterUnprocessedAsync</code>; never advance it past rows that aren't known processed. See <a href="#pull-consumer-checkpoint-resume-cursor">Pull-consumer checkpoint</a>.</li>
+</ul>
+<h2 id="how-the-inbox-works">How the inbox works</h2>
+<p>The inbox turns at-least-once <strong>delivery</strong> into effectively-once <strong>processing</strong> with one short unit of work per message:</p>
+<ol>
+<li><strong>Receive.</strong> An application-owned transport adapter (a broker consumer, or an in-process channel) deserializes the message into an <a href="#integrationenvelope">IntegrationEnvelope</a> — a stable <code>MessageId</code> plus the <code>IIntegrationEvent</code> — and calls <code>IInboxDispatcher.DispatchAsync(envelope, ct)</code>.</li>
+<li><strong>Open a unit of work.</strong> The dispatcher creates a DI scope and resolves the consumer's <code>TContext</code> and the scoped <code>IInboxStore</code>.</li>
+<li><strong>Deduplicate.</strong> The dispatcher maps the envelope to an <code>InboxRecord</code> and calls <code>IInboxStore.TryRecordAsync(consumerId, record, ct)</code>, which checks for an existing <code>(ConsumerId, MessageId)</code> row. If one exists the dispatcher returns immediately — a no-op; nothing was staged. Otherwise it stages a new <code>InboxMessage</code> row (without saving).</li>
+<li><strong>Fan out (non-swallowing).</strong> The dispatcher resolves every <code>IIntegrationEventHandler&lt;TConcrete&gt;</code> for the runtime event type from the <em>same</em> scope and awaits each. Because the handlers share the scope, a handler that injects <code>TContext</code> writes through the very context that holds the staged dedup row. Handler exceptions <strong>propagate</strong> — and because nothing has been saved yet, a throw leaves no dedup row and no side effects, so the transport redelivers.</li>
+<li><strong>Commit.</strong> One <code>SaveChangesAsync</code> persists the dedup row and the handler writes together, atomically, under EF Core's implicit transaction. No user-initiated transaction is opened, so the inbox composes with a retrying execution strategy (<code>EnableRetryOnFailure</code>) like the rest of Trellis. A concurrent dispatch that recorded the same <code>(ConsumerId, MessageId)</code> first makes this save fail with a duplicate-key <code>DbUpdateException</code>; the dispatcher then re-checks, in a fresh scope, whether the dedup row was actually committed — if so the message is already processed and the failure is swallowed — this call commits nothing, the handlers' staged writes having rolled back with the save; if not, the duplicate came from a handler's own unique write and propagates so the transport redelivers.</li>
+</ol>
+<h2 id="wiring-two-required-calls">Wiring: two required calls</h2>
+<pre><code class="lang-csharp">// 1. Map the inbox dedup table.
+protected override void OnModelCreating(ModelBuilder modelBuilder) =&gt;
+    modelBuilder.AddTrellisInbox();
+
+// 2. Register the dispatcher + store + options, and the handlers that consume the messages.
+services.AddTrellis(trellis =&gt; trellis
+    .UseIntegrationEvents(typeof(Program).Assembly)   // the IIntegrationEventHandler&lt;T&gt; consumers
+    .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;()
+    .UseInbox&lt;AppDbContext&gt;(o =&gt; o.ConsumerId = &quot;orders-service&quot;));
+</code></pre>
+<p>Then a transport adapter (app-owned) feeds received messages in:</p>
+<pre><code class="lang-csharp">public sealed class BrokerConsumer(IInboxDispatcher inbox)
+{
+    public Task OnMessageAsync(TransportMessage raw, CancellationToken ct)
+    {
+        var envelope = new IntegrationEnvelope(raw.MessageId, Deserialize(raw))
+        {
+            MessageSource = raw.SourceService,
+            CorrelationId = raw.CorrelationId,
+        };
+        return inbox.DispatchAsync(envelope, ct);
+    }
+}
+</code></pre>
+<p>The consumer's <code>DbContext</code> is registered separately by the app (as usual); the inbox does not register it. Register the integration-event handlers in the same container — <code>UseIntegrationEvents(...)</code> / <code>AddIntegrationEventHandler&lt;TEvent, THandler&gt;()</code> resolve them as the <code>IEnumerable&lt;IIntegrationEventHandler&lt;TEvent&gt;&gt;</code> the dispatcher fans out to.</p>
+<h2 id="inboxservicecollectionextensions">InboxServiceCollectionExtensions</h2>
+<p>Static class. Registers the inbox for a <code>DbContext</code>.</p>
+<pre><code class="lang-csharp">public static IServiceCollection AddTrellisInbox&lt;TContext&gt;(
+    this IServiceCollection services,
+    Action&lt;InboxOptions&gt; configure)
+    where TContext : DbContext;
+</code></pre>
+<ul>
+<li>Runs <code>configure</code>, calls <code>InboxOptions.Validate()</code> (throws if <code>ConsumerId</code> is blank), and registers the validated <code>InboxOptions</code> as a singleton, <code>TimeProvider.System</code> (via <code>TryAdd</code>), the scoped <code>IInboxStore</code> → <code>EfInboxStore&lt;TContext&gt;</code>, and the singleton <code>IInboxDispatcher</code> → <code>InboxDispatcher&lt;TContext&gt;</code>.</li>
+<li><code>configure</code> is <strong>required</strong> (not optional) because <code>ConsumerId</code> has no safe default.</li>
+<li><strong>Repeated calls accumulate configuration.</strong> Each call applies its <code>configure</code> callback on top of the already-registered <code>InboxOptions</code> instance and re-runs <code>Validate()</code>, so a later callback wins per setting rather than being silently discarded by <code>TryAdd</code>. Configuration is applied to a clone and committed only after <code>Validate()</code> succeeds, so a rejected callback leaves the container's options untouched.</li>
+<li><strong>Do not register <code>InboxOptions</code> yourself via a factory or implementation type.</strong> The helper layers onto the <em>last</em> <code>InboxOptions</code> descriptor, which is the one the container resolves. If that descriptor is a factory or type registration it cannot be cloned, so the call throws <code>InvalidOperationException</code> rather than silently configuring an instance the dispatcher would never receive.</li>
+<li>The dispatcher is a singleton that opens a fresh DI scope per <code>DispatchAsync</code>; the store and handlers are scoped, so each dispatch gets its own <code>TContext</code> and transaction.</li>
+</ul>
+<p>This is the service-collection half only. Pair with <code>AddTrellisInbox(ModelBuilder)</code> and a transport adapter that calls <code>IInboxDispatcher</code>.</p>
+<h2 id="inboxmodelbuilderextensions">InboxModelBuilderExtensions</h2>
+<p>Static class. EF Core model hook.</p>
+<pre><code class="lang-csharp">public static ModelBuilder AddTrellisInbox(this ModelBuilder modelBuilder);
+</code></pre>
+<p>Applies <code>InboxMessageConfiguration</code>, mapping the <code>TrellisInboxMessages</code> table with the composite <code>(ConsumerId, MessageId)</code> primary key and an index on <code>ProcessedAt</code>. Call it from <code>OnModelCreating</code>. The table needs a migration like any other entity.</p>
+<h2 id="useinbox-builder-slot">UseInbox builder slot</h2>
+<p><code>TrellisServiceBuilder.UseInbox&lt;TContext&gt;(Action&lt;InboxOptions&gt; configure)</code> (in <code>Trellis.ServiceDefaults</code>) is the opinionated entry point. It wraps <code>AddTrellisInbox&lt;TContext&gt;()</code> and:</p>
+<ul>
+<li>Fails fast with <code>InvalidOperationException</code> if called more than once — one inbox per composition.</li>
+<li>Is order-independent versus <code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</code>: the dispatcher is an inbound seam, not a Mediator behavior, so the canonical pipeline order is identical whether <code>UseInbox</code> is called before or after the unit-of-work slot.</li>
+<li>Carries <code>[RequiresUnreferencedCode]</code> / <code>[RequiresDynamicCode]</code> because the inbox builds on the non-AOT <code>Trellis.EntityFrameworkCore</code>.</li>
+</ul>
+<p>The slot owns only the service registration; the table mapping is still wired on the <code>DbContext</code> with <code>modelBuilder.AddTrellisInbox()</code>, mirroring how <code>UseOutbox</code> pairs with <code>AddTrellisOutbox</code>.</p>
+<h2 id="iinboxdispatcher">IInboxDispatcher</h2>
+<p>The inbound entry point. A transport adapter builds an envelope and calls it; the dispatcher deduplicates and fans out.</p>
+<pre><code class="lang-csharp">public interface IInboxDispatcher
+{
+    Task&lt;InboxDispatchOutcome&gt; DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default);
+}
+</code></pre>
+<ul>
+<li>A first delivery runs the handlers and commits the dedup row, returning <code>InboxDispatchOutcome.Processed</code>. A redelivery of the same <code>(ConsumerId, MessageId)</code> returns <code>InboxDispatchOutcome.SkippedDuplicate</code> — caught by the existence check on the fast path (no handler runs), or by the duplicate-key guard when a concurrent dispatch won the race (the handlers ran but rolled back). Either way this call commits nothing; both outcomes mean the message is durably accounted for, so a pull consumer can advance its checkpoint on either.</li>
+<li>A handler exception is <strong>not</strong> swallowed: it rolls the transaction back and propagates out of <code>DispatchAsync</code>, so the adapter can let the transport redeliver.</li>
+</ul>
+<h2 id="inboxdispatchoutcome">InboxDispatchOutcome</h2>
+<p>The result of <code>DispatchAsync</code>, so a caller can branch on whether the message was newly processed without re-querying.</p>
+<pre><code class="lang-csharp">public enum InboxDispatchOutcome
+{
+    Processed,
+    SkippedDuplicate,
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Processed</code></td>
+<td>The message was new: its handlers ran and their side effects committed atomically with the dedup record in this call.</td>
+</tr>
+<tr>
+<td><code>SkippedDuplicate</code></td>
+<td>The <code>(ConsumerId, MessageId)</code> pair was already processed, so this call committed nothing. Usually caught on the fast path before any handler runs; if a concurrent dispatch won the race, the handlers ran but rolled back with the duplicate-key save.</td>
+</tr>
+</tbody>
+</table>
+<p>Both outcomes mean the message is durably accounted for; the distinction is for metrics, logging, and a pull consumer's checkpoint / anti-join bookkeeping. A failure (handler throw, infrastructure error) does not return an outcome — it propagates so the transport redelivers.</p>
+<h2 id="iinboxstore">IInboxStore</h2>
+<p>Service-provider interface (SPI) for the dedup record, so a non-EF store can supply the same guarantee. <code>EfInboxStore&lt;TContext&gt;</code> is the shipped EF implementation.</p>
+<pre><code class="lang-csharp">public interface IInboxStore
+{
+    Task&lt;bool&gt; TryRecordAsync(string consumerId, InboxRecord record, CancellationToken cancellationToken);
+
+    Task&lt;IReadOnlyList&lt;Guid&gt;&gt; FilterUnprocessedAsync(
+        string consumerId, IReadOnlyCollection&lt;Guid&gt; messageIds, CancellationToken cancellationToken);
+}
+</code></pre>
+<p><code>TryRecordAsync</code> records the message as processed by <code>consumerId</code> <strong>inside the caller's current unit of work</strong>, so the dedup record and the handler side effects commit together. Returns <code>true</code> if newly recorded, or <code>false</code> if the <code>(ConsumerId, MessageId)</code> pair was already processed — a duplicate the dispatcher skips. <code>EfInboxStore</code> does an existence check for the fast path and stages an <code>InboxMessage</code> for the slow path; the composite primary key is the authoritative guard under concurrency.</p>
+<p><code>FilterUnprocessedAsync</code> returns the subset of <code>messageIds</code> that <code>consumerId</code> has <strong>not</strong> yet processed (those without a dedup row), preserving the input order. It powers the gap-free <strong>inbox-as-cursor / anti-join</strong> pull model: read a window of the source feed and dispatch every row whose <code>MessageId</code> this query returns, rather than tracking a fragile high-water cursor that can skip a row committed out of sequence order. It is an optimization, not the correctness boundary — a row may be processed by another worker between this query and <code>DispatchAsync</code>, which still deduplicates — and it is a pure read that stages nothing. <code>EfInboxStore</code> runs it as a single anti-join query (<code>AsNoTracking</code>); it throws <code>ArgumentException</code> if <code>consumerId</code> is blank.</p>
+<h2 id="pull-consumer-checkpoint-resume-cursor">Pull-consumer checkpoint (resume cursor)</h2>
+<p><code>IConsumerCheckpointStore</code> is an optional, durable <strong>resume cursor</strong> for a pull consumer — it remembers per-<code>ConsumerId</code> where in the source feed the consumer last advanced to, so it resumes there instead of rescanning the whole log on every poll or restart.</p>
+<pre><code class="lang-csharp">public interface IConsumerCheckpointStore
+{
+    Task&lt;Maybe&lt;string&gt;&gt; GetAsync(string consumerId, CancellationToken cancellationToken);
+    Task SetAsync(string consumerId, string position, CancellationToken cancellationToken);
+}
+</code></pre>
+<p><strong>Performance, not correctness.</strong> The checkpoint narrows the scan window; it is <strong>not</strong> the deduplication boundary. A high-water cursor can skip a row that was assigned a low position but committed <em>late</em> — after the cursor advanced past it — which a cursor alone can never recover. Correctness stays with <code>FilterUnprocessedAsync</code> (the anti-join) plus the dedup row. The safe pattern:</p>
+<ol>
+<li><code>GetAsync(consumerId)</code> → the resume position (<code>Maybe.None</code> the first time → start from the feed's beginning).</li>
+<li>Scan a window that <strong>overlaps</strong> the checkpoint — re-read a visibility-lag margin <em>behind</em> it, so a late-committed row is still inside the window.</li>
+<li><code>FilterUnprocessedAsync(consumerId, window.Ids, ct)</code> → the not-yet-processed ids; <code>DispatchAsync</code> each.</li>
+<li><code>SetAsync(consumerId, position)</code> → advance the cursor, only to a position whose predecessors are all known processed.</li>
+</ol>
+<pre><code class="lang-csharp">var resume = await checkpoints.GetAsync(consumerId, ct);              // Maybe&lt;string&gt;
+var since = resume.GetValueOrDefault(FeedStart);
+var window = await feed.ReadFrom(Rewind(since, overlapMargin), ct);   // overlap behind the checkpoint
+var todo = await inbox.FilterUnprocessedAsync(consumerId, window.Ids, ct);
+foreach (var id in todo)
+    await dispatcher.DispatchAsync(window.Envelope(id), ct);
+await checkpoints.SetAsync(consumerId, window.HighWaterMark, ct);     // advance the cursor
+</code></pre>
+<ul>
+<li><strong>Opaque <code>position</code>.</strong> Trellis does not interpret it — encode whatever cursor the feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp, a composite token) as a string. The store round-trips it verbatim.</li>
+<li><strong>Wiring (two calls).</strong> <code>services.AddTrellisConsumerCheckpointStore&lt;TContext&gt;()</code> registers the store; <code>modelBuilder.AddTrellisConsumerCheckpoints()</code> maps the <code>TrellisConsumerCheckpoints</code> table (PK <code>ConsumerId</code>, width matching the inbox key). It is a <strong>leaf store</strong> — no <code>TrellisServiceBuilder</code> slot, like <code>AddInMemoryIdempotencyStore</code>.</li>
+<li><strong>Durable + isolated.</strong> <code>EfConsumerCheckpointStore&lt;TContext&gt;</code> reads and upserts on its own fresh DI scope and <code>SaveChanges</code>, so an advance is persisted on return and never entangles the caller's unit of work. One logical advancer per <code>ConsumerId</code> is assumed (the usual pull-consumer shape); the cursor is not a coordination primitive.</li>
+<li><code>GetAsync</code> / <code>SetAsync</code> throw <code>ArgumentException</code> for a blank <code>consumerId</code>; <code>SetAsync</code> also for a blank <code>position</code>.</li>
+</ul>
+<h3 id="consumercheckpoint">ConsumerCheckpoint</h3>
+<p>The persisted row behind the store, mapped by <code>AddTrellisConsumerCheckpoints()</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ConsumerId</code></td>
+<td><code>string</code></td>
+<td>The stable subscriber identifier; the primary key.</td>
+</tr>
+<tr>
+<td><code>Position</code></td>
+<td><code>string</code></td>
+<td>The opaque resume cursor, in the consumer's own encoding.</td>
+</tr>
+<tr>
+<td><code>UpdatedAt</code></td>
+<td><code>DateTimeOffset</code></td>
+<td>When the checkpoint was last advanced. Diagnostic — useful for spotting a stalled consumer; nothing in the inbox reads it to make decisions.</td>
+</tr>
+</tbody>
+</table>
+<p>It is <strong>performance state, not a domain aggregate</strong>: losing or resetting a checkpoint only forces a wider rescan, because the inbox anti-join still guarantees effectively-once processing. It can never cause incorrect processing.</p>
+<h2 id="integrationenvelope">IntegrationEnvelope</h2>
+<p>The consume-side envelope handed to the dispatcher.</p>
+<pre><code class="lang-csharp">public sealed record IntegrationEnvelope(Guid MessageId, IIntegrationEvent Event)
+{
+    public string? MessageSource { get; init; }
+    public Guid? CausationId { get; init; }
+    public string? CorrelationId { get; init; }
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MessageId</code></td>
+<td><code>Guid</code></td>
+<td><strong>Load-bearing.</strong> The stable dedup id — the producer's outbox <code>OutboxMessage.Id</code> (a UUIDv7) carried verbatim by the transport. Redeliveries carry the same value.</td>
+</tr>
+<tr>
+<td><code>Event</code></td>
+<td><code>IIntegrationEvent</code></td>
+<td><strong>Load-bearing.</strong> The deserialized integration event dispatched to its handlers.</td>
+</tr>
+<tr>
+<td><code>MessageSource</code></td>
+<td><code>string?</code></td>
+<td>Optional. The producing service / bounded context, for observability.</td>
+</tr>
+<tr>
+<td><code>CausationId</code></td>
+<td><code>Guid?</code></td>
+<td>Optional lineage: the id of the message that directly caused this one.</td>
+</tr>
+<tr>
+<td><code>CorrelationId</code></td>
+<td><code>string?</code></td>
+<td>Optional lineage: the workflow / conversation id shared across a business transaction.</td>
+</tr>
+</tbody>
+</table>
+<p>Only <code>MessageId</code> and <code>Event</code> participate in processing; the lineage members are recorded for audit/observability and never affect dedup.</p>
+<h2 id="inboxmessage">InboxMessage</h2>
+<p>A persisted record that a <code>(ConsumerId, MessageId)</code> message has been processed — one row per message per consumer. Its existence <em>is</em> the dedup guarantee. Read-only to application code (private constructors, private setters, internal <code>Create</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ConsumerId</code></td>
+<td><code>string</code></td>
+<td>Part of the primary key. The stable subscriber identifier. Max length 256.</td>
+</tr>
+<tr>
+<td><code>MessageId</code></td>
+<td><code>Guid</code></td>
+<td>Part of the primary key. The message's stable id (the producer's outbox id).</td>
+</tr>
+<tr>
+<td><code>MessageSource</code></td>
+<td><code>string?</code></td>
+<td>The producing service / bounded context, if the envelope supplied one.</td>
+</tr>
+<tr>
+<td><code>EventType</code></td>
+<td><code>string</code></td>
+<td>Assembly-qualified name of the integration event type, recorded for audit.</td>
+</tr>
+<tr>
+<td><code>OccurredAt</code></td>
+<td><code>DateTimeOffset</code></td>
+<td>Copied from the event's <code>OccurredAt</code>.</td>
+</tr>
+<tr>
+<td><code>ProcessedAt</code></td>
+<td><code>DateTimeOffset</code></td>
+<td>When this consumer processed the message. Indexed to support pruning.</td>
+</tr>
+<tr>
+<td><code>CausationId</code></td>
+<td><code>Guid?</code></td>
+<td>Optional lineage copied from the envelope.</td>
+</tr>
+<tr>
+<td><code>CorrelationId</code></td>
+<td><code>string?</code></td>
+<td>Optional lineage copied from the envelope.</td>
+</tr>
+</tbody>
+</table>
+<p><code>InboxMessageConfiguration</code> maps the table <code>TrellisInboxMessages</code>, the composite <code>(ConsumerId, MessageId)</code> primary key (the uniqueness guard that makes a concurrent duplicate fail at <code>SaveChanges</code>), and an index on <code>ProcessedAt</code>.</p>
+<p><code>InboxMessage</code> is transient infrastructure, not a domain aggregate. Rows may be pruned once they are older than the transport's maximum redelivery window — delete sooner and a late redelivery would be reprocessed.</p>
+<h2 id="inboxoptions">InboxOptions</h2>
+<p>Configuration for the inbox.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ConsumerId</code></td>
+<td><code>string</code></td>
+<td><code>&quot;&quot;</code> (must be set)</td>
+<td><strong>Required.</strong> A stable identifier for this subscriber / consumer-group; part of the dedup key, so two services consuming the same message each get one effective processing. Keep it stable across deploys — renaming it resets dedup history. <code>Validate()</code> throws <code>InvalidOperationException</code> if it is blank, or if it exceeds <code>MaxConsumerIdLength</code>.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MaxConsumerIdLength</code></td>
+<td><code>256</code></td>
+<td>The mapped key-column width. <code>ConsumerId</code> is stored in a fixed-width key column, so a longer value is rejected at registration rather than truncated at insert.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="processing-semantics">Processing semantics</h2>
+<p>The guarantee is effectively-once <strong>processing of local side effects</strong>, layered on the transport's at-least-once <strong>delivery</strong>:</p>
+<ul>
+<li>A first delivery runs the handlers and commits the <code>(ConsumerId, MessageId)</code> dedup row in the same <code>SaveChanges</code>. A redelivery finds the row and is skipped.</li>
+<li><strong>Failure leaves nothing persisted and redelivers.</strong> A handler throw (or any infrastructure failure) aborts the unit of work before anything is saved — no dedup row, no side effects — and propagates out of <code>DispatchAsync</code>, so the transport's normal retry redelivers the message and it is reprocessed from scratch. The inbox does not itself retry or dead-letter; that is the transport's job.</li>
+<li><strong>Concurrency is resolved by the primary key.</strong> When two deliveries of the same message race, both may pass the existence check, but only one <code>SaveChanges</code> inserts the <code>(ConsumerId, MessageId)</code> row; the other fails with a duplicate-key <code>DbUpdateException</code>. The dispatcher then re-checks in a fresh scope whether the dedup row was committed: present → the message is already processed, so the failure is swallowed and this call commits nothing; absent → the duplicate came from a handler's own unique write and propagates. The losing delivery's staged writes are discarded with the failed save, so exactly one delivery applies the side effects.</li>
+<li><strong>Local only.</strong> Only effects written through the injected <code>TContext</code> are covered. External calls (emails, downstream APIs) and writes through a different connection are outside the save and need their own idempotency.</li>
+</ul>
+<h2 id="relationship-to-the-outbox">Relationship to the outbox</h2>
+<p>The outbox is the <strong>produce</strong> side (atomically capture and reliably publish), the inbox is the <strong>consume</strong> side (idempotently receive). They meet at the message id: the producer's <code>OutboxMessage.Id</code> (a UUIDv7) is carried verbatim by the transport and becomes the inbox <code>MessageId</code>. The inbox collapses redeliveries of that same row to one effective processing per <code>ConsumerId</code>. A translator that reruns because its own attempt failed or its progress was not durably saved can create a new integration row with a new ID; the inbox does not collapse those logical duplicates. Deduplicate them on business identity in the consumer's transaction.</p>
+<p>The transport between them (a broker, a log, an HTTP push) is <strong>application-owned</strong>: the inbox defines the <code>IInboxDispatcher</code> seam an adapter calls, and <code>IInboxStore</code> so a non-EF store can back the guarantee, but it does not ship a broker adapter. In a modular monolith the same in-process path the outbox already fans out to needs no inbox; reach for the inbox when messages cross a process boundary that can redeliver.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-efcore-inbox.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

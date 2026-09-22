@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class DomainEventPublisherExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class DomainEventPublisherExtensions | Trellis ">
+      
+      <meta name="description" content="Extension methods over  for call sites that need to dispatch an aggregate&#39;s  manually (outside the  pipeline).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Mediator_DomainEventPublisherExtensions.md&amp;value=---%0Auid%3A%20Trellis.Mediator.DomainEventPublisherExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Mediator.DomainEventPublisherExtensions">
+
+
+
+  <h1 id="Trellis_Mediator_DomainEventPublisherExtensions" data-uid="Trellis.Mediator.DomainEventPublisherExtensions" class="text-break">
+Class DomainEventPublisherExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventPublisherExtensions.cs/#L10"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Mediator.html">Mediator</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Mediator.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Extension methods over <a class="xref" href="Trellis.Mediator.IDomainEventPublisher.html">IDomainEventPublisher</a> for call sites that need to dispatch
+an aggregate's <a class="xref" href="Trellis.IAggregate.html#Trellis_IAggregate_UncommittedEvents">UncommittedEvents()</a> manually (outside the
+<a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a> pipeline).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class DomainEventPublisherExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">DomainEventPublisherExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Mediator_DomainEventPublisherExtensions_DispatchAggregateEventsAsync_" data-uid="Trellis.Mediator.DomainEventPublisherExtensions.DispatchAggregateEventsAsync*"></a>
+
+  <h3 id="Trellis_Mediator_DomainEventPublisherExtensions_DispatchAggregateEventsAsync_Trellis_Mediator_IDomainEventPublisher_Trellis_IAggregate_System_Threading_CancellationToken_" data-uid="Trellis.Mediator.DomainEventPublisherExtensions.DispatchAggregateEventsAsync(Trellis.Mediator.IDomainEventPublisher,Trellis.IAggregate,System.Threading.CancellationToken)">
+  DispatchAggregateEventsAsync(IDomainEventPublisher, IAggregate, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventPublisherExtensions.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p><b>POST-COMMIT ONLY.</b> Publishes a defensive snapshot of <code class="paramref">aggregate</code>'s
+uncommitted domain events and then calls <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking.acceptchanges">AcceptChanges()</a> when
+the aggregate's pending-event list still exactly matches that snapshot after dispatch.
+Provided as the manual counterpart to <a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a>
+for handlers whose response type is not an aggregate-valued result (e.g., <code>Result&lt;Unit&gt;</code>,
+<code>Result&lt;TDto&gt;</code>, <code>Result&lt;(A,B)&gt;</code>) and for non-Mediator call sites such as
+<code>BackgroundService</code> workers.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task DispatchAggregateEventsAsync(this IDomainEventPublisher publisher, IAggregate aggregate, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>publisher</code> <a class="xref" href="Trellis.Mediator.IDomainEventPublisher.html">IDomainEventPublisher</a></dt>
+    <dd><p>The publisher used to fan out each event to its registered handlers.</p>
+</dd>
+    <dt><code>aggregate</code> <a class="xref" href="Trellis.IAggregate.html">IAggregate</a></dt>
+    <dd><p>The aggregate whose <a class="xref" href="Trellis.IAggregate.html#Trellis_IAggregate_UncommittedEvents">UncommittedEvents()</a> are dispatched.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>Accepted for signature compatibility but deliberately not
+observed. This helper is <b>post-commit only</b>, so honoring cancellation here would strand
+an already-durable write with a partially published event set. Retained rather than removed
+to avoid a source-breaking change for existing callers.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> that completes once every snapshotted event has been published and
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking.acceptchanges">AcceptChanges()</a> has cleared the aggregate's pending list.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Mediator_DomainEventPublisherExtensions_DispatchAggregateEventsAsync_Trellis_Mediator_IDomainEventPublisher_Trellis_IAggregate_System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<b>POST-COMMIT ONLY.</b> Domain events must be published only after the underlying unit of
+work has committed. Calling this helper from inside a command handler that relies on
+<a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a>'s sibling
+<code>TransactionalCommandBehavior</code> for its commit will publish events before the database
+transaction is durable; if the commit then fails, the events have already escaped to their
+handlers and <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking.acceptchanges">AcceptChanges()</a> has cleared them off the aggregate
+— making the failure non-replayable.
+</p>
+<p>
+Safe call sites:
+<ul><li>After a manual <code>IUnitOfWork.CommitAsync</code> in a handler that does not chain the
+    transactional behavior.</li><li>From an outer <code>IPipelineBehavior</code> that runs after
+    <code>TransactionalCommandBehavior</code> (i.e., registered earlier in the pipeline so its
+    post-await section executes later).</li><li>From a <code>BackgroundService</code> tick after the underlying <code>DbContext.SaveChangesAsync</code>
+    call has succeeded.</li></ul>
+
+<p>
+Strict snapshot semantics match <a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a>:
+events are dispatched sequentially from the entry snapshot only. Handlers must be
+side-effect-only and must not change the aggregate's pending-event list during dispatch —
+no raising new events, no clearing via <code>AcceptChanges</code>, no replacing or reordering.
+If the pending-event list differs from the entry snapshot at the end of dispatch (length
+or reference equality), the helper throws
+<a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a> and leaves the aggregate unchanged.
+</p>
+<p>
+Re-entrant calls on the same aggregate are not supported. Treat domain event handlers as
+side-effect-only and dispatch is owned by exactly one outer call.
+</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">publisher</code> or <code class="paramref">aggregate</code> is null.</p>
+</dd>
+    <dt><a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a></dt>
+    <dd><p>Thrown when the aggregate's pending-event
+list no longer matches the entry snapshot at the end of dispatch — i.e. a handler raised,
+cleared, replaced, or reordered events on the aggregate. Validation is strict (length +
+reference equality), so any mutation of the pending list during dispatch trips it.
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.componentmodel.ichangetracking.acceptchanges">AcceptChanges()</a> is not called in this case so the caller can
+inspect the aggregate's current pending events.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Mediator/src/DomainEventPublisherExtensions.cs/#L10" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

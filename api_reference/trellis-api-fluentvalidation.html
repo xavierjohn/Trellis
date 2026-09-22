@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.FluentValidation — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.FluentValidation — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-fluentvalidation.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisfluentvalidation--api-reference">Trellis.FluentValidation — API Reference</h1>
+
+<h2 id="header">Header</h2>
+<ul>
+<li><strong>Package:</strong> <code>Trellis.FluentValidation</code></li>
+<li><strong>Namespace:</strong> <code>Trellis.FluentValidation</code></li>
+<li><strong>Purpose:</strong> Mediator-agnostic FluentValidation helpers for Trellis:
+<ol>
+<li><strong>Standalone helpers</strong> — <code>FluentValidationResultExtensions</code> converts a <code>ValidationResult</code> (or runs an <code>IValidator&lt;T&gt;</code> synchronously/asynchronously) into a <code>Result&lt;T&gt;</code> failure backed by <code>Error.InvalidInput</code>.</li>
+<li><strong>Pointer normalization</strong> — <code>JsonPointerNormalizer.ToJsonPointer(...)</code> projects FluentValidation member-chain property names (<code>Address.PostCode</code>, <code>Items[0].Sku</code>) into camelCase RFC 6901 JSON Pointers (<code>/address/postCode</code>, <code>/items/0/sku</code>) so they round-trip through Trellis <code>InputPointer</code> values.</li>
+</ol>
+</li>
+</ul>
+<blockquote>
+<p><strong>v3 package split.</strong> The Mediator integration (<code>AddTrellisFluentValidation()</code> + <code>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</code>) moved to the new <code>Trellis.Mediator.FluentValidation</code> package so consumers of these standalone helpers do not have to take a Mediator dependency. See <a href="trellis-api-mediator-fluentvalidation.html#header">trellis-api-mediator-fluentvalidation.md</a> for the adapter API.</p>
+</blockquote>
+<p>See also: <a href="trellis-api-cookbook.html#recipe-2--command--handler--fluentvalidation--ef-persistence">trellis-api-cookbook.md</a> — recipes using these helpers.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You need to convert a FluentValidation <code>ValidationResult</code> into <code>Result&lt;T&gt;</code> / <code>Error.InvalidInput</code> outside the Mediator pipeline.</li>
+<li>You need the exact JSON Pointer normalization rules for FluentValidation property names (e.g., for a custom adapter that produces <code>InputPointer</code> values from FluentValidation failures).</li>
+<li>You want to use FluentValidation in a domain or worker project that does not reference <code>Trellis.Mediator</code>.</li>
+</ul>
+<p>For wiring FluentValidation validators into the Trellis Mediator validation stage, see <a href="trellis-api-mediator-fluentvalidation.html#use-this-file-when">trellis-api-mediator-fluentvalidation.md</a>.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Convert <code>ValidationResult</code> to <code>Result&lt;T&gt;</code></td>
+<td><code>validationResult.ToResult(value)</code></td>
+<td><a href="#fluentvalidationresultextensions"><code>FluentValidationResultExtensions</code></a></td>
+</tr>
+<tr>
+<td>Validate a value outside Mediator</td>
+<td><code>validator.ValidateToResult(value)</code> / <code>ValidateToResultAsync(...)</code></td>
+<td><a href="#fluentvalidationresultextensions"><code>FluentValidationResultExtensions</code></a></td>
+</tr>
+<tr>
+<td>Normalize a FluentValidation property name into a JSON pointer</td>
+<td><code>JsonPointerNormalizer.ToJsonPointer(propertyName)</code></td>
+<td><a href="#jsonpointernormalizer"><code>JsonPointerNormalizer</code></a></td>
+</tr>
+<tr>
+<td>Wire FluentValidation into the Mediator pipeline</td>
+<td><code>services.AddTrellisFluentValidation()</code> from <code>Trellis.Mediator.FluentValidation</code></td>
+<td><a href="trellis-api-mediator-fluentvalidation.html#fluentvalidationservicecollectionextensions">trellis-api-mediator-fluentvalidation.md</a></td>
+</tr>
+<tr>
+<td>A custom <code>Must()</code> rule emits no machine-readable <code>args</code></td>
+<td>Opt the placeholder in with <code>ValidationArgsOptions.AllowArgs(...)</code></td>
+<td><a href="#validationargsoptions"><code>ValidationArgsOptions</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li>Keep primitive-to-value-object parsing at the transport seam; validators should normally validate already-shaped command/value-object inputs.</li>
+<li><code>ToResult&lt;T&gt;</code> only null-checks <code>validationResult</code>; it does not independently reject a <code>null</code> <code>value</code>.</li>
+<li><code>ValidateToResultAsync&lt;T&gt;</code> observes <code>cancellationToken</code> BEFORE the null-value short-circuit, so a cancelled token always wins over the synchronous null-input fallback.</li>
+<li><code>JsonPointerNormalizer.ToJsonPointer</code> splits FluentValidation dotted chains (<code>Address.City</code> → <code>/address/city</code>). The general-purpose <code>InputPointer.ForProperty(string)</code> does <strong>not</strong> split on <code>.</code> (it only escapes <code>~</code> → <code>~0</code> and <code>/</code> → <code>~1</code> per RFC 6901 §3). The dotted-chain normalization is FluentValidation-specific.</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="fluentvalidationresultextensions"><code>FluentValidationResultExtensions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class FluentValidationResultExtensions
+</code></pre>
+<p><strong>Constructors</strong></p>
+<ul>
+<li>None. This is a static class.</li>
+</ul>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None</td>
+<td>—</td>
+<td>This static class exposes no public properties.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Result&lt;T&gt; ToResult&lt;T&gt;(this ValidationResult validationResult, T value, [CallerArgumentExpression(nameof(value))] string paramName = &quot;value&quot;, ValidationArgsOptions? argsOptions = null)</code></td>
+<td><code>Result&lt;T&gt;</code></td>
+<td>Returns <code>Result.Ok(value)</code> when <code>validationResult.IsValid</code> is <code>true</code> (does <strong>not</strong> independently reject <code>null</code> values). Otherwise emits one <code>FieldViolation</code> per <code>validationResult.Errors</code> entry and returns <code>Result.Fail&lt;T&gt;(new Error.InvalidInput(fieldViolations))</code>. Each FluentValidation failure becomes a <code>FieldViolation(new InputPointer(JsonPointerNormalizer.ToJsonPointer(rawName)), reasonCode, ValidationArgsProjection.Project(failure, argsOptions)) { Detail = fvMessage }</code>, where <code>rawName = string.IsNullOrWhiteSpace(failure.PropertyName) ? paramName : failure.PropertyName</code> and <code>reasonCode = ValidationCodeProjection.Project(failure.ErrorCode, failure.AttemptedValue)</code>, which maps a reserved FluentValidation validator name to its Trellis code, and maps both a blank code and the legacy <code>validation.error</code> placeholder to <code>error.unspecified</code> — so <code>validation.error</code> is never emitted. Multiple failures on the same property produce multiple <code>FieldViolation</code> entries (no grouping). Throws <code>ArgumentNullException</code> when <code>validationResult</code> is <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>public static Result&lt;T&gt; ValidateToResult&lt;T&gt;(this IValidator&lt;T&gt; validator, T value, [CallerArgumentExpression(nameof(value))] string paramName = &quot;value&quot;, string? message = null, ValidationArgsOptions? argsOptions = null)</code></td>
+<td><code>Result&lt;T&gt;</code></td>
+<td>Throws <code>ArgumentNullException</code> when <code>validator</code> is <code>null</code>. If <code>value is null</code>, does <strong>not</strong> call <code>validator.Validate</code>; instead returns a validation failure for <code>paramName</code> with reason code <code>value.not-null</code> and <code>message ?? $&quot;'{paramName}' must not be empty.&quot;</code>. Otherwise calls <code>validator.Validate(value)</code> and forwards to <code>ToResult(value, paramName, argsOptions)</code>.</td>
+</tr>
+<tr>
+<td><code>public static async Task&lt;Result&lt;T&gt;&gt; ValidateToResultAsync&lt;T&gt;(this IValidator&lt;T&gt; validator, T value, [CallerArgumentExpression(nameof(value))] string paramName = &quot;value&quot;, string? message = null, ValidationArgsOptions? argsOptions = null, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code></td>
+<td>Throws <code>ArgumentNullException</code> when <code>validator</code> is <code>null</code>. Observes <code>cancellationToken</code> BEFORE the null-value short-circuit, so a cancelled token always wins over the synchronous fallback path. If <code>value is null</code>, does <strong>not</strong> call <code>validator.ValidateAsync</code>; instead returns the same validation failure shape as <code>ValidateToResult</code>. Otherwise awaits <code>validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false)</code> and forwards to <code>ToResult(value, paramName, argsOptions)</code>. Use the named <code>cancellationToken:</code> argument when omitting <code>argsOptions</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="jsonpointernormalizer"><code>JsonPointerNormalizer</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class JsonPointerNormalizer
+</code></pre>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static string ToJsonPointer(string? propertyName)</code></td>
+<td><code>string</code></td>
+<td>Converts a FluentValidation <code>PropertyName</code> (e.g., <code>Address.PostCode</code>, <code>Items[0].Sku</code>) into a camelCase RFC 6901 JSON Pointer (<code>/address/postCode</code>, <code>/items/0/sku</code>) — each name segment's first character is lower-cased; indexer segments are unchanged. Returns <code>&quot;&quot;</code> for <code>null</code> or empty input. Inputs that already start with <code>/</code> are assumed to already be pointers and are returned unchanged. Inside each segment, <code>~</code> is escaped to <code>~0</code> and <code>/</code> to <code>~1</code> per RFC 6901 §3. Indexer contents (<code>[...]</code>) are treated as standalone segments — <code>Items[0]</code> becomes <code>/items/0</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pointer normalization (RFC 6901) — examples</strong></p>
+<table>
+<thead>
+<tr>
+<th>FluentValidation <code>PropertyName</code></th>
+<th><code>ToJsonPointer</code> result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;&quot;</code> or <code>null</code></td>
+<td><code>&quot;&quot;</code></td>
+</tr>
+<tr>
+<td><code>Email</code></td>
+<td><code>/email</code></td>
+</tr>
+<tr>
+<td><code>Address.PostCode</code></td>
+<td><code>/address/postCode</code></td>
+</tr>
+<tr>
+<td><code>Items[0].Sku</code></td>
+<td><code>/items/0/sku</code></td>
+</tr>
+<tr>
+<td><code>/already/a/pointer</code></td>
+<td><code>/already/a/pointer</code> (returned unchanged)</td>
+</tr>
+<tr>
+<td><code>Field~Name</code></td>
+<td><code>/field~0Name</code></td>
+</tr>
+<tr>
+<td><code>Path/With/Slash</code></td>
+<td><code>/path~1With~1Slash</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="validationcodeprojection"><code>ValidationCodeProjection</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ValidationCodeProjection
+</code></pre>
+<p>Translates a FluentValidation <code>ErrorCode</code> into the Trellis reason-code vocabulary, so a client keying on <code>value.not-empty</code> gets the same code from a FluentValidation rule as from a generated <code>TryCreate</code>. Without this, a caller would have to branch on <code>NotEmptyValidator</code> for one producer and <code>value.not-empty</code> for the other.</p>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Project(string? errorCode)</code></td>
+<td><code>string</code></td>
+<td>The mapped Trellis code for a reserved FluentValidation validator name; <code>error.unspecified</code> for a blank code or the legacy <code>validation.error</code> placeholder; otherwise <code>errorCode</code> <strong>unchanged</strong>.</td>
+</tr>
+<tr>
+<td><code>Project(string? errorCode, object? attemptedValue)</code></td>
+<td><code>string</code></td>
+<td>As above, but refines <code>NotEmptyValidator</code> against the rejected value. Both adapters call this overload.</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>NotEmpty()</code> is one rule spanning three codes.</strong> FluentValidation's <code>NotEmpty()</code> fails for <code>null</code>, for a blank string or empty collection, and for a value type left at its default — three failures the vocabulary deliberately keeps apart. Mapping the rule to a single code would make <code>RuleFor(x =&gt; x.Id).NotEmpty()</code> report <code>value.not-empty</code> for <code>Guid.Empty</code> while a Trellis primitive reports <code>value.not-default</code> for the same input, which is exactly the producer divergence the vocabulary exists to remove. The code describes the failure, not the rule that caught it:</p>
+<table>
+<thead>
+<tr>
+<th><code>AttemptedValue</code></th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>null</code></td>
+<td><code>value.not-null</code></td>
+</tr>
+<tr>
+<td>a <code>string</code> (including blank)</td>
+<td><code>value.not-empty</code></td>
+</tr>
+<tr>
+<td>any other <code>IEnumerable</code></td>
+<td><code>value.not-empty</code></td>
+</tr>
+<tr>
+<td>anything else — <code>Guid.Empty</code>, <code>0</code>, <code>default(DateTime)</code></td>
+<td><code>value.not-default</code></td>
+</tr>
+</tbody>
+</table>
+<p>The table is keyed on the <strong>error-code string, never the CLR validator type</strong>. The two disagree in practice — <code>AspNetCoreCompatibleEmailValidator</code> reports <code>Name = &quot;EmailValidator&quot;</code> — so a type-keyed lookup would miss it. Keying on the string also means a caller's <code>WithErrorCode(&quot;EmailValidator&quot;)</code> maps identically to the built-in rule.</p>
+<table>
+<thead>
+<tr>
+<th>FluentValidation <code>ErrorCode</code></th>
+<th>Trellis code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NotNullValidator</code></td>
+<td><code>value.not-null</code></td>
+</tr>
+<tr>
+<td><code>NotEmptyValidator</code></td>
+<td><code>value.not-null</code>, <code>value.not-empty</code> or <code>value.not-default</code> — see below</td>
+</tr>
+<tr>
+<td><code>NullValidator</code></td>
+<td><code>value.must-be-null</code></td>
+</tr>
+<tr>
+<td><code>EmptyValidator</code></td>
+<td><code>value.must-be-empty</code></td>
+</tr>
+<tr>
+<td><code>EqualValidator</code></td>
+<td><code>value.must-equal</code></td>
+</tr>
+<tr>
+<td><code>NotEqualValidator</code></td>
+<td><code>value.must-not-equal</code></td>
+</tr>
+<tr>
+<td><code>GreaterThanValidator</code></td>
+<td><code>value.greater-than</code></td>
+</tr>
+<tr>
+<td><code>GreaterThanOrEqualValidator</code></td>
+<td><code>value.greater-than-or-equal</code></td>
+</tr>
+<tr>
+<td><code>LessThanValidator</code></td>
+<td><code>value.less-than</code></td>
+</tr>
+<tr>
+<td><code>LessThanOrEqualValidator</code></td>
+<td><code>value.less-than-or-equal</code></td>
+</tr>
+<tr>
+<td><code>InclusiveBetweenValidator</code></td>
+<td><code>value.between-inclusive</code></td>
+</tr>
+<tr>
+<td><code>ExclusiveBetweenValidator</code></td>
+<td><code>value.between-exclusive</code></td>
+</tr>
+<tr>
+<td><code>LengthValidator</code></td>
+<td><code>string.length</code></td>
+</tr>
+<tr>
+<td><code>MinimumLengthValidator</code></td>
+<td><code>string.min-length</code></td>
+</tr>
+<tr>
+<td><code>MaximumLengthValidator</code></td>
+<td><code>string.max-length</code></td>
+</tr>
+<tr>
+<td><code>ExactLengthValidator</code></td>
+<td><code>string.exact-length</code></td>
+</tr>
+<tr>
+<td><code>RegularExpressionValidator</code></td>
+<td><code>string.pattern</code></td>
+</tr>
+<tr>
+<td><code>EmailValidator</code>, <code>AspNetCoreCompatibleEmailValidator</code></td>
+<td><code>string.email</code></td>
+</tr>
+<tr>
+<td><code>CreditCardValidator</code></td>
+<td><code>string.credit-card</code></td>
+</tr>
+<tr>
+<td><code>EnumValidator</code></td>
+<td><code>enum.undefined</code></td>
+</tr>
+<tr>
+<td><code>ScalePrecisionValidator</code></td>
+<td><code>number.precision</code></td>
+</tr>
+<tr>
+<td><code>PredicateValidator</code>, <code>AsyncPredicateValidator</code></td>
+<td><code>error.unspecified</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>A custom <code>WithErrorCode</code> passes through verbatim.</strong> A caller who wrote <code>WithErrorCode(&quot;order.too-large&quot;)</code> means it; rewriting it would make <code>WithErrorCode</code> useless.</p>
+<p><strong><code>Must(...)</code> maps to the sentinel.</strong> A predicate can express any condition, so its validator name says only &quot;some custom predicate failed&quot; — which is exactly what <code>error.unspecified</code> means. Give a <code>Must(...)</code> rule a real code with <code>WithErrorCode</code>, or a client has nothing to branch on. <code>TRLS063</code> reports an uncoded <code>Must</code>/<code>MustAsync</code> when the project references <code>Trellis.Analyzers</code>; see <a href="trellis-api-anti-patterns.html#trls063--fluentvalidation-must-rule-with-no-witherrorcode">trellis-api-anti-patterns.md</a> for the WRONG/FIX shapes, including where a trailing <code>WithErrorCode</code> stops applying to an earlier rule. <code>TRLS064</code> covers the other half of the same question — the code you pass to <code>WithErrorCode</code> — reporting one that restates a frozen framework code or claims a framework namespace.</p>
+<h3 id="validationargsprojection"><code>ValidationArgsProjection</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ValidationArgsProjection
+</code></pre>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static ImmutableDictionary&lt;string, ValidationArgValue&gt;? Project(ValidationFailure failure, ValidationArgsOptions? options = null)</code></td>
+<td><code>ImmutableDictionary&lt;string,ValidationArgValue&gt;?</code></td>
+<td>Projects a failure's <code>FormattedMessagePlaceholderValues</code> onto the <code>Args</code> carried by <code>FieldViolation</code>, applying the allowlist, the containment gate and the encoding rules below, and merges in the <code>allowed</code> member list for an <code>IsInEnum()</code> failure. Returns <code>null</code> when nothing survives. Both adapters call this — <code>FluentValidationResultExtensions.ToResult</code> and, in <code>Trellis.Mediator.FluentValidation</code>, <code>FluentValidationMessageValidatorAdapter</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>Args</code> is what lets a client render its own localized message instead of displaying the server's English prose. Blanket camelCase pass-through of FluentValidation's placeholders is unsafe on two independent counts, so two controls apply.</p>
+<p><strong>Correctness — the per-validator allowlist.</strong> FluentValidation populates placeholders its message never uses, with sentinel values: a <code>MinimumLength(50)</code> failure carries <code>MaxLength = -1</code>, and a <code>MaximumLength(2)</code> failure carries <code>MinLength = 0</code>. A client rendering <em>&quot;must be between 50 and -1 characters&quot;</em> from those is a real bug.</p>
+<table>
+<thead>
+<tr>
+<th>Validator</th>
+<th>Args</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Length</code></td>
+<td><code>minLength</code>, <code>maxLength</code>, <code>totalLength</code></td>
+</tr>
+<tr>
+<td><code>MinimumLength</code></td>
+<td><code>minLength</code>, <code>totalLength</code></td>
+</tr>
+<tr>
+<td><code>MaximumLength</code></td>
+<td><code>maxLength</code>, <code>totalLength</code></td>
+</tr>
+<tr>
+<td><code>ExactLength</code></td>
+<td><code>maxLength</code>, <code>totalLength</code></td>
+</tr>
+<tr>
+<td><code>Equal</code>, <code>NotEqual</code>, <code>LessThan</code>, <code>LessThanOrEqual</code>, <code>GreaterThan</code>, <code>GreaterThanOrEqual</code></td>
+<td><code>comparisonValue</code>, <code>comparisonProperty</code></td>
+</tr>
+<tr>
+<td><code>InclusiveBetween</code>, <code>ExclusiveBetween</code></td>
+<td><code>from</code>, <code>to</code></td>
+</tr>
+<tr>
+<td><code>ScalePrecision</code></td>
+<td><code>expectedPrecision</code>, <code>expectedScale</code>, <code>actualScale</code>, <code>digits</code></td>
+</tr>
+<tr>
+<td><code>RegularExpression</code></td>
+<td><code>regularExpression</code></td>
+</tr>
+<tr>
+<td><code>IsInEnum</code></td>
+<td><code>allowed</code> — derived rather than projected, and exempt from the gate below</td>
+</tr>
+<tr>
+<td>all others</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p><code>ExactLength</code> allows <code>maxLength</code> and <strong>not</strong> <code>minLength</code>, which looks arbitrary because <code>ExactLengthValidator(n)</code> calls <code>base(n, n)</code> and so populates both with the same correct value. The allowlist does not act alone — it composes with the gate below, and the pinned template names <code>{MaxLength}</code>. Allowlisting <code>minLength</code> would gate it out for being absent from the template while <code>maxLength</code> was dropped for not being allowlisted, and the expected length would vanish from the wire entirely, leaving a client with the length it sent and no bound to compare it against. <strong>The allowlist tracks the template, not merely the populated fields.</strong></p>
+<p><strong>Disclosure — the containment gate.</strong> An arg is emitted only when the <strong>culture-active message template names that placeholder</strong> <em>and</em> <strong>its rendered value already appears in the <code>ErrorMessage</code></strong> the client receives anyway. Both halves are required:</p>
+<ul>
+<li>Without the template check, containment is fooled by coincidence — <code>Matches(&quot;A&quot;)</code> on a property named <code>A</code> renders <em>&quot;'A' is not in the correct format&quot;</em>, in which the pattern is trivially a substring. The collision gets likelier the shorter the arg, which is to say likeliest for numeric thresholds.</li>
+<li>Without the message check, the template check alone still passes after the application replaced the message: <code>.WithMessage(&quot;bad&quot;)</code> leaves the default template and its <code>{MinLength}</code> untouched.</li>
+</ul>
+<p>The consequences fall out uniformly, with no per-arg judgement:</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>default message</td>
+<td>the templated args emit — they are already in today's <code>errors</code> string, so nothing new is disclosed</td>
+</tr>
+<tr>
+<td><code>.WithMessage(&quot;bad&quot;)</code></td>
+<td>nothing emits — the app took the values out of its prose. <code>allowed</code> is exempt and still emits</td>
+</tr>
+<tr>
+<td><code>AppendArgument(&quot;Secret&quot;, …)</code></td>
+<td>nothing emits — in no template, and Trellis cannot classify it</td>
+</tr>
+<tr>
+<td>localized message (e.g. <code>culture es</code>)</td>
+<td>the templated args emit, because <code>GetString</code> returns the <em>culture-active</em> template</td>
+</tr>
+<tr>
+<td>an app-supplied <code>ErrorCode</code></td>
+<td>nothing emits — an unrecognized code resolves to no template, which is fail-safe and consistent with a user-set code always winning</td>
+</tr>
+<tr>
+<td>the gate itself</td>
+<td>never applies to <code>allowed</code>, which is derived rather than projected</td>
+</tr>
+<tr>
+<td><code>Matches(...)</code>, any message</td>
+<td><code>regularExpression</code> never emits — it is in no default template, so emitting it would disclose an internal format</td>
+</tr>
+</tbody>
+</table>
+<p><code>PropertyValue</code>, <code>PropertyPath</code> and <code>PropertyName</code> are denied unconditionally, on app-authored placeholders too: <code>PropertyValue</code> carries the user's submitted input and <em>is</em> rendered into some default messages, so containment alone would let it through. <code>PropertyName</code> is redundant with the violation's own location.</p>
+<p><strong>Enum members — the one derived arg.</strong> An <code>IsInEnum()</code> failure carries <code>allowed</code>, the permitted member names ordinally sorted, exactly as every other Trellis producer of <code>enum.undefined</code> does:</p>
+<pre><code class="lang-json">{ &quot;code&quot;: &quot;enum.undefined&quot;, &quot;args&quot;: { &quot;allowed&quot;: [&quot;Amber&quot;, &quot;Zinc&quot;] } }
+</code></pre>
+<p>It is derived rather than projected because FluentValidation has no placeholder for it — the default message reports only the value it rejected. The members are read from the <strong>attempted value's own type</strong>, since FluentValidation reports no type of its own. So an <code>ErrorCode</code> an application borrowed for a rule over something that is not an enum names nothing, which is the fail-safe direction, and a nullable enum works because a boxed <code>Shade?</code> is a <code>Shade</code>.</p>
+<p>This is the one arg the containment gate does not judge, and must not. The gate asks whether a value already reached the client in the rendered message — the right question for an operand the <em>application</em> chose, such as a bound, a regex or a compared property. Member names are not that: they are the API's own contract, the very spellings a client must send to succeed, and the other producers of this code publish them in their detail prose already. So <code>allowed</code> survives <code>.WithMessage(...)</code>, unlike every row in the table above. Withholding it would conceal nothing and would break the agreement the arg exists to create — a client cannot render one localized <em>&quot;choose one of…&quot;</em> for <code>enum.undefined</code> if the list is present from a query binding and absent from a validator.</p>
+<p>An application that widens the allowlist for <code>EnumValidator</code> through <code>ValidationArgsOptions</code> gets its placeholders <strong>in addition to</strong> <code>allowed</code>, not instead of it.</p>
+<p>An enum with more than <code>ValidationArgs.MaxAllowedMembers</code> (64) members sends <code>allowedCount</code> instead of the list, on this path as on every other — see <code>trellis-api-core.md</code>.</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong><code>IsInEnum()</code> does not work on a <code>RequiredEnum&lt;T&gt;</code>, and fails open the wrong way.</strong> <code>RequiredEnum&lt;T&gt;</code> is a registry of declared statics rather than a CLR enum, and FluentValidation's <code>EnumValidator</code> rejects any type that is not a CLR enum — so the rule fails <strong>every</strong> value, including a perfectly valid member, with <code>enum.undefined</code>. This is FluentValidation's own behaviour and predates the <code>allowed</code> arg. Validate a <code>RequiredEnum&lt;T&gt;</code> through its own <code>TryCreate</code> or the scalar-value binding pipeline, both of which do carry <code>allowed</code>; if you need a FluentValidation rule, write it against the underlying <code>string</code>. Such a violation carries no <code>allowed</code>, because the members are read from the attempted value's type and a <code>RequiredEnum&lt;T&gt;</code> has no CLR members to read — a spurious rejection is not given the authority of a member list.</p>
+</div>
+<p><strong>Bounding.</strong> Every string-valued arg is capped at 64 characters (with a <code>...</code> marker) and control characters are escaped as <code>\uXXXX</code>. The bound is universal rather than targeted because no structural rule identifies which args can carry submitted input: <code>Equal(x =&gt; x.Other + &quot;!&quot;)</code> carries the full submitted value with an <strong>empty</strong> <code>ComparisonProperty</code>, byte-for-byte indistinguishable from a safe literal comparison.</p>
+<p><strong>Encoding.</strong> Placeholders arrive boxed rather than pre-stringified, which is what makes per-type encoding implementable.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Encoding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DateTime</code>, <code>DateTimeOffset</code>, <code>DateOnly</code>, <code>TimeOnly</code></td>
+<td>round-trip <code>&quot;O&quot;</code></td>
+</tr>
+<tr>
+<td>numerics</td>
+<td>invariant culture</td>
+</tr>
+<tr>
+<td><code>TimeSpan</code></td>
+<td><code>&quot;c&quot;</code></td>
+</tr>
+<tr>
+<td>enum</td>
+<td>the <strong>name</strong>, not the numeric value</td>
+</tr>
+</tbody>
+</table>
+<p>Naive conversion is not acceptable: <code>Convert.ToString(dateTime, InvariantCulture)</code> yields a month-first US format, not ISO 8601.</p>
+<p>The gate compares FluentValidation's <strong>rendered</strong> form, because that is what the message contains — but what Trellis publishes is the <strong>encoded</strong> form, and the two differ for dates. So an arg is emitted only when the encoded value is <em>also</em> reconcilable with the message: identical to the rendered form, identical to it after bounding, or present in the message verbatim. Otherwise it is <strong>suppressed</strong>.</p>
+<p>In practice that makes temporal args a standing false negative, since a culture-rendered date and a round-trip one essentially never coincide. That direction is deliberate — a false negative hides a safe arg and stays recoverable through an explicit opt-in, while a false positive discloses and cannot be taken back. Bounding and escaping are reconciled rather than treated as a mismatch: <code>Sanitize</code> derives every character it emits from a character of the value the gate already accepted — truncation omits, escaping re-encodes — so it cannot introduce content the message lacked, even though its output is not byte-for-byte present there. Demanding verbatim presence would suppress exactly the long and control-bearing values the bound exists to serve.</p>
+<p><strong>Wire representation.</strong> The gate above runs entirely on strings and still does, because it decides by comparing against the message FluentValidation rendered, and that message is text. Only after an arg has passed is it lifted onto <a href="trellis-api-core.html#validationargs-and-validationargvalue"><code>ValidationArgValue</code></a>: a placeholder whose CLR type is numeric becomes <code>ValidationArgValue.Number</code> and reaches the client as a JSON number, everything else becomes <code>ValidationArgValue.Text</code>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The lift cannot admit an arg the gate rejected — it runs only on values that already passed. What changes is representation, not eligibility. <code>maxLength</code> now arrives as <code>4</code>, not <code>&quot;4&quot;</code>.</p>
+</div>
+<p>An enum is deliberately <strong>not</strong> numeric for this purpose: it is encoded by name, and a client matching on the name would otherwise be handed an ordinal it cannot interpret. A boolean placeholder is likewise left as text: FluentValidation renders one as <code>True</code>/<code>False</code>, so lifting it would put a value on the wire spelled differently from the message it was reconciled against, and no validator in the allowlist carries one. A numeric value whose invariant encoding will not round-trip through <code>decimal</code> — a <code>double</code> beyond decimal's range, or one rendered in exponent form — stays text rather than losing precision or throwing.</p>
+<h3 id="validationargsoptions"><code>ValidationArgsOptions</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class ValidationArgsOptions
+</code></pre>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Default</code></td>
+<td><code>ValidationArgsOptions</code></td>
+<td>The static configuration used when the application registered none. Widens nothing, and rejects <code>AllowArgs</code> with <code>InvalidOperationException</code> because it is shared process-wide.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public ValidationArgsOptions AllowArgs(string errorCode, params string[] placeholderNames)</code></td>
+<td><code>ValidationArgsOptions</code></td>
+<td>Allows the named placeholders — spelled as FluentValidation spells them, in PascalCase — to be emitted for failures carrying <code>errorCode</code>. Returns the same instance so calls chain. Throws <code>ArgumentException</code> for a blank error code or name, or for a placeholder that can never be allowed, and <code>InvalidOperationException</code> when called on <code>Default</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>This is the explicit opt-in the two controls above defer to. The default allowlist carries only the operands whose meaning Trellis can vouch for across every validator that populates them, so a rule Trellis did not write — a <code>Must()</code> with <code>context.MessageFormatter.AppendArgument(...)</code>, or a validator behind a custom <code>WithErrorCode</code> — emits no args at all. <code>AllowArgs</code> is how the application supplies the knowledge Trellis lacks.</p>
+<pre><code class="lang-csharp">services.Configure&lt;ValidationArgsOptions&gt;(options =&gt;
+    options.AllowArgs(&quot;MinimumAge&quot;, &quot;MinAge&quot;));
+</code></pre>
+<p><code>AddTrellisFluentValidation()</code> calls <code>AddOptions&lt;ValidationArgsOptions&gt;()</code>, so the Mediator pipeline adapter always resolves the configured instance. The standalone <code>ToResult</code> / <code>ValidateToResult</code> / <code>ValidateToResultAsync</code> helpers have no container to read from, so they take the same object through an optional <code>argsOptions</code> parameter.</p>
+<p>Three properties are worth stating, because each is load-bearing:</p>
+<ul>
+<li><p><strong>It only ever widens.</strong> There is no remove operation. The default set is the conservative one, so removing could only narrow a client contract something already depends on — and an application that wants fewer args can stop reading them.</p>
+</li>
+<li><p><strong>An explicit opt-in satisfies the template half of the containment gate without consulting the template.</strong> The template check defends against a placeholder <em>Trellis guessed</em> was safe, which is why coincidence can fool it; an application naming its own validator's placeholder is not guessing, and a custom validator has no language-manager entry for the check to consult. Leaving it in force would make the opt-in inert. <strong>The message half still holds</strong>, so an opted-in arg still cannot carry anything the client's own message did not.</p>
+</li>
+<li><p><strong><code>PropertyValue</code> and <code>PropertyPath</code> can never be re-admitted.</strong> <code>AllowArgs</code> throws rather than silently dropping them, because an application that asked for <code>PropertyValue</code> has misunderstood what args are for and a silent drop would leave it waiting for an arg that is never coming. The two are denied for different reasons, and the exception says which: <code>PropertyValue</code> carries the submitted input verbatim, a disclosure and PII hazard; <code>PropertyPath</code> carries the traversal path the violation's own location already reports.</p>
+</li>
+<li><p><strong><code>Default</code> cannot be widened.</strong> It is shared process-wide, so <code>ValidationArgsOptions.Default.AllowArgs(...)</code> throws <code>InvalidOperationException</code> rather than applying a global effect from what reads like a local one. Register through <code>services.Configure&lt;ValidationArgsOptions&gt;(...)</code>, which hands out an instance of your own.</p>
+</li>
+</ul>
+<h2 id="extension-methods">Extension methods</h2>
+<h3 id="fluentvalidationresultextensions-1"><code>FluentValidationResultExtensions</code></h3>
+<pre><code class="lang-csharp">public static Result&lt;T&gt; ToResult&lt;T&gt;(
+    this ValidationResult validationResult,
+    T value,
+    [CallerArgumentExpression(nameof(value))] string paramName = &quot;value&quot;,
+    ValidationArgsOptions? argsOptions = null)
+
+public static Result&lt;T&gt; ValidateToResult&lt;T&gt;(
+    this IValidator&lt;T&gt; validator,
+    T value,
+    [CallerArgumentExpression(nameof(value))] string paramName = &quot;value&quot;,
+    string? message = null,
+    ValidationArgsOptions? argsOptions = null)
+
+public static async Task&lt;Result&lt;T&gt;&gt; ValidateToResultAsync&lt;T&gt;(
+    this IValidator&lt;T&gt; validator,
+    T value,
+    [CallerArgumentExpression(nameof(value))] string paramName = &quot;value&quot;,
+    string? message = null,
+    ValidationArgsOptions? argsOptions = null,
+    CancellationToken cancellationToken = default)
+</code></pre>
+<h2 id="behavioral-notes">Behavioral notes</h2>
+<h3 id="standalone-helpers-fluentvalidationresultextensions">Standalone helpers (<code>FluentValidationResultExtensions</code>)</h3>
+<ul>
+<li>The extension methods are stateless; they do not keep shared mutable state or add synchronization.</li>
+<li>Shared validator instances are only as concurrency-safe as the underlying <code>IValidator&lt;T&gt;</code> implementation; these helpers do not change that.</li>
+<li><code>ToResult&lt;T&gt;</code> only null-checks <code>validationResult</code>; it does not independently reject a <code>null</code> <code>value</code>.</li>
+<li>Validation failures are converted into <code>Error.InvalidInput</code> whose <code>Fields</code> collection is built from one <code>FieldViolation</code> per FluentValidation failure (no grouping; multiple failures on the same property emit multiple violations).</li>
+<li>Field-name selection rule: <code>string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName</code> (FluentValidation root-level failures fall back to the caller-captured <code>paramName</code>).</li>
+<li><code>ValidateToResult&lt;T&gt;</code> and <code>ValidateToResultAsync&lt;T&gt;</code> short-circuit <code>null</code> input before invoking FluentValidation.</li>
+<li>Null-input failures are created as <code>new ValidationResult([new ValidationFailure(paramName, message ?? $&quot;'{paramName}' must not be empty.&quot;) { ErrorCode = &quot;NotNullValidator&quot; }])</code>, which projects to the reason code <code>value.not-null</code>.</li>
+<li><code>ValidateToResultAsync&lt;T&gt;</code> observes <code>cancellationToken</code> BEFORE the null-value short-circuit (so a cancelled token always wins over the synchronous fallback) AND propagates cancellation through <code>validator.ValidateAsync(value, cancellationToken)</code>.</li>
+<li>Exceptions from FluentValidation itself are not caught, except for the explicit <code>ArgumentNullException.ThrowIfNull(...)</code> guards on <code>validationResult</code> and <code>validator</code>.</li>
+</ul>
+<h3 id="jsonpointernormalizer-1"><code>JsonPointerNormalizer</code></h3>
+<ul>
+<li><code>ToJsonPointer</code> is a pure, allocation-light projection. It does not validate that the input is a syntactically well-formed FluentValidation property chain — malformed inputs simply produce the most permissive segmentation the loop can derive.</li>
+<li>For inputs that already look like JSON pointers (start with <code>/</code>), the method short-circuits and returns the input unchanged so a pre-formed pointer (e.g., one produced by <code>InputPointer.ForProperty(...)</code>) is preserved verbatim.</li>
+</ul>
+<h2 id="code-examples">Code examples</h2>
+<h3 id="convert-an-existing-validationresult">Convert an existing <code>ValidationResult</code></h3>
+<pre><code class="lang-csharp">using FluentValidation;
+using FluentValidation.Results;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record CreateUserRequest(string Email);
+
+var validator = new InlineValidator&lt;CreateUserRequest&gt;();
+validator.RuleFor(x =&gt; x.Email).NotEmpty().EmailAddress();
+
+var request = new CreateUserRequest(&quot;invalid-email&quot;);
+ValidationResult validation = validator.Validate(request);
+
+Result&lt;CreateUserRequest&gt; result = validation.ToResult(request);
+</code></pre>
+<h3 id="validate-directly-with-sync-and-async-helpers">Validate directly with sync and async helpers</h3>
+<pre><code class="lang-csharp">using System.Threading;
+using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+public sealed record CreateUserRequest(string Email);
+
+var validator = new InlineValidator&lt;CreateUserRequest&gt;();
+validator.RuleFor(x =&gt; x.Email).NotEmpty().EmailAddress();
+
+var request = new CreateUserRequest(&quot;user@example.com&quot;);
+
+Result&lt;CreateUserRequest&gt; syncResult = validator.ValidateToResult(request);
+Result&lt;CreateUserRequest&gt; asyncResult =
+    await validator.ValidateToResultAsync(request, cancellationToken: CancellationToken.None);
+</code></pre>
+<h3 id="null-input-with-caller-expression-field-naming">Null input with caller-expression field naming</h3>
+<pre><code class="lang-csharp">using FluentValidation;
+using Trellis;
+using Trellis.FluentValidation;
+
+string? alias = null;
+
+var validator = new InlineValidator&lt;string?&gt;();
+validator.RuleFor(x =&gt; x).NotEmpty();
+
+Result&lt;string?&gt; result = validator.ValidateToResult(alias, message: &quot;Alias is required.&quot;);
+</code></pre>
+<h3 id="project-a-fluentvalidation-property-name-into-an-inputpointer">Project a FluentValidation property name into an <code>InputPointer</code></h3>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.FluentValidation;
+
+// Custom FluentValidation projection that needs to build an InputPointer
+// without going through the Mediator adapter.
+var pointer = new InputPointer(JsonPointerNormalizer.ToJsonPointer(&quot;Items[0].Sku&quot;));
+// pointer.RawValue == &quot;/items/0/sku&quot;
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-mediator-fluentvalidation.html#header">trellis-api-mediator-fluentvalidation.md</a> — the Mediator integration (<code>AddTrellisFluentValidation</code> + adapter) that builds on <code>JsonPointerNormalizer</code>.</li>
+<li><a href="trellis-api-core.html#public-abstract-record-error">trellis-api-core.md</a> — <code>Error.InvalidInput</code> shape and <code>InputPointer</code> semantics.</li>
+<li><a href="trellis-api-asp.html#domain--http-boundary-mapping">trellis-api-asp.md</a> — how <code>Error.InvalidInput</code> lands on the wire.</li>
+<li><a href="trellis-api-mediator.html#validationbehaviortmessage-tresponse">trellis-api-mediator.md</a> — the pipeline stage the Mediator adapter participates in.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-fluentvalidation.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

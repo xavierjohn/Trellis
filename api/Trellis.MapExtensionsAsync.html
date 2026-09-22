@@ -1,0 +1,3143 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class MapExtensionsAsync | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class MapExtensionsAsync | Trellis ">
+      
+      <meta name="description" content="Provides asynchronous extension methods for mapping (transforming) values inside Result objects.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_MapExtensionsAsync.md&amp;value=---%0Auid%3A%20Trellis.MapExtensionsAsync%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.MapExtensionsAsync">
+
+
+
+  <h1 id="Trellis_MapExtensionsAsync" data-uid="Trellis.MapExtensionsAsync" class="text-break">
+Class MapExtensionsAsync  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L355"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides asynchronous extension methods for mapping (transforming) values inside Result objects.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class MapExtensionsAsync</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">MapExtensionsAsync</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_MapExtensionsAsync_examples">Examples</h2>
+  <pre><code class="lang-csharp">var ct = cancellationToken;
+var result = await emailResult
+    .Combine(userIdResult)
+    .MapAsync((email, userId) =&gt; FormatUserAsync(email, userId, ct));</code></pre>
+
+
+  <h2 id="Trellis_MapExtensionsAsync_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+These methods handle various async scenarios for tuple transformations.
+Users should capture CancellationToken in their lambda closures when cancellation support is needed.
+</p>
+<p>
+Both Task and ValueTask variants are provided for performance optimization scenarios.
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__10_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8_____System_Func___0___1___2___3___4___5___6___7___8_System_Threading_Tasks_Task___9___" data-uid="Trellis.MapExtensionsAsync.MapAsync``10(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7,``8}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8,System.Threading.Tasks.Task{``9}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1255"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 9-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-10">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__10_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8_____System_Func___0___1___2___3___4___5___6___7___8___9__" data-uid="Trellis.MapExtensionsAsync.MapAsync``10(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7,``8}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8,``9})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1224"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 9-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-10">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__10_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8_____System_Func___0___1___2___3___4___5___6___7___8_System_Threading_Tasks_ValueTask___9___" data-uid="Trellis.MapExtensionsAsync.MapAsync``10(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7,``8}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8,System.Threading.Tasks.ValueTask{``9}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1275"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 9-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-10">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__10_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8_____System_Func___0___1___2___3___4___5___6___7___8___9__" data-uid="Trellis.MapExtensionsAsync.MapAsync``10(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7,``8}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8,``9})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1238"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 9-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-10">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__10_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8____System_Func___0___1___2___3___4___5___6___7___8_System_Threading_Tasks_Task___9___" data-uid="Trellis.MapExtensionsAsync.MapAsync``10(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7,``8}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8,System.Threading.Tasks.Task{``9}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1183"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 9-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-10">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__10_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7___8____System_Func___0___1___2___3___4___5___6___7___8_System_Threading_Tasks_ValueTask___9___" data-uid="Trellis.MapExtensionsAsync.MapAsync``10(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7,``8}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8,System.Threading.Tasks.ValueTask{``9}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1202"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 9-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8, T9)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-10">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>T9</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__2_System_Threading_Tasks_Task_Trellis_Result___0___System_Func___0_System_Threading_Tasks_Task___1___" data-uid="Trellis.MapExtensionsAsync.MapAsync``2(System.Threading.Tasks.Task{Trellis.Result{``0}},System.Func{``0,System.Threading.Tasks.Task{``1}})">
+  MapAsync&lt;TIn, TOut&gt;(Task&lt;Result&lt;TIn&gt;&gt;, Func&lt;TIn, Task&lt;TOut&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Map.cs/#L107"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously maps the value of a task result to a new value using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TOut&gt;&gt; MapAsync&lt;TIn, TOut&gt;(this Task&lt;Result&lt;TIn&gt;&gt; resultTask, Func&lt;TIn, Task&lt;TOut&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TIn&gt;&gt;</dt>
+    <dd><p>The task containing the result to map.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>The async function to transform the value if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>A new success result with the transformed value if success; otherwise the original failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of the output result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__2_System_Threading_Tasks_Task_Trellis_Result___0___System_Func___0___1__" data-uid="Trellis.MapExtensionsAsync.MapAsync``2(System.Threading.Tasks.Task{Trellis.Result{``0}},System.Func{``0,``1})">
+  MapAsync&lt;TIn, TOut&gt;(Task&lt;Result&lt;TIn&gt;&gt;, Func&lt;TIn, TOut&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Map.cs/#L89"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously maps the value of a task result to a new value using a synchronous function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TOut&gt;&gt; MapAsync&lt;TIn, TOut&gt;(this Task&lt;Result&lt;TIn&gt;&gt; resultTask, Func&lt;TIn, TOut&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TIn&gt;&gt;</dt>
+    <dd><p>The task containing the result to map.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, TOut&gt;</dt>
+    <dd><p>The function to transform the value if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>A new success result with the transformed value if success; otherwise the original failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of the output result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__2_System_Threading_Tasks_ValueTask_Trellis_Result___0___System_Func___0_System_Threading_Tasks_ValueTask___1___" data-uid="Trellis.MapExtensionsAsync.MapAsync``2(System.Threading.Tasks.ValueTask{Trellis.Result{``0}},System.Func{``0,System.Threading.Tasks.ValueTask{``1}})">
+  MapAsync&lt;TIn, TOut&gt;(ValueTask&lt;Result&lt;TIn&gt;&gt;, Func&lt;TIn, ValueTask&lt;TOut&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Map.cs/#L163"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously maps the value of a ValueTask result to a new value using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TOut&gt;&gt; MapAsync&lt;TIn, TOut&gt;(this ValueTask&lt;Result&lt;TIn&gt;&gt; resultTask, Func&lt;TIn, ValueTask&lt;TOut&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TIn&gt;&gt;</dt>
+    <dd><p>The ValueTask containing the result to map.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>The async function to transform the value if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>A new success result with the transformed value if success; otherwise the original failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of the output result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__2_System_Threading_Tasks_ValueTask_Trellis_Result___0___System_Func___0___1__" data-uid="Trellis.MapExtensionsAsync.MapAsync``2(System.Threading.Tasks.ValueTask{Trellis.Result{``0}},System.Func{``0,``1})">
+  MapAsync&lt;TIn, TOut&gt;(ValueTask&lt;Result&lt;TIn&gt;&gt;, Func&lt;TIn, TOut&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Map.cs/#L146"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously maps the value of a ValueTask result to a new value using a synchronous function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TOut&gt;&gt; MapAsync&lt;TIn, TOut&gt;(this ValueTask&lt;Result&lt;TIn&gt;&gt; resultTask, Func&lt;TIn, TOut&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TIn&gt;&gt;</dt>
+    <dd><p>The ValueTask containing the result to map.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, TOut&gt;</dt>
+    <dd><p>The function to transform the value if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>A new success result with the transformed value if success; otherwise the original failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of the output result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__2_Trellis_Result___0__System_Func___0_System_Threading_Tasks_Task___1___" data-uid="Trellis.MapExtensionsAsync.MapAsync``2(Trellis.Result{``0},System.Func{``0,System.Threading.Tasks.Task{``1}})">
+  MapAsync&lt;TIn, TOut&gt;(Result&lt;TIn&gt;, Func&lt;TIn, Task&lt;TOut&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Map.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously maps the value of a successful result to a new value using the provided async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TOut&gt;&gt; MapAsync&lt;TIn, TOut&gt;(this Result&lt;TIn&gt; result, Func&lt;TIn, Task&lt;TOut&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TIn&gt;</dt>
+    <dd><p>The result to map.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>The async function to transform the value if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>A new success result with the transformed value if success; otherwise the original failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of the output result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_MapExtensionsAsync_MapAsync__2_Trellis_Result___0__System_Func___0_System_Threading_Tasks_Task___1____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.runtime.compilerservices.overloadresolutionpriorityattribute">OverloadResolutionPriorityAttribute</a> resolves the historical CS0121 ambiguity
+against the sibling <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a>-delegate overload on the same sync
+<a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> receiver for inline async lambdas. Callers can still target
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> via a strongly-typed delegate.</p>
+</div>
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__2_Trellis_Result___0__System_Func___0_System_Threading_Tasks_ValueTask___1___" data-uid="Trellis.MapExtensionsAsync.MapAsync``2(Trellis.Result{``0},System.Func{``0,System.Threading.Tasks.ValueTask{``1}})">
+  MapAsync&lt;TIn, TOut&gt;(Result&lt;TIn&gt;, Func&lt;TIn, ValueTask&lt;TOut&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/Map.cs/#L125"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously maps the value of a successful result to a new value using a ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TOut&gt;&gt; MapAsync&lt;TIn, TOut&gt;(this Result&lt;TIn&gt; result, Func&lt;TIn, ValueTask&lt;TOut&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TIn&gt;</dt>
+    <dd><p>The result to map.</p>
+</dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TIn, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>The async function to transform the value if the result is successful.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TOut&gt;&gt;</dt>
+    <dd><p>A new success result with the transformed value if success; otherwise the original failure.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TIn</code></dt>
+    <dd><p>Type of the input result value.</p>
+</dd>
+    <dt><code>TOut</code></dt>
+    <dd><p>Type of the output result value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__3_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1_System_Threading_Tasks_Task___2___" data-uid="Trellis.MapExtensionsAsync.MapAsync``3(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,System.Threading.Tasks.Task{``2}})">
+  MapAsync&lt;T1, T2, TResult&gt;(Task&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L436"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 2-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, TResult&gt;(this Task&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__3_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1___2__" data-uid="Trellis.MapExtensionsAsync.MapAsync``3(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,``2})">
+  MapAsync&lt;T1, T2, TResult&gt;(Task&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L405"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 2-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, TResult&gt;(this Task&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__3_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1_System_Threading_Tasks_ValueTask___2___" data-uid="Trellis.MapExtensionsAsync.MapAsync``3(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,System.Threading.Tasks.ValueTask{``2}})">
+  MapAsync&lt;T1, T2, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L456"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 2-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__3_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1____System_Func___0___1___2__" data-uid="Trellis.MapExtensionsAsync.MapAsync``3(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1}}},System.Func{``0,``1,``2})">
+  MapAsync&lt;T1, T2, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2)&gt;&gt;, Func&lt;T1, T2, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L419"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 2-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2)&gt;&gt; resultTask, Func&lt;T1, T2, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__3_Trellis_Result_System_ValueTuple___0___1___System_Func___0___1_System_Threading_Tasks_Task___2___" data-uid="Trellis.MapExtensionsAsync.MapAsync``3(Trellis.Result{System.ValueTuple{``0,``1}},System.Func{``0,``1,System.Threading.Tasks.Task{``2}})">
+  MapAsync&lt;T1, T2, TResult&gt;(Result&lt;(T1, T2)&gt;, Func&lt;T1, T2, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L364"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 2-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, TResult&gt;(this Result&lt;(T1, T2)&gt; result, Func&lt;T1, T2, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__3_Trellis_Result_System_ValueTuple___0___1___System_Func___0___1_System_Threading_Tasks_ValueTask___2___" data-uid="Trellis.MapExtensionsAsync.MapAsync``3(Trellis.Result{System.ValueTuple{``0,``1}},System.Func{``0,``1,System.Threading.Tasks.ValueTask{``2}})">
+  MapAsync&lt;T1, T2, TResult&gt;(Result&lt;(T1, T2)&gt;, Func&lt;T1, T2, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L383"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 2-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, TResult&gt;(this Result&lt;(T1, T2)&gt; result, Func&lt;T1, T2, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;T1, T2, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__4_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2_System_Threading_Tasks_Task___3___" data-uid="Trellis.MapExtensionsAsync.MapAsync``4(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,System.Threading.Tasks.Task{``3}})">
+  MapAsync&lt;T1, T2, T3, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L553"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 3-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__4_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2___3__" data-uid="Trellis.MapExtensionsAsync.MapAsync``4(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,``3})">
+  MapAsync&lt;T1, T2, T3, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L522"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 3-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__4_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2_System_Threading_Tasks_ValueTask___3___" data-uid="Trellis.MapExtensionsAsync.MapAsync``4(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,System.Threading.Tasks.ValueTask{``3}})">
+  MapAsync&lt;T1, T2, T3, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L573"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 3-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__4_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2____System_Func___0___1___2___3__" data-uid="Trellis.MapExtensionsAsync.MapAsync``4(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2}}},System.Func{``0,``1,``2,``3})">
+  MapAsync&lt;T1, T2, T3, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt;, Func&lt;T1, T2, T3, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L536"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 3-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3)&gt;&gt; resultTask, Func&lt;T1, T2, T3, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__4_Trellis_Result_System_ValueTuple___0___1___2___System_Func___0___1___2_System_Threading_Tasks_Task___3___" data-uid="Trellis.MapExtensionsAsync.MapAsync``4(Trellis.Result{System.ValueTuple{``0,``1,``2}},System.Func{``0,``1,``2,System.Threading.Tasks.Task{``3}})">
+  MapAsync&lt;T1, T2, T3, TResult&gt;(Result&lt;(T1, T2, T3)&gt;, Func&lt;T1, T2, T3, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L481"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 3-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, TResult&gt;(this Result&lt;(T1, T2, T3)&gt; result, Func&lt;T1, T2, T3, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__4_Trellis_Result_System_ValueTuple___0___1___2___System_Func___0___1___2_System_Threading_Tasks_ValueTask___3___" data-uid="Trellis.MapExtensionsAsync.MapAsync``4(Trellis.Result{System.ValueTuple{``0,``1,``2}},System.Func{``0,``1,``2,System.Threading.Tasks.ValueTask{``3}})">
+  MapAsync&lt;T1, T2, T3, TResult&gt;(Result&lt;(T1, T2, T3)&gt;, Func&lt;T1, T2, T3, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L500"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 3-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, TResult&gt;(this Result&lt;(T1, T2, T3)&gt; result, Func&lt;T1, T2, T3, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-4">Func</a>&lt;T1, T2, T3, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__5_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3_System_Threading_Tasks_Task___4___" data-uid="Trellis.MapExtensionsAsync.MapAsync``5(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.Task{``4}})">
+  MapAsync&lt;T1, T2, T3, T4, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L670"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 4-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__5_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3___4__" data-uid="Trellis.MapExtensionsAsync.MapAsync``5(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,``4})">
+  MapAsync&lt;T1, T2, T3, T4, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L639"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 4-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__5_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3_System_Threading_Tasks_ValueTask___4___" data-uid="Trellis.MapExtensionsAsync.MapAsync``5(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.ValueTask{``4}})">
+  MapAsync&lt;T1, T2, T3, T4, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L690"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 4-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__5_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3____System_Func___0___1___2___3___4__" data-uid="Trellis.MapExtensionsAsync.MapAsync``5(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3}}},System.Func{``0,``1,``2,``3,``4})">
+  MapAsync&lt;T1, T2, T3, T4, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt;, Func&lt;T1, T2, T3, T4, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L653"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 4-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__5_Trellis_Result_System_ValueTuple___0___1___2___3___System_Func___0___1___2___3_System_Threading_Tasks_Task___4___" data-uid="Trellis.MapExtensionsAsync.MapAsync``5(Trellis.Result{System.ValueTuple{``0,``1,``2,``3}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.Task{``4}})">
+  MapAsync&lt;T1, T2, T3, T4, TResult&gt;(Result&lt;(T1, T2, T3, T4)&gt;, Func&lt;T1, T2, T3, T4, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L598"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 4-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, TResult&gt;(this Result&lt;(T1, T2, T3, T4)&gt; result, Func&lt;T1, T2, T3, T4, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__5_Trellis_Result_System_ValueTuple___0___1___2___3___System_Func___0___1___2___3_System_Threading_Tasks_ValueTask___4___" data-uid="Trellis.MapExtensionsAsync.MapAsync``5(Trellis.Result{System.ValueTuple{``0,``1,``2,``3}},System.Func{``0,``1,``2,``3,System.Threading.Tasks.ValueTask{``4}})">
+  MapAsync&lt;T1, T2, T3, T4, TResult&gt;(Result&lt;(T1, T2, T3, T4)&gt;, Func&lt;T1, T2, T3, T4, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L617"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 4-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, TResult&gt;(this Result&lt;(T1, T2, T3, T4)&gt; result, Func&lt;T1, T2, T3, T4, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;T1, T2, T3, T4, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__6_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4_System_Threading_Tasks_Task___5___" data-uid="Trellis.MapExtensionsAsync.MapAsync``6(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.Task{``5}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L787"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 5-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__6_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4___5__" data-uid="Trellis.MapExtensionsAsync.MapAsync``6(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,``5})">
+  MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L756"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 5-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__6_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4_System_Threading_Tasks_ValueTask___5___" data-uid="Trellis.MapExtensionsAsync.MapAsync``6(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.ValueTask{``5}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L807"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 5-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__6_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4____System_Func___0___1___2___3___4___5__" data-uid="Trellis.MapExtensionsAsync.MapAsync``6(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}}},System.Func{``0,``1,``2,``3,``4,``5})">
+  MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L770"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 5-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__6_Trellis_Result_System_ValueTuple___0___1___2___3___4___System_Func___0___1___2___3___4_System_Threading_Tasks_Task___5___" data-uid="Trellis.MapExtensionsAsync.MapAsync``6(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.Task{``5}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5)&gt;, Func&lt;T1, T2, T3, T4, T5, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L715"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 5-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5)&gt; result, Func&lt;T1, T2, T3, T4, T5, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__6_Trellis_Result_System_ValueTuple___0___1___2___3___4___System_Func___0___1___2___3___4_System_Threading_Tasks_ValueTask___5___" data-uid="Trellis.MapExtensionsAsync.MapAsync``6(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4}},System.Func{``0,``1,``2,``3,``4,System.Threading.Tasks.ValueTask{``5}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5)&gt;, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L734"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 5-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5)&gt; result, Func&lt;T1, T2, T3, T4, T5, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;T1, T2, T3, T4, T5, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__7_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5_System_Threading_Tasks_Task___6___" data-uid="Trellis.MapExtensionsAsync.MapAsync``7(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.Task{``6}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L904"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 6-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__7_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5___6__" data-uid="Trellis.MapExtensionsAsync.MapAsync``7(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,``6})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L873"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 6-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__7_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5_System_Threading_Tasks_ValueTask___6___" data-uid="Trellis.MapExtensionsAsync.MapAsync``7(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.ValueTask{``6}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L924"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 6-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__7_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5____System_Func___0___1___2___3___4___5___6__" data-uid="Trellis.MapExtensionsAsync.MapAsync``7(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}}},System.Func{``0,``1,``2,``3,``4,``5,``6})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L887"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 6-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__7_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___System_Func___0___1___2___3___4___5_System_Threading_Tasks_Task___6___" data-uid="Trellis.MapExtensionsAsync.MapAsync``7(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.Task{``6}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L832"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 6-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__7_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___System_Func___0___1___2___3___4___5_System_Threading_Tasks_ValueTask___6___" data-uid="Trellis.MapExtensionsAsync.MapAsync``7(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5}},System.Func{``0,``1,``2,``3,``4,``5,System.Threading.Tasks.ValueTask{``6}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L851"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 6-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-7">Func</a>&lt;T1, T2, T3, T4, T5, T6, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__8_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_Task___7___" data-uid="Trellis.MapExtensionsAsync.MapAsync``8(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.Task{``7}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1021"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 7-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__8_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6___7__" data-uid="Trellis.MapExtensionsAsync.MapAsync``8(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L990"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 7-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__8_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_ValueTask___7___" data-uid="Trellis.MapExtensionsAsync.MapAsync``8(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.ValueTask{``7}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1041"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 7-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__8_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6____System_Func___0___1___2___3___4___5___6___7__" data-uid="Trellis.MapExtensionsAsync.MapAsync``8(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1004"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 7-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__8_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6___System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_Task___7___" data-uid="Trellis.MapExtensionsAsync.MapAsync``8(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.Task{``7}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L949"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 7-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__8_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6___System_Func___0___1___2___3___4___5___6_System_Threading_Tasks_ValueTask___7___" data-uid="Trellis.MapExtensionsAsync.MapAsync``8(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6}},System.Func{``0,``1,``2,``3,``4,``5,``6,System.Threading.Tasks.ValueTask{``7}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L968"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 7-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-8">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__9_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_Task___8___" data-uid="Trellis.MapExtensionsAsync.MapAsync``9(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.Task{``8}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1138"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 8-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__9_System_Threading_Tasks_Task_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7___8__" data-uid="Trellis.MapExtensionsAsync.MapAsync``9(System.Threading.Tasks.Task{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1107"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async 8-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(this Task&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__9_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_ValueTask___8___" data-uid="Trellis.MapExtensionsAsync.MapAsync``9(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.ValueTask{``8}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1158"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 8-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__9_System_Threading_Tasks_ValueTask_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7_____System_Func___0___1___2___3___4___5___6___7___8__" data-uid="Trellis.MapExtensionsAsync.MapAsync``9(System.Threading.Tasks.ValueTask{Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,``8})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1121"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of an async ValueTask 8-element tuple result using a sync function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(this ValueTask&lt;Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt; resultTask, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>resultTask</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__9_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_Task___8___" data-uid="Trellis.MapExtensionsAsync.MapAsync``9(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.Task{``8}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1066"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 8-element tuple result using an async function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Task&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, Task&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_MapExtensionsAsync_MapAsync_" data-uid="Trellis.MapExtensionsAsync.MapAsync*"></a>
+
+  <h3 id="Trellis_MapExtensionsAsync_MapAsync__9_Trellis_Result_System_ValueTuple___0___1___2___3___4___5___6_System_ValueTuple___7____System_Func___0___1___2___3___4___5___6___7_System_Threading_Tasks_ValueTask___8___" data-uid="Trellis.MapExtensionsAsync.MapAsync``9(Trellis.Result{System.ValueTuple{``0,``1,``2,``3,``4,``5,``6,System.ValueTuple{``7}}},System.Func{``0,``1,``2,``3,``4,``5,``6,``7,System.Threading.Tasks.ValueTask{``8}})">
+  MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;TResult&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L1085"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maps the values of a 8-element tuple result using an async ValueTask function.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValueTask&lt;Result&lt;TResult&gt;&gt; MapAsync&lt;T1, T2, T3, T4, T5, T6, T7, T8, TResult&gt;(this Result&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt; result, Func&lt;T1, T2, T3, T4, T5, T6, T7, T8, ValueTask&lt;TResult&gt;&gt; func)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>result</code> <a class="xref" href="Trellis.Result-1.html">Result</a>&lt;(T1, T2, T3, T4, T5, T6, T7, T8)&gt;</dt>
+    <dd></dd>
+    <dt><code>func</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-9">Func</a>&lt;T1, T2, T3, T4, T5, T6, T7, T8, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Result-1.html">Result</a>&lt;TResult&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T1</code></dt>
+    <dd></dd>
+    <dt><code>T2</code></dt>
+    <dd></dd>
+    <dt><code>T3</code></dt>
+    <dd></dd>
+    <dt><code>T4</code></dt>
+    <dd></dd>
+    <dt><code>T5</code></dt>
+    <dd></dd>
+    <dt><code>T6</code></dt>
+    <dd></dd>
+    <dt><code>T7</code></dt>
+    <dd></dd>
+    <dt><code>T8</code></dt>
+    <dd></dd>
+    <dt><code>TResult</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Result/Extensions/MapTs.g.cs/#L355" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ServiceBusIntegrationEventPublisher | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ServiceBusIntegrationEventPublisher | Trellis ">
+      
+      <meta name="description" content="Publishes integration events to Azure Service Bus, one topic per contract.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher.md&amp;value=---%0Auid%3A%20Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher">
+
+
+
+  <h1 id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher" data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher" class="text-break">
+Class ServiceBusIntegrationEventPublisher  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Messaging.AzureServiceBus/src/ServiceBusIntegrationEventPublisher.cs/#L24"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Messaging.html">Messaging</a>.<a class="xref" href="Trellis.Messaging.AzureServiceBus.html">AzureServiceBus</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Messaging.AzureServiceBus.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Publishes integration events to Azure Service Bus, one topic per contract.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class ServiceBusIntegrationEventPublisher : IIntegrationEventPublisher, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ServiceBusIntegrationEventPublisher</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.Mediator.IIntegrationEventPublisher.html">IIntegrationEventPublisher</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Registered in place of the in-process publisher, this is what turns the outbox from a local relay into a
+cross-service one. It is the transport half of the guarantee the inbox provides: the outbox row id is
+stamped on <a class="xref" href="https://learn.microsoft.com/dotnet/api/azure.messaging.servicebus.servicebusmessage.messageid">MessageId</a> verbatim, so however many times the relay delivers a
+row, the consumer sees one message id and deduplicates on it.
+</p>
+<p>
+Senders are cached per topic and shared, which is the SDK's documented usage: a sender owns an AMQP link,
+and creating one per publish would make every message pay a link handshake.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher__ctor_" data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.#ctor*"></a>
+
+  <h3 id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher__ctor_Azure_Messaging_ServiceBus_ServiceBusClient_Trellis_Mediator_IntegrationEventNameMap_Microsoft_Extensions_Options_IOptions_Trellis_Messaging_AzureServiceBus_AzureServiceBusPublisherOptions__Microsoft_Extensions_Logging_ILogger_Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher__" data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.#ctor(Azure.Messaging.ServiceBus.ServiceBusClient,Trellis.Mediator.IntegrationEventNameMap,Microsoft.Extensions.Options.IOptions{Trellis.Messaging.AzureServiceBus.AzureServiceBusPublisherOptions},Microsoft.Extensions.Logging.ILogger{Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher})">
+  ServiceBusIntegrationEventPublisher(ServiceBusClient, IntegrationEventNameMap, IOptions&lt;AzureServiceBusPublisherOptions&gt;, ILogger&lt;ServiceBusIntegrationEventPublisher&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Messaging.AzureServiceBus/src/ServiceBusIntegrationEventPublisher.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.html">ServiceBusIntegrationEventPublisher</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ServiceBusIntegrationEventPublisher(ServiceBusClient client, IntegrationEventNameMap nameMap, IOptions&lt;AzureServiceBusPublisherOptions&gt; options, ILogger&lt;ServiceBusIntegrationEventPublisher&gt; logger)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>client</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/azure.messaging.servicebus.servicebusclient">ServiceBusClient</a></dt>
+    <dd><p>The Service Bus client. Its lifetime is owned by the container, not by this publisher.</p>
+</dd>
+    <dt><code>nameMap</code> <a class="xref" href="Trellis.Mediator.IntegrationEventNameMap.html">IntegrationEventNameMap</a></dt>
+    <dd><p>Maps each event type to the stable wire name that names its topic.</p>
+</dd>
+    <dt><code>options</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptions-1">IOptions</a>&lt;<a class="xref" href="Trellis.Messaging.AzureServiceBus.AzureServiceBusPublisherOptions.html">AzureServiceBusPublisherOptions</a>&gt;</dt>
+    <dd><p>Publishing options.</p>
+</dd>
+    <dt><code>logger</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.ilogger-1">ILogger</a>&lt;<a class="xref" href="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.html">ServiceBusIntegrationEventPublisher</a>&gt;</dt>
+    <dd><p>Logger.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher_DisposeAsync_" data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.DisposeAsync*"></a>
+
+  <h3 id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher_DisposeAsync" data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.DisposeAsync">
+  DisposeAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Messaging.AzureServiceBus/src/ServiceBusIntegrationEventPublisher.cs/#L122"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Closes the cached senders. The <a class="xref" href="https://learn.microsoft.com/dotnet/api/azure.messaging.servicebus.servicebusclient">ServiceBusClient</a> itself is left alone — it is resolved
+from the container and may be shared with consumers and other publishers.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask DisposeAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd><p>A task that completes when every sender has been closed.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher_DisposeAsync_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Draining until the cache is empty rather than iterating once: a publish that passed the disposed check
+just before this ran can still add a sender afterwards, and a single pass would step straight past it.
+The loop terminates because the flag is set first, so only calls already in flight can add anything.
+A sender added after the very last emptiness check would still be missed; that residual case is left
+to the container disposing the <a class="xref" href="https://learn.microsoft.com/dotnet/api/azure.messaging.servicebus.servicebusclient">ServiceBusClient</a>, which closes everything it created.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher_PublishAsync_" data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.PublishAsync*"></a>
+
+  <h3 id="Trellis_Messaging_AzureServiceBus_ServiceBusIntegrationEventPublisher_PublishAsync_Trellis_Mediator_OutboundIntegrationMessage_System_Threading_CancellationToken_" data-uid="Trellis.Messaging.AzureServiceBus.ServiceBusIntegrationEventPublisher.PublishAsync(Trellis.Mediator.OutboundIntegrationMessage,System.Threading.CancellationToken)">
+  PublishAsync(OutboundIntegrationMessage, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Messaging.AzureServiceBus/src/ServiceBusIntegrationEventPublisher.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Publishes the specified message to all matching consumers.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>message</code> <a class="xref" href="Trellis.Mediator.OutboundIntegrationMessage.html">OutboundIntegrationMessage</a></dt>
+    <dd><p>The message to publish, carrying the event and its stable id. Handler resolution uses
+<code>message.Event.GetType()</code>.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting on the consumers.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> that completes when all consumers have run (or thrown).</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>The event type has no registered wire name. This is a contract bug — the event cannot be named on the
+wire, so no consumer could identify it — and it is deliberately fatal to the publish. The outbox row
+stays unsent and the relay retries, which surfaces the missing <code>[IntegrationEventName]</code> as a
+stuck message rather than as silently dropped traffic.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Messaging.AzureServiceBus/src/ServiceBusIntegrationEventPublisher.cs/#L24" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

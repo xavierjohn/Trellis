@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Testing.Worker — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Testing.Worker — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-worker.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellistestingworker--api-reference">Trellis.Testing.Worker — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Testing.Worker</code><br>
+<strong>Namespace:</strong> <code>Trellis.Testing.Worker</code><br>
+<strong>Purpose:</strong> Integration-test harness for <code>BackgroundService</code> workers. Builds an <code>IHost</code> with a deterministic <code>FakeTimeProvider</code>, a configurable <code>TestActorProvider</code>, and a domain-event capture wired through the Trellis mediator pipeline so tests can advance time, wait for specific events or named tick signals, and assert what the worker emitted.</p>
+<p>Use this package from test projects only. It depends on <code>Microsoft.Extensions.Hosting</code>, <code>Microsoft.Extensions.TimeProvider.Testing</code>, <code>Trellis.Authorization</code>, <code>Trellis.Mediator</code>, and <code>Trellis.Testing</code>.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are writing integration tests for a <code>BackgroundService</code> that publishes Trellis domain events.</li>
+<li>You need deterministic control of a worker's <code>Task.Delay</code> / <code>PeriodicTimer</code> continuations via <code>FakeTimeProvider</code>.</li>
+<li>You want a race-proof primitive for waiting on the first domain event of a given type or a named tick signal.</li>
+<li>You need the worker's <code>IActorProvider</code> to resolve to a deterministic system actor outside an HTTP context.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build a harness for <code>MyWorker</code> and start it manually</td>
+<td><code>await using var harness = await WorkerHarness&lt;MyWorker&gt;.CreateAsync(opts =&gt; opts.ConfigureServices(...));</code> then <code>await harness.StartAsync(ct);</code></td>
+<td><a href="#workerharnesstworker"><code>WorkerHarness&lt;TWorker&gt;</code></a></td>
+</tr>
+<tr>
+<td>Build and auto-start in one call</td>
+<td><code>WorkerHarness&lt;MyWorker&gt;.CreateAsync(opts =&gt; { opts.AutoStart = true; opts.ConfigureServices(...); });</code></td>
+<td><a href="#workerharnessoptions"><code>WorkerHarnessOptions</code></a></td>
+</tr>
+<tr>
+<td>Advance the worker's clock</td>
+<td><code>harness.Time.Advance(TimeSpan.FromMinutes(5));</code></td>
+<td><a href="#workerharnesstworker"><code>WorkerHarness&lt;TWorker&gt;.Time</code></a></td>
+</tr>
+<tr>
+<td>Wait for the first event of a type</td>
+<td><code>var ev = await harness.WaitForEventAsync&lt;OrderShipped&gt;(TimeSpan.FromSeconds(5), ct);</code></td>
+<td><a href="#workerharnesstworker"><code>WorkerHarness&lt;TWorker&gt;</code></a></td>
+</tr>
+<tr>
+<td>Wait for a filtered event</td>
+<td><code>await harness.WaitForEventAsync&lt;OrderShipped&gt;(e =&gt; e.OrderId == id, timeout, ct);</code></td>
+<td><a href="#workerharnesstworker"><code>WorkerHarness&lt;TWorker&gt;</code></a></td>
+</tr>
+<tr>
+<td>Wait for a named tick signal</td>
+<td><code>await harness.WaitForTickAsync(&quot;reminder-job&quot;, timeout, ct);</code></td>
+<td><a href="#iworkerticksignal"><code>IWorkerTickSignal</code></a></td>
+</tr>
+<tr>
+<td>Read every captured event of a type</td>
+<td><code>var all = harness.Events&lt;OrderShipped&gt;();</code></td>
+<td><a href="#workerharnesstworker"><code>WorkerHarness&lt;TWorker&gt;</code></a></td>
+</tr>
+<tr>
+<td>Seed the database before the host starts</td>
+<td><code>opts.SeedAsync((sp, ct) =&gt; sp.GetRequiredService&lt;MyDbContext&gt;().SeedAsync(ct));</code></td>
+<td><a href="#workerharnessoptions"><code>WorkerHarnessOptions</code></a></td>
+</tr>
+<tr>
+<td>Run the worker under a specific system actor</td>
+<td><code>opts.SystemActor = Actor.Create(&quot;subscription-renewal-worker&quot;, new HashSet&lt;string&gt;([&quot;...&quot;]));</code></td>
+<td><a href="#workerharnessoptions"><code>WorkerHarnessOptions</code></a></td>
+</tr>
+<tr>
+<td>Detect a missing wait</td>
+<td>catch <code>WorkerHarnessTimeoutException</code></td>
+<td><a href="#workerharnesstimeoutexception"><code>WorkerHarnessTimeoutException</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="composition-rules">Composition rules</h2>
+<ul>
+<li>The harness owns the <code>IHostedService</code> registration for <code>TWorker</code>. <strong>Do not</strong> call <code>services.AddHostedService&lt;TWorker&gt;()</code> from your <code>ConfigureServices</code> callback — <code>CreateAsync</code> will throw <code>InvalidOperationException</code> so the test does not silently run two copies of the worker.</li>
+<li>The harness does <strong>not</strong> call <code>AddDomainEventDispatch()</code> on your behalf. Worker tests are integration tests of the production composition root, so include the same mediator-dispatch registration the worker's production host uses inside <code>ConfigureServices</code>. Without it the capture handler is registered but the mediator pipeline never publishes events, and <code>WaitForEventAsync</code> will time out with a diagnostic that calls this out.</li>
+<li>Wait timeouts measure <strong>real time</strong>, not the harness's fake clock. Calling <code>harness.Time.Advance(...)</code> does not consume the wait budget. The fake clock only drives the worker's <code>Task.Delay</code> / <code>PeriodicTimer</code> continuations.</li>
+<li><code>AutoStart</code> defaults to <code>false</code> so tests can subscribe to events / configure waits before the worker starts producing them.</li>
+<li><strong>Startup race.</strong> <code>IHost.StartAsync</code> returns once <code>ExecuteAsync</code> is scheduled, not once the worker has registered its first <code>Task.Delay</code> callback with the <code>FakeTimeProvider</code>. Either call <code>await harness.SettleAsync(cancellationToken: ct)</code> (real-time yield, default 200ms) after <code>StartAsync</code>, or — deterministically — have the worker REGISTER its first <code>Task.Delay(period, time, ct)</code> before calling <code>IWorkerTickSignal.SignalAsync(&quot;ready&quot;, ct)</code>, then <code>await</code> the saved delay, and use <code>await harness.WaitForTickAsync(&quot;ready&quot;, cancellationToken: ct)</code> in the test. The <code>Task.Delay(TimeSpan, TimeProvider, CancellationToken)</code> overload eagerly registers the callback with the <code>TimeProvider</code>, so signaling AFTER the call guarantees the callback exists by the time the test resumes and calls <code>Time.Advance</code>.</li>
+</ul>
+<h2 id="api">API</h2>
+<h3 id="workerharnesstworker"><code>WorkerHarness&lt;TWorker&gt;</code></h3>
+<pre><code class="lang-csharp">public sealed class WorkerHarness&lt;TWorker&gt; : IAsyncDisposable
+    where TWorker : BackgroundService
+</code></pre>
+<p>The <code>TWorker</code> type parameter carries <code>[DynamicallyAccessedMembers(PublicConstructors)]</code> so AOT trimming keeps the worker's constructor reachable.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Task&lt;WorkerHarness&lt;TWorker&gt;&gt; CreateAsync(Action&lt;WorkerHarnessOptions&gt;? configure = null, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;WorkerHarness&lt;TWorker&gt;&gt;</code></td>
+<td>Applies defaults, runs <code>ConfigureServices</code> and <code>ConfigureLogging</code> callbacks, registers <code>TWorker</code> as a hosted service (fail-fast on duplicate), builds the host, runs seeds in dedicated scopes, and optionally starts the host when <code>AutoStart</code> is <code>true</code>.</td>
+</tr>
+<tr>
+<td><code>public IHost Host { get; }</code></td>
+<td><code>IHost</code></td>
+<td>The underlying host. Exposed for advanced lifecycle scenarios.</td>
+</tr>
+<tr>
+<td><code>public IServiceProvider Services { get; }</code></td>
+<td><code>IServiceProvider</code></td>
+<td>The root provider of the worker host. Tests typically create their own scope for resolving scoped services.</td>
+</tr>
+<tr>
+<td><code>public FakeTimeProvider Time { get; }</code></td>
+<td><code>FakeTimeProvider</code></td>
+<td>The singleton <code>TimeProvider</code>. Advance with <code>Time.Advance(TimeSpan)</code> to drive the worker.</td>
+</tr>
+<tr>
+<td><code>public TestActorProvider Actor { get; }</code></td>
+<td><code>TestActorProvider</code></td>
+<td>The harness-managed actor provider. Call <code>Actor.WithActor(actor)</code> inside a scope to override the default system actor.</td>
+</tr>
+<tr>
+<td><code>public IWorkerTickSignal TickSignal { get; }</code></td>
+<td><code>IWorkerTickSignal</code></td>
+<td>The tick signal registered with the host. Tests typically observe it via <code>WaitForTickAsync</code> rather than calling it directly.</td>
+</tr>
+<tr>
+<td><code>public Task StartAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task</code></td>
+<td>Starts the worker host. Idempotent — subsequent calls return without restarting.</td>
+</tr>
+<tr>
+<td><code>public Task SettleAsync(TimeSpan? duration = null, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task</code></td>
+<td>Real-time yield (default 200ms) so the worker's <code>ExecuteAsync</code> takes its first scheduling turn and registers its initial <code>Task.Delay</code> / <code>PeriodicTimer</code> callback with the <code>FakeTimeProvider</code>. Call after <code>StartAsync</code> when the worker has no other readiness signal. For a deterministic alternative, have the worker register the first <code>Task.Delay(period, time, ct)</code> BEFORE calling <code>IWorkerTickSignal.SignalAsync(&quot;ready&quot;, ct)</code> (so the callback is provably registered when the signal fires), then <code>await</code> the saved delay.</td>
+</tr>
+<tr>
+<td><code>public Task StopAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task</code></td>
+<td>Stops the worker host. Idempotent.</td>
+</tr>
+<tr>
+<td><code>public IReadOnlyList&lt;TEvent&gt; Events&lt;TEvent&gt;() where TEvent : IDomainEvent</code></td>
+<td><code>IReadOnlyList&lt;TEvent&gt;</code></td>
+<td>Returns every captured event assignable to <code>TEvent</code>, in dispatch order. Snapshot semantics: the returned list does not change when later events are captured.</td>
+</tr>
+<tr>
+<td><code>public IReadOnlyList&lt;IDomainEvent&gt; AllEvents { get; }</code></td>
+<td><code>IReadOnlyList&lt;IDomainEvent&gt;</code></td>
+<td>Snapshot of every captured event regardless of type.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;TEvent&gt; WaitForEventAsync&lt;TEvent&gt;(TimeSpan? timeout = null, CancellationToken cancellationToken = default) where TEvent : IDomainEvent</code></td>
+<td><code>Task&lt;TEvent&gt;</code></td>
+<td>Returns the first event of type <code>TEvent</code>. Returns immediately if one was captured before the call. Throws <code>WorkerHarnessTimeoutException</code> on timeout.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;TEvent&gt; WaitForEventAsync&lt;TEvent&gt;(Func&lt;TEvent, bool&gt; predicate, TimeSpan? timeout = null, CancellationToken cancellationToken = default) where TEvent : IDomainEvent</code></td>
+<td><code>Task&lt;TEvent&gt;</code></td>
+<td>Same, but only events satisfying <code>predicate</code> complete the wait.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;int&gt; WaitForTickAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;int&gt;</code></td>
+<td>Completes when any tick is signaled. Returns immediately if a tick was recorded before the call. Returns the global signal index of the satisfying tick. Throws <code>WorkerHarnessTimeoutException</code> on timeout.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;int&gt; WaitForTickAsync(int after, TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;int&gt;</code></td>
+<td>Completes when any tick with a global signal index strictly greater than <code>after</code> is signaled. Pass the index returned by an earlier call (or <code>-1</code> to wait for any tick). Use for periodic workers where the same name is emitted on every iteration.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;int&gt; WaitForTickAsync(string name, TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;int&gt;</code></td>
+<td>Completes when a tick with the supplied <code>name</code> is signaled (ordinal equality). Returns immediately if a matching tick is anywhere in the recorded history.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;int&gt; WaitForTickAsync(string name, int after, TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;int&gt;</code></td>
+<td>Completes when a tick with <code>name</code> is signaled at a global index strictly greater than <code>after</code>. Pass the index returned by the previous wait, or <code>LastTickIndexOf(name)</code> for a baseline cursor.</td>
+</tr>
+<tr>
+<td><code>public int TickCount { get; }</code></td>
+<td><code>int</code></td>
+<td>Total number of ticks captured so far (across all names). <code>TickCount - 1</code> is a valid <code>after:</code> cursor for the unnamed overload.</td>
+</tr>
+<tr>
+<td><code>public int TickCountOf(string name)</code></td>
+<td><code>int</code></td>
+<td>Number of ticks captured so far with the given <code>name</code>. <strong>Not</strong> a valid <code>after:</code> cursor for the named overload (it is a per-name count, not a global index); use <code>LastTickIndexOf(name)</code> instead. Appropriate for assertions such as <code>harness.TickCountOf(&quot;probe&quot;).Should().Be(3)</code>.</td>
+</tr>
+<tr>
+<td><code>public int LastTickIndexOf(string name)</code></td>
+<td><code>int</code></td>
+<td>Global signal index of the most recent tick captured with the given <code>name</code>, or <code>-1</code> if none. Pass this value as <code>after:</code> to <code>WaitForTickAsync(name, after, ...)</code> for a baseline named cursor that is correct even when other tick names are interleaved in the history.</td>
+</tr>
+<tr>
+<td><code>public ValueTask DisposeAsync()</code></td>
+<td><code>ValueTask</code></td>
+<td>Stops the host (capped at a 10-second real-time budget) and disposes the underlying <code>IHost</code>. Idempotent.</td>
+</tr>
+</tbody>
+</table>
+<p><code>Events&lt;TEvent&gt;()</code> and <code>WaitForEventAsync&lt;TEvent&gt;</code> both use runtime <code>is</code> matching, so derived events appear in queries for their base type.</p>
+<h3 id="workerharnessoptions"><code>WorkerHarnessOptions</code></h3>
+<pre><code class="lang-csharp">public sealed class WorkerHarnessOptions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static readonly DateTimeOffset DefaultTestStartInstant</code></td>
+<td><code>DateTimeOffset</code></td>
+<td><code>2024-01-01T00:00:00Z</code>. Matches <code>Trellis.Testing.AspNetCore.WebApplicationFactoryTimeExtensions.DefaultTestStartInstant</code>.</td>
+</tr>
+<tr>
+<td><code>Actor SystemActor { get; set; }</code></td>
+<td><code>Actor</code></td>
+<td>The actor returned by the harness's <code>TestActorProvider</code>. Defaults to <code>Actor.Create(&quot;system&quot;, new HashSet&lt;string&gt;())</code> — an empty-permission system actor.</td>
+</tr>
+<tr>
+<td><code>DateTimeOffset InitialTime { get; set; }</code></td>
+<td><code>DateTimeOffset</code></td>
+<td>The instant the harness's <code>FakeTimeProvider</code> reports at start. Defaults to <code>DefaultTestStartInstant</code>.</td>
+</tr>
+<tr>
+<td><code>TimeSpan DefaultWaitTimeout { get; set; }</code></td>
+<td><code>TimeSpan</code></td>
+<td>Fallback timeout for <code>WaitForEventAsync</code> / <code>WaitForTickAsync</code> when the caller does not supply one. Real time. Defaults to 5 seconds.</td>
+</tr>
+<tr>
+<td><code>bool AutoStart { get; set; }</code></td>
+<td><code>bool</code></td>
+<td>When <code>true</code>, <code>CreateAsync</code> also calls <code>host.StartAsync()</code> before returning. Defaults to <code>false</code>.</td>
+</tr>
+<tr>
+<td><code>WorkerHarnessOptions ConfigureServices(Action&lt;IServiceCollection&gt; configure)</code></td>
+<td><code>WorkerHarnessOptions</code></td>
+<td>Appends a registration delegate, executed after harness defaults so callers can <code>Replace</code>/<code>RemoveAll</code> them.</td>
+</tr>
+<tr>
+<td><code>WorkerHarnessOptions ConfigureLogging(Action&lt;ILoggingBuilder&gt; configure)</code></td>
+<td><code>WorkerHarnessOptions</code></td>
+<td>Appends a logging-configuration delegate. Tests opt into <code>FakeLogger</code> here.</td>
+</tr>
+<tr>
+<td><code>WorkerHarnessOptions SeedAsync(Func&lt;IServiceProvider, CancellationToken, Task&gt; seed)</code></td>
+<td><code>WorkerHarnessOptions</code></td>
+<td>Appends a seed delegate invoked inside a dedicated DI scope between host build and host start.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iworkerticksignal"><code>IWorkerTickSignal</code></h3>
+<pre><code class="lang-csharp">public interface IWorkerTickSignal
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ValueTask SignalAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>ValueTask</code></td>
+<td>Signals an unnamed tick. The harness records it under the empty string.</td>
+</tr>
+<tr>
+<td><code>ValueTask SignalAsync(string name, CancellationToken cancellationToken = default)</code></td>
+<td><code>ValueTask</code></td>
+<td>Signals a named tick. Tests can wait for the specific name via <code>WorkerHarness.WaitForTickAsync(string, ...)</code>. Throws <code>ArgumentNullException</code> for null <code>name</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Production builds typically do not register an implementation; the worker resolves the interface as optional (<code>GetService&lt;IWorkerTickSignal&gt;()</code>) and no-ops when absent. The harness registers an implementation so tests can observe ticks.</p>
+<p>Prefer <code>WaitForEventAsync&lt;TEvent&gt;</code> when a tick already emits a domain event — it asserts a specific business outcome rather than a generic boundary.</p>
+<h3 id="workerharnesstimeoutexception"><code>WorkerHarnessTimeoutException</code></h3>
+<pre><code class="lang-csharp">public sealed class WorkerHarnessTimeoutException : TimeoutException
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WorkerHarnessTimeoutException()</code></td>
+<td>Parameterless constructor.</td>
+</tr>
+<tr>
+<td><code>WorkerHarnessTimeoutException(string message)</code></td>
+<td>Constructor with diagnostic message.</td>
+</tr>
+<tr>
+<td><code>WorkerHarnessTimeoutException(string message, Exception innerException)</code></td>
+<td>Constructor with message and inner exception.</td>
+</tr>
+</tbody>
+</table>
+<p>Thrown by <code>WaitForEventAsync</code> and <code>WaitForTickAsync</code>. The message names the awaited condition, the timeout that elapsed, the count of captured events / recorded tick names so far, and (for event waits) a reminder to register <code>AddDomainEventDispatch()</code>.</p>
+<p>Caller cancellation propagates as plain <code>OperationCanceledException</code>, not <code>WorkerHarnessTimeoutException</code>, so tests can distinguish &quot;test gave up&quot; from &quot;wait expired&quot;.</p>
+<h2 id="common-examples">Common examples</h2>
+<h3 id="build-a-harness-and-drive-one-tick">Build a harness and drive one tick</h3>
+<pre><code class="lang-csharp">using Trellis.Mediator;
+using Trellis.Testing.Worker;
+
+await using var harness = await WorkerHarness&lt;SubscriptionRenewalWorker&gt;.CreateAsync(opts =&gt;
+{
+    opts.ConfigureServices(services =&gt;
+    {
+        services.AddDomainEventDispatch();
+        services.AddDbContext&lt;RemindersDbContext&gt;(o =&gt; o.UseSqlite(connection));
+        services.AddScoped&lt;ISubscriptionsRepository, SubscriptionsRepository&gt;();
+    });
+    opts.SeedAsync((sp, ct) =&gt;
+    {
+        var db = sp.GetRequiredService&lt;RemindersDbContext&gt;();
+        return db.SeedTestSubscriptionsAsync(ct);
+    });
+});
+
+await harness.StartAsync(TestContext.Current.CancellationToken);
+await harness.SettleAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+harness.Time.Advance(TimeSpan.FromHours(24));
+
+var reminder = await harness.WaitForEventAsync&lt;RenewalReminderQueued&gt;(
+    TimeSpan.FromSeconds(5),
+    TestContext.Current.CancellationToken);
+
+reminder.SubscriptionId.Should().Be(expectedId);
+</code></pre>
+<h3 id="use-a-named-system-actor-and-a-custom-permission-set">Use a named system actor and a custom permission set</h3>
+<pre><code class="lang-csharp">var workerActor = Actor.Create(
+    &quot;subscription-renewal-worker&quot;,
+    new HashSet&lt;string&gt;([&quot;Subscriptions.Read&quot;, &quot;Subscriptions.Write&quot;]));
+
+await using var harness = await WorkerHarness&lt;SubscriptionRenewalWorker&gt;.CreateAsync(opts =&gt;
+{
+    opts.SystemActor = workerActor;
+    opts.ConfigureServices(services =&gt;
+    {
+        services.AddDomainEventDispatch();
+        // ...rest of the production composition root...
+    });
+});
+</code></pre>
+<h3 id="wait-for-a-named-tick-when-the-worker-emits-no-domain-event">Wait for a named tick when the worker emits no domain event</h3>
+<p>The harness always registers <code>IWorkerTickSignal</code> for its own process — but the production
+worker's host typically does <strong>not</strong> register it (the signal is a test-only concern). Resolve
+it with <code>GetService&lt;IWorkerTickSignal&gt;()</code> rather than constructor-injecting <code>IWorkerTickSignal?</code>,
+because .NET DI does not treat nullable annotations as optional dependencies; constructor
+injection of an unregistered service fails activation in production.</p>
+<p>The worker below arms the first delay before <code>&quot;ready&quot;</code> and the next delay before each <code>&quot;probe&quot;</code> signal. Waiting for either signal therefore makes it safe to advance fake time immediately, without racing timer registration. <code>IHealthProbe</code> is the application's probe service; register it in both the production host and the harness.</p>
+<pre><code class="lang-csharp">public interface IHealthProbe
+{
+    Task ProbeAsync(CancellationToken cancellationToken);
+}
+
+public sealed class HealthProbeWorker(IServiceProvider services, TimeProvider time) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // Resolved once at start-up; null in production (not registered), non-null in tests.
+        var ticks = services.GetService&lt;IWorkerTickSignal&gt;();
+        var probe = services.GetRequiredService&lt;IHealthProbe&gt;();
+        var delay = Task.Delay(TimeSpan.FromSeconds(30), time, stoppingToken);
+        if (ticks is not null) await ticks.SignalAsync(&quot;ready&quot;, stoppingToken);
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await delay;
+            await probe.ProbeAsync(stoppingToken);
+            delay = Task.Delay(TimeSpan.FromSeconds(30), time, stoppingToken);
+            if (ticks is not null) await ticks.SignalAsync(&quot;probe&quot;, stoppingToken);
+        }
+    }
+}
+
+// In the test — capture a baseline cursor BEFORE each Advance so successive waits do not
+// re-match the previous &quot;probe&quot; tick (HealthProbeWorker emits the same name on every
+// iteration). LastTickIndexOf(name) returns the global signal index of the most recent
+// matching tick (or -1), which remains correct even when other tick names interleave.
+await harness.StartAsync(cancellationToken);
+await harness.WaitForTickAsync(&quot;ready&quot;, timeout: TimeSpan.FromSeconds(5), cancellationToken: cancellationToken);
+var cursor = harness.LastTickIndexOf(&quot;probe&quot;);
+harness.Time.Advance(TimeSpan.FromSeconds(30));
+cursor = await harness.WaitForTickAsync(&quot;probe&quot;, after: cursor, TimeSpan.FromSeconds(5), cancellationToken);
+
+harness.Time.Advance(TimeSpan.FromSeconds(30));
+cursor = await harness.WaitForTickAsync(&quot;probe&quot;, after: cursor, TimeSpan.FromSeconds(5), cancellationToken);
+</code></pre>
+<p>This example is compiled in <code>Examples/CookbookSnippets/Recipe26_NamedTickWorker.cs</code> and behaviorally checked by <code>Examples/CookbookSnippets.Tests/WorkerExampleTests.cs</code>: the test advances fake time synchronously inside the signal callback and asserts that each signal already has its next timer.</p>
+<p><code>WaitForTickAsync(name, ...)</code> without <code>after:</code> returns immediately whenever a matching tick is anywhere in the history. That is the right shape for the deterministic-ready pattern (the worker signals once at startup, the test waits once). For periodic workers — where the same tick name is emitted every iteration — always thread the returned index back into the next call as <code>after:</code>, or capture <code>harness.LastTickIndexOf(name)</code> for a baseline cursor. Avoid <code>TickCountOf(name) - 1</code> as a cursor: it is a per-name count, not a global signal index, so with interleaved tick names it can fall below the global index of an already-recorded matching tick and produce a wait that completes immediately for that old tick.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="trellis-api-testing-aspnetcore.html#use-this-file-when">trellis-api-testing-aspnetcore.md</a> — <code>WebApplicationFactory&lt;TEntryPoint&gt;</code> helpers, fake time, and <code>.http</code> file replay for HTTP integration tests.</li>
+<li><a href="trellis-api-testing-reference.html#use-this-file-when">trellis-api-testing-reference.md</a> — core Trellis testing assertions, fake repositories, and <code>TestActorProvider</code>.</li>
+<li><a href="trellis-api-authorization.html#types">trellis-api-authorization.md</a> — <code>Actor</code> and <code>IActorProvider</code>.</li>
+<li><a href="trellis-api-asp.html#namespace-trellisaspauthorization">trellis-api-asp.md</a> — <code>AddTrellisWorkerActor</code> composition helper for the worker's production host.</li>
+<li><a href="trellis-api-mediator.html#domaineventdispatchservicecollectionextensions">trellis-api-mediator.md</a> — <code>AddDomainEventDispatch</code>, <code>IDomainEventHandler&lt;T&gt;</code>, and the mediator pipeline the harness captures from.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-worker.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

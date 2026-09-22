@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Namespace Trellis.Mediator | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Namespace Trellis.Mediator | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Mediator">
+
+  <h1 id="Trellis_Mediator" data-uid="Trellis.Mediator" class="text-break">Namespace Trellis.Mediator</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+
+    <h3 id="classes">
+Classes
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.AuthorizationBehavior-2.html">AuthorizationBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that checks the current actor has all permissions
+declared in <a class="xref" href="Trellis.Authorization.IAuthorize.html#Trellis_Authorization_IAuthorize_RequiredPermissions">RequiredPermissions</a>.
+Short-circuits with <a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a> if any permission is missing.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that dispatches domain events accumulated on the success-value
+aggregate after the command handler returns. Events fire after any inner
+<code>TransactionalCommandBehavior</code> commits, so handlers see committed state.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.DomainEventDispatchReport.html">DomainEventDispatchReport</a></dt>
+      <dd><p>The per-handler outcome of a dispatch performed through
+<a class="xref" href="Trellis.Mediator.IReportingDomainEventPublisher.html#Trellis_Mediator_IReportingDomainEventPublisher_PublishReportingAsync_Trellis_IDomainEvent_System_Collections_Generic_IReadOnlySet_System_String__System_Threading_CancellationToken_">PublishReportingAsync(IDomainEvent, IReadOnlySet&lt;string&gt;?, CancellationToken)</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.DomainEventDispatchServiceCollectionExtensions.html">DomainEventDispatchServiceCollectionExtensions</a></dt>
+      <dd><p>Extension methods for registering Trellis.Mediator domain-event dispatch.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html">DomainEventHandlerCascadedException</a></dt>
+      <dd><p>Thrown by the domain event dispatch behaviors and helper when the aggregate's
+pending-event list no longer matches the entry snapshot at the end of dispatch.
+The validation is strict: length must match AND each position must be reference-equal
+to the snapshot, so any handler-caused mutation (raising new events, clearing via
+<code>AcceptChanges</code>, replacing, reordering) triggers this exception. Handlers MUST
+be side-effect-only. In the multi-aggregate tracked-dispatch variant, every aggregate
+in the snapshot is validated and offenders are reported together in <a class="xref" href="Trellis.Mediator.DomainEventHandlerCascadedException.html#Trellis_Mediator_DomainEventHandlerCascadedException_Offenders">Offenders</a>.</p>
+<p>
+Note: this exception fires AFTER the inner <code>TransactionalCommandBehavior</code> commits.
+The database state is durable, but the dispatch-stage response is failure-shaped.
+Consumers retrying the same command will hit "already committed" semantics; durable
+at-least-once dispatch requires the outbox pattern (planned, not shipped).
+</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.DomainEventHandlerFailure.html">DomainEventHandlerFailure</a></dt>
+      <dd><p>A single handler's failure during a reported domain-event dispatch.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.DomainEventPublisherExtensions.html">DomainEventPublisherExtensions</a></dt>
+      <dd><p>Extension methods over <a class="xref" href="Trellis.Mediator.IDomainEventPublisher.html">IDomainEventPublisher</a> for call sites that need to dispatch
+an aggregate's <a class="xref" href="Trellis.IAggregate.html#Trellis_IAggregate_UncommittedEvents">UncommittedEvents()</a> manually (outside the
+<a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a> pipeline).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ExceptionBehavior-2.html">ExceptionBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that catches unhandled exceptions from handlers and converts
+them to <a class="xref" href="Trellis.Error.Unexpected.html">Error.Unexpected</a> failures. This is a safety net — handlers
+should not throw, but if they do, this prevents unhandled exceptions from escaping
+the mediator pipeline.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IntegrationEnvelope.html">IntegrationEnvelope</a></dt>
+      <dd><p>The consume-side envelope handed to <a class="xref" href="Trellis.Mediator.IInboxDispatcher.html">IInboxDispatcher</a>: a stable <a class="xref" href="Trellis.Mediator.IntegrationEnvelope.html#Trellis_Mediator_IntegrationEnvelope_MessageId">MessageId</a>
+plus the deserialized <a class="xref" href="Trellis.IIntegrationEvent.html">IIntegrationEvent</a>. Only <a class="xref" href="Trellis.Mediator.IntegrationEnvelope.html#Trellis_Mediator_IntegrationEnvelope_MessageId">MessageId</a> and
+<a class="xref" href="Trellis.Mediator.IntegrationEnvelope.html#Trellis_Mediator_IntegrationEnvelope_Event">Event</a> are load-bearing; the remaining members are optional lineage / observability
+metadata and never participate in deduplication.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IntegrationEventDispatchServiceCollectionExtensions.html">IntegrationEventDispatchServiceCollectionExtensions</a></dt>
+      <dd><p>Extension methods for registering Trellis.Mediator integration-event publishing.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IntegrationEventNameMap.html">IntegrationEventNameMap</a></dt>
+      <dd><p>A bidirectional map between an integration event's stable wire name (see
+<a class="xref" href="Trellis.IntegrationEventNameAttribute.html">IntegrationEventNameAttribute</a>) and its local CLR type — the contract a broker transport
+serializes through so producer and consumer never exchange assembly-qualified type names.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.LoggingBehavior-2.html">LoggingBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that logs command/query execution with duration and Result outcome.
+The per-message start entry is logged at <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.loglevel#microsoft-extensions-logging-loglevel-debug">Debug</a>; the matching end
+entry is at <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.loglevel#microsoft-extensions-logging-loglevel-debug">Debug</a> on success, <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.loglevel#microsoft-extensions-logging-loglevel-information">Information</a> for
+expected caller/domain failures (validation, authentication, authorization, not-found,
+conflict, rate-limited, invariant-violation, gone, and aggregates whose inner errors are all
+expected), and <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.loglevel#microsoft-extensions-logging-loglevel-warning">Warning</a> for unexpected, dependency, or opaque transport
+failures. Cross-cutting per-message observability noise belongs at Debug, not Information;
+consumers who want per-call timing in production raise the level via
+<code>&quot;Trellis.Mediator&quot;: &quot;Debug&quot;</code> in their logging configuration.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.MediatorTraceProviderBuilderExtensions.html">MediatorTraceProviderBuilderExtensions</a></dt>
+      <dd><p>Extension methods for configuring OpenTelemetry tracing for the Trellis mediator pipeline.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.OutboundIntegrationMessage.html">OutboundIntegrationMessage</a></dt>
+      <dd><p>The publish-side counterpart of <a class="xref" href="Trellis.Mediator.IntegrationEnvelope.html">IntegrationEnvelope</a>: the integration event to publish
+together with the stable <a class="xref" href="Trellis.Mediator.OutboundIntegrationMessage.html#Trellis_Mediator_OutboundIntegrationMessage_MessageId">MessageId</a> a transport must carry verbatim onto the wire.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ResolvedAuthorizationHop.html">ResolvedAuthorizationHop</a></dt>
+      <dd><p>Describes a single hop in an indirect authorization chain.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a></dt>
+      <dd><p>Pre-computed navigation path from a leaf resource to an owner resource for
+indirect (multi-hop) resource authorization. Constructed at registration time
+(either by the assembly-scanning resolver or by an explicit registration helper)
+and passed to <a class="xref" href="Trellis.Mediator.ResourceAuthorizationViaBehavior-4.html">ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPathHolder-4.html">ResolvedAuthorizationPathHolder&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a></dt>
+      <dd><p>Closed-generic carrier for a <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a> registered per
+via-authorized command. Used so DI naturally disambiguates the path per command (each
+closed generic is a distinct service type) and so
+<a class="xref" href="Trellis.Mediator.ResourceAuthorizationViaBehavior-4.html">ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a> can be
+registered as a TYPED descriptor (not a factory descriptor), letting
+<a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html">ServiceCollectionExtensions</a>'s relocator recognize it by
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.servicedescriptor.implementationtype">ImplementationType</a> alone.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ResourceAuthorizationBehavior-3.html">ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that loads a resource and performs resource-based authorization
+before the handler runs. Registered as scoped so the injected <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a>
+is the request-scoped provider, allowing correct resolution of scoped dependencies.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ResourceAuthorizationOptions.html">ResourceAuthorizationOptions</a></dt>
+      <dd><p>Configures the resource-authorization pipeline's failure-exposure policy on a per-resource
+basis. Register via <code>services.AddResourceAuthorization(o =&gt; o.HideExistence&lt;Incident&gt;())</code>
+or through the <code>TrellisServiceBuilder.UseResourceAuthorization(o =&gt; ...)</code> composition slot.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ResourceAuthorizationPathResolver.html">ResourceAuthorizationPathResolver</a></dt>
+      <dd><p>Resolves a <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a> from a leaf resource type to an
+owner resource type by walking the entity graph defined by
+<a class="xref" href="Trellis.Authorization.IIdentifyRelatedResource-2.html">IIdentifyRelatedResource&lt;TRelated, TId&gt;</a> and
+<a class="xref" href="Trellis.Authorization.IIdentifyRelatedResources-2.html">IIdentifyRelatedResources&lt;TRelated, TId&gt;</a> declarations on candidate entity types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ResourceAuthorizationViaBehavior-4.html">ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that performs indirect (multi-hop) resource-based authorization.
+The command identifies a leaf resource via the existing
+<a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> infrastructure and declares its final
+authorization target via <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html">IAuthorizeResourceVia&lt;TOwner&gt;</a>; this behavior walks
+the pre-resolved <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a> from leaf to owner and invokes
+the command's <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html#Trellis_Authorization_IAuthorizeResourceVia_1_Authorize_Trellis_Authorization_Actor_System_Collections_Generic_IReadOnlyList__0__">Authorize(Actor, IReadOnlyList&lt;TOwner&gt;)</a> method against the
+final list of owners.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ServiceCollectionExtensions.html">ServiceCollectionExtensions</a></dt>
+      <dd><p>Extension methods for registering Trellis.Mediator pipeline behaviors.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.TracingBehavior-2.html">TracingBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that creates an OpenTelemetry Activity for each command/query.
+Tags the activity with Result status and error details on failure.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.TrackedAggregateDomainEventDispatchBehavior-2.html">TrackedAggregateDomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Opt-in pipeline behavior that, after a successful command, dispatches domain events from
+every aggregate the unit of work tracked at commit time — regardless of the command's
+response shape. Companion to <a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a>,
+which only fires for <code>Result&lt;TAggregate&gt;</code> responses.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.TrackedAggregateDomainEventDispatchServiceCollectionExtensions.html">TrackedAggregateDomainEventDispatchServiceCollectionExtensions</a></dt>
+      <dd><p>Opt-in registration for <a class="xref" href="Trellis.Mediator.TrackedAggregateDomainEventDispatchBehavior-2.html">TrackedAggregateDomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.TransactionalCommandBehaviorServiceCollectionExtensions.html">TransactionalCommandBehaviorServiceCollectionExtensions</a></dt>
+      <dd><p>Registration for the <a class="xref" href="Trellis.Mediator.TransactionalCommandBehavior-2.html">TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</a> pipeline behavior,
+independent of any persistence adapter. Any adapter that registers an <span class="xref">Trellis.IUnitOfWork</span> (the
+shipped EF Core adapter does this in <code>AddTrellisUnitOfWork&lt;TContext&gt;()</code>) can call
+<a class="xref" href="Trellis.Mediator.TransactionalCommandBehaviorServiceCollectionExtensions.html#Trellis_Mediator_TransactionalCommandBehaviorServiceCollectionExtensions_AddTransactionalCommandBehavior_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddTransactionalCommandBehavior(IServiceCollection)</a> to install the standard commit pipeline.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.TransactionalCommandBehavior-2.html">TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Pipeline behavior that automatically commits staged changes after a successful command handler.</p>
+<p>
+The behavior wraps each command invocation in an <span class="xref">Trellis.IUnitOfWork.BeginScope()</span> scope,
+runs the handler (which stages changes via repositories), then calls
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CommitAsync(CancellationToken)</a> if the handler returned success. If the handler returned
+a failure <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>, no commit occurs and the staged changes are discarded when
+the underlying store/context is disposed.
+</p>
+<p>
+<b>Persist-on-failure outcomes.</b> If the response implements <a class="xref" href="Trellis.IPersistOnFailure.html">IPersistOnFailure</a>
+and the per-instance flag is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> (the canonical producer is
+<a class="xref" href="Trellis.Result.html#Trellis_Result_FailAfterCommit__1_Trellis_Error_">FailAfterCommit&lt;TValue&gt;(Error)</a>), the commit step also runs even though the
+result is a failure. This enables the worker-handler pattern of persisting a
+<code>permanently_failed</code> state row alongside the failure outcome. On commit failure for a
+persist-on-failure outcome, the commit error replaces the handler error in the returned result.
+</p>
+<p>
+This behavior is constrained to <span class="xref">Mediator.ICommand&lt;TResponse&gt;</span> messages — queries
+are not wrapped and incur no overhead.
+</p>
+<p>
+<b>Atomicity:</b> the unit of work persists all staged changes within a single handler atomically
+(the shipped EF Core adapter does so through the <code>DbContext</code>'s implicit transaction). Cross-aggregate
+operations that share the same unit of work are automatically transactional.
+</p>
+<p>
+<b>Nested-command semantics.</b> When a command handler dispatches another command via
+<code>IMediator</code>, the inner command flows through the same pipeline and the inner
+<a class="xref" href="Trellis.Mediator.TransactionalCommandBehavior-2.html">TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</a> opens a nested
+<span class="xref">Trellis.IUnitOfWork.BeginScope()</span>. The inner <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CommitAsync(CancellationToken)</a> defers
+(returns success without touching the store) until the outermost scope unwinds. This
+prevents a successful inner command from committing a partially-completed outer command's
+staged changes. <b>Caveat:</b> if the inner command returns a failure but the outer handler
+ignores it and returns success, the outer's commit will persist any changes the inner staged
+before failing — handlers that need to discard inner failures' staged work must detach the
+affected entities themselves. Every <span class="xref">Trellis.IUnitOfWork</span> implementation must implement
+<span class="xref">Trellis.IUnitOfWork.BeginScope()</span> with depth-aware semantics; the shipped EF Core unit of
+work does this with an internal depth counter.
+</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.TrellisMediatorTelemetryOptions.html">TrellisMediatorTelemetryOptions</a></dt>
+      <dd><p>Operator-tunable redaction settings for the Trellis mediator pipeline's logging and
+tracing behaviors. Resolved from DI; if not registered, the behaviors fall back to
+the safe-by-default values exposed by this type's parameterless constructor.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.ValidationBehavior-2.html">ValidationBehavior&lt;TMessage, TResponse&gt;</a></dt>
+      <dd><p>Unified validation stage of the Trellis Mediator pipeline. Runs the compile-time
+<a class="xref" href="Trellis.Mediator.IValidate.html">IValidate</a> contract (when the message implements it) and every
+<a class="xref" href="Trellis.Mediator.IMessageValidator-1.html">IMessageValidator&lt;TMessage&gt;</a> registered for <code class="typeparamref">TMessage</code>
+in DI, aggregates all <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a> failures into a single
+response failure, and short-circuits the pipeline before the handler is invoked.</p>
+</dd>
+    </dl>
+    <h3 id="structs">
+Structs
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.CascadeOffender.html">CascadeOffender</a></dt>
+      <dd><p>Identifies an aggregate whose pending-event list changed during domain event dispatch.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.HopLoadResult.html">HopLoadResult</a></dt>
+      <dd><p>Result of loading a single related resource at one ID during a hop walk.</p>
+</dd>
+    </dl>
+    <h3 id="interfaces">
+Interfaces
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IDomainEventHandler-1.html">IDomainEventHandler&lt;TEvent&gt;</a></dt>
+      <dd><p>Handles a domain event raised by an <a class="xref" href="Trellis.IAggregate.html">IAggregate</a>. Implementations are
+resolved via DI by the <a class="xref" href="Trellis.Mediator.DomainEventDispatchBehavior-2.html">DomainEventDispatchBehavior&lt;TMessage, TResponse&gt;</a>
+after a successful command and invoked once per matching event.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IDomainEventPublisher.html">IDomainEventPublisher</a></dt>
+      <dd><p>Publishes a single <a class="xref" href="Trellis.IDomainEvent.html">IDomainEvent</a> by resolving and invoking all
+<a class="xref" href="Trellis.Mediator.IDomainEventHandler-1.html">IDomainEventHandler&lt;TEvent&gt;</a> registrations for the event's runtime type.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IInboxDispatcher.html">IInboxDispatcher</a></dt>
+      <dd><p>The inbound entry point for idempotent integration-event consumption. A transport adapter — a broker
+consumer or the in-process path — builds an <a class="xref" href="Trellis.Mediator.IntegrationEnvelope.html">IntegrationEnvelope</a> and calls
+<a class="xref" href="Trellis.Mediator.IInboxDispatcher.html#Trellis_Mediator_IInboxDispatcher_DispatchAsync_Trellis_Mediator_IntegrationEnvelope_System_Threading_CancellationToken_">DispatchAsync(IntegrationEnvelope, CancellationToken)</a>; the dispatcher deduplicates on
+<code>(ConsumerId, MessageId)</code> so the event's integration-event handlers' side effects commit exactly
+once (effectively-once), together with the dedup record.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IIntegrationEventCollector.html">IIntegrationEventCollector</a></dt>
+      <dd><p>Collects <a class="xref" href="Trellis.IIntegrationEvent.html">IIntegrationEvent</a> instances produced while a domain-event handler (the
+<em>translator</em>) handles a domain event, so the transactional outbox can capture them durably and
+the relay can publish them after the producing work is committed. This is the translation seam: a
+domain-event handler observes a domain event and adds the integration events that describe the same
+fact in contract terms.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IIntegrationEventHandler-1.html">IIntegrationEventHandler&lt;TEvent&gt;</a></dt>
+      <dd><p>Handles an <a class="xref" href="Trellis.IIntegrationEvent.html">IIntegrationEvent</a> - the in-process consumer side of the external contract.
+Implementations are resolved via DI and invoked once per matching event by the default
+<a class="xref" href="Trellis.Mediator.IIntegrationEventPublisher.html">IIntegrationEventPublisher</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IIntegrationEventPublisher.html">IIntegrationEventPublisher</a></dt>
+      <dd><p>Publishes a single <a class="xref" href="Trellis.IIntegrationEvent.html">IIntegrationEvent</a>, together with the stable message identity a
+transport must carry onto the wire, to its consumers. The transactional outbox relay resolves this
+contract to deliver integration events durably after the producing transaction commits.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IMessageValidator-1.html">IMessageValidator&lt;TMessage&gt;</a></dt>
+      <dd><p>Contributes a validation step to the unified validation stage of the Trellis Mediator
+pipeline (<a class="xref" href="Trellis.Mediator.ValidationBehavior-2.html">ValidationBehavior&lt;TMessage, TResponse&gt;</a>).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IReportingDomainEventPublisher.html">IReportingDomainEventPublisher</a></dt>
+      <dd><p>Publishes a domain event and <b>reports</b> each handler's outcome instead of swallowing failures.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.IValidate.html">IValidate</a></dt>
+      <dd><p>Marker interface for commands/queries that can self-validate before reaching the handler.
+Implement on command/query records to enable the <a class="xref" href="Trellis.Mediator.ValidationBehavior-2.html">ValidationBehavior&lt;TMessage, TResponse&gt;</a>.</p>
+</dd>
+    </dl>
+    <h3 id="enums">
+Enums
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.AuthFailureExposurePolicy.html">AuthFailureExposurePolicy</a></dt>
+      <dd><p>Controls how the resource-authorization pipeline surfaces authorization-related failures
+to clients. The choice is per-resource (configured via <a class="xref" href="Trellis.Mediator.ResourceAuthorizationOptions.html">ResourceAuthorizationOptions</a>)
+because different resources warrant different existence-disclosure trade-offs even within
+a single application.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Mediator.InboxDispatchOutcome.html">InboxDispatchOutcome</a></dt>
+      <dd><p>The outcome of dispatching one message through <a class="xref" href="Trellis.Mediator.IInboxDispatcher.html#Trellis_Mediator_IInboxDispatcher_DispatchAsync_Trellis_Mediator_IntegrationEnvelope_System_Threading_CancellationToken_">DispatchAsync(IntegrationEnvelope, CancellationToken)</a>: whether this
+call committed the handlers' side effects, or the message was already processed so this call committed
+nothing. Both outcomes mean the message is durably accounted for, so a pull consumer can safely advance
+its checkpoint on either; the distinction exists for metrics, logging, and overlap / anti-join bookkeeping.</p>
+</dd>
+    </dl>
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

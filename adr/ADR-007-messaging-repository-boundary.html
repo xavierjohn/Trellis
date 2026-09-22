@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ADR-007 — Keep Outbox, Inbox, and Broker Transports in the Framework Repository | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ADR-007 — Keep Outbox, Inbox, and Broker Transports in the Framework Repository | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-007-messaging-repository-boundary.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="adr-007--keep-outbox-inbox-and-broker-transports-in-the-framework-repository">ADR-007 — Keep Outbox, Inbox, and Broker Transports in the Framework Repository</h1>
+
+<blockquote>
+<p><strong>Status:</strong> Accepted. <strong>Extends <a href="ADR-006-store-neutral-persistence-contracts.html">ADR-006</a></strong> from
+package boundaries to <em>repository</em> boundaries; supersedes nothing.</p>
+<p><strong>Context:</strong> Trellis now ships a transactional outbox, a deduplicating inbox, and an Azure Service Bus
+transport. A sibling repository, <code>xavierjohn/Trellis.Microservices</code>, ships gateway and cross-service
+identity packages. Because outbox/inbox/transport are most visibly <em>used</em> between services, it is
+natural to ask whether they belong in the microservices repository instead. This ADR records why they
+stay, and states the condition under which transports — and only transports — would move.</p>
+</blockquote>
+<h2 id="context">Context</h2>
+<p>The question is not academic. <code>Trellis.Microservices</code> exists precisely to hold &quot;the distributed-systems
+part&quot; of Trellis, and reliable messaging looks like the distributed-systems part. Three packages are in
+scope:</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trellis.EntityFrameworkCore.Outbox</code></td>
+<td>capture domain/integration events in the same transaction as the aggregate; relay them</td>
+</tr>
+<tr>
+<td><code>Trellis.EntityFrameworkCore.Inbox</code></td>
+<td>deduplicate consumed messages per <code>(ConsumerId, MessageId)</code></td>
+</tr>
+<tr>
+<td><code>Trellis.Messaging.AzureServiceBus</code></td>
+<td>carry an outbox row to an inbox over a broker</td>
+</tr>
+</tbody>
+</table>
+<p>ADR-006 already answered the <em>package</em>-level version of this question by asking one thing of each type:
+<strong>what is it, actually?</strong> — then giving it the home that answer implies. This ADR applies the same test at
+the repository level.</p>
+<h2 id="evidence">Evidence</h2>
+<ol>
+<li><p><strong>The layering is already correct, and the seam is an abstraction boundary.</strong> The messaging <em>contracts</em>
+— <code>IIntegrationEventPublisher</code>, <code>OutboundIntegrationMessage</code>, <code>IInboxDispatcher</code>,
+<code>IntegrationEventNameMap</code> — live in <code>Trellis.Mediator</code> (ADR-006 put the consume-side ones there). The EF
+realizations live in the EF packages. <code>Trellis.Messaging.AzureServiceBus</code> project-references only
+<code>Trellis.Core</code> and <code>Trellis.Mediator</code>. Ports and adapters already hold; there is no tangle to relieve.</p>
+</li>
+<li><p><strong>The outbox is a dual-write pattern, not a microservices pattern.</strong> It solves &quot;mutate the database and
+cause an external side effect atomically.&quot; That problem exists in a modular monolith that updates a
+search index, sends email, or fires a webhook — no second service required. The outbox is the reliable
+delivery arm of the domain-event mechanism <code>Trellis.Core</code> already ships. The inbox is its dual:
+idempotent consumption, which is likewise about persistence, not topology.</p>
+</li>
+<li><p><strong>Outbox and inbox are welded to the EF commit pipeline, not layered on top of it.</strong>
+<code>OutboxCaptureInterceptor</code> is an EF Core <code>SaveChangesInterceptor</code>; both packages project-reference
+<code>Trellis.EntityFrameworkCore</code>. They are adapters to a specific store, in the same sense as
+<code>EfUnitOfWork</code>. ADR-006 deliberately left these implementations adapter-side for exactly this reason.</p>
+</li>
+<li><p><strong>A cross-repository move would put a version pin through the middle of one feature.</strong>
+<code>Trellis.Microservices</code> consumes Trellis as NuGet packages behind a single <code>TrellisVersion</code> pin
+(<code>3.0.0-alpha.432</code> at time of writing). Moving the outbox downstream makes every change to the
+unit-of-work / SaveChanges seam a three-step release dance: framework release → pin-bump PR → downstream
+release. More seriously, <strong>the framework's own test suite would stop covering whether SaveChanges
+interception captures outbox rows correctly</strong> — the highest-value test for that seam would sit in a
+different repository, behind a pin, and could only fail <em>after</em> a release.</p>
+</li>
+<li><p><strong>The two repositories are split by coupling, not by subject matter.</strong> <code>Trellis.Microservices</code> holds what
+is determined by <em>deployment topology</em>: a YARP gateway that mints internal JWTs, a consumer-side actor
+provider, JWKS/OIDC discovery. Its three packages have zero persistence dependencies. Outbox and inbox
+are determined by <em>how you persist</em>. Filing them by the &quot;distributed systems&quot; theme would sort on a
+different axis than the one the split actually uses, and would introduce EF Core to a repository that
+deliberately has no database.</p>
+</li>
+<li><p><strong>The vendor-SDK concern is real but points elsewhere.</strong> The framework repository has 23 packable projects
+and now two vendor SDK dependencies — <code>Azure.Messaging.ServiceBus</code> and <code>Microsoft.Azure.Cosmos</code>. Should
+Kafka, RabbitMQ, and SQS transports follow, every framework contributor's build would restore broker SDKs
+they do not use. This is the one genuine cost, and it applies <strong>only</strong> to transports — not to outbox/inbox,
+which carry no vendor dependency.</p>
+</li>
+</ol>
+<h2 id="decision">Decision</h2>
+<p><strong>Outbox and inbox stay in the framework repository, permanently.</strong> They are persistence adapters over
+<code>Trellis.EntityFrameworkCore</code>; their home follows their coupling, and their tests must live beside the
+commit pipeline they intercept. Revisiting this is out of scope absent a change to the EF integration itself.</p>
+<p><strong>Broker transports stay in the framework repository for now</strong>, under a stated exit condition below.</p>
+<p><strong><code>Trellis.Microservices</code> is not the destination for either</strong>, regardless of how the transport question
+resolves. That repository's organizing principle is edge and inter-service <em>identity</em>; adding brokers and
+EF Core would dissolve that principle rather than reinforce it, leaving two repositories that both mean
+&quot;distributed-ish.&quot;</p>
+<p><strong>Exit condition for transports.</strong> Split broker transports into a dedicated <code>Trellis.Messaging</code> repository
+when <strong>both</strong> hold:</p>
+<ul>
+<li>a <strong>second</strong> shipped transport exists (Kafka, RabbitMQ, SQS, …), so the split amortizes over more than one
+package and the shared shape has been validated twice rather than guessed once; <strong>and</strong></li>
+<li>the transport contracts in <code>Trellis.Mediator</code> have been stable across at least one such addition — i.e.
+adding transport #2 required no change to <code>IIntegrationEventPublisher</code> / <code>OutboundIntegrationMessage</code>.</li>
+</ul>
+<p>Until both hold, splitting buys isolation that is not yet needed and immediately imposes the version-pin
+lockstep described in Evidence §4. The second condition matters more than the first: a repository boundary
+across an unstable contract is the expensive kind of mistake, because each iteration costs a release cycle.</p>
+<p>This exit condition governs a split along the <strong>capability</strong> axis, which is the one this ADR expects. A
+<em>different</em> trigger with a different destination — vendor-driven release cadence or separate ownership,
+which would argue for a vendor repository instead — is described in Alternatives §5. Both are stated so a
+future reader knows the transport question has two distinct escape hatches and which evidence distinguishes
+them; neither is in force today.</p>
+<h2 id="consequences">Consequences</h2>
+<p><strong>Positive</strong></p>
+<ul>
+<li>One repository, one build, one test run covers outbox capture → relay → transport → inbox dedup. The
+seam most likely to harbour a bug is the one between these parts, and it stays inside a single CI run.</li>
+<li>Contract changes such as PR #696 (making the wire identity mandatory on the publish seam) remain a single
+atomic commit across contract, producer, and transport. Across repositories that change would have been a
+breaking release plus a coordinated downstream bump.</li>
+<li><code>Trellis.Microservices</code> keeps a sharp, stateless identity: gateway, JWT contract, actor propagation.</li>
+</ul>
+<p><strong>Negative / limits</strong></p>
+<ul>
+<li>The framework repository carries vendor SDK dependencies (<code>Azure.Messaging.ServiceBus</code>,
+<code>Microsoft.Azure.Cosmos</code>) that most contributors never exercise, costing restore and build time.</li>
+<li>That cost grows linearly with each new transport, which is precisely what the exit condition is for. This
+ADR accepts the cost at n=1 and commits to re-evaluating at n=2 rather than pretending it is zero.</li>
+</ul>
+<p><strong>Neutral</strong></p>
+<ul>
+<li>No code moves. This ADR records a decision <em>not</em> to act, so that the question is answered once rather than
+re-derived. Per the ADR README, the obvious-looking alternative was examined and rejected for reasons that
+are not obvious from the directory layout.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ol>
+<li><p><strong>Move outbox, inbox, and transports to <code>Trellis.Microservices</code>.</strong> Rejected: sorts by theme rather than by
+coupling (Evidence §5), forces EF Core into a repository with no persistence story, and puts a NuGet
+version pin through the middle of the EF commit pipeline — relocating the outbox's most valuable tests
+outside the repository that owns the code they protect (Evidence §4).</p>
+</li>
+<li><p><strong>Move only the Service Bus transport to <code>Trellis.Microservices</code>.</strong> Rejected: it is the most <em>movable</em>
+package (Core + Mediator only, Evidence §1), so the mechanics would work — but the destination is wrong.
+A gateway/identity repository that also hosts broker adapters has no describable boundary, and the next
+transport would have nowhere obvious to go.</p>
+</li>
+<li><p><strong>Create a <code>Trellis.Messaging</code> repository now.</strong> Rejected as premature, not as wrong. With one transport
+it isolates nothing while immediately imposing release lockstep on contracts that are one PR old — PR #696
+changed <code>IIntegrationEventPublisher</code> after the outbox shipped, which is the concrete evidence that this
+surface is still moving. Promoted to the stated exit condition instead of discarded.</p>
+</li>
+<li><p><strong>Move outbox/inbox but keep the transport.</strong> Rejected as the inverse of the coupling: outbox/inbox are
+the EF-coupled pieces that most need to stay next to <code>Trellis.EntityFrameworkCore</code>, while the transport is
+the loosely-coupled piece. This alternative moves exactly the wrong half.</p>
+</li>
+<li><p><strong>Create a vendor repository (<code>Trellis.Azure</code>) holding <code>Trellis.Messaging.AzureServiceBus</code> and
+<code>Trellis.Asp.Idempotency.Cosmos</code>.</strong> Rejected, though it is a better axis than alternative 1 and is
+genuinely <em>feasible</em> — <code>Trellis.Testing.Idempotency</code> is a shipped conformance suite depending only on
+<code>Trellis.Asp</code>, so an out-of-repo store can prove its own correctness. Three reasons it still loses:</p>
+<ul>
+<li><strong>The test-infrastructure argument — its strongest — is empirically false.</strong> Container-dependent
+integration tests are not confined to the Azure packages. <code>Trellis.EntityFrameworkCore</code> (2),
+<code>…Inbox</code> (2), and <code>…Outbox</code> (1) carry five SQL Server integration test files. Extracting the Azure
+packages would <em>not</em> leave the framework repository free of vendor-backed tests, because the vendor
+code that most needs a container is the code that cannot leave. (CI already excludes
+<code>Category=Integration</code>, so this burden is local-developer-only either way.)</li>
+<li><strong>Vendor isolation is a dependency concern, and the package boundary already provides it.</strong> Nobody
+installing <code>Trellis.Core</code> restores the Azure SDK today. ADR-006 established that the <em>package</em>, not the
+namespace, is the dependency boundary; the same logic continues upward — the <em>repository</em> is the
+coordination boundary. A vendor repository buys isolation already in hand and charges coordination
+that is not.</li>
+<li><strong>&quot;Vendor&quot; describes the dependency, not the code.</strong> Such a repository would pair an integration-event
+transport (implementing <code>IIntegrationEventPublisher</code>, from <code>Trellis.Mediator</code>) with an idempotency
+store (implementing <code>IIdempotencyStore</code>, from <code>Trellis.Asp</code>): different contracts, different layers,
+zero shared code. A contributor working on idempotency would need two repositories; one working on
+&quot;Azure&quot; would face two unrelated features. Capability (<code>Trellis.Messaging.*</code> — shared contract, shared
+conformance suite) is the grouping that serves contributors, which is why the exit condition above is
+keyed to a second <em>transport</em> rather than a second <em>Azure service</em>. .NET Aspire is the precedent at
+scale: <code>Aspire.Azure.*</code>, <code>Aspire.Hosting.AWS</code>, and the rest ship as separate <strong>packages</strong> from a single
+repository.</li>
+</ul>
+<p>This becomes the right answer if the vendor packages ever need a release cadence driven by the vendor SDK
+rather than by Trellis contracts, or if they gain separate owners. Neither holds while the contracts they
+implement are alpha and still moving.</p>
+</li>
+</ol>
+<h2 id="reversibility">Reversibility</h2>
+<p>This decision is deliberately cheap to reverse, and the mechanism is recorded here because it is the part
+that decays from memory. Publishing to nuget.org does <strong>not</strong> close the door on a later repository move.</p>
+<p><strong>What a published package actually pins is the <code>(package ID, version)</code> tuple.</strong> nuget.org unlists but never
+deletes, so any future repository must publish a strictly higher version under the same ID. The repository
+itself is invisible to consumers — <strong>moving a package between repositories while keeping its ID is not a
+breaking change</strong>; consumers receive a new version of the same ID. Only <code>RepositoryUrl</code> / SourceLink metadata
+changes, which affects symbol debugging, not resolution.</p>
+<p><strong>Version continuity is one config field.</strong> The framework versions every package from a single
+Nerdbank.GitVersioning stream (<code>3.0-alpha.{height}</code> in <code>version.json</code>), so a new repository would restart its
+commit height at 1 and produce <em>lower</em> versions than those already published. <code>versionHeightOffset</code> exists
+precisely for repository migrations: set it to the height last published and the sequence continues.
+<code>versionHeightOffsetAppliesTo</code> pins the offset to one base version so it does not inflate a later version line.</p>
+<p><strong>The genuinely irreversible choice is the package ID</strong>, since renaming a published ID orphans consumers.
+The current IDs are deliberately <strong>repository-neutral</strong> — <code>Trellis.Messaging.AzureServiceBus</code> and
+<code>Trellis.Asp.Idempotency.Cosmos</code> name a capability and a vendor, never a repository — so either the
+<code>Trellis.Messaging</code> split in the exit condition above or the rejected vendor repository could be adopted later
+with <strong>no rename</strong>. Both IDs also follow .NET convention (<code>Azure.Messaging.ServiceBus</code>,
+<code>Aspire.Azure.Messaging.ServiceBus</code>; <code>Microsoft.EntityFrameworkCore.Cosmos</code>, <code>Microsoft.Azure.Cosmos</code>).</p>
+<p><strong>The one cost publishing order does not change</strong> is the uniform version pin. Every Trellis package currently
+shares a version, letting consumers pin a single <code>$(TrellisVersion)</code> across all of them — as
+<code>Trellis.Microservices</code> does today. Any split gives the extracted packages an independent number and forces a
+second pin. That is a cost of splitting whenever it happens, not a cost of publishing first.</p>
+<p>The practical consequence: <strong>the decision to publish these packages from the framework repository does not
+need to wait on the repository question</strong>, and the repository question should not be settled under a deadline
+it does not actually have.</p>
+<h2 id="follow-ups-not-in-scope-here">Follow-ups (not in scope here)</h2>
+<ul>
+<li><strong>Re-evaluate the transport split when a second transport is proposed</strong>, against both stated conditions.</li>
+<li><strong>End-to-end coverage of outbox → broker → real EF inbox.</strong> The Service Bus integration tests use a
+recording <code>IInboxDispatcher</code> fake to keep EF out of the transport test project, so the join between the two
+halves is currently unexercised. This gap is an argument <em>for</em> co-location: closing it requires a test that
+references the EF inbox and the transport together, which is straightforward in one repository and awkward
+across two.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-007-messaging-repository-boundary.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

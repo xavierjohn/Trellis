@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Writing Specifications for AI-Generated Services | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Writing Specifications for AI-Generated Services | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/writing-specs.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="writing-specifications-for-ai-generated-services">Writing Specifications for AI-Generated Services</h1>
+
+<p>A good specification is the highest-leverage input to AI-assisted development. If the spec is precise and consistent with how the framework already behaves, the generated code is predictable and the review is fast. If the spec is vague or fights the framework's defaults, the AI has to guess — and every guess is a place where two runs, or two models, diverge.</p>
+<p>This guide is the step <strong>before</strong> <a href="ai-code-generation.html">Trellis for AI Code Generation</a>. Use it when you have a rough idea or a business plan and want an AI to turn it into an implementable spec. Hand the AI your business context <strong>and this guide</strong>; the result is a spec that maps cleanly onto Trellis constructs.</p>
+<p>The rules below are not style preferences. Each one comes from a real failure observed while generating services from specs: a status code that contradicted the framework default, a primitive where a value object belonged, a manual <code>SaveChanges</code> that broke rollback, an owner modeled as <code>Guid</code> that would not bind. A spec that follows these rules removes those failure modes up front.</p>
+<h2 id="the-workflow">The workflow</h2>
+<pre><code>business idea  -&gt;  spec (this guide)  -&gt;  generate (ai-code-generation.md)  -&gt;  human review
+</code></pre>
+<p>The spec is where you make the expensive decisions once — status codes, domain vocabulary, persistence shape, authorization — so the AI does not re-decide them (differently) on every run.</p>
+<h2 id="1-what-a-trellis-aligned-spec-contains">1. What a Trellis-aligned spec contains</h2>
+<p>A complete spec has these sections. Missing sections are where an AI silently fills gaps.</p>
+<ol>
+<li><strong>Glossary / ubiquitous language.</strong> Define each domain noun and verb. These become your value objects, aggregates, and operations. Name them precisely — the AI will use these names as types.</li>
+<li><strong>Domain model.</strong> For each aggregate: its identity, its fields (as value objects, see below), its invariants, and its lifecycle if it has one.</li>
+<li><strong>Operations.</strong> For each operation: permission required, input, validation rules, behavior, success result, and <strong>failure cases with their HTTP status</strong> (see §3).</li>
+<li><strong>Endpoint table.</strong> Method, path, operation, permission, success status, error statuses — one row per endpoint.</li>
+<li><strong>Error-behavior table.</strong> Situation -&gt; expected error -&gt; HTTP status, for the whole service.</li>
+<li><strong>State machine / lifecycle</strong> if a workflow exists: the states, the allowed transitions, and what each transition does.</li>
+<li><strong>Persistence.</strong> Storage shape, indexes, unique constraints. If a database already exists, treat its schema as a binding contract (see §5).</li>
+<li><strong>Eventing</strong> if the service publishes or consumes integration events: the events, the outbox producer, and the idempotent consumer round-trip. Do not leave this implicit — an under-specified eventing section is the section an AI most often skips entirely.</li>
+<li><strong>HTTP semantics.</strong> Idempotency, optimistic concurrency (ETag), pagination — stated explicitly (see §6).</li>
+<li><strong>Testing requirements.</strong> What must be tested and at what layer (see §7).</li>
+</ol>
+<h2 id="2-model-domain-concepts-as-value-objects-not-primitives">2. Model domain concepts as value objects, not primitives</h2>
+<p>The single biggest driver of predictable generated code is naming validated concepts as types.</p>
+<ul>
+<li>Every validated input is a <strong>value object</strong>, not a <code>string</code>/<code>int</code>/<code>Guid</code>. Say &quot;<code>EmailAddress</code>&quot;, not &quot;a string that must be a valid email&quot;. See <a href="../api_reference/trellis-api-primitives.html"><code>trellis-api-primitives.md</code></a> and the <a href="../api_reference/trellis-value-object-taxonomy.html">value-object taxonomy</a>.</li>
+<li><strong>Identities are typed.</strong> <code>OrderId</code>, <code>CustomerId</code> — each a <code>RequiredGuid&lt;TSelf&gt;</code>. Never a bare <code>Guid</code> parameter that could be transposed with another.</li>
+<li><strong>Enumerations are <code>RequiredEnum&lt;TSelf&gt;</code></strong>, not a CLR <code>enum</code> and not a <code>string</code>. This gives you validation, ordering, and a stable wire value. See <a href="required-enum.html">RequiredEnum</a>.</li>
+<li><strong>Owners and actors are <code>ActorId</code>, never <code>Guid</code>.</strong> The current principal's identity is an <code>ActorId</code> (a validated string); comparing ownership means comparing <code>ActorId</code> values. Specifying an owner as <code>Guid</code> forces a lossy conversion and breaks the binding contract.</li>
+<li><strong>Money is a value object</strong> (<code>MonetaryAmount</code> / a <code>Money</code> composite), never a raw <code>decimal</code>.</li>
+</ul>
+<p>When you write the domain model, give each concept its type name. The AI then declares the value object once and reuses it everywhere, and the compiler enforces the rules.</p>
+<h2 id="3-status-codes-match-the-framework-default">3. Status codes: match the framework default</h2>
+<p>This is the most common source of spec-versus-framework friction. Trellis maps failures to HTTP status codes by default. If your spec picks a different code, the AI must either fight the default (extra, non-idiomatic code) or produce something inconsistent with the rest of the service.</p>
+<p>Specify status codes this way:</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>HTTP status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input / value-object validation failure (blank field, bad format, malformed typed path or query parameter)</td>
+<td><strong>422</strong></td>
+</tr>
+<tr>
+<td>Business-rule / invariant violation, including an invalid state-machine transition</td>
+<td><strong>422</strong></td>
+</tr>
+<tr>
+<td>Entity not found</td>
+<td>404</td>
+</tr>
+<tr>
+<td>Conflict (duplicate unique value, concurrent state change)</td>
+<td>409</td>
+</tr>
+<tr>
+<td>Authorization failure (missing permission, not owner)</td>
+<td>403</td>
+</tr>
+<tr>
+<td>Authentication required (no/invalid principal)</td>
+<td>401</td>
+</tr>
+<tr>
+<td>Failed precondition (stale <code>If-Match</code>) / precondition required (missing <code>If-Match</code>)</td>
+<td>412 / 428</td>
+</tr>
+<tr>
+<td>Conditional GET matches (<code>If-None-Match</code>)</td>
+<td>304</td>
+</tr>
+<tr>
+<td>Missing <code>api-version</code>, syntactically malformed request body, missing or malformed <code>Idempotency-Key</code> header</td>
+<td><strong>400</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Key rules:</p>
+<ul>
+<li><strong>Business and input validation is 422, not 400.</strong> Trellis maps <code>Error.InvalidInput</code> (value-object validation) and <code>Error.InvariantViolation</code> (invalid state transitions) to 422 by default. Reserve <strong>400</strong> for framework-level protocol errors that never reach domain logic — for example a missing API version, an unparseable JSON body, or a missing or malformed idempotency header. Do not tell the AI to return 400 for validation; it will either override the default needlessly or produce a service that disagrees with itself.</li>
+<li><strong>Use the real error catalog.</strong> Failures are <code>Error.NotFound</code>, <code>Error.Conflict</code>, <code>Error.Forbidden</code>, <code>Error.AuthenticationRequired</code>, <code>Error.InvalidInput</code>, <code>Error.InvariantViolation</code>, and so on. There is no <code>Error.Unauthorized</code> — 401 is <code>AuthenticationRequired</code>, 403 is <code>Forbidden</code>. See <a href="error-handling.html">Error Handling</a> and <a href="../api_reference/trellis-api-core.html#public-abstract-record-error"><code>trellis-api-core.md</code></a>.</li>
+<li><strong>Do not mandate exception-based error handling.</strong> Expected failures are returned as <code>Result</code> values and mapped to RFC 9457 Problem Details by the framework at the boundary. An exception-handling middleware is only a safety net for <em>unexpected</em> faults (500). A spec that says &quot;catch exceptions and return an error response&quot; fights railway-oriented programming.</li>
+<li><strong>Do not prescribe framework API names you have not verified.</strong> If the spec names a mapping method, use the real one (<code>ToHttpResponse()</code> / <code>ToHttpResponse().AsActionResult&lt;T&gt;()</code>), not an invented one. When in doubt, describe the behavior and let the implementation pick the API from <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a>.</li>
+</ul>
+<h2 id="4-keep-the-spec-internally-consistent">4. Keep the spec internally consistent</h2>
+<p>An AI implements the most specific statement it can find. If three sections disagree, you get three behaviors across runs.</p>
+<ul>
+<li>A given failure must carry the <strong>same status</strong> in the per-operation list, the endpoint table, and the error-behavior table.</li>
+<li>Every endpoint in the table has a matching operation description, and vice versa.</li>
+<li>Every value object named in a contract table is defined in the domain model.</li>
+<li>Every state referenced by a transition exists in the state machine.</li>
+</ul>
+<h2 id="5-persistence-and-the-unit-of-work">5. Persistence and the unit of work</h2>
+<ul>
+<li><strong>Repositories stage; they do not save.</strong> A repository exposes <code>Add</code>, <code>Remove</code>, and <code>FindById</code> (returning <code>Maybe&lt;T&gt;</code>). It does <strong>not</strong> expose <code>SaveAsync</code> / call <code>SaveChanges</code>. The unit of work commits <strong>once per command, on success</strong>; a failed command discards staged changes. Specifying a manual save per repository breaks rollback-on-failure and multi-aggregate atomicity. See <a href="integration-ef.html">Entity Framework Core</a> and <a href="../api_reference/trellis-api-efcore.html"><code>trellis-api-efcore.md</code></a>.</li>
+<li><strong>Only aggregate roots get repositories.</strong> Child entities are loaded through their aggregate (an <code>Include</code>), not through their own repository.</li>
+<li><strong>If the database already exists, its schema is a binding contract.</strong> The generated model must match the existing columns, types, and nullability exactly, because the framework maps conventionally (typed-ID columns, owned value objects flattened to <code>Owner_Property</code>, enums as their wire value). Call out the highest-risk divergences explicitly: owner columns are <code>ActorId</code> (string), not <code>Guid</code>; identities are GUID primary keys; owned-collection shapes; fixed type conventions.</li>
+</ul>
+<h2 id="6-state-the-http-semantics-you-rely-on">6. State the HTTP semantics you rely on</h2>
+<p>The framework provides these, but only if the spec asks for them:</p>
+<ul>
+<li><strong>Idempotency.</strong> Which unsafe writes require an <code>Idempotency-Key</code> header, the scope boundary, and the replay contract: within the same scope, the same key and matching request fingerprint replay an unexpired snapshot; a matching-fingerprint retry during an active reservation returns 409; a different fingerprint against an existing reservation or unexpired snapshot returns 422 by default. Fingerprints include method, path, query, fingerprinted headers, and body bytes, not just the body. See <a href="../api_reference/trellis-api-asp.html#namespace-trellisaspidempotency">request identity and fingerprint</a>.</li>
+<li><strong>Optimistic concurrency.</strong> Which writes require <code>If-Match</code> (stale -&gt; 412, missing -&gt; 428) and which reads support conditional GET (<code>If-None-Match</code> -&gt; 304).</li>
+<li><strong>Pagination.</strong> List endpoints page by <strong>forward-only cursor (keyset)</strong> using a stable sort key — not offset/skip. See <a href="pagination.html">Pagination</a>.</li>
+<li><strong>Lifecycle timestamps.</strong> Domain timestamps (for example <code>SubmittedAt</code>, <code>ApprovedAt</code>) are aggregate fields. Note that a domain <strong>event</strong>'s timestamp property must be named <code>OccurredAt</code> and typed <code>DateTimeOffset</code>.</li>
+</ul>
+<h2 id="7-require-real-test-coverage">7. Require real test coverage</h2>
+<p>Left unspecified, an AI tends to produce a thin happy-path suite. State the expectation:</p>
+<ul>
+<li><strong>Domain tests</strong> for each aggregate's invariants and each state transition, with no external dependencies.</li>
+<li><strong>Application tests</strong> for each operation's success and failure paths, using the in-memory fakes.</li>
+<li><strong>API integration tests</strong> for the HTTP contract (status codes, headers, problem details).</li>
+<li><strong>An eventing round-trip test</strong> if the service has an outbox/inbox: produce -&gt; relay -&gt; idempotent consume -&gt; read-model update.</li>
+</ul>
+<p>Tell the AI to test failure paths and invariants, not just the happy path. &quot;Cover every failure listed in the operation&quot; is a concrete, checkable instruction.</p>
+<h2 id="8-authorization">8. Authorization</h2>
+<ul>
+<li>State the <strong>permission required</strong> for each operation (an <code>entity:action</code> string).</li>
+<li><strong>Public / anonymous reads must not require authorization.</strong> A query that anyone can call should not declare a required permission.</li>
+<li>State <strong>ownership rules</strong> explicitly: who may act on a resource they own versus an administrator override, compared via <code>ActorId</code>. See <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a> and <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a>.</li>
+<li>If you use an <code>entity:*</code> shorthand for &quot;all actions&quot;, expand it into concrete permissions at role-definition time. Permission checks are exact-match by design; there is no check-time wildcard.</li>
+</ul>
+<h2 id="spec-skeleton">Spec skeleton</h2>
+<p>Fill this in from your business context. It is the proven shape; keep the section order.</p>
+<pre><code class="lang-markdown"># &lt;Service&gt; Specification
+
+## 1. Glossary
+&lt;domain nouns and verbs; each becomes a type or operation&gt;
+
+## 2. Domain Model
+### &lt;Aggregate&gt;
+- Identity: &lt;Name&gt;Id (RequiredGuid)
+- Fields: &lt;field: ValueObjectType&gt;, ...
+- Invariants: &lt;rules that must always hold&gt;
+- Lifecycle: &lt;states + transitions, if any&gt;
+
+## 3. Operations
+### &lt;Operation&gt; (Command | Query)
+- Permission required: &lt;entity:action&gt;  (omit for public reads)
+- Input: &lt;value objects&gt;
+- Validation: &lt;rules&gt;
+- Behavior: &lt;what it does; which transition it fires&gt;
+- Success: &lt;result + status&gt;
+- Failure: &lt;case -&gt; status&gt;, ...   (validation -&gt; 422; not found -&gt; 404; conflict -&gt; 409; ...)
+
+## 4. Endpoints
+| Method | Path | Operation | Permission | Success | Error Codes |
+|--------|------|-----------|-----------|---------|-------------|
+
+## 5. Error Behavior
+| Situation | Expected Error | HTTP Status |
+|-----------|---------------|-------------|
+&lt;plus the status-code convention note from §3&gt;
+
+## 6. State Machine  (if a workflow exists)
+&lt;states, allowed transitions, effects&gt;
+
+## 7. Persistence
+&lt;tables, indexes, unique constraints; binding-contract note if the DB pre-exists&gt;
+
+## 8. Eventing  (if integration events exist)
+&lt;events; outbox producer; idempotent consumer round-trip&gt;
+
+## 9. HTTP Semantics
+&lt;idempotency; ETag/concurrency; cursor pagination&gt;
+
+## 10. Testing Requirements
+&lt;domain / application / API / eventing coverage expectations&gt;
+</code></pre>
+<h2 id="final-consistency-checklist">Final consistency checklist</h2>
+<p>Before handing the spec to a code-generation step, verify:</p>
+<ul>
+<li>[ ] Every validated concept is named as a value object; identities and enums are typed; owners are <code>ActorId</code>.</li>
+<li>[ ] Business/input validation is <strong>422</strong>; <strong>400</strong> is limited to framework-level protocol errors (missing api-version, malformed JSON, missing/malformed <code>Idempotency-Key</code>), never domain validation.</li>
+<li>[ ] Each failure's status is identical across the operation list, endpoint table, and error table.</li>
+<li>[ ] Repositories stage only; the unit of work commits per command; only aggregate roots have repositories.</li>
+<li>[ ] Idempotency, ETag/concurrency, and cursor pagination are stated where used.</li>
+<li>[ ] Eventing is fully specified (or explicitly absent), including its round-trip test.</li>
+<li>[ ] Every operation states its permission (or is explicitly public); ownership rules are explicit.</li>
+<li>[ ] Testing requirements name the layers and demand failure-path coverage.</li>
+<li>[ ] No invented framework APIs; error cases use the real <code>Error</code> catalog.</li>
+</ul>
+<h2 id="bottom-line">Bottom line</h2>
+<p>The framework already makes strong default choices about validation, status codes, persistence, and error mapping. A good spec <strong>agrees with those defaults and states the rest explicitly</strong>. That is what turns &quot;generate a service from this spec&quot; into a repeatable, reviewable result instead of a lottery — and it is the front half of the same story told in <a href="ai-code-generation.html">Trellis for AI Code Generation</a>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/writing-specs.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

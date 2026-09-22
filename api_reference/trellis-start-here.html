@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis — start here | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis — start here | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-start-here.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis--start-here">Trellis — start here</h1>
+
+<p>You are looking at Trellis API reference files that a Trellis NuGet package copied into this
+directory. This file is a one-screen signpost, not a reference — it exists only to send you to the
+right file. It is deliberately tiny so it costs nothing to keep loaded.</p>
+<h2 id="read-this-one-file-first-and-keep-it-loaded">Read this one file first, and keep it loaded</h2>
+<p><strong><a href="trellis-api-cookbook.html#patterns-index"><code>trellis-api-cookbook.md</code></a> is the entry point. Read its routing head — everything above the first <code>## Recipe</code> heading — before writing Trellis code, and keep that in context for the rest of the session.</strong></p>
+<p>The complete reference set is roughly 300K tokens. It is not meant to be held at once, and trying
+to skim all of it wastes the budget you need for the task. The cookbook exists to route you: its
+<a href="trellis-api-cookbook.html#patterns-index">task lookup table</a> maps a task to a numbered recipe, and
+its <a href="trellis-api-cookbook.html#llm-preflight-load-the-smallest-correct-reference-set">preflight table</a>
+names exactly which package references that task needs.</p>
+<p>That routing head is only ~4K tokens. The 37 recipe bodies beneath it are another ~57K, and a
+typical task opens one to three of them — so <strong>hold the head, and read recipe bodies on demand</strong>
+rather than paying ~57K tokens up front to keep bodies you will never open. Every live recipe is
+reachable from the index (a repository lint gate enforces this), so trust the index rows: if a task
+is not listed there, the recipe does not exist. Never write code from a recipe's title alone — open
+the body. Then load only the one to three area references the cookbook sends you to.</p>
+<h2 id="read-the-references-yourself--do-not-delegate-them-to-a-sub-agent">Read the references yourself — do not delegate them to a sub-agent</h2>
+<p>A sub-agent hands back a summary, so the exact signatures never reach your context and you end up
+writing code against a paraphrase. That is how invented APIs and wrong overloads get produced, and
+it is the specific failure these references exist to prevent.</p>
+<p>Sub-agents are fine for work whose output is a <em>verdict</em> rather than knowledge you must write code
+against: running builds and tests, searching for a file, auditing something for accuracy. The rule
+is narrow — if the answer determines the code you are about to write, read it yourself.</p>
+<h2 id="do-not-guess">Do not guess</h2>
+<p>Every Trellis API you write should be traceable to a line in one of these files. If you cannot find
+the method, overload, or attribute you are about to use, stop and read the reference that owns it
+rather than reconstructing the signature from memory. Trellis makes heavy use of source generators,
+so a base type such as <code>RequiredGuid&lt;TSelf&gt;</code> or <code>Aggregate&lt;TId&gt;</code> already supplies members that are a
+compile error to redeclare — the cookbook's Recipe 1 lists that inherited surface explicitly.</p>
+<h2 id="the-rest-of-the-set">The rest of the set</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="trellis-api-cookbook.html#patterns-index"><code>trellis-api-cookbook.md</code></a></td>
+<td><strong>Start here.</strong> End-to-end recipes spanning packages, plus the routing tables.</td>
+</tr>
+<tr>
+<td><a href="trellis-api-core.html#use-this-file-when"><code>trellis-api-core.md</code></a></td>
+<td><code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, <code>Error</code>, aggregates, entities, specifications, pagination.</td>
+</tr>
+<tr>
+<td><a href="trellis-api-anti-patterns.html#trls001--result-return-value-not-handled"><code>trellis-api-anti-patterns.md</code></a></td>
+<td>Ready-to-apply WRONG/FIX shapes for the analyzer diagnostics (<code>TRLSxxx</code>).</td>
+</tr>
+<tr>
+<td><a href="trellis-value-object-taxonomy.html#patterns-index"><code>trellis-value-object-taxonomy.md</code></a></td>
+<td>Choosing a value-object category: scalar, symbolic, structured, optional.</td>
+</tr>
+</tbody>
+</table>
+<p>The remaining <code>trellis-api-*.md</code> files cover the optional packages — <code>trellis-api-efcore.md</code> for
+<code>Trellis.EntityFrameworkCore</code>, and so on. The cookbook names the right one per task, so route
+through it rather than opening files speculatively.</p>
+<p><strong>A file being present here does not mean the project you are editing references that package.</strong> The
+complete first-party set ships with <code>Trellis.Core</code>, so references for packages you have not installed
+are present by design — that is how you discover a module worth adopting. A <code>.github/</code> directory
+shared across a solution also aggregates whatever every project in it references, and a reference for
+a package that was later dropped is not removed. Packages published from other repositories (for
+example <code>Trellis.ServiceLevelIndicators</code>) ship their own reference alongside themselves, so those
+appear only once installed.</p>
+<p>So before writing code against one of these files, confirm the package is actually referenced by the
+project you are editing — check its <code>.csproj</code> or <code>Directory.Packages.props</code>. If it is not, the
+reference still tells you what adopting the package would buy; say that, rather than emitting code
+that cannot compile.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-start-here.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

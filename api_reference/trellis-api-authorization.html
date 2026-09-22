@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Authorization — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Authorization — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-authorization.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellisauthorization--api-reference">Trellis.Authorization — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Authorization</code>
+<strong>Namespace:</strong> <code>Trellis.Authorization</code>
+<strong>Purpose:</strong> Domain-layer authorization primitives — actor identity / permission / attribute model and the contracts used by the mediator's authorization behavior to perform static (permission) and resource-based authorization. This package contains no ASP.NET Core dependencies; the <code>IActorProvider</code> implementations and DI helpers ship in <code>Trellis.Asp</code> (see <a href="trellis-api-asp.html#namespace-trellisaspauthorization"><code>trellis-api-asp.md</code></a>, namespace <code>Trellis.Asp.Authorization</code>).</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>For the end-to-end mental model — JWT → JwtBearer → <code>IActorProvider</code> → mediator behaviors → 401/403 — plus decision trees and Mermaid diagrams, read <a href="../articles/integration-asp-authorization.html#mental-model">Mental model</a> in the integration article first. This file is the type-by-type reference.</p>
+</div>
+<p>See also: <a href="trellis-api-cookbook.html#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth">trellis-api-cookbook.md</a> — recipes using this package.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are modeling actors, permissions, forbidden permissions, or actor attributes without ASP.NET dependencies.</li>
+<li>You are implementing static permission authorization through <code>IAuthorize</code>.</li>
+<li>You are implementing resource-based authorization through <code>IAuthorizeResource&lt;TResource&gt;</code> and want the canonical guard shape.</li>
+<li>You need a required-actor accessor where actor presence and stable or cached provider resolution are already guaranteed.</li>
+</ul>
+<h2 id="owner-check-quick-start--copy-this">Owner check quick-start — copy this</h2>
+<p>The 90% case is &quot;the command's resource id is loaded, and the actor must be the owner (or hold an admin permission).&quot; For that shape, implement two interfaces — <code>IAuthorizeResource&lt;TResource&gt;</code> for the owner check and <code>IIdentifyResource&lt;TResource, TId&gt;</code> so the framework reuses the shared <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> instead of requiring a per-command loader.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Authorization;
+
+public sealed record CancelOrderCommand(OrderId OrderId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;,
+      IAuthorizeResource&lt;Order&gt;,
+      IIdentifyResource&lt;Order, OrderId&gt;
+{
+    public OrderId GetResourceId() =&gt; OrderId;
+
+    public IResult Authorize(Actor actor, Order resource) =&gt;
+        resource.OwnerId == actor.Id || actor.HasPermission(&quot;orders:admin&quot;)
+            ? Result.Ok()
+            : Result.Fail(new Error.Forbidden(
+                Code: &quot;orders.owner&quot;,
+                Resource: ResourceRef.For&lt;Order&gt;(OrderId)));
+}
+
+// DI (composition root):
+services.AddScoped&lt;SharedResourceLoaderById&lt;Order, OrderId&gt;, OrderResourceLoader&gt;();
+services.AddSharedResourceAuthorization&lt;CancelOrderCommand, Order, OrderId, Result&lt;Unit&gt;&gt;();
+// One per command — AOT-safe; or use the assembly-scanning overload.
+</code></pre>
+<p>That's it. The mediator pipeline:</p>
+<ol>
+<li>resolves the actor via the registered <code>IActorProvider</code>,</li>
+<li>loads the <code>Order</code> by <code>OrderId</code> via your <code>OrderResourceLoader</code> implementation of <code>SharedResourceLoaderById&lt;Order, OrderId&gt;</code> and the adapter installed by <code>AddSharedResourceAuthorization</code>,</li>
+<li>calls <code>Authorize(actor, order)</code>.</li>
+</ol>
+<p>For multi-hop authorization (the resource the actor must own is reached via one or more navigation hops, including the cricket &quot;actor owns home OR away team&quot; shape), use <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> with <code>IIdentifyRelatedResource[s]&lt;TRelated, TId&gt;</code> along the path — see cookbook <a href="trellis-api-cookbook.html#recipe-24--indirect-multi-hop-resource-authorization">Recipe 24</a>.</p>
+<p><code>AddSharedResourceAuthorization</code> lives in <code>Trellis.Mediator</code>; import <code>Microsoft.Extensions.DependencyInjection</code> and <code>Trellis.Mediator</code> in the composition root. Its builder counterpart is <code>UseSharedResourceAuthorization&lt;TMessage,TResource,TId,TResponse&gt;()</code>. The existing <code>AddResourceAuthorization&lt;TMessage,TResource,TResponse&gt;()</code> remains the lower-level behavior/accessor registration and still requires a loader or <code>AddSharedResourceLoader</code> bridge separately.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Canonical API / pattern</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Owner check on the command's resource (the 90% case)</strong></td>
+<td>Implement <code>IAuthorizeResource&lt;TResource&gt;</code> + <code>IIdentifyResource&lt;TResource, TId&gt;</code>; the framework loads via <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> and calls <code>Authorize(actor, resource)</code></td>
+<td><a href="#owner-check-quick-start--copy-this">Owner check quick-start</a></td>
+</tr>
+<tr>
+<td>Represent the current user/service</td>
+<td><code>Actor</code></td>
+<td><a href="#actor"><code>Actor</code></a></td>
+</tr>
+<tr>
+<td>Check granted permissions with explicit deny override</td>
+<td><code>actor.HasPermission(...)</code>, <code>HasAllPermissions(...)</code>, <code>HasAnyPermission(...)</code></td>
+<td><a href="#actor"><code>Actor</code></a></td>
+</tr>
+<tr>
+<td>Resolve actor for a request/message</td>
+<td><code>IActorProvider.GetCurrentActorAsync(...)</code></td>
+<td><a href="#iactorprovider"><code>IActorProvider</code></a></td>
+</tr>
+<tr>
+<td>Read a required actor through a stable or explicitly cached provider after authorization</td>
+<td><code>actorProvider.RequireActorAsync(cancellationToken)</code></td>
+<td><a href="#actorproviderextensions"><code>ActorProviderExtensions</code></a></td>
+</tr>
+<tr>
+<td>Require static permissions on a message</td>
+<td>Implement <code>IAuthorize.RequiredPermissions</code></td>
+<td><a href="#iauthorize"><code>IAuthorize</code></a></td>
+</tr>
+<tr>
+<td>Authorize against a loaded resource</td>
+<td>Implement <code>IAuthorizeResource&lt;TResource&gt;.Authorize(actor, resource)</code></td>
+<td><a href="#iauthorizeresourcetresource"><code>IAuthorizeResource&lt;TResource&gt;</code></a></td>
+</tr>
+<tr>
+<td>Write owner/admin resource guards</td>
+<td><code>Result.Ensure(condition, new Error.Forbidden(...))</code></td>
+<td><a href="#iauthorizeresourcetresource"><code>IAuthorizeResource&lt;TResource&gt;</code></a>, <a href="trellis-api-core.html#public-static-partial-class-result">Core <code>Result.Ensure</code></a></td>
+</tr>
+<tr>
+<td>Identify a resource by id for shared loading</td>
+<td><code>IIdentifyResource&lt;TResource, TId&gt;</code></td>
+<td><a href="#iidentifyresourcetresource-tid"><code>IIdentifyResource&lt;TResource, TId&gt;</code></a></td>
+</tr>
+<tr>
+<td>Authorize against a related resource one or more navigation hops away (cricket-style fan-out, owner chains)</td>
+<td>Implement <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> on the command + <code>IIdentifyRelatedResource&lt;TRelated, TId&gt;</code> (singular) or <code>IIdentifyRelatedResources&lt;TRelated, TId&gt;</code> (terminal plural) on entities along the path</td>
+<td><a href="#iauthorizeresourceviatowner"><code>IAuthorizeResourceVia&lt;TOwner&gt;</code></a>, <a href="#iidentifyrelatedresourcetrelated-tid"><code>IIdentifyRelatedResource&lt;TRelated, TId&gt;</code></a>, <a href="#iidentifyrelatedresourcestrelated-tid"><code>IIdentifyRelatedResources&lt;TRelated, TId&gt;</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-traps">Common traps</h2>
+<ul>
+<li><code>Trellis.Authorization</code> is domain/application-layer only. ASP.NET actor providers are documented in <a href="trellis-api-asp.html#namespace-trellisaspauthorization">trellis-api-asp.md</a>.</li>
+<li>Prefer <code>Result.Ensure</code> for boolean authorization guards so generated code uses the same ROP primitive as the rest of Trellis.</li>
+<li><code>RequireActorAsync</code> is an invariant accessor, not an authentication gate. Keep ordinary missing-actor handling on <code>GetCurrentActorAsync</code> / <code>Error.AuthenticationRequired</code>; do not replace the authorization behaviors' normal 401 path with this throwing helper.</li>
+<li>Do not mutate <code>RequiredPermissions</code>; expose the complete permission list as an immutable/read-only collection.</li>
+<li>The DI registration extension <code>AddResourceAuthorization(...)</code> lives in <code>Trellis.Mediator</code> (<code>namespace Trellis.Mediator</code>), not in <code>Trellis.Authorization</code>. Wiring an <code>IAuthorizeResource&lt;TResource&gt;</code> therefore typically requires both <code>using Trellis.Authorization;</code> (for the interfaces) and <code>using Trellis.Mediator;</code> (for the DI extension). The compile error if the second is missing is <code>CS1061: 'IServiceCollection' does not contain a definition for 'AddResourceAuthorization' and no accessible extension method 'AddResourceAuthorization' accepting a first argument of type 'IServiceCollection' could be found</code> — see <a href="trellis-api-mediator.html#servicecollectionextensions">trellis-api-mediator.md</a>.</li>
+</ul>
+<h2 id="common-identity-provider-claim-shapes">Common identity-provider claim shapes</h2>
+<p>The default <code>ClaimsActorProvider</code> (in <code>Trellis.Asp.Authorization</code>) maps a flat claim name to <code>Actor.Id</code> and a flat claim name to <code>Actor.Permissions</code>. Identity providers that ship claims under a nested JSON object require either the <code>NestedJsonPathClaimsActorProvider</code> derivation or a custom override of <code>ClaimsActorProvider.GetCurrentActorAsync</code>. The table below covers the configurations that most consumers reach for; inspect your token to confirm the exact shape.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Token shape</th>
+<th>Recommended configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Auth0</strong> (default JWT)</td>
+<td><code>{ &quot;sub&quot;: &quot;auth0\|abc&quot;, &quot;permissions&quot;: [&quot;orders:read&quot;] }</code></td>
+<td><code>AddClaimsActorProvider(opts =&gt; { opts.ActorIdClaim = &quot;sub&quot;; opts.PermissionsClaim = &quot;permissions&quot;; })</code></td>
+</tr>
+<tr>
+<td><strong>Auth0</strong> (<code>app_metadata.roles</code>)</td>
+<td><code>{ &quot;sub&quot;: &quot;auth0\|abc&quot;, &quot;app_metadata&quot;: { &quot;roles&quot;: [&quot;orders:read&quot;] } }</code></td>
+<td><code>AddNestedJsonPathClaimsActorProvider(opts =&gt; { opts.ActorIdClaim = &quot;sub&quot;; opts.ContainerClaim = &quot;app_metadata&quot;; opts.PermissionsPath = &quot;roles&quot;; })</code></td>
+</tr>
+<tr>
+<td><strong>Azure B2C</strong> custom attribute</td>
+<td><code>{ &quot;sub&quot;: &quot;...&quot;, &quot;extension_RolesJson&quot;: &quot;{\&quot;roles\&quot;:[\&quot;orders:read\&quot;]}&quot; }</code></td>
+<td><code>AddNestedJsonPathClaimsActorProvider(opts =&gt; { opts.ActorIdClaim = &quot;sub&quot;; opts.ContainerClaim = &quot;extension_RolesJson&quot;; opts.PermissionsPath = &quot;roles&quot;; })</code></td>
+</tr>
+<tr>
+<td><strong>Entra ID v2 (interactive user)</strong></td>
+<td>uses <code>oid</code> + multiple <code>roles</code> claims</td>
+<td><code>AddEntraActorProvider(opts =&gt; { ... })</code> — purpose-built for Entra; see the type reference</td>
+</tr>
+<tr>
+<td><strong>Keycloak</strong> (<code>realm_access.roles</code>)</td>
+<td><code>{ &quot;sub&quot;: &quot;...&quot;, &quot;realm_access&quot;: { &quot;roles&quot;: [&quot;orders:read&quot;] } }</code></td>
+<td><code>AddNestedJsonPathClaimsActorProvider(opts =&gt; { opts.ActorIdClaim = &quot;sub&quot;; opts.ContainerClaim = &quot;realm_access&quot;; opts.PermissionsPath = &quot;roles&quot;; })</code></td>
+</tr>
+<tr>
+<td><strong>Okta</strong> (nested custom claim)</td>
+<td><code>{ &quot;sub&quot;: &quot;...&quot;, &quot;custom_claims&quot;: { &quot;permissions&quot;: [&quot;orders:read&quot;] } }</code></td>
+<td><code>AddNestedJsonPathClaimsActorProvider(opts =&gt; { opts.ActorIdClaim = &quot;sub&quot;; opts.ContainerClaim = &quot;custom_claims&quot;; opts.PermissionsPath = &quot;permissions&quot;; })</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Silent-403 diagnostics.</strong> When <code>ClaimsActorProvider</code> resolves zero permissions on an authenticated identity that does carry other claims, it emits one warning per application lifetime (<code>EventId 2</code>). When the configured <code>PermissionsClaim</code> resolves to a single value that parses as a JSON object or array, it emits one error per application lifetime (<code>EventId 3</code>) recommending <code>NestedJsonPathClaimsActorProvider</code>. <strong>Silent-401 diagnostic.</strong> When the configured <code>ActorIdClaim</code> (and its short↔long fallback) resolves nothing on an authenticated identity that carries other claims, it emits one warning per application lifetime (<code>EventId 5</code>) naming the configured claim and the claim types actually present. Set <code>ClaimsActorOptions.ValidateClaimShapeOnFirstUse = false</code> to suppress all three. Custom providers deriving from <code>ClaimsActorProvider</code> that pass <code>logger: null</code> to the base constructor (because they own a logger of their own category, as <code>NestedJsonPathClaimsActorProvider</code> does) should override <code>protected virtual ILogger? DiagnosticLogger</code> to return their own logger; otherwise diagnostics raised on resolution paths that delegate back to the base are silently dropped.</p>
+<p><strong>Startup validation of <code>NestedJsonPathClaimsActorOptions</code>.</strong> <code>AddNestedJsonPathClaimsActorProvider(...)</code> registers an <code>IValidateOptions&lt;NestedJsonPathClaimsActorOptions&gt;</code> with <code>ValidateOnStart()</code>. If <code>ActorIdPath</code> or <code>PermissionsPath</code> is configured without a non-blank <code>ContainerClaim</code> (empty or whitespace-only both count as missing), host startup fails with <code>OptionsValidationException</code> — much earlier than the first-request <code>InvalidOperationException</code> that the provider's constructor would otherwise produce. The constructor guard is kept as defense-in-depth for manual (non-DI) construction. Two caveats:</p>
+<ul>
+<li>The validator is permissive when the options are at defaults (paths empty) so a registered-but-unconfigured provider doesn't block startup.</li>
+<li><code>ValidateOnStart()</code> fires regardless of whether a later <code>AddXxxActorProvider</code> call replaces <code>IActorProvider</code>. A consumer that calls <code>AddNestedJsonPathClaimsActorProvider(opts =&gt; { ... invalid ... })</code> and then <code>AddClaimsActorProvider()</code> will still see startup fail on the nested options. Pick one provider per host; if you must replace one already-registered, remove the earlier call rather than chaining.</li>
+</ul>
+<h2 id="types">Types</h2>
+<h3 id="namespace-trellisauthorization">Namespace <code>Trellis.Authorization</code></h3>
+<h3 id="actor"><code>Actor</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public sealed class Actor : IEquatable&lt;Actor&gt;
+</code></pre>
+<p><code>Actor</code> is an authorization-layer <strong>entity</strong>. Equality / <code>GetHashCode</code> / <code>==</code> / <code>!=</code> are based on the <code>Id</code> property only — two <code>Actor</code> instances with the same <code>Id</code> represent the same principal even when their <code>Permissions</code>, <code>ForbiddenPermissions</code>, or <code>Attributes</code> differ (those are point-in-time state about the principal, not part of identity). Mirrors <code>Trellis.Entity&lt;TId&gt;</code> semantics without inheriting the full <code>IAggregate</code> surface.</p>
+<p><strong>Constructors</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public Actor(ActorId id, IReadOnlySet&lt;string&gt; permissions, IReadOnlySet&lt;string&gt; forbiddenPermissions, IReadOnlyDictionary&lt;string, string&gt; attributes)</code></td>
+<td>Typed constructor. Snapshots the supplied state into frozen collections (ordinal comparison). Throws <code>ArgumentNullException</code> when any argument is null.</td>
+</tr>
+<tr>
+<td><code>public Actor(string id, IReadOnlySet&lt;string&gt; permissions, IReadOnlySet&lt;string&gt; forbiddenPermissions, IReadOnlyDictionary&lt;string, string&gt; attributes)</code></td>
+<td>Convenience overload that wraps the raw claim string in <code>ActorId</code> (via <code>ActorId.Create</code>) and delegates to the typed constructor. Throws <code>ArgumentException</code> when <code>id</code> is null / empty / whitespace.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fields</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PermissionScopeSeparator</code></td>
+<td><code>const char</code></td>
+<td>Separator used between permission name and scope in scoped permission strings. Value: <code>':'</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Id</code></td>
+<td><code>ActorId</code></td>
+<td>Strongly-typed principal identifier (e.g. JWT <code>sub</code>). Wraps the raw claim string in a <a href="trellis-api-core.html#requiredstringtself"><code>RequiredString&lt;ActorId&gt;</code></a> so the identity flows through authorization-layer APIs and consumer aggregate fields as a domain type rather than an untyped <code>string</code>.</td>
+</tr>
+<tr>
+<td><code>Permissions</code></td>
+<td><code>IReadOnlySet&lt;string&gt;</code></td>
+<td>Granted permissions. Ordinal comparison; setter snapshots into a <code>FrozenSet&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>ForbiddenPermissions</code></td>
+<td><code>IReadOnlySet&lt;string&gt;</code></td>
+<td>Explicit deny-list. Deny always overrides allow. Snapshotted into a <code>FrozenSet&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>Attributes</code></td>
+<td><code>IReadOnlyDictionary&lt;string, string&gt;</code></td>
+<td>ABAC attributes. Snapshotted into a <code>FrozenDictionary&lt;string, string&gt;</code> with ordinal comparer.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Actor Create(ActorId id, IReadOnlySet&lt;string&gt; permissions)</code></td>
+<td><code>Actor</code></td>
+<td>Typed factory. Creates an actor with empty <code>ForbiddenPermissions</code> and empty <code>Attributes</code>. Throws <code>ArgumentNullException</code> for null arguments.</td>
+</tr>
+<tr>
+<td><code>public static Actor Create(string id, IReadOnlySet&lt;string&gt; permissions)</code></td>
+<td><code>Actor</code></td>
+<td>Convenience factory that wraps the raw claim string in <code>ActorId</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasPermission(string permission)</code></td>
+<td><code>bool</code></td>
+<td>Returns <code>true</code> only when <code>permission</code> is in <code>Permissions</code> and not in <code>ForbiddenPermissions</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasPermission(string permission, string scope)</code></td>
+<td><code>bool</code></td>
+<td>Checks the scoped permission composed as <code>permission</code> + <code>':'</code> + <code>scope</code> (deny-aware). Throws <code>ArgumentNullException</code> when either argument is null.</td>
+</tr>
+<tr>
+<td><code>public bool HasAllPermissions(IEnumerable&lt;string&gt; permissions)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when every entry passes <code>HasPermission</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasAnyPermission(IEnumerable&lt;string&gt; permissions)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when at least one entry passes <code>HasPermission</code>.</td>
+</tr>
+<tr>
+<td><code>public bool IsOwner(ActorId resourceOwnerId)</code></td>
+<td><code>bool</code></td>
+<td>Typed equality check between <code>Id</code> and <code>resourceOwnerId</code> using <code>ActorId</code>'s value-equality semantics. Prefer this overload when the owner id is itself a typed <code>ActorId</code> so the comparison is type-checked at the call site.</td>
+</tr>
+<tr>
+<td><code>public bool IsOwner(string resourceOwnerId)</code></td>
+<td><code>bool</code></td>
+<td>Convenience overload that compares <code>Id.Value</code> and <code>resourceOwnerId</code> with <code>StringComparison.Ordinal</code>.</td>
+</tr>
+<tr>
+<td><code>public bool HasAttribute(string key)</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when <code>Attributes</code> contains <code>key</code>.</td>
+</tr>
+<tr>
+<td><code>public string? GetAttribute(string key)</code></td>
+<td><code>string?</code></td>
+<td>Returns the attribute value or <code>null</code> when absent.</td>
+</tr>
+<tr>
+<td><code>public Result&lt;TVo&gt; GetRequiredAttribute&lt;TVo&gt;(string key) where TVo : class, IParsable&lt;TVo&gt;</code></td>
+<td><code>Result&lt;TVo&gt;</code></td>
+<td>Parses the attribute through the value object's <code>IParsable</code> implementation (any source-generated <code>Required*</code> VO — <code>string</code>-, <code>Guid</code>-, <code>int</code>-backed, and so on), validating via its <code>TryParse</code> (which routes through <code>TryCreate</code>): a success <code>Result</code> with the typed value when present and valid, otherwise a failed <code>Result</code> with an <code>Error.InvalidInput</code> whose field is <code>key</code> (a missing attribute fails the same way). Throws <code>ArgumentNullException</code> when <code>key</code> is null.</td>
+</tr>
+<tr>
+<td><code>public bool TryGetAttribute&lt;TVo&gt;(string key, out TVo? value) where TVo : class, IParsable&lt;TVo&gt;</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> with the parsed <code>value</code> when the attribute is present and valid; <code>false</code> (and <code>value</code> is null) when absent or invalid — deny-closes naturally in an authorization gate. Parses through the VO's <code>IParsable</code>, so any backing primitive works. Throws <code>ArgumentNullException</code> when <code>key</code> is null.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="actorid"><code>ActorId</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">[Trim, NotDefault]
+public sealed partial class ActorId : RequiredString&lt;ActorId&gt;;
+</code></pre>
+<p>Strongly-typed wrapper around the raw principal id (typically the JWT <code>sub</code> or AAD <code>oid</code> claim) so the authorization layer exposes a domain type instead of an untyped <code>string</code>. Its explicit <code>[Trim, NotDefault]</code> attributes trim input and reject empty / whitespace-only ids; these are opt-ins, not <code>RequiredString&lt;T&gt;</code> defaults (the unannotated base rejects null but allows empty/whitespace). Generated factories <code>ActorId.Create(string)</code> / <code>ActorId.TryCreate(string?)</code> come from the bundled source generator (see <a href="trellis-api-core.html#primitive-value-object-base-classes"><code>trellis-api-core.md</code></a>).</p>
+<p>Consumers that store the principal id at aggregate boundaries — audit-style fields like <code>Order.CreatedByActorId</code> or <code>Document.LastModifiedByActorId</code> — should reuse <code>ActorId</code> for those fields so cross-aggregate comparisons (<code>actor.IsOwner(order.CreatedByActorId)</code>) are type-checked end-to-end. Domain identifiers that are conceptually different from the principal id (a customer aggregate id, a tenant member id, a domain user aggregate's primary key) remain whatever VO the domain models and are resolved to / from the principal at the application service boundary.</p>
+<h3 id="actorattributes"><code>ActorAttributes</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public static class ActorAttributes
+</code></pre>
+<p>Well-known string keys for <code>Actor.Attributes</code>. Claim-derived keys align with Azure Entra ID v2.0 access tokens.</p>
+<p><strong>Fields</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TenantId</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>tid</code> claim — issuing tenant GUID. Value: <code>&quot;tid&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>PreferredUsername</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>preferred_username</code> claim. Value: <code>&quot;preferred_username&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>AuthorizedParty</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>azp</code> claim — application ID of the calling client. Value: <code>&quot;azp&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>AuthorizedPartyAcr</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>azpacr</code> claim — client authentication strength (<code>0</code> public, <code>1</code> secret, <code>2</code> certificate). Value: <code>&quot;azpacr&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>AuthContextClassReference</code></td>
+<td><code>const string</code></td>
+<td>Entra <code>acrs</code> claim — Conditional Access auth-context references. Value: <code>&quot;acrs&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>IpAddress</code></td>
+<td><code>const string</code></td>
+<td>Request IP address, populated from <code>HttpContext.Connection.RemoteIpAddress</code>. Value: <code>&quot;ip_address&quot;</code>.</td>
+</tr>
+<tr>
+<td><code>MfaAuthenticated</code></td>
+<td><code>const string</code></td>
+<td>Whether the actor authenticated with MFA — derived from the <code>amr</code> claim. Value: <code>&quot;mfa&quot;</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iactorprovider"><code>IActorProvider</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IActorProvider
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Task&lt;Maybe&lt;Actor&gt;&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Maybe&lt;Actor&gt;&gt;</code></td>
+<td>Returns the current authenticated actor wrapped in <code>Maybe.From(...)</code>, or <code>Maybe&lt;Actor&gt;.None</code> when the request has no usable authenticated actor. The mediator authorization pipeline maps <code>Maybe.None</code> to <code>Error.AuthenticationRequired</code> (HTTP 401) per RFC 9110 §15.5.2. Implementations should throw <code>InvalidOperationException</code> only for genuine infrastructure or configuration failures (no <code>HttpContext</code>, mapping delegate threw, etc.) — those still surface as <code>Error.Unexpected</code> (HTTP 500). &quot;No actor&quot; is client-error state, not an exception. Register as scoped.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>401 vs 500 contract.</strong> <code>Maybe&lt;Actor&gt;.None</code> means the framework cannot identify an actor for the request — typically the request lacks credentials, the auth middleware did not produce an authenticated identity, or the configured actor-id claim is missing from an otherwise authenticated identity. All three are classes of client error and the mediator pipeline emits HTTP 401. A thrown <code>InvalidOperationException</code> means the provider itself cannot operate (no <code>HttpContext</code>, malformed configuration, mapping delegate failure) — that's a server bug and surfaces as HTTP 500.</p>
+<blockquote>
+<p><strong><code>WWW-Authenticate</code> header on the 401.</strong> RFC 9110 §11.6.1 requires <code>WWW-Authenticate</code> on 401 responses. <code>Error.AuthenticationRequired</code> stays transport-neutral, so <code>ResponseFailureWriter</code> emits the optional <code>Scheme</code> string verbatim when the error provides one; otherwise it synthesizes a scheme-level challenge from the registered default-challenge scheme via <code>IAuthenticationSchemeProvider</code> when no other middleware has already written the header. The synthesized header uses the scheme NAME registered with <code>AddAuthentication</code> (so <code>AddJwtBearer(&quot;ApiJwt&quot;, ...)</code> produces <code>WWW-Authenticate: ApiJwt</code>). If no authentication is registered at all, the writer emits no synthesized header — synthesizing &quot;Bearer&quot; for a service that does not use Bearer would mislead clients. Applications that need a parameterized challenge can return <code>new Error.AuthenticationRequired(&quot;Bearer realm=\&quot;api\&quot;&quot;)</code> or write <code>WWW-Authenticate</code> before Trellis renders the failure.</p>
+</blockquote>
+<h3 id="actorproviderextensions"><code>ActorProviderExtensions</code></h3>
+<pre><code class="lang-csharp">public static class ActorProviderExtensions
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public static Task&lt;Actor&gt; RequireActorAsync(this IActorProvider actorProvider, CancellationToken cancellationToken = default)</code></td>
+<td><code>Task&lt;Actor&gt;</code></td>
+<td>Performs a new <code>GetCurrentActorAsync</code> call with the supplied token and returns that call's actor instance, not a previously authorized snapshot. Requires established presence and stable or explicitly cached provider resolution. Throws <code>InvalidOperationException</code> when absent, and <code>ArgumentNullException</code> for a null <code>actorProvider</code>. Provider exceptions and cancellation propagate unchanged.</td>
+</tr>
+</tbody>
+</table>
+<p>Use only when the caller has <strong>already established actor presence and stable provider
+resolution</strong>. A successful authorization behavior checks one actor snapshot; it does not
+guarantee that a later provider lookup returns the same identity or authorization state
+(<code>Permissions</code>, <code>ForbiddenPermissions</code>, and <code>Attributes</code>). An uncached provider that queries
+mutable permission data can return a different snapshot even when <code>Id</code> is unchanged.</p>
+<p>When resolution can change, configure the existing scoped <code>CachingActorProvider</code> <strong>before
+authorization runs</strong>, and use the same scoped <code>IActorProvider</code> for both authorization and
+the handler. Caching only inside the handler, resolving the uncached inner provider directly,
+or using a different scope does not preserve the earlier snapshot. A provider with an
+explicit stability guarantee for the whole operation is also valid. The accessor itself
+cannot verify this precondition.</p>
+<p>Implementing an authorization marker alone is not enough if the behavior is not registered
+or the handler is called directly. HTTP authentication alone also does not guarantee usable
+actor claim mapping, so a direct endpoint must still handle ordinary absence as authentication failure.</p>
+<pre><code class="lang-csharp">using Trellis.Authorization;
+
+// After authorization, using the same stable or request-cached provider.
+Actor actor = await actorProvider.RequireActorAsync(cancellationToken);
+</code></pre>
+<p>This method performs no authentication or permission checks and introduces no cache,
+accessor service, DI registration, or pipeline change. With the existing scoped
+<code>CachingActorProvider</code> (from <code>Trellis.Asp.Authorization</code>), repeated calls reuse that provider's
+resolution task; without it, stable identity and authorization state are the provider's
+responsibility. Normal missing-actor 401 and insufficient-permission 403 behavior is unchanged.
+An absent actor at this explicit
+invariant boundary is a programming/configuration fault, not a replacement 401 result.</p>
+<h3 id="iauthorize"><code>IAuthorize</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IAuthorize
+</code></pre>
+<p>Marker for commands/queries enforcing static (permission-only) authorization. The mediator's <code>AuthorizationBehavior&lt;TMessage, TResponse&gt;</code> requires the current actor to hold <strong>all</strong> listed permissions (AND semantics).</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RequiredPermissions</code></td>
+<td><code>IReadOnlyList&lt;string&gt;</code></td>
+<td>Permissions every caller must hold. Duplicates and order are ignored — the check is set-like under AND-semantics.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iauthorizeresourcetresource"><code>IAuthorizeResource&lt;TResource&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IAuthorizeResource&lt;in TResource&gt;
+</code></pre>
+<p>Implemented by a command/query to perform resource-based authorization once the resource has been loaded.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IResult Authorize(Actor actor, TResource resource)</code></td>
+<td><code>IResult</code></td>
+<td>Returns success to proceed or a failure (typically <code>Error.Forbidden</code>) to short-circuit the pipeline.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iidentifyresourcetresource-tid"><code>IIdentifyResource&lt;TResource, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IIdentifyResource&lt;TResource, out TId&gt;
+</code></pre>
+<p>Companion to <code>IAuthorizeResource&lt;TResource&gt;</code> that exposes a typed resource identifier so the pipeline can use a <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> instead of a per-command loader.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TId GetResourceId()</code></td>
+<td><code>TId</code></td>
+<td>Extracts the typed resource ID from the message.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iauthorizeresourceviatowner"><code>IAuthorizeResourceVia&lt;TOwner&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IAuthorizeResourceVia&lt;TOwner&gt;
+</code></pre>
+<p>Declares resource-based authorization against a resource that is <strong>not</strong> the leaf the command identifies, but is reachable via one or more <code>IIdentifyRelatedResource[s]&lt;,&gt;</code> declarations on entities along the navigation chain. The originating motivation is the cricket-style &quot;actor owns Team1 OR Team2&quot; pattern: command identifies a <code>Match</code>, authorization is evaluated against the set of teams it points at.</p>
+<p>The pipeline always passes <code>IReadOnlyList&lt;TOwner&gt;</code> to <code>Authorize</code> — size 1 for chains terminating in a singular hop, size N for chains terminating in a plural hop (cricket fan-out). The framework does not impose the operator over the list; the command picks <code>Any</code>, <code>All</code>, or any other shape inside <code>Authorize</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IResult Authorize(Actor actor, IReadOnlyList&lt;TOwner&gt; owners)</code></td>
+<td><code>IResult</code></td>
+<td>Returns success to proceed or a failure (typically <code>Error.Forbidden</code>) to short-circuit. The <code>owners</code> list is non-null and non-empty; an empty plural navigation short-circuits to <code>Error.Forbidden</code> before <code>Authorize</code> is called.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Failure semantics</strong>:</p>
+<ul>
+<li><strong>Leaf load failure</strong> — the loader's error bubbles verbatim (matches existing <code>IAuthorizeResource&lt;T&gt;</code> semantics for the resource the command identifies).</li>
+<li><strong>Intermediate or owner load failure</strong> — collapsed to <code>Error.Forbidden</code> to avoid leaking existence of related resources whose presence/absence the actor may not be authorized to learn.</li>
+<li><strong>Empty result at any hop</strong> (singular extract returning 0 IDs or plural extract returning 0 IDs) — short-circuits to <code>Error.Forbidden</code> without invoking <code>Authorize</code>.</li>
+<li><strong>Missing <code>SharedResourceLoaderById&lt;TTo, TToId&gt;</code></strong> at any hop — throws <code>InvalidOperationException</code> (deployment bug, not authorization denial).</li>
+</ul>
+<p>A command may implement either <code>IAuthorizeResource&lt;T&gt;</code> <strong>or</strong> <code>IAuthorizeResourceVia&lt;TOwner&gt;</code>, never both. Registration throws at startup if both are present — security primitives are not silently composed.</p>
+<h3 id="iidentifyrelatedresourcetrelated-tid"><code>IIdentifyRelatedResource&lt;TRelated, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IIdentifyRelatedResource&lt;TRelated, out TId&gt;
+</code></pre>
+<p>Entity-side declaration of a single outbound foreign-key navigation. Used by the resolver to walk the navigation chain at registration time. Implement on aggregate roots whose authorization is evaluated against a different aggregate one or more hops away.</p>
+<p>The reflection path resolver rejects <code>Nullable&lt;T&gt;</code> identifier types on selected hops (for example, <code>IIdentifyRelatedResource&lt;Team, Guid?&gt;</code>). Nullable reference-type IDs can represent absence; for optional value-type IDs, expose a plural terminal navigation with zero or one non-nullable ID, supply an explicit <code>ResolvedAuthorizationPath</code>, or use a custom projection loader. A nullable property alone does not make a nullable value-type hop supported.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TId GetRelatedResourceId()</code></td>
+<td><code>TId</code></td>
+<td>Returns the identifier of the related resource of type <code>TRelated</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>For two distinct outbound navigations to the same <code>TRelated</code> (cricket <code>Match.HomeTeamId</code> / <code>Match.AwayTeamId</code>), use <a href="#iidentifyrelatedresourcestrelated-tid"><code>IIdentifyRelatedResources&lt;TRelated, TId&gt;</code></a> instead — C# disallows declaring the same generic interface twice on a single type.</p>
+<h3 id="iidentifyrelatedresourcestrelated-tid"><code>IIdentifyRelatedResources&lt;TRelated, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IIdentifyRelatedResources&lt;TRelated, TId&gt;
+</code></pre>
+<p>Entity-side declaration of a plural outbound navigation (fan-out). Used at the <strong>terminal</strong> hop of an authorization chain to express OR-style / candidate-set authorization (cricket <code>Match → {HomeTeam, AwayTeam}</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IReadOnlyList&lt;TId&gt; GetRelatedResourceIds()</code></td>
+<td><code>IReadOnlyList&lt;TId&gt;</code></td>
+<td>Returns the identifiers of all related resources of type <code>TRelated</code>. Non-null. Duplicates are de-duplicated by the pipeline before loading; an empty list short-circuits to <code>Error.Forbidden</code>. Order is not significant.</td>
+</tr>
+</tbody>
+</table>
+<p>Plural-in-middle (fan-out cartesian expansion) is intentionally out of scope for v1 and rejected at registration time. For chains needing a plural intermediate hop, drop to <code>IResourceLoader&lt;TMessage, TProjection&gt;</code> with a projection type.</p>
+<h3 id="iresourceloadertmessage-tresource"><code>IResourceLoader&lt;TMessage, TResource&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public interface IResourceLoader&lt;in TMessage, TResource&gt;
+</code></pre>
+<p>Loads the resource required for resource-based authorization. Resolved per request from DI as scoped.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt; LoadAsync(TMessage message, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Returns the loaded resource or a failure (typically <code>Error.NotFound</code>). The pipeline short-circuits on failure before invoking <code>IAuthorizeResource&lt;TResource&gt;.Authorize</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resourceloaderbyidtmessage-tresource-tid"><code>ResourceLoaderById&lt;TMessage, TResource, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public abstract class ResourceLoaderById&lt;TMessage, TResource, TId&gt; : IResourceLoader&lt;TMessage, TResource&gt;
+</code></pre>
+<p>Convenience base for loaders that extract an ID from the message and call a repository.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected abstract TId GetId(TMessage message)</code></td>
+<td><code>TId</code></td>
+<td>Extract the resource ID from the message.</td>
+</tr>
+<tr>
+<td><code>protected abstract Task&lt;Result&lt;TResource&gt;&gt; GetByIdAsync(TId id, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Fetch the resource by ID; return <code>Result.Fail</code> with <code>Error.NotFound</code> when missing.</td>
+</tr>
+<tr>
+<td><code>public Task&lt;Result&lt;TResource&gt;&gt; LoadAsync(TMessage message, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Sealed glue: calls <code>GetId(message)</code> then <code>GetByIdAsync(...)</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sharedresourceloaderbyidtresource-tid"><code>SharedResourceLoaderById&lt;TResource, TId&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">public abstract class SharedResourceLoaderById&lt;TResource, TId&gt;
+</code></pre>
+<p>A single loader shared across every command that authorizes against the same <code>TResource</code>. For a command implementing both <code>IAuthorizeResource&lt;TResource&gt;</code> and <code>IIdentifyResource&lt;TResource, TId&gt;</code>, use <code>AddSharedResourceAuthorization&lt;TMessage,TResource,TId,TResponse&gt;()</code> to register the behavior, accessor, and bridge without scanning. Alternatively, the assembly scanner discovers the bridge, or <code>AddSharedResourceLoader</code> registers it separately. Existing explicit <code>IResourceLoader&lt;TMessage, TResource&gt;</code> registrations are preserved.</p>
+<p>The assembly-scanning overload of <code>Trellis.Mediator.ServiceCollectionExtensions.AddResourceAuthorization(...)</code> registers discovered concrete <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> implementations as <strong>scoped</strong> — safe to depend on a <code>DbContext</code> or other scoped repository. Explicit typed helpers do not register that implementation. Replace the registration after the scan completes if a different lifetime is required.</p>
+<p>For per-message loader selection, both <code>AddResourceAuthorization(assemblies)</code> and <code>AddResourceLoaders(assembly)</code> let a discovered custom <code>IResourceLoader&lt;TMessage,TResource&gt;</code> replace a framework shared-loader adapter, even when the adapter was registered first. Application-provided loader implementations, factories, instances, and keyed registrations are preserved.</p>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>public abstract Task&lt;Result&lt;TResource&gt;&gt; GetByIdAsync(TId id, CancellationToken cancellationToken)</code></td>
+<td><code>Task&lt;Result&lt;TResource&gt;&gt;</code></td>
+<td>Load the resource by ID; return <code>Result.Fail</code> with <code>Error.NotFound</code> when missing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iauthorizedresourcetmessage-tresource"><code>IAuthorizedResource&lt;TMessage, TResource&gt;</code></h3>
+<p><strong>Declaration</strong></p>
+<pre><code class="lang-csharp">namespace Trellis.Authorization;
+
+public interface IAuthorizedResource&lt;TMessage, TResource&gt;
+    where TResource : class
+{
+    TResource GetRequiredResource();
+    bool TryGetResource([MaybeNullWhen(false)] out TResource resource);
+}
+</code></pre>
+<p><strong>Purpose.</strong> v4 typed accessor that gives a handler the <strong>same instance</strong> of the resource that <code>ResourceAuthorizationBehavior</code> (or <code>ResourceAuthorizationViaBehavior</code>) loaded for the current dispatch — eliminating a duplicate load when the handler would otherwise re-fetch by id from its repository. For non-EF stores (CosmosDB / Dapper / HTTP-backed loaders) this is a measurable performance win; for EF it skips the second LINQ query while preserving change-tracker identity.</p>
+<p><strong>Auto-registration.</strong> Every public entry that registers resource authorization also registers the closed <code>IAuthorizedResource&lt;TMessage, TResource&gt;</code> as scoped. Handlers inject it via constructor injection; no additional composition-root call is required.</p>
+<ul>
+<li>For <code>IAuthorizeResource&lt;TResource&gt;</code> commands: <code>TResource</code> is the same <code>TResource</code>.</li>
+<li>For <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> commands: <code>TResource</code> is the <strong>leaf</strong> (the resource identified via <code>IIdentifyResource&lt;TLeaf, TLeafId&gt;</code>), which is the typical mutation target. The owner accessor is intentionally not exposed in v4; handlers needing owner state read it from their repository.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Signature</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TResource GetRequiredResource()</code></td>
+<td><code>TResource</code></td>
+<td>Returns the resource loaded and authorized for the current pipeline dispatch. Throws <code>InvalidOperationException</code> outside a populated dispatch — typical causes: the handler was invoked directly (e.g. from a unit test) without going through the mediator pipeline; the message lacks resource-authorization registration; authentication failed, the loader failed, or <code>Authorize</code> was denied (none of which populate the accessor). The exception message names the closed pair so misconfiguration is easy to diagnose.</td>
+</tr>
+<tr>
+<td><code>bool TryGetResource(out TResource? resource)</code></td>
+<td><code>bool</code></td>
+<td>Returns <code>true</code> with the resource when populated; <code>false</code> and <code>null</code> otherwise. Provided for genuinely optional reads (e.g., diagnostic logging that runs both inside and outside the pipeline). Production handlers should prefer <code>GetRequiredResource()</code> so a misconfigured pipeline fails loudly instead of silently skipping work.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Identity, not mutation-readiness.</strong> The accessor returns the SAME instance the loader returned. The framework does not validate that the instance is a canonical mutation-ready aggregate. <strong>Do not inject the accessor</strong> for commands whose loader returns:</p>
+<ul>
+<li>A projection type (e.g. <code>OrderHeader</code> for cheap authorization, not the full <code>Order</code> aggregate).</li>
+<li>A no-tracking EF entity that the handler must mutate (the mutation will not persist).</li>
+<li>A stale read-replica POCO when the handler needs strong consistency.</li>
+<li>An HTTP DTO that cannot be persisted back through any local repository.</li>
+</ul>
+<p>In those cases the handler reloads via the repository. The loader's job is to decide who owns the resource for the authorization check; the handler's job is to fetch the canonical mutation-ready aggregate. These are different shapes and the accessor would couple them incorrectly.</p>
+<p><strong>Concurrency.</strong> Safe across nested <code>mediator.Send</code> and concurrent <code>Task.WhenAll</code> dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow linked frame list with a volatile <code>IsActive</code> flag — each push allocates a new frame (no shared mutable state between sibling forks), and dispose flips the frame's <code>IsActive</code> flag (visible to orphan child tasks that captured the frame at fork time but outlived the parent dispatch). The framework guarantees an orphan task cannot read the resource after the parent's dispatch ends.</p>
+<p>See <a href="trellis-api-cookbook.html#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource">Recipe 31</a> in the cookbook for the WRONG/FIX shape and a full end-to-end example.</p>
+<h2 id="behavioral-notes">Behavioral notes</h2>
+<ul>
+<li><strong>Deny overrides allow.</strong> A permission listed in both <code>Permissions</code> and <code>ForbiddenPermissions</code> is denied. <code>HasPermission</code>, <code>HasAllPermissions</code>, <code>HasAnyPermission</code>, and <code>HasPermission(permission, scope)</code> all observe this rule.</li>
+<li><strong>Ordinal comparison everywhere.</strong> Permission lookups, attribute lookups, and <code>IsOwner</code> use <code>StringComparison.Ordinal</code>. Hydrate permissions and attributes with consistent casing.</li>
+<li><strong>Permissions snapshot to frozen collections.</strong> Mutating a collection passed into <code>Actor</code> after construction has no effect; the actor exposes a <code>FrozenSet&lt;string&gt;</code> / <code>FrozenDictionary&lt;string, string&gt;</code> snapshot for O(1) lookups.</li>
+<li><strong>Scoped permissions</strong> use the <code>&quot;Permission:Scope&quot;</code> convention (<code>Document.Edit:Tenant_A</code>). Add scoped entries directly to <code>Permissions</code> and check via <code>HasPermission(string, string)</code> — no separate scope collection.</li>
+<li><strong>Exact match only — no check-time wildcards.</strong> <code>HasPermission</code> is a set lookup, so a granted <code>&quot;seasons:*&quot;</code> does <strong>not</strong> match a <code>HasPermission(&quot;seasons:read&quot;)</code> check, and a granted unscoped <code>&quot;seasons&quot;</code> does <strong>not</strong> satisfy <code>HasPermission(&quot;seasons&quot;, scope)</code>. Expand any <code>entity:*</code>-style authoring shorthand into a concrete permission catalog when hydrating the <code>Actor</code> (e.g. a static <code>Permissions</code> constants class plus a role→permissions map), consistent with the pre-flatten guidance above. <code>Trellis.Asp</code> ships <a href="trellis-api-asp.html#rolepermissionprojection"><code>RolePermissionProjection</code></a> to perform that role→permissions flattening from an app-supplied map. This keeps every check O(1) and avoids the privilege-escalation surface of pattern matching at authorization time.</li>
+<li><strong>Pipeline ordering.</strong> When a command implements both <code>IAuthorize</code> (static) and <code>IAuthorizeResource&lt;TResource&gt;</code> (resource), the mediator behavior runs static checks first; resource loading and <code>Authorize(actor, resource)</code> only execute if the static check passes. A loader failure short-circuits before <code>Authorize</code> is called.</li>
+</ul>
+<h2 id="code-examples">Code examples</h2>
+<h3 id="static-permission-authorization">Static permission authorization</h3>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Authorization;
+
+public sealed partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions { get; } = [&quot;orders:delete&quot;];
+}
+</code></pre>
+<h3 id="resource-based-authorization-with-a-shared-loader">Resource-based authorization with a shared loader</h3>
+<blockquote>
+<p><strong>Preferred in generated services.</strong> Use <code>IIdentifyResource&lt;TResource, TId&gt;</code> + <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> for resource authorization. A per-command <code>IResourceLoader&lt;TMessage, TResource&gt;</code> is an escape hatch for request-scoped state or command-specific load logic.</p>
+</blockquote>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Authorization;
+
+public sealed partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+public sealed record Order(OrderId Id, ActorId OwnerId);
+
+public sealed record CancelOrderCommand(OrderId OrderId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorizeResource&lt;Order&gt;, IIdentifyResource&lt;Order, OrderId&gt;
+{
+    public OrderId GetResourceId() =&gt; OrderId;
+
+    public IResult Authorize(Actor actor, Order order) =&gt;
+        Result.Ensure(
+            order.OwnerId == actor.Id || actor.HasPermission(&quot;orders:cancel-any&quot;),
+            new Error.Forbidden(&quot;orders.cancel&quot;)
+                { Detail = &quot;Only the owner can cancel this order.&quot; });
+}
+
+public interface IOrderRepository
+{
+    Task&lt;Maybe&lt;Order&gt;&gt; FindByIdAsync(OrderId id, CancellationToken ct);
+}
+
+public sealed class OrderResourceLoader(IOrderRepository repo)
+    : SharedResourceLoaderById&lt;Order, OrderId&gt;
+{
+    public override async Task&lt;Result&lt;Order&gt;&gt; GetByIdAsync(OrderId id, CancellationToken ct) =&gt;
+        (await repo.FindByIdAsync(id, ct)).ToResult(new Error.NotFound(ResourceRef.For&lt;Order&gt;(id)));
+}
+</code></pre>
+<h3 id="indirect-multi-hop-resource-authorization--cricket-fan-out">Indirect (multi-hop) resource authorization — cricket fan-out</h3>
+<p>Authorize a <code>UploadScorecardCommand</code> against the actor owning <strong>either</strong> the home or away team of the match. The command identifies the leaf (<code>Match</code>); <code>Match</code> declares its plural outbound navigation to <code>Team</code>; the command's <code>Authorize</code> runs against the loaded list.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Authorization;
+
+public sealed partial class MatchId : RequiredGuid&lt;MatchId&gt;;
+public sealed partial class TeamId : RequiredGuid&lt;TeamId&gt;;
+
+public sealed class Match : Aggregate&lt;MatchId&gt;, IIdentifyRelatedResources&lt;Team, TeamId&gt;
+{
+    public TeamId HomeTeamId { get; }
+    public TeamId AwayTeamId { get; }
+    public IReadOnlyList&lt;TeamId&gt; GetRelatedResourceIds() =&gt; [HomeTeamId, AwayTeamId];
+}
+
+public sealed class Team : Aggregate&lt;TeamId&gt;
+{
+    public ActorId CreatedByActorId { get; }
+}
+
+public sealed record UploadScorecardCommand(MatchId MatchId, /* fields */)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;,
+      IAuthorizeResourceVia&lt;Team&gt;,
+      IIdentifyResource&lt;Match, MatchId&gt;
+{
+    public MatchId GetResourceId() =&gt; MatchId;
+
+    public IResult Authorize(Actor actor, IReadOnlyList&lt;Team&gt; owners) =&gt;
+        Result.Ensure(
+            owners.Any(t =&gt; t.CreatedByActorId == actor.Id),
+            new Error.Forbidden(&quot;match.upload-scorecard&quot;)
+                { Detail = &quot;Actor does not own either match team.&quot; });
+}
+
+// Composition root: assembly scan registers the via-behavior, the leaf-loader bridge,
+// and the SharedResourceLoaderById&lt;Match,MatchId&gt; + SharedResourceLoaderById&lt;Team,TeamId&gt;.
+services.AddTrellisBehaviors();
+services.AddResourceAuthorization(typeof(UploadScorecardCommand).Assembly);
+</code></pre>
+<p>For chains (e.g. <code>Match → Team → Tournament</code>), declare <code>IIdentifyRelatedResource&lt;Team, TeamId&gt;</code> on <code>Match</code> and <code>IIdentifyRelatedResource&lt;Tournament, TournamentId&gt;</code> on <code>Team</code>, then set <code>IAuthorizeResourceVia&lt;Tournament&gt;</code> on the command.</p>
+<p>For shapes the navigation-chain model can't express (composite keys, conditional/data-dependent paths, recursive hierarchies, projections, joins, plural-in-middle), drop to an explicit <code>IResourceLoader&lt;TMessage, TProjection&gt;</code> returning a custom projection, and put <code>IAuthorizeResource&lt;TProjection&gt;</code> on the command.</p>
+<h3 id="constructing-an-actor-directly-tests-custom-providers">Constructing an <code>Actor</code> directly (tests, custom providers)</h3>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Trellis.Authorization;
+
+var actor = new Actor(
+    id: &quot;user-1&quot;,
+    permissions: new HashSet&lt;string&gt;
+    {
+        &quot;orders:cancel&quot;,
+        $&quot;orders:view{Actor.PermissionScopeSeparator}tenant-1&quot;,
+    },
+    forbiddenPermissions: new HashSet&lt;string&gt;(),
+    attributes: new Dictionary&lt;string, string&gt;
+    {
+        [ActorAttributes.TenantId] = &quot;tenant-1&quot;,
+        [ActorAttributes.MfaAuthenticated] = &quot;true&quot;,
+    });
+
+bool canCancel = actor.HasPermission(&quot;orders:cancel&quot;);
+bool canViewTenant = actor.HasPermission(&quot;orders:view&quot;, &quot;tenant-1&quot;);
+string? tenant = actor.GetAttribute(ActorAttributes.TenantId);
+
+// Typed accessors parse the claim through the value object's IParsable — any backing primitive,
+// here a Guid-backed tenant id (where: public sealed partial class TenantId : RequiredGuid&lt;TenantId&gt;;):
+Result&lt;TenantId&gt; tenantVo = actor.GetRequiredAttribute&lt;TenantId&gt;(ActorAttributes.TenantId);
+bool hasTenant = actor.TryGetAttribute&lt;TenantId&gt;(ActorAttributes.TenantId, out var typedTenant);
+</code></pre>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="trellis-api-asp.html#namespace-trellisaspauthorization">trellis-api-asp.md</a> — <code>Trellis.Asp.Authorization</code> actor providers (<code>ClaimsActorProvider</code>, <code>EntraActorProvider</code>, <code>DevelopmentActorProvider</code>, <code>CachingActorProvider</code>) and the matching <code>AddClaimsActorProvider</code> / <code>AddEntraActorProvider</code> / <code>AddDevelopmentActorProvider</code> / <code>AddCachingActorProvider&lt;T&gt;</code> registration helpers.</li>
+<li><a href="trellis-api-mediator.html#authorizationbehaviortmessage-tresponse">trellis-api-mediator.md</a> — <code>AuthorizationBehavior&lt;TMessage, TResponse&gt;</code> pipeline behavior.</li>
+<li><a href="trellis-api-core.html#public-abstract-record-error">trellis-api-core.md</a> — <code>Result</code>, <code>Error.Forbidden</code>, <code>Error.NotFound</code>.</li>
+<li><a href="trellis-api-testing-aspnetcore.html#webapplicationfactoryextensions">trellis-api-testing-aspnetcore.md</a> — <code>WebApplicationFactoryExtensions.CreateClientWithActor</code> (writes the <code>X-Test-Actor</code> header consumed by <code>DevelopmentActorProvider</code>).</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-authorization.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

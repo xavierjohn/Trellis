@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis Anti-Pattern → Fix Gallery | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis Anti-Pattern → Fix Gallery | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-anti-patterns.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis-anti-pattern--fix-gallery">Trellis Anti-Pattern → Fix Gallery</h1>
+
+<blockquote>
+<p><strong>Analyzer rules require <code>Trellis.Analyzers</code>; bundled generator diagnostics do not.</strong> This gallery includes both. Standalone analyzer rules need a <code>PackageReference</code> to <code>Trellis.Analyzers</code>; source-generator diagnostics ship with their hosting packages (<code>Trellis.Core</code>, <code>Trellis.EntityFrameworkCore</code>, and <code>Trellis.Asp</code>) and can fire without it. This file is delivered by <code>Trellis.Core</code>, so its presence in <code>.github/</code> does <strong>not</strong> mean the standalone analyzers are active. Check the <code>.csproj</code> and the emitter table in the analyzer reference. The FIX shapes below remain correct either way.</p>
+</blockquote>
+<blockquote>
+<p>A condensed atlas mapping each common Trellis analyzer trigger to its idiomatic fix. <strong>Read this file alongside <code>trellis-api-cookbook.md</code> whenever you are touching a Trellis pipeline.</strong> Each section's WRONG/FIX pair captures the canonical control-flow shape the analyzer expects — preserve that shape and adapt identifiers, types, and error values to your caller. The snippets are pattern examples, not drop-in replacements.</p>
+</blockquote>
+<p>This file is the canonical reference for analyzer-triggered anti-patterns. It used to live as Recipe 11 in <code>trellis-api-cookbook.md</code> and was extracted so that:</p>
+<ol>
+<li>It can be loaded independently when you are debugging an analyzer warning.</li>
+<li>The reference list in <code>copilot-instructions.md</code> can name it directly, so AI sessions are more likely to load it.</li>
+<li>The cookbook's Patterns Index can route by symptom into this file when the symptom is &quot;I am getting <code>TRLSxxx</code>.&quot;</li>
+</ol>
+<p>The analyzer rules themselves are documented in <code>trellis-api-analyzers.md</code> (severity, when they fire, suppression guidance). This file is the <em>applied</em> form — the snippets you adapt.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>The compiler or IDE reports a <code>TRLSxxx</code> diagnostic and you need the fix shape, not the rule's specification.</li>
+<li>You are writing or reviewing a <code>Result</code>/<code>Maybe</code> pipeline, an EF Core mapping for a value object, or a composite value object crossing the JSON boundary — the three areas that generate almost all Trellis diagnostics.</li>
+<li>A reviewer flagged a shape as unidiomatic and you want the canonical form the analyzers were written to enforce.</li>
+</ul>
+<p>Jump straight to the section named by your diagnostic ID. If you have a symptom rather than an ID, route through the table below.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Diagnostic</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A call returning <code>Result</code>/<code>Result&lt;T&gt;</code> is invoked as a statement and its outcome silently vanishes</td>
+<td>TRLS001</td>
+<td><a href="#trls001--result-return-value-not-handled">Result return value not handled</a></td>
+</tr>
+<tr>
+<td>Reading <code>.Value</code> on a <code>Maybe&lt;T&gt;</code> that may be empty</td>
+<td>TRLS003</td>
+<td><a href="#trls003--unsafe-maybevalue">Unsafe <code>Maybe.Value</code></a></td>
+</tr>
+<tr>
+<td>Reading <code>.Value</code> on a <code>Maybe&lt;T&gt;</code> inside a LINQ projection</td>
+<td>TRLS013</td>
+<td><a href="#trls013--unsafe-maybetvalue-in-linq-projection">Unsafe <code>Maybe&lt;T&gt;.Value</code> in LINQ projection</a></td>
+</tr>
+<tr>
+<td>Throwing to signal a business failure inside a Result chain</td>
+<td>TRLS010</td>
+<td><a href="#trls010--throwing-in-a-result-chain">Throwing in a Result chain</a></td>
+</tr>
+<tr>
+<td>Deconstructing a <code>Result&lt;T&gt;</code> without checking success first</td>
+<td>TRLS018</td>
+<td><a href="#trls018--unsafe-resultt-deconstruction">Unsafe <code>Result&lt;T&gt;</code> deconstruction</a></td>
+</tr>
+<tr>
+<td>Using <code>default(Result&lt;Unit&gt;)</code> / <code>default(Result&lt;T&gt;)</code> or <code>default(Maybe&lt;T&gt;)</code> as if it were success</td>
+<td>TRLS019</td>
+<td><a href="#trls019--defaultresultunit--defaultmaybet"><code>default(Result&lt;Unit&gt;)</code> / <code>default(Maybe&lt;T&gt;)</code></a></td>
+</tr>
+<tr>
+<td>A <code>Combine</code> chain has grown past the largest supported tuple</td>
+<td>TRLS014</td>
+<td><a href="#trls014--combine-chain-exceeds-maximum-supported-tuple-size">Combine chain exceeds maximum supported tuple size</a></td>
+</tr>
+<tr>
+<td>Indexing or otherwise configuring a <code>Maybe&lt;T&gt;</code> property in EF Core</td>
+<td>TRLS016</td>
+<td><a href="#trls016--hasindex-on-a-maybet-property"><code>HasIndex</code> on a <code>Maybe&lt;T&gt;</code> property</a></td>
+</tr>
+<tr>
+<td>Hand-writing EF configuration that Trellis conventions already apply</td>
+<td>TRLS021</td>
+<td><a href="#trls021--ef-configuration-duplicates-trellis-conventions">EF configuration duplicates Trellis conventions</a></td>
+</tr>
+<tr>
+<td>Calling <code>SaveChangesAsync</code> instead of the Result-returning form</td>
+<td>TRLS015</td>
+<td><a href="#trls015--use-savechangesresultasync-instead-of-savechangesasync">Use <code>SaveChangesResultAsync</code></a></td>
+</tr>
+<tr>
+<td>Comparing a <code>Maybe&lt;T&gt;</code> with <code>Equals</code> inside an EF query</td>
+<td>TRLS054</td>
+<td><a href="#trls054--maybetequals-in-an-iqueryable-expression"><code>Maybe&lt;T&gt;.Equals</code> in an <code>IQueryable</code> expression</a></td>
+</tr>
+<tr>
+<td>A <code>HasValueWhere</code> predicate is not inlined into the query</td>
+<td>TRLS055</td>
+<td><a href="#trls055--non-inline-hasvaluewhere-in-an-iqueryable-expression">Non-inline <code>HasValueWhere</code></a></td>
+</tr>
+<tr>
+<td>A composite value object on a DTO cannot round-trip through deserialization</td>
+<td>TRLS020</td>
+<td><a href="#trls020--composite-value-object-dto-property-is-not-safely-deserializable">Composite value object DTO property is not safely deserializable</a></td>
+</tr>
+<tr>
+<td>A <code>Maybe&lt;T&gt;</code> or <code>[OwnedEntity]</code> type will not compile against its generated half</td>
+<td>TRLS035, TRLS036, TRLS037, TRLS038</td>
+<td><a href="#trls035--maybet-property-should-be-partial"><code>Maybe&lt;T&gt;</code> must be <code>partial</code></a>, <a href="#trls036--ownedentity-type-must-be-partial"><code>[OwnedEntity]</code> must be <code>partial</code></a>, <a href="#trls037--ownedentity-type-already-declares-a-parameterless-constructor">parameterless constructor</a>, <a href="#trls038--ownedentity-type-must-inherit-from-valueobject">must inherit <code>ValueObject</code></a></td>
+</tr>
+<tr>
+<td>A value object breaks under Native AOT or trimming when serialized</td>
+<td>TRLS039, TRLS059</td>
+<td><a href="#trls039--unsupported-scalar-value-primitive-for-aot-safe-json-converter">Unsupported scalar primitive</a>, <a href="#trls059--generatescalarvalueconverters-context-without-jsonserializable">context without <code>[JsonSerializable]</code></a></td>
+</tr>
+<tr>
+<td>Redeclaring <code>Id</code>, equality, or <code>TryCreate</code> that a base type already supplies</td>
+<td>TRLS056</td>
+<td><a href="#trls056--required-value-object-redeclares-a-generated-member">Required value object redeclares a generated member</a></td>
+</tr>
+<tr>
+<td>Post-commit failures disappear when combined with <code>Combine</code>/<code>Sequence</code></td>
+<td><em>(no analyzer)</em></td>
+<td><a href="#no-analyzer--resultfailaftercommit-composed-with-aggregating-operators"><code>Result.FailAfterCommit</code> with aggregating operators</a></td>
+</tr>
+<tr>
+<td>A domain event handler raises further domain events and they are lost or dispatched twice</td>
+<td><em>(no analyzer)</em></td>
+<td><a href="#no-analyzer--domain-event-handler-raises-more-domain-events-during-dispatch">Domain event handler raises more domain events</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="trls001--result-return-value-not-handled">TRLS001 — Result return value not handled</h2>
+<pre><code class="lang-csharp">// WRONG — Result&lt;T&gt; dropped on the floor
+PlaceOrder(cmd);                                   // TRLS001
+
+// FIX 1 — propagate up the ROP chain (preferred when the caller is itself in a Result pipeline).
+return PlaceOrder(cmd).Map(_ =&gt; Unit.Value);
+
+// FIX 2 — terminal side-effect via Switch (void-returning; for fire-and-forget log/metric).
+PlaceOrder(cmd).Switch(
+    onSuccess: _       =&gt; logger.LogInformation(&quot;Order placed.&quot;),
+    onFailure: failure =&gt; logger.LogWarning(&quot;Order rejected: {Code}&quot;, failure.Code));
+
+// FIX 3 — terminal projection via Match (both branches return a value; use when the
+// caller needs an int/IActionResult/string back, not just a side effect).
+int statusCode = PlaceOrder(cmd).Match(
+    onSuccess: _       =&gt; 200,
+    onFailure: failure =&gt; 422);
+</code></pre>
+<blockquote>
+<p>Don't throw from inside <code>Match</code> / <code>Switch</code> to &quot;handle&quot; failure — it defeats the point of <code>Result&lt;T&gt;</code>. Use <code>Switch</code> for void side-effects and propagate the <code>Result</code> up the chain instead. (Note: TRLS010 only fires inside chain methods like <code>Bind</code>/<code>Map</code>/<code>Tap</code>/<code>Ensure</code> — not <code>Match</code> or <code>Switch</code> — so the analyzer won't catch this; it's a Result-discipline guideline, not an analyzer rule.)</p>
+</blockquote>
+<h2 id="trls003--unsafe-maybevalue">TRLS003 — Unsafe <code>Maybe.Value</code></h2>
+<pre><code class="lang-csharp">// WRONG
+string city = customer.Email.Value;                // TRLS003
+
+// FIX 1 — guard
+if (customer.Email.HasValue) { var v = customer.Email.Value; }
+
+// FIX 2 — convert to Result
+Result&lt;EmailAddress&gt; r = customer.Email.ToResult(new Error.NotFound(ResourceRef.For(&quot;Email&quot;, customer.Id)));
+</code></pre>
+<p><strong>Guard shapes the analyzer already accepts.</strong> TRLS003 does not require the nested <code>if</code> above — do not restructure working code to satisfy it. Any of these suppress the diagnostic:</p>
+<table>
+<thead>
+<tr>
+<th>Shape</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HasValue</code> / <code>HasNoValue</code> condition</td>
+<td><code>if (m.HasValue) { … m.Value … }</code></td>
+</tr>
+<tr>
+<td>Early-return guard</td>
+<td><code>if (m.HasNoValue) return …; … m.Value</code></td>
+</tr>
+<tr>
+<td>Property pattern (incl. negated and ternary forms)</td>
+<td><code>if (m is { HasValue: true }) … m.Value</code></td>
+</tr>
+<tr>
+<td>Short-circuiting <code>&amp;&amp;</code></td>
+<td><code>if (m.HasValue &amp;&amp; m.Value.IsActive) …</code></td>
+</tr>
+<tr>
+<td>Prior assignment statement that cannot be <code>None</code></td>
+<td><code>Maybe&lt;int&gt; x; x = Maybe&lt;int&gt;.From(n); … x.Value</code> — only when <code>T</code> is a non-nullable value type, where <code>From</code> can never yield <code>None</code>, and <code>x</code> is not subsequently reassigned. A declaration initializer (<code>var x = Maybe&lt;int&gt;.From(n);</code>) is not recognized by this exemption</td>
+</tr>
+<tr>
+<td><code>TryGetValue</code> block</td>
+<td><code>if (m.TryGetValue(out var v)) …</code></td>
+</tr>
+<tr>
+<td>Lambda body of a Trellis <code>Maybe</code> operator</td>
+<td>the value-side lambda of <code>Bind</code> / <code>Map</code> / <code>Tap</code> / <code>Ensure</code> (and <code>*Async</code> forms), or the <code>onSome</code> argument of <code>Match</code> / <code>Switch</code> — it only runs when a value exists</td>
+</tr>
+</tbody>
+</table>
+<p>Prefer the early-return guard in ROP code: it keeps the happy path unindented and matches the surrounding <code>Result</code> style. FIX 2 remains the better answer whenever the absence is a <em>domain</em> outcome the caller must handle rather than a local precondition.</p>
+<h2 id="trls010--throwing-in-a-result-chain">TRLS010 — Throwing in a Result chain</h2>
+<pre><code class="lang-csharp">// WRONG
+.Bind(o =&gt; throw new InvalidOperationException(&quot;bad&quot;))   // TRLS010
+
+// FIX
+.Bind(o =&gt; Result.Fail&lt;Order&gt;(new Error.Conflict(ResourceRef.For&lt;Order&gt;(o.Id), &quot;invalid-state&quot;)))
+</code></pre>
+<h2 id="trls016--hasindex-on-a-maybet-property">TRLS016 — <code>HasIndex</code> on a <code>Maybe&lt;T&gt;</code> property</h2>
+<pre><code class="lang-csharp">// WRONG
+b.HasIndex(c =&gt; c.Email);                          // TRLS016 — silently no-op
+
+// FIX
+b.HasTrellisIndex(c =&gt; new { c.Email });
+</code></pre>
+<h2 id="trls021--ef-configuration-duplicates-trellis-conventions">TRLS021 — EF configuration duplicates Trellis conventions</h2>
+<p>When a <code>DbContext</code> opts into Trellis conventions, manual mapping for <code>Maybe&lt;T&gt;</code> and <code>[OwnedEntity]</code> properties is redundant.</p>
+<pre><code class="lang-csharp">// WRONG — in a context with ApplyTrellisConventions wired
+builder.Property(o =&gt; o.SubmittedAt).HasConversion&lt;DateTime?&gt;(); // TRLS021
+builder.OwnsOne(o =&gt; o.Total);                                  // TRLS021
+
+// FIX — let Trellis conventions own those properties
+configurationBuilder.ApplyTrellisConventions();
+</code></pre>
+<blockquote>
+<p>TRLS021 correlates direct <code>DbContext</code> configuration with the specific context that wires conventions. Standalone <code>IEntityTypeConfiguration&lt;TEntity&gt;</code> classes are attributed through <code>ApplyConfiguration(new TConfig())</code>, <code>ApplyConfigurationsFromAssembly(...)</code>, or matching <code>DbSet&lt;TEntity&gt;</code> properties. Separate contexts in the same compilation are not flagged merely because one context opted in, and unattributable configuration classes are ignored.</p>
+</blockquote>
+<h2 id="trls018--unsafe-resultt-deconstruction">TRLS018 — Unsafe <code>Result&lt;T&gt;</code> deconstruction</h2>
+<pre><code class="lang-csharp">// WRONG
+var (ok, value, err) = result;
+SendEmail(value);                                  // TRLS018 — value is default on failure
+
+// FIX
+var (ok, value, err) = result;
+if (!ok) return err.ToHttpResponse();
+SendEmail(value);                                  // gated by !ok early-return
+</code></pre>
+<h2 id="trls019--defaultresultunit--defaultmaybet">TRLS019 — <code>default(Result&lt;Unit&gt;)</code> / <code>default(Maybe&lt;T&gt;)</code></h2>
+<pre><code class="lang-csharp">// WRONG
+return default;                                    // TRLS019 — typed FAILURE, not success
+return default(Maybe&lt;Email&gt;);                      // TRLS019 — equivalent to .None but obscure
+
+// FIX
+return Result.Ok();
+return Maybe&lt;Email&gt;.None;
+</code></pre>
+<h2 id="trls013--unsafe-maybetvalue-in-linq-projection">TRLS013 — Unsafe <code>Maybe&lt;T&gt;.Value</code> in LINQ projection</h2>
+<p>Direct <code>.Value</code> access on <code>Maybe&lt;T&gt;</code> inside System.Linq <code>Enumerable</code> / <code>Queryable</code> Select-family LINQ projections throws for <code>None</code> elements unless an earlier <code>.Where(...)</code> lambda mentions <code>HasValue</code>.</p>
+<p>Pick FIX 1 for in-memory or analyzer-clean projection pipelines: filter first, then use a non-throwing extractor. A prior <code>Where(m =&gt; m.HasValue)</code> clears TRLS013 only; TRLS003 does not carry that proof into the separate <code>Select</code> lambda.</p>
+<pre><code class="lang-csharp">// WRONG — projection reads Maybe&lt;T&gt;.Value before proving every element has a value
+IEnumerable&lt;int&gt; numbers = values.Select(m =&gt; m.Value);
+
+// FIX 1 — clears both TRLS013 and TRLS003; None elements are filtered out
+IEnumerable&lt;int&gt; numbers = values
+    .Where(m =&gt; m.HasValue)
+    .Select(m =&gt; m.GetValueOrDefault(0));
+</code></pre>
+<p>The fallback is never selected for this filtered sequence; a present zero is still preserved.</p>
+<p>Pick FIX 2 for EF Core query composition over mapped <code>Maybe&lt;T&gt;</code> properties: register the interceptor and use the typed query helpers for predicates when they match the query.</p>
+<pre><code class="lang-csharp">// FIX 2 — EF Core path: enable Trellis query rewriting and prefer typed Maybe predicates
+optionsBuilder.AddTrellisInterceptors();
+
+IQueryable&lt;Order&gt; submitted = db.Orders.WhereHasValue(o =&gt; o.SubmittedAt);
+</code></pre>
+<blockquote>
+<p>TRLS013 suppression is keyword-presence based: the prior <code>.Where(...)</code> body only has to mention <code>HasValue</code>, so predicate-shape verification (for example, distinguishing <code>m =&gt; m.HasValue</code> from <code>m =&gt; !m.HasValue</code>) is a known limitation. The analyzer recognizes prior <code>.Where(...)</code> chains for projections; <code>MaybeQueryableExtensions</code> are the EF translation path, not a general-purpose TRLS013 suppression mechanism.
+User-defined methods named <code>Select</code>, <code>GroupBy</code>, <code>OrderBy</code>, etc. are not LINQ for TRLS013 unless they resolve to <code>System.Linq.Enumerable</code> or <code>System.Linq.Queryable</code>.</p>
+</blockquote>
+<h2 id="trls014--combine-chain-exceeds-maximum-supported-tuple-size">TRLS014 — Combine chain exceeds maximum supported tuple size</h2>
+<p>Trellis <code>Result.Combine</code> / <code>CombineAsync</code> supports up to nine elements.</p>
+<pre><code class="lang-csharp">// WRONG
+var combined = r1.Combine(r2).Combine(r3).Combine(r4).Combine(r5)
+    .Combine(r6).Combine(r7).Combine(r8).Combine(r9).Combine(r10); // TRLS014
+
+// FIX
+var identity = r1.Combine(r2).Combine(r3).Combine(r4).Combine(r5);
+var contact = r6.Combine(r7).Combine(r8).Combine(r9).Combine(r10);
+var combined = identity.Combine(contact);
+</code></pre>
+<blockquote>
+<p>The analyzer resolves the method symbol and only counts Trellis combine extension methods; user-defined <code>Combine</code> / <code>CombineAsync</code> methods are ignored.</p>
+</blockquote>
+<h2 id="trls054--maybetequals-in-an-iqueryable-expression">TRLS054 — <code>Maybe&lt;T&gt;.Equals</code> in an <code>IQueryable</code> expression</h2>
+<p><code>MaybeExpressionRewriter</code> translates natural <code>==</code> / <code>!=</code> operator comparisons, not opaque <code>.Equals(...)</code> calls.</p>
+<pre><code class="lang-csharp">// WRONG — EF Core sees an opaque Maybe&lt;T&gt;.Equals call
+IQueryable&lt;Order&gt; overdue = db.Orders
+    .Where(o =&gt; o.SubmittedAt.Equals(Maybe.From(cutoff)));   // TRLS054
+
+// WRONG — object.Equals is equally opaque to the rewriter
+IQueryable&lt;Order&gt; missing = db.Orders
+    .Where(o =&gt; object.Equals(o.SubmittedAt, Maybe&lt;DateTime&gt;.None)); // TRLS054
+
+// FIX 1 — natural-form operators are the supported expression-tree shape
+IQueryable&lt;Order&gt; overdue = db.Orders
+    .Where(o =&gt; o.SubmittedAt == Maybe.From(cutoff));
+
+// FIX 2 — for ad-hoc EF queries, prefer the typed helper when it matches
+IQueryable&lt;Order&gt; overdue = db.Orders
+    .WhereEquals(o =&gt; o.SubmittedAt, cutoff);
+</code></pre>
+<blockquote>
+<p>TRLS054 is scoped to <code>IQueryable</code> / <code>System.Linq.Queryable</code> lambdas. In-memory <code>IEnumerable&lt;T&gt;</code> comparisons are allowed because no EF translation is involved.</p>
+</blockquote>
+<h2 id="trls055--non-inline-hasvaluewhere-in-an-iqueryable-expression">TRLS055 — Non-inline <code>HasValueWhere</code> in an <code>IQueryable</code> expression</h2>
+<p><code>HasValueWhere</code> is translatable only when the predicate body is visible as an inline lambda inside the query expression tree.</p>
+<pre><code class="lang-csharp">Func&lt;DateTime, bool&gt; isOverdue = submittedAt =&gt; submittedAt &lt; cutoff;
+
+// WRONG — captured delegate variables are opaque to MaybeExpressionRewriter
+IQueryable&lt;Order&gt; overdue = db.Orders
+    .Where(o =&gt; o.SubmittedAt.HasValueWhere(isOverdue));      // TRLS055
+
+// FIX 1 — inline the predicate so the rewriter can substitute the storage member
+IQueryable&lt;Order&gt; overdue = db.Orders
+    .Where(o =&gt; o.SubmittedAt.HasValueWhere(submittedAt =&gt; submittedAt &lt; cutoff));
+
+// FIX 2 — materialize first when the delegate must remain a runtime value
+IEnumerable&lt;Order&gt; overdueInMemory = db.Orders
+    .AsEnumerable()
+    .Where(o =&gt; o.SubmittedAt.HasValueWhere(isOverdue));
+</code></pre>
+<blockquote>
+<p>Method groups and member-held delegates have the same limitation as local <code>Func&lt;T, bool&gt;</code> variables: EF Core cannot translate a delegate body it cannot see.</p>
+</blockquote>
+<h2 id="trls015--use-savechangesresultasync-instead-of-savechangesasync">TRLS015 — Use <code>SaveChangesResultAsync</code> instead of <code>SaveChangesAsync</code></h2>
+<p>Direct <code>SaveChanges</code>/<code>SaveChangesAsync</code> calls bypass the Result pipeline and turn database errors into unhandled exceptions.</p>
+<p>Pick FIX 1 when the non-UoW caller discards the affected-row count.</p>
+<pre><code class="lang-csharp">// WRONG — raw EF save bypasses Result error handling
+await db.SaveChangesAsync(ct);
+
+// FIX 1 — preserve Result pipeline semantics when the count is not needed
+return await db.SaveChangesResultUnitAsync(ct);   // propagate the Result up the ROP chain
+</code></pre>
+<p>Pick FIX 2 when the non-UoW caller needs the affected-row count.</p>
+<pre><code class="lang-csharp">// WRONG — raw EF save returns an int by throwing on database failures
+int count = await db.SaveChangesAsync(ct);
+
+// FIX 2 — keep the affected-row count inside Result&lt;int&gt;
+return await db.SaveChangesResultAsync(ct);       // Result&lt;int&gt; carries the affected-row count
+</code></pre>
+<blockquote>
+<p>Under <code>AddTrellisUnitOfWork&lt;TContext&gt;</code>, repositories should stage changes only and not call <code>SaveChanges</code>/<code>SaveChangesAsync</code> at all. <code>TransactionalCommandBehavior</code> owns commit.</p>
+</blockquote>
+<h2 id="trls020--composite-value-object-dto-property-is-not-safely-deserializable">TRLS020 — Composite value object DTO property is not safely deserializable</h2>
+<p>Composite value objects exposed through request/response DTOs need a supported JSON transport so binding round-trips through <code>TryCreate</code>.</p>
+<table>
+<thead>
+<tr>
+<th>DTO property shape</th>
+<th>Required transport</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bare <code>TComposite</code></td>
+<td><code>[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;T&gt;))]</code> on the value-object type</td>
+</tr>
+<tr>
+<td><code>Maybe&lt;TComposite&gt;</code></td>
+<td>Not analyzer-clean even when the inner composite type has that converter. Use a nullable transport (<code>TComposite?</code>) plus <code>Maybe.From(...)</code> at the endpoint/API seam</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Where the rule looks.</strong> Only at DTOs actually bound from the wire: a controller <code>[FromBody]</code> parameter or response type, or a minimal API endpoint handler parameter. A Mediator command is flagged only when it is itself the bound request body at one of those seams; a command constructed server-side (mapped from a separate request DTO and never deserialized from JSON) is not flagged, because System.Text.Json never touches it. The DTO type alone is not enough to trip the rule.</p>
+<pre><code class="lang-csharp">// WRONG — bare composite [OwnedEntity] value object exposed as a [FromBody] DTO property without the converter
+[OwnedEntity]
+public sealed partial class Money : ValueObject
+{
+    public string Currency { get; }
+    public decimal Amount { get; }
+
+    protected override void GetEqualityComponents(ref EqualityComponents components)
+    {
+        components.Add(Currency);
+        components.Add(Amount);
+    }
+}
+
+public sealed record CreateInvoiceRequest(Money Total);
+
+[ApiController]
+[Route(&quot;invoices&quot;)]
+public sealed class InvoicesController : ControllerBase
+{
+    [HttpPost]
+    public IActionResult Create([FromBody] CreateInvoiceRequest request) =&gt; Ok();
+}
+
+// FIX 1 — put the converter on the composite value object type
+[JsonConverter(typeof(CompositeValueObjectJsonConverter&lt;Money&gt;))]
+[OwnedEntity]
+public sealed partial class Money : ValueObject
+{
+    // ...same body as above...
+}
+</code></pre>
+<blockquote>
+<p>The current TRLS020 analyzer checks bare composite value-object DTO properties by looking for the converter on the composite <strong>type</strong>, not the DTO property. It also flags <code>Maybe&lt;TComposite&gt;</code> DTO properties because Trellis does not provide a <code>MaybeCompositeValueObjectJsonConverterFactory</code>; use <code>TComposite?</code> on the wire and convert to/from <code>Maybe&lt;TComposite&gt;</code> at the API seam.</p>
+</blockquote>
+<h2 id="trls035--maybet-property-should-be-partial">TRLS035 — <code>Maybe&lt;T&gt;</code> property should be <code>partial</code></h2>
+<p>Severity: Warning.</p>
+<p>A non-partial <code>Maybe&lt;T&gt;</code> auto-property on a <code>partial</code> entity type prevents the EF Core source generator from emitting the nullable backing field that Trellis conventions map.</p>
+<pre><code class="lang-csharp">// WRONG — generator cannot emit the mapped backing field for a non-partial property
+public partial class Customer
+{
+    public Maybe&lt;PhoneNumber&gt; Phone { get; set; } // TRLS035
+}
+
+// FIX — make the property partial so the generator can provide the implementation
+public partial class Customer
+{
+    public partial Maybe&lt;PhoneNumber&gt; Phone { get; set; }
+}
+</code></pre>
+<h2 id="trls036--ownedentity-type-must-be-partial">TRLS036 — <code>[OwnedEntity]</code> type must be <code>partial</code></h2>
+<p>Type is decorated with <code>[OwnedEntity]</code> but is not declared <code>partial</code>, so the source generator cannot emit the private parameterless constructor.</p>
+<pre><code class="lang-csharp">// WRONG — generator cannot add the EF constructor to a non-partial type
+[OwnedEntity]
+public sealed class Address : ValueObject
+{
+}
+
+// FIX 1 — make the owned value object partial so generation can extend it
+[OwnedEntity]
+public sealed partial class Address : ValueObject
+{
+}
+</code></pre>
+<blockquote>
+<p>Severity: Error. TRLS038 is reported first when the type also fails to inherit from <code>ValueObject</code>, so a non-partial non-<code>ValueObject</code> type emits TRLS038 rather than both diagnostics.</p>
+</blockquote>
+<h2 id="trls037--ownedentity-type-already-declares-a-parameterless-constructor">TRLS037 — <code>[OwnedEntity]</code> type already declares a parameterless constructor</h2>
+<p>Type already has a parameterless constructor; remove it to let the <code>[OwnedEntity]</code> source generator emit one, or remove the <code>[OwnedEntity]</code> attribute.</p>
+<pre><code class="lang-csharp">// WRONG — hand-written parameterless constructor suppresses generator emission
+[OwnedEntity]
+public sealed partial class Address : ValueObject
+{
+    public Address() { }
+}
+
+// FIX 1 — delete the hand-written parameterless constructor and let the generator own it
+[OwnedEntity]
+public sealed partial class Address : ValueObject
+{
+}
+</code></pre>
+<blockquote>
+<p>Severity: Warning. Any explicit parameterless constructor suppresses the generated one. Default guidance is to delete it; keep a private one only with a documented reason and the understanding that generator emission is intentionally suppressed.</p>
+</blockquote>
+<h2 id="trls038--ownedentity-type-must-inherit-from-valueobject">TRLS038 — <code>[OwnedEntity]</code> type must inherit from <code>ValueObject</code></h2>
+<p>Type is decorated with <code>[OwnedEntity]</code> but does not inherit from <code>Trellis.ValueObject</code>; <code>[OwnedEntity]</code> is only supported on <code>ValueObject</code>-derived types.</p>
+<pre><code class="lang-csharp">// WRONG — [OwnedEntity] is applied to a plain class
+[OwnedEntity]
+public sealed partial class Address
+{
+}
+
+// FIX 1 — make the owned entity a Trellis ValueObject
+[OwnedEntity]
+public sealed partial class Address : ValueObject
+{
+}
+</code></pre>
+<blockquote>
+<p>Severity: Error. When TRLS038 fires, the generator skips source generation for that type.</p>
+</blockquote>
+<h2 id="trls039--unsupported-scalar-value-primitive-for-aot-safe-json-converter">TRLS039 — Unsupported scalar value primitive for AOT-safe JSON converter</h2>
+<p>Severity: Warning.</p>
+<p>The ASP source generator can emit reflection-free JSON converters only for its supported primitive set. When a scalar value object wraps another primitive, the generator skips converter emission so AOT builds do not inherit reflection-based <code>JsonSerializer</code> calls.</p>
+<pre><code class="lang-csharp">// WRONG — TimeSpan is outside the AOT-safe primitive set, so no converter is generated
+public sealed class Duration : ScalarValueObject&lt;Duration, TimeSpan&gt;, IScalarValue&lt;Duration, TimeSpan&gt;
+{
+    // TryCreate implementation omitted for brevity. // TRLS039
+}
+
+// FIX 1 — model the value with a supported primitive so the generator can emit a converter
+public sealed partial class DurationTicks : RequiredLong&lt;DurationTicks&gt;;
+
+// FIX 2 — keep the unsupported primitive only with an explicit custom JsonConverter&lt;T&gt;
+// and a local suppression documenting that the custom converter owns serialization.
+</code></pre>
+<h2 id="trls059--generatescalarvalueconverters-context-without-jsonserializable">TRLS059 — <code>[GenerateScalarValueConverters]</code> context without <code>[JsonSerializable]</code></h2>
+<p>Severity: Warning.</p>
+<p>Roslyn source generators all analyze the same original compilation and cannot observe one another's output. Anything Trellis emits is therefore invisible to System.Text.Json's generator, so the attributes STJ needs must be written by hand. Getting this wrong produces compiler errors that point at generated code and never mention the real cause.</p>
+<pre><code class="lang-csharp">// WRONG — the context declares no [JsonSerializable] of its own.
+// STJ's generator skips the context entirely and never emits the abstract members
+// JsonSerializerContext requires, so the build fails with two CS0534 errors. // TRLS059
+[GenerateScalarValueConverters]
+public partial class AppJsonContext : JsonSerializerContext;
+
+// WRONG — OrderId is reachable from a serialized DTO but carries no [JsonConverter]
+// in original source. STJ treats it as a POCO and emits `ObjectCreator = () =&gt; new OrderId()`,
+// which does not exist on a Trellis value object, failing with CS1729 inside STJ's own file.
+public partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+public sealed class OrderDto
+{
+    public OrderId? Id { get; set; }
+}
+
+[GenerateScalarValueConverters]
+[JsonSerializable(typeof(OrderDto))]
+public partial class AppJsonContext2 : JsonSerializerContext;
+
+// FIX — declare both attributes yourself.
+[JsonConverter(typeof(ParsableJsonConverter&lt;OrderId&gt;))]
+public partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+[GenerateScalarValueConverters]
+[JsonSerializable(typeof(OrderDto))]
+public partial class AppJsonContext : JsonSerializerContext;
+</code></pre>
+<p>Declaring <code>[JsonConverter]</code> yourself is explicitly supported: <code>RequiredPartialClassGenerator</code> detects the attribute on your partial and skips its own, so there is no CS0579 duplicate. Use <code>ParsableJsonConverter&lt;T&gt;</code> for scalar <code>Required*</code> types and <code>RequiredEnumJsonConverter&lt;T&gt;</code> for <code>RequiredEnum&lt;T&gt;</code> — the same converters Trellis would have emitted.</p>
+<h2 id="trls056--required-value-object-redeclares-a-generated-member">TRLS056 — Required value object redeclares a generated member</h2>
+<p><code>Required*&lt;TSelf&gt;</code> partial classes get their factory, parse, conversion, and GUID helper surface from <code>RequiredPartialClassGenerator</code>. Do not redeclare those members in the user partial.</p>
+<pre><code class="lang-csharp">// WRONG — TryParse is generated for RequiredString&lt;TSelf&gt;
+public sealed partial class CustomerCode : RequiredString&lt;CustomerCode&gt;
+{
+    public static bool TryParse(string? s, IFormatProvider? provider, out CustomerCode result) // TRLS056
+    {
+        result = default!;
+        return false;
+    }
+}
+
+// FIX — remove the redundant declaration and rely on the generated TryParse
+public sealed partial class CustomerCode : RequiredString&lt;CustomerCode&gt;;
+</code></pre>
+<blockquote>
+<p>Severity: Error. The generator reports at the user member and skips emitting the conflicting generated member, so the diagnostic points at the redundant declaration instead of surfacing as a generic <code>CS0111</code> / <code>CS0102</code> duplicate-member error from generated source.</p>
+</blockquote>
+<h2 id="trls062--validateadditional-rejects-a-value-without-naming-a-reason">TRLS062 — <code>ValidateAdditional</code> rejects a value without naming a reason</h2>
+<p>A custom rule is the value object's own reason for rejecting a value. The three-argument <code>ValidateAdditional</code> can reject but has nowhere to put that reason, so the failure reaches the client as <code>error.unspecified</code> — indistinguishable from every other unnamed failure.</p>
+<pre><code class="lang-csharp">// WRONG — rejects, but the client is told only that something was invalid
+public sealed partial class ReservationCode : RequiredString&lt;ReservationCode&gt;
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage) // TRLS062
+    {
+        if (!value.StartsWith(&quot;RES-&quot;, StringComparison.Ordinal))
+            errorMessage = &quot;Reservation Code must start with RES-.&quot;;
+    }
+}
+
+// FIX — take the four-argument overload and name the failure
+public sealed partial class ReservationCode : RequiredString&lt;ReservationCode&gt;
+{
+    static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
+    {
+        if (value.StartsWith(&quot;RES-&quot;, StringComparison.Ordinal))
+            return;
+
+        errorMessage = &quot;Reservation Code must start with RES-.&quot;;
+        errorCode = &quot;reservation.code.malformed&quot;;
+    }
+}
+</code></pre>
+<blockquote>
+<p>Severity: Info. The three-argument form stays legal and behaves exactly as before, so this is a prompt rather than a gate. Declare only one of the two overloads — declaring both is <code>TRLS061</code>, an error. Leaving <code>errorCode</code> unset or blank in the four-argument form falls back to <code>error.unspecified</code>, which is the same outcome as never having taken the overload.</p>
+</blockquote>
+<h2 id="trls063--fluentvalidation-must-rule-with-no-witherrorcode">TRLS063 — FluentValidation <code>Must</code> rule with no <code>WithErrorCode</code></h2>
+<p>Every built-in FluentValidation validator carries a name that <code>Trellis.FluentValidation</code> projects to a real reason code. <code>Must</code> and <code>MustAsync</code> are the exception: they report as <code>PredicateValidator</code> and <code>AsyncPredicateValidator</code>, both of which project to the <code>error.unspecified</code> sentinel. Since <code>Must</code> is also the validator applications reach for most, it is the largest single producer of failures a client cannot branch on.</p>
+<pre><code class="lang-csharp">// WRONG — the client receives error.unspecified and cannot tell these two apart
+RuleFor(x =&gt; x.Name).Must(BeKnownCustomer);                 // TRLS063
+RuleFor(x =&gt; x.Slot).MustAsync(BeAvailableAsync);           // TRLS063
+
+// FIX — name each failure
+RuleFor(x =&gt; x.Name).Must(BeKnownCustomer).WithErrorCode(&quot;customer.unknown&quot;);
+RuleFor(x =&gt; x.Slot).MustAsync(BeAvailableAsync).WithErrorCode(&quot;slot.taken&quot;);
+</code></pre>
+<p>A <code>WithErrorCode</code> only counts for the rule component it follows. Modifiers such as <code>WithMessage</code>, <code>When</code>, and <code>WithName</code> can sit in between, but another validator starts a new component:</p>
+<pre><code class="lang-csharp">// WRONG — the code names the second Must; the first is still unnamed
+RuleFor(x =&gt; x.Name)
+    .Must(BeLongEnough)                                     // TRLS063
+    .Must(BeShortEnough)
+    .WithErrorCode(&quot;name.too.long&quot;);
+
+// FIX — one code per component
+RuleFor(x =&gt; x.Name)
+    .Must(BeLongEnough).WithErrorCode(&quot;name.too.short&quot;)
+    .Must(BeShortEnough).WithErrorCode(&quot;name.too.long&quot;);
+</code></pre>
+<blockquote>
+<p>Severity: Info, because uncoded <code>Must</code> rules are legal and existing validators are full of them. Raise it with <code>dotnet_diagnostic.TRLS063.severity = warning</code> once a codebase has caught up. There is deliberately no code fix: only the author knows what the rule's failure should be called, and a placeholder code looks deliberate on the wire in a way the sentinel does not.</p>
+</blockquote>
+<p>The analyzer reports only where it can prove no code applies. It stays silent when the rule's value escapes the statement (<code>var rule = RuleFor(...).Must(...);</code>), when the chain calls <code>Configure(...)</code> — which can set <code>ErrorCode</code> directly — or when it passes through any helper your application declared, including one placed in <code>namespace FluentValidation</code>, since such a helper may itself wrap <code>WithErrorCode</code>. Those shapes may well be uncoded, but a false accusation against an author who did the right thing costs more than a miss on a shape this rule flags everywhere else.</p>
+<h2 id="trls064--reason-code-literal-that-collides-with-the-frozen-vocabulary">TRLS064 — reason-code literal that collides with the frozen vocabulary</h2>
+<p>Trellis freezes a small set of reason codes and dispatches on their exact wire spelling. Restating one as a literal works right up until the day it doesn't: a typo in a literal is a silent wire break, whereas a typo in a constant name does not compile.</p>
+<pre><code class="lang-csharp">// WRONG — the literal is unchecked, and there are usually dozens of them
+Error.InvalidInput.ForField(&quot;email&quot;, &quot;value.not-null&quot;);        // TRLS064
+Error.InvalidInput.ForField(&quot;name&quot;, &quot;string.max-length&quot;);      // TRLS064
+
+// FIX — the constant is the same string, checked by the compiler
+Error.InvalidInput.ForField(&quot;email&quot;, ValidationCodes.ValueNotNull);
+Error.InvalidInput.ForField(&quot;name&quot;, ValidationCodes.StringMaxLength);
+</code></pre>
+<p>A code fix applies this, and because the motivating case is one literal repeated across a codebase, fix-all is supported.</p>
+<p>The other two shapes claim a name that is not yours to claim. <code>error.*</code> is reserved for the single <code>error.unspecified</code> sentinel — a second member there makes the fallback lossy, because a client that sees <code>error.</code> can no longer read it as &quot;this failure was never named&quot;. And a first segment the framework publishes a meaning for makes an application failure read as a framework one to any client using the documented prefix fallback:</p>
+<pre><code class="lang-csharp">// WRONG — squats a reserved or framework-owned namespace
+Error.InvalidInput.ForField(&quot;token&quot;, &quot;error.expired&quot;);         // TRLS064
+Error.InvalidInput.ForField(&quot;total&quot;, &quot;money.over-budget&quot;);     // TRLS064
+
+// FIX — name it in your own domain's terms
+Error.InvalidInput.ForField(&quot;token&quot;, &quot;session.expired&quot;);
+Error.InvalidInput.ForField(&quot;total&quot;, &quot;budget.exceeded&quot;);
+</code></pre>
+<p>The same three findings apply wherever a reason code is written, not only to a <code>reasonCode</code> or <code>Code</code> argument. FluentValidation's <code>WithErrorCode</code> and the <code>Code</code> property on the Trellis primitive attributes both reach the wire the same way:</p>
+<pre><code class="lang-csharp">// WRONG
+RuleFor(x =&gt; x.Name).NotEmpty().WithErrorCode(&quot;value.not-empty&quot;);   // TRLS064 — restates a frozen code
+RuleFor(x =&gt; x.Age).Must(BeAdult).WithErrorCode(&quot;value.too-young&quot;); // TRLS064 — squats value.*
+
+[StringLength(50, Code = &quot;string.max-length&quot;)]                      // TRLS064 — restates a frozen code
+public partial class DisplayName : RequiredString&lt;DisplayName&gt;;
+
+// FIX
+RuleFor(x =&gt; x.Name).NotEmpty().WithErrorCode(ValidationCodes.ValueNotEmpty);
+RuleFor(x =&gt; x.Age).Must(BeAdult).WithErrorCode(&quot;customer.under-age&quot;);
+
+[StringLength(50, Code = ValidationCodes.StringMaxLength)]
+public partial class DisplayName : RequiredString&lt;DisplayName&gt;;
+</code></pre>
+<p>Setting <code>Code</code> to a name of your own is the documented reason the property exists, so <code>[NotDefault(Code = &quot;tenant.id.missing&quot;)]</code> is silent — as it should be.</p>
+<blockquote>
+<p>Severity: Info. <strong>This rule does not check vocabulary membership</strong>, and that boundary is deliberate: the freeze constrains Trellis, not your application, and <code>trellis-api-primitives.md</code> promises that no analyzer pressures the choice to override a framework code or keep it. A novel, well-formed code of your own — <code>order.cancel-after-ship</code>, or a bare <code>required</code> — is silent, including where it is a synonym for a code Trellis also has. Only restating a frozen code, or claiming a namespace whose meaning Trellis has published, is reported. Note also that only <em>literals</em> are reported: <code>ValidationCodes.ValueNotNull</code> is the recommended shape, so matching on constant value rather than syntax would flag the fix itself.</p>
+</blockquote>
+<h2 id="trls065--produces-that-lists-a-json-media-type">TRLS065 — <code>[Produces]</code> that lists a JSON media type</h2>
+<p><code>ProducesAttribute</code> is a result filter that replaces <code>ObjectResult.ContentTypes</code> wholesale. The JSON output formatter advertises <code>application/json</code>, <code>text/json</code> and <code>application/*+json</code>, so it can serialise a <code>ProblemDetails</code> as any of them — and an RFC 9457 failure quietly ships as <code>application/json</code>, breaking clients that content-negotiate or branch on the media type.</p>
+<pre><code class="lang-csharp">// WRONG — every problem response from this controller loses application/problem+json
+[ApiController]
+[Produces(&quot;application/json&quot;)]                                  // TRLS065
+public sealed class OrdersController : ControllerBase
+{
+    [HttpPost]
+    public ActionResult Create(CreateOrder command) =&gt;
+        ModelState.IsValid ? Ok() : ValidationProblem(ModelState);
+}
+</code></pre>
+<p>The obvious repair — adding <code>application/problem+json</code> to the list — does not work, in any order:</p>
+<pre><code class="lang-csharp">// WRONG — trailing problem+json is inert: the JSON formatter matches the earlier
+// application/json entry, so the problem is still written as application/json
+[Produces(&quot;application/json&quot;, &quot;application/problem+json&quot;)]      // TRLS065
+
+// WRONG — leading problem+json repairs the failure but rewrites SUCCESSFUL
+// ObjectResult responses to application/problem+json
+[Produces(&quot;application/problem+json&quot;, &quot;application/json&quot;)]      // TRLS065
+
+// WRONG — and this is the one that surprises people. MVC's SelectFormatterUsingAnyAcceptableContentType
+// loops over FORMATTERS in the outer loop and media types in the inner one, so registration order
+// beats list order: the JSON formatter is consulted before an appended CSV formatter, matches the
+// problem+json entry, and writes the SUCCESS response as problem+json.
+[Produces(&quot;text/csv&quot;, &quot;application/problem+json&quot;)]              // TRLS065
+</code></pre>
+<p>No ordering of the list is reliably correct — for JSON-family types alone none works, and for a mixed list the outcome turns on formatter registration order — which is why the rule reports every JSON-family list rather than an &quot;omits <code>problem+json</code>&quot; shape. Remove the attribute and constrain the <em>formatters</em> instead, at the composition root:</p>
+<pre><code class="lang-csharp">// FIX — trim the formatters rather than narrowing with [Produces]
+builder.Services.AddControllers(options =&gt;
+{
+    options.OutputFormatters.RemoveType&lt;StringOutputFormatter&gt;();
+    options.OutputFormatters.RemoveType&lt;HttpNoContentOutputFormatter&gt;();
+});
+
+[ApiController]                                                 // no [Produces]
+public sealed class OrdersController : ControllerBase { ... }
+</code></pre>
+<p>If <code>[Produces]</code> is there to drive OpenAPI rather than negotiation, use the shapes that document without rewriting: <code>[ProducesResponseType(...)]</code>, or the <code>[Produces(typeof(T))]</code> overload, which sets a declared response type and leaves <code>ContentTypes</code> empty. Neither is reported.</p>
+<p><strong>Serving a non-JSON payload is safe and is not reported</strong>, as long as the list names no JSON-family type at all. Clobbering needs a registered formatter that can write a <code>ProblemDetails</code> <em>as a listed media type</em>; a <code>text/csv</code> or <code>application/pdf</code> formatter declines it in <code>CanWriteType</code>, so MVC falls back and the failure keeps <code>application/problem+json</code>. <code>FileResult</code> is not an <code>ObjectResult</code> at all, so it is unaffected either way.</p>
+<pre><code class="lang-csharp">// FINE — the CSV formatter declines ProblemDetails, so the 422 below is still problem+json
+[HttpGet(&quot;export&quot;)]
+[Produces(&quot;text/csv&quot;)]
+public ActionResult&lt;string[]&gt; Export() =&gt; Ok(rows);
+</code></pre>
+<p>XML is a separate matter and is deliberately not listed as a safe example, though not because it is dangerous: Trellis failure responses ignore output formatters entirely and always write <code>application/problem+json</code>, so neither <code>AddXmlSerializerFormatters()</code> nor <code>AddXmlDataContractSerializerFormatters()</code> can change a Trellis problem document — and neither one can be <em>repaired</em> by <code>[Produces]</code> either, since TRLS065 is about which media type a formatter claims and no formatter is consulted here. See the JSON-only note in <code>trellis-api-asp.md</code>.</p>
+<blockquote>
+<p>Severity: Warning, rather than the Info used for TRLS063/TRLS064. Those rules report a legal shape that a codebase may reasonably be full of; this one reports a wire-format defect whose symptom — a failure body that parses fine but arrives under the wrong media type — is invisible in the response the developer eyeballs. Trellis's own responses are already immune (<code>AsActionResult&lt;T&gt;()</code> returns a plain <code>ActionResult</code>, and <code>ScalarValueValidationFilter</code> owns every invalid <code>ModelState</code>), so what this rule protects is the <code>ObjectResult</code>s your application builds itself.</p>
+</blockquote>
+<h2 id="no-analyzer--resultfailaftercommit-composed-with-aggregating-operators">(No analyzer) — <code>Result.FailAfterCommit</code> composed with aggregating operators</h2>
+<p>Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. <code>Result.FailAfterCommit&lt;TValue&gt;(error)</code> is a <strong>leaf</strong> worker-handler operation: it converts a single aggregate's transient external rejection into a persisted <code>permanently_failed</code> state and returns. Threading that result through <code>Combine</code> / <code>TraverseAll</code> / <code>SequenceAll</code> / <code>WhenAllAsync</code> OR-accumulates the <code>PersistOnFailure</code> flag onto the aggregated failure — <code>TransactionalCommandBehavior</code> then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.</p>
+<pre><code class="lang-csharp">// WRONG — FailAfterCommit composed with Combine: the staged permanent-failure mutation
+// commits alongside the validation-failure leg, even though the validation failure was
+// the deciding factor.
+public async Task&lt;Result&lt;OrderOutcome&gt;&gt; Handle(ProcessOrderCommand cmd, CancellationToken ct)
+{
+    Result&lt;Unit&gt; stagePermanentFailure = await MarkOrderAsPermanentlyFailedAsync(cmd.OrderId, ct);
+    // ↑ returns Result.FailAfterCommit(new Error.Unavailable(...))
+
+    Result&lt;int&gt; independentRule = Result.Fail&lt;int&gt;(
+        Error.InvalidInput.ForRule(&quot;quota.downstream-limit-exceeded&quot;, &quot;Customer is over quota.&quot;));
+
+    return stagePermanentFailure
+        .Combine(independentRule)
+        .Map((_, _) =&gt; new OrderOutcome(/* ... */));
+    // ↑ aggregated Error contains BOTH inner errors AND carries PersistOnFailure = true,
+    //   so TransactionalCommandBehavior commits the permanently_failed mutation.
+}
+
+// FIX — Treat FailAfterCommit as a terminal step. Run the aggregating composition to its
+// own terminal outcome first, THEN decide whether to invoke FailAfterCommit (typically in
+// a separate command or at the end of the handler with no further composition).
+public async Task&lt;Result&lt;OrderOutcome&gt;&gt; Handle(ProcessOrderCommand cmd, CancellationToken ct)
+{
+    Result&lt;int&gt; independentRule = Result.Fail&lt;int&gt;(
+        Error.InvalidInput.ForRule(&quot;quota.downstream-limit-exceeded&quot;, &quot;Customer is over quota.&quot;));
+
+    if (independentRule.IsFailure)
+        return Result.Fail&lt;OrderOutcome&gt;(independentRule.Error!);
+
+    // Now decide whether the external state warrants a persisted permanent-failure record.
+    // No composition with other legs — FailAfterCommit is the leaf.
+    return (await MarkOrderAsPermanentlyFailedAsync(cmd.OrderId, ct))
+        .Map(_ =&gt; new OrderOutcome(/* ... */));
+}
+</code></pre>
+<blockquote>
+<p>Severity: Documentation only — no analyzer fires. The intent of <code>FailAfterCommit</code> is durable persistence of a permanent-failure state on a single aggregate; aggregating it across legs reaches outside that intent and produces partial commits the consumer rarely wants.</p>
+</blockquote>
+<h2 id="no-analyzer--domain-event-handler-raises-more-domain-events-during-dispatch">(No analyzer) — Domain event handler raises more domain events during dispatch</h2>
+<p>Domain-event handlers are side-effect-only. The dispatch behaviors snapshot <code>UncommittedEvents()</code> at entry and publish only that snapshot. If a handler appends events to the same aggregate, or mutates another aggregate in a tracked-dispatch snapshot, post-dispatch validation throws <code>DomainEventHandlerCascadedException</code>; <code>AcceptChanges()</code> is not called, so operators can inspect the original and cascaded events.</p>
+<pre><code class="lang-csharp">// WRONG — handler mutates the source aggregate and raises another event during dispatch.
+public sealed class AutoAdvanceOrderHandler(IOrderRepository orders)
+    : IDomainEventHandler&lt;OrderCreatedEvent&gt;
+{
+    public async ValueTask HandleAsync(OrderCreatedEvent domainEvent, CancellationToken cancellationToken)
+    {
+        Order order = await orders.GetAsync(domainEvent.OrderId, cancellationToken);
+        order.RaiseStatusChanged(OrderStatus.ReadyForFulfillment);
+        // ↑ Raises OrderStatusChanged while OrderCreatedEvent is being dispatched.
+        //   Post-dispatch validation throws DomainEventHandlerCascadedException.
+    }
+}
+
+// FIX — follow-up domain mutation is a separate top-level command issued after the
+// originating command completes. This is application-layer orchestration, not handler re-entry.
+public sealed class OrderWorkflow(IMediator mediator)
+{
+    public async ValueTask&lt;Result&lt;Unit&gt;&gt; CreateAndAdvanceAsync(CreateOrderCommand command, CancellationToken cancellationToken)
+    {
+        Result&lt;Order&gt; created = await mediator.Send(command, cancellationToken);
+        if (!created.TryGetValue(out var order))
+            return Result.Fail&lt;Unit&gt;(created.Error!);
+
+        return await mediator.Send(
+            new ChangeOrderStatusCommand(order.Id, OrderStatus.ReadyForFulfillment),
+            cancellationToken);
+    }
+}
+</code></pre>
+<blockquote>
+<p>Do not move the <code>mediator.Send(new ChangeOrderStatusCommand(...))</code> call into the <code>IDomainEventHandler&lt;TEvent&gt;</code>. The tracked-dispatch reentrancy guard skips nested tracked dispatch, so events raised by the nested command can be stranded. Queue post-commit work or issue the follow-up command from the application layer after the originating command completes.</p>
+</blockquote>
+<p>Default handler exceptions are still <strong>logged and swallowed</strong> by <code>MediatorDomainEventPublisher</code>; cascade detection only catches handler-raised events. Durable side effects and durable at-least-once retry require the transactional outbox, which <strong>is shipped</strong> in <code>Trellis.EntityFrameworkCore.Outbox</code> — wire it via <code>AddTrellisOutbox&lt;TContext&gt;()</code>, <code>AddTrellisOutbox(ModelBuilder)</code>, and <code>AddTrellisOutboxInterceptor(...)</code>. See <a href="trellis-api-efcore-outbox.html#use-this-file-when">trellis-api-efcore-outbox.md</a>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-anti-patterns.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

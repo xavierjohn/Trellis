@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class WorkerHarness&lt;TWorker&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class WorkerHarness&lt;TWorker&gt; | Trellis ">
+      
+      <meta name="description" content="Integration-test harness for a  worker. Builds an  with a deterministic , a configurable , and a domain-event capture wired through the Trellis mediator pipeline so tests can advance time, wait for specific events or named tick signals, and assert what the worker emitted.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Testing_Worker_WorkerHarness_1.md&amp;value=---%0Auid%3A%20Trellis.Testing.Worker.WorkerHarness%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing.Worker.WorkerHarness`1">
+
+
+
+  <h1 id="Trellis_Testing_Worker_WorkerHarness_1" data-uid="Trellis.Testing.Worker.WorkerHarness`1" class="text-break">
+Class WorkerHarness&lt;TWorker&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Testing.html">Testing</a>.<a class="xref" href="Trellis.Testing.Worker.html">Worker</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Testing.Worker.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Integration-test harness for a <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.backgroundservice">BackgroundService</a> worker. Builds an
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihost">IHost</a> with a deterministic <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span>, a configurable
+<a class="xref" href="Trellis.Testing.TestActorProvider.html">TestActorProvider</a>, and a domain-event capture wired through the Trellis
+mediator pipeline so tests can advance time, wait for specific events or named tick
+signals, and assert what the worker emitted.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class WorkerHarness&lt;TWorker&gt; : IAsyncDisposable where TWorker : BackgroundService</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TWorker</code></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.backgroundservice">BackgroundService</a> implementation under test.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">WorkerHarness&lt;TWorker&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Testing_Worker_WorkerHarness_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+The harness owns hosted-service registration for <code class="typeparamref">TWorker</code>. A test
+that also registers <code class="typeparamref">TWorker</code> as an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihostedservice">IHostedService</a>
+in its <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_ConfigureServices_System_Action_Microsoft_Extensions_DependencyInjection_IServiceCollection__">ConfigureServices(Action&lt;IServiceCollection&gt;)</a>
+callback will fail fast at <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_CreateAsync_System_Action_Trellis_Testing_Worker_WorkerHarnessOptions__System_Threading_CancellationToken_">CreateAsync(Action&lt;WorkerHarnessOptions&gt;?, CancellationToken)</a>
+time so the test does not silently run two copies of the worker.
+</p>
+<p>
+The harness does <b>not</b> register <code>AddDomainEventDispatch()</code>. Worker tests are
+integration tests of the production composition root — the same registration the worker's
+production host uses should appear in the test's
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_ConfigureServices_System_Action_Microsoft_Extensions_DependencyInjection_IServiceCollection__">ConfigureServices(Action&lt;IServiceCollection&gt;)</a>
+callback. Without it, the open-generic capture handler is registered but the mediator
+pipeline never publishes events, so <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_Events__1">Events&lt;TEvent&gt;()</a> would remain empty
+even when the worker raises events on its aggregates.
+</p>
+<p>
+Wait timeouts measure <b>real time</b>, not the harness's fake clock — calling
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_Time">Time</a>.<code>Advance(...)</code> does not consume the timeout budget. The fake clock
+only drives the worker's <code>Task.Delay</code> / <code>PeriodicTimer</code> continuations.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_Actor_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Actor*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_Actor" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Actor">
+  Actor
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The harness-managed <a class="xref" href="Trellis.Testing.TestActorProvider.html">TestActorProvider</a>. Tests can call <a class="xref" href="Trellis.Testing.TestActorProvider.html#Trellis_Testing_TestActorProvider_WithActor_Trellis_Authorization_Actor_">WithActor(Actor)</a> inside a scope to override the default system actor for a specific command flow.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TestActorProvider Actor { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Testing.TestActorProvider.html">TestActorProvider</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_AllEvents_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.AllEvents*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_AllEvents" data-uid="Trellis.Testing.Worker.WorkerHarness`1.AllEvents">
+  AllEvents
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L308"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns every captured domain event regardless of type, in dispatch order.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyList&lt;IDomainEvent&gt; AllEvents { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="Trellis.IDomainEvent.html">IDomainEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_Host_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Host*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_Host" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Host">
+  Host
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L73"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihost">IHost</a>; exposed for advanced scenarios that need direct lifecycle access.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IHost Host { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihost">IHost</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_Services_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Services*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_Services" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Services">
+  Services
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The root <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a> of the worker host. Tests typically create their own scope from this when resolving scoped services after the host starts.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IServiceProvider Services { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iserviceprovider">IServiceProvider</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_TickCount_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.TickCount*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_TickCount" data-uid="Trellis.Testing.Worker.WorkerHarness`1.TickCount">
+  TickCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L377"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the total number of tick signals captured so far (across all names). The value
+minus one is the global index of the most recent signal — pass that as <code>after</code> to
+a cursor-less <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(int, TimeSpan?, CancellationToken)</a> call to
+wait for the next tick. For successive named-tick waits, prefer threading the index
+returned by the previous <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(string, TimeSpan?, CancellationToken)</a>
+call (or capturing <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_LastTickIndexOf_System_String_">LastTickIndexOf(string)</a>) over computing a cursor from
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_TickCountOf_System_String_">TickCountOf(string)</a>, which is a per-name count and not a global index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int TickCount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_TickSignal_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.TickSignal*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_TickSignal" data-uid="Trellis.Testing.Worker.WorkerHarness`1.TickSignal">
+  TickSignal
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The <a class="xref" href="Trellis.Testing.Worker.IWorkerTickSignal.html">IWorkerTickSignal</a> instance registered with the host. Tests typically observe it via <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(TimeSpan?, CancellationToken)</a> rather than calling it directly.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IWorkerTickSignal TickSignal { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Testing.Worker.IWorkerTickSignal.html">IWorkerTickSignal</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_Time_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Time*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_Time" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Time">
+  Time
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The harness-managed <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span> registered as the singleton <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timeprovider">TimeProvider</a>. Tests advance time via <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">Advance(TimeSpan)</a> to drive the worker's <code>Task.Delay</code> / <code>PeriodicTimer</code> continuations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FakeTimeProvider Time { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><span class="xref">FakeTimeProvider</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_CreateAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.CreateAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_CreateAsync_System_Action_Trellis_Testing_Worker_WorkerHarnessOptions__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.CreateAsync(System.Action{Trellis.Testing.Worker.WorkerHarnessOptions},System.Threading.CancellationToken)">
+  CreateAsync(Action&lt;WorkerHarnessOptions&gt;?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L98"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Builds the harness: applies defaults, runs the
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_ConfigureServices_System_Action_Microsoft_Extensions_DependencyInjection_IServiceCollection__">ConfigureServices(Action&lt;IServiceCollection&gt;)</a>
+callbacks, registers <code class="typeparamref">TWorker</code> as a hosted service, builds the host,
+runs the <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_SeedAsync_System_Func_System_IServiceProvider_System_Threading_CancellationToken_System_Threading_Tasks_Task__">SeedAsync(Func&lt;IServiceProvider, CancellationToken, Task&gt;)</a>
+callbacks, and starts the host when <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_AutoStart">AutoStart</a> is set.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[SuppressMessage(&quot;Design&quot;, &quot;CA1000:Do not declare static members on generic types&quot;, Justification = &quot;WorkerHarness&lt;TWorker&gt;.CreateAsync is the discoverable factory entry point; collocating it with the generic type keeps the call-site shape WorkerHarness&lt;MyWorker&gt;.CreateAsync(...) symmetric with WebApplicationFactory&lt;TEntryPoint&gt;.&quot;)]
+public static Task&lt;WorkerHarness&lt;TWorker&gt;&gt; CreateAsync(Action&lt;WorkerHarnessOptions&gt;? configure = null, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html">WorkerHarnessOptions</a>&gt;</dt>
+    <dd><p>Optional configuration delegate.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe during host build, seeding, and (when applicable) start.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html">WorkerHarness</a>&lt;TWorker&gt;&gt;</dt>
+    <dd><p>An initialized harness ready for time advances, event waits, and tick waits.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihostedservice">IHostedService</a> for <code class="typeparamref">TWorker</code> is already registered by a user <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_ConfigureServices_System_Action_Microsoft_Extensions_DependencyInjection_IServiceCollection__">ConfigureServices(Action&lt;IServiceCollection&gt;)</a> callback.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_DisposeAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.DisposeAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_DisposeAsync" data-uid="Trellis.Testing.Worker.WorkerHarness`1.DisposeAsync">
+  DisposeAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L486"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Stops the host (if started) and disposes the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihost">IHost</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask DisposeAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_Events_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Events*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_Events__1" data-uid="Trellis.Testing.Worker.WorkerHarness`1.Events``1">
+  Events&lt;TEvent&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L302"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns every captured event of type <code class="typeparamref">TEvent</code> in the order they were dispatched.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IReadOnlyList&lt;TEvent&gt; Events&lt;TEvent&gt;() where TEvent : IDomainEvent</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;TEvent&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEvent</code></dt>
+    <dd><p>The event type to filter by; uses runtime <code>is</code> matching so derived events appear in queries for their base type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_LastTickIndexOf_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.LastTickIndexOf*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_LastTickIndexOf_System_String_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.LastTickIndexOf(System.String)">
+  LastTickIndexOf(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L399"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the global signal index of the most recently captured tick with the given
+<code class="paramref">name</code>, or <code>-1</code> if no such tick has been recorded. Pass the
+returned value as <code>after</code> to <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(string, int, TimeSpan?, CancellationToken)</a>
+to wait for the NEXT tick with that name, even when other tick names are interleaved
+in the history.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int LastTickIndexOf(string name)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The tick name to look up.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_SettleAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.SettleAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_SettleAsync_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.SettleAsync(System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+  SettleAsync(TimeSpan?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L273"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Yields real time so the worker's <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.backgroundservice.executeasync">ExecuteAsync(CancellationToken)</a>
+can take its first scheduling turn — typically enough for it to register its initial
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task.delay#system-threading-tasks-task-delay(system-timespan-system-timeprovider-system-threading-cancellationtoken)">Delay(TimeSpan, TimeProvider, CancellationToken)</a> /
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.periodictimer">PeriodicTimer</a> callback with the harness's
+<span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span>. Call after <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_StartAsync_System_Threading_CancellationToken_">StartAsync(CancellationToken)</a>
+when the worker has no other readiness signal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task SettleAsync(TimeSpan? duration = null, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>duration</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>Optional real-time settle duration. Defaults to 200ms.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe during the yield.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_Worker_WorkerHarness_1_SettleAsync_System_Nullable_System_TimeSpan__System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>For a deterministic alternative, have the worker register its first
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task.delay#system-threading-tasks-task-delay(system-timespan-system-timeprovider-system-threading-cancellationtoken)">Delay(TimeSpan, TimeProvider, CancellationToken)</a> BEFORE calling
+<a class="xref" href="Trellis.Testing.Worker.IWorkerTickSignal.html#Trellis_Testing_Worker_IWorkerTickSignal_SignalAsync_System_String_System_Threading_CancellationToken_">SignalAsync(string, CancellationToken)</a> with a known
+name (then <code>await</code> the saved delay) and use
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(string, TimeSpan?, CancellationToken)</a> in the test. The
+signal must follow the <code>Task.Delay(...)</code> call so the <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span>
+callback is provably registered before the test resumes and advances time.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_StartAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.StartAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_StartAsync_System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.StartAsync(System.Threading.CancellationToken)">
+  StartAsync(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L216"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts the worker host. On the success path, subsequent calls are no-ops and safe to
+repeat. If the underlying <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihost.startasync">StartAsync(CancellationToken)</a> throws, the
+harness drives a best-effort <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihost.stopasync">StopAsync(CancellationToken)</a> so any
+hosted services that started before the failure observe their stop hook, and rethrows
+the original exception. After a failed start the harness should be discarded — the
+host's hosted services have already observed a stop transition and re-starting them
+from the same harness is not a supported scenario.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task StartAsync(CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe during start.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_Worker_WorkerHarness_1_StartAsync_System_Threading_CancellationToken__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.ihost.startasync">StartAsync(CancellationToken)</a> returns as soon as the
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.backgroundservice">BackgroundService</a>'s <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.backgroundservice.executeasync">ExecuteAsync(CancellationToken)</a>
+has been scheduled onto the thread pool, NOT after the worker has registered its first
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task.delay#system-threading-tasks-task-delay(system-timespan-system-timeprovider-system-threading-cancellationtoken)">Delay(TimeSpan, TimeProvider, CancellationToken)</a> /
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.periodictimer">PeriodicTimer</a> callback with the harness's
+<span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span>. A test that calls
+<code>await harness.StartAsync(); harness.Time.Advance(period);</code> back-to-back can race
+the worker: the <code>Advance</code> fires before any callback is registered, the worker
+then registers <code>Task.Delay(period, FakeTime, ct)</code> with a deadline of
+<code>(now + period)</code>, and the test times out waiting for a tick that needs another
+<code>Advance(period)</code> to fire.
+</p>
+<p>
+Two ways to avoid the race:
+<ol><li>(Deterministic) Have the worker register its first
+    <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task.delay#system-threading-tasks-task-delay(system-timespan-system-timeprovider-system-threading-cancellationtoken)">Delay(TimeSpan, TimeProvider, CancellationToken)</a> BEFORE calling
+    <a class="xref" href="Trellis.Testing.Worker.IWorkerTickSignal.html#Trellis_Testing_Worker_IWorkerTickSignal_SignalAsync_System_String_System_Threading_CancellationToken_">SignalAsync(string, CancellationToken)</a> with a known
+    name (e.g. <code>"ready"</code>), then <code>await</code> the saved delay. The
+    <code>Task.Delay(TimeSpan, TimeProvider, CancellationToken)</code> overload eagerly
+    calls <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timeprovider.createtimer">CreateTimer(TimerCallback, object, TimeSpan, TimeSpan)</a>
+    when invoked, so the <span class="xref">Microsoft.Extensions.Time.Testing.FakeTimeProvider</span> callback is registered before
+    the signal fires — by the time the test resumes from
+    <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(string, TimeSpan?, CancellationToken)</a> the callback
+    exists and the subsequent <code>Time.Advance(...)</code> is guaranteed to land on it.
+    Signaling FIRST and registering the delay second would still leave a gap during
+    which the test can advance the clock before any callback is registered.</li><li>(Lazy) Call <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_SettleAsync_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">SettleAsync(TimeSpan?, CancellationToken)</a>
+    after <code>StartAsync</code>. This is a real-time yield so the worker's first scheduling
+    turn lands before the test advances the clock. Convenient for one-off tests but
+    adds wall-clock latency.</li></ol>
+
+</div>
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_StopAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.StopAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_StopAsync_System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.StopAsync(System.Threading.CancellationToken)">
+  StopAsync(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L280"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Stops the worker host. Safe to call multiple times — subsequent calls are no-ops.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task StopAsync(CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe during stop.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_TickCountOf_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.TickCountOf*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_TickCountOf_System_String_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.TickCountOf(System.String)">
+  TickCountOf(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L389"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the number of tick signals captured so far with the given <code class="paramref">name</code>.
+Useful for assertions such as <code>harness.TickCountOf(&quot;probe&quot;).Should().Be(3)</code>. Do
+<strong>not</strong> use this as a cursor for <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(string, int, TimeSpan?, CancellationToken)</a>:
+the <code>after</code> parameter is a global signal index, and with interleaved tick names
+a per-name count can fall below the global index of an already-recorded matching
+signal — producing a wait that returns immediately for an old tick. Use
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_LastTickIndexOf_System_String_">LastTickIndexOf(string)</a> for a baseline named cursor instead.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int TickCountOf(string name)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The tick name to count.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_WaitForEventAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForEventAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_WaitForEventAsync__1_System_Func___0_System_Boolean__System_Nullable_System_TimeSpan__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForEventAsync``1(System.Func{``0,System.Boolean},System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+  WaitForEventAsync&lt;TEvent&gt;(Func&lt;TEvent, bool&gt;, TimeSpan?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L337"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Waits until a domain event of type <code class="typeparamref">TEvent</code> satisfying
+<code class="paramref">predicate</code> is captured.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;TEvent&gt; WaitForEventAsync&lt;TEvent&gt;(Func&lt;TEvent, bool&gt; predicate, TimeSpan? timeout = null, CancellationToken cancellationToken = default) where TEvent : IDomainEvent</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>predicate</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TEvent, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>&gt;</dt>
+    <dd><p>Filter applied to candidate events. The first event that returns <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> completes the wait.</p>
+</dd>
+    <dt><code>timeout</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>Optional override of <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_DefaultWaitTimeout">DefaultWaitTimeout</a>. Measured in real time.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TEvent&gt;</dt>
+    <dd><p>The first matching event.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEvent</code></dt>
+    <dd><p>The expected event type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">predicate</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>.</p>
+</dd>
+    <dt><a class="xref" href="Trellis.Testing.Worker.WorkerHarnessTimeoutException.html">WorkerHarnessTimeoutException</a></dt>
+    <dd><p>Thrown when no matching event arrives before the timeout elapses.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_WaitForEventAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForEventAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_WaitForEventAsync__1_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForEventAsync``1(System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+  WaitForEventAsync&lt;TEvent&gt;(TimeSpan?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L320"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Waits until a domain event of type <code class="typeparamref">TEvent</code> is captured (or returns
+immediately if one was captured before the call). Returns the matching event so the test
+does not have to re-query <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_Events__1">Events&lt;TEvent&gt;()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;TEvent&gt; WaitForEventAsync&lt;TEvent&gt;(TimeSpan? timeout = null, CancellationToken cancellationToken = default) where TEvent : IDomainEvent</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>timeout</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>Optional override of <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_DefaultWaitTimeout">DefaultWaitTimeout</a>. Measured in real time.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;TEvent&gt;</dt>
+    <dd><p>The first matching event.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEvent</code></dt>
+    <dd><p>The expected event type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Testing.Worker.WorkerHarnessTimeoutException.html">WorkerHarnessTimeoutException</a></dt>
+    <dd><p>Thrown when no matching event arrives before the timeout elapses.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync(System.Int32,System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+  WaitForTickAsync(int, TimeSpan?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L425"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Waits for a tick signal of any name that arrives strictly AFTER the given <code class="paramref">after</code>
+index. The typical pattern is to capture <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_TickCount">TickCount</a> minus one before advancing
+time, then pass it here so the wait only matches a tick produced by the new <code>Advance</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;int&gt; WaitForTickAsync(int after, TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>after</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The exclusive lower bound on the tick index — only ticks with a higher index satisfy the wait. Pass <code>-1</code> to wait for any tick (equivalent to the zero-argument overload).</p>
+</dd>
+    <dt><code>timeout</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>Optional override of <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_DefaultWaitTimeout">DefaultWaitTimeout</a>. Measured in real time.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The index of the tick that satisfied the wait.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Testing.Worker.WorkerHarnessTimeoutException.html">WorkerHarnessTimeoutException</a></dt>
+    <dd><p>Thrown when no qualifying tick arrives before the timeout elapses.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync(System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+  WaitForTickAsync(TimeSpan?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L412"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Waits until <a class="xref" href="Trellis.Testing.Worker.IWorkerTickSignal.html#Trellis_Testing_Worker_IWorkerTickSignal_SignalAsync_System_Threading_CancellationToken_">SignalAsync(CancellationToken)</a> or
+<a class="xref" href="Trellis.Testing.Worker.IWorkerTickSignal.html#Trellis_Testing_Worker_IWorkerTickSignal_SignalAsync_System_String_System_Threading_CancellationToken_">SignalAsync(string, CancellationToken)</a> has been called at least once.
+Returns immediately if a signal arrived before the call. Use the
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(int, TimeSpan?, CancellationToken)</a> overload to wait for a tick
+that arrives AFTER an explicit cursor when running multi-tick scenarios.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;int&gt; WaitForTickAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>timeout</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>Optional override of <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_DefaultWaitTimeout">DefaultWaitTimeout</a>. Measured in real time.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The index of the tick that satisfied the wait. Pass that value to a subsequent <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(int, TimeSpan?, CancellationToken)</a> call as <code>after</code> to wait for the next tick.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Testing.Worker.WorkerHarnessTimeoutException.html">WorkerHarnessTimeoutException</a></dt>
+    <dd><p>Thrown when no signal arrives before the timeout elapses.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync(System.String,System.Int32,System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+  WaitForTickAsync(string, int, TimeSpan?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L461"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Waits for a tick signal of the given <code class="paramref">name</code> that arrives strictly AFTER
+the given <code class="paramref">after</code> index. Use this for workers that emit the same tick
+name every iteration: capture <a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_TickCount">TickCount</a> minus one before advancing time
+(or use the index returned by the previous <code>WaitForTickAsync</code> call), then pass it
+here so successive waits do not match an older recorded tick.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;int&gt; WaitForTickAsync(string name, int after, TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The expected tick name; the harness compares with ordinal equality.</p>
+</dd>
+    <dt><code>after</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The exclusive lower bound on the tick index. Pass <code>-1</code> to wait for any matching tick (equivalent to the cursor-less overload).</p>
+</dd>
+    <dt><code>timeout</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>Optional override of <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_DefaultWaitTimeout">DefaultWaitTimeout</a>. Measured in real time.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The index of the tick that satisfied the wait.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">name</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>.</p>
+</dd>
+    <dt><a class="xref" href="Trellis.Testing.Worker.WorkerHarnessTimeoutException.html">WorkerHarnessTimeoutException</a></dt>
+    <dd><p>Thrown when no qualifying tick arrives before the timeout elapses.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync*"></a>
+
+  <h3 id="Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_" data-uid="Trellis.Testing.Worker.WorkerHarness`1.WaitForTickAsync(System.String,System.Nullable{System.TimeSpan},System.Threading.CancellationToken)">
+  WaitForTickAsync(string, TimeSpan?, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L441"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Waits until a tick signal with the specified <code class="paramref">name</code> arrives. Returns
+immediately if a matching signal is already in the history. Use the
+<a class="xref" href="Trellis.Testing.Worker.WorkerHarness-1.html#Trellis_Testing_Worker_WorkerHarness_1_WaitForTickAsync_System_String_System_Int32_System_Nullable_System_TimeSpan__System_Threading_CancellationToken_">WaitForTickAsync(string, int, TimeSpan?, CancellationToken)</a> overload when the
+worker emits the same tick name on every iteration so successive waits do not match older
+recorded ticks.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task&lt;int&gt; WaitForTickAsync(string name, TimeSpan? timeout = null, CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The expected tick name; the harness compares with ordinal equality.</p>
+</dd>
+    <dt><code>timeout</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>Optional override of <a class="xref" href="Trellis.Testing.Worker.WorkerHarnessOptions.html#Trellis_Testing_Worker_WorkerHarnessOptions_DefaultWaitTimeout">DefaultWaitTimeout</a>. Measured in real time.</p>
+</dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd><p>A token to observe while waiting.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The index of the tick that satisfied the wait.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">name</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>.</p>
+</dd>
+    <dt><a class="xref" href="Trellis.Testing.Worker.WorkerHarnessTimeoutException.html">WorkerHarnessTimeoutException</a></dt>
+    <dd><p>Thrown when no matching tick arrives before the timeout elapses.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Worker/src/WorkerHarness.cs/#L46" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Transactional Outbox Integration | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Transactional Outbox Integration | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-outbox.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="transactional-outbox-integration">Transactional Outbox Integration</h1>
+
+<p><code>Trellis.EntityFrameworkCore.Outbox</code> makes domain-event dispatch crash-safe. It captures each uncommitted domain event into an EF Core table <strong>in the same transaction as the aggregate change</strong>, then a background relay re-dispatches the events to your Trellis handlers after the commit. State and notifications commit together or not at all.</p>
+<h2 id="why-you-need-it">Why you need it</h2>
+<p>A plain <code>UseDomainEvents()</code> pipeline dispatches events <em>after</em> the transaction commits:</p>
+<ol>
+<li>Command handler runs, raises <code>OrderPlaced</code>, repository stages the order.</li>
+<li><code>TransactionalCommandBehavior</code> commits the transaction.</li>
+<li><code>DomainEventDispatchBehavior</code> publishes <code>OrderPlaced</code> to its handlers.</li>
+</ol>
+<p>If the process dies between (2) and (3) — a deploy, an OOM, a node eviction — the order is durably saved but <code>OrderPlaced</code> is gone. Any work the handler would have done (sending a confirmation, updating a read model, emitting an integration event) silently never happens.</p>
+<p>The outbox closes that gap. The event is written atomically with the order, so it survives the crash and is relayed on the next poll.</p>
+<h2 id="the-three-wiring-points">The three wiring points</h2>
+<p>The outbox has a capture half (on the <code>DbContext</code>) and a relay half (in the service container). Both are required.</p>
+<pre><code class="lang-csharp">public sealed class AppDbContext : DbContext
+{
+    // 1. Map the TrellisOutboxMessages table.
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.AddTrellisOutbox();
+    }
+}
+
+// 2. Add the capture interceptor where the context options are built.
+builder.Services.AddDbContext&lt;AppDbContext&gt;(options =&gt;
+    options.UseNpgsql(connectionString)
+           .AddTrellisInterceptors()
+           .AddTrellisOutboxInterceptor());
+
+// 3. Register the relay alongside your domain-event handlers.
+builder.Services.AddTrellis(trellis =&gt; trellis
+    .UseDomainEvents(typeof(Program).Assembly)     // handlers + IDomainEventPublisher
+    .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;()
+    .UseOutbox&lt;AppDbContext&gt;(o =&gt;
+    {
+        o.PollInterval = TimeSpan.FromSeconds(2);
+        o.BatchSize = 100;
+        o.MaxAttempts = 10;
+    }));
+</code></pre>
+<p>Raise events from inside the aggregate exactly as you do today:</p>
+<pre><code class="lang-csharp">public sealed class Order : Aggregate&lt;OrderId&gt;
+{
+    public void Place(TimeProvider clock) =&gt;
+        DomainEvents.Add(new OrderPlaced(Id, clock.GetUtcNow()));
+}
+
+public sealed record OrderPlaced(OrderId OrderId, DateTimeOffset OccurredAt) : IDomainEvent;
+</code></pre>
+<blockquote>
+<p>Prefer raw DI over the builder? Call <code>services.AddTrellisOutbox&lt;AppDbContext&gt;()</code> directly instead of <code>.UseOutbox&lt;AppDbContext&gt;()</code>. The table and interceptor wiring (steps 1–2) are identical; the <code>UseOutbox</code> slot simply also fails fast if you configure the outbox twice.</p>
+</blockquote>
+<h2 id="how-it-works">How it works</h2>
+<p>The capture is a <code>SaveChangesInterceptor</code> with a deliberate three-phase lifecycle so a failed save never loses or double-captures events:</p>
+<ol>
+<li><strong><code>SavingChanges</code></strong> — scan the change tracker for aggregates with uncommitted events, serialize each event, and add one <code>OutboxMessage</code> row per event to the <strong>current</strong> <code>SaveChanges</code>. The rows enrol in the same transaction as the aggregate. The aggregate's in-memory events are <em>not</em> cleared yet.</li>
+<li><strong><code>SavedChanges</code></strong> (commit succeeded) — call each aggregate's <code>AcceptChanges()</code> to clear its events. Because this happens only after a successful commit, the in-pipeline <code>DomainEventDispatchBehavior</code> that runs next sees an empty event list and dispatches nothing — the relay is now the single dispatcher.</li>
+<li><strong><code>SaveChangesFailed</code></strong> — detach the outbox rows the interceptor staged. The aggregate keeps its events, so a retry re-captures cleanly without leaving orphaned rows.</li>
+</ol>
+<p>The relay (<code>OutboxRelay&lt;TContext&gt;</code>) is a hosted <code>BackgroundService</code>. Each poll it opens a bookkeeping scope, reads a batch of pending rows ordered by the monotonic <code>Sequence</code> column, rehydrates each event from its stored type name, and publishes it through <code>IDomainEventPublisher</code> (the same fan-out the pipeline would use) <strong>in its own per-message scope</strong> — so a handler that injects <code>TContext</code> gets a fresh context, not the relay's bookkeeping one, and its tracked changes never ride the relay's save. It then marks each row processed and saves the batch.</p>
+<h2 id="delivery-semantics">Delivery semantics</h2>
+<p>The guarantee is <strong>at-least-once delivery</strong>, and delivery means <em>every handler completed</em>:</p>
+<ul>
+<li>A domain message is marked processed only once <strong>every</strong> registered handler has completed. A handler that throws leaves the message pending, and the retry re-invokes <strong>only the failed handlers</strong> — <code>OutboxMessage.CompletedHandlers</code> records the ones that already succeeded, so a successful handler's side effect is never repeated because an unrelated sibling failed. (In-pipeline dispatch still swallows, because it runs post-commit and has nothing to retry with.)</li>
+<li>Integration events produced by handlers that <em>did</em> succeed are staged even on a failed attempt — they must be, since the retry skips those handlers.</li>
+<li>Resolution, deserialization, and publisher failures count toward <code>MaxAttempts</code> when failure bookkeeping persists. A bookkeeping save failure instead fails the drain: it logs <code>DrainFailed</code>, waits <code>PollInterval</code>, and leaves the previous lease/progress in the database. Repeated bookkeeping failures are not bounded by the message attempt cap; monitor them separately.</li>
+<li>A crash between dispatch and the relay's bookkeeping save re-delivers the message to <em>every</em> handler. <strong>Make your handlers idempotent.</strong> The <code>OutboxMessage.Id</code> (a UUIDv7) is a stable per-message key you can use for consumer-side de-duplication.</li>
+</ul>
+<blockquote>
+<p><strong>Upgrading?</strong> This replaces the previous behavior, under which a throwing handler was silently treated as delivered. Messages whose handlers fail now retry and can park — alert on <code>OutboxRelay.MessageParked</code> — and the <code>TrellisOutboxMessages</code> table gains a <code>CompletedHandlers</code> column, so add a migration before deploying.</p>
+</blockquote>
+<h2 id="retries-dead-lettering-and-replay">Retries, dead-lettering, and replay</h2>
+<p>When a message fails for an infrastructure reason, the relay does <strong>not</strong> retry it immediately — that would spin a poison message (or one caught in a brief outage) in a tight claim-fail-retry loop that hammers the database. Instead, each failed attempt leases the row <em>forward</em> with an <strong>exponential backoff</strong>: the wait after the <em>n</em>th attempt is <code>RetryBackoff × 2ⁿ⁻¹</code>, capped at <code>MaxRetryBackoff</code>. A transient blip is ridden out by a slightly later retry, while a persistently failing message backs off to a slow, steady cadence.</p>
+<p>The backoff also carries a small <strong>per-message jitter</strong> that only ever <em>shortens</em> the wait. It is derived deterministically from the message id — no randomness, so behavior is reproducible in tests — and it spreads the retry times of messages that failed together, so when a downed dependency recovers they don't all retry in the same instant and flood it.</p>
+<p>After <code>MaxAttempts</code> failures the message is <strong>dead-lettered</strong> (the log calls it <em>parked</em>): it stays in <code>TrellisOutboxMessages</code> with <code>ProcessedAt</code> still null, the scan skips it so it never blocks later messages, and the relay logs <code>OutboxRelay.MessageParked</code> at <strong>Error</strong> — the signal to alert on. The row is kept for inspection; it is a soft dead-letter, not a separate queue.</p>
+<h3 id="tuning-the-retry-behavior">Tuning the retry behavior</h3>
+<p>Every knob has a sensible default, so set only the ones you want to change:</p>
+<pre><code class="lang-csharp">.UseOutbox&lt;AppDbContext&gt;(o =&gt;
+{
+    o.MaxAttempts        = 10;                        // attempts before dead-lettering
+    o.RetryBackoff       = TimeSpan.FromSeconds(30);  // first backoff; doubles each attempt
+    o.MaxRetryBackoff    = TimeSpan.FromHours(1);     // ceiling on the per-retry wait
+    o.RetryBackoffJitter = 0.5;                       // 0 disables; 0.5 = up to 50% earlier
+});
+</code></pre>
+<p>With the defaults a message keeps retrying for roughly a few hours before it dead-letters.</p>
+<h3 id="replaying-dead-lettered-messages">Replaying dead-lettered messages</h3>
+<p>Once you have fixed the cause — deployed the missing handler assembly, corrected a bad payload — re-drive the dead-lettered messages by resolving <code>IOutboxMaintenance</code> from a scope (an admin endpoint, a CLI, or a maintenance job):</p>
+<pre><code class="lang-csharp">app.MapGet(&quot;/outbox/dead-lettered&quot;, (IOutboxMaintenance outbox, CancellationToken ct) =&gt;
+    outbox.GetDeadLetteredAsync(cancellationToken: ct));
+
+app.MapPost(&quot;/outbox/dead-lettered/{id:guid}/replay&quot;, (Guid id, IOutboxMaintenance outbox, CancellationToken ct) =&gt;
+    outbox.ReplayAsync(id, ct));
+
+app.MapPost(&quot;/outbox/dead-lettered/replay-all&quot;, (IOutboxMaintenance outbox, CancellationToken ct) =&gt;
+    outbox.ReplayAllAsync(ct));
+</code></pre>
+<p>Replaying resets a message's attempt count and clears its lease so the relay drains it again on the next poll; <code>ReplayAsync</code> / <code>ReplayAllAsync</code> return how many rows they re-drove. It is safe to run while the relay is live — the relay never touches a dead-lettered row, so there is no race — and it re-runs the handlers, so, as always, keep them idempotent.</p>
+<blockquote>
+<p>Replay covers only <strong>dead-lettered</strong> messages (those that exhausted <code>MaxAttempts</code>). It does not re-emit successfully-processed messages — the outbox is a delivery buffer, not a replayable event log. To re-emit already-delivered events (to rebuild a read model or onboard a new subscriber), replay from your source of truth or from a broker's retained log.</p>
+</blockquote>
+<h2 id="domain-events-vs-integration-events">Domain events vs. integration events</h2>
+<p>A <strong>domain event</strong> is internal to your bounded context — raised by an aggregate, dispatched in-process, free to speak the domain's ubiquitous language. An <strong>integration event</strong> is the stable, versioned contract you publish to the outside world. Relaying raw domain events externally couples other systems to your internal model; the outbox lets you keep them separate and publish a deliberate contract instead.</p>
+<p>Model the contract as an <code>IIntegrationEvent</code> (primitive/nullable members, no internal value objects), then <strong>translate</strong> from the domain event with an ordinary domain-event handler that adds to the scoped <code>IIntegrationEventCollector</code>:</p>
+<pre><code class="lang-csharp">// The external contract.
+public sealed record OrderPlacedIntegrationEvent(Guid OrderId, string CustomerEmail, decimal Total, DateTimeOffset OccurredAt)
+    : IIntegrationEvent;
+
+// The translator: a domain-event handler that emits the contract.
+public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector) : IDomainEventHandler&lt;OrderPlaced&gt;
+{
+    public ValueTask HandleAsync(OrderPlaced domainEvent, CancellationToken cancellationToken)
+    {
+        collector.Add(new OrderPlacedIntegrationEvent(
+            domainEvent.OrderId.Value, domainEvent.CustomerEmail.Value, domainEvent.Total.Amount, domainEvent.OccurredAt));
+        return ValueTask.CompletedTask;
+    }
+}
+
+// Wire the consumer side (or swap the publisher for a broker adapter).
+builder.Services.AddTrellis(trellis =&gt; trellis
+    .UseDomainEvents(typeof(Program).Assembly)        // translators are domain-event handlers
+    .UseIntegrationEvents(typeof(Program).Assembly)   // publisher + collector + in-process consumers
+    .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;()
+    .UseOutbox&lt;AppDbContext&gt;());
+</code></pre>
+<p><strong>How delivery flows.</strong> The relay opens <code>IIntegrationEventCollector.BeginTranslation()</code> around domain publishing and draining. All drained events become new integration rows in the same save as partial handler progress, even if a sibling failed or a translator threw after adding an event. A later drain publishes them through <code>IIntegrationEventPublisher</code>. The source domain change is durable, but the domain row need not yet be fully processed. Completed translators are skipped on retries; failed translators can create fresh rows with new IDs, requiring business-identity deduplication. <code>Add</code> outside an active relay lease throws instead of silently losing events.</p>
+<p><strong>Startup validation.</strong> Before its background loop starts, the relay resolves <code>IReportingDomainEventPublisher</code> in a fresh scope. Integration-enabled hosts must also resolve <code>IIntegrationEventPublisher</code>; domain-only hosts need none. This validates DI construction, not broker connectivity. Post-commit Trellis ETag synchronization and event clearing ignore a newly canceled token because persistence already succeeded.</p>
+<p>The default <code>IIntegrationEventPublisher</code> fans out to in-process <code>IIntegrationEventHandler&lt;T&gt;</code> registrations — ideal for a modular monolith and for tests. To deliver to other services, replace that one registration with a message-broker adapter; aggregates, translators, and the outbox are unchanged. Delivery is at-least-once and a retried domain event re-runs its translator, so a consumer may see the same integration event more than once (with a different <code>OutboxMessage.Id</code> each time) — <strong>dedupe on business identity, not on the message id.</strong></p>
+<h3 id="writing-a-broker-adapter">Writing a broker adapter</h3>
+<p>Two things separate an adapter that works from one that quietly loses the inbox's guarantee.</p>
+<p><strong>Publish through the message, not the event.</strong> <code>IIntegrationEventPublisher</code> has exactly one method, <code>PublishAsync(OutboundIntegrationMessage, CancellationToken)</code>, whose <code>MessageId</code> is the outbox row's own id. Stamp it on the wire (<code>ServiceBusMessage.MessageId</code>, a Kafka header, and so on) so the consumer's <code>(ConsumerId, MessageId)</code> inbox dedup can collapse redeliveries of that row. Minting a fresh id per publish attempt makes every redelivery look like a new message and defeats the inbox. The bare-event overload was deliberately removed so an adapter cannot publish without the id by accident.</p>
+<p><strong>Identify the event by a logical name, not by its CLR type.</strong> The outbox stores <code>Type.AssemblyQualifiedName</code>, which is correct for its own in-process relaying and unusable across services: the consumer's assemblies differ, and the string embeds an assembly version. Annotate contracts and resolve them through <code>IntegrationEventNameMap</code>:</p>
+<pre><code class="lang-csharp">[IntegrationEventName(&quot;orders.order-placed.v1&quot;)]
+public sealed record OrderPlacedIntegrationEvent(Guid OrderId, DateTimeOffset OccurredAt) : IIntegrationEvent;
+
+// Producer and consumer each build the map over their own contract assembly.
+var names = IntegrationEventNameMap.FromAssemblies(typeof(OrderPlacedIntegrationEvent).Assembly);
+</code></pre>
+<p>Include a version segment in the name. Once a message carrying it sits on a queue or in another team's code, changing the name is a breaking change; a new version can be consumed side-by-side instead.</p>
+<p>On the receiving end, build an <code>IntegrationEnvelope</code> from the wire id and the resolved type and hand it to <code>IInboxDispatcher</code>. Acknowledge the broker message on <strong>both</strong> <code>Processed</code> and <code>SkippedDuplicate</code> — the dispatcher contract says both mean the message is durably accounted for.</p>
+<p>Bear in mind what the message id can and cannot do: it collapses redeliveries of a <em>single</em> outbox row, but a retried domain row re-runs its translator and stages a genuinely new row with its own id. That second duplicate still needs business-identity deduplication.</p>
+<h2 id="persist-on-failure-failaftercommit-events">Persist-on-failure (<code>FailAfterCommit</code>) events</h2>
+<p><code>TransactionalCommandBehavior</code> commits a <code>Result.FailAfterCommit</code> outcome (persist-on-failure), but <code>DomainEventDispatchBehavior</code> does <strong>not</strong> dispatch domain events for any failed result — by design those events are discarded, not a durable buffer.</p>
+<p>The capture interceptor cannot see the command result, so with the outbox enabled it captures events from <em>every</em> commit, including persist-on-failure commits, and the relay delivers them. <strong>Enabling the outbox therefore changes this behavior</strong>: events raised on a persist-on-failure path become durable and dispatched. If you rely on the base suppression, do not raise domain events on persist-on-failure paths — return a success result for the events you want delivered, and model post-failure side effects explicitly (a follow-up command, or a dedicated outbox row).</p>
+<h2 id="serialization-constraints">Serialization constraints</h2>
+<p>Events are serialized and rehydrated with a Trellis-owned <code>System.Text.Json</code> options instance that adds a <code>Maybe&lt;T&gt;</code> converter:</p>
+<ul>
+<li><strong>Round-trips:</strong> value objects that carry a <code>[JsonConverter]</code> attribute (the Trellis scalar and composite primitives) — the converter travels with the type. <code>Maybe&lt;T&gt;</code> members also round-trip: a present value serializes as the underlying value and an absent one as JSON <code>null</code>.</li>
+<li><strong>Does not round-trip:</strong> converters registered only through a caller-supplied <code>JsonSerializerOptions</code> factory — they are not consulted by the outbox serializer. Shape those members with attribute-driven value objects or a <strong>nullable transport</strong> (<code>string?</code>, <code>decimal?</code>, …).</li>
+</ul>
+<h2 id="operating-the-outbox">Operating the outbox</h2>
+<ul>
+<li><strong>Alert on dead-lettered messages.</strong> Page on the <code>OutboxRelay.MessageParked</code> error log (or on rows where <code>ProcessedAt IS NULL AND Attempts &gt;= MaxAttempts</code>); those exhausted their retries and need a fix plus a <a href="#replaying-dead-lettered-messages">replay</a>. Transient per-attempt failures log at Warning (<code>OutboxRelay.RelayAttemptFailed</code>) and self-heal via the backoff, so they should not page on their own.</li>
+<li><strong>Prune processed rows.</strong> Rows with a non-null <code>ProcessedAt</code> are a spent delivery buffer — a periodic job can delete old ones with no loss of source-of-truth state. The aggregate tables remain authoritative.</li>
+<li><strong>Keep the producing assemblies loaded.</strong> The relay resolves each event by its assembly-qualified type name, so the worker process must reference the assemblies that declare your events.</li>
+<li><strong>Run as many relay instances as you need.</strong> Each drain atomically claims a batch with a lease (<code>LockedBy</code> + <code>LockedUntil</code>), and <code>LockedBy</code> is an optimistic concurrency token, so concurrent instances never both own a row's lease at once, and a drain that outlived its lease abandons its bookkeeping write — logging <code>OutboxRelay.LeaseLost</code> — rather than clobber the instance that reclaimed the row. No leader election or distributed lock is needed. Delivery is still at-least-once — a crash between publish and the relay's <code>SaveChanges</code>, or a batch that outlives its lease, can re-deliver — so keep handlers idempotent. Set <code>LeaseDuration</code> comfortably above the worst-case batch publish time and keep node clocks reasonably in sync, since the lease is compared against each relay's wall clock.</li>
+<li><strong>One outbox per composition.</strong> <code>UseOutbox&lt;TContext&gt;()</code> throws if called twice. Multiple relays in one process are not supported by the builder slot today.</li>
+</ul>
+<h2 id="outbox-vs-event-sourcing">Outbox vs. event sourcing</h2>
+<p>The outbox is <strong>not</strong> event sourcing. The <code>TrellisOutboxMessages</code> rows are a transient <em>messaging buffer</em>: they exist only until they are relayed and may be pruned afterward. Your aggregate tables remain the single source of truth, and you never rebuild state by replaying outbox rows. Event sourcing, by contrast, makes the event log itself the source of truth. Reach for the outbox when you want reliable delivery of notifications about state changes; reach for event sourcing when the events <em>are</em> the state.</p>
+<h2 id="related-guides">Related guides</h2>
+<ul>
+<li><a href="integration-ef.html">Entity Framework Core Integration</a> — repositories, unit of work, and the interceptors the outbox builds on.</li>
+<li><a href="integration-mediator.html">Mediator Pipeline</a> — domain-event dispatch, the <code>IDomainEventPublisher</code> seam, and pipeline ordering.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-outbox.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

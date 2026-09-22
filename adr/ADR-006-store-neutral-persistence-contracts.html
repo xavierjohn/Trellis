@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ADR-006 — Re-home Persistence and Messaging Contracts out of the EF Core Packages | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ADR-006 — Re-home Persistence and Messaging Contracts out of the EF Core Packages | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-006-store-neutral-persistence-contracts.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="adr-006--re-home-persistence-and-messaging-contracts-out-of-the-ef-core-packages">ADR-006 — Re-home Persistence and Messaging Contracts out of the EF Core Packages</h1>
+
+<blockquote>
+<p><strong>Status:</strong> Accepted. <strong>Supersedes ADR-002 §2 (Proposed Package Map) and §5.1 item 7</strong>
+(which pinned <code>TransactionalCommandBehavior</code> to <code>Trellis.EntityFrameworkCore</code>) for the persistence and
+inbox messaging contracts named below.</p>
+<p><strong>Context:</strong> Trellis declares its persistence and consume-side messaging contracts (<code>IUnitOfWork</code>,
+the inbox/checkpoint store SPIs, the integration-event dispatch seam) but ships them <em>inside</em> the
+EF Core packages, in namespace <code>Trellis.EntityFrameworkCore</code>. Implementing any of them — or reusing
+the standard commit pipeline — therefore forces a dependency on EF Core. This ADR lifts each
+contract into an honest home: a single new <code>Trellis.Core</code>-only abstractions package for the store
+SPIs, while the inbox dispatch seam joins its sibling integration-event contracts already living in
+<code>Trellis.Mediator</code>. EF Core becomes one adapter among potential others (Dapper, ADO, Cosmos DB).</p>
+</blockquote>
+<h2 id="context">Context</h2>
+<p>Two guiding principles frame this decision:</p>
+<ul>
+<li><strong>The core stays independent of concrete persistence/vendor technology.</strong> Trellis ships the
+abstraction/seam (plus an in-memory reference and tests) and the one shipped EF Core adapter;
+concrete adapters for other stores are app/community-owned.</li>
+<li><strong>The API is AI-first.</strong> An agent should generate correct code from namespaces and examples without
+needing surprising tribal knowledge about where a type lives.</li>
+</ul>
+<p>Today both principles are violated by <em>where the contracts live</em>, not by their shape. The following
+are all declared in namespace <code>Trellis.EntityFrameworkCore</code> and shipped from
+<code>Trellis.EntityFrameworkCore</code> / <code>Trellis.EntityFrameworkCore.Inbox</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Contract</th>
+<th>Kind</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IUnitOfWork</code></td>
+<td>persistence — commit boundary</td>
+</tr>
+<tr>
+<td><code>IInboxStore</code></td>
+<td>persistence — dedup-record store SPI</td>
+</tr>
+<tr>
+<td><code>IConsumerCheckpointStore</code></td>
+<td>persistence — resume-cursor store SPI</td>
+</tr>
+<tr>
+<td><code>IInboxDispatcher</code></td>
+<td>messaging — integration-event consume seam</td>
+</tr>
+<tr>
+<td><code>IntegrationEnvelope</code></td>
+<td>messaging — dispatch input DTO</td>
+</tr>
+<tr>
+<td><code>InboxDispatchOutcome</code></td>
+<td>messaging — dispatch result</td>
+</tr>
+</tbody>
+</table>
+<p>In addition, <code>TransactionalCommandBehavior</code> — the Mediator pipeline behavior that commits a command
+via <code>IUnitOfWork</code> after a successful handler — lives in <code>Trellis.EntityFrameworkCore</code> even though its
+implementation uses no EF type (only <code>IUnitOfWork</code> + <code>IPipelineBehavior</code>).</p>
+<p>The net effect: an author who wants to back any of these with a non-EF store, or simply reuse
+Trellis's standard commit pipeline, must reference the EF package — and therefore the entire EF Core
+relational stack — even though none of the contracts (and not even the commit behavior) names an EF
+type.</p>
+<h2 id="evidence">Evidence</h2>
+<p>A spike implemented the three <strong>store</strong> SPIs (<code>IUnitOfWork</code>, <code>IInboxStore</code>,
+<code>IConsumerCheckpointStore</code>) in-memory and exercised them through the published contracts under a hard
+rule: zero EF types — no <code>DbContext</code>, no <code>SaveChanges</code>, no <code>DbUpdateException</code>.</p>
+<ol>
+<li><p><strong>The store contracts are movable now.</strong> The in-memory realization compiles and passes every
+behavioral assertion using only the BCL and Trellis's own <code>Result</code> / <code>Maybe</code> / <code>Unit</code> types:
+stage a dedup record in the unit of work → commit it atomically → the anti-join reads only
+committed state → dedup keyed per <code>(ConsumerId, MessageId)</code> → the checkpoint round-trips an opaque
+cursor → nested-scope commits defer to the outermost scope. No store signature leaks EF. (The
+spike covers the store SPIs only — not the dispatcher; see the Decision for why the dispatcher is
+treated separately.)</p>
+</li>
+<li><p><strong>The packaging coupling is real.</strong> To <em>see</em> those EF-free interfaces the spike had to reference
+the EF packages, which transitively pulled in <code>Microsoft.EntityFrameworkCore</code> 10.0.9,
+<code>…Relational</code>, <code>…Abstractions</code>, and <code>…Analyzers</code>. A would-be Dapper or Cosmos adapter installs the
+full EF relational stack purely to implement a dedup record.</p>
+</li>
+<li><p><strong><code>TransactionalCommandBehavior</code> is EF-free but EF-stranded.</strong> Its implementation depends only on
+<code>IUnitOfWork</code> and <code>IPipelineBehavior</code> (Mediator abstractions); the EF references in it are
+doc-comment <code>cref</code>s. So even a portable <code>IUnitOfWork</code> contract does not make the <em>commit pipeline</em>
+portable while the behavior is locked in the EF package. (Its <strong>registration</strong>,
+<code>AddTrellisUnitOfWork&lt;TContext&gt;</code>, is genuinely EF-specific — it wires <code>EfUnitOfWork&lt;TContext&gt;</code> and
+an <code>ITrackedAggregateSource</code> forwarder — and must stay adapter-side; see the Decision.)</p>
+</li>
+<li><p><strong><code>IInboxStore</code> does not need the messaging envelope, but the EF row persists more than the dedup
+key.</strong> The dedup logic reads only <code>MessageId</code> from <code>IntegrationEnvelope</code>, yet the EF <code>InboxMessage</code>
+row also persists <code>MessageSource</code>, the event type, <code>OccurredAt</code>, <code>CausationId</code>, <code>CorrelationId</code>,
+and a stamped <code>ProcessedAt</code>. So the store can drop its dependency on the messaging DTO, but only if
+the replacement carries that lineage — a bare <code>(consumerId, messageId)</code> shape would silently narrow
+what the EF adapter persists.</p>
+</li>
+<li><p><strong>The sibling messaging contracts already live in <code>Trellis.Mediator</code>.</strong> <code>IIntegrationEventPublisher</code>,
+<code>IIntegrationEventHandler&lt;T&gt;</code>, and <code>IIntegrationEventCollector</code> are all in <code>Trellis.Mediator</code>. The
+inbox dispatch seam is the <em>consume</em> side of the same integration-event story and is intrinsically
+Mediator-coupled (it resolves and invokes <code>IIntegrationEventHandler&lt;T&gt;</code> through DI). Its honest home
+is alongside those siblings, not a separate package.</p>
+</li>
+<li><p><strong>Precedent for the abstractions home is <code>Trellis.Http.Abstractions</code>.</strong> That package separates HTTP
+contracts from their realization, and its types are declared in the flat root namespace <code>Trellis</code>
+(not <code>Trellis.Http.Abstractions</code>). The package is the <em>dependency</em> boundary; the namespace stays
+flat.</p>
+</li>
+</ol>
+<h2 id="decision">Decision</h2>
+<p>Lift each contract into an honest home, keyed by what it <em>is</em>, and relocate the EF-free commit behavior
+so the standard pipeline is reusable. EF Core becomes an adapter that references these homes and
+implements them.</p>
+<p><strong>Namespace.</strong> Each contract adopts the namespace convention of its destination package, not a single
+flat namespace. The store SPIs in the new abstractions package use the flat root namespace <strong><code>Trellis</code></strong>,
+matching <code>Trellis.Core</code> and <code>Trellis.Http.Abstractions</code> (whose public types are in <code>namespace Trellis</code>),
+so one <code>using Trellis;</code> surfaces them. The dispatch contracts moving into <code>Trellis.Mediator</code> adopt its
+existing <strong><code>Trellis.Mediator</code></strong> namespace, consistent with their siblings (<code>IIntegrationEventPublisher</code>,
+<code>IIntegrationEventHandler&lt;T&gt;</code>, <code>IIntegrationEventCollector</code>) — and a non-EF inbox consumer already imports
+<code>Trellis.Mediator</code>. In every case the <strong>package</strong> boundary (not the namespace) is what removes the EF
+dependency. (The inbox feature's contracts intentionally span both namespaces, mirroring the
+persistence/messaging split; each lands in the namespace its package already uses.)</p>
+<p><strong>Target homes — one new package.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type(s)</th>
+<th>Home (package)</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IUnitOfWork</code>, <code>IInboxStore</code>, <code>IConsumerCheckpointStore</code>, <code>InboxRecord</code></td>
+<td><strong><code>Trellis.Persistence.Abstractions</code></strong></td>
+<td><strong>new</strong>; depends only on <code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td><code>IInboxDispatcher</code>, <code>IntegrationEnvelope</code>, <code>InboxDispatchOutcome</code></td>
+<td><strong><code>Trellis.Mediator</code></strong></td>
+<td>existing; joins the sibling integration-event contracts</td>
+</tr>
+<tr>
+<td><code>TransactionalCommandBehavior&lt;,&gt;</code> + a provider-neutral insertion helper</td>
+<td><strong><code>Trellis.Mediator</code></strong></td>
+<td>existing; gains a reference to <code>Trellis.Persistence.Abstractions</code></td>
+</tr>
+</tbody>
+</table>
+<p>The inbox dispatch contracts go to the <strong>existing</strong> <code>Trellis.Mediator</code> rather than a second new
+package: they always travel with the Mediator pipeline (a non-EF inbox consumer needs <code>Trellis.Mediator</code>
+anyway to invoke handlers), and their siblings are already there. This keeps the change to <strong>one new
+package</strong>.</p>
+<p><strong>Decouple the store from the messaging DTO with an explicit <code>InboxRecord</code>.</strong> <code>IInboxStore.TryRecordAsync</code>
+takes the persistence-native record instead of <code>IntegrationEnvelope</code>:</p>
+<pre><code>record InboxRecord(
+    Guid MessageId,
+    string EventType,
+    DateTimeOffset OccurredAt,
+    string? MessageSource = null,
+    Guid? CausationId = null,
+    string? CorrelationId = null);
+
+Task&lt;bool&gt; TryRecordAsync(string consumerId, InboxRecord record, CancellationToken cancellationToken);
+</code></pre>
+<p><code>consumerId</code> stays the separate scoping parameter (matching <code>FilterUnprocessedAsync</code>); the store stamps
+<code>ProcessedAt</code> itself. <code>InboxRecord</code> lives in <code>Trellis.Persistence.Abstractions</code> and uses only primitives,
+so the package depends on <code>Trellis.Core</code> alone and never on the messaging contracts. The dispatcher maps
+the envelope to an <code>InboxRecord</code> before calling the store.</p>
+<p><strong>Split the transactional-command registration.</strong> <code>TransactionalCommandBehavior&lt;,&gt;</code> and a
+provider-neutral helper that inserts the open-generic behavior in canonical pipeline order move to
+<code>Trellis.Mediator</code>. The EF-specific <code>AddTrellisUnitOfWork&lt;TContext&gt;</code> stays in <code>Trellis.EntityFrameworkCore</code>,
+keeps wiring <code>EfUnitOfWork&lt;TContext&gt;</code> + the <code>ITrackedAggregateSource</code> forwarder, and <strong>calls</strong> the neutral
+helper — so <code>Trellis.EntityFrameworkCore</code> gains an intentional reference to <code>Trellis.Mediator</code>.
+Non-Mediator / behavior-free callers continue to use <code>AddTrellisUnitOfWorkWithoutBehavior&lt;TContext&gt;</code>.</p>
+<p><code>Trellis.Mediator</code> currently detects and re-orders the transactional behavior by a hard-coded
+<code>Trellis.EntityFrameworkCore.TransactionalCommandBehavior</code> full-name string constant — its domain-event
+and tracked-aggregate dispatch registrations remove and re-append the behavior so dispatch runs outside
+the commit. Because the behavior moves into <code>Trellis.Mediator</code>, that string lookup becomes a direct
+<code>typeof(...)</code> reference to the relocated type, and the ordering tests plus the doc comments that locate
+the behavior &quot;in <code>Trellis.EntityFrameworkCore</code>&quot; must be updated. This is a simplification the move
+enables, but it is required for the dispatch-ordering guarantee to survive.</p>
+<p><strong>Stays in the EF adapter</strong> (<code>Trellis.EntityFrameworkCore</code> / <code>…Inbox</code>), now implementing the relocated
+contracts: <code>EfUnitOfWork</code>, <code>RepositoryBase</code>, <code>OutboxCaptureInterceptor</code>, <code>OutboxRelay</code>,
+<code>DbExceptionClassifier</code>, the <code>InboxMessage</code> entity + configuration, and <code>InboxDispatcher&lt;TContext&gt;</code> (the
+EF realization of the relocated <code>IInboxDispatcher</code>).</p>
+<p><strong>Contract neutralization is in scope, with acceptance criteria.</strong> Moving the contracts requires
+scrubbing EF-specific <code>cref</code>s from their XML docs — <code>IUnitOfWork</code>'s references to <code>DbContext</code> and
+<code>TransactionalCommandBehavior</code>, <code>IInboxStore</code>'s reference to <code>InboxOptions.ConsumerId</code> (becomes &quot;the
+stable subscriber identifier&quot;), and the moved behavior's references to <code>DbContext</code> / <code>EfUnitOfWork&lt;T&gt;</code>.
+Acceptance:</p>
+<ul>
+<li><code>Trellis.Persistence.Abstractions</code> builds with <code>GenerateDocumentationFile</code> + warnings-as-errors while
+referencing only <code>Trellis.Core</code>.</li>
+<li><code>Trellis.Mediator</code> builds with <code>GenerateDocumentationFile</code> + warnings-as-errors after gaining the
+behavior, with no EF <code>cref</code>s in the moved behavior's docs.</li>
+<li>The EF adapter still persists the same inbox columns it persists today
+(<code>MessageSource</code>, event type, <code>OccurredAt</code>, <code>CausationId</code>, <code>CorrelationId</code>, <code>ProcessedAt</code>).</li>
+<li><code>Trellis.Mediator</code>'s domain-event and tracked-aggregate dispatch registrations detect the relocated
+behavior by type (not by an EF namespace string), and their existing registration-order tests are
+updated and pass.</li>
+</ul>
+<p><strong>Reconcile ADR-002.</strong> On acceptance, ADR-006 supersedes ADR-002 §2 (package map) and §5.1 item 7 (which
+pins <code>TransactionalCommandBehavior</code> to <code>Trellis.EntityFrameworkCore</code>) for these contracts; updating both
+ADR-002 passages (and any contradicting <code>README.md</code> / <code>copilot-instructions.md</code> package lists) is part of
+this ADR's implementation, not a follow-up.</p>
+<p><strong>Explicitly deferred — the dispatcher rewrite.</strong> Making the inbox <em>orchestration</em> store-agnostic
+(committing via <code>IUnitOfWork</code> and detecting duplicates via a provider-neutral signal instead of
+<code>SaveChangesAsync</code> / <code>DbUpdateException</code> / <code>context.Set&lt;InboxMessage&gt;()</code>) is <strong>not</strong> done here. Re-homing
+the dispatcher <em>interface</em> is a packaging move and is in scope; rewriting the dispatcher <em>implementation</em>
+is design work that must wait for a second store provider (see Alternatives §4 and Follow-ups).</p>
+<h2 id="migration">Migration</h2>
+<p>Trellis is pre-1.0 (alpha) and carries <strong>no backward-compatibility constraint</strong> — ADR-002 states the
+posture, and the standing direction is to optimize for the best forward-looking, AI-first design rather
+than preserve existing source/binary shapes. Every move here is a clean break: types keep their names and
+the flat <code>Trellis</code> namespace, only their package changes, and consumers re-reference packages as needed.
+No <code>[TypeForwardedTo]</code> shims, deprecated re-exports, or dual-namespace aliases are introduced — they would
+add exactly the incidental surface an AI-first API should avoid. The <code>IInboxStore.TryRecordAsync</code> signature
+change and the registration split are deliberate contract improvements, not compatibility concessions.</p>
+<h2 id="consequences">Consequences</h2>
+<p><strong>Positive</strong></p>
+<ul>
+<li>A non-EF <strong>persistence</strong> adapter implements <code>IUnitOfWork</code> / <code>IInboxStore</code> / <code>IConsumerCheckpointStore</code>
+by referencing only <code>Trellis.Persistence.Abstractions</code> — no EF Core, and no Mediator, dependency.</li>
+<li>The standard commit pipeline (<code>TransactionalCommandBehavior</code>) becomes reusable by any adapter that
+registers an <code>IUnitOfWork</code>, because it now lives with the Mediator infrastructure.</li>
+<li>The inbox dispatch contracts sit with their sibling integration-event contracts; nothing hides under an
+EF namespace, and the store stops depending on a messaging DTO.</li>
+<li>Only <strong>one</strong> new package; the dependency graph stays acyclic
+(<code>Trellis.Mediator</code> → <code>Trellis.Persistence.Abstractions</code> → <code>Trellis.Core</code>; EF adapter → all three).</li>
+</ul>
+<p><strong>Negative / limits</strong></p>
+<ul>
+<li><strong>The inbox orchestration is still EF-only.</strong> A non-EF author gets portable store contracts and a
+portable commit pipeline, but the shipped <code>InboxDispatcher&lt;TContext&gt;</code> remains <code>DbContext</code>-bound; a non-EF
+inbox consumer must still supply their own dispatcher implementation until the deferred rewrite.</li>
+<li><strong><code>Trellis.EntityFrameworkCore</code> gains a reference to <code>Trellis.Mediator</code></strong> (to call the neutral insertion
+helper). This is intentional — the package already integrates with the Mediator pipeline — and behavior-
+free / non-Mediator callers retain <code>AddTrellisUnitOfWorkWithoutBehavior&lt;TContext&gt;</code>.</li>
+<li>One new package is net surface area, justified because it <em>removes</em> a forced dependency rather than adds
+capability.</li>
+</ul>
+<p><strong>Neutral</strong></p>
+<ul>
+<li>No runtime behaviour change for existing EF consumers beyond the <code>IInboxStore</code> signature; the EF adapter
+is otherwise unchanged apart from references and namespaces.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ol>
+<li><p><strong>Leave the contracts in the EF packages (status quo).</strong> Rejected: permanently couples every adapter —
+and the EF-free commit pipeline — to EF Core for no benefit; the spike shows the contracts use no EF type.</p>
+</li>
+<li><p><strong>Put the dispatch contracts under a persistence home (or a new <code>Trellis.Messaging.Abstractions</code>).</strong>
+Rejected: <code>IInboxDispatcher</code> / <code>IntegrationEnvelope</code> / <code>InboxDispatchOutcome</code> are messaging concepts whose
+siblings (<code>IIntegrationEventPublisher</code>/<code>Handler</code>/<code>Collector</code>) already live in <code>Trellis.Mediator</code>, and the
+dispatcher is intrinsically Mediator-coupled. A persistence home repeats the mis-homing; a separate
+messaging-abstractions package would be three types that always travel with <code>Trellis.Mediator</code> anyway —
+pure surface. Co-locating in <code>Trellis.Mediator</code> is the honest, lower-surface home.</p>
+</li>
+<li><p><strong>Merge everything into one package — either <code>Trellis.Core</code> or a single <code>Trellis.Abstractions</code>.</strong> Rejected:
+<code>Trellis.Core</code> is the pure domain library, and a single combined abstractions package would either force
+<code>Trellis.Mediator</code> onto persistence-only adapters or pull persistence contracts into Mediator-land. Keeping
+the store SPIs in a <code>Trellis.Core</code>-only package, and the dispatch contracts with their Mediator siblings,
+lets a pure persistence adapter avoid Mediator entirely. The flat <code>Trellis</code> namespace preserves the
+one-<code>using</code> ergonomics regardless of package.</p>
+</li>
+<li><p><strong>Rewrite the dispatcher to be store-agnostic now.</strong> Rejected for correctness, not effort: a provider-
+neutral duplicate-key/commit seam cannot be designed correctly with only one provider in hand. The EF
+dispatcher's race handling depends on EF-specific semantics — EF attributes a <em>batched</em> <code>SaveChanges</code>
+failure to every entry in the batch, forcing a ground-truth re-query to distinguish a concurrent winner
+from a handler's own unique-violation. A &quot;neutral&quot; seam shaped against only EF would encode those quirks
+and almost certainly misfit Dapper (single-row <code>IDbTransaction</code>) or Cosmos (<code>TransactionalBatch</code> + change
+feed). Design it when a second store exists to validate it — which is also when it has a consumer.</p>
+</li>
+<li><p><strong>Use a <code>Trellis.Persistence</code> namespace (not flat <code>Trellis</code>).</strong> Rejected: <code>Trellis.Http.Abstractions</code>
+sets the precedent that abstraction packages contribute to the flat <code>Trellis</code> namespace; a flat namespace
+is the most AI-first (one <code>using</code>), and the package — not the namespace — is the dependency boundary that
+solves the actual problem.</p>
+</li>
+<li><p><strong>Keep <code>IInboxStore</code> taking <code>IntegrationEnvelope</code> (move the envelope to a shared home).</strong> Rejected: it
+couples persistence to a messaging DTO. An explicit persistence-native <code>InboxRecord</code> keeps
+<code>Trellis.Persistence.Abstractions</code> dependent on <code>Trellis.Core</code> alone while preserving the lineage the EF
+row persists.</p>
+</li>
+</ol>
+<h2 id="follow-ups-not-in-scope-here">Follow-ups (not in scope here)</h2>
+<ul>
+<li><strong>Store-agnostic dispatcher rewrite</strong>, gated on a second store provider: commit via <code>IUnitOfWork</code> and
+detect duplicates via a provider-neutral signal, so the inbox orchestration (not just its interface) is
+reusable.</li>
+<li><strong>Outbox store/relay seam</strong> (<code>IOutboxStore</code>) and an <strong><code>IRepository</code></strong> abstraction, paired with the
+aggregate ETag-stamp and reconstitution seams a non-EF adapter needs.</li>
+<li><strong><code>InboxOptions</code> placement</strong> — registration config currently in the EF inbox package; decide whether it
+moves alongside the dispatch contracts.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-006-store-neutral-persistence-contracts.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

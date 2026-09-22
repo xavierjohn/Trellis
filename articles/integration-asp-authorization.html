@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ASP.NET Core Authorization | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ASP.NET Core Authorization | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-asp-authorization.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="aspnet-core-authorization">ASP.NET Core Authorization</h1>
+
+<p><code>Trellis.Asp.Authorization</code> translates an authenticated <code>ClaimsPrincipal</code> into a frozen <code>Actor</code> (id + permissions + forbidden permissions + ABAC attributes) so handlers, mediator behaviors, and endpoints stop parsing JWT claims directly.</p>
+<h2 id="mental-model">Mental model</h2>
+<p>Authorization in a Trellis + ASP.NET Core service runs as a pipeline. Each layer has one job, and each layer is the only thing the next layer trusts. Understanding where each decision is made — and which layer turns the decision into an HTTP status — is the difference between a debuggable system and a &quot;why is this 401?&quot; mystery.</p>
+<h3 id="end-to-end-flow">End-to-end flow</h3>
+<pre><code class="lang-mermaid">sequenceDiagram
+    autonumber
+    participant Client
+    participant JwtBearer
+    participant Endpoint
+    participant Pipeline as Mediator pipeline
+    participant Provider as IActorProvider
+    participant Auth as AuthorizationBehavior
+    participant ResAuth as ResourceAuthorizationBehavior
+    participant Handler
+
+    Client-&gt;&gt;JwtBearer: Authorization header with Bearer token
+    JwtBearer-&gt;&gt;JwtBearer: Validate signature expiry issuer audience
+    JwtBearer-&gt;&gt;JwtBearer: Project claims onto HttpContext.User
+    Note right of JwtBearer: MapInboundClaims remaps short to long form
+    JwtBearer-&gt;&gt;Endpoint: Authenticated request
+    Endpoint-&gt;&gt;Pipeline: Send command or query
+    Pipeline-&gt;&gt;Provider: GetCurrentActorAsync
+    Provider--&gt;&gt;Pipeline: Maybe of Actor
+
+    alt No usable actor
+        Pipeline--&gt;&gt;Endpoint: Error Unauthorized
+        Endpoint--&gt;&gt;Client: 401 with synthesized WWW-Authenticate
+    else Actor resolved
+        Pipeline-&gt;&gt;Auth: Check IAuthorize.RequiredPermissions
+    end
+
+    alt Static permission missing
+        Auth--&gt;&gt;Endpoint: Error Forbidden
+        Endpoint--&gt;&gt;Client: 403 Forbidden
+    else Static permission ok
+        Auth-&gt;&gt;ResAuth: Load resource and call Authorize
+    end
+
+    alt Resource auth denied
+        ResAuth--&gt;&gt;Endpoint: Error Forbidden
+        Endpoint--&gt;&gt;Client: 403 Forbidden
+    else Authorized
+        ResAuth-&gt;&gt;Handler: Invoke
+        Handler--&gt;&gt;Endpoint: Result of T
+        Endpoint--&gt;&gt;Client: ToHttpResponse maps to 200 or 201 or 204
+    end
+</code></pre>
+<p>Six layers, in order of execution (each linked to its canonical section below):</p>
+<ol>
+<li><strong>Authentication.</strong> <code>JwtBearer</code> (or your scheme) validates signature / expiry / issuer / audience and produces an authenticated <code>ClaimsPrincipal</code>. Trellis does not run here.</li>
+<li><strong>Claim mapping.</strong> <code>JwtBearerOptions.MapInboundClaims</code> may rename claims before they reach <code>HttpContext.User</code> — see <a href="#mapinboundclaims-and-the-shortlong-fallback"><code>MapInboundClaims</code> and the short↔long fallback</a> for the footgun.</li>
+<li><strong>Actor resolution.</strong> A scoped <code>IActorProvider</code> reads <code>HttpContext.User</code> and returns <code>Maybe&lt;Actor&gt;</code>; <code>Maybe.None</code> is the &quot;no usable actor&quot; signal. The mediator authorization pipeline maps it to HTTP 401; direct-endpoint code (like the Quick start) must translate it to 401 itself. See <a href="#surface-at-a-glance">Surface at a glance</a> for the four bundled providers.</li>
+<li><strong>Static permission authorization.</strong> Commands implementing <code>IAuthorize</code> get checked by <code>AuthorizationBehavior</code> — see <a href="#static-permission-checks-via-iauthorize">Static permission checks via <code>IAuthorize</code></a>.</li>
+<li><strong>Resource-based authorization.</strong> Direct resource authorization loads one resource or projection for the command (<code>IAuthorizeResource&lt;T&gt;</code> — backed by load-by-id or a custom <code>IResourceLoader&lt;TMessage, TProjection&gt;</code>); multi-hop authorizes an ancestor reached from the leaf (<code>IAuthorizeResourceVia&lt;TOwner&gt;</code>). See <a href="#resource-based-checks-via-iauthorizeresourcetresource">Resource-based checks</a> and <a href="#multi-hop-resource-authorization-via-iauthorizeresourceviatowner">Multi-hop</a>.</li>
+<li><strong>Handler.</strong> Returns <code>Result&lt;T&gt;</code> / <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code> / <code>Result&lt;Page&lt;T&gt;&gt;</code>. Endpoint code then calls <code>ToHttpResponse(...)</code>, which maps successes to HTTP status codes and sends failures through <code>ResponseFailureWriter</code> to ProblemDetails.</li>
+</ol>
+<p>For the failure modes — what produces 401 versus 403, and how <code>WWW-Authenticate</code> is populated — see <a href="#anatomy-of-a-401">Anatomy of a 401</a> and <a href="#anatomy-of-a-403">Anatomy of a 403</a> below.</p>
+<h3 id="decision-tree-which-authorization-shape">Decision tree: which authorization shape?</h3>
+<pre><code class="lang-mermaid">flowchart TD
+    Start[New command / query]
+    Q1{&quot;Does it need&lt;br/&gt;actor identity at all?&quot;}
+    Q2{&quot;Static permissions enough?&lt;br/&gt;no resource state&quot;}
+    Q3{&quot;Authorization rule depends&lt;br/&gt;on a loaded entity?&quot;}
+    Q4{&quot;Rule depends on an&lt;br/&gt;ancestor of the loaded entity?&lt;br/&gt;e.g. match -&gt; team -&gt; owner&quot;}
+    Q5{&quot;Need actor inside the&lt;br/&gt;handler for finer guards?&quot;}
+
+    Start --&gt; Q1
+    Q1 -- No --&gt; NoActor[&quot;No interface needed&lt;br/&gt;Anonymous endpoint&quot;]
+    Q1 -- Yes --&gt; Q2
+    Q2 -- Yes --&gt; IAuth[&quot;IAuthorize&lt;br/&gt;RequiredPermissions&quot;]
+    Q2 -- No --&gt; Q3
+    Q3 -- Yes --&gt; Q4
+    Q4 -- No --&gt; Q3b{&quot;Standard load-by-id&lt;br/&gt;shape works?&quot;}
+    Q3b -- Yes --&gt; IAuthRes[&quot;IAuthorizeResource&amp;lt;T&amp;gt;&lt;br/&gt;+ IIdentifyResource&amp;lt;T, TId&amp;gt;&lt;br/&gt;+ SharedResourceLoaderById&quot;]
+    Q3b -- No --&gt; IAuthResCustom[&quot;IAuthorizeResource&amp;lt;TProjection&amp;gt;&lt;br/&gt;+ custom IResourceLoader&amp;lt;TMessage, TProjection&amp;gt;&lt;br/&gt;(projections, custom traversal)&quot;]
+    Q4 -- Yes --&gt; Q4b{&quot;Can the ancestor path be expressed&lt;br/&gt;by marker interfaces + load-by-id?&quot;}
+    Q4b -- Yes --&gt; IAuthVia[&quot;IAuthorizeResourceVia&amp;lt;TOwner&amp;gt;&lt;br/&gt;+ IIdentifyRelatedResource on path entities&quot;]
+    Q4b -- No --&gt; IAuthResProj[&quot;IAuthorizeResource&amp;lt;TProjection&amp;gt;&lt;br/&gt;+ custom IResourceLoader&amp;lt;TMessage, TProjection&amp;gt;&lt;br/&gt;(cartesian joins, recursive hierarchies, conditional paths)&quot;]
+    Q3 -- No --&gt; Q5
+    Q5 -- Yes --&gt; InHandler[&quot;Inject IActorProvider&lt;br/&gt;+ Result.Ensure inside the handler&quot;]
+    Q5 -- No --&gt; NoInterface[&quot;No Trellis authorization interface needed&lt;br/&gt;Use [Authorize] or RequireAuthorization&lt;br/&gt;at the endpoint to enforce authentication&quot;]
+</code></pre>
+<p>Pick one <strong>primary</strong> authorization shape per command. The framework allows an <code>IAuthorize</code> static gate to coexist with <code>IAuthorizeResource&lt;T&gt;</code> or <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> (both run, either denial produces 403) — that composition is common for a coarse &quot;must have this permission&quot; gate plus a fine &quot;and must own the resource&quot; check. The only combination rejected at startup is <strong>dual-mode resource authorization</strong> (a command carrying both <code>IAuthorizeResource&lt;T&gt;</code> and <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> simultaneously) — pick one path-resolution shape, not both.</p>
+<h3 id="anatomy-of-a-401">Anatomy of a 401</h3>
+<pre><code class="lang-mermaid">sequenceDiagram
+    autonumber
+    participant Client
+    participant Asp as ASP.NET pipeline
+    participant Provider as IActorProvider
+    participant Mediator
+    participant Writer as ResponseFailureWriter
+
+    Client-&gt;&gt;Asp: Request with no, expired, or invalid token
+    alt Token rejected by JwtBearer
+        Asp-&gt;&gt;Asp: JwtBearerHandler HandleChallengeAsync
+        Asp--&gt;&gt;Client: 401 plus WWW-Authenticate Bearer error invalid_token
+    else Token accepted but no usable actor
+        Asp-&gt;&gt;Mediator: Run command
+        Mediator-&gt;&gt;Provider: GetCurrentActorAsync
+        Provider--&gt;&gt;Mediator: Maybe of Actor is None
+        Mediator-&gt;&gt;Writer: Error.AuthenticationRequired without explicit Scheme
+        Writer-&gt;&gt;Writer: Resolve default scheme via IAuthenticationSchemeProvider
+        Writer--&gt;&gt;Client: 401 plus WWW-Authenticate scheme name
+    end
+</code></pre>
+<p>Same 401 status and <code>WWW-Authenticate</code> contract from both paths, different challenge details (the JwtBearer challenge carries scheme-specific <code>error=&quot;invalid_token&quot;</code> parameters; the synthesized challenge is scheme-only). The mediator-emitted 401 (right branch) is the path the framework controls; consumers set <code>Error.AuthenticationRequired.Scheme</code> to an explicit challenge string (for example, <code>Bearer realm=&quot;api&quot;, scope=&quot;orders.read&quot;</code>) when they need something more specific than the default-scheme fallback.</p>
+<h3 id="anatomy-of-a-403">Anatomy of a 403</h3>
+<pre><code class="lang-mermaid">sequenceDiagram
+    autonumber
+    participant Mediator
+    participant Auth as AuthorizationBehavior
+    participant Loader as Resource loader
+    participant ResAuth as ResourceAuthorizationBehavior
+    participant Writer as ResponseFailureWriter
+
+    Mediator-&gt;&gt;Auth: Command and Actor
+
+    alt RequiredPermissions failed
+        Auth--&gt;&gt;Writer: Error.Forbidden with PolicyId only
+        Writer--&gt;&gt;Mediator: 403 ProblemDetails
+    else Static permissions pass
+        Auth-&gt;&gt;Loader: GetByIdAsync resourceId
+    end
+
+    alt Resource not found
+        Loader--&gt;&gt;Writer: Error.NotFound becomes 404
+    else Resource loaded
+        Loader-&gt;&gt;ResAuth: Authorize actor and resource
+    end
+
+    alt Rule denied
+        ResAuth--&gt;&gt;Writer: Error.Forbidden with PolicyId and Resource
+        Writer--&gt;&gt;Mediator: 403 ProblemDetails
+    else Rule allowed
+        ResAuth-&gt;&gt;Mediator: Continue
+    end
+</code></pre>
+<p>403 always carries a <code>PolicyId</code> (the policy identifier the consumer authored) and optionally a <code>ResourceRef</code> (which resource the policy was evaluated against). 404 is reserved for the leaf resource genuinely not existing in the single-resource path above; resource-authorization failure on a loaded entity is always 403, never 404. <strong>In multi-hop authorization</strong> the directly identified leaf load failure bubbles verbatim (so a missing leaf can still produce 404); only intermediate hop and terminal owner load failures collapse to 403 to avoid existence leaks across team / owner boundaries — see <a href="#multi-hop-resource-authorization-via-iauthorizeresourceviatowner">Multi-hop resource authorization</a> for the full sequence.</p>
+<h3 id="cache-partitioning-across-actors">Cache partitioning across actors</h3>
+<pre><code class="lang-mermaid">flowchart LR
+    A[Cache-eligible response] --&gt; B{&quot;Endpoint depends&lt;br/&gt;on actor identity?&quot;}
+    B -- No --&gt; C[&quot;Cache-Control: public&lt;br/&gt;no Vary needed&quot;]
+    B -- Yes --&gt; D{&quot;Provider implements&lt;br/&gt;IProvideActorVaryHeaders?&quot;}
+    D -- Yes --&gt; E[&quot;o.VaryForActor()&lt;br/&gt;emits Vary: Authorization&lt;br/&gt;or whatever the provider declares&quot;]
+    D -- No --&gt; F[&quot;Cache-Control: private, no-store&lt;br/&gt;or implement IProvideActorVaryHeaders&lt;br/&gt;on a subclass&quot;]
+</code></pre>
+<p>See <a href="#cache-partitioning-across-actors-varyforactor">Cache partitioning across actors (<code>VaryForActor()</code>)</a> for the configured shape, fail-closed semantics, and the override-for-non-bearer-auth pattern.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resolve actors from Azure Entra ID v2.0 tokens</td>
+<td><code>AddEntraActorProvider(options?)</code></td>
+<td><a href="#entra-id-provider">Entra ID provider</a></td>
+</tr>
+<tr>
+<td>Resolve actors from any flat-claim OIDC/JWT provider</td>
+<td><code>AddClaimsActorProvider(options?)</code></td>
+<td><a href="#generic-claims-provider">Generic claims provider</a></td>
+</tr>
+<tr>
+<td>Inject a fake actor in Development / integration tests</td>
+<td><code>AddDevelopmentActorProvider(options?)</code></td>
+<td><a href="#development-provider">Development provider</a></td>
+</tr>
+<tr>
+<td>Cache an async actor resolution per request</td>
+<td><code>AddCachingActorProvider&lt;T&gt;()</code></td>
+<td><a href="#caching-wrapper">Caching wrapper</a></td>
+</tr>
+<tr>
+<td>Resolve a system actor when there is no <code>HttpContext</code> (background workers)</td>
+<td><code>AddTrellisWorkerActor(systemActor)</code></td>
+<td><a href="#worker-actor-composition">Worker actor composition</a></td>
+</tr>
+<tr>
+<td>Flatten roles into permissions / add ABAC attributes</td>
+<td><code>EntraActorOptions.MapPermissions</code> / <code>MapAttributes</code></td>
+<td><a href="#customizing-claim-mapping">Customizing claim mapping</a></td>
+</tr>
+<tr>
+<td>Read well-known attributes safely</td>
+<td><code>Actor.GetAttribute(ActorAttributes.*)</code></td>
+<td><a href="#abac-attributes">ABAC attributes</a></td>
+</tr>
+<tr>
+<td>Enforce static permissions on a command</td>
+<td><code>IAuthorize.RequiredPermissions</code></td>
+<td><a href="#mediator-integration">Mediator integration</a></td>
+</tr>
+<tr>
+<td>Authorize against a loaded entity</td>
+<td><code>IAuthorizeResource&lt;TResource&gt;</code></td>
+<td><a href="#mediator-integration">Mediator integration</a></td>
+</tr>
+<tr>
+<td>Authorize against an ancestor of the loaded entity (multi-hop)</td>
+<td><code>IAuthorizeResourceVia&lt;TOwner&gt;</code> + <code>IIdentifyRelatedResource(s)</code> on path entities</td>
+<td><a href="#multi-hop-resource-authorization-via-iauthorizeresourceviatowner">Multi-hop resource authorization</a></td>
+</tr>
+<tr>
+<td>Partition cache entries by actor</td>
+<td><code>o.VaryForActor()</code> on the response builder</td>
+<td><a href="#cache-partitioning-across-actors-varyforactor">Cache partitioning across actors</a></td>
+</tr>
+<tr>
+<td>Configure JWT bearer to avoid the <code>MapInboundClaims</code> footgun</td>
+<td><code>o.MapInboundClaims = false</code> on <code>AddJwtBearer(...)</code></td>
+<td><a href="#mapinboundclaims-and-the-shortlong-fallback"><code>MapInboundClaims</code> and the short↔long fallback</a></td>
+</tr>
+<tr>
+<td>Identify two <code>Actor</code> snapshots as the same principal</td>
+<td><code>actorA.Equals(actorB)</code> (Id-based)</td>
+<td><a href="#surface-at-a-glance">Surface at a glance</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You host a Trellis service in ASP.NET Core and need to convert an authenticated principal into an <code>Actor</code> exactly once per request.</li>
+<li>You want one DI registration that gives every handler, behavior, and endpoint a consistent view of the caller.</li>
+<li>You want to customize how JWT claims map to permissions, deny lists, or ABAC attributes without forking the provider.</li>
+<li>You want development/integration-test seams that fail closed outside <code>IsDevelopment()</code>.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.Asp.Authorization</code> (namespace inside the <code>Trellis.Asp</code> package) exposes one set of DI extensions plus five <code>IActorProvider</code> implementations and matching options classes.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Kind</th>
+<th>Returns / Lifetime</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddEntraActorProvider(this IServiceCollection, Action&lt;EntraActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>EntraActorProvider</code></td>
+<td>Entra v2.0 (<code>oid</code>/<code>roles</code>/<code>tid</code>/<code>amr</code> ...) → <code>Actor</code>.</td>
+</tr>
+<tr>
+<td><code>AddClaimsActorProvider(this IServiceCollection, Action&lt;ClaimsActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>ClaimsActorProvider</code></td>
+<td>Generic flat-claim mapping (configurable <code>ActorIdClaim</code>, <code>PermissionsClaim</code>).</td>
+</tr>
+<tr>
+<td><code>AddDevelopmentActorProvider(this IServiceCollection, Action&lt;DevelopmentActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>DevelopmentActorProvider</code></td>
+<td>Reads <code>X-Test-Actor</code> JSON header; throws outside <code>IsDevelopment()</code>.</td>
+</tr>
+<tr>
+<td><code>AddEasyAuthActorProvider(this IServiceCollection, Action&lt;ClaimsActorOptions&gt;?)</code> + <code>AddEasyAuth(this AuthenticationBuilder, ...)</code></td>
+<td>DI extensions</td>
+<td>Scoped <code>IActorProvider</code> → <code>EasyAuthClaimsActorProvider</code> (+ Easy Auth scheme)</td>
+<td>Azure &quot;Easy Auth&quot;: decode <code>X-MS-CLIENT-PRINCIPAL</code> → <code>HttpContext.User</code> → <code>Actor</code>; varies cache by the principal headers, not <code>Authorization</code>.</td>
+</tr>
+<tr>
+<td><code>AddCachingActorProvider&lt;T&gt;(this IServiceCollection)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>CachingActorProvider</code> wrapping <code>T</code></td>
+<td>Caches one resolution task per request scope.</td>
+</tr>
+<tr>
+<td><code>AddTrellisWorkerActor(this IServiceCollection, Actor)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>WorkerComposedActorProvider</code> wrapping the prior slot</td>
+<td>Returns the supplied system actor when <code>IHttpContextAccessor.HttpContext</code> is null; delegates to the inner provider otherwise.</td>
+</tr>
+<tr>
+<td><code>ClaimsActorProvider</code></td>
+<td>Class</td>
+<td>Scoped, virtual <code>GetCurrentActorAsync</code></td>
+<td>Subclass for custom flat-claim providers. Permissions resolved via literal <code>FindAll(PermissionsClaim)</code> plus the well-known short↔long counterpart from the JWT inbound claim-name map; matches are merged into a deduplicated <code>FrozenSet&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>EntraActorProvider</code></td>
+<td>Class</td>
+<td>Scoped, sealed</td>
+<td>Falls back to short <code>oid</code> when <code>IdClaimType</code> is the default; rewraps mapper exceptions in <code>InvalidOperationException</code>.</td>
+</tr>
+<tr>
+<td><code>DevelopmentActorProvider</code></td>
+<td>Class</td>
+<td>Scoped, sealed partial</td>
+<td>Throws on a malformed header by default (<code>ThrowOnMalformedHeader = true</code>); set it to <code>false</code> to log a warning and fall back to the default actor.</td>
+</tr>
+<tr>
+<td><code>CachingActorProvider</code></td>
+<td>Class</td>
+<td>Scoped, sealed</td>
+<td>Uses <code>LazyInitializer.EnsureInitialized</code> + <code>HttpContext.RequestAborted</code>; honors per-call <code>CancellationToken</code> via <code>Task.WaitAsync</code>.</td>
+</tr>
+<tr>
+<td><code>EntraActorOptions</code> / <code>ClaimsActorOptions</code> / <code>DevelopmentActorOptions</code> / <code>EasyAuthAuthenticationOptions</code></td>
+<td>Options</td>
+<td>—</td>
+<td>Mapping delegates / claim-type strings / dev defaults / Easy Auth scheme options.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p><strong><code>Actor</code> is conceptually an entity, not a value.</strong> Equality is identity-based on <code>Id</code> only — two <code>Actor</code> instances with the same <code>Id</code> are equal even when their <code>Permissions</code>, <code>ForbiddenPermissions</code>, or <code>Attributes</code> snapshots differ. <code>Id</code> is the strongly-typed <code>ActorId</code> value object that wraps the principal identifier (e.g. JWT <code>sub</code> / <code>oid</code> claim); consumer aggregate boundaries that store the actor's identity (<code>Order.CreatedByActorId</code>, <code>Document.LastModifiedByActorId</code>) should reuse <code>ActorId</code> for type-checked principal-identity comparisons. The other properties are point-in-time state about that principal (granted/revoked over time, ABAC attributes change every request). This mirrors <code>Trellis.Entity&lt;TId&gt;</code> semantics without taking on the full <code>IAggregate</code> surface. <code>Actor</code> is a <code>sealed class</code> (not a <code>record</code>), so the <code>with</code>-expression syntax is not available — call the constructor (or <code>Actor.Create</code>) directly when you need a copy with changes.</p>
+</div>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Asp
+</code></pre>
+<p>The actor providers ship in <code>Trellis.Asp</code> under namespace <code>Trellis.Asp.Authorization</code>. Domain primitives (<code>Actor</code>, <code>IActorProvider</code>, <code>IAuthorize</code>, <code>IAuthorizeResource&lt;T&gt;</code>) come from <code>Trellis.Authorization</code>. The mediator-integration samples below additionally use <code>Trellis.Mediator</code> and the <a href="https://www.nuget.org/packages/Mediator">Mediator</a> source generator your app already references when it sends commands through the pipeline.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>Authenticate with <code>JwtBearer</code> against any OIDC provider, register an <code>IActorProvider</code>, then read the current <code>Actor</code> from any endpoint or handler. This article shows the framework mechanics; for IdP-specific wiring (Google, Microsoft Entra ID, Apple, Auth0, Okta, Keycloak, Facebook) see <a href="integration-sso.html">Single Sign-On Integration</a>.</p>
+<pre><code class="lang-csharp">using System.Linq;
+using System.Threading;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+var builder = WebApplication.CreateBuilder(args);
+var auth = builder.Configuration.GetSection(&quot;Authentication&quot;);
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];   // e.g. https://your-tenant.auth0.com/
+        options.Audience  = auth[&quot;Audience&quot;];    // your API audience
+
+        // Recommended: keep claim names round-tripping with their RFC 7519 / OIDC short forms.
+        // ASP.NET Core's default of `true` silently remaps short claim names (&quot;sub&quot;, &quot;tid&quot;, &quot;amr&quot;)
+        // onto WS-* long-form URNs before they reach HttpContext.User. The actor providers'
+        // short↔long fallback hides this, but configuring it explicitly keeps the wire shape
+        // predictable. See &quot;MapInboundClaims and the short↔long fallback&quot; below for the trap.
+        options.MapInboundClaims = false;
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim     = &quot;sub&quot;;
+    options.PermissionsClaim = &quot;permissions&quot;;
+});
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet(&quot;/me&quot;, [Authorize] async (IActorProvider actorProvider, CancellationToken ct) =&gt;
+{
+    var maybeActor = await actorProvider.GetCurrentActorAsync(ct);
+    if (!maybeActor.TryGetValue(out var actor))
+        return Results.Unauthorized();
+
+    return Results.Ok(new
+    {
+        actor.Id,
+        Permissions = actor.Permissions.OrderBy(p =&gt; p).ToArray(),
+    });
+});
+
+app.Run();
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The provider extracts an <code>Actor</code> from <code>HttpContext.User</code>. It does <strong>not</strong> validate tokens — keep your normal authentication middleware in place.</p>
+</div>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Microsoft Entra ID consumers can substitute <code>AddEntraActorProvider()</code> for <code>AddClaimsActorProvider(...)</code> to opt in to Entra-specific defaults (App Roles via <code>roles</code>, ABAC attributes from <code>tid</code> / <code>oid</code> / <code>amr</code>). See <a href="integration-sso.html#microsoft-entra-id">SSO → Microsoft (Entra ID)</a>.</p>
+</div>
+<h2 id="reading-an-actor-after-authorization">Reading an actor after authorization</h2>
+<p><code>RequireActorAsync</code> is an invariant accessor for <strong>established actor presence and stable
+provider resolution</strong>, not a way to retrieve an actor captured by the authorization behavior.
+It performs another lookup. A correctly registered authorization behavior may have checked
+an earlier identity or permission snapshot if the provider reads mutable data.</p>
+<p>For mutable providers, configure the existing cache before dispatch so the behavior and
+handler receive the same scoped <code>IActorProvider</code>. For the claims provider from the quick start:</p>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services.AddCachingActorProvider&lt;ClaimsActorProvider&gt;();
+</code></pre>
+<p>Place this after <code>AddClaimsActorProvider(...)</code>; for a database-backed provider, wrap that
+provider instead (see <a href="#caching-wrapper">Caching wrapper</a>). Caching only the handler's
+lookup, injecting the uncached inner provider, or using a different scope is insufficient.
+A provider that explicitly guarantees stable identity and authorization state throughout
+the operation can also be used without a cache.</p>
+<p>Inside the authorized handler, using that same stable or cached provider:</p>
+<pre><code class="lang-csharp">using Trellis.Authorization;
+
+Actor actor = await actorProvider.RequireActorAsync(cancellationToken);
+</code></pre>
+<p>An absent actor here throws <code>InvalidOperationException</code> with an actionable diagnostic.
+The helper calls the provider once, forwards the cancellation token, and preserves provider
+exceptions. It does not authenticate, check permissions, enforce provider stability, or cache
+independently. The shared provider, not this helper, preserves the authorized snapshot.</p>
+<p>Do not substitute this helper into the <code>/me</code> endpoint above or into the authorization
+behaviors themselves. An authenticated HTTP identity may still lack the claim needed to
+construct an actor, and that remains a normal 401 response. A marker interface without its
+registered behavior, or a direct call to a handler, does not establish the invariant.</p>
+<h2 id="entra-id-provider">Entra ID provider</h2>
+<p>For IdP wiring (Authority URL, audience format, multi-tenant pinning), see <a href="integration-sso.html#microsoft-entra-id">SSO → Microsoft (Entra ID)</a>. The table below covers the framework-side options.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Override to...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EntraActorOptions.IdClaimType</code></td>
+<td><code>&quot;http://schemas.microsoft.com/identity/claims/objectidentifier&quot;</code> (falls back to short <code>&quot;oid&quot;</code>)</td>
+<td>Use <code>sub</code>, employee ID, etc.</td>
+</tr>
+<tr>
+<td><code>EntraActorOptions.MapPermissions</code></td>
+<td>union of <code>roles</code> and <code>ClaimTypes.Role</code> claim values (case-insensitive type match)</td>
+<td>Flatten roles into fine-grained permissions; merge DB-sourced grants.</td>
+</tr>
+<tr>
+<td><code>EntraActorOptions.MapForbiddenPermissions</code></td>
+<td>empty <code>HashSet&lt;string&gt;</code></td>
+<td>Project a deny-list claim or DB lookup.</td>
+</tr>
+<tr>
+<td><code>EntraActorOptions.MapAttributes</code></td>
+<td>extracts <code>tid</code>, <code>preferred_username</code>, <code>azp</code>, <code>azpacr</code>, <code>acrs</code>; adds <code>ip_address</code> from <code>Connection.RemoteIpAddress</code> and <code>mfa = &quot;true&quot;\|&quot;false&quot;</code> from any <code>amr</code> claim equal to <code>&quot;mfa&quot;</code></td>
+<td>Add tenant-scoped or request-scoped attributes.</td>
+</tr>
+</tbody>
+</table>
+<p><code>EntraActorProvider</code> returns <code>Maybe&lt;Actor&gt;.None</code> when no authenticated <code>ClaimsIdentity</code> exists or the configured <code>IdClaimType</code> is missing from the identity. The short <code>oid</code> fallback runs only when <code>IdClaimType</code> is left at the default long-form objectidentifier URI (<code>http://schemas.microsoft.com/identity/claims/objectidentifier</code>); a non-default <code>IdClaimType</code> (e.g. <code>&quot;sub&quot;</code>, <code>&quot;upn&quot;</code>) is looked up literally with no fallback. The mediator authorization pipeline maps <code>Maybe.None</code> to <code>Error.AuthenticationRequired</code> (HTTP 401, RFC 9110 §15.5.2). It throws <code>InvalidOperationException</code> only when invoked outside an HTTP request scope (no <code>HttpContext</code>) — a configuration bug that surfaces as HTTP 500. Any exception thrown by <code>MapPermissions</code>, <code>MapForbiddenPermissions</code>, or <code>MapAttributes</code> is rewrapped in <code>InvalidOperationException</code> naming the failing delegate.</p>
+<h2 id="generic-claims-provider">Generic claims provider</h2>
+<p>For IdP-specific Quick starts (Google, Apple, Auth0, Okta, Keycloak, Facebook-via-bridge), see <a href="integration-sso.html#provider-recipes">SSO → Provider recipes</a>. The table below covers the framework-side options.</p>
+<p>For any flat-claim OIDC token where you can name the id and permissions claim types directly.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClaimsActorOptions.ActorIdClaim</code></td>
+<td><code>&quot;sub&quot;</code> (RFC 7519 / OIDC subject claim)</td>
+<td>Literal <code>Claim.Type</code> match first; if not found, falls back to the well-known short↔long counterpart (e.g., <code>&quot;sub&quot;</code> ↔ <code>ClaimTypes.NameIdentifier</code>) so the default just-works against either <code>JwtBearerOptions.MapInboundClaims = true</code> or <code>false</code>. Emits a debug-level log entry when the fallback fires. No JSON-path traversal.</td>
+</tr>
+<tr>
+<td><code>ClaimsActorOptions.PermissionsClaim</code></td>
+<td><code>&quot;permissions&quot;</code></td>
+<td>Multi-valued JWT claims arrive as repeated <code>Claim</code> instances and are aggregated via <code>FindAll</code>. Same curated short↔long mapping table as <code>ActorIdClaim</code>: literal match first, then every counterpart in the table is also queried and merged into a deduplicated set, so <code>&quot;role&quot;</code>/<code>&quot;roles&quot;</code>/<code>ClaimTypes.Role</code> all just-work against <code>JwtBearerOptions.MapInboundClaims = true</code> or <code>false</code>. The default <code>&quot;permissions&quot;</code> is not in the mapping table, so it resolves by literal match only. Emits a debug-level log entry when the fallback fires.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim = &quot;sub&quot;;
+    options.PermissionsClaim = &quot;permissions&quot;;
+});
+</code></pre>
+<blockquote>
+<p><strong>JwtBearer integration tip.</strong> ASP.NET Core's <code>AddJwtBearer(...)</code> defaults to <code>MapInboundClaims = true</code>, which remaps the JWT <code>&quot;sub&quot;</code> claim onto the WS-* long-form URN (<code>http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier</code>) before the principal reaches Trellis. <code>ClaimsActorProvider</code>'s short↔long claim-name fallback hides this from you — the default <code>ActorIdClaim = &quot;sub&quot;</code> resolves the actor correctly under either setting. New services should set <code>MapInboundClaims = false</code> on <code>AddJwtBearer(...)</code> to keep claim names round-tripping with their RFC 7519 names; the fallback continues to accept both forms.</p>
+</blockquote>
+<p><code>ClaimsActorProvider.GetCurrentActorAsync</code> is <code>virtual</code> — subclass it to compute permissions from nested claims, look them up in a store, etc., then register your subclass via <code>AddCachingActorProvider&lt;TYourProvider&gt;()</code> to amortize the cost across the request.</p>
+<h2 id="development-provider">Development provider</h2>
+<p>For local development and integration tests only. The provider reads an <code>X-Test-Actor</code> JSON header shaped like <code>{ &quot;Id&quot;: &quot;...&quot;, &quot;Permissions&quot;: [...], &quot;ForbiddenPermissions&quot;: [...], &quot;Attributes&quot;: {...} }</code> (case-insensitive property matching).</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DevelopmentActorOptions.DefaultActorId</code></td>
+<td><code>&quot;development&quot;</code></td>
+<td>Used when the header is missing or empty.</td>
+</tr>
+<tr>
+<td><code>DevelopmentActorOptions.DefaultPermissions</code></td>
+<td>empty <code>HashSet&lt;string&gt;</code></td>
+<td>Used when the header is missing or empty.</td>
+</tr>
+<tr>
+<td><code>DevelopmentActorOptions.ThrowOnMalformedHeader</code></td>
+<td><code>true</code></td>
+<td>When <code>true</code> (the default), a malformed header throws; set to <code>false</code> to log a warning and fall back to the default actor.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Trellis.Asp.Authorization;
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDevelopmentActorProvider(options =&gt;
+    {
+        options.DefaultActorId = &quot;developer@local&quot;;
+        options.DefaultPermissions = new HashSet&lt;string&gt; { &quot;Products.Read&quot;, &quot;Products.Write&quot; };
+    });
+}
+else
+{
+    builder.Services.AddEntraActorProvider();
+}
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><code>DevelopmentActorProvider.GetCurrentActorAsync</code> throws <code>InvalidOperationException</code> whenever <code>IHostEnvironment.IsDevelopment()</code> is <code>false</code> — even when the header is absent. Registering it in Production is a fail-fast safety net.</p>
+</div>
+<p>For test clients, the <code>WebApplicationFactoryExtensions.CreateClientWithActor(...)</code> helper in <code>Trellis.Testing.AspNetCore</code> writes the same header for you; see <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a>.</p>
+<h2 id="easy-auth-provider-azure-app-service--container-apps">Easy Auth provider (Azure App Service / Container Apps)</h2>
+<p>When your app runs behind Azure App Service or Container Apps <strong>built-in authentication (&quot;Easy Auth&quot;)</strong>, the platform authenticates the user and injects the principal as request headers — <code>X-MS-CLIENT-PRINCIPAL</code> (base64 JSON of the claims), plus <code>X-MS-CLIENT-PRINCIPAL-ID</code> / <code>-NAME</code> / <code>-IDP</code> — stripping any client-supplied copies at the boundary. Trellis handles this in two layers, mirroring the standard <code>AddJwtBearer</code> + actor-provider split:</p>
+<ol>
+<li><strong>Authentication</strong> — <code>AddEasyAuth()</code> registers an <code>AuthenticationHandler</code> that decodes <code>X-MS-CLIENT-PRINCIPAL</code> onto <code>HttpContext.User</code> (honoring <code>auth_typ</code> / <code>name_typ</code> / <code>role_typ</code>), falling back to <code>-ID</code> / <code>-NAME</code> when the principal header is absent. A missing header is anonymous (<code>NoResult</code>); a malformed header fails closed.</li>
+<li><strong>Actor mapping</strong> — <code>AddEasyAuthActorProvider(...)</code> maps those <code>HttpContext.User</code> claims to the <code>Actor</code> exactly like the generic claims provider, but varies the response cache by the Easy Auth principal headers instead of <code>Authorization</code>. If you register this provider but forget the authentication scheme, a startup validator fails fast rather than letting every request silently 401.</li>
+</ol>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services
+    .AddAuthentication(EasyAuthDefaults.AuthenticationScheme)
+    .AddEasyAuth();
+
+builder.Services.AddEasyAuthActorProvider(options =&gt;
+{
+    // Match the claim types your upstream identity provider emits inside the principal.
+    options.ActorIdClaim = &quot;http://schemas.microsoft.com/identity/claims/objectidentifier&quot;;
+    options.PermissionsClaim = &quot;roles&quot;;
+});
+
+// ... later:
+app.UseAuthentication();
+app.UseAuthorization();
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p><strong>Trust precondition.</strong> The <code>X-MS-CLIENT-PRINCIPAL*</code> headers are trustworthy only when the app is reachable <em>exclusively</em> through the Easy Auth front end — the platform strips inbound client copies at that boundary. If any path bypasses Easy Auth (a misconfigured ingress, a side-car port, or local development), a client can forge these headers and impersonate any actor. The provider is never auto-registered; enable it only when that boundary holds.</p>
+</div>
+<p><code>EasyAuthAuthenticationOptions</code> carries only the standard <code>AuthenticationSchemeOptions</code> surface (events, forwarding). The Easy Auth principal header names are fixed by the Azure platform contract (<code>EasyAuthDefaults</code>) and are not configurable, so the decoded identity and the provider's <code>VaryForActor()</code> cache key can never drift out of sync.</p>
+<h2 id="caching-wrapper">Caching wrapper</h2>
+<p>When resolving an actor requires extra async work (database lookups, remote calls), wrap the inner provider so a single resolution task is shared across the request scope.</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+public interface IPermissionStore
+{
+    Task&lt;IReadOnlySet&lt;string&gt;&gt; GetPermissionsAsync(string userId, CancellationToken ct);
+}
+
+public sealed class DatabaseActorProvider(
+    IHttpContextAccessor httpContextAccessor,
+    IPermissionStore permissionStore) : IActorProvider
+{
+    public async Task&lt;Maybe&lt;Actor&gt;&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    {
+        // HttpContext missing is a configuration bug, not authentication state — throw
+        // so it surfaces as HTTP 500 rather than masquerading as a 401.
+        var httpContext = httpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException(&quot;No HttpContext available.&quot;);
+
+        // No authenticated identity / missing id claim → no usable actor → Maybe.None,
+        // which the mediator pipeline maps to Error.AuthenticationRequired (HTTP 401).
+        var userId = httpContext.User.FindFirst(&quot;sub&quot;)?.Value;
+        if (userId is null)
+            return Maybe&lt;Actor&gt;.None;
+
+        var permissions = await permissionStore.GetPermissionsAsync(userId, cancellationToken);
+        return Maybe.From(Actor.Create(userId, permissions));
+    }
+}
+
+builder.Services.AddSingleton&lt;IPermissionStore, MyPermissionStore&gt;(); // MyPermissionStore is your IPermissionStore implementation.
+builder.Services.AddCachingActorProvider&lt;DatabaseActorProvider&gt;();
+</code></pre>
+<p><code>CachingActorProvider</code> issues the inner call with <code>HttpContext.RequestAborted</code> so the shared work is cancelled with the request, then forwards each caller's own <code>CancellationToken</code> via <code>Task.WaitAsync</code>.</p>
+<h2 id="worker-actor-composition">Worker actor composition</h2>
+<p>Background workers (<code>IHostedService</code> / <code>BackgroundService</code> ticks, scheduled jobs, message-queue consumers) execute outside any HTTP request, so the HTTP-side actor providers above have no <code>HttpContext</code> to read. The same mediator commands those workers dispatch still go through <code>AuthorizationBehavior</code>, which requires a non-empty <code>Actor</code>. <code>AddTrellisWorkerActor(systemActor)</code> composes a wrapper on top of the existing HTTP-side provider that returns the supplied system actor when <code>IHttpContextAccessor.HttpContext</code> is <code>null</code> and delegates to the inner provider otherwise.</p>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+var systemActor = Actor.Create(
+    id: &quot;system&quot;,
+    permissions: new HashSet&lt;string&gt; { &quot;reminders:dispatch&quot;, &quot;reminders:read&quot; });
+
+builder.Services.AddClaimsActorProvider(o =&gt; o.ActorIdClaim = &quot;sub&quot;);
+builder.Services.AddTrellisWorkerActor(systemActor);
+
+builder.Services.AddHostedService&lt;ReminderDispatchWorker&gt;();
+</code></pre>
+<p>Or via the <code>TrellisServiceBuilder</code> slot in <code>Trellis.ServiceDefaults</code>:</p>
+<pre><code class="lang-csharp">builder.Services.AddTrellis(t =&gt; t
+    .UseAsp()
+    .UseClaimsActorProvider()
+    .UseWorkerActor(systemActor));
+</code></pre>
+<h3 id="order-matters">Order matters</h3>
+<p><code>AddTrellisWorkerActor</code> requires exactly one prior unkeyed <code>IActorProvider</code> registration (typically <code>AddClaimsActorProvider</code>, <code>AddEntraActorProvider</code>, or <code>AddDevelopmentActorProvider</code>) and throws if zero or more than one are present. It also rejects singleton-via-type/factory inners (silent lifetime conversion) and transient inners (silent upgrade to scoped); singleton-via-<code>ImplementationInstance</code> is accepted. When <code>AddCachingActorProvider&lt;T&gt;</code> is also configured, place the worker wrap LAST so it sits on the outside:</p>
+<pre><code class="lang-csharp">builder.Services.AddCachingActorProvider&lt;DatabaseActorProvider&gt;();
+builder.Services.AddTrellisWorkerActor(systemActor);  // outermost — worker ticks skip caching
+</code></pre>
+<p>The worker wrapper has no scope to cache against on a <code>BackgroundService</code> tick, and the system-actor branch returns synchronously without invoking any provider, so leaving caching on the inside means HTTP-path lookups still benefit from request-scoped caching while worker-path lookups bypass it entirely.</p>
+<h3 id="validator-catches-the-silent-overwrite-footgun">Validator catches the silent-overwrite footgun</h3>
+<p>A hosted-service validator runs at host start (in <code>IHostedLifecycleService.StartingAsync</code>, before any <code>BackgroundService.ExecuteAsync</code> runs) and throws if a subsequent <code>services.AddScoped&lt;IActorProvider, ...&gt;()</code> registration (or another <code>AddXxxActorProvider</code> call) overwrote/appended over the wrapper. Without the validator, the wrapper would silently disappear, background-worker ticks would no longer resolve the configured system actor (they would receive whatever the new provider returns — typically <code>Maybe.None</code> since there is no <code>HttpContext</code> on a tick — surfacing as <code>Error.AuthenticationRequired</code> on the first command), and the bug would not surface until the worker actually runs:</p>
+<pre><code class="lang-csharp">// BUG — this throws at host start with a clear diagnostic instead of silently
+// breaking the worker tick the next time it runs:
+builder.Services.AddClaimsActorProvider();
+builder.Services.AddTrellisWorkerActor(systemActor);
+builder.Services.AddEntraActorProvider();  // overwrites the worker wrapper
+</code></pre>
+<h3 id="authorization-implications">Authorization implications</h3>
+<p>Scope the <code>Actor.Permissions</code> granted to the system actor as narrowly as the worker requires. Every mediator command the worker dispatches authorizes against that envelope; an overly-broad system actor turns into a privilege-escalation hazard the first time a developer reuses a command handler.</p>
+<h2 id="customizing-claim-mapping">Customizing claim mapping</h2>
+<p><code>EntraActorOptions</code> exposes three independent delegates — override only what you need.</p>
+<h3 id="mapinboundclaims-and-the-shortlong-fallback"><code>MapInboundClaims</code> and the short↔long fallback</h3>
+<p>ASP.NET Core's <code>JwtBearerOptions.MapInboundClaims</code> defaults to <code>true</code>. The handler silently remaps RFC 7519 short claim names (<code>sub</code>, <code>email</code>, <code>role</code>, <code>roles</code>, <code>oid</code>, <code>upn</code>, <code>tid</code>, <code>idp</code>, <code>acr</code>, <code>amr</code>) onto WS-* long-form URNs (<code>ClaimTypes.NameIdentifier</code>, <code>ClaimTypes.Email</code>, <code>ClaimTypes.Role</code>, <code>http://schemas.microsoft.com/identity/claims/objectidentifier</code>, etc.) <strong>before</strong> the claims reach <code>HttpContext.User</code>. <strong>The trap:</strong> with <code>ClaimsActorOptions.ActorIdClaim = &quot;sub&quot;</code> (the OIDC standard default) and an unchanged <code>MapInboundClaims = true</code>, a literal <code>identity.FindFirst(&quot;sub&quot;)</code> would return null because the claim was renamed to <code>ClaimTypes.NameIdentifier</code>. Without protection, the provider would return <code>Maybe&lt;Actor&gt;.None</code>, the mediator would emit 401 on every authenticated request, and there would be no diagnostic pointing at the cause — the most common Trellis-integration footgun.</p>
+<p><code>ClaimsActorProvider</code> defends against this trap with a curated short↔long fallback table that mirrors the OAuth2 / OIDC / Microsoft identity-platform subset of <code>JwtSecurityTokenHandler.DefaultInboundClaimTypeMap</code>. The literal lookup is tried first; if the configured claim name is absent the provider falls back to its counterpart and emits a debug-level log entry naming both, so operators can spot a misaligned <code>MapInboundClaims</code> setting in production:</p>
+<table>
+<thead>
+<tr>
+<th>Configured short form</th>
+<th>Long-form counterpart</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;sub&quot;</code> / <code>&quot;nameid&quot;</code></td>
+<td><code>ClaimTypes.NameIdentifier</code></td>
+</tr>
+<tr>
+<td><code>&quot;name&quot;</code> / <code>&quot;unique_name&quot;</code></td>
+<td><code>ClaimTypes.Name</code></td>
+</tr>
+<tr>
+<td><code>&quot;email&quot;</code></td>
+<td><code>ClaimTypes.Email</code></td>
+</tr>
+<tr>
+<td><code>&quot;role&quot;</code> / <code>&quot;roles&quot;</code></td>
+<td><code>ClaimTypes.Role</code></td>
+</tr>
+<tr>
+<td><code>&quot;family_name&quot;</code></td>
+<td><code>ClaimTypes.Surname</code></td>
+</tr>
+<tr>
+<td><code>&quot;given_name&quot;</code></td>
+<td><code>ClaimTypes.GivenName</code></td>
+</tr>
+<tr>
+<td><code>&quot;gender&quot;</code></td>
+<td><code>ClaimTypes.Gender</code></td>
+</tr>
+<tr>
+<td><code>&quot;birthdate&quot;</code></td>
+<td><code>ClaimTypes.DateOfBirth</code></td>
+</tr>
+<tr>
+<td><code>&quot;website&quot;</code></td>
+<td><code>ClaimTypes.Webpage</code></td>
+</tr>
+<tr>
+<td><code>&quot;actort&quot;</code></td>
+<td><code>ClaimTypes.Actor</code></td>
+</tr>
+<tr>
+<td><code>&quot;upn&quot;</code></td>
+<td><code>ClaimTypes.Upn</code></td>
+</tr>
+<tr>
+<td><code>&quot;oid&quot;</code></td>
+<td><code>http://schemas.microsoft.com/identity/claims/objectidentifier</code></td>
+</tr>
+<tr>
+<td><code>&quot;tid&quot;</code></td>
+<td><code>http://schemas.microsoft.com/identity/claims/tenantid</code></td>
+</tr>
+<tr>
+<td><code>&quot;idp&quot;</code></td>
+<td><code>http://schemas.microsoft.com/identity/claims/identityprovider</code></td>
+</tr>
+<tr>
+<td><code>&quot;acr&quot;</code></td>
+<td><code>http://schemas.microsoft.com/claims/authnclassreference</code></td>
+</tr>
+<tr>
+<td><code>&quot;amr&quot;</code></td>
+<td><code>http://schemas.microsoft.com/claims/authnmethodsreferences</code></td>
+</tr>
+</tbody>
+</table>
+<p>The fallback shape differs by claim. <strong><code>ActorIdClaim</code></strong> resolves with literal-first then mapped counterpart: the literal <code>Claim.Type</code> lookup is tried first; if absent, the counterpart from the table is tried. <strong><code>PermissionsClaim</code></strong> aggregates: literal matches and mapped-counterpart matches are both yielded and merged into the deduplicated permission set. The mapping is <strong>bidirectional</strong> — configuring short forms (<code>&quot;sub&quot;</code>, <code>&quot;roles&quot;</code>) works against either <code>MapInboundClaims = true</code> or <code>false</code>; configuring long forms (<code>ClaimTypes.NameIdentifier</code>, <code>ClaimTypes.Role</code>) reverses through the same table. The provider emits a debug-level log entry naming the configured claim and the resolved counterpart only when the configured literal had no matches but a counterpart did — useful for diagnosing &quot;always 401&quot; issues in production. The default <code>PermissionsClaim = &quot;permissions&quot;</code> is NOT in the inbound map, so its resolution remains literal-only (regression-safe).</p>
+<div class="CAUTION">
+<h5>Caution</h5>
+<p>The OAuth scope claim <code>&quot;scp&quot;</code> is intentionally NOT in the fallback table. Its value is space-delimited per RFC 6749 §3.3 (e.g. <code>&quot;orders.read orders.write&quot;</code>); the provider snapshots claim values verbatim into the permission set, so a fallback for <code>scp</code> would still leave <code>Actor.HasPermission(&quot;orders.read&quot;)</code> returning <code>false</code> (the permission set would contain the single string <code>&quot;orders.read orders.write&quot;</code>). OAuth scope-as-permission requires a custom subclass that splits the value on whitespace.</p>
+</div>
+<div class="TIP">
+<h5>Tip</h5>
+<p><strong>Recommended for new services:</strong> <code>services.AddAuthentication().AddJwtBearer(o =&gt; { o.MapInboundClaims = false; ... })</code>. Claim names then round-trip with their OIDC / RFC 7519 short names; with <code>ClaimsActorOptions</code> left on its defaults (<code>ActorIdClaim = &quot;sub&quot;</code>, <code>PermissionsClaim = &quot;permissions&quot;</code>) the <code>ClaimsActorProvider</code> shared short↔long fallback never fires — keeping the production log quiet and the failure mode (<code>Maybe&lt;Actor&gt;.None</code>) tied to genuinely missing claims, not handler-side rename surprises. If you configure a different name on either side (long-form <code>ClaimTypes.NameIdentifier</code> or another mapped short form like <code>&quot;roles&quot;</code>) the fallback still runs through the same table. <code>EntraActorProvider</code>'s own <code>oid</code> ↔ long-form fallback (documented below) is unaffected and covers the v2.0 default regardless of <code>MapInboundClaims</code>.</p>
+</div>
+<div class="NOTE">
+<h5>Note</h5>
+<p><strong><code>EntraActorProvider</code> does not inherit this fallback</strong> — it overrides <code>GetCurrentActorAsync</code> and resolves the actor id with a single-purpose <code>oid</code> ↔ <code>http://schemas.microsoft.com/identity/claims/objectidentifier</code> fallback (covering the v2.0-default case). Permissions are mapped via the configured <code>MapPermissions</code> delegate against the <code>ClaimsIdentity</code> claim list (after <code>JwtBearer</code> claim mapping has already run), not through the shared table. If you set <code>EntraActorOptions.IdClaimType</code> to a non-default short claim (<code>&quot;sub&quot;</code>, <code>&quot;upn&quot;</code>, etc.) AND your <code>JwtBearer</code> keeps <code>MapInboundClaims = true</code>, set <code>MapInboundClaims = false</code> or configure <code>IdClaimType</code> to the mapped long form explicitly — the shared fallback only applies under <code>ClaimsActorProvider</code>.</p>
+</div>
+<h3 id="flatten-entra-roles-into-application-permissions">Flatten Entra roles into application permissions</h3>
+<p>This sample assumes <code>MapInboundClaims = false</code> (as the Quick start recommends). If you leave the ASP.NET Core default of <code>true</code>, replace <code>&quot;roles&quot;</code> with <code>ClaimTypes.Role</code> OR include both, otherwise the mapped role claim will be silently dropped.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services.AddEntraActorProvider(options =&gt;
+{
+    var rolePermissionMap = new Dictionary&lt;string, string[]&gt;(StringComparer.Ordinal)
+    {
+        [&quot;Catalog.Admin&quot;]  = [&quot;Products.Read&quot;, &quot;Products.Write&quot;, &quot;Products.Delete&quot;],
+        [&quot;Catalog.Reader&quot;] = [&quot;Products.Read&quot;],
+    };
+
+    options.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;roles&quot;, StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(c.Type, ClaimTypes.Role, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c =&gt; rolePermissionMap.TryGetValue(c.Value, out var perms) ? perms : Array.Empty&lt;string&gt;())
+        .ToHashSet(StringComparer.Ordinal);
+});
+</code></pre>
+<h3 id="use-delegated-scopes-scp-instead-of-roles">Use delegated scopes (<code>scp</code>) instead of roles</h3>
+<pre><code class="lang-csharp">using System;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services.AddEntraActorProvider(options =&gt;
+{
+    options.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;scp&quot;, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c =&gt; c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        .ToHashSet(StringComparer.Ordinal);
+});
+</code></pre>
+<h3 id="add-forbidden-permissions-and-custom-attributes">Add forbidden permissions and custom attributes</h3>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Assigning <code>MapAttributes</code> (or <code>MapPermissions</code> / <code>MapForbiddenPermissions</code>) <strong>replaces</strong> the default Entra mapper — it does not augment. The Entra default <code>MapAttributes</code> populates <code>tid</code>, <code>preferred_username</code>, <code>azp</code>, <code>azpacr</code>, <code>acrs</code>, <code>ip_address</code>, and <code>mfa</code> from the <code>amr</code> claim; a replacement that only writes <code>region</code> and <code>ip_address</code> loses every other default attribute. If you need additional attributes ON TOP of the defaults, build a wrapper that first runs the default logic (copy from <code>EntraActorOptions.cs</code>) and then adds your own keys.</p>
+</div>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+builder.Services.AddEntraActorProvider(options =&gt;
+{
+    options.MapForbiddenPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;denied_permissions&quot;, StringComparison.OrdinalIgnoreCase))
+        .Select(c =&gt; c.Value)
+        .ToHashSet(StringComparer.Ordinal);
+
+    options.MapAttributes = (claims, httpContext) =&gt;
+    {
+        var attributes = new Dictionary&lt;string, string&gt;(StringComparer.Ordinal);
+
+        var region = claims.FirstOrDefault(c =&gt; c.Type == &quot;region&quot;)?.Value;
+        if (!string.IsNullOrWhiteSpace(region))
+            attributes[&quot;region&quot;] = region;
+
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString();
+        if (!string.IsNullOrWhiteSpace(ip))
+            attributes[ActorAttributes.IpAddress] = ip;
+
+        return attributes;
+    };
+});
+</code></pre>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Throwing inside any <code>Map*</code> delegate produces an <code>InvalidOperationException</code> with the message <code>EntraActorOptions.&lt;delegate&gt; threw an exception while mapping the authenticated user's claims.</code> — it does not silently default.</p>
+</div>
+<h2 id="abac-attributes">ABAC attributes</h2>
+<p><code>Actor.Attributes</code> is an immutable <code>FrozenDictionary&lt;string, string&gt;</code>. Read it via <code>GetAttribute</code> (returns <code>string?</code>) or <code>HasAttribute</code>, and key it with <code>ActorAttributes.*</code> constants instead of magic strings.</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Authorization;
+
+var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
+
+if (tenantId is null || !actor.HasPermission(&quot;Documents.Read&quot;, tenantId))
+    return Result.Fail(new Error.Forbidden(&quot;documents.read&quot;) { Detail = &quot;Wrong tenant.&quot; });
+
+var clientApp = actor.GetAttribute(ActorAttributes.AuthorizedParty);
+var mfaPassed = actor.GetAttribute(ActorAttributes.MfaAuthenticated) == &quot;true&quot;;
+</code></pre>
+<p><code>Actor.HasPermission(permission, scope)</code> checks for the joined string <code>permission:scope</code>, where <code>:</code> is <code>Actor.PermissionScopeSeparator</code>. See <a href="../api_reference/trellis-api-authorization.html#actor"><code>trellis-api-authorization.md</code></a> for the full deny-overrides-allow rules.</p>
+<h2 id="mediator-integration">Mediator integration</h2>
+<p>When a request flows through <code>Trellis.Mediator</code>, prefer pipeline behaviors over per-handler permission checks. All three authorization behaviors — <code>AuthorizationBehavior&lt;TMessage, TResponse&gt;</code> (for <code>IAuthorize</code>), <code>ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</code> (for <code>IAuthorizeResource&lt;T&gt;</code>), and <code>ResourceAuthorizationViaBehavior&lt;TMessage, TLeaf, TOwner, TResponse&gt;</code> (for <code>IAuthorizeResourceVia&lt;TOwner&gt;</code>) — share an internal <code>ActorResolution.TryResolveAsync</code> helper that calls <code>IActorProvider.GetCurrentActorAsync</code> and short-circuits with <code>Error.AuthenticationRequired</code> when no actor is resolved. Each behavior then runs its own denial check and emits <code>Error.Forbidden</code> on permission-missing or resource-rule failure. See <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a>.</p>
+<h3 id="static-permission-checks-via-iauthorize">Static permission checks via <code>IAuthorize</code></h3>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Mediator;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record DeleteDocumentCommand(string DocumentId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorize
+{
+    public IReadOnlyList&lt;string&gt; RequiredPermissions { get; } = [&quot;Documents.Delete&quot;];
+}
+</code></pre>
+<p>The behavior requires the actor to hold <strong>every</strong> listed permission (AND semantics) and is <strong>deny-aware</strong> — it goes through <code>Actor.HasPermission</code>, so any entry in <code>Actor.ForbiddenPermissions</code> overrides a corresponding grant. Returning <code>Result&lt;Unit&gt;</code> from the command is the canonical command shape.</p>
+<h3 id="resource-based-checks-via-iauthorizeresourcetresource">Resource-based checks via <code>IAuthorizeResource&lt;TResource&gt;</code></h3>
+<p>Use this when the rule depends on a loaded entity, not just static permissions. The framework supports two loader shapes — pick one per command:</p>
+<ul>
+<li><strong>Per-command custom loader</strong> (shown below): register <code>IResourceLoader&lt;TMessage, TResource&gt;</code> for one specific command. Useful when the load is a projection (joins, computed shape) or a custom traversal that can't be expressed as load-by-id.</li>
+<li><strong>Shared load-by-id</strong>: implement <code>IIdentifyResource&lt;TResource, TId&gt;</code> on the message and register a single <code>SharedResourceLoaderById&lt;TResource, TId&gt;</code> that bridges every command identifying the same resource through the same loader. Discoverable by <code>AddResourceAuthorization(Assembly[])</code>. Preferred when multiple commands authorize against the same resource type.</li>
+</ul>
+<pre><code class="lang-csharp">using Mediator;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record Document(string Id, string OwnerId);
+
+public sealed record EditDocumentCommand(string DocumentId)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;, IAuthorizeResource&lt;Document&gt;
+{
+    public IResult Authorize(Actor actor, Document resource) =&gt;
+        Result.Ensure(
+            actor.IsOwner(resource.OwnerId) || actor.HasPermission(&quot;Documents.EditAny&quot;),
+            new Error.Forbidden(&quot;documents.edit&quot;) { Detail = &quot;Only the owner can edit this document.&quot; });
+}
+
+// The per-command custom loader extracts whatever shape Authorize() needs.
+// Typically wraps a repository; can also project (joins, computed values) when the
+// authorization rule needs more than a single repository lookup.
+public sealed class DocumentResourceLoader(IDocumentRepository repository)
+    : IResourceLoader&lt;EditDocumentCommand, Document&gt;
+{
+    public Task&lt;Result&lt;Document&gt;&gt; LoadAsync(EditDocumentCommand message, CancellationToken cancellationToken)
+        =&gt; repository.GetByIdAsync(message.DocumentId, cancellationToken);
+}
+</code></pre>
+<p>Wire the loader and pipeline behaviors in <code>Program.cs</code>:</p>
+<pre><code class="lang-csharp">using Mediator;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+using Trellis.Mediator;
+
+builder.Services.AddEntraActorProvider();
+
+// 1. Register the resource loader for this command.
+//    DocumentResourceLoader implements IResourceLoader&lt;EditDocumentCommand, Document&gt;.
+builder.Services.AddScoped&lt;IResourceLoader&lt;EditDocumentCommand, Document&gt;, DocumentResourceLoader&gt;();
+
+// 2. Register the resource-authorization pipeline behavior.
+//    Type arguments are &lt;TMessage, TResource, TResponse&gt; — the *command* type comes first,
+//    then the resource type loaded for it, then the command's response type.
+builder.Services.AddResourceAuthorization&lt;EditDocumentCommand, Document, Result&lt;Unit&gt;&gt;();
+
+builder.Services.AddMediator(options =&gt;
+{
+    options.ServiceLifetime = ServiceLifetime.Scoped;
+    options.PipelineBehaviors = [.. Trellis.Mediator.ServiceCollectionExtensions.PipelineBehaviors];
+});
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>AddResourceAuthorization</code> lives in <code>Trellis.Mediator</code>. Forgetting <code>using Trellis.Mediator;</code> produces <code>CS1061: 'IServiceCollection' does not contain a definition for 'AddResourceAuthorization'</code>. The full registration shape is documented in <a href="../api_reference/trellis-api-mediator.html#servicecollectionextensions"><code>trellis-api-mediator.md</code></a>.</p>
+</div>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p><strong>The <code>TResponse</code> type argument must satisfy <code>IResult</code> <em>and</em> <code>IFailureFactory&lt;TResponse&gt;</code>.</strong> <code>Result&lt;TValue&gt;</code> (the canonical command response) satisfies both automatically. If you wire up a custom envelope response type that doesn't, <code>AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</code> (and the assembly-scanning overload, when it sees an <code>IAuthorizeResource&lt;TResource&gt;</code> message with that response type) <strong>fails fast at registration</strong> with <code>InvalidOperationException</code> — the security-marked command will not silently ship without resource authorization. See <a href="integration-mediator.html#custom-envelope-response-types">Custom envelope response types</a> in the mediator article for the full contract.</p>
+</div>
+<h3 id="multi-hop-resource-authorization-via-iauthorizeresourceviatowner">Multi-hop resource authorization via <code>IAuthorizeResourceVia&lt;TOwner&gt;</code></h3>
+<p>When the rule depends on an entity that is <strong>not</strong> the entity the command directly identifies — e.g. &quot;only the team's owners can modify a match&quot; — the authorization rule fires against the <em>owner</em> of the team, but the command identifies the <em>leaf</em> (match). Walking the path by hand inside <code>Authorize(actor, resource)</code> would couple the command to the navigation chain and turn every traversal into a fresh shaped query.</p>
+<p><code>Trellis.Authorization</code> solves this with marker interfaces on the command and the path entities. The framework's <code>ResourceAuthorizationViaBehavior</code> resolves the path at registration time (<code>ResourceAuthorizationPathResolver</code> does a DFS to enumerate distinct simple paths), then at request time walks the path via existing <code>SharedResourceLoaderById&lt;,&gt;</code> registrations and invokes <code>Authorize(actor, IReadOnlyList&lt;TOwner&gt;)</code>. The terminal hop may be plural (cricket-style fan-out: <code>Match → Team → Owners[]</code>), producing a list passed to the command's authorize callback.</p>
+<pre><code class="lang-mermaid">flowchart LR
+    Cmd[&quot;UpdateMatchCommand&lt;br/&gt;IAuthorizeResourceVia of Owner&lt;br/&gt;IIdentifyResource of Match MatchId&quot;]
+    Match[&quot;Match leaf&lt;br/&gt;IIdentifyRelatedResource of Team TeamId&quot;]
+    Team[&quot;Team intermediate&lt;br/&gt;IIdentifyRelatedResources of Owner OwnerId&quot;]
+    Owner[&quot;Owner target&quot;]
+
+    Cmd -- identifies --&gt; Match
+    Match -- singular hop --&gt; Team
+    Team -- plural terminal hop --&gt; Owner
+</code></pre>
+<pre><code class="lang-mermaid">sequenceDiagram
+    autonumber
+    participant Mediator
+    participant Resolver as ResourceAuthorizationPathResolver
+    participant Behavior as ResourceAuthorizationViaBehavior
+    participant MatchLoader as Match loader
+    participant TeamLoader as Team loader
+    participant OwnerLoader as Owner loader
+    participant Auth as Command Authorize
+
+    Note over Resolver: At startup DFS the entity navigation graph and fail fast
+    Mediator-&gt;&gt;Behavior: UpdateMatchCommand and Actor
+    Behavior-&gt;&gt;MatchLoader: LoadAsync MatchId
+    MatchLoader--&gt;&gt;Behavior: Match or NotFound
+    Behavior-&gt;&gt;TeamLoader: LoadAsync HomeTeamId
+    TeamLoader--&gt;&gt;Behavior: Team or 403
+    Note over Behavior: Plural terminal hop extract distinct OwnerIds
+    loop each distinct OwnerId
+        Behavior-&gt;&gt;OwnerLoader: LoadAsync ownerId
+        OwnerLoader--&gt;&gt;Behavior: Owner or 403
+    end
+    Behavior-&gt;&gt;Auth: Authorize actor and owners
+    Auth--&gt;&gt;Behavior: Result Ok or Forbidden
+    Behavior--&gt;&gt;Mediator: Continue, bubble leaf load failure verbatim, or short-circuit hop/rule failures to 403
+</code></pre>
+<p><strong>Sketch:</strong></p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using System.Linq;
+using Mediator;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record Owner(OwnerId Id);
+public sealed record Team(TeamId Id, IReadOnlyList&lt;OwnerId&gt; CoOwnerIds) : IIdentifyRelatedResources&lt;Owner, OwnerId&gt;
+{
+    public IReadOnlyList&lt;OwnerId&gt; GetRelatedResourceIds() =&gt; CoOwnerIds;
+}
+public sealed record Match(MatchId Id, TeamId HomeTeamId) : IIdentifyRelatedResource&lt;Team, TeamId&gt;
+{
+    public TeamId GetRelatedResourceId() =&gt; HomeTeamId;
+}
+
+public sealed record UpdateMatchCommand(MatchId MatchId, string NewVenue)
+    : ICommand&lt;Result&lt;Unit&gt;&gt;,
+      IAuthorizeResourceVia&lt;Owner&gt;,
+      IIdentifyResource&lt;Match, MatchId&gt;
+{
+    public MatchId GetResourceId() =&gt; MatchId;
+
+    public IResult Authorize(Actor actor, IReadOnlyList&lt;Owner&gt; owners) =&gt;
+        Result.Ensure(
+            owners.Any(o =&gt; actor.IsOwner(o.Id.Value)),
+            new Error.Forbidden(&quot;matches.update&quot;) { Detail = &quot;Only an owner of the home team can update this match.&quot; });
+}
+</code></pre>
+<p>Wire the path at the composition root. Multi-hop with a plural terminal (cricket fan-out) requires either assembly scanning or a hand-built <code>ResolvedAuthorizationPath</code> — the AOT-friendly <code>AddRelatedResourceAuthorization&lt;...&gt;(extractOwnerId)</code> overload is single-hop only. The assembly scanner discovers the <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> marker, the navigation path (which requires the path entity types to be in the scanned assemblies — explicit loader registrations do NOT add entity types to discovery), AND registers concrete <code>IResourceLoader&lt;,&gt;</code> / <code>SharedResourceLoaderById&lt;,&gt;</code> implementations it finds in those assemblies (via <code>TryAddScoped</code>, so explicit registrations win). If your loader implementations live in a different assembly than the commands and entities, pass that assembly to the scan too — or register them explicitly:</p>
+<pre><code class="lang-csharp">builder.Services.AddScoped&lt;SharedResourceLoaderById&lt;Match, MatchId&gt;, MatchLoader&gt;();
+builder.Services.AddScoped&lt;SharedResourceLoaderById&lt;Team, TeamId&gt;, TeamLoader&gt;();
+builder.Services.AddScoped&lt;SharedResourceLoaderById&lt;Owner, OwnerId&gt;, OwnerLoader&gt;();
+builder.Services.AddResourceAuthorization(typeof(UpdateMatchCommand).Assembly);
+</code></pre>
+<p>For Native AOT / trimming-strict deployments the cookbook walks through hand-building <code>ResolvedAuthorizationPath</code> for multi-hop chains. See <a href="../api_reference/trellis-api-cookbook.html#recipe-24--indirect-multi-hop-resource-authorization">Recipe 24</a> for the full walkthrough.</p>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p><strong>What fires at startup vs at request time.</strong> The path resolver runs at registration time (during <code>AddResourceAuthorization(...)</code>) and rejects with <code>InvalidOperationException</code>: no path from leaf to owner, ambiguous path (multiple distinct routes), plural-in-middle (only the terminal hop may be plural, to avoid cartesian fan-out), leaf == owner (use <code>IAuthorizeResource&lt;T&gt;</code> instead), via-command without <code>IIdentifyResource&lt;TLeaf, TLeafId&gt;</code>, and dual-mode commands (carrying both <code>IAuthorizeResource&lt;T&gt;</code> and <code>IAuthorizeResourceVia&lt;TOwner&gt;</code> — security primitives are never silently composed). Missing <code>SharedResourceLoaderById&lt;TTo, TToId&gt;</code> registration for <strong>any hop in the path</strong> (including the terminal owner hop) is a request-time <code>InvalidOperationException</code> — the resolver builds the loader delegate at registration time but resolves the concrete loader from the request scope at request time, so an absent registration fails loud rather than masking as 403. Intermediate or owner load <em>failures</em> (<code>Result&lt;T&gt;.IsFailure</code>) collapse to <code>Error.Forbidden</code>, not <code>Error.NotFound</code>, to avoid existence leaks across team / owner boundaries.</p>
+</div>
+<div class="TIP">
+<h5>Tip</h5>
+<p>The marker interfaces declare the path; the resolver computes the navigation chain once at registration time and caches it. If your authorization rule needs to traverse a hop that can't be expressed as &quot;load by id&quot; (cartesian joins, recursive hierarchies, conditional paths), fall back to the per-command <code>IResourceLoader&lt;TMessage, TProjection&gt;</code> escape hatch and write <code>Authorize(actor, projection)</code> directly. See <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a> and Recipe 24 in <a href="../api_reference/trellis-api-cookbook.html#recipe-24--indirect-multi-hop-resource-authorization"><code>trellis-api-cookbook.md</code></a> for the full reference.</p>
+</div>
+<h3 id="cache-partitioning-across-actors-varyforactor">Cache partitioning across actors (<code>VaryForActor()</code>)</h3>
+<p>Cacheable responses (200, 304, paginated lists) must include <code>Vary: &lt;actor-header&gt;</code> so intermediate HTTP caches partition by actor — without it, actor A's response can be served to actor B. The manual approach is <code>o.Vary(&quot;Authorization&quot;)</code> on every cache-eligible endpoint, kept in sync with whichever <code>IActorProvider</code> is registered. <code>VaryForActor()</code> removes the bookkeeping:</p>
+<pre><code class="lang-csharp">return result.ToHttpResponse(MyResponse.From, o =&gt; o
+    .WithETag(_ =&gt; weakETag)
+    .EvaluatePreconditions()
+    .VaryForActor());
+</code></pre>
+<p>At apply time the builder resolves the registered <code>IActorProvider</code> and reads its <code>IProvideActorVaryHeaders.VaryByHeaders</code> collection (a capability the bundled providers implement). The decorator chain is walked from outermost to innermost: the <strong>first</strong> provider in that walk that implements <code>IProvideActorVaryHeaders</code> supplies the headers, and unwrapping continues only to find the innermost provider for diagnostics. This shape means a wrapper that legitimately augments the header set (e.g. a tenant-scoping decorator adding <code>X-Tenant</code> alongside the inner provider's <code>Authorization</code>) is honored. <code>CachingActorProvider</code> implements <code>IProvideActorVaryHeaders</code> by delegating to its inner provider's <code>VaryByHeaders</code> — the chain is still walked all the way to the innermost provider so diagnostics name the actual identity source, not the caching wrapper.</p>
+<p><strong>Fail-closed semantics.</strong> When no provider in the chain implements <code>IProvideActorVaryHeaders</code>, or when the implementation returns an empty <code>VaryByHeaders</code> collection, <code>VaryForActor()</code> throws <code>InvalidOperationException</code> at apply time — surfacing misconfiguration as a clear error rather than silently shipping a response that an intermediate cache could pollute across actors. Diagnostics name the <strong>innermost</strong> provider as the remediation site, not the wrapper.</p>
+<p><strong>Override the JWT-bearer default for non-bearer header-backed auth.</strong> <code>ClaimsActorProvider.VaryByHeaders</code> is <code>virtual</code> with the default <code>[&quot;Authorization&quot;]</code>. Services that authenticate with cookies or forwarded headers MUST subclass and override — leaving the default would emit a wrong <code>Vary</code> header (and reintroduce the cache-poisoning bug <code>VaryForActor()</code> exists to prevent):</p>
+<pre><code class="lang-csharp">public sealed class CookieClaimsActorProvider(
+    IHttpContextAccessor accessor,
+    IOptions&lt;ClaimsActorOptions&gt; options,
+    ILogger&lt;ClaimsActorProvider&gt;? logger = null) : ClaimsActorProvider(accessor, options, logger)
+{
+    // Stable, frozen across requests — do not return a mutable List&lt;string&gt;.
+    public override IReadOnlyCollection&lt;string&gt; VaryByHeaders { get; } = [&quot;Cookie&quot;];
+}
+</code></pre>
+<p>The framework ships exactly this shape as <code>EasyAuthClaimsActorProvider</code> (see <a href="#easy-auth-provider-azure-app-service--container-apps">Easy Auth provider</a>) — it subclasses <code>ClaimsActorProvider</code> and overrides <code>VaryByHeaders</code> to the Azure <code>X-MS-CLIENT-PRINCIPAL*</code> principal headers, so <code>AddEasyAuthActorProvider(...)</code> gets the correct cache partitioning without the consumer wiring it by hand.</p>
+<p>Register the subclass — <code>AddClaimsActorProvider(...)</code> registers the base type and won't pick up the subclass on its own. The cleanest shape is to wire the options once via <code>AddClaimsActorProvider</code> (which configures <code>IOptions&lt;ClaimsActorOptions&gt;</code>) and then replace the provider with your subclass via <code>AddCachingActorProvider&lt;TInner&gt;()</code> (also gets you per-request caching for free):</p>
+<pre><code class="lang-csharp">builder.Services.AddClaimsActorProvider(o =&gt; o.ActorIdClaim = &quot;sub&quot;);
+builder.Services.AddCachingActorProvider&lt;CookieClaimsActorProvider&gt;();
+</code></pre>
+<p>If you do not want the caching wrapper, replace the slot directly:</p>
+<pre><code class="lang-csharp">using Microsoft.Extensions.DependencyInjection.Extensions;
+
+builder.Services.AddClaimsActorProvider(o =&gt; o.ActorIdClaim = &quot;sub&quot;);
+builder.Services.Replace(ServiceDescriptor.Scoped&lt;IActorProvider, CookieClaimsActorProvider&gt;());
+</code></pre>
+<p><code>AddCachingActorProvider&lt;CookieClaimsActorProvider&gt;</code> also picks up the override on <code>VaryByHeaders</code> because <code>CachingActorProvider</code> delegates the capability to its wrapped inner via <code>IProvideActorVaryHeaders</code>.</p>
+<p>If your provider derives actor identity from request data that cannot be cleanly named by an HTTP header (mTLS client certificate, IP-based binding, etc.) DO NOT implement <code>IProvideActorVaryHeaders</code>. Use <code>Cache-Control: private, no-store</code> on those endpoints instead — <code>VaryForActor()</code> is the wrong tool for that shape.</p>
+<h2 id="composition">Composition</h2>
+<p><code>AddCachingActorProvider&lt;TInner&gt;()</code> decorates <em>any</em> <code>IActorProvider</code> — including a <code>ClaimsActorProvider</code> subclass you authored — without changing handler code. Mediator-side composition (which behaviors run, what each emits) is canonical in <a href="#mediator-integration">Mediator integration</a>; for a guard that doesn't fit the standard static/load-by-id/via shapes, the framework supports two escape hatches in order of preference: (1) <code>IAuthorizeResource&lt;TProjection&gt;</code> + a custom <code>IResourceLoader&lt;TMessage, TProjection&gt;</code> that shapes the projection however your rule needs (see <a href="#resource-based-checks-via-iauthorizeresourcetresource">Resource-based checks</a>) so the gate stays declarative; (2) plain <code>Actor</code> predicates inside a handler's <code>Result</code> chain, for guards that depend on handler-local state, span multiple aggregates the mediator pipeline never loads together, or are reused from a service-layer helper called outside the mediator pipeline. The handler-side shape:</p>
+<pre><code class="lang-csharp">using System.Threading;
+using System.Threading.Tasks;
+using Trellis;
+using Trellis.Authorization;
+
+public sealed record Document(string Id, string OwnerId);
+
+public interface IDocumentRepository
+{
+    Task&lt;Result&lt;Document&gt;&gt; GetByIdAsync(string id, CancellationToken ct);
+}
+
+public static class DocumentService
+{
+    public static async Task&lt;Result&lt;Document&gt;&gt; LoadForEditAsync(
+        IActorProvider actors,
+        IDocumentRepository repo,
+        string id,
+        CancellationToken ct)
+    {
+        var maybeActor = await actors.GetCurrentActorAsync(ct);
+        if (!maybeActor.TryGetValue(out var actor))
+            return Result.Fail&lt;Document&gt;(new Error.AuthenticationRequired { Detail = &quot;Authentication required.&quot; });
+
+        return await repo.GetByIdAsync(id, ct)
+            .EnsureAsync(
+                doc =&gt; actor.IsOwner(doc.OwnerId) || actor.HasPermission(&quot;Documents.EditAny&quot;),
+                new Error.Forbidden(&quot;documents.edit&quot;) { Detail = &quot;Only the owner can edit this document.&quot; });
+    }
+}
+</code></pre>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Never authorize on <code>preferred_username</code>.</strong> It is for display and audit only and may change.</li>
+<li><strong>Use <code>ActorAttributes</code> constants.</strong> Guarantees consistent casing and survives renames.</li>
+<li><strong>Map roles to permissions once, in <code>MapPermissions</code>.</strong> Keeps runtime checks <code>O(1)</code> against a <code>FrozenSet&lt;string&gt;</code>.</li>
+<li><strong>Prefer scoped permissions</strong> (<code>Documents.Read:tenant-123</code>) and <code>Actor.HasPermission(name, scope)</code> over a separate ABAC dictionary lookup.</li>
+<li><strong>Wrap expensive providers</strong> with <code>AddCachingActorProvider&lt;T&gt;()</code> so re-checks during the same request stay cheap.</li>
+<li><strong>Keep <code>AddDevelopmentActorProvider</code> behind <code>IsDevelopment()</code>.</strong> The provider also fails closed, but registration discipline avoids accidental dependency on <code>X-Test-Actor</code> from staging tests.</li>
+<li><strong>Let mapper exceptions bubble.</strong> A buggy <code>MapPermissions</code> becomes <code>InvalidOperationException(&quot;EntraActorOptions.MapPermissions threw ...&quot;)</code>; surfacing it during development reveals bad role tables faster than any silent fallback.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>Domain primitives (<code>Actor</code>, <code>IAuthorize</code>, <code>IAuthorizeResource&lt;T&gt;</code>, <code>ActorAttributes</code>): <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a></li>
+<li>ASP DI surface and other ASP integration helpers: <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+<li><code>Result</code>, <code>Error.Forbidden</code>, <code>Error.NotFound</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li><code>AuthorizationBehavior&lt;TMessage, TResponse&gt;</code> and <code>AddResourceAuthorization</code>: <a href="../api_reference/trellis-api-mediator.html"><code>trellis-api-mediator.md</code></a></li>
+<li>Test client header helper (<code>CreateClientWithActor</code>): <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-asp-authorization.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
